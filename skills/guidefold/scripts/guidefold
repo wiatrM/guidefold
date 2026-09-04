@@ -347,13 +347,30 @@ def frontmatter(skill_md: Path) -> dict:
 
 def md_list(md: dict, key: str) -> list:
     """metadata.<key> is a comma-separated string (Agent Registry rejects non-scalar metadata, ADR-0010);
-    YAML lists are still parsed so validate can report them."""
+    YAML lists are still parsed so validate can report them. Splits on commas AND whitespace, which
+    is correct for URN/path lists (requires/refines/replaces/references) — those items never
+    contain internal spaces — but wrong for anything whose items are multi-word phrases; use
+    `md_phrases` for those instead."""
     v = (md or {}).get(key)
     if v is None or v == "":
         return []
     if isinstance(v, list):
         return [str(x).strip() for x in v if str(x).strip()]
     return [x.strip() for x in re.split(r"[,\s]+", str(v)) if x.strip()]
+
+def md_phrases(md: dict, key: str) -> list:
+    """metadata.<key> is a comma-separated string of PHRASES, each of which may itself contain
+    spaces (`triggers`, `negative_triggers`: "planned auth change, policy edit" is two phrases,
+    not five words). Splits on commas only — never on whitespace — so a two-word negative_trigger
+    stays a two-word phrase instead of being shredded into single-word bans (the P1 bug found in
+    PR #7 review: "auth" alone was hard-dropping the on-call runbook from every auth-related
+    query). Each phrase's own words are tokenized later, at the point of use, by `tokenize()`."""
+    v = (md or {}).get(key)
+    if v is None or v == "":
+        return []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    return [x.strip() for x in str(v).split(",") if x.strip()]
 
 KIND_VALUES = ("governance", "engineering", "knowledge", "ways-of-working", "temporal")
 LAYER_VALUES = ("org", "platform", "team")
@@ -442,11 +459,17 @@ class Index:
         "field.name": 6, "field.description": 4, "field.digest": 3,
         "field.triggers": 5, "field.body": 2,
         # RRF (k=60) over IDF_SCALE=2**20 has a deliberately *flat* dynamic range — by design
-        # (Reciprocal Rank Fusion trades magnitude for rank-robustness) adjacent ranks differ by
-        # only ~100-300 and rank1-vs-worst over a handful of candidates differs by only ~1500-2000.
-        # w_scope/w_ppr must stay well under that spread or the "feature" becomes a de facto sort
-        # key again (the exact P0 bug, just moved downstream) — see B0-BASELINE.md.
-        "w_scope": 600, "w_ppr": 2000, "w_dense": 0,   # w_dense = 0 until the E1.3 bake-off (ADR-0020)
+        # (Reciprocal Rank Fusion trades magnitude for rank-robustness): over a candidate pool the
+        # size this router actually sees (dozens, not thousands), a single-rank step is only
+        # ~230-280 units (SCALE/((k+r)(k+r+1)), largest between rank1 and rank2), and rank1-vs-
+        # rank8 over an 8-candidate pool spans only ~1770 units. w_scope/w_ppr are calibrated so
+        # that even their *maximum* possible contribution (hops=0 for scope; a hit that receives
+        # essentially all reverse-PPR mass) stays under one rank step — otherwise the "feature"
+        # becomes a de facto sort key again (the P0 bug, just moved downstream; PR #7 review
+        # measured the previous 600/2000 values at ~2.4 and ~8 rank-steps respectively, both far
+        # too large). Values are chosen on this margin, not tuned against tests/golden/*.yaml —
+        # tools/eval/run_golden.py is the tuning signal; see docs/reports/golden/ for before/after.
+        "w_scope": 200, "w_ppr": 250, "w_dense": 0,   # w_dense = 0 until the E1.3 bake-off (ADR-0020)
         "edge.requires": 100, "edge.refines": 60, "edge.replaces": 40, "edge.similar": 30,
         "abstain_threshold": 1200,
     }
@@ -476,8 +499,8 @@ class Index:
                 "urn": u, "node": node, "name": name,
                 "description": str(fm.get("description", "")),
                 "digest": md.get("digest") or str(fm.get("description", ""))[:200],
-                "triggers": md_list(md, "triggers"),
-                "negative_triggers": md_list(md, "negative_triggers"),
+                "triggers": md_phrases(md, "triggers"),
+                "negative_triggers": md_phrases(md, "negative_triggers"),
                 "requires": md_list(md, "requires"),
                 "refines": md_list(md, "refines"),
                 "status": md.get("status", "active"),

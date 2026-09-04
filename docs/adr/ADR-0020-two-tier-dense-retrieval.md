@@ -87,8 +87,10 @@ keeps them honest.
 ## Rejected alternative worth recording
 
 Reverse personalised PageRank is required by E1.5 and is implemented, but review found that on the
-current graph (out-degree ≈ 0.6, zero `refines` edges) it is close to indistinguishable from a decayed
-two-hop `requires` closure, splits mass by out-degree — the wrong prior for a prerequisite relation —
-and is hard to explain in the Probe UI. It is therefore shipped with `w_ppr` as a manifest weight and
-a `w_ppr = 0` arm in the bake-off. It is expected to earn its place once model-derived `similar` edges
-exist, which is the setting it was designed for.
+current graph (out-degree ≈ 0.6; `refines`/`replaces` edges were near-absent when this was written —
+the fixture has since grown 8 `refines` and 1 `replaces` edge, still outweighed by `requires` at
+`edge.requires=100` vs `edge.refines=60`, and `similar` remains at zero) it is close to
+indistinguishable from a decayed two-hop `requires` closure, splits mass by out-degree — the wrong
+prior for a prerequisite relation — and is hard to explain in the Probe UI. It is therefore shipped
+with `w_ppr` as a manifest weight and a `w_ppr = 0` arm in the bake-off. It is expected to earn its
+place once model-derived `similar` edges exist, which is the setting it was designed for.
