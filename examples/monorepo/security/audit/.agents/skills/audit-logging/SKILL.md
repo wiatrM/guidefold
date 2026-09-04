@@ -10,6 +10,9 @@ metadata:
   references: "security/audit/src/logger.go"
   status: active
   since: "2026-09-04"
+  kind: governance
+  layer: team
+  triggers: "audit event schema, tamper-evident logging, actor action resource outcome, hash chaining, audit sink retention, security/audit logger"
   digest: >-
     Every access to or change of labelled data in Meridian produces one structured audit event through the
     shared logger in security/audit, with a fixed schema, hash chaining and an append-only sink. Services never

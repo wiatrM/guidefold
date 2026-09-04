@@ -10,6 +10,9 @@ metadata:
   references: "platforms/forge/pipelines/tests/conftest.py"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  triggers: "PySpark pipeline test, conftest fixtures, chispa assert_df_equality, golden-file test, flaky Spark test, spark session fixture"
   digest: >-
     Pipeline tests exercise the transform and validate hooks against small in-memory DataFrames
     built from conftest fixtures, plus one golden-file test per output dataset. Tests are

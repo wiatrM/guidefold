@@ -10,6 +10,11 @@ metadata:
   references: "infra/relay/k8s/charts/README.md"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:_root:release-process"
+  triggers: "Helm chart, values.yaml schema, Chart.yaml version bump, meridian-common chart, chart-lint, digest-pinned image"
+  negative_triggers: "air-gapped, offline bundle"
   digest: >-
     Each Meridian service ships one chart under infra/relay/k8s/charts with a values.schema.json, the
     meridian-common library chart for labels and probes, and images referenced through global.imageRegistry

@@ -9,6 +9,10 @@ metadata:
   references: "WORKSPACE, .github/CODEOWNERS"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: org
+  triggers: "new package or service, BUILD.bazel target, CODEOWNERS line, guidefold.yaml node, Bazel visibility, WORKSPACE dependency"
+  negative_triggers: "release tagging, ADR authoring"
   digest: >-
     Meridian is a single Bazel monorepo split into platforms (forge, atlas), infra (relay), security and
     shared libs, each owned by a team listed in guidefold.yaml and mirrored in CODEOWNERS. Code lands on

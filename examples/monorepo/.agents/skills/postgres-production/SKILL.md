@@ -9,6 +9,10 @@ metadata:
   references: "libs/db/migrations/README.md, libs/db/pool.go#maxConns"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: org
+  triggers: "Postgres migration, golang-migrate, maxConns pool size, pgxpool, lock_timeout, hot-path query"
+  negative_triggers: "Spark dataset, Kafka topic, local dev database"
   digest: >-
     Every Meridian service that owns a Postgres database uses libs/db for pooling and golang-migrate for
     forward-only, numbered SQL migrations. Pool sizes, lock timeouts and index rules are fixed here so that

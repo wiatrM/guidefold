@@ -10,6 +10,10 @@ metadata:
   references: "infra/relay/edge/bundle/manifest.yaml#mirrorRegistry"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:_root:release-process"
+  triggers: "offline bundle, air-gapped install, image mirroring by digest, bundle manifest.yaml, edge site, mirrorRegistry"
   digest: >-
     Edge sites install Meridian from a signed, self-contained bundle described by bundle/manifest.yaml:
     every image is mirrored by digest into the bundle registry, every chart is vendored, and nothing is

@@ -9,6 +9,9 @@ metadata:
   references: "platforms/forge/ontology/schema/object-types.yaml"
   status: active
   since: "2026-09-04"
+  kind: knowledge
+  layer: team
+  triggers: "object-types.yaml, define object type, link type cardinality, backingDataset primaryKey, titleProperty, forge ontology compile"
   digest: >-
     Ontology object types, properties, and links are declared in object-types.yaml and compiled
     into Postgres tables by forge-cli. Each object type maps to exactly one backing dataset with a

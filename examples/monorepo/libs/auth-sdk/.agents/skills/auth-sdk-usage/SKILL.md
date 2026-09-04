@@ -10,6 +10,9 @@ metadata:
   references: "libs/auth-sdk/README.md"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  triggers: "auth-sdk middleware, PrincipalFrom context, authsdk.Authorize, token verification, authenticated endpoint, outbound delegated token"
   digest: >-
     auth-sdk is the only supported way for Meridian services to verify caller tokens, build a Principal and
     ask the RBAC policy service for a decision. Services wire the middleware once, pass the Principal through

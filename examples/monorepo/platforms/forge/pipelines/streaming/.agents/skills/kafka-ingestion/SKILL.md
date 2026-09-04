@@ -10,6 +10,10 @@ metadata:
   references: "platforms/forge/pipelines/streaming/config/topics.yaml#retentionMs"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+  triggers: "Kafka topic declaration, topics.yaml retentionMs, StreamingPipeline consumer, checkpoint path, dead-letter handling, _event dataset merge"
   digest: >-
     Streaming consumers are StreamingPipeline subclasses that read one declared Kafka topic,
     checkpoint to their own path, and merge records into an _event dataset by idempotency key.

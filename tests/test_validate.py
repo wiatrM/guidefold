@@ -164,3 +164,108 @@ def test_two_nodes_collide_after_flat_node(gf, tmp_path, capsys):
     out = capsys.readouterr().out
     assert code == 1
     assert "collide after flattening to 'foo-bar'" in out
+
+
+# ---------------------------------------------------------- E1.4: kind/layer/refines/replaces
+
+def test_unknown_kind(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/widget", name="widget",
+                description="[acme] widget skill. Use when touching widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "kind": "bogus-kind"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "metadata.kind must be one of" in out
+
+
+def test_unknown_layer(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/widget", name="widget",
+                description="[acme] widget skill. Use when touching widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "layer": "region"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "metadata.layer must be one of" in out
+
+
+def test_unknown_refines_target(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/widget", name="widget",
+                description="[acme] widget skill. Use when touching widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "refines": "urn:skill:acme:_root:does-not-exist"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "refines unknown skill urn:skill:acme:_root:does-not-exist" in out
+
+
+def test_unknown_replaces_target(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/widget", name="widget",
+                description="[acme] widget skill. Use when touching widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "replaces": "urn:skill:acme:_root:does-not-exist"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "replaces unknown skill urn:skill:acme:_root:does-not-exist" in out
+
+
+def test_refines_deeper_node_rejected(gf, tmp_path, capsys):
+    """refines must point at the same node or a shallower one — child refines parent, never
+    the reverse. `root-widget` (_root) refining `team-widget` (teamA, one level deeper) is invalid."""
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/root-widget", name="root-widget",
+                description="[acme] root widget skill. Use when touching root widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "refines": "urn:skill:acme:teamA:team-widget"})
+    write_skill(root / "teamA/.agents/skills/team-widget", name="team-widget",
+                description="[teamA] team widget skill. Use when touching team widgets.",
+                metadata={"scope": "teamA", "owner": "team-a", "status": "active"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "refines urn:skill:acme:teamA:team-widget is in a deeper node than _root" in out
+
+
+def test_refines_same_depth_sibling_is_allowed(gf, tmp_path, capsys):
+    """refines to a sibling at the *same* depth (not deeper) is allowed — only strictly deeper
+    targets are rejected."""
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/alpha", name="alpha",
+                description="[acme] alpha skill. Use for alpha things.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "refines": "urn:skill:acme:_root:beta"})
+    write_skill(root / ".agents/skills/beta", name="beta",
+                description="[acme] beta skill. Use for beta things.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active"})
+    code = _run_validate(gf, root)
+    assert code == 0
+
+
+def test_refines_cycle_detected(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/alpha", name="alpha",
+                description="[acme] alpha skill. Use for alpha things.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "refines": "urn:skill:acme:_root:beta"})
+    write_skill(root / ".agents/skills/beta", name="beta",
+                description="[acme] beta skill. Use for beta things.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active",
+                          "refines": "urn:skill:acme:_root:alpha"})
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "refines cycle:" in out

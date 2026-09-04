@@ -9,6 +9,10 @@ metadata:
   references: "docs/adr/README.md"
   status: active
   since: "2026-09-04"
+  kind: governance
+  layer: org
+  triggers: "ADR, architecture decision record, docs/adr, ADR template sections, propose accept supersede a decision"
+  negative_triggers: "routine refactor, bug fix, team-local runbook"
   digest: >-
     Cross-cutting technical decisions in Meridian are captured as numbered Markdown ADRs in docs/adr,
     reviewed in the same PR as the code they justify. ADRs move through proposed, accepted, deprecated and
