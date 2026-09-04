@@ -1,6 +1,7 @@
 # ADR-0001: Git is the source of truth; Agent Registry is a build artifact
 
-**Status:** Accepted · 2026-09-04
+**Status:** Accepted · 2026-09-04 · ADR-0013 (Proposed) proposes an amendment covering
+proposals/evidence storage; the decision here (skill text lives only in Git) is unchanged by it
 
 ## Context
 Google Agent Registry now stores, versions (immutable `SkillRevision`), validates, searches (keyword + semantic over the full SKILL.md) and governs standalone skills. It also has a console UI and a built-in `gcp-skill-registry` skill that lets agents create skills directly. We could author skills in the registry, in Git, or both.

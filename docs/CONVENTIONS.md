@@ -7,9 +7,9 @@ These are enforced by `guidefold validate` in CI. A skill that violates them is 
 One file. Nodes are dotted paths; each node maps to monorepo path globs and an owner. The tree is derived from the dots — no explicit `parent`.
 
 ```yaml
-publisher: sabre
+publisher: acme
 registry:
-  project: sabre-agent-registry
+  project: acme-agent-registry
   location: global          # confirm skills Preview availability
 nodes:
   _root:
@@ -44,8 +44,8 @@ Rules:
 
 - `skill-name`: kebab-case, 3–40 chars, unique **within its node**. Global uniqueness comes from the URN.
 - URN (derived, never hand-written): `urn:skill:<publisher>:<node>:<skill-name>`
-  - `urn:skill:sabre:mosaic.identity.turnstile:spanner-auth`
-  - root node uses `_root`: `urn:skill:sabre:_root:sabre-spanner-production`
+  - `urn:skill:acme:mosaic.identity.turnstile:spanner-auth`
+  - root node uses `_root`: `urn:skill:acme:_root:spanner-production`
 - Registry `SKILL_ID` = URN with `:` and `.` replaced by `-` where the API disallows them (CLI handles it); `displayName` = `<node>/<skill-name>`.
 
 ## 4. `SKILL.md` frontmatter
@@ -61,7 +61,7 @@ compatibility: "Needs gcloud auth and access to the turnstile service account."
 metadata:                                   # EVERY value is a scalar string (ADR-0010) — the registry rejects lists, dates, booleans
   scope: mosaic.identity.turnstile          # must equal the node derived from the path
   owner: turnstile-team                     # must equal node owner or a sub-team
-  requires: "urn:skill:sabre:mosaic:mosaic-auth, urn:skill:sabre:_root:sabre-spanner-production"   # comma-separated; loaded after this skill
+  requires: "urn:skill:acme:mosaic:mosaic-auth, urn:skill:acme:_root:spanner-production"   # comma-separated; loaded after this skill
   references: "platforms/mosaic/identity/turnstile/deploy/deployment.yaml#legacyAuthMode, platforms/mosaic/identity/turnstile/src/auth/middleware.go"   # drift check: code diff ∩ these
   status: active                            # active | deprecated
   since: "2026-09-04"                       # quoted — a bare date is not a string
@@ -128,7 +128,7 @@ Set `metadata.status: deprecated` and add `metadata.replaced_by: <urn>`. CI publ
 | `<node-path>/AGENTS.md` | scope card: node purpose, owner, ancestor digests (root → node), skill URNs at this and ancestor levels, how to `find`/`load` | Copilot (cwd→root chain, touched files), Codex (root→cwd merge), Gemini CLI |
 | `<node-path>/CLAUDE.md`, `GEMINI.md` | one line: `@AGENTS.md` | Claude Code (lazy per dir), Gemini CLI |
 | `.github/instructions/<node>.instructions.md` | same card with `applyTo: "<node paths>"` | Copilot CLI/IDE/cloud agent when working on matching files, regardless of launch dir |
-| `.agents/skills/_index-hierarchy/SKILL.md` | the whole tree | anyone, via `guidefold load urn:skill:sabre:_index:hierarchy` |
+| `.agents/skills/_index-hierarchy/SKILL.md` | the whole tree | anyone, via `guidefold load urn:skill:acme:_index:hierarchy` |
 
 Card size cap: 80 lines. If a card exceeds it, the digests are too long — shorten `metadata.digest`, do not raise the cap.
 

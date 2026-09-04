@@ -1,6 +1,7 @@
 # ADR-0009 (v2): The router is Guidefold's index + pipeline; the registry is storage
 
-**Status:** Proposed · 2026-09-04 · v2 replaces v1 of the same day (v1 assumed a small, hierarchy-only library)
+**Status:** Proposed · 2026-09-04 · v2 replaces v1 of the same day (v1 assumed a small, hierarchy-only library) ·
+amended by ADR-0015 (Accepted: model choice for the dense/rerank legs)
 
 ## Context
 Evidence base: DESIGN.md §8.1 (19 papers/systems, checked 2026-09-04).
