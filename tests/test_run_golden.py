@@ -41,23 +41,39 @@ def test_load_cases_loads_all_five_categories_with_category_tagged():
 
 # ---------------------------------------------------------------- run_cases
 class _FakeRouter:
-    """route() returns deterministic, synthetic urns so run_cases can be tested without
-    building a real Index/Router."""
+    """Synthetic Router exposing the three-stage seam, so run_cases can be tested without
+    building a real Index. `score` returns relevance order; `select` returns a deliberately
+    *different* order (reversed) standing in for general -> specific, so a test can prove the
+    runner keeps the two apart."""
 
-    def route(self, query, node, k=10):
-        return [{"urn": f"urn:skill:m:{node}:{i}"} for i in range(min(k, 3))]
+    def candidates(self, query, node):
+        return [{"urn": f"urn:skill:m:{node}:{i}"} for i in range(4)]
+
+    def score(self, cands, query, node):
+        return [dict(c, score=100 - i) for i, c in enumerate(cands)]
+
+    def select(self, scored, k=4):
+        return list(reversed(scored[:k]))
 
 
-def test_run_cases_pairs_ranked_urns_with_their_own_case():
+def test_run_cases_keeps_retrieval_and_injection_apart():
+    """The runner must return score order for ranking metrics and the emitted cards for
+    injection metrics. Conflating them understated hit@1 by ~64 points before it was caught."""
     cases = [
         {"id": "a", "query": "q1", "node": "_root", "category": "simple"},
         {"id": "b", "query": "q2", "node": "teamA", "category": "simple"},
     ]
-    results = RG.run_cases(_FakeRouter(), cases, k=2)
-    assert len(results) == 2
-    (ranked0, case0), (ranked1, case1) = results
+    retrieval, injection = RG.run_cases(_FakeRouter(), cases, k=2)
+    assert len(retrieval) == len(injection) == 2
+
+    (ranked0, case0), (ranked1, case1) = retrieval
     assert case0["id"] == "a" and ranked0 == ["urn:skill:m:_root:0", "urn:skill:m:_root:1"]
     assert case1["id"] == "b" and ranked1 == ["urn:skill:m:teamA:0", "urn:skill:m:teamA:1"]
+
+    (inj0, icase0), _ = injection
+    assert icase0["id"] == "a"
+    assert inj0 != ranked0, "runner returned the same list for both orderings"
+    assert len(inj0) <= RG.K_CARDS
 
 
 # ---------------------------------------------------------------- _json_safe
