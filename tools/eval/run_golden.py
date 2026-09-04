@@ -47,6 +47,9 @@ CATEGORY_FILES = (
 # this same ranked list, so one Router.route() call per case serves every metric.
 EVAL_K = 10
 
+# The hook's real card cap (E1.5): what `select` emits and what an agent actually receives.
+K_CARDS = 4
+
 # Regression gate tolerance, in absolute metric points. "Worse" is metric-specific: lower is worse
 # for the first group, higher is worse for distractor_rate (see tools/eval/metrics.py docstring on
 # why distractor_rate and abstention are scored on their own axes rather than folded into hit/recall).
@@ -86,13 +89,33 @@ def load_cases() -> list:
     return cases
 
 
-def run_cases(router, cases: list, k: int = EVAL_K) -> list:
-    """(ranked_urns, case) pairs — the exact input shape metrics.evaluate/by_category expect."""
-    results = []
+def run_cases(router, cases: list, k: int = EVAL_K) -> tuple:
+    """Two result sets, because the Router produces two different orderings and conflating them
+    silently measures the wrong thing.
+
+    `Router.select` deliberately emits cards **general -> specific** (root-most first): that is the
+    *injection* order E1.5 requires, so an agent reads org-wide guidance before team-specific
+    guidance. It is a presentation decision made *after* ranking has already chosen membership.
+
+    Feeding that order to a ranking metric asks "is the root-most card the most relevant one?",
+    which is false almost by construction -- root skills are the general ones. Doing so understates
+    hit@1 by ~64 points against this fixture. So:
+
+      retrieval  -- `Router.score` order (score desc, tie-broken on urn). Answers "did ranking put
+                    the right skills at the top?"  -> hit@1, recall@8, nDCG@10.
+      injection  -- the <=4 cards `Router.select` actually emits, as a set. Answers "did the cards
+                    the agent receives contain the whole answer, and no plausible-but-wrong one?"
+                    -> completeness@4, distractor_rate@4.
+
+    Both are reported. Neither alone is the router's quality.
+    """
+    retrieval, injection = [], []
     for c in cases:
-        ranked = [r["urn"] for r in router.route(c["query"], c["node"], k=k)]
-        results.append((ranked, c))
-    return results
+        cands = router.candidates(c["query"], c["node"])
+        scored = router.score(cands, c["query"], c["node"])
+        retrieval.append(([s["urn"] for s in scored[:k]], c))
+        injection.append(([r["urn"] for r in router.select(scored, k=K_CARDS)], c))
+    return retrieval, injection
 
 
 def git_sha() -> str:
@@ -159,12 +182,28 @@ def main(argv=None) -> int:
     router = cli.Router(idx)
 
     cases = load_cases()
-    results = run_cases(router, cases)
+    retrieval, injection = run_cases(router, cases)
 
-    overall = metrics.evaluate(results)
-    per_cat = metrics.by_category(results)
-    table = metrics.format_table(overall, per_cat)
+    # Retrieval quality: did ranking put the right skills on top? (score order)
+    overall = metrics.evaluate(retrieval)
+    per_cat = metrics.by_category(retrieval)
+    # Injection quality: did the <=4 cards the agent receives hold the answer, and no distractor?
+    inj_overall = metrics.evaluate(injection, k_cards=K_CARDS)
+    inj_per_cat = metrics.by_category(injection, k_cards=K_CARDS)
+
+    table = ("RETRIEVAL  (Router.score order — hit@1 / recall@8 / nDCG@10 are read from here)\n"
+             + metrics.format_table(overall, per_cat)
+             + "\n\nINJECTION  (the <=4 cards Router.select emits — completeness@4 / "
+               "distractor_rate@4 are read from here)\n"
+             + metrics.format_table(inj_overall, inj_per_cat))
     print(table)
+
+    # The gate reads each metric from the table that actually answers its question.
+    for k in ("completeness@4", "distractor_rate@4"):
+        overall[k] = inj_overall.get(k, float("nan"))
+        for c in per_cat:
+            if c in inj_per_cat:
+                per_cat[c][k] = inj_per_cat[c].get(k, float("nan"))
 
     sha = git_sha()
     report_path = write_report(sha, table, idx.weights)
