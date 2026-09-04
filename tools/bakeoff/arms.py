@@ -5,7 +5,9 @@ a ranked list of URNs (highest-relevance first), deduplicated. `ARMS` at the bot
 spec's arm names to these callables so a later evaluation pass (golden set, not built in this
 phase) can iterate them uniformly.
 
-  B0   `skills/guidefold/scripts/guidefold`'s own `rank_cards()`, called unmodified.
+  B0   `skills/guidefold/scripts/guidefold`'s own `Index.build()` + `Router.route()`, called
+       unmodified (PR #7's router split replaced the single `rank_cards()` function this arm
+       used to call in phase-1 with this class pair; `cmd_find` builds them the same way).
   B1   field-weighted BM25Okapi over name/description/digest/triggers/body (own implementation,
        weights from docs/DESIGN.md §7: name x3, triggers x2.5, description x2, digest x1.5, body x1;
        k1=1.2, b=0.75, tokenized with `tokenizer.tokenize`).
@@ -54,11 +56,24 @@ RRF_K = 60
 # --------------------------------------------------------------------------------------
 # B0 — the current CLI, unmodified
 # --------------------------------------------------------------------------------------
+_B0_ROUTER_CACHE: dict = {}
+
+
+def _b0_router():
+    """`Index.build()` + `Router()` over the real fixture tree, built once and reused (PR #7's
+    router split replaced the single `rank_cards()` this arm used to call with this class pair
+    -- `cmd_find` builds them the same way, so this is still a call-through, not a
+    reimplementation)."""
+    if "router" not in _B0_ROUTER_CACHE:
+        cfg = cli.load_map(FIXTURE_ROOT)
+        idx = cli.Index.build(FIXTURE_ROOT, cfg)
+        _B0_ROUTER_CACHE["router"] = cli.Router(idx)
+    return _B0_ROUTER_CACHE["router"]
+
+
 def arm_b0(query: str, corpus: list, limit: int = DEFAULT_LIMIT, node: str = DEFAULT_NODE) -> list:
-    """`cli.rank_cards()` called exactly as `cmd_find` calls it -- no reimplementation."""
-    cfg = cli.load_map(FIXTURE_ROOT)
-    reg = cli.registry_for(cfg, FIXTURE_ROOT)
-    cards = cli.rank_cards(reg, node, query, limit)
+    """`cli.Router.route()` called exactly as `cmd_find` calls it -- no reimplementation."""
+    cards = _b0_router().route(query, node, k=limit)
     seen, urns = set(), []
     for c in cards:
         if c["urn"] not in seen:

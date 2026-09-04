@@ -416,8 +416,16 @@ def all_skills(root: Path, cfg: dict, include_generated: bool = False):
 
 # ------------------------------------------------------------------ tokenizer
 # One shared tokenizer for Index build and Router query time (ROUTER-SPEC "Determinism by
-# construction"): NFC normalize, ASCII-only lowercase (never str.lower(), whose Unicode case
-# table can shift across Python versions), split on [a-z0-9]+.
+# construction"), byte-identical to tools/bakeoff/tokenizer.py: NFKD-normalize then strip
+# every combining mark the decomposition produced (folds accented Latin letters onto their
+# base letter, e.g. "cafe" from "cafe" + combining acute, instead of an NFC-only pass that
+# would leave the accented code point in place for an ASCII-only filter to drop wholesale --
+# that dropped-not-folded bug shredded every accented word to its consonant skeleton, e.g.
+# "RESUME" -> ['r', 'sum'] instead of ['resume']; see PR "fix: shared tokenizer accent
+# folding, Zipf direction, and document normalisation"), then ASCII-only lowercase (never
+# str.lower(), whose Unicode case table can shift across Python versions), split on
+# [a-z0-9]+. If you change this, tools/bakeoff/tokenizer.py must change identically in the
+# same commit, or word ids silently drift between CI and the hook.
 _ASCII_UPPER_TO_LOWER = str.maketrans(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -425,8 +433,12 @@ _TOKEN_RE = re.compile(r"[a-z0-9]+")
 def _ascii_lower(s: str) -> str:
     return s.translate(_ASCII_UPPER_TO_LOWER)
 
+def _fold_accents(text: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
 def tokenize(text: str) -> list:
-    return _TOKEN_RE.findall(_ascii_lower(unicodedata.normalize("NFC", text or "")))
+    return _TOKEN_RE.findall(_ascii_lower(_fold_accents(text or "")))
 
 # -------------------------------------------------------------------- Index
 class Index:

@@ -14,15 +14,36 @@ query time. If you change this function, the corresponding function in
 commit, or word ids silently drift between CI and the hook.
 
 Algorithm (fixed, do not "improve" without updating both copies):
-  1. NFC-normalise the input (`unicodedata.normalize("NFC", text)`).
+  1. NFKD-normalise the input (`unicodedata.normalize("NFKD", text)`), then strip
+     every combining mark the decomposition produced (`unicodedata.combining(c)`).
+     This *folds* accented Latin letters onto their base letter instead of
+     dropping them: "café" and "naïve" decompose into base-letter + combining-
+     accent pairs, and stripping only the combining marks leaves "cafe" / "naive"
+     -- ASCII, and identical whether the input arrived pre- or de-composed
+     ("café" NFC vs "café" NFD tokenize identically, which an NFC-only
+     first pass cannot guarantee: NFC recomposes the *input* but does nothing for
+     a base letter that only carries a combining mark in a decomposed script, and
+     either way an ASCII-only filter after plain NFC would drop the composed
+     accented letter wholesale rather than fold it). This step is corpus-content
+     data, not a locale table: `unicodedata`'s decomposition data is part of the
+     Unicode standard, so it is exactly as deterministic-forever as the NFC step
+     it replaces -- see PR "fix: fold accents in the shared tokenizer instead of
+     dropping them" for the corpus-quality bug this fixes (every non-ASCII-
+     scripted word was being shredded to its consonant skeleton, e.g. 'RÉSUMÉ'
+     -> ['r', 'sum'] instead of ['resume']).
   2. ASCII-only lowercase: map `A-Z` -> `a-z` one code point at a time.
      Do NOT use `str.lower()` — its Unicode case-folding table is version-
      dependent (it has shifted between CPython 3.11 and 3.13 for scripts
      outside ASCII), which would make word ids non-reproducible across
-     interpreter versions. Mapping only `A-Z` is deterministic forever.
+     interpreter versions. Mapping only `A-Z` is deterministic forever. (Most
+     accented Latin uppercase letters no longer reach this step as non-ASCII
+     code points at all -- step 1's NFKD decomposition already reduced them to
+     a plain ASCII base letter -- so this step's scope is now mostly composed
+     of scripts NFKD does not decompose, e.g. Cyrillic/Greek, which fall through
+     step 3 as OOV either way.)
   3. Split on the regex `[a-z0-9]+` and return the matches, in order.
-     Everything that is not `[a-z0-9]` after step 2 (punctuation, non-ASCII
-     letters, whitespace, underscores, hyphens) is a separator and is
+     Everything that is not `[a-z0-9]` after step 2 (punctuation, non-Latin
+     scripts, whitespace, underscores, hyphens) is a separator and is
      discarded, never merged into a token.
 
 The teacher's own tokenizer (byte-level BPE) is completely different and is
@@ -46,16 +67,31 @@ def _ascii_lower(text: str) -> str:
     return "".join(_UPPER_TO_LOWER.get(ch, ch) for ch in text)
 
 
+def _fold_accents(text: str) -> str:
+    """NFKD-decompose, then drop every combining mark the decomposition produced.
+
+    Folds accented/diacritic Latin letters onto their base ASCII letter (e.g.
+    'é' -> 'e + combining acute' -> 'e') instead of discarding the whole
+    character the way an ASCII-only filter over NFC input would. Scripts with
+    no such decomposition (Cyrillic, Greek, CJK, ...) pass through unchanged and
+    remain non-ASCII, falling through step 3 of `tokenize()` as before -- this
+    only folds diacritics, it does not transliterate scripts.
+    """
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
 def tokenize(text: str) -> list[str]:
-    """NFC-normalise, ASCII-lowercase, split on [a-z0-9]+. Returns words in order.
+    """Fold accents (NFKD + strip combining marks), ASCII-lowercase, split on
+    [a-z0-9]+. Returns words in order.
 
     See module docstring: this must stay byte-identical to the copy that
     `skills/guidefold/scripts/guidefold` will implement.
     """
     if not text:
         return []
-    normalised = unicodedata.normalize("NFC", text)
-    lowered = _ascii_lower(normalised)
+    folded = _fold_accents(text)
+    lowered = _ascii_lower(folded)
     return _WORD_RE.findall(lowered)
 
 

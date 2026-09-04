@@ -33,14 +33,20 @@ def test_every_arm_returns_valid_deduplicated_urns():
         assert not unknown, f"{name} returned URNs not in the fixture corpus: {unknown}"
 
 
-def test_b0_matches_cli_rank_cards_directly():
-    """B0 must be a call-through to the shipped CLI's own rank_cards(), not a reimplementation."""
+def test_b0_matches_cli_router_route_directly():
+    """B0 must be a call-through to the shipped CLI's own Index/Router, not a reimplementation.
+
+    (Renamed from test_b0_matches_cli_rank_cards_directly: PR #7's router split replaced the
+    single `rank_cards()` function this test used to call with the Index.build()/Router class
+    pair -- `cmd_find` builds them the same way, so this test now calls through the same shape.)
+    """
     from corpus import cli
 
     corpus, _ = _corpus_and_valid_urns()
     cfg = cli.load_map(arms.FIXTURE_ROOT)
-    reg = cli.registry_for(cfg, arms.FIXTURE_ROOT)
-    expected_cards = cli.rank_cards(reg, arms.DEFAULT_NODE, QUERY, arms.DEFAULT_LIMIT)
+    idx = cli.Index.build(arms.FIXTURE_ROOT, cfg)
+    router = cli.Router(idx)
+    expected_cards = router.route(QUERY, arms.DEFAULT_NODE, k=arms.DEFAULT_LIMIT)
     expected = []
     seen = set()
     for c in expected_cards:
