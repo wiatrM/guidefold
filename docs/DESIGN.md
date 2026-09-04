@@ -213,6 +213,8 @@ Embeddings: Vertex `gemini-embedding` (or `text-embedding-005`) over `name | des
 
 Evidence-ranked, per query. Deterministic given (prompt, cwd, index sha) and the cached outputs of stage 1; every model-dependent stage has a deterministic fallback.
 
+**Router 0.1 (E0.2 + E1.1, shipped):** three collaborators — `Registry`/`LocalRegistry` (storage and transport only: `publish`/`download`/`search_scope`), an in-memory `Index` (built by `Index.build()` scanning the tree: cards, field-weighted BM25 postings with precomputed integer IDF, the `requires`/`refines`/`replaces`/`similar` graph — not persisted to disk yet, see C1 in §9), and `Router` (constructed from an `Index`, depends on it and never on `Registry`). `Router` implements a subset of the stages below, integer-only end to end so identical (prompt, cwd) is byte-identical output: stage 2 as `policy_filter` (deprecated, visibility = own subtree ∪ ancestor chain, negative triggers — hard drops with a recorded reason, never demotions); stage 3 as `candidates` (BM25 top-N ∪ dense top-N, dense channel shipped at `w_dense=0` per ADR-0020 until the E1.3 bake-off); stages 4–5 collapsed into `score` (RRF k=60 fusion of the bm25/dense ranks, an additive `w_scope/(1+hops)` scope feature — a feature and filter, never the first sort key — then reverse PPR seeded from the scope-adjusted RRF score, fixed 20 iterations, fixed-point integers); stage 7 as `select` (7b only: `requires` closure depth ≤ 2 as hard membership counting toward the `k=4` cap; 7d only: final order general → specific by depth, ties by score then urn; abstain below `abstain_threshold`). Not yet built: 1b query rewrite, 6 listwise rerank, 7a coverage backfill / 7c family caps, 8 hydration budget shaping, 9 telemetry — all still describe the target design below.
+
 ```
 0  where(cwd) → scope chain [node … _root]; load global + org shard (cache C1)
 1  query understanding
@@ -298,11 +300,13 @@ Costs and latency (third-party where marked): embeddings for 10k skills × ~2k t
 
 ## 9. Caching
 
+All cache paths live under one `cache_root`: `$GUIDEFOLD_CACHE` if set, else `~/.cache/guidefold` (not `.guidefold/cache` inside the repo — the cache is per-machine, not per-checkout, and both trees below are immutable: entries are evicted, LRU by directory mtime against a configured cap, never invalidated in place).
+
 | Level | Key | Store | TTL / invalidation | Hit path |
 |-------|-----|-------|--------------------|----------|
-| C1 index shards | index sha (from `.guidefold/index.lock`) | `.guidefold/cache/index/<sha>/` | new sha on pull; `prewarm` at SessionStart | load ≤ 150 ms |
-| C2 query | sha256(normalized prompt) + index sha | `.guidefold/cache/queries.db` (sqlite, stdlib) | LRU 2,000, TTL 7 d | embedding + rerank skipped |
-| C3 bodies | urn + revision | `.guidefold/cache/skills/<urn>/<rev>/` | immutable; GC by size | `load` offline |
+| C1 index shards | index sha | `<cache_root>/index/<sha>/` | LRU eviction (cap `cache.max_index_shards`, default 20); path/eviction helpers ship in E1.7, the writer (persisting the built `Index`) is E1.4 — Router 0.1 (E0.2/E1.1) rebuilds the `Index` in memory every invocation | load ≤ 150 ms once populated |
+| C2 query | sha256(normalized prompt) + index sha | *(not implemented — Router 0.1 has no model-dependent stage to cache; deferred until 1b/6 below land)* | LRU 2,000, TTL 7 d | embedding + rerank skipped |
+| C3 bodies | urn + revision | `<cache_root>/skills/<urn>/<rev>/` (urn percent-encoded: `%`→`%25` then `:`→`%3A`, so it round-trips and stays filesystem-safe) | LRU eviction (cap `cache.max_skill_revisions`, default 500) | `load` offline |
 | C4 registry (fallback leg) | query + location | in C2 | TTL 1 h | only when embeddings unavailable |
 
 Hook budget: warm p50 ≤ 300 ms (index load + BM25 + local dense + PPR); cold ≤ 2 s (one embedding call); a watchdog prints the L0-only line and exits 0 at 3 s. Registry calls never sit on the hook path except as the C4 fallback; `gcloud` subprocess (≈ 3 s per call) is replaced by REST with a cached access token for `load` and `publish`.

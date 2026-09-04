@@ -1,0 +1,83 @@
+{
+  "by_category": {
+    "multi_skill": {
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "completeness@4": 0.19696969696969696,
+      "coverage": 1.0,
+      "distractor_rate@4": 0.0,
+      "hit@1": 0.2727272727272727,
+      "n": 66,
+      "n_answerable": 66,
+      "n_answered": 66,
+      "ndcg@10": 0.46438702960126943,
+      "recall@8": 0.8106060606060606
+    },
+    "no_applicable": {
+      "abstention_precision": null,
+      "abstention_recall": 0.0,
+      "completeness@4": null,
+      "coverage": null,
+      "distractor_rate@4": 0.22727272727272727,
+      "hit@1": null,
+      "n": 44,
+      "n_answerable": 0,
+      "n_answered": 0,
+      "ndcg@10": null,
+      "recall@8": null
+    },
+    "sibling_ambiguity": {
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "completeness@4": 0.25757575757575757,
+      "coverage": 1.0,
+      "distractor_rate@4": 0.15151515151515152,
+      "hit@1": 0.24242424242424243,
+      "n": 66,
+      "n_answerable": 66,
+      "n_answered": 66,
+      "ndcg@10": 0.50654885828382,
+      "recall@8": 0.9545454545454546
+    },
+    "simple": {
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "completeness@4": 0.2727272727272727,
+      "coverage": 1.0,
+      "distractor_rate@4": null,
+      "hit@1": 0.22727272727272727,
+      "n": 22,
+      "n_answerable": 22,
+      "n_answered": 22,
+      "ndcg@10": 0.49134871378247724,
+      "recall@8": 1.0
+    },
+    "stale_adversarial": {
+      "abstention_precision": null,
+      "abstention_recall": 0.0,
+      "completeness@4": 0.05,
+      "coverage": 1.0,
+      "distractor_rate@4": 0.13636363636363635,
+      "hit@1": 0.1,
+      "n": 22,
+      "n_answerable": 20,
+      "n_answered": 20,
+      "ndcg@10": 0.3677986802963123,
+      "recall@8": 0.725
+    }
+  },
+  "overall": {
+    "abstention_precision": null,
+    "abstention_recall": 0.0,
+    "completeness@4": 0.21264367816091953,
+    "coverage": 1.0,
+    "distractor_rate@4": 0.17293233082706766,
+    "hit@1": 0.23563218390804597,
+    "n": 220,
+    "n_answerable": 174,
+    "n_answered": 174,
+    "ndcg@10": 0.4726862868365325,
+    "recall@8": 0.8793103448275862
+  },
+  "sha": "6de2e6c"
+}

@@ -63,22 +63,6 @@ def test_search_scope_filters_out_hits_whose_node_is_unwanted(reg, fake_gcloud):
     assert cards == []
 
 
-# ------------------------------------------------------------------------------ search_semantic
-def test_search_semantic_maps_results_to_cards(reg, fake_gcloud):
-    fake_gcloud.rule(
-        "skills", "search", "--search-type=semantic",
-        json_body=[
-            {"skillId": "urn:skill:projects-1:locations:global:private-meridian--atlas-identity-turnstile--postgres-auth",
-             "description": "[atlas/identity/turnstile] auth"},
-        ],
-    )
-    cards = reg.search_semantic("how do I add an auth check")
-    assert len(cards) == 1
-    assert cards[0]["urn"] == "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
-    assert cards[0]["name"] == "postgres-auth"
-    assert cards[0]["node"] == "atlas.identity.turnstile"
-
-
 # ------------------------------------------------------------------------------------- download
 def test_download_handles_flat_payload_layout(reg, fake_gcloud, tmp_path):
     rname = reg.registry_name("atlas.identity.turnstile", "postgres-auth")

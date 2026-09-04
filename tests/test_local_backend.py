@@ -28,15 +28,6 @@ def test_search_scope_unknown_node_returns_nothing(local_reg):
     assert local_reg.search_scope(["does.not.exist"]) == []
 
 
-def test_search_semantic_finds_relevant_skill(local_reg):
-    cards = local_reg.search_semantic("legacyAuthMode postgres bearer token authorization")
-    assert "postgres-auth" in [c["name"] for c in cards]
-
-
-def test_search_semantic_no_match_returns_empty(local_reg):
-    assert local_reg.search_semantic("zzz_no_such_term_anywhere_xyz") == []
-
-
 def test_download_copies_skill_directory(local_reg, fixture_root, tmp_path):
     dest = tmp_path / "downloaded"
     local_reg.download("urn:skill:meridian:atlas.identity.turnstile:postgres-auth", dest)
