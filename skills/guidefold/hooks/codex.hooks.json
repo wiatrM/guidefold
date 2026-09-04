@@ -1,5 +1,5 @@
 {
-  "_comment": "Template for ~/.codex/hooks.json — Claude-Code-style schema, timeout in seconds. Verify that UserPromptSubmit stdout is injected as context in your Codex version.",
+  "_comment": "Template for <project>/.codex/hooks.json (installed repo-local by `guidefold init`, see docs/CONVENTIONS.md #10) — Claude-Code-style schema, timeout in seconds. Falls back to ~/.codex/hooks.json if your Codex build doesn't fire repo-local hooks (issue #17532). Verify that UserPromptSubmit stdout is injected as context in your Codex version.",
   "hooks": {
     "SessionStart":     [ { "hooks": [ { "type": "command", "command": ".agents/skills/guidefold/scripts/guidefold hook", "timeout": 15 } ] } ],
     "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": ".agents/skills/guidefold/scripts/guidefold hook", "timeout": 20 } ] } ]

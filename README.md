@@ -48,8 +48,30 @@ downloads one skill's body into `.guidefold/cache/`. `skills/guidefold/SKILL.md`
 workflow written for an agent to follow.
 
 Other implemented subcommands: `materialize [--check]`, `index`, `drift --base <ref>`,
-`publish --changed`, `prewarm`. `init`, `doctor`, `card` and `ui` are designed but not built
-yet — see Roadmap.
+`publish --changed`, `prewarm`. `card` and `ui` are designed but not built yet — see Roadmap.
+
+### Onboarding a consumer repo
+
+`init` and `doctor` bootstrap and diagnose a *consumer* monorepo in place — run them from that
+repo's root, not from this one:
+
+```bash
+cd /path/to/your-monorepo
+python3 /path/to/guidefold/skills/guidefold/scripts/guidefold init          # --dry-run to preview first
+python3 /path/to/guidefold/skills/guidefold/scripts/guidefold doctor        # --json for machine-readable output
+```
+
+`init` writes a `guidefold.yaml` skeleton (never overwriting one that already exists), copies
+`skills/guidefold/` in as `.agents/skills/guidefold/`, installs harness hooks (`--harness
+claude|copilot|codex|all`, default `all`) by merging into any existing hook config, installs the
+GitHub Action, and appends the `.gitignore` entries from
+[ADR-0012](docs/adr/ADR-0012-nothing-generated-is-committed.md). It is idempotent — running it
+again leaves already-present artifacts untouched. `doctor` then checks Python/CLI install,
+`guidefold.yaml` validity, skill layout (`validate`), hook wiring, `.gitignore`, the GitHub
+Action, the registry backend (gcloud/ADC/roles for `agent-registry`, a readability check for
+`local` — gracefully degraded, never hangs, no network access beyond timeout-guarded gcloud
+calls), and index freshness, printing a one-line fix for every non-`ok` check. Exit code is `0`
+iff every check passed; `1` otherwise.
 
 ## Repository layout
 
