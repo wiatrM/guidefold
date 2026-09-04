@@ -38,3 +38,16 @@ dist/
 
 # local-only, never published (competitive briefs, decks, partner material)
 private/
+
+# tools/bakeoff (E1.3 model bake-off harness, tier 2 / torch-based, never shipped in the hook):
+# never commit downloaded weights, embedding caches, or the binary distillation build outputs.
+# The bare `build/` rule above would also swallow tools/bakeoff/build/ wholesale, so re-include
+# that tree and its small words.json manifest (the one build output that IS meant to be
+# committed -- see tools/bakeoff/README.md), then re-exclude just the binaries inside it.
+tools/bakeoff/.bakeoff-cache/
+!tools/bakeoff/build/
+!tools/bakeoff/build/**/
+!tools/bakeoff/build/**/words.json
+tools/bakeoff/build/**/words.bin
+tools/bakeoff/build/**/vectors.i8
+tools/bakeoff/build/**/teacher.f16
