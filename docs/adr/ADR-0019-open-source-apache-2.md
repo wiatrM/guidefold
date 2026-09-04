@@ -6,7 +6,7 @@
 
 Guidefold was designed and built against one partner monorepo, and the early docs (`SKILL.md`,
 `docs/CONVENTIONS.md`, the archived `docs/DESIGN-v0.2.md`) named that partner directly or through
-a stand-in publisher name (`sabre`). The MVP (`docs/MVP.md`) is a general-purpose tool — any
+a stand-in publisher name (`meridian`). The MVP (`docs/MVP.md`) is a general-purpose tool — any
 organisation running a monorepo has the same problem of routing 2,000+ rules to an agent by
 location and task — and the repository is now public at
 `https://github.com/wiatrM/guidefold`.
@@ -48,7 +48,7 @@ workspace/repo instead.
   `skills/guidefold/SKILL.md`'s description tag by hand.
 - Historical documents that record what was actually verified against the real test registry
   (`docs/ASSESSMENT.md`, `docs/adr/ADR-0008`, `docs/adr/ADR-0010`) keep their original example
-  values (e.g. `sabre`, `meridian`) where those are the literal strings a `gcloud` command used
+  values (e.g. `meridian`, `meridian`) where those are the literal strings a `gcloud` command used
   during testing. Rewriting a verification log to use a placeholder would misrepresent what was
   tested; genericising applies to the *product surface* (bootstrap skill, README, templates,
   CONVENTIONS.md), not to dated verification records or the archived `docs/archive/DESIGN-v0.2.md`.

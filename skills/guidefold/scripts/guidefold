@@ -61,7 +61,7 @@ def node_for(cfg: dict, relpath: str) -> str:
     return best
 
 def ancestors(node: str) -> list:
-    """mosaic.identity.turnstile -> [mosaic.identity.turnstile, mosaic.identity, mosaic, _root]"""
+    """atlas.identity.turnstile -> [atlas.identity.turnstile, atlas.identity, atlas, _root]"""
     parts = node.split(".") if node != "_root" else []
     chain = [".".join(parts[:i]) for i in range(len(parts), 0, -1)]
     return chain + ["_root"]

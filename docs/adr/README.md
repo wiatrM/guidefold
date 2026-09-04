@@ -38,7 +38,7 @@ Both were written, then deleted rather than kept as `Status: Superseded` stubs, 
 they recorded turned out to be wrong before anything downstream depended on them:
 
 - **ADR-0002** assumed the tool could mint the registry's `skillId` itself
-  (`urn:skill:sabre:<node>:<name>`). Verified testing against the real Agent Registry showed the
+  (`urn:skill:meridian:<node>:<name>`). Verified testing against the real Agent Registry showed the
   URN is server-assigned; ADR-0008 records what is actually true and says so in its own Status
   line.
 - **ADR-0011** proposed dedicated per-skill Git repositories. A workflow analysis showed the

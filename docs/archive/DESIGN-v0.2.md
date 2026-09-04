@@ -8,7 +8,7 @@
 
 ## 1. Problem
 
-- The monorepo has (or will have) hundreds of SKILL.md files across `sabre / product / platform / team` levels.
+- The monorepo has (or will have) hundreds of SKILL.md files across `meridian / product / platform / team` levels.
 - Every harness loads skills differently; nested skill trees bloat context or get ignored.
 - Nobody knows which skill governs which code path, who owns it, and whether it is still true after a code change.
 - Gemini Enterprise + Agent Registry are being rolled out; we should not build a registry, search, or portal ourselves.
@@ -18,7 +18,7 @@
 | # | Goal | Success signal |
 |---|------|----------------|
 | G1 | Skills live in the monorepo next to the code they govern, with `scope`, `owner`, `references` | 100% of published skills pass CI |
-| G2 | Every merged skill is published as an immutable `SkillRevision` in Agent Registry with the monorepo hierarchy encoded in its URN | `gcloud … skills search --query="skillId:urn:skill:sabre:mosaic.*"` returns the subtree |
+| G2 | Every merged skill is published as an immutable `SkillRevision` in Agent Registry with the monorepo hierarchy encoded in its URN | `gcloud … skills search --query="skillId:urn:skill:meridian:atlas.*"` returns the subtree |
 | G3 | A local harness in any monorepo directory can run `find → load` and get the right skill in ≤ 2 tool calls | Demo passes in Copilot CLI, Claude Code, Codex, Gemini CLI |
 | G4 | A code PR that touches files a skill references gets a "possibly stale" comment | Zero-ML drift check live |
 
@@ -84,25 +84,25 @@ The registry has no "folder" concept. We encode the tree in three places that th
 
 | Where | Convention | Why |
 |-------|-----------|-----|
-| `skillId` URN | `urn:skill:sabre:<dotted.hierarchy.path>:<skill-name>` e.g. `urn:skill:sabre:mosaic.identity.turnstile:spanner-auth` | `skillId` is prefix-searchable → subtree queries (`skillId:urn:skill:sabre:mosaic.identity.*`) |
-| `description` frontmatter | starts with `[mosaic/identity/turnstile]` | `frontmatter.description` and `description` are keyword-indexed |
+| `skillId` URN | `urn:skill:meridian:<dotted.hierarchy.path>:<skill-name>` e.g. `urn:skill:meridian:atlas.identity.turnstile:spanner-auth` | `skillId` is prefix-searchable → subtree queries (`skillId:urn:skill:meridian:atlas.identity.*`) |
+| `description` frontmatter | starts with `[atlas/identity/turnstile]` | `frontmatter.description` and `description` are keyword-indexed |
 | `metadata` frontmatter | `scope`, `owner`, `parent`, `requires`, `references`, `paths` | Semantic search indexes the whole SKILL.md; harness reads it after load |
 
-Plus one **generated** skill, `urn:skill:sabre:_index:hierarchy`, whose SKILL.md is the whole tree (node → owner → child skills). The bootstrap skill loads it once per session as the map.
+Plus one **generated** skill, `urn:skill:meridian:_index:hierarchy`, whose SKILL.md is the whole tree (node → owner → child skills). The bootstrap skill loads it once per session as the map.
 
 ```mermaid
 flowchart TB
-  S["sabre (root)\nurn:skill:sabre:_root:*"]
-  M["mosaic\nurn:skill:sabre:mosaic:*"]
-  ID["identity\nurn:skill:sabre:mosaic.identity:*"]
-  TU["turnstile\nurn:skill:sabre:mosaic.identity.turnstile:*"]
+  S["meridian (root)\nurn:skill:meridian:_root:*"]
+  M["atlas\nurn:skill:meridian:atlas:*"]
+  ID["identity\nurn:skill:meridian:atlas.identity:*"]
+  TU["turnstile\nurn:skill:meridian:atlas.identity.turnstile:*"]
   S --> M --> ID --> TU
-  S -.->|"sabre-spanner-production"| S
-  M -.->|"mosaic-auth"| M
-  TU -.->|"spanner-auth\nrequires: mosaic-auth, sabre-spanner-production"| TU
+  S -.->|"meridian-spanner-production"| S
+  M -.->|"atlas-auth"| M
+  TU -.->|"spanner-auth\nrequires: atlas-auth, meridian-spanner-production"| TU
 ```
 
-Discovery walks **up** the tree: a task in `platforms/mosaic/identity/turnstile/` searches `turnstile → identity → mosaic → _root` (plus semantic hits anywhere, ranked lower).
+Discovery walks **up** the tree: a task in `platforms/atlas/identity/turnstile/` searches `turnstile → identity → atlas → _root` (plus semantic hits anywhere, ranked lower).
 
 ### 5.3 Publish pipeline (on merge to main)
 
@@ -142,7 +142,7 @@ The MVP v0.1 draft relied on the model *choosing* to activate the bootstrap skil
 | **L1 Prompt-time find** (automatic where hooks can inject) | `UserPromptSubmit`/`SessionStart` hook runs `guidefold find "<prompt>" --scope <node>` and injects top-3 cards | deterministic, per prompt | skill cards (URN + description) | 1 registry call (~1 s), cached per prompt hash |
 | **L2 Load on demand** | bootstrap skill / agent runs `guidefold load <urn>` | the model, but only after it already sees the cards | full SKILL.md + `requires` chain | 0–3 loads per task |
 
-The user's goal — "agents draw from skills from general to specific, and sometimes pull root-level context like *what the design partner is / what the monorepo is*" — is satisfied by L0 for the cheap digest and by L1/L2 for the heavy root skills (`sabre-spanner-production`, `monorepo-conventions`) which surface via ancestor-prefix ranking and semantic search.
+The user's goal — "agents draw from skills from general to specific, and sometimes pull root-level context like *what the design partner is / what the monorepo is*" — is satisfied by L0 for the cheap digest and by L1/L2 for the heavy root skills (`meridian-spanner-production`, `monorepo-conventions`) which surface via ancestor-prefix ranking and semantic search.
 
 Per harness:
 
@@ -165,10 +165,10 @@ sequenceDiagram
   Note over H: L0 — on start: AGENTS.md chain / applyTo cards already in context
   U->>H: "Add authorization to Turnstile"
   H->>K: UserPromptSubmit {prompt, cwd}
-  K->>K: node = where(cwd)  →  mosaic.identity.turnstile
+  K->>K: node = where(cwd)  →  atlas.identity.turnstile
   K->>AR: find(prompt, ancestors) — prefix + semantic
   AR-->>K: cards
-  K-->>H: stdout: "Relevant org guidance: spanner-auth (turnstile), mosaic-auth (mosaic), sabre-spanner-production (root). Load with guidefold load <urn>."
+  K-->>H: stdout: "Relevant org guidance: spanner-auth (turnstile), atlas-auth (atlas), meridian-spanner-production (root). Load with guidefold load <urn>."
   Note over H: L2 — model now sees concrete URNs
   H->>AR: guidefold load urn:…:spanner-auth  (+ requires)
   AR-->>H: SKILL.md files in .guidefold/cache/
@@ -185,8 +185,8 @@ monorepo/
 ├── GEMINI.md                         ⚙  # "@AGENTS.md"
 ├── .github/
 │   ├── instructions/
-│   │   ├── mosaic.instructions.md    ⚙  # applyTo: "platforms/mosaic/**"  → same content as node AGENTS.md
-│   │   └── mosaic.identity.turnstile.instructions.md ⚙
+│   │   ├── atlas.instructions.md    ⚙  # applyTo: "platforms/atlas/**"  → same content as node AGENTS.md
+│   │   └── atlas.identity.turnstile.instructions.md ⚙
 │   ├── hooks/guidefold.json          ⚙  # sessionStart: pre-warm cache
 │   └── skills/guidefold -> ../../.agents/skills/guidefold
 ├── .claude/
@@ -194,14 +194,14 @@ monorepo/
 │   └── skills/guidefold -> ../../.agents/skills/guidefold
 ├── .agents/skills/                      # ROOT skills (hand-written)
 │   ├── guidefold/                       # bootstrap skill + scripts/guidefold
-│   ├── sabre-spanner-production/
+│   ├── meridian-spanner-production/
 │   └── monorepo-conventions/
-├── platforms/mosaic/
-│   ├── AGENTS.md                     ⚙  # scope card: mosaic + inherited digest of root
+├── platforms/atlas/
+│   ├── AGENTS.md                     ⚙  # scope card: atlas + inherited digest of root
 │   ├── CLAUDE.md                     ⚙  # "@AGENTS.md"
-│   ├── .agents/skills/mosaic-auth/
+│   ├── .agents/skills/atlas-auth/
 │   └── identity/turnstile/
-│       ├── AGENTS.md                 ⚙  # scope card: turnstile + digests of identity, mosaic, root
+│       ├── AGENTS.md                 ⚙  # scope card: turnstile + digests of identity, atlas, root
 │       ├── CLAUDE.md                 ⚙
 │       └── .agents/skills/spanner-auth/SKILL.md
 └── .guidefold/cache/                    # gitignored
@@ -270,10 +270,10 @@ Recommended migration order: Copilot (A) now → Claude Code on Vertex with hook
 
 ## 10. Demo script (Phase 0)
 
-1. `cd platforms/mosaic/identity/turnstile && codex` (or `claude`, `copilot`, `gemini`).
+1. `cd platforms/atlas/identity/turnstile && codex` (or `claude`, `copilot`, `gemini`).
 2. Prompt: *"Add a new authorization check for the Turnstile Spanner path."*
-3. L0: the generated `AGENTS.md` chain (root → mosaic → identity → turnstile) is already in context. In Claude Code the hook injects the top-3 cards; in Copilot the turnstile card says which URNs exist and the agent runs `guidefold find`.
-4. `guidefold find` returns `spanner-auth` (turnstile), `mosaic-auth` (mosaic), `sabre-spanner-production` (root).
+3. L0: the generated `AGENTS.md` chain (root → atlas → identity → turnstile) is already in context. In Claude Code the hook injects the top-3 cards; in Copilot the turnstile card says which URNs exist and the agent runs `guidefold find`.
+4. `guidefold find` returns `spanner-auth` (turnstile), `atlas-auth` (atlas), `meridian-spanner-production` (root).
 5. `guidefold load` × 3; agent implements with the right conventions.
 6. Open a PR renaming `legacyAuthMode` → `authorizationMode` in `deployment.yaml`.
 7. CI comments: *"1 skill references `legacyAuthMode`: spanner-auth (owner: identity-platform)."*

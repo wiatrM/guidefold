@@ -48,30 +48,30 @@ Changes since v0.2: (1) the registry is storage and governance, not the router (
 
 | Axis | Field | Values | Bound to |
 |------|-------|--------|----------|
-| **Scope** | `metadata.scope` | node from `guidefold.yaml` (`_root`, `travel-solutions.airline-it.mosaic.identity.turnstile`, …) | monorepo path; derived from the skill's directory |
+| **Scope** | `metadata.scope` | node from `guidefold.yaml` (`_root`, `atlas.identity.turnstile`, …) | monorepo path; derived from the skill's directory |
 | **Level** | derived from `scope` depth, named in `guidefold.yaml` `levels:`; a node may override with `tier:` | `enterprise` · `division` · `product` · `platform` · `domain` · `team` · `service` (L0–L6) | not authored |
 | **Kind** | `metadata.kind` | one of 16 kinds in 5 families (§5.1b) | authored; allowed levels per kind validated |
 | **Topics** | `metadata.topics` | comma-separated tags from a governed vocabulary (`topics.yaml`) | authored; graph edges, provider ↔ consumer matching |
 | **Program** | `metadata.program` (optional) | id of a time-boxed initiative from `programs.yaml`, with `until:` | authored; expires |
 
-#### 5.1a Levels for an organization of the design partner's size
+#### 5.1a Levels for a large enterprise
 
 ```yaml
 # guidefold.yaml (root)
 levels: [enterprise, division, product, platform, domain, team, service]
 nodes:
-  _root:                                            # L0 enterprise  — everyone
-  travel-solutions:                                 # L1 division    — a business unit (Travel Solutions, Hospitality, Corporate Functions)
-  travel-solutions.airline-it:                      # L2 product     — a product line / portfolio (Airline IT, Agency, GDS core)
-  travel-solutions.airline-it.mosaic:               # L3 platform    — a platform or system (Mosaic, SabreSonic, SynXis, Red 360)
-  travel-solutions.airline-it.mosaic.identity:      # L4 domain      — a sub-platform / bounded context
-  travel-solutions.airline-it.mosaic.identity.turnstile:        # L5 team
-  travel-solutions.airline-it.mosaic.identity.turnstile.authz:  # L6 service / component / repo subtree
-  corporate.security:                               # L1 division "corporate" is where functions live
-    tier: division                                  #   (override when a subtree is shallower than the naming implies)
+  _root:                                             # L0 enterprise  — everyone
+  data-platform:                                     # L1 division    — a business unit
+  data-platform.integration:                         # L2 product     — a product line / portfolio
+  data-platform.integration.atlas:                   # L3 platform    — a platform or system (Atlas, Forge, Relay)
+  data-platform.integration.atlas.identity:          # L4 domain      — a sub-platform / bounded context
+  data-platform.integration.atlas.identity.turnstile:        # L5 team
+  data-platform.integration.atlas.identity.turnstile.authz:  # L6 service / component / repo subtree
+  corporate.security:                                # L1 division "corporate" is where functions live
+    tier: division                                   #   (override when a subtree is shallower than the naming implies)
 ```
 
-Depth is what the CLI computes; the names are what the rules below use. Shallow subtrees declare `tier:` on nodes so that, e.g., a small division whose teams sit directly under it still validates. Cross-cutting **programs** (a PCI 4.0 migration, a cloud move, an NDC rollout) are *not* levels: they are a tag with an expiry, because they cut across the tree and end.
+Depth is what the CLI computes; the names are what the rules below use. Shallow subtrees declare `tier:` on nodes so that, e.g., a small division whose teams sit directly under it still validates. Cross-cutting **programs** (a PCI 4.0 migration, a cloud move, a protocol rollout) are *not* levels: they are a tag with an expiry, because they cut across the tree and end.
 
 #### 5.1b Kinds — 16 kinds in 5 families
 
@@ -82,7 +82,7 @@ Depth is what the CLI computes; the names are what the rules below use. Shallow 
 | | `security` | secure-engineering practice: secrets, threat modelling, vuln handling, hardening of a platform | enterprise, division, platform | never |
 | | `architecture` | enterprise/reference architecture, ADR process, approved technologies, golden paths | enterprise, division, product, platform | never |
 | **engineering** | `generic` | universal craft not specific to the company: languages, testing, git, patterns | enterprise | never |
-| | `platform` | **provider skill**: how to build on an internal platform or paved road (Mosaic, CI, deploy, observability); authored by the platform owner, consumed anywhere | platform, domain | never — matched by `topics` / provider ↔ consumer |
+| | `platform` | **provider skill**: how to build on an internal platform or paved road (Atlas, CI, deploy, observability); authored by the platform owner, consumed anywhere | platform, domain | never — matched by `topics` / provider ↔ consumer |
 | | `integration` | **provider skill**: how to consume a system's contract: APIs, SDKs, events, partner interfaces (GDS, NDC) | product, platform, domain | never — matched by `topics` |
 | | `tooling` | developer tooling and environment: CLIs, IDE setup, local stacks | enterprise, division, platform | never |
 | | `data` | data governance and engineering conventions: schemas, lineage, PII handling, analytics | enterprise, division, product, platform | never |
@@ -96,7 +96,7 @@ Depth is what the CLI computes; the names are what the rules below use. Shallow 
 
 Rules enforced by `validate`: a kind may only appear at its allowed levels; `platform`/`integration` skills must declare `topics`; `program` skills must carry `program:` and a future `until:`; `operations`/`project` skills must live under the node they govern. Defaults live in the CLI; `guidefold.yaml` may override per kind (`kinds: {policy: {levels: [enterprise]}}`) so a smaller organization can collapse the model. Every kind has an owning council for its enterprise-level content (§17 Q2).
 
-Why provider kinds are not scope-filtered: a Mosaic `platform` skill matters most to a booking team *outside* the Mosaic subtree. Scope says who **maintains** a skill; `topics` and the query say who **needs** it.
+Why provider kinds are not scope-filtered: a Atlas `platform` skill matters most to a booking team *outside* the Atlas subtree. Scope says who **maintains** a skill; `topics` and the query say who **needs** it.
 
 Estimated composition at 2,000 skills for a the design partner-sized organization (planning figure):
 

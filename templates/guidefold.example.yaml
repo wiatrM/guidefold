@@ -7,14 +7,14 @@ nodes:
   _root:
     paths: ["**"]
     owner: platform-engineering
-  mosaic:
-    paths: ["platforms/mosaic/**"]
-    owner: mosaic-platform
-  mosaic.identity:
-    paths: ["platforms/mosaic/identity/**"]
+  atlas:
+    paths: ["platforms/atlas/**"]
+    owner: atlas-platform
+  atlas.identity:
+    paths: ["platforms/atlas/identity/**"]
     owner: identity-platform
-  mosaic.identity.turnstile:
-    paths: ["platforms/mosaic/identity/turnstile/**"]
+  atlas.identity.turnstile:
+    paths: ["platforms/atlas/identity/turnstile/**"]
     owner: turnstile-team
     subteams: [turnstile-oncall]
   booking:

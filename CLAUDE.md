@@ -49,7 +49,7 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 
 ## Naming
 
-- Node: dotted path from `guidefold.yaml` (`mosaic.identity.turnstile`); root is `_root`.
+- Node: dotted path from `guidefold.yaml` (`atlas.identity.turnstile`); root is `_root`.
 - URN: `urn:skill:<publisher>:<node>:<skill-name>` — derived, never hand-written.
 - Skill `description` starts with `[<node/path>]`; root uses `[<publisher>]` (the `publisher`
   value from `guidefold.yaml`) — never a hard-coded organisation name.
