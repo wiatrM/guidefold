@@ -24,6 +24,7 @@ import argparse
 import importlib.util
 import json
 import math
+import os
 import subprocess
 import sys
 from importlib.machinery import SourceFileLoader
@@ -35,8 +36,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = REPO_ROOT / "tests" / "golden"
 MONOREPO_DIR = REPO_ROOT / "examples" / "monorepo"
 CLI_PATH = REPO_ROOT / "skills" / "guidefold" / "scripts" / "guidefold"
-REPORTS_DIR = REPO_ROOT / "docs" / "reports" / "golden"
-BASELINE_PATH = REPORTS_DIR / "baseline.json"
+# Reports land in the repo because E1.2 asks for "results table committed per run". Tests must
+# not, or `pytest` would leave an untracked docs/reports/golden/<sha>.md behind on every run and
+# `git status` would never be clean. $GUIDEFOLD_GOLDEN_REPORTS redirects them to a temp dir.
+REPORTS_DIR = Path(os.environ["GUIDEFOLD_GOLDEN_REPORTS"]) if os.environ.get("GUIDEFOLD_GOLDEN_REPORTS") \
+    else REPO_ROOT / "docs" / "reports" / "golden"
+# The baseline is the regression gate's committed input, so it is always read from the repo,
+# never from a redirected report directory.
+BASELINE_PATH = REPO_ROOT / "docs" / "reports" / "golden" / "baseline.json"
 
 CATEGORY_FILES = (
     "multi_skill.yaml", "sibling_ambiguity.yaml", "no_applicable.yaml",
@@ -207,7 +214,11 @@ def main(argv=None) -> int:
 
     sha = git_sha()
     report_path = write_report(sha, table, idx.weights)
-    print(f"\nwrote {report_path.relative_to(REPO_ROOT)}")
+    try:
+        shown = report_path.relative_to(REPO_ROOT)
+    except ValueError:          # redirected outside the repo via $GUIDEFOLD_GOLDEN_REPORTS
+        shown = report_path
+    print(f"\nwrote {shown}")
 
     exit_code = 0
     if args.update_baseline:
