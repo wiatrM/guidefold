@@ -1,0 +1,27 @@
+# tools/bakeoff — tier-2 (torch-based) bake-off harness dependencies.
+#
+# Pinned to what was actually verified working against the pinned model commits listed in
+# README.md, via `pip freeze` in the harness venv. This file is NEVER installed by
+# `skills/guidefold/scripts/guidefold` or anything the shipped hook runs (that stays
+# stdlib + PyYAML only, per CLAUDE.md) -- it is only for running the code in this directory.
+#
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r tools/bakeoff/requirements.txt \
+#     --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# The --extra-index-url matters: torch==2.14.0 from plain PyPI is the CUDA build (~2-3 GB,
+# and irrelevant here). This harness verified against the CPU wheel (locally reported as
+# "2.14.0+cpu" by `pip freeze`); nothing in tools/bakeoff needs a GPU.
+filelock==3.32.3
+huggingface_hub==1.30.0
+numpy==2.5.2
+packaging==26.3
+PyYAML==6.0.3
+pytest==9.1.1
+regex==2026.9.3
+safetensors==0.8.0
+scipy==1.18.1
+sentence-transformers==6.0.1
+tokenizers==0.23.2
+torch==2.14.0
+transformers==5.16.1
