@@ -8,16 +8,30 @@ Pipeline:
   2. Encode each vocabulary word **on its own** with the teacher (`encode.Encoder`).
   3. PCA the teacher's native dimension down to `--dims` (256 by default), with a fixed,
      deterministic sign convention so reruns are byte-stable (`_pca()`).
-  4. Zipf-weight every word vector by `1 / log(1 + rank_by_frequency)` (most-frequent word = rank 1).
-  5. Quantise to int8 with one global scale, recorded in `words.json`.
+  4. Zipf-weight every word vector by `log(1 + rank_by_frequency)`, rank 0-indexed (most-frequent
+     word = rank 0, contributing weight 0; rarer words get strictly more weight, approximating
+     IDF). **Corrected** from the phase-1 formula `1 / log(1 + rank)` (rank 1-indexed), which was
+     inverted — it upweighted the *most* frequent words instead of the most *discriminating* ones,
+     and was the real cause of B4's mediocre phase-1 ranking quality (see the coordinator review
+     that found this, referenced throughout this file and in `tools/bakeoff/README.md`).
+  5. Quantise the word table to int8 with one scale derived from the word table alone, recorded in
+     `words.json`.
   6. Write `words.bin` (word -> id, + the int8 word-vector table) and the `words.json` manifest
      sidecar.
   7. **The single most important rule (ROUTER-SPEC-v2.md, [R]):** `vectors.i8` — the skills'
      own vectors — are built by summing this *same static table*'s word vectors (Zipf weight
      already baked in at step 4) over each skill's concatenated fields, using this *same
-     tokenizer*, then requantising the sum to int8 with the *same global scale*. The teacher is
-     never called again for this file. Teacher-space documents against student-space queries are
-     not comparable (see the spec), so mixing them here would silently corrupt B4/B5.
+     tokenizer*. The teacher is never called again for this file. Teacher-space documents against
+     student-space queries are not comparable (see the spec), so mixing them here would silently
+     corrupt B4/B5. **Corrected** (same review as step 4): each skill's raw float32 sum is now
+     L2-normalised to unit length *before* quantising to int8, instead of reusing the word table's
+     scale — a raw sum over ~250-1200 tokens is naturally ~1-2 orders of magnitude larger than any
+     single word vector, so quantising both with one word-derived scale clipped the vast majority
+     of skill-vector int8 dimensions to the boundary (this fixture: 71.68%). Per-document
+     normalisation is lossless for ranking: the comparator (`arms.py:arm_b4`) already divides by
+     each document's own `|d|` (via the integer `|d|^2` stored alongside it), so rescaling a
+     document by a positive constant never changes its rank relative to other documents for a
+     fixed query.
   8. `teacher.f16` is a **separate, clearly `--experimental`-only** file: the teacher's own
      document embeddings of each skill, encoded directly (this is the shortcut step 7 forbids for
      the shipped file).
@@ -72,7 +86,7 @@ class Vocabulary:
     words: list         # id -> word, alphabetical order (deterministic id assignment)
     counts: dict         # word -> total occurrence count across the whole corpus
     doc_freq: dict        # word -> number of skill records containing the word at least once
-    rank_of: dict         # word -> 1-indexed frequency rank (1 = most frequent), ties broken alphabetically
+    rank_of: dict         # word -> 0-indexed frequency rank (0 = most frequent), ties broken alphabetically
     common_core: list    # words whose document frequency clears the corpus-derived threshold
 
 
@@ -98,7 +112,7 @@ def build_vocabulary(corpus: list, common_core_doc_freq_ratio: float = 0.2) -> V
 
     words = sorted(counts)  # alphabetical -> deterministic word -> id mapping
     ranked_by_frequency = sorted(words, key=lambda w: (-counts[w], w))
-    rank_of = {w: i + 1 for i, w in enumerate(ranked_by_frequency)}
+    rank_of = {w: i for i, w in enumerate(ranked_by_frequency)}  # 0-indexed, 0 = most frequent
 
     threshold = max(3, math.ceil(common_core_doc_freq_ratio * len(corpus)))
     common_core = sorted(w for w in words if doc_freq[w] >= threshold)
@@ -133,8 +147,16 @@ def _pca(embeddings: np.ndarray, dims: int) -> np.ndarray:
 
 
 def zipf_weight(rank: int) -> float:
-    """1 / log(1 + rank_by_frequency), rank 1 = most frequent word in the corpus."""
-    return 1.0 / math.log(1 + rank)
+    """log(1 + rank_by_frequency), rank 0-indexed, 0 = most frequent word in the corpus.
+
+    rank=0 ("the") -> log(1) = 0, contributing nothing to any sum it appears in; rarer words
+    (larger rank) get strictly more weight, approximating IDF -- this is model2vec's actual
+    weighting. **Corrected** from phase-1's `1 / log(1 + rank)` (1-indexed), which weighted
+    *frequent* words up instead of down: the opposite of IDF, and the real cause of B4's
+    mediocre phase-1 ranking (a coordinator review of the phase-1 PR caught the inversion; see
+    tools/bakeoff/README.md).
+    """
+    return math.log(1 + rank)
 
 
 def build_word_table(vocab: Vocabulary, teacher_id: str, teacher_revision: str,
@@ -176,6 +198,42 @@ def build_skill_float_sums(corpus: list, vocab: Vocabulary, word_table_f32: np.n
             if wid is not None:
                 sums[row] += word_table_f32[wid]
     return sums
+
+
+def quantize_skill_vectors(skill_sums_f32: np.ndarray):
+    """Quantise each skill's raw float32 sum to int8 by L2-normalising it to unit length first,
+    then scaling by 127 and rounding -- NOT by reusing the word table's shared scale.
+
+    **Corrected** (coordinator review of the phase-1 PR): a raw sum over a skill's ~250-1200
+    tokens is naturally ~1-2 orders of magnitude larger in max-abs than any single word vector
+    (this fixture: word max-abs ~0.32, skill-sum max-abs ~26, a ~83x gap). Quantising both tensors
+    with one scale wide enough to cover the word table left the skill sums saturating at the
+    int8 boundary in most dimensions (this fixture: 71.68% of skill-vector int8 dimensions
+    clipped to +/-127). L2-normalising each skill vector to unit length *before* scaling removes
+    the gap entirely: by Cauchy-Schwarz, every component of a unit-L2-norm vector has |value| <= 1,
+    so `unit * 127` can never exceed the int8 range -- the clip below is a no-op safety net for
+    floating-point edge cases, not a real code path, and the measured clip rate should be ~0.0.
+
+    This is lossless for ranking, not merely "close enough": the query-side comparator
+    (`arms.py:arm_b4`) ranks documents for one fixed query by `dot(q, d) / sqrt(|d|^2)` --
+    already a *per-document* normalisation by construction (the pure-integer form the spec
+    describes is comparing `a.q * |b|^2` against `b.q * |a|^2`, symmetric in the same way).
+    Rescaling one
+    document's vector by a positive constant changes neither `dot(q, d)`'s sign relative to
+    `|d|` nor any other document's score, so it cannot change the ranking -- only the
+    quantisation precision changes, for the better.
+
+    Returns (table_i8, d2, clip_rate): d2 is the integer |d|^2 of the *quantised* row (what
+    `vectors.i8` stores and `arm_b4` divides by), matching the existing on-disk contract.
+    """
+    norms = np.linalg.norm(skill_sums_f32, axis=1, keepdims=True)
+    safe_norms = np.where(norms > 0, norms, 1.0)  # guard: an all-OOV skill's sum is exactly zero
+    unit = skill_sums_f32 / safe_norms
+    scaled = unit * 127.0
+    clip_rate = float((np.abs(scaled) > 127.0).mean())
+    table_i8 = np.clip(np.round(scaled), -127, 127).astype(np.int8)
+    d2 = (table_i8.astype(np.int64) ** 2).sum(axis=1).astype(np.uint32)
+    return table_i8, d2, clip_rate
 
 
 # --------------------------------------------------------------------------------------
@@ -272,42 +330,29 @@ def distill(corpus: list, teacher_id: str, teacher_revision: str, out_dir: Path,
     word_table_f32 = build_word_table(vocab, teacher_id, teacher_revision, dims=dims)
     skill_sums_f32 = build_skill_float_sums(corpus, vocab, word_table_f32)
 
-    # Single global scale (step 5/6), derived from the WORD table alone: max_abs(word_table) / 127.
+    # Word-table scale (step 5), derived from the word table ALONE: max_abs(word_table) / 127.
     #
-    # This *sequential* reading of steps 6-7 (fix the scale while finishing step 6's artifact,
-    # `words.bin`; step 7 then *reuses* that already-fixed number -- "requantized ... with the
-    # same scale" -- rather than *re-deriving* a scale by looking ahead at the not-yet-computed
-    # skill sums) is deliberate, not incidental. An earlier version of this function derived the
-    # scale from max(|word_table|, |skill_sums|) instead. That is wrong in practice: a raw SUM of
-    # a skill's (Zipf-weighted) per-token vectors is naturally ~1-2 orders of magnitude larger than
-    # any single word vector (this corpus: word max-abs ~0.32, skill-sum max-abs ~26, a ~83x gap),
-    # so a scale wide enough to cover the skill sums without clipping quantizes 2251/2257 (99.7%)
-    # of this corpus's word vectors to the all-zero int8 vector -- i.e. B4's *query*-side
-    # representation (built by summing looked-up word vectors, see arms.py:arm_b4) is almost
-    # always the zero vector, and every skill then ties at cosine 0, falling back to an
-    # alphabetical tiebreak that is blind to the query. Deriving the scale from the word table
-    # alone keeps every word's int8 vector meaningfully non-zero (this corpus: 2257/2257), at the
-    # cost of the (separately-computed, see below) skill sums saturating in their largest
-    # dimensions -- a real, but far less damaging, precision loss than a fully query-blind arm.
-    #
-    # This does NOT fully fix retrieval quality: even measured in exact float32 (no quantization
-    # at all), the literal "Zipf-weight = 1/log(1+rank), rank 1 = most frequent" formula (step 4)
-    # applied to a raw SUM (not mean) aggregation (step 7) upweights a skill's most FREQUENT terms,
-    # not its most DISCRIMINATING ones -- the opposite of the IDF-style downweighting standard
-    # model2vec distillation uses. On this fixture that makes B4's top-5 for "add RBAC to this new
-    # admin-only endpoint" put a generic auth skill ahead of the actual `rbac-policies` skill (rank
-    # #4), even with zero quantization error. Fixing that would mean deviating from the literally
-    # specified formula/aggregation (both called out as required, `vectors.i8`'s construction as
-    # "the single most important rule") -- a judgement call left for the human + a later golden-set
-    # evaluation pass, not something this phase's code changes unilaterally. See tools/bakeoff/README.md
-    # ("Known limitation: B4 static-table retrieval quality") for the full writeup.
+    # An earlier version of this function derived the scale from max(|word_table|, |skill_sums|)
+    # instead. That was wrong: a raw SUM of a skill's (Zipf-weighted) per-token vectors is
+    # naturally ~1-2 orders of magnitude larger than any single word vector, so a scale wide
+    # enough to cover the skill sums without clipping quantized nearly every word vector in this
+    # corpus's vocabulary to the all-zero int8 vector -- i.e. B4's *query*-side representation
+    # (built by summing looked-up word vectors, see arms.py:arm_b4) was almost always the zero
+    # vector. Deriving the scale from the word table alone keeps every word's int8 vector
+    # meaningfully non-zero. The skill vectors below are no longer quantised with this scale at
+    # all (see quantize_skill_vectors()) -- they carry their own, per-document normalisation.
     word_max_abs = float(np.abs(word_table_f32).max())
     scale = word_max_abs / 127.0 if word_max_abs > 0 else 1.0
 
     word_table_i8 = quantize_int8(word_table_f32, scale)
-    skill_table_i8 = quantize_int8(skill_sums_f32, scale)
-    skill_d2 = (skill_table_i8.astype(np.int64) ** 2).sum(axis=1).astype(np.uint32)
-    skill_clip_rate = float((np.abs(skill_sums_f32) / scale >= 127.0).mean()) if scale > 0 else 0.0
+    skill_table_i8, skill_d2, skill_clip_rate = quantize_skill_vectors(skill_sums_f32)
+    # Fixed constant, not a per-corpus measurement: every skill_table_i8 row is a unit-L2-norm
+    # vector scaled by 127 (see quantize_skill_vectors()), so `int8_value / 127.0` is always the
+    # right divisor to recover an approximate unit-vector component, for every skill, regardless
+    # of that skill's original (pre-normalisation) magnitude. This replaces the old shared
+    # word/skill scale for vectors.i8 specifically; words.bin's `scale` above is unrelated and
+    # still word-table-derived.
+    skill_vector_int8_scale = 1.0 / 127.0
 
     urns = [r.urn for r in corpus]  # corpus is already sorted by URN (corpus.py)
 
@@ -317,7 +362,7 @@ def distill(corpus: list, teacher_id: str, teacher_revision: str, out_dir: Path,
     teacher_f16_path = out_dir / "teacher.f16"
 
     write_words_bin(words_bin_path, vocab, word_table_i8, scale, dims)
-    write_vectors_i8(vectors_i8_path, urns, skill_table_i8, skill_d2, scale, dims)
+    write_vectors_i8(vectors_i8_path, urns, skill_table_i8, skill_d2, skill_vector_int8_scale, dims)
 
     manifest = {
         "teacher_id": teacher_id,
@@ -330,19 +375,39 @@ def distill(corpus: list, teacher_id: str, teacher_revision: str, out_dir: Path,
         "common_core_sample": vocab.common_core[:40],
         "n_skills": len(corpus),
         "pca_sign_convention": "per-component: coordinate with the largest |value| is forced positive",
-        "zipf_weight_formula": "1 / log(1 + rank_by_frequency), rank 1 = most frequent corpus word",
-        "tokenizer": "tools/bakeoff/tokenizer.py:tokenize (NFC, ASCII-lower, split on [a-z0-9]+)",
+        "zipf_weight_formula": (
+            "log(1 + rank_by_frequency), rank 0-indexed (0 = most frequent corpus word, "
+            "contributing weight 0; rarer words get strictly more weight, approximating IDF). "
+            "Corrected from phase-1's inverted '1 / log(1 + rank)' (1-indexed) -- see "
+            "tools/bakeoff/README.md."
+        ),
+        "tokenizer": (
+            "tools/bakeoff/tokenizer.py:tokenize (NFKD, strip combining marks, ASCII-lower, "
+            "split on [a-z0-9]+) -- corrected from an NFC-only first pass that dropped accented "
+            "letters instead of folding them; see tools/bakeoff/README.md."
+        ),
         "skill_vectors_source": (
             "vectors.i8 is the Zipf-weighted sum of vocab word vectors from words.bin over each "
-            "skill's concatenated fields, requantised with the SAME scale as words.bin -- NOT "
-            "encoded by the teacher. See tools/bakeoff/README.md, 'the single most important rule'."
+            "skill's concatenated fields (NOT encoded by the teacher), L2-normalised to unit "
+            "length and then quantised to int8 independently of words.bin's scale -- see "
+            "'skill_vector_quantization' below and tools/bakeoff/README.md, 'the single most "
+            "important rule'."
         ),
         "scale_derivation": (
-            "max(|word_table_f32|) / 127 -- fixed from the word table alone, then reused as-is "
-            "for the skill sums (see the comment above this block in distill.py for why: deriving "
-            "it from max(|words|, |skills|) instead quantises almost every word vector to zero on "
-            "this fixture)."
+            "words.bin's quantization_scale = max(|word_table_f32|) / 127, fixed from the word "
+            "table alone. vectors.i8 no longer shares this scale (see skill_vector_quantization)."
         ),
+        "skill_vector_quantization": (
+            "Each skill's raw float32 sum is L2-normalised to unit length, multiplied by 127, "
+            "rounded, and clipped to int8 range -- independent of words.bin's quantization_scale. "
+            "Corrected from phase-1, which requantised the raw (un-normalised) sum with the "
+            "word table's scale and clipped 71.68% of skill-vector int8 dimensions to the "
+            "boundary on this fixture. skill_vector_int8_scale (1/127) is the fixed divisor to "
+            "recover an approximate unit-vector component from any row's int8 value; unlike "
+            "quantization_scale it is a universal constant, not a per-build measurement, because "
+            "per-document normalisation already absorbed each skill's original magnitude."
+        ),
+        "skill_vector_int8_scale": skill_vector_int8_scale,
         "skill_vector_clip_rate": skill_clip_rate,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
