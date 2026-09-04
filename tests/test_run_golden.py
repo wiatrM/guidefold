@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -137,11 +138,18 @@ def test_write_report_embeds_weights_and_table(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------- end-to-end (real fixture)
-def test_cli_check_subprocess_matches_committed_baseline():
-    """Same invocation the CI job makes, run as a real subprocess against the tracked repo."""
+def test_cli_check_subprocess_matches_committed_baseline(tmp_path):
+    """Same invocation the CI job makes, run as a real subprocess against the tracked repo.
+
+    $GUIDEFOLD_GOLDEN_REPORTS redirects the per-run report into tmp_path, so running the test
+    suite never leaves an untracked docs/reports/golden/<sha>.md behind. The baseline the gate
+    compares against is still read from the repo, which is the point of the test.
+    """
+    env = dict(os.environ, GUIDEFOLD_GOLDEN_REPORTS=str(tmp_path))
     result = subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "eval" / "run_golden.py"), "--check"],
-        cwd=REPO_ROOT, capture_output=True, text=True,
+        cwd=REPO_ROOT, capture_output=True, text=True, env=env,
     )
+    assert list(tmp_path.glob("*.md")), "report was not redirected into the temp directory"
     assert result.returncode == 0, result.stdout + result.stderr
     assert "no regression vs baseline" in result.stdout
