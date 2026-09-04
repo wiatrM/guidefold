@@ -13,6 +13,7 @@ ADR-0008..0010 are Proposed. `docs/ASSESSMENT.md` holds every verified fact abou
 |------|------|
 | `skills/guidefold/` | **The distributable unit.** Bootstrap `SKILL.md`, `scripts/guidefold` (CLI), `hooks/*.json` (harness hook templates). This whole dir is what a consumer monorepo copies to `.agents/skills/guidefold/`. |
 | `docs/` | Design doc, conventions, ADRs, assessment. |
+| `docs/ui/` | UI information architecture (`IA.md`), interaction principles and anti-slop gate (`UX.md`), visual system and React port plan (`UI.md`) — for the future `guidefold ui` (E5). |
 | `templates/` | Files a consumer monorepo copies: CI workflow, example `guidefold.yaml`. |
 | `examples/monorepo/` | "Meridian" playground: fictional Palantir-style data platform, 17 nodes / 26 skills / stub code, `registry.backend: local`. Fixture for demos and tests. |
 | `tests/` | pytest suite (to be built). |
@@ -50,7 +51,8 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 
 - Node: dotted path from `guidefold.yaml` (`mosaic.identity.turnstile`); root is `_root`.
 - URN: `urn:skill:<publisher>:<node>:<skill-name>` — derived, never hand-written.
-- Skill `description` starts with `[node/path]`; root uses `[sabre]`.
+- Skill `description` starts with `[<node/path>]`; root uses `[<publisher>]` (the `publisher`
+  value from `guidefold.yaml`) — never a hard-coded organisation name.
 
 ## Relevant installed skills (global, `~/.agents/skills`)
 

@@ -34,7 +34,7 @@ jobs:
       - uses: google-github-actions/auth@v2          # Workload Identity Federation → CI SA with agentregistry.user
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
-          service_account: guidefold-ci@sabre-agent-registry.iam.gserviceaccount.com
+          service_account: guidefold-ci@<your-gcp-project>.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
         with: { install_components: alpha }
       - run: pip install pyyaml

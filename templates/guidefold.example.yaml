@@ -1,7 +1,7 @@
-publisher: sabre
+publisher: acme              # your organisation's short name; used as the URN prefix
 registry:
   backend: agent-registry     # local | agent-registry
-  project: sabre-agent-registry
+  project: acme-agent-registry
   location: global
 nodes:
   _root:
