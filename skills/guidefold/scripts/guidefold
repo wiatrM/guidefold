@@ -3,29 +3,29 @@
 
 Subcommands
   where                     print hierarchy node for cwd (from guidefold.yaml)
-  find "<task>" --scope N   semantic search + URN-prefix filter for N and ancestors
-  load <urn>                download default revision into .guidefold/cache/<urn>/
+  find "<task>" --scope N   task-aware ranked search (Router 0.1) + URN-prefix filter for N
+  load <urn>                download default revision into <cache_root>/skills/<urn>/<rev>/
   validate                  CI: enforce CONVENTIONS.md on all skills
   drift --base <ref>        CI: code diff ∩ metadata.references → report
   publish --changed         CI: zip + CreateSkill/CreateSkillRevision for changed skills
   index                     CI: regenerate the hierarchy-index skill
   materialize [--check]     CI: generate L0 scope cards (AGENTS.md per node, applyTo instructions, CLAUDE.md/GEMINI.md)
   hook                      harness hook (Claude Code / Codex): read JSON on stdin, print top-3 cards for the prompt
-  prewarm                   Copilot sessionStart: download the node chain's skills into .guidefold/cache
+  prewarm                   Copilot sessionStart: download the node chain's skills into <cache_root>/skills
 
 Design notes
   * All registry access goes through the `registry` section so it can be swapped for MCP
     or an ARD endpoint later without touching SKILL.md (ADR-0003).
   * Uses `gcloud` for auth and for search (Preview API), REST for payload upload/download.
-  * Intentionally dependency-light: stdlib + PyYAML.
+  * Ranking (find/hook) never touches the registry: Router 0.1 (ROUTER-SPEC.md) builds an
+    in-memory Index by scanning the local tree via `all_skills()`. Registry/LocalRegistry are
+    storage + transport only (`publish`/`download`/`search_scope`) — no ranking lives there.
+  * Intentionally dependency-light: stdlib + PyYAML (imported lazily — see load_map/frontmatter
+    — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help`, don't pay for it).
 """
-import argparse, datetime, fnmatch, io, json, os, re, shutil, subprocess, sys, tempfile, zipfile
+import argparse, datetime, fnmatch, io, json, math, os, re, shutil, subprocess, sys, tempfile, unicodedata, zipfile
+from functools import cmp_to_key
 from pathlib import Path
-
-try:
-    import yaml
-except ImportError:  # keep the failure loud but friendly
-    sys.exit("guidefold: PyYAML missing — pip install pyyaml")
 
 # ---------------------------------------------------------------- repo helpers
 def repo_root() -> Path:
@@ -43,6 +43,10 @@ def repo_root() -> Path:
     return Path(out.stdout.strip())
 
 def load_map(root: Path) -> dict:
+    try:
+        import yaml
+    except ImportError:  # keep the failure loud but friendly
+        sys.exit("guidefold: PyYAML missing — pip install pyyaml")
     cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
     cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
     return cfg
@@ -102,7 +106,9 @@ def zip_skill_dir(skill_dir: Path, zpath: Path):
         sys.exit(f"guidefold: {skill_dir} zips to {zpath.stat().st_size} bytes > 500 KB limit")
 
 class Registry:
-    """Google Cloud Agent Registry backend (gcloud alpha). All registry access goes through here (ADR-0003)."""
+    """Google Cloud Agent Registry backend (gcloud alpha). Storage + transport only (ADR-0003,
+    E0.2): `search_scope`/`download`/`publish`/`default_revision`. No ranking lives here — that's
+    Router 0.1 (see Index/Router below), which never depends on this class."""
     def __init__(self, cfg):
         self.cfg = cfg
         self.project = cfg["registry"]["project"]
@@ -172,16 +178,23 @@ class Registry:
                 seen.add(c["urn"]); out.append(c)
         return out
 
-    def search_semantic(self, query: str):
-        return self._cards(self._gcloud("skills", "search", f"--query={query[:500]}", "--search-type=semantic"))
-
-    def download(self, logical_urn: str, dest: Path):
+    def default_revision(self, logical_urn: str) -> str:
+        """Resolve the server's default revision id for `logical_urn` without downloading it —
+        used by `load`/`prewarm` to compute the E1.7 cache path before deciding whether a
+        download is even needed (the cache is immutable, keyed by this revision)."""
         _, node, name = parse_urn(logical_urn)
         rname = self.registry_name(node, name)
         meta = self._gcloud("skills", "describe", rname)
         rev = (meta.get("defaultRevision") or "").rsplit("/", 1)[-1]
         if not rev:
             sys.exit(f"guidefold: {logical_urn} has no default revision")
+        return rev
+
+    def download(self, logical_urn: str, dest: Path, rev: str = None):
+        _, node, name = parse_urn(logical_urn)
+        rname = self.registry_name(node, name)
+        if rev is None:
+            rev = self.default_revision(logical_urn)
         with tempfile.TemporaryDirectory() as td:
             self._gcloud("skills", "revisions", "download", rev, f"--skill={rname}",
                          f"--destination={td}", "--allow-overwrite", fmt="none")
@@ -224,10 +237,12 @@ class Registry:
         return rname
 
 class LocalRegistry:
-    """Filesystem backend (registry.backend: local): the monorepo itself is the registry. Same interface as Registry."""
+    """Filesystem backend (registry.backend: local): the monorepo itself is the registry. Same
+    storage/transport interface as Registry — no ranking (E0.2)."""
     def __init__(self, cfg, root: Path):
         self.cfg, self.root = cfg, root
         self._skills = [(d, node, fm) for d, node, fm in all_skills(root, cfg)]
+        self._head_rev = _git_head_short(root)
 
     def _card(self, d, node, fm):
         return {"urn": urn(self.cfg, node, d.name), "node": node, "name": d.name,
@@ -237,19 +252,12 @@ class LocalRegistry:
         wanted = set(nodes)
         return [self._card(d, n, fm) for d, n, fm in self._skills if n in wanted]
 
-    def search_semantic(self, query: str):
-        """Keyword overlap over description + digest + body (BM25 planned, ADR-0009)."""
-        terms = {t for t in re.findall(r"[a-z0-9][a-z0-9_.-]{2,}", query.lower())}
-        scored = []
-        for d, n, fm in self._skills:
-            text = (fm.get("description", "") + " " + (fm.get("metadata") or {}).get("digest", "") + " " +
-                    (d / "SKILL.md").read_text(errors="ignore")).lower()
-            score = sum(text.count(t) for t in terms)
-            if score:
-                scored.append((score, self._card(d, n, fm)))
-        return [c for _, c in sorted(scored, key=lambda x: -x[0])]
+    def default_revision(self, logical_urn: str) -> str:
+        """`backend: local` has no per-skill revisioning — the monorepo's current commit stands
+        in for it, so the E1.7 cache still gets a fresh, immutable dir per commit."""
+        return self._head_rev
 
-    def download(self, logical_urn: str, dest: Path):
+    def download(self, logical_urn: str, dest: Path, rev: str = None):
         _, node, name = parse_urn(logical_urn)
         for d, n, fm in self._skills:
             if n == node and d.name == name:
@@ -266,10 +274,74 @@ def registry_for(cfg, root: Path):
     backend = (cfg.get("registry") or {}).get("backend", "agent-registry")
     return LocalRegistry(cfg, root) if backend == "local" else Registry(cfg)
 
+def _git_head_short(root: Path) -> str:
+    out = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, cwd=root)
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else "worktree"
+
+# ------------------------------------------------------------------- cache (E1.7)
+# Layout: <cache_root>/skills/<urn>/<rev>/ and <cache_root>/index/<sha>/ — both trees immutable
+# (a given <urn>/<rev> or <sha> is never rewritten, only evicted). cache_root defaults to
+# ~/.cache/guidefold, overridable with $GUIDEFOLD_CACHE. `index/<sha>/` is not populated by this
+# PR (the in-memory Index isn't persisted yet — that's E1.4); the path helper and eviction logic
+# exist now so that later PR only has to add a writer, not a layout.
+DEFAULT_SKILLS_CACHE_CAP = 500   # immutable <urn>/<rev> dirs kept before LRU eviction
+DEFAULT_INDEX_CACHE_CAP = 20     # immutable <sha> dirs kept before LRU eviction
+
+def cache_root() -> Path:
+    env = os.environ.get("GUIDEFOLD_CACHE")
+    return Path(env).expanduser() if env else Path.home() / ".cache" / "guidefold"
+
+def _encode_urn_segment(u: str) -> str:
+    """Filesystem-safe, round-trippable encoding of a URN for use as a cache directory name.
+    ':' separates URN fields but is illegal/awkward as a path segment on several filesystems
+    (notably Windows/WSL-interop paths); '%' is reserved as our escape character. Escape '%'
+    first so the round trip is unambiguous."""
+    return u.replace("%", "%25").replace(":", "%3A")
+
+def _decode_urn_segment(seg: str) -> str:
+    return seg.replace("%3A", ":").replace("%25", "%")
+
+def skill_cache_dir(logical_urn: str, rev: str) -> Path:
+    return cache_root() / "skills" / _encode_urn_segment(logical_urn) / rev
+
+def index_cache_dir(sha: str) -> Path:
+    return cache_root() / "index" / sha
+
+def _leaf_dirs(tree_root: Path, depth: int) -> list:
+    """All directories exactly `depth` levels under tree_root — the immutable units we evict
+    (depth=2 for skills/<urn>/<rev>, depth=1 for index/<sha>)."""
+    if not tree_root.is_dir():
+        return []
+    level = [tree_root]
+    for _ in range(depth):
+        nxt = []
+        for p in level:
+            nxt.extend(d for d in p.iterdir() if d.is_dir())
+        level = nxt
+    return level
+
+def evict_lru(tree_root: Path, depth: int, cap: int):
+    """Both cache trees are immutable: entries are never invalidated, only evicted, oldest
+    directory-mtime first once the count exceeds `cap`. Callers touch (os.utime) a dir on every
+    cache hit so mtime tracks last-use, not just creation time — true LRU, not LRU-by-birth."""
+    dirs = _leaf_dirs(tree_root, depth)
+    if len(dirs) <= cap:
+        return
+    dirs.sort(key=lambda d: d.stat().st_mtime)
+    for d in dirs[: len(dirs) - cap]:
+        shutil.rmtree(d, ignore_errors=True)
+
+def _cache_cap(cfg: dict, key: str, default: int) -> int:
+    return int(((cfg.get("cache") or {}).get(key, default)))
+
 # ---------------------------------------------------------------- frontmatter
 FM = re.compile(r"^---\n(.*?)\n---", re.S)
 
 def frontmatter(skill_md: Path) -> dict:
+    try:
+        import yaml
+    except ImportError:
+        sys.exit("guidefold: PyYAML missing — pip install pyyaml")
     m = FM.match(skill_md.read_text())
     return yaml.safe_load(m.group(1)) if m else {}
 
@@ -325,36 +397,470 @@ def all_skills(root: Path, cfg: dict, include_generated: bool = False):
         d = md.parent
         yield d, node_for(cfg, rel(root, d)), fm
 
-# ------------------------------------------------------------------- commands
+# ------------------------------------------------------------------ tokenizer
+# One shared tokenizer for Index build and Router query time (ROUTER-SPEC "Determinism by
+# construction"): NFC normalize, ASCII-only lowercase (never str.lower(), whose Unicode case
+# table can shift across Python versions), split on [a-z0-9]+.
+_ASCII_UPPER_TO_LOWER = str.maketrans(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+def _ascii_lower(s: str) -> str:
+    return s.translate(_ASCII_UPPER_TO_LOWER)
+
+def tokenize(text: str) -> list:
+    return _TOKEN_RE.findall(_ascii_lower(unicodedata.normalize("NFC", text or "")))
+
+# -------------------------------------------------------------------- Index
+class Index:
+    """The in-memory routing artifact (ROUTER-SPEC "Class split"). Built by scanning the tree
+    via `all_skills()` — for this PR there is no on-disk artifact (that's E1.4); Router depends
+    only on the public attributes below, so swapping the build source later touches nothing
+    outside this class.
+
+    Holds: `cards` (urn -> card dict), `nodes` (from guidefold.yaml), `graph` (requires/refines/
+    replaces/similar adjacency), field-weighted BM25 postings with integer-precomputed IDF and
+    per-field length normalization, a static word/skill dense-vector table (empty until E1.4/E1.3
+    ship one — `weights["w_dense"]` stays 0), and `weights` (never module constants, so a
+    guidefold.yaml `router.weights` override works without touching this class).
+
+    Determinism: math.log is used exactly once per term, here at build time, to compute IDF —
+    then immediately rounded to a scaled integer (round(x * 2**20)). Everything Router does at
+    query time (candidates/score/select) is pure integer arithmetic.
+    """
+
+    K1 = 1.2
+    B = 0.75
+    IDF_SCALE = 1 << 20
+    RRF_SCALE = 1 << 20
+    RRF_K = 60
+    PPR_ALPHA_NUM, PPR_ALPHA_DEN = 15, 100   # alpha = 0.15 (ROUTER-SPEC)
+    PPR_ITERS = 20
+    FIELDS = ("name", "description", "digest", "triggers", "body")
+
+    DEFAULT_WEIGHTS = {
+        "field.name": 6, "field.description": 4, "field.digest": 3,
+        "field.triggers": 5, "field.body": 2,
+        # RRF (k=60) over IDF_SCALE=2**20 has a deliberately *flat* dynamic range — by design
+        # (Reciprocal Rank Fusion trades magnitude for rank-robustness) adjacent ranks differ by
+        # only ~100-300 and rank1-vs-worst over a handful of candidates differs by only ~1500-2000.
+        # w_scope/w_ppr must stay well under that spread or the "feature" becomes a de facto sort
+        # key again (the exact P0 bug, just moved downstream) — see B0-BASELINE.md.
+        "w_scope": 600, "w_ppr": 2000, "w_dense": 0,   # w_dense = 0 until the E1.3 bake-off (ADR-0020)
+        "edge.requires": 100, "edge.refines": 60, "edge.replaces": 40, "edge.similar": 30,
+        "abstain_threshold": 1200,
+    }
+
+    def __init__(self, cards, nodes, weights):
+        self.cards = cards            # urn -> card dict
+        self.nodes = nodes            # node -> {owner, paths, ...} from guidefold.yaml
+        self.weights = weights
+        self.graph = {"requires": {}, "refines": {}, "replaces": {}, "similar": {}}
+        self.postings = {f: {} for f in self.FIELDS}   # field -> term -> {urn: tf}
+        self.idf = {}                                  # term -> scaled int
+        self.field_len = {f: {} for f in self.FIELDS}  # field -> {urn: token count}
+        self.field_norm = {f: {} for f in self.FIELDS}  # field -> {urn: scaled int normalization factor}
+        self.word_vectors = {}        # word -> tuple[int,...]   (tier-1 static table; empty this PR)
+        self.skill_vectors = {}       # urn -> tuple[int,...]
+        self.skill_normsq = {}        # urn -> int (|d|^2, integer — never store/compare |d|)
+
+    @classmethod
+    def build(cls, root: Path, cfg: dict, word_vectors: dict = None):
+        cards = {}
+        for d, node, fm in all_skills(root, cfg):
+            name = d.name
+            u = urn(cfg, node, name)
+            md = fm.get("metadata") or {}
+            body = (d / "SKILL.md").read_text(errors="ignore")
+            cards[u] = {
+                "urn": u, "node": node, "name": name,
+                "description": str(fm.get("description", "")),
+                "digest": md.get("digest") or str(fm.get("description", ""))[:200],
+                "triggers": md_list(md, "triggers"),
+                "negative_triggers": md_list(md, "negative_triggers"),
+                "requires": md_list(md, "requires"),
+                "refines": md_list(md, "refines"),
+                "status": md.get("status", "active"),
+                "replaced_by": md.get("replaced_by"),
+                "kind": md.get("kind"),
+                "layer": md.get("layer"),
+                "owner": md.get("owner"),
+                "_body": body,
+            }
+        return cls.from_cards(cards, cfg["nodes"], weights=(cfg.get("router") or {}).get("weights"),
+                               word_vectors=word_vectors)
+
+    @classmethod
+    def from_cards(cls, cards: dict, nodes: dict, weights: dict = None, word_vectors: dict = None):
+        """Build an Index directly from pre-built card dicts, bypassing the tree scan — used by
+        unit tests to construct small, hand-controlled fixtures (policy filter, BM25, RRF, PPR,
+        dense, closure, abstention, ordering) without a filesystem tree. Each card must carry at
+        least the keys `Index.build` produces (urn/node/name/description/digest/triggers/
+        negative_triggers/requires/refines/status/replaced_by/_body)."""
+        w = {**cls.DEFAULT_WEIGHTS, **(weights or {})}
+        idx = cls(dict(cards), dict(nodes), w)
+        idx._build_graph()
+        idx._build_bm25()
+        idx._build_dense(word_vectors or {})
+        return idx
+
+    def _build_graph(self):
+        urns = set(self.cards)
+        for u, c in self.cards.items():
+            self.graph["requires"][u] = [r for r in c["requires"] if r in urns]
+            self.graph["refines"][u] = [r for r in c.get("refines", []) if r in urns]
+            self.graph["similar"].setdefault(u, [])
+            if c["status"] == "deprecated" and c.get("replaced_by") in urns:
+                self.graph["replaces"].setdefault(c["replaced_by"], []).append(u)
+        for u in urns:
+            self.graph["requires"].setdefault(u, [])
+            self.graph["refines"].setdefault(u, [])
+            self.graph["replaces"].setdefault(u, [])
+
+    def _field_text(self, card, field):
+        if field == "name":
+            return card["name"].replace("-", " ")
+        if field == "description":
+            return card["description"]
+        if field == "digest":
+            return card["digest"]
+        if field == "triggers":
+            return " ".join(card["triggers"])
+        if field == "body":
+            return card["_body"]
+        return ""
+
+    def _build_bm25(self):
+        postings = {f: {} for f in self.FIELDS}
+        field_len = {f: {} for f in self.FIELDS}
+        doc_freq = {}
+        for u, c in self.cards.items():
+            doc_terms = set()
+            for f in self.FIELDS:
+                toks = tokenize(self._field_text(c, f))
+                field_len[f][u] = len(toks)
+                tf = {}
+                for t in toks:
+                    tf[t] = tf.get(t, 0) + 1
+                    doc_terms.add(t)
+                for t, n in tf.items():
+                    postings[f].setdefault(t, {})[u] = n
+            for t in doc_terms:
+                doc_freq[t] = doc_freq.get(t, 0) + 1
+        n_docs = max(1, len(self.cards))
+        idf = {}
+        for t, df in doc_freq.items():
+            x = math.log(1.0 + (n_docs - df + 0.5) / (df + 0.5))   # the one math.log call — build time only
+            idf[t] = round(x * self.IDF_SCALE)
+        field_norm = {f: {} for f in self.FIELDS}
+        for f in self.FIELDS:
+            lens = [n for n in field_len[f].values() if n > 0]
+            avg = (sum(lens) / len(lens)) if lens else 1.0
+            for u in self.cards:
+                ln = field_len[f].get(u, 0)
+                ratio = (ln / avg) if avg > 0 else 0.0
+                norm = (1 - self.B) + self.B * ratio
+                field_norm[f][u] = max(1, round(norm * self.IDF_SCALE))
+        self.postings, self.idf, self.field_len, self.field_norm = postings, idf, field_len, field_norm
+
+    def _build_dense(self, word_vectors: dict):
+        self.word_vectors = dict(word_vectors)
+        self.skill_vectors, self.skill_normsq = {}, {}
+        if not self.word_vectors:
+            return
+        dims = len(next(iter(self.word_vectors.values())))
+        for u, c in self.cards.items():
+            text = " ".join([c["name"].replace("-", " "), c["description"], c["digest"],
+                              " ".join(c["triggers"]), c["_body"]])
+            vec = [0] * dims
+            for t in tokenize(text):
+                wv = self.word_vectors.get(t)
+                if wv:
+                    for i in range(dims):
+                        vec[i] += wv[i]
+            self.skill_vectors[u] = tuple(vec)
+            self.skill_normsq[u] = sum(x * x for x in vec)
+
+# ------------------------------------------------------------------- Router
+def _dense_rank(scores: dict) -> list:
+    """scores: urn -> (dot, normsq). Rank by dot/normsq descending — cosine-like, sqrt-free
+    (ROUTER-SPEC "Determinism by construction": store |d|^2 as an integer, never |d|, and
+    compare candidates only by cross-multiplication, never division). Ties broken on (-dot, urn)."""
+    def cmp(a, b):
+        da, na = scores[a]
+        db, nb = scores[b]
+        lhs, rhs = da * nb, db * na
+        if lhs != rhs:
+            return -1 if lhs > rhs else 1
+        if da != db:
+            return -1 if da > db else 1
+        return -1 if a < b else (1 if a > b else 0)
+    return sorted(scores.keys(), key=cmp_to_key(cmp))
+
+class Router:
+    """Ranking. Depends on an Index only — never on Registry (E0.2). candidates() -> score() ->
+    select() is the pipeline (E1.1); route() is the convenience wrapper."""
+
+    def __init__(self, index: Index):
+        self.index = index
+
+    # ---- policy filter: hard drops, recorded reason per drop, never a demotion ----
+    def _visible_nodes(self, node: str) -> set:
+        """Own subtree (node + all descendants) union the ancestor chain."""
+        out = set(ancestors(node))
+        for n in self.index.nodes:
+            if node == "_root" or n == node or n.startswith(node + "."):
+                out.add(n)
+        return out
+
+    def policy_filter(self, node: str, query: str = "", include_deprecated: bool = False):
+        visible = self._visible_nodes(node)
+        qtoks = set(tokenize(query))
+        kept, drops = [], []
+        for u, c in sorted(self.index.cards.items()):
+            if c["status"] == "deprecated" and not include_deprecated:
+                drops.append((u, "deprecated")); continue
+            if c["node"] not in visible:
+                drops.append((u, "not-visible")); continue
+            hit_neg = None
+            for t in c.get("negative_triggers", []):
+                ttoks = tokenize(t)
+                if ttoks and set(ttoks) <= qtoks:
+                    hit_neg = t; break
+            if hit_neg is not None:
+                drops.append((u, f"negative-trigger:{hit_neg}")); continue
+            kept.append(u)
+        return kept, drops
+
+    # ---- candidates: field-weighted BM25 + dense channel, fused later by RRF ----
+    def _bm25_scores(self, query: str, visible: set) -> dict:
+        idx = self.index
+        qterms = tokenize(query)
+        if not qterms:
+            return {}
+        qtf = {}
+        for t in qterms:
+            qtf[t] = qtf.get(t, 0) + 1
+        k1_scaled = round(idx.K1 * idx.IDF_SCALE)
+        scores = {}
+        for t, n_q in qtf.items():
+            idf = idx.idf.get(t)
+            if idf is None:
+                continue
+            wtf_by_doc = {}
+            for field in idx.FIELDS:
+                w = idx.weights[f"field.{field}"]
+                post = idx.postings[field].get(t)
+                if not post:
+                    continue
+                for u, tf in post.items():
+                    if u not in visible:
+                        continue
+                    norm = idx.field_norm[field][u]
+                    wtf_by_doc[u] = wtf_by_doc.get(u, 0) + (w * tf * idx.IDF_SCALE) // norm
+            for u, wtf in wtf_by_doc.items():
+                denom = k1_scaled + wtf
+                term_score = (idf * wtf) // denom if denom else 0
+                scores[u] = scores.get(u, 0) + term_score * n_q
+        return scores
+
+    def _dense_scores(self, query: str, visible: set) -> dict:
+        idx = self.index
+        if not idx.word_vectors:
+            return {}
+        qterms = tokenize(query)
+        dims = len(next(iter(idx.word_vectors.values())))
+        qvec = [0] * dims
+        hit = False
+        for t in qterms:
+            wv = idx.word_vectors.get(t)
+            if wv:
+                hit = True
+                for i in range(dims):
+                    qvec[i] += wv[i]
+        if not hit:
+            return {}
+        out = {}
+        for u in visible:
+            svec = idx.skill_vectors.get(u)
+            if not svec:
+                continue
+            dot = sum(a * b for a, b in zip(qvec, svec))
+            out[u] = (dot, idx.skill_normsq.get(u, 0))
+        return out
+
+    def candidates(self, query: str, node: str, include_deprecated: bool = False, top_n: int = 50) -> list:
+        visible, drops = self.policy_filter(node, query, include_deprecated)
+        visible_set = set(visible)
+        bm25 = self._bm25_scores(query, visible_set)
+        dense = self._dense_scores(query, visible_set)
+        bm25_order = sorted(bm25, key=lambda u: (-bm25[u], u))
+        bm25_rank = {u: i + 1 for i, u in enumerate(bm25_order)}
+        dense_order = _dense_rank(dense)
+        dense_rank = {u: i + 1 for i, u in enumerate(dense_order)}
+        cand_urns = set(bm25_order[:top_n]) | set(dense_order[:top_n])
+        out = []
+        for u in sorted(cand_urns):
+            out.append({
+                "urn": u, "node": self.index.cards[u]["node"],
+                "bm25_rank": bm25_rank.get(u), "dense_rank": dense_rank.get(u),
+            })
+        self.last_drops = drops
+        return out
+
+    # ---- score: RRF fusion + scope feature + reverse PPR ----
+    def _hops(self, skill_node: str, caller_node: str) -> int:
+        chain = ancestors(caller_node)
+        if skill_node in chain:
+            return chain.index(skill_node)
+        if caller_node == "_root":
+            rest = skill_node
+        elif skill_node.startswith(caller_node + "."):
+            rest = skill_node[len(caller_node) + 1:]
+        else:
+            rest = skill_node
+        return rest.count(".") + 1
+
+    def _reverse_ppr(self, seed_scaled: dict) -> dict:
+        """Mass flows FROM a strong hit TOWARD what it requires, so prerequisites (and, via
+        `replaces`, the deprecated skill's replacement) gain mass too. Fixed 20-iteration power
+        method, fixed-point integer arithmetic throughout."""
+        idx = self.index
+        nodes = list(idx.cards.keys())
+        total_seed = sum(v for v in seed_scaled.values() if v > 0)
+        if total_seed <= 0:
+            return {u: 0 for u in nodes}
+        scale = idx.IDF_SCALE
+        p = {u: (max(0, seed_scaled.get(u, 0)) * scale) // total_seed for u in nodes}
+        edge_types = ("requires", "refines", "replaces", "similar")
+        edges = {u: [] for u in nodes}
+        for et in edge_types:
+            w = idx.weights.get(f"edge.{et}", 0)
+            if w <= 0:
+                continue
+            for u, targets in idx.graph.get(et, {}).items():
+                if u not in p:
+                    continue
+                for t in targets:
+                    if t in p:
+                        edges[u].append((t, w))
+        out_weight = {u: sum(w for _, w in edges[u]) for u in nodes}
+        mass = dict(p)
+        a_num, a_den = idx.PPR_ALPHA_NUM, idx.PPR_ALPHA_DEN
+        for _ in range(idx.PPR_ITERS):
+            new_mass = {u: (a_num * p[u]) // a_den for u in nodes}
+            for u in nodes:
+                mu, ow = mass[u], out_weight[u]
+                if mu == 0 or ow == 0:
+                    continue
+                for t, w in edges[u]:
+                    new_mass[t] += ((a_den - a_num) * mu * w) // (a_den * ow)
+            mass = new_mass
+        return mass
+
+    def score(self, cands: list, query: str, node: str) -> list:
+        idx = self.index
+        rrf = {}
+        for c in cands:
+            u = c["urn"]
+            s = 0
+            if c["bm25_rank"] is not None:
+                s += idx.RRF_SCALE // (idx.RRF_K + c["bm25_rank"])
+            if c["dense_rank"] is not None:
+                s += idx.RRF_SCALE // (idx.RRF_K + c["dense_rank"])
+            rrf[u] = s
+        w_scope = idx.weights["w_scope"]
+        for c in cands:
+            rrf[c["urn"]] += w_scope // (1 + self._hops(c["node"], node))
+        ppr = self._reverse_ppr(rrf)
+        w_ppr = idx.weights["w_ppr"]
+        scored = []
+        for c in cands:
+            u = c["urn"]
+            total = rrf[u] + (w_ppr * ppr.get(u, 0)) // idx.IDF_SCALE
+            scored.append({**c, "score": total})
+        scored.sort(key=lambda c: (-c["score"], c["urn"]))
+        return scored
+
+    # ---- select: requires closure (depth<=2, hard membership) + cap + abstain + ordering ----
+    def _requires_closure(self, u: str, max_depth: int = 2) -> list:
+        idx = self.index
+        seen = {u}
+        frontier = [u]
+        out = []
+        for _ in range(max_depth):
+            nxt = []
+            for x in frontier:
+                for r in idx.graph["requires"].get(x, []):
+                    if r not in seen:
+                        seen.add(r); out.append(r); nxt.append(r)
+            frontier = nxt
+            if not frontier:
+                break
+        return out
+
+    def _depth(self, node: str) -> int:
+        return 0 if node == "_root" else node.count(".") + 1
+
+    def select(self, scored: list, k: int = 4, abstain_threshold: int = None) -> list:
+        idx = self.index
+        if abstain_threshold is None:
+            abstain_threshold = idx.weights["abstain_threshold"]
+        if not scored or scored[0]["score"] < abstain_threshold:
+            return []
+        score_by_urn = {c["urn"]: c["score"] for c in scored}
+        chosen, chosen_set = [], set()
+        for c in scored:
+            if len(chosen) >= k:
+                break
+            u = c["urn"]
+            if u in chosen_set:
+                continue
+            chosen.append(u); chosen_set.add(u)
+            for dep in self._requires_closure(u, max_depth=2):
+                if len(chosen) >= k:
+                    break
+                if dep in chosen_set or dep not in idx.cards:
+                    continue
+                if idx.cards[dep]["status"] == "deprecated":
+                    continue
+                chosen.append(dep); chosen_set.add(dep)
+        # emit general -> specific (root-most first); ties on score then urn
+        chosen.sort(key=lambda u: (self._depth(idx.cards[u]["node"]), -score_by_urn.get(u, 0), u))
+        out = []
+        for u in chosen:
+            c = idx.cards[u]
+            out.append({"urn": u, "node": c["node"], "name": c["name"],
+                        "description": c["description"], "score": score_by_urn.get(u, 0)})
+        return out
+
+    def route(self, query: str, node: str, k: int = 4, include_deprecated: bool = False) -> list:
+        cands = self.candidates(query, node, include_deprecated=include_deprecated)
+        scored = self.score(cands, query, node)
+        return self.select(scored, k=k)
+
+# ------------------------------------------------------------------------- commands
 def cmd_where(a, root, cfg):
     node = node_for(cfg, rel(root, Path.cwd()))
     print(json.dumps({"node": node, "owner": cfg["nodes"][node].get("owner"),
                       "ancestors": ancestors(node)}, indent=2))
 
-def rank_cards(reg, node, task, limit):
-    """Scope first (exact node, then ancestors), then semantic hits anywhere (ADR-0009 §1)."""
-    chain = ancestors(node)
-    rank_of = {n: i for i, n in enumerate(chain)}
-    hits = {}
-    for c in reg.search_scope(chain):
-        hits.setdefault(c["urn"], {**c, "_rank": rank_of[c["node"]], "_why": f"scope:{c['node']}"})
-    if task:
-        for c in reg.search_semantic(task):
-            hits.setdefault(c["urn"], {**c, "_rank": len(chain), "_why": "semantic"})
-    return sorted(hits.values(), key=lambda c: c["_rank"])[:limit]
-
 def cmd_find(a, root, cfg):
-    reg = registry_for(cfg, root)
+    idx = Index.build(root, cfg)
+    router = Router(idx)
     scope = a.scope or node_for(cfg, rel(root, Path.cwd()))
-    for c in rank_cards(reg, scope, a.task, a.limit):
-        print(f"- {c['urn']}\n    {c['description'][:160]}\n    ({c['_why']})")
-
-def cache_dir(root: Path, logical_urn: str) -> Path:
-    return root / ".guidefold" / "cache" / logical_urn.replace(":", "_")
+    for c in router.route(a.task, scope, k=a.limit, include_deprecated=a.include_deprecated):
+        print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
 
 def cmd_load(a, root, cfg):
-    dest = cache_dir(root, a.urn)
-    registry_for(cfg, root).download(a.urn, dest)
+    reg = registry_for(cfg, root)
+    rev = reg.default_revision(a.urn)
+    dest = skill_cache_dir(a.urn, rev)
+    if (dest / "SKILL.md").exists():
+        os.utime(dest, None)   # cache hit: bump mtime so LRU eviction reflects last use
+    else:
+        reg.download(a.urn, dest, rev=rev)
+    evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
     print(dest / "SKILL.md")
 
 def cmd_validate(a, root, cfg):
@@ -555,9 +1061,10 @@ def cmd_hook(a, root, cfg):
     if len(prompt) < 12:                          # skip trivial prompts ("yes", "continue")
         return
     try:
-        top = rank_cards(registry_for(cfg, root), node, prompt, 3)
-    except SystemExit:
-        return                                    # registry down → L0 still covers us
+        idx = Index.build(root, cfg)
+        top = Router(idx).route(prompt, node, k=3)
+    except Exception:
+        return                                    # ranking must never break the harness
     if not top:
         return
     print(f"[guidefold] Relevant organizational guidance for scope {node}:")
@@ -570,12 +1077,16 @@ def cmd_prewarm(a, root, cfg):
     node = node_for(cfg, rel(root, Path.cwd()))
     reg = registry_for(cfg, root)
     for c in reg.search_scope(ancestors(node)):
-        dest = cache_dir(root, c["urn"])
-        if not (dest / "SKILL.md").exists():
-            try:
-                reg.download(c["urn"], dest)
-            except SystemExit:
-                pass
+        rev = reg.default_revision(c["urn"])
+        dest = skill_cache_dir(c["urn"], rev)
+        if (dest / "SKILL.md").exists():
+            os.utime(dest, None)
+            continue
+        try:
+            reg.download(c["urn"], dest, rev=rev)
+        except SystemExit:
+            pass
+    evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
 
 # ------------------------------------------------------------------------ main
 def main():
@@ -585,6 +1096,7 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("where")
     f = sub.add_parser("find"); f.add_argument("task"); f.add_argument("--scope"); f.add_argument("--limit", type=int, default=8)
+    f.add_argument("--include-deprecated", action="store_true", help="don't apply the policy filter's deprecated-skill drop")
     l = sub.add_parser("load"); l.add_argument("urn")
     sub.add_parser("validate")
     dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")
