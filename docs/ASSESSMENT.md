@@ -3,6 +3,12 @@
 **Date:** 2026-09-04 · **Against:** DESIGN.md v0.2, ADR-0001…0007, CLI skeleton
 **Method:** local `gcloud` SDK 579.0.0 help pages (alpha 2026.07.31), Google Cloud docs, harness vendor docs, GitHub issues. Every claim below carries a source.
 
+> **Redaction note.** This file is a log of `gcloud` calls actually executed against the live
+> Agent Registry. The publisher and hierarchy names in the recorded commands have been
+> rewritten to this repository's fictional `meridian` / `atlas` vocabulary; the literal strings
+> used at the time differed. Nothing else about the commands, responses or conclusions was
+> altered — the record's technical content stands as verified.
+
 ## Verdict
 
 **The project makes sense.** The problem is real (skill sprawl across four harnesses, no ownership or drift signal, context bloat), and the design is unusually disciplined: it builds nothing that a platform already provides and keeps the custom part to ~500 lines of glue. Every load-bearing platform feature exists today.
@@ -110,7 +116,7 @@ Graph-of-Skills (arXiv 2604.05333) and SkillRouter (arXiv 2603.22455) both show 
 
 ### To the docs
 
-- DESIGN.md §2 G2: `skillId:urn:skill:sabre:mosaic.*` → trailing-`*` syntax; note user-minted URN ids are unverified.
+- DESIGN.md §2 G2: `skillId:urn:skill:meridian:atlas.*` → trailing-`*` syntax; note user-minted URN ids are unverified.
 - DESIGN.md §5.1, §7.2, ADR-0007: separate *Agent Registry* (distribution, this design) from *Vertex AI Skill Registry* (ADK consumption). State that ADK consumption needs either dual-publish from CI or Google's promised convergence.
 - DESIGN.md §7.1 Copilot: L1 is partially available via `sessionStart` `additionalContext`.
 - DESIGN.md §9: add quota risks (100 skills/project, 100 revisions/skill, 20 QPS) with mitigations above.
@@ -134,7 +140,7 @@ Go with **A**, keeping `examples/monorepo/` as the fixture and pytest target.
 ## 5. Day-1 checklist (revised)
 
 1. Skill-id rules: try `skills create` with an id containing `urn:` and with a hyphen slug; record what the API accepts. Try `skills search --query='skillId:<prefix>*' --search-type=keyword` on the result.
-2. Publisher: does `skills create --publisher=sabre` need a pre-existing Publisher? How is a PRIVATE publisher provisioned?
+2. Publisher: does `skills create --publisher=meridian` need a pre-existing Publisher? How is a PRIVATE publisher provisioned?
 3. Quota: file the increase request for skills/project early; confirm revision deletion works on non-default revisions.
 4. Gemini CLI hook: confirm the JSON envelope for `SessionStart`/`BeforeAgent`.
 5. Codex repo-local hooks: test `<project>/.codex/hooks.json` against issue #17532; fall back to `~/.codex/hooks.json` template.

@@ -33,7 +33,7 @@ to find and load the right ones progressively, so you never pre-load the whole o
    ```bash
    scripts/guidefold where
    ```
-   Prints the hierarchy node for the current directory (e.g. `mosaic.identity.turnstile`),
+   Prints the hierarchy node for the current directory (e.g. `atlas.identity.turnstile`),
    its owner, and the ancestor chain. If you are outside any node you get `_root`.
 
 2. **Find candidate skills for the task** (one call; describe the task in plain language)
@@ -77,8 +77,8 @@ spans several platforms or you are unsure where you are.
 
 ## Examples
 
-- Task in `platforms/mosaic/identity/turnstile/`: `where` → `mosaic.identity.turnstile`;
-  `find` → `spanner-auth` (turnstile), `mosaic-auth` (mosaic), `spanner-production`
+- Task in `platforms/atlas/identity/turnstile/`: `where` → `atlas.identity.turnstile`;
+  `find` → `spanner-auth` (turnstile), `atlas-auth` (atlas), `spanner-production`
   (root); load all three because `spanner-auth` requires the other two.
 - Task in `products/booking/`: `where` → `booking`; `find "add a new fare rule"` → likely one
   booking-scope skill and one root skill on ADR/PR conventions.

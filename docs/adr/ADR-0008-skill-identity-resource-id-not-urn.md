@@ -3,7 +3,7 @@
 **Status:** Accepted · 2026-09-04 (verified live on project guidefold-test-b6a18a; amends ADR-0002, which is deleted)
 
 ## Context
-ADR-0002 assumed we could mint `urn:skill:sabre:<node>:<name>` as the `skillId`. Verified against
+ADR-0002 assumed we could mint `urn:skill:meridian:<node>:<name>` as the `skillId`. Verified against
 Agent Registry v1alpha on 2026-09-04 (project `guidefold-test-b6a18a`):
 
 - The URN is **assigned by the server**: `urn:skill:projects-<NUMBER>:locations:<LOCATION>:private-<RESOURCE_ID>`.

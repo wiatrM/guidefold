@@ -15,14 +15,14 @@ nodes:
   _root:
     paths: ["**"]
     owner: platform-engineering
-  mosaic:
-    paths: ["platforms/mosaic/**"]
-    owner: mosaic-platform
-  mosaic.identity:
-    paths: ["platforms/mosaic/identity/**"]
+  atlas:
+    paths: ["platforms/atlas/**"]
+    owner: atlas-platform
+  atlas.identity:
+    paths: ["platforms/atlas/identity/**"]
     owner: identity-platform
-  mosaic.identity.turnstile:
-    paths: ["platforms/mosaic/identity/turnstile/**"]
+  atlas.identity.turnstile:
+    paths: ["platforms/atlas/identity/turnstile/**"]
     owner: turnstile-team
   booking:
     paths: ["products/booking/**"]
@@ -44,7 +44,7 @@ Rules:
 
 - `skill-name`: kebab-case, 3–40 chars, unique **within its node**. Global uniqueness comes from the URN.
 - URN (derived, never hand-written): `urn:skill:<publisher>:<node>:<skill-name>`
-  - `urn:skill:acme:mosaic.identity.turnstile:spanner-auth`
+  - `urn:skill:acme:atlas.identity.turnstile:spanner-auth`
   - root node uses `_root`: `urn:skill:acme:_root:spanner-production`
 - Registry `SKILL_ID` = URN with `:` and `.` replaced by `-` where the API disallows them (CLI handles it); `displayName` = `<node>/<skill-name>`.
 
@@ -55,18 +55,18 @@ Agent Skills spec fields + a `metadata` block. Nothing outside `metadata` is Gui
 ```yaml
 ---
 name: spanner-auth
-description: "[mosaic/identity/turnstile] Add or change authorization checks on Turnstile's Spanner-backed endpoints. Use when touching auth middleware, IAM bindings, or deployment.yaml auth fields in turnstile."
+description: "[atlas/identity/turnstile] Add or change authorization checks on Turnstile's Spanner-backed endpoints. Use when touching auth middleware, IAM bindings, or deployment.yaml auth fields in turnstile."
 license: Proprietary          # or Apache-2.0 for OSS-safe skills
 compatibility: "Needs gcloud auth and access to the turnstile service account."
 metadata:                                   # EVERY value is a scalar string (ADR-0010) — the registry rejects lists, dates, booleans
-  scope: mosaic.identity.turnstile          # must equal the node derived from the path
+  scope: atlas.identity.turnstile          # must equal the node derived from the path
   owner: turnstile-team                     # must equal node owner or a sub-team
-  requires: "urn:skill:acme:mosaic:mosaic-auth, urn:skill:acme:_root:spanner-production"   # comma-separated; loaded after this skill
-  references: "platforms/mosaic/identity/turnstile/deploy/deployment.yaml#legacyAuthMode, platforms/mosaic/identity/turnstile/src/auth/middleware.go"   # drift check: code diff ∩ these
+  requires: "urn:skill:acme:atlas:atlas-auth, urn:skill:acme:_root:spanner-production"   # comma-separated; loaded after this skill
+  references: "platforms/atlas/identity/turnstile/deploy/deployment.yaml#legacyAuthMode, platforms/atlas/identity/turnstile/src/auth/middleware.go"   # drift check: code diff ∩ these
   status: active                            # active | deprecated
   since: "2026-09-04"                       # quoted — a bare date is not a string
   digest: >-                                # 2–3 sentences copied into scope cards (L0); keep it a summary, not a procedure
-    Turnstile authorizes Spanner-backed endpoints through the mosaic-auth middleware; all auth flags live in deployment.yaml.
+    Turnstile authorizes Spanner-backed endpoints through the atlas-auth middleware; all auth flags live in deployment.yaml.
 ---
 ```
 
