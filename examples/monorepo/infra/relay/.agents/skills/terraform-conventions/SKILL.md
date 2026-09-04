@@ -9,6 +9,10 @@ metadata:
   references: "infra/relay/terraform/main.tf"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: platform
+  triggers: "Terraform module, relay infra, remote state, provider version pin, terraform plan, root stack"
+  negative_triggers: "Kubernetes manifest, Helm chart, offline bundle assembly"
   digest: >-
     Relay infrastructure is one root stack per environment under infra/relay/terraform, composed only
     from modules in infra/relay/terraform/modules, with locked remote state per environment. Provider

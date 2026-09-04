@@ -9,6 +9,9 @@ metadata:
   references: "platforms/forge/pipelines/src/meridian_pipelines/base.py"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  triggers: "BasePipeline subclass, transform validate hooks, catalogue.yaml registration, idempotent partition overwrite, batch pipeline module, PySpark job structure"
   digest: >-
     Batch pipelines subclass BasePipeline and implement read, transform, validate, and optionally
     write hooks; the base class owns session handling, lineage columns, and idempotent partition

@@ -9,6 +9,10 @@ metadata:
   references: "tools/release/build-bundle.sh"
   status: active
   since: "2026-09-04"
+  kind: ways-of-working
+  layer: org
+  triggers: "cut a release, release train, vYYYY.MM tag, hotfix branch, offline release bundle, build-bundle.sh"
+  negative_triggers: "shared library version bump, edge site install"
   digest: >-
     Meridian ships a monthly release train tagged vYYYY.MM.N from main, plus hotfix tags on release branches.
     Every release is an offline bundle built by tools/release/build-bundle.sh that contains images, Helm charts,

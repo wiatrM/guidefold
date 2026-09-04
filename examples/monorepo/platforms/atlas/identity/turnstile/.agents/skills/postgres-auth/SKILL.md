@@ -10,6 +10,11 @@ metadata:
   references: "platforms/atlas/identity/turnstile/deploy/deployment.yaml#legacyAuthMode, platforms/atlas/identity/turnstile/src/auth/middleware.go"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:_root:postgres-production"
+  replaces: "urn:skill:meridian:atlas.identity:legacy-session-auth"
+  triggers: "turnstile auth middleware, bearer token validation, principal role lookup, legacyAuthMode flag, decision cache, principals table"
   digest: >-
     Turnstile authorizes every atlas API request by validating the bearer token, loading the principal
     and its roles from Postgres, and evaluating the atlas RBAC bundle in-process. All auth behaviour

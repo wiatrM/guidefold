@@ -283,6 +283,34 @@ def md_list(md: dict, key: str) -> list:
         return [str(x).strip() for x in v if str(x).strip()]
     return [x.strip() for x in re.split(r"[,\s]+", str(v)) if x.strip()]
 
+KIND_VALUES = ("governance", "engineering", "knowledge", "ways-of-working", "temporal")
+LAYER_VALUES = ("org", "platform", "team")
+
+def node_depth(node: str) -> int:
+    """_root -> 0; each dot in the node path adds one level (collapsed to org/platform/team for MVP)."""
+    return 0 if node == "_root" else node.count(".") + 1
+
+def check_urn_refs(md: dict, key: str, urns: dict, rd, errors: list):
+    """Every URN in metadata.<key> must exist in the tree — shared by requires/refines/replaces."""
+    for r in md_list(md, key):
+        if r not in urns:
+            errors.append(f"{rd}: {key} unknown skill {r}")
+
+def check_cycles(graph: dict, label: str, errors: list):
+    """DFS cycle detector shared by the requires graph and the refines graph."""
+    state = {}
+    def visit(n, stack):
+        state[n] = 1
+        for m in graph.get(n, []):
+            if state.get(m) == 1:
+                errors.append(f"{label} cycle: " + " -> ".join(stack + [m]))
+            elif state.get(m) is None:
+                visit(m, stack + [m])
+        state[n] = 2
+    for u in graph:
+        if state.get(u) is None:
+            visit(u, [u])
+
 def all_skills(root: Path, cfg: dict, include_generated: bool = False):
     for md in sorted(root.rglob(".agents/skills/*/SKILL.md")):
         if ".guidefold" in md.parts:
@@ -333,6 +361,7 @@ def cmd_validate(a, root, cfg):
     errors = []
     skills = list(all_skills(root, cfg))
     urns = {urn(cfg, node, d.name): fm for d, node, fm in skills}
+    node_of = {urn(cfg, node, d.name): node for d, node, fm in skills}
     for d, node, fm in skills:
         md = fm.get("metadata") or {}
         rd = d.relative_to(root)
@@ -342,6 +371,10 @@ def cmd_validate(a, root, cfg):
             errors.append(f"{rd}: metadata.scope={md.get('scope')} but path node={node}")
         if md.get("owner") not in (cfg["nodes"][node].get("owner"), *cfg["nodes"][node].get("subteams", [])):
             errors.append(f"{rd}: owner {md.get('owner')} not allowed for node {node}")
+        if md.get("kind") and md.get("kind") not in KIND_VALUES:
+            errors.append(f"{rd}: metadata.kind must be one of {', '.join(KIND_VALUES)}")
+        if md.get("layer") and md.get("layer") not in LAYER_VALUES:
+            errors.append(f"{rd}: metadata.layer must be one of {', '.join(LAYER_VALUES)}")
         for k, v in md.items():
             if not isinstance(v, str):
                 errors.append(f"{rd}: metadata.{k} must be a scalar string (registry rejects lists/dates/bools; use a comma-separated string)")
@@ -360,9 +393,11 @@ def cmd_validate(a, root, cfg):
                 errors.append(f"{rd}: reference not found: {r}")
             elif token and not any(token in m.read_text(errors="ignore") for m in matches):
                 errors.append(f"{rd}: token '{token}' not found in {path}")
-        for r in md_list(md, "requires"):
-            if r not in urns:
-                errors.append(f"{rd}: requires unknown skill {r}")
+        for key in ("requires", "refines", "replaces"):
+            check_urn_refs(md, key, urns, rd, errors)
+        for r in md_list(md, "refines"):
+            if r in node_of and node_depth(node_of[r]) > node_depth(node):
+                errors.append(f"{rd}: refines {r} is in a deeper node than {node} (child refines parent, not the reverse)")
         if md.get("status") not in ("active", "deprecated"):
             errors.append(f"{rd}: metadata.status must be active or deprecated")
         if md.get("status") == "deprecated" and not md.get("replaced_by"):
@@ -373,19 +408,10 @@ def cmd_validate(a, root, cfg):
     for f, ns in flats.items():
         if len(ns) > 1:
             errors.append(f"guidefold.yaml: nodes {ns} collide after flattening to '{f}' (ADR-0008)")
-    graph = {u: [r for r in md_list(fm.get("metadata") or {}, "requires") if r in urns] for u, fm in urns.items()}
-    state = {}
-    def visit(n, stack):
-        state[n] = 1
-        for m in graph[n]:
-            if state.get(m) == 1:
-                errors.append("requires cycle: " + " -> ".join(stack + [m]))
-            elif state.get(m) is None:
-                visit(m, stack + [m])
-        state[n] = 2
-    for u in graph:
-        if state.get(u) is None:
-            visit(u, [u])
+    requires_graph = {u: [r for r in md_list(fm.get("metadata") or {}, "requires") if r in urns] for u, fm in urns.items()}
+    check_cycles(requires_graph, "requires", errors)
+    refines_graph = {u: [r for r in md_list(fm.get("metadata") or {}, "refines") if r in urns] for u, fm in urns.items()}
+    check_cycles(refines_graph, "refines", errors)
     for e in errors:
         print("ERROR", e)
     print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")

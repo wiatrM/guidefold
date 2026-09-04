@@ -9,6 +9,10 @@ metadata:
   references: "libs/VERSIONING.md"
   status: active
   since: "2026-09-04"
+  kind: ways-of-working
+  layer: platform
+  triggers: "semver bump, libs tag vX.Y.Z, deprecation window, gorelease apidiff, breaking API change, CHANGELOG Unreleased"
+  negative_triggers: "platform release train"
   digest: >-
     Shared libraries in libs are versioned independently with strict semver and tagged as libs/<name>/vX.Y.Z.
     Breaking changes require a major bump, a deprecation window of two platform trains and a migration note in

@@ -9,6 +9,9 @@ metadata:
   references: "platforms/atlas/api/openapi.yaml"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: platform
+  triggers: "atlas HTTP API, OpenAPI contract-first, error envelope, cursor pagination, /v1 path prefix, oapi-codegen"
   digest: >-
     Every atlas HTTP API is contract-first: the OpenAPI document under platforms/atlas/api is the
     source of truth and handlers are generated from it. All endpoints share one error envelope,

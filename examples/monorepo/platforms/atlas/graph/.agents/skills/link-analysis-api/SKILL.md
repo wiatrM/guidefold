@@ -10,6 +10,10 @@ metadata:
   references: "platforms/atlas/graph/src/query/traversal.go"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:atlas:atlas-api-conventions"
+  triggers: "graph neighbors endpoint, bounded BFS traversal, maxDepth maxFanOut, traversal.go, truncation reporting, edge type"
   digest: >-
     The atlas graph API exposes neighbourhood and path queries over ontology entities and links
     through one bounded breadth-first traversal engine. Depth, fan-out, result size and time budget

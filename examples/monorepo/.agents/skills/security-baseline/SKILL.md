@@ -9,6 +9,10 @@ metadata:
   references: "security/policy/baseline.yaml#allowedRegistries"
   status: active
   since: "2026-09-04"
+  kind: governance
+  layer: org
+  triggers: "allowedRegistries, image signing, SBOM, container hardening, secret handling, TLS defaults"
+  negative_triggers: "classification label semantics, audit event format"
   digest: >-
     security/policy/baseline.yaml is the machine-readable minimum for every Meridian service: images only
     from allowedRegistries, signed and with an SBOM, pinned dependencies, no plaintext secrets, TLS by default.

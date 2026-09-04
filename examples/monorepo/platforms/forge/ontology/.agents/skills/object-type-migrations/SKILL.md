@@ -10,6 +10,10 @@ metadata:
   references: "platforms/forge/ontology/migrations/README.md"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:_root:postgres-production"
+  triggers: "object type migration, expand contract phase, migration.yaml, backfill batches, rename property, ontology release version"
   digest: >-
     Changes to released object types are expressed as numbered migration directories under
     ontology/migrations and applied in expand and contract phases so readers never see a broken type.

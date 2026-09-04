@@ -9,6 +9,9 @@ metadata:
   references: "libs/classification/labels.go#Label"
   status: active
   since: "2026-09-04"
+  kind: governance
+  layer: platform
+  triggers: "classification Label enum, UNCLASSIFIED OFFICIAL RESTRICTED CONFIDENTIAL, Propagate helper, X-Meridian-Classification header, label downgrade, libs/classification"
   digest: >-
     Every dataset, record and API response in Meridian carries a classification Label from libs/classification,
     ordered UNCLASSIFIED to CONFIDENTIAL. Derived data always takes the highest label of its inputs, and code

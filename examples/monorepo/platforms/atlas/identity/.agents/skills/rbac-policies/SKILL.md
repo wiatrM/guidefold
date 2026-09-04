@@ -9,6 +9,9 @@ metadata:
   references: "platforms/atlas/identity/policies/rbac.rego"
   status: active
   since: "2026-09-04"
+  kind: governance
+  layer: team
+  triggers: "OPA Rego policy, rbac.rego, analyst supervisor admin roles, allow rule deny by default, policy bundle version, MATRIX.md"
   digest: >-
     Atlas authorization decisions come from one OPA Rego bundle with three linearly inherited roles
     (analyst, supervisor, admin) and a fixed input document built by the auth-sdk. Policies deny by

@@ -10,6 +10,10 @@ metadata:
   references: "platforms/atlas/identity/turnstile/deploy/deployment.yaml"
   status: active
   since: "2026-09-04"
+  kind: ways-of-working
+  layer: team
+  triggers: "paged for turnstile alert, TurnstileAuth alert, 403 spike, rollout undo, bundle re-pin, rolling restart"
+  negative_triggers: "planned auth change, policy edit"
   digest: >-
     Turnstile on-call handles authorization outages for all atlas APIs; the service fails closed, so
     incidents surface as 403 spikes rather than bypasses. The runbook maps each alert to a triage

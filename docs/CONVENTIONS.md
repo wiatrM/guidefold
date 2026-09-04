@@ -79,16 +79,26 @@ Rules:
 - Body: ≤ 500 lines / ≤ 5k words. Longer material goes to `references/*.md` next to `SKILL.md` (the registry ships the whole directory).
 - No secrets, no absolute local paths, no environment-specific hostnames outside `references/environments.md`.
 
-### 4a. Fields added by DESIGN v0.3 (proposed, enforced once Phase 1 lands)
+### 4a. MVP graph fields (E1.4)
+
+DESIGN v0.3 §5.1b defines 16 kinds in 5 families and a 7-level hierarchy. MVP narrows both:
+`metadata.kind` collapses to the **5 family names themselves** (not the 16 sub-kinds — those
+stay Phase 1.5), and the hierarchy collapses to **3 layers**. These are the same family names
+DESIGN.md §8's router uses for cap-by-family logic, so `kind` values here must not drift from
+that doctrine.
 
 | Field | Required | Values |
 |-------|----------|--------|
-| `metadata.kind` | yes | one of 16 kinds in 5 families — governance: `policy`, `compliance`, `security`, `architecture`; engineering: `generic`, `platform`, `integration`, `tooling`, `data`, `operations`; knowledge: `domain`, `product`, `project`; ways-of-working: `process`, `ai-sdlc`; temporal: `program`. Each kind is allowed only at certain levels (DESIGN.md §5.1b) |
-| `metadata.topics` | for `platform`/`integration`; recommended otherwise | comma-separated tags from `topics.yaml` |
-| `metadata.triggers` | recommended | comma-separated lexical anchors (file names, flags, tool names) |
-| `metadata.refines` | written by lift | URN of the more general skill this one specializes |
-| `metadata.program`, `metadata.until` | for `program` kind | id from `programs.yaml`; ISO date, quoted |
-| `guidefold.yaml: levels:` | yes | names for depth 0..n, e.g. `[enterprise, division, product, platform, domain, team, service]`; nodes may set `tier:` |
+| `metadata.kind` | yes | one of the 5 DESIGN.md families: `governance`, `engineering`, `knowledge`, `ways-of-working`, `temporal`. `guidefold validate` rejects any other value. |
+| `metadata.layer` | yes | one of `org`, `platform`, `team`, mapped mechanically from node depth: `_root` → `org`; a single-segment node (`atlas`, `forge`, `relay`, `security`, `shared`, `libs`) → `platform`; any node with 2+ dotted segments (`atlas.geo`, `forge.pipelines.streaming`) → `team`. `guidefold validate` rejects any other value; it does **not** cross-check the value against the node's actual depth (author error there is a review-time concern, not yet a CI one). |
+| `metadata.triggers` | recommended, not yet enforced (E4.5) | comma-separated lexical anchors (file names, flags, tool names, short phrases) drawn from the skill's own body — never reverse-engineered from eval queries. `guidefold validate` only checks it is a scalar string. |
+| `metadata.negative_triggers` | optional, only where genuinely meaningful | comma-separated phrases that should suppress this skill in favor of a sibling — typically because the two share vocabulary (`helm-conventions` vs `air-gapped-deploy` both mention bundles) or because the skill is deprecated (`legacy-session-auth` suppressed by "new service", "greenfield"). Most skills should not set this; forcing one onto every skill dilutes the ones that matter. |
+| `metadata.refines` | authored by skill owners (not by lift in MVP) | comma-separated URNs of skills whose guidance this one specializes. Direction is fixed: **child refines parent, never the reverse** — the target's node must be at the same depth or shallower than the skill's own node. `guidefold validate` checks every URN exists, checks the direction rule, and checks the `refines` graph has no cycles, the same way it already does for `requires`. |
+| `metadata.replaces` | authored, reciprocal of `replaced_by` | comma-separated URNs of skills this one supersedes. When skill A sets `replaced_by: B`, B should set `replaces: A`; `guidefold validate` checks every URN exists but does not (yet) cross-check the reciprocal pointer. |
+| `metadata.similar` | **generated, never authored** | written by the index build (E1.4/E1.7), not by skill owners: two skills are linked when embedding cosine similarity ≥ 0.85 AND trigram Jaccard ≥ 0.4 at the same or an adjacent level. It has no place in a hand-written `SKILL.md`; `guidefold validate` does not accept it as an authored key today, but a future index step may write it back to the generated index artifact (not to the source `SKILL.md`). |
+| `metadata.topics` | for `platform`/`integration` kinds; recommended otherwise | comma-separated tags from `topics.yaml` — **still Phase 1**, not required by MVP `guidefold validate`. |
+| `metadata.program`, `metadata.until` | for `temporal` kind | id from `programs.yaml`; ISO date, quoted — **still Phase 1**; the fixture has no `temporal`-kind skill yet, so this is untested. |
+| `guidefold.yaml: levels:` | Phase 1 | names for depth 0..n, e.g. `[enterprise, division, product, platform, domain, team, service]`; nodes may set `tier:`. MVP uses the fixed 3-layer collapse above instead. |
 
 ## 5. Body structure (recommended)
 
@@ -115,9 +125,11 @@ Set `metadata.status: deprecated` and add `metadata.replaced_by: <urn>`. CI publ
 2. Directory is under exactly one `guidefold.yaml` node; `metadata.scope` matches.
 3. `metadata.owner` matches node owner (or a listed sub-team).
 4. `description` starts with `[node/path]`.
-5. All `requires` URNs exist in the tree (or already in the registry).
+5. All `requires`, `refines` and `replaces` URNs exist in the tree (or already in the registry); the `requires` graph and the `refines` graph are each acyclic.
 6. `references` paths exist in the repo.
 7. Size limits; no secrets (reuse `skillscheck`).
+8. `metadata.kind` is one of the 5 families; `metadata.layer` is one of `org`/`platform`/`team` (when present — see §4a).
+9. `refines` never points at a skill in a deeper node than the skill itself (child refines parent, not the reverse).
 
 ## 9. Generated files (do not edit by hand)
 

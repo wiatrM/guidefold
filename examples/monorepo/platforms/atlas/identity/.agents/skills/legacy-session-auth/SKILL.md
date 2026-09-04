@@ -9,6 +9,10 @@ metadata:
   status: deprecated
   replaced_by: urn:skill:meridian:atlas.identity.turnstile:postgres-auth
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  triggers: "legacyAuthMode, atlas_sessions table, cookie-based session authorization, per-service role check, deprecated auth path"
+  negative_triggers: "new service, greenfield endpoint"
   digest: >-
     Legacy session authorization kept an atlas-wide sessions table and evaluated roles separately in
     each service. It is superseded by turnstile's postgres-auth, which centralises token validation

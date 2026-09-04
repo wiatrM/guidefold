@@ -10,6 +10,11 @@ metadata:
   references: "platforms/atlas/geo/src/index/h3_index.go"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: team
+  refines: "urn:skill:meridian:_root:postgres-production"
+  triggers: "PostGIS geometry column, H3 cell index, GiST GIN BRIN, h3_index helpers, spatial bounding-box query, H3 resolution"
+  negative_triggers: "vector tile rendering"
   digest: >-
     Atlas geo layers store geometry in PostGIS together with an H3 cell column at a fixed resolution
     per layer. Spatial queries filter by H3 cells first and refine with ST_ functions, and the index

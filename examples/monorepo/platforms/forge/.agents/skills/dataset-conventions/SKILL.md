@@ -9,6 +9,9 @@ metadata:
   references: "platforms/forge/schemas/README.md"
   status: active
   since: "2026-09-04"
+  kind: engineering
+  layer: platform
+  triggers: "dataset naming domain.entity_grain, schema registry, x-lineage tags, forge datasets register, grain suffix, schema evolution"
   digest: >-
     Every Forge dataset is named <domain>.<entity>_<grain>, registered in the schema registry
     before its first write, and tagged with lineage metadata pointing at the producing pipeline.
