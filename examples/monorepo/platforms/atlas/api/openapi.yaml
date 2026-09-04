@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: Atlas API
+  version: 1.0.0
+  description: Shared contract for analyst-facing atlas services (geo, graph, identity). Sub-services $ref the components below.
+servers:
+  - url: /v1
+paths:
+  /layers:
+    get:
+      operationId: listLayers
+      summary: List geospatial layers visible to the caller
+      parameters:
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: A page of layers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LayerPage' }
+        default:
+          $ref: '#/components/responses/Error'
+  /layers/{layerId}:
+    get:
+      operationId: getLayer
+      summary: Fetch one layer by opaque id
+      parameters:
+        - { name: layerId, in: path, required: true, schema: { type: string, pattern: '^lyr_[a-z0-9]+$' } }
+      responses:
+        '200':
+          description: A single layer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Layer' }
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  parameters:
+    PageSize:  { name: pageSize,  in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+    PageToken: { name: pageToken, in: query, schema: { type: string } }
+  responses:
+    Error:
+      description: Error envelope shared by all atlas services
+      headers:
+        X-Request-Id: { schema: { type: string } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:      { type: string, enum: [NOT_FOUND, FORBIDDEN, INVALID_ARGUMENT, RATE_LIMITED, INTERNAL] }
+            message:   { type: string }
+            requestId: { type: string }
+            details:   { type: array, items: { type: object, additionalProperties: true } }
+    Layer:
+      type: object
+      required: [id, name, h3Resolution]
+      properties:
+        id:           { type: string }
+        name:         { type: string }
+        h3Resolution: { type: integer, minimum: 0, maximum: 15 }
+        updatedAt:    { type: string, format: date-time }
+    LayerPage:
+      type: object
+      required: [items, nextPageToken]
+      properties:
+        items:         { type: array, items: { $ref: '#/components/schemas/Layer' } }
+        nextPageToken: { type: string, description: Empty string when the listing is exhausted }

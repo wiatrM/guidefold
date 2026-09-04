@@ -1,0 +1,22 @@
+publisher: sabre
+registry:
+  backend: agent-registry     # local | agent-registry
+  project: sabre-agent-registry
+  location: global
+nodes:
+  _root:
+    paths: ["**"]
+    owner: platform-engineering
+  mosaic:
+    paths: ["platforms/mosaic/**"]
+    owner: mosaic-platform
+  mosaic.identity:
+    paths: ["platforms/mosaic/identity/**"]
+    owner: identity-platform
+  mosaic.identity.turnstile:
+    paths: ["platforms/mosaic/identity/turnstile/**"]
+    owner: turnstile-team
+    subteams: [turnstile-oncall]
+  booking:
+    paths: ["products/booking/**"]
+    owner: booking-core

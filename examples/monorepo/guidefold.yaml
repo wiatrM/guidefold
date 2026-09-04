@@ -1,0 +1,72 @@
+# Guidefold hierarchy map for the Meridian playground monorepo.
+# Meridian is a fictional open-source data-integration and analysis platform
+# (Palantir-style) used by defence and public-safety organisations.
+# Nodes are dotted logical paths; the tree is derived from the dots.
+publisher: meridian
+registry:
+  backend: local            # local | agent-registry  (approach A: local first)
+  project: guidefold-test-b6a18a   # test registry; override with --project
+  location: global
+nodes:
+  _root:
+    paths: ["**"]
+    owner: platform-engineering
+
+  # ── forge: data integration platform (ontology, pipelines) ──────────────
+  forge:
+    paths: ["platforms/forge/**"]
+    owner: forge-platform
+  forge.ontology:
+    paths: ["platforms/forge/ontology/**"]
+    owner: ontology-team
+  forge.pipelines:
+    paths: ["platforms/forge/pipelines/**"]
+    owner: pipelines-team
+  forge.pipelines.streaming:
+    paths: ["platforms/forge/pipelines/streaming/**"]
+    owner: streaming-team
+
+  # ── atlas: analyst workspace (geo, graph, identity) ─────────────────────
+  atlas:
+    paths: ["platforms/atlas/**"]
+    owner: atlas-platform
+  atlas.geo:
+    paths: ["platforms/atlas/geo/**"]
+    owner: geo-team
+  atlas.graph:
+    paths: ["platforms/atlas/graph/**"]
+    owner: graph-team
+  atlas.identity:
+    paths: ["platforms/atlas/identity/**"]
+    owner: identity-platform
+  atlas.identity.turnstile:
+    paths: ["platforms/atlas/identity/turnstile/**"]
+    owner: turnstile-team
+    subteams: [turnstile-oncall]
+
+  # ── relay: deployment & infrastructure (edge / air-gapped, k8s) ─────────
+  relay:
+    paths: ["infra/relay/**"]
+    owner: relay-infra
+  relay.edge:
+    paths: ["infra/relay/edge/**"]
+    owner: edge-team
+  relay.k8s:
+    paths: ["infra/relay/k8s/**"]
+    owner: k8s-team
+
+  # ── security org ────────────────────────────────────────────────────────
+  security:
+    paths: ["security/**"]
+    owner: security-org
+  security.audit:
+    paths: ["security/audit/**"]
+    owner: audit-team
+
+  # ── shared libraries (note: hyphenated node name on purpose) ────────────
+  shared:
+    paths: ["libs/**"]
+    owner: shared-libs
+  shared.auth-sdk:
+    paths: ["libs/auth-sdk/**"]
+    owner: identity-platform

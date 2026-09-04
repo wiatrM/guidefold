@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": ".agents/skills/guidefold/scripts/guidefold prewarm",
+        "powershell": "python .agents/skills/guidefold/scripts/guidefold prewarm",
+        "cwd": ".",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

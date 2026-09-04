@@ -1,0 +1,33 @@
+# Offline bundle manifest for air-gapped edge sites.
+# Built only from release tags by `make bundle-pack`; images are pinned by digest by `make bundle-resolve`.
+apiVersion: relay.meridian/v1
+kind: EdgeBundle
+release: v3.4.0
+builtFrom: refs/tags/v3.4.0
+
+mirrorRegistry:
+  host: mirror-registry.meridian-system.svc     # in-cluster service started from the bundle's OCI layout
+  port: 5000
+  tlsSecret: mirror-registry-tls
+  pullSecret: mirror-registry-pull
+
+components:
+  - name: forge-ontology
+    chart: charts/forge-ontology-3.4.0.tgz
+    chartVersion: 3.4.0
+    images:
+      - repository: meridian/forge-ontology
+        digest: sha256:0000000000000000000000000000000000000000000000000000000000000001
+  - name: atlas-workspace
+    chart: charts/atlas-workspace-3.4.0.tgz
+    chartVersion: 3.4.0
+    images:
+      - repository: meridian/atlas-workspace
+        digest: sha256:0000000000000000000000000000000000000000000000000000000000000002
+
+signing:
+  keyRef: cosign://relay-edge-release
+  manifestSignature: manifest.yaml.sig
+
+limits:
+  maxSizeGiB: 20

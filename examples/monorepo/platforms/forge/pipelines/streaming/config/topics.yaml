@@ -1,0 +1,28 @@
+# Kafka topics consumed by Forge streaming pipelines.
+# Naming: meridian.<domain>.<entity>.<version>. retentionMs is mandatory and written out per topic.
+defaults:
+  partitions: 3
+  replicationFactor: 3
+  retentionMs: 604800000          # 7 days; still repeated explicitly on every topic
+
+topics:
+  - name: meridian.telemetry.vehicle-position.v1
+    partitions: 6
+    retentionMs: 604800000
+    schemaRef: schemas/avro/telemetry/vehicle_position.avsc
+    owner: streaming-team
+    landingDataset: telemetry.vehicle_position_event
+
+  - name: meridian.incidents.incident.v1
+    partitions: 3
+    retentionMs: 2592000000       # 30 days: incident records are replayed for monthly reconciliation
+    schemaRef: schemas/avro/incidents/incident.avsc
+    owner: streaming-team
+    landingDataset: incidents.incident_event
+
+  - name: meridian.incidents.incident.v1.dlq
+    partitions: 3
+    retentionMs: 1209600000       # 14 days
+    schemaRef: null               # JSON, dead-letter only
+    owner: streaming-team
+    landingDataset: null

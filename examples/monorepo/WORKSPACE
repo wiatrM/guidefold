@@ -1,0 +1,23 @@
+# Meridian Bazel workspace. External dependencies are pinned by version and sha256 and mirrored
+# for offline builds (see the security-baseline and monorepo-conventions skills).
+workspace(name = "meridian")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "io_bazel_rules_go",
+    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",  # fixture placeholder
+    urls = ["https://mirror.meridian.example/bazel/rules_go-v0.48.0.zip"],
+)
+
+http_archive(
+    name = "rules_python",
+    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",  # fixture placeholder
+    urls = ["https://mirror.meridian.example/bazel/rules_python-0.34.0.tar.gz"],
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains(version = "1.22.5")

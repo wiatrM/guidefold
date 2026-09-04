@@ -1,0 +1,40 @@
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+*:Zone.Identifier
+
+# Secrets / local config
+.env
+.env.*
+*.pem
+*.json.key
+
+# generated guidefold artifacts (ADR-0012) — cards, index, cache, telemetry
+.guidefold/
+
+# node / prototypes
+node_modules/
+dist/
+.vite/
+
+# local-only, never published (competitive briefs, decks, partner material)
+private/

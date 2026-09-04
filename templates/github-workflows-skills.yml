@@ -1,0 +1,43 @@
+# .github/workflows/skills.yml — Guidefold skill CI (MVP)
+name: skills
+on:
+  pull_request:
+    paths: ["**/.agents/skills/**", "guidefold.yaml", "**"]   # drift needs code diffs too
+  push:
+    branches: [main]
+    paths: ["**/.agents/skills/**", "guidefold.yaml"]
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: pipx install skillscheck && skillscheck . || true     # lint, advisory at first
+      - run: pip install pyyaml && ./.agents/skills/guidefold/scripts/guidefold validate
+      - run: ./.agents/skills/guidefold/scripts/guidefold materialize --check
+      - name: drift
+        run: ./.agents/skills/guidefold/scripts/guidefold drift --base origin/${{ github.base_ref }} | tee drift.txt
+      - name: comment
+        if: hashFiles('drift.txt') != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with: { path: drift.txt, header: guidefold-drift }
+
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - uses: google-github-actions/auth@v2          # Workload Identity Federation → CI SA with agentregistry.user
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: guidefold-ci@sabre-agent-registry.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+        with: { install_components: alpha }
+      - run: pip install pyyaml
+      - run: ./.agents/skills/guidefold/scripts/guidefold index
+      - run: ./.agents/skills/guidefold/scripts/guidefold materialize   # cards committed back by a bot PR or a pre-merge step
+      - run: ./.agents/skills/guidefold/scripts/guidefold --backend agent-registry publish --changed --base HEAD~1

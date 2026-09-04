@@ -1,0 +1,35 @@
+# Meridian security baseline. Machine-readable; explained by the root security-baseline skill.
+# Platform teams may tighten these values, never relax them without an approved exception.
+schemaVersion: 2
+allowedRegistries:
+  - registry.meridian.example/platform
+  - registry.meridian.example/thirdparty-mirror
+  - mirror.edge.example/meridian        # populated from the release bundle on air-gapped sites
+imageSigning:
+  required: true
+  tool: cosign
+  publicKey: security/policy/cosign.pub
+sbom:
+  required: true
+  format: spdx-json
+dependencies:
+  lockfileRequired: true
+  pinActionsBySha: true
+  vulnerabilityGate:
+    critical: block
+    high: exception-required
+secrets:
+  source: platform-secret-store
+  allowInEnvFiles: false
+  allowInHelmValues: false
+tls:
+  minVersion: "1.2"
+  plaintextAllowedOn: ["localhost"]
+containers:
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowedCapabilities: []
+exceptions:
+  directory: security/policy/exceptions
+  requireExpiry: true
+  approver: "@meridian/security-org"

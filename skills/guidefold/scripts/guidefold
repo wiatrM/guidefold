@@ -1,0 +1,580 @@
+#!/usr/bin/env python3
+"""guidefold — minimal CLI for hierarchy-aware skill discovery over Google Agent Registry.
+
+Subcommands
+  where                     print hierarchy node for cwd (from guidefold.yaml)
+  find "<task>" --scope N   semantic search + URN-prefix filter for N and ancestors
+  load <urn>                download default revision into .guidefold/cache/<urn>/
+  validate                  CI: enforce CONVENTIONS.md on all skills
+  drift --base <ref>        CI: code diff ∩ metadata.references → report
+  publish --changed         CI: zip + CreateSkill/CreateSkillRevision for changed skills
+  index                     CI: regenerate the hierarchy-index skill
+  materialize [--check]     CI: generate L0 scope cards (AGENTS.md per node, applyTo instructions, CLAUDE.md/GEMINI.md)
+  hook                      harness hook (Claude Code / Codex): read JSON on stdin, print top-3 cards for the prompt
+  prewarm                   Copilot sessionStart: download the node chain's skills into .guidefold/cache
+
+Design notes
+  * All registry access goes through the `registry` section so it can be swapped for MCP
+    or an ARD endpoint later without touching SKILL.md (ADR-0003).
+  * Uses `gcloud` for auth and for search (Preview API), REST for payload upload/download.
+  * Intentionally dependency-light: stdlib + PyYAML.
+"""
+import argparse, datetime, fnmatch, io, json, os, re, shutil, subprocess, sys, tempfile, zipfile
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # keep the failure loud but friendly
+    sys.exit("guidefold: PyYAML missing — pip install pyyaml")
+
+# ---------------------------------------------------------------- repo helpers
+def repo_root() -> Path:
+    """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel as fallback."""
+    env = os.environ.get("GUIDEFOLD_ROOT")
+    if env:
+        return Path(env).resolve()
+    here = Path.cwd().resolve()
+    for d in (here, *here.parents):
+        if (d / "guidefold.yaml").is_file():
+            return d
+    out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if out.returncode != 0:
+        sys.exit("guidefold: no guidefold.yaml above cwd and not inside a git repository")
+    return Path(out.stdout.strip())
+
+def load_map(root: Path) -> dict:
+    cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
+    cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    return cfg
+
+def rel(root: Path, p: Path) -> str:
+    return str(p.resolve().relative_to(root)).replace(os.sep, "/")
+
+def node_for(cfg: dict, relpath: str) -> str:
+    """Most specific node whose paths match relpath (longest glob wins)."""
+    best, best_len = "_root", -1
+    for node, spec in cfg["nodes"].items():
+        for g in spec.get("paths", []):
+            if fnmatch.fnmatch(relpath + "/", g) or fnmatch.fnmatch(relpath, g):
+                if len(g) > best_len:
+                    best, best_len = node, len(g)
+    return best
+
+def ancestors(node: str) -> list:
+    """mosaic.identity.turnstile -> [mosaic.identity.turnstile, mosaic.identity, mosaic, _root]"""
+    parts = node.split(".") if node != "_root" else []
+    chain = [".".join(parts[:i]) for i in range(len(parts), 0, -1)]
+    return chain + ["_root"]
+
+def urn(cfg: dict, node: str, name: str) -> str:
+    return f"urn:skill:{cfg['publisher']}:{node}:{name}"
+
+# ------------------------------------------------------------- registry layer
+# Verified against Agent Registry v1alpha on 2026-09-04 (see docs/adr/ADR-0008 and docs/ASSESSMENT.md):
+#   * resource id we choose:  <publisher>--<node with . -> ->--<name>   ("root" for _root)
+#   * server stores it as     private-<resource id>  and assigns
+#     skillId = urn:skill:projects-<NUMBER>:locations:<LOC>:private-<resource id>
+#   * create (draft, no payload) -> revisions create --payload=<zip> -> update --default-revision -> update --target-state=active
+#   * keyword prefix search:  skillId:private-<publisher>--<flat-node>*   (short form only)
+#   * revisions download --destination=<dir> extracts the zip into <dir>
+ZIP_MAX_COMPRESSED = 500 * 1024        # system limit (fixed)
+ZIP_MAX_FILE = 1024 * 1024             # system limit (fixed)
+KEEP_REVISIONS = 20                    # quota is 100 revisions per skill
+
+def flat_node(node: str) -> str:
+    return node.lstrip("_").replace(".", "-")
+
+def parse_urn(u: str):
+    """urn:skill:<publisher>:<node>:<name> -> (publisher, node, name)"""
+    parts = u.split(":")
+    if len(parts) != 5 or parts[:2] != ["urn", "skill"]:
+        sys.exit(f"guidefold: not a logical skill URN: {u}")
+    return parts[2], parts[3], parts[4]
+
+def zip_skill_dir(skill_dir: Path, zpath: Path):
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(skill_dir.rglob("*")):
+            if f.is_file() and not any(part in (".git", "__pycache__") for part in f.parts):
+                if f.stat().st_size > ZIP_MAX_FILE:
+                    sys.exit(f"guidefold: {f} exceeds 1 MB per-file limit")
+                z.write(f, f.relative_to(skill_dir))
+    if zpath.stat().st_size > ZIP_MAX_COMPRESSED:
+        sys.exit(f"guidefold: {skill_dir} zips to {zpath.stat().st_size} bytes > 500 KB limit")
+
+class Registry:
+    """Google Cloud Agent Registry backend (gcloud alpha). All registry access goes through here (ADR-0003)."""
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.project = cfg["registry"]["project"]
+        self.location = cfg["registry"].get("location", "global")
+        self.publisher = cfg["publisher"]
+        self._node_by_flat = {flat_node(n): n for n in cfg["nodes"]}
+        self._node_by_flat["index"] = "_index"
+
+    # --- gcloud plumbing
+    def _gcloud(self, *args, fmt="json", check=True):
+        cmd = ["gcloud", "alpha", "agent-registry", *args,
+               f"--project={self.project}", f"--location={self.location}", f"--format={fmt}"]
+        out = subprocess.run(cmd, capture_output=True, text=True)
+        if out.returncode != 0:
+            if check:
+                err = [l for l in out.stderr.splitlines() if l.strip() and not l.startswith((".", "Waiting for", "Create request", "Update request"))]
+                sys.exit("guidefold: gcloud failed: " + " | ".join(err[:4]) if err else f"guidefold: gcloud failed: {' '.join(cmd)}")
+            return None
+        if fmt != "json":
+            return out.stdout
+        return json.loads(out.stdout or "null")
+
+    # --- id mapping (ADR-0008)
+    def resource_id(self, node: str, name: str) -> str:
+        return f"{self.publisher}--{flat_node(node)}--{name}"
+
+    def registry_name(self, node: str, name: str) -> str:
+        return "private-" + self.resource_id(node, name)
+
+    def full_name(self, node: str, name: str) -> str:
+        return f"projects/{self.project}/locations/{self.location}/skills/{self.registry_name(node, name)}"
+
+    def to_logical(self, s: dict):
+        """registry search/list result -> (logical urn, node, name) or None if not ours."""
+        rid = (s.get("skillId") or "").rsplit(":", 1)[-1]
+        prefix = f"private-{self.publisher}--"
+        if not rid.startswith(prefix):
+            return None
+        flat, _, name = rid[len(prefix):].partition("--")
+        node = self._node_by_flat.get(flat)
+        if node is None:                                    # fallback: exact node from the description tag
+            m = re.match(r"\[([^\]]+)\]", s.get("description", ""))
+            node = m.group(1).replace("/", ".") if m and m.group(1) != self.publisher else "_root"
+        return urn(self.cfg, node, name), node, name
+
+    def _cards(self, results):
+        cards = []
+        for s in results or []:
+            lg = self.to_logical(s)
+            if lg:
+                cards.append({"urn": lg[0], "node": lg[1], "name": lg[2],
+                              "description": s.get("description", ""), "registry": s.get("skillId")})
+        return cards
+
+    # --- reads
+    def search_scope(self, nodes):
+        """All our skills whose node is in `nodes` (one prefix call per distinct top-level segment)."""
+        wanted = set(nodes)
+        tops = {flat_node(n).split("-")[0] for n in nodes}
+        hits = []
+        for top in tops:
+            q = f"skillId:private-{self.publisher}--{top}*"
+            hits += self._cards(self._gcloud("skills", "search", f"--query={q}", "--search-type=keyword"))
+        seen, out = set(), []
+        for c in hits:
+            if c["node"] in wanted and c["urn"] not in seen:
+                seen.add(c["urn"]); out.append(c)
+        return out
+
+    def search_semantic(self, query: str):
+        return self._cards(self._gcloud("skills", "search", f"--query={query[:500]}", "--search-type=semantic"))
+
+    def download(self, logical_urn: str, dest: Path):
+        _, node, name = parse_urn(logical_urn)
+        rname = self.registry_name(node, name)
+        meta = self._gcloud("skills", "describe", rname)
+        rev = (meta.get("defaultRevision") or "").rsplit("/", 1)[-1]
+        if not rev:
+            sys.exit(f"guidefold: {logical_urn} has no default revision")
+        with tempfile.TemporaryDirectory() as td:
+            self._gcloud("skills", "revisions", "download", rev, f"--skill={rname}",
+                         f"--destination={td}", "--allow-overwrite", fmt="none")
+            src = Path(td)
+            if not (src / "SKILL.md").exists():                  # gcloud nests the payload under <revision-id>/
+                nested = [d for d in src.iterdir() if (d / "SKILL.md").exists()]
+                if len(nested) != 1:
+                    sys.exit(f"guidefold: unexpected payload layout for {logical_urn}: {[x.name for x in src.iterdir()]}")
+                src = nested[0]
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(src, dest)
+
+    # --- writes (CI only)
+    def publish(self, node: str, name: str, skill_dir: Path, display: str, desc: str, rev_id: str):
+        rid, rname = self.resource_id(node, name), self.registry_name(node, name)
+        existing = self._gcloud("skills", "describe", rname, check=False)
+        if existing is None:
+            self._gcloud("skills", "create", rid, f"--display-name={display[:63]}", f"--description={desc[:2048]}",
+                         "--type=simple", "--target-state=draft")
+        elif existing.get("description") != desc[:2048] or existing.get("displayName") != display[:63]:
+            self._gcloud("skills", "update", rname, f"--display-name={display[:63]}", f"--description={desc[:2048]}")
+        with tempfile.TemporaryDirectory() as td:
+            zpath = Path(td) / f"{rid}.zip"
+            zip_skill_dir(skill_dir, zpath)
+            self._gcloud("skills", "revisions", "create", rev_id, f"--skill={rname}", f"--payload={zpath}")
+        self._gcloud("skills", "update", rname, f"--default-revision={self.full_name(node, name)}/revisions/{rev_id}")
+        target = "deprecated" if desc.startswith("DEPRECATED") else "active"
+        current = (existing or {}).get("targetState", "TARGET_STATE_DRAFT").lower()
+        if current == "target_state_draft":
+            self._gcloud("skills", "update", rname, "--target-state=active"); current = "target_state_active"
+        if current != f"target_state_{target}":
+            self._gcloud("skills", "update", rname, f"--target-state={target}")
+        revs = self._gcloud("skills", "revisions", "list", f"--skill={rname}") or []
+        others = [r for r in revs if not r["name"].endswith("/" + rev_id)]
+        failed = [r for r in others if r.get("state") == "FAILED"]                 # rejected payloads: drop immediately
+        old = sorted((r for r in others if r.get("state") != "FAILED"), key=lambda r: r.get("createTime", ""))
+        for r in failed + old[: max(0, len(old) - (KEEP_REVISIONS - 1))]:
+            self._gcloud("skills", "revisions", "delete", r["name"].rsplit("/", 1)[-1], f"--skill={rname}", "--quiet", fmt="none")
+        return rname
+
+class LocalRegistry:
+    """Filesystem backend (registry.backend: local): the monorepo itself is the registry. Same interface as Registry."""
+    def __init__(self, cfg, root: Path):
+        self.cfg, self.root = cfg, root
+        self._skills = [(d, node, fm) for d, node, fm in all_skills(root, cfg)]
+
+    def _card(self, d, node, fm):
+        return {"urn": urn(self.cfg, node, d.name), "node": node, "name": d.name,
+                "description": fm.get("description", ""), "registry": "local:" + rel(self.root, d)}
+
+    def search_scope(self, nodes):
+        wanted = set(nodes)
+        return [self._card(d, n, fm) for d, n, fm in self._skills if n in wanted]
+
+    def search_semantic(self, query: str):
+        """Keyword overlap over description + digest + body (BM25 planned, ADR-0009)."""
+        terms = {t for t in re.findall(r"[a-z0-9][a-z0-9_.-]{2,}", query.lower())}
+        scored = []
+        for d, n, fm in self._skills:
+            text = (fm.get("description", "") + " " + (fm.get("metadata") or {}).get("digest", "") + " " +
+                    (d / "SKILL.md").read_text(errors="ignore")).lower()
+            score = sum(text.count(t) for t in terms)
+            if score:
+                scored.append((score, self._card(d, n, fm)))
+        return [c for _, c in sorted(scored, key=lambda x: -x[0])]
+
+    def download(self, logical_urn: str, dest: Path):
+        _, node, name = parse_urn(logical_urn)
+        for d, n, fm in self._skills:
+            if n == node and d.name == name:
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(d, dest)
+                return
+        sys.exit(f"guidefold: {logical_urn} not found in local tree")
+
+    def publish(self, *a, **k):
+        sys.exit("guidefold: publish is a no-op with registry.backend: local")
+
+def registry_for(cfg, root: Path):
+    backend = (cfg.get("registry") or {}).get("backend", "agent-registry")
+    return LocalRegistry(cfg, root) if backend == "local" else Registry(cfg)
+
+# ---------------------------------------------------------------- frontmatter
+FM = re.compile(r"^---\n(.*?)\n---", re.S)
+
+def frontmatter(skill_md: Path) -> dict:
+    m = FM.match(skill_md.read_text())
+    return yaml.safe_load(m.group(1)) if m else {}
+
+def md_list(md: dict, key: str) -> list:
+    """metadata.<key> is a comma-separated string (Agent Registry rejects non-scalar metadata, ADR-0010);
+    YAML lists are still parsed so validate can report them."""
+    v = (md or {}).get(key)
+    if v is None or v == "":
+        return []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    return [x.strip() for x in re.split(r"[,\s]+", str(v)) if x.strip()]
+
+def all_skills(root: Path, cfg: dict, include_generated: bool = False):
+    for md in sorted(root.rglob(".agents/skills/*/SKILL.md")):
+        if ".guidefold" in md.parts:
+            continue
+        fm = frontmatter(md)
+        meta = fm.get("metadata") or {}
+        if str(meta.get("generated", "")).lower() == "true":   # e.g. hierarchy-index written by `guidefold index`
+            if not include_generated:
+                continue
+            yield md.parent, meta.get("scope", "_index"), fm
+            continue
+        d = md.parent
+        yield d, node_for(cfg, rel(root, d)), fm
+
+# ------------------------------------------------------------------- commands
+def cmd_where(a, root, cfg):
+    node = node_for(cfg, rel(root, Path.cwd()))
+    print(json.dumps({"node": node, "owner": cfg["nodes"][node].get("owner"),
+                      "ancestors": ancestors(node)}, indent=2))
+
+def rank_cards(reg, node, task, limit):
+    """Scope first (exact node, then ancestors), then semantic hits anywhere (ADR-0009 §1)."""
+    chain = ancestors(node)
+    rank_of = {n: i for i, n in enumerate(chain)}
+    hits = {}
+    for c in reg.search_scope(chain):
+        hits.setdefault(c["urn"], {**c, "_rank": rank_of[c["node"]], "_why": f"scope:{c['node']}"})
+    if task:
+        for c in reg.search_semantic(task):
+            hits.setdefault(c["urn"], {**c, "_rank": len(chain), "_why": "semantic"})
+    return sorted(hits.values(), key=lambda c: c["_rank"])[:limit]
+
+def cmd_find(a, root, cfg):
+    reg = registry_for(cfg, root)
+    scope = a.scope or node_for(cfg, rel(root, Path.cwd()))
+    for c in rank_cards(reg, scope, a.task, a.limit):
+        print(f"- {c['urn']}\n    {c['description'][:160]}\n    ({c['_why']})")
+
+def cache_dir(root: Path, logical_urn: str) -> Path:
+    return root / ".guidefold" / "cache" / logical_urn.replace(":", "_")
+
+def cmd_load(a, root, cfg):
+    dest = cache_dir(root, a.urn)
+    registry_for(cfg, root).download(a.urn, dest)
+    print(dest / "SKILL.md")
+
+def cmd_validate(a, root, cfg):
+    errors = []
+    skills = list(all_skills(root, cfg))
+    urns = {urn(cfg, node, d.name): fm for d, node, fm in skills}
+    for d, node, fm in skills:
+        md = fm.get("metadata") or {}
+        rd = d.relative_to(root)
+        if fm.get("name") != d.name:
+            errors.append(f"{rd}: name != directory")
+        if md.get("scope") != node:
+            errors.append(f"{rd}: metadata.scope={md.get('scope')} but path node={node}")
+        if md.get("owner") not in (cfg["nodes"][node].get("owner"), *cfg["nodes"][node].get("subteams", [])):
+            errors.append(f"{rd}: owner {md.get('owner')} not allowed for node {node}")
+        for k, v in md.items():
+            if not isinstance(v, str):
+                errors.append(f"{rd}: metadata.{k} must be a scalar string (registry rejects lists/dates/bools; use a comma-separated string)")
+        tag = "[" + (cfg["publisher"] if node == "_root" else node.replace(".", "/")) + "]"
+        if not str(fm.get("description", "")).startswith(tag):
+            errors.append(f"{rd}: description must start with {tag}")
+        if len(str(fm.get("description", ""))) > 1024:
+            errors.append(f"{rd}: description longer than 1024 chars")
+        refs = md_list(md, "references")
+        if len(refs) > 10:
+            errors.append(f"{rd}: more than 10 references — skill is too broad")
+        for r in refs:
+            path, _, token = r.partition("#")
+            matches = [m for m in root.glob(path) if m.is_file()]
+            if not matches:
+                errors.append(f"{rd}: reference not found: {r}")
+            elif token and not any(token in m.read_text(errors="ignore") for m in matches):
+                errors.append(f"{rd}: token '{token}' not found in {path}")
+        for r in md_list(md, "requires"):
+            if r not in urns:
+                errors.append(f"{rd}: requires unknown skill {r}")
+        if md.get("status") not in ("active", "deprecated"):
+            errors.append(f"{rd}: metadata.status must be active or deprecated")
+        if md.get("status") == "deprecated" and not md.get("replaced_by"):
+            errors.append(f"{rd}: deprecated skill must set metadata.replaced_by")
+    flats = {}
+    for n in cfg["nodes"]:
+        flats.setdefault(flat_node(n), []).append(n)
+    for f, ns in flats.items():
+        if len(ns) > 1:
+            errors.append(f"guidefold.yaml: nodes {ns} collide after flattening to '{f}' (ADR-0008)")
+    graph = {u: [r for r in md_list(fm.get("metadata") or {}, "requires") if r in urns] for u, fm in urns.items()}
+    state = {}
+    def visit(n, stack):
+        state[n] = 1
+        for m in graph[n]:
+            if state.get(m) == 1:
+                errors.append("requires cycle: " + " -> ".join(stack + [m]))
+            elif state.get(m) is None:
+                visit(m, stack + [m])
+        state[n] = 2
+    for u in graph:
+        if state.get(u) is None:
+            visit(u, [u])
+    for e in errors:
+        print("ERROR", e)
+    print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
+    sys.exit(1 if errors else 0)
+
+def cmd_drift(a, root, cfg):
+    diff = subprocess.run(["git", "diff", "--name-only", "--relative", a.base], capture_output=True, text=True, cwd=root).stdout.split()
+    report = []
+    for d, node, fm in all_skills(root, cfg):
+        for r in md_list(fm.get("metadata") or {}, "references"):
+            path, _, token = r.partition("#")
+            for changed in diff:
+                if fnmatch.fnmatch(changed, path):
+                    hit = True
+                    if token:
+                        patch = subprocess.run(["git", "diff", "--relative", a.base, "--", changed], capture_output=True, text=True, cwd=root).stdout
+                        hit = token in patch
+                    if hit:
+                        report.append((urn(cfg, node, d.name), fm["metadata"].get("owner"), changed, token))
+    if report:
+        print("⚠ Possibly stale guidance:")
+        for u, o, f, t in report:
+            print(f"- {u} (owner: {o}) references {f}{'#'+t if t else ''}")
+    sys.exit(0)  # advisory in MVP
+
+def cmd_publish(a, root, cfg):
+    reg = registry_for(cfg, root)
+    changed = set(subprocess.run(["git", "diff", "--name-only", "--relative", a.base], capture_output=True, text=True, cwd=root).stdout.split()) if a.changed else None
+    sha = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, cwd=root).stdout.strip() or "nogit"
+    rev_id = a.revision or f"rev-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}-{sha}"
+    n = 0
+    for d, node, fm in all_skills(root, cfg, include_generated=True):
+        if changed is not None and not any(c.startswith(rel(root, d)) for c in changed):
+            continue
+        if a.only and a.only not in urn(cfg, node, d.name):
+            continue
+        md = fm.get("metadata") or {}
+        desc = fm.get("description", "")
+        if md.get("status") == "deprecated":
+            desc = "DEPRECATED (see " + str(md.get("replaced_by", "?")) + ") " + desc
+        print("publish", urn(cfg, node, d.name), "->", reg.publish(node, d.name, d, display=f"{node}/{d.name}", desc=desc, rev_id=rev_id))
+        n += 1
+    print(f"guidefold publish: {n} skills, revision {rev_id}")
+
+def cmd_index(a, root, cfg):
+    pub = cfg["publisher"]
+    lines = ["---", "name: hierarchy-index", f'description: "[{pub}] Generated map of all hierarchy nodes, owners and skills. Load once per session when unsure where you are."',
+             "metadata:", "  scope: _index", f"  owner: {cfg['nodes']['_root'].get('owner')}", '  generated: "true"', "  status: active", "---", f"# {pub} skill hierarchy", ""]
+    by_node = {}
+    for d, node, fm in all_skills(root, cfg):
+        by_node.setdefault(node, []).append((d.name, fm.get("description", "")))
+    for node, spec in cfg["nodes"].items():
+        lines.append(f"## {node}  (owner: {spec.get('owner')})  paths: {', '.join(spec.get('paths', []))}")
+        for name, desc in sorted(by_node.get(node, [])):
+            lines.append(f"- `{urn(cfg, node, name)}` — {desc[:120]}")
+        lines.append("")
+    out = root / ".agents" / "skills" / "hierarchy-index" / "SKILL.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines))
+    print(out)
+
+
+# ---------------------------------------------------------- L0: scope cards
+CARD_CAP = 80
+
+def node_meta(cfg, node):
+    return cfg["nodes"].get(node, {})
+
+def digest_of(fm):
+    md = fm.get("metadata", {})
+    return md.get("digest") or fm.get("description", "")[:200]
+
+def build_card(root, cfg, node, skills_by_node):
+    chain = ancestors(node)                      # node first … _root last
+    root_label = f"{cfg['publisher']} (root)"
+    lines = [f"# Scope: {node if node != '_root' else root_label}",
+             f"Owner: {node_meta(cfg, node).get('owner')} · Hierarchy (specific → general): {' → '.join(chain)}", ""]
+    extra = root / (node_meta(cfg, node).get("paths", ["."])[0].split("*")[0]) / ".agents" / "NODE.md"
+    if extra.exists():
+        lines += [extra.read_text().strip(), ""]
+    lines += ["## Inherited guidance (general → specific)", ""]
+    for n in reversed(chain):                    # root first
+        label = root_label if n == "_root" else n
+        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+        for name, fm in sorted(skills_by_node.get(n, [])):
+            md = fm.get("metadata") or {}
+            flag = f" **DEPRECATED → {md.get('replaced_by', '?')}**" if md.get("status") == "deprecated" else ""
+            lines.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
+        if not skills_by_node.get(n):
+            lines.append("- (no skills at this level yet)")
+        lines.append("")
+    lines += ["## How to get the full procedure",
+              "Skills above are summaries. Before implementing anything platform-specific, run",
+              f"`.agents/skills/guidefold/scripts/guidefold find \"<your task>\" --scope {node}` and then",
+              "`guidefold load <urn>` for the 1–3 most relevant ones (follow `metadata.requires`).",
+              "Generated by guidefold materialize — do not edit; edit guidefold.yaml, NODE.md or the skills instead.", ""]
+    if len(lines) > CARD_CAP:
+        sys.exit(f"guidefold: scope card for {node} exceeds {CARD_CAP} lines — shorten metadata.digest")
+    return "\n".join(lines)
+
+def cmd_materialize(a, root, cfg):
+    skills_by_node = {}
+    for d, node, fm in all_skills(root, cfg):
+        skills_by_node.setdefault(node, []).append((d.name, fm))
+    outputs = {}
+    for node, spec in cfg["nodes"].items():
+        node_dir = root if node == "_root" else root / spec["paths"][0].split("*")[0].rstrip("/")
+        card = build_card(root, cfg, node, skills_by_node)
+        outputs[node_dir / "AGENTS.md"] = card
+        outputs[node_dir / "CLAUDE.md"] = "@AGENTS.md\n"
+        outputs[node_dir / "GEMINI.md"] = "@AGENTS.md\n"
+        if node != "_root":
+            globs = ", ".join(f'"{g}"' for g in spec["paths"])
+            outputs[root / ".github" / "instructions" / f"{node}.instructions.md"] = f"---\napplyTo: {globs}\n---\n{card}"
+    stale = []
+    for path, content in outputs.items():
+        if a.check:
+            if not path.exists() or path.read_text() != content:
+                stale.append(str(path.relative_to(root)))
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+            print("wrote", path.relative_to(root))
+    if a.check and stale:
+        print("STALE generated files (run guidefold materialize):\n  " + "\n  ".join(stale)); sys.exit(1)
+
+# ------------------------------------------------- L1: hooks (Claude/Codex)
+def cmd_hook(a, root, cfg):
+    """Claude Code UserPromptSubmit/SessionStart and Codex hooks pass JSON on stdin.
+    We print plain text; the harness adds stdout to the model context (exit 0)."""
+    try:
+        payload = json.load(sys.stdin)
+    except Exception:
+        payload = {}
+    cwd = Path(payload.get("cwd") or Path.cwd())
+    node = node_for(cfg, rel(root, cwd))
+    prompt = payload.get("prompt") or payload.get("user_prompt") or ""
+    if not prompt:                                # SessionStart: just announce scope
+        print(f"[guidefold] scope={node} owner={node_meta(cfg, node).get('owner')} chain={'→'.join(ancestors(node))}")
+        return
+    if len(prompt) < 12:                          # skip trivial prompts ("yes", "continue")
+        return
+    try:
+        top = rank_cards(registry_for(cfg, root), node, prompt, 3)
+    except SystemExit:
+        return                                    # registry down → L0 still covers us
+    if not top:
+        return
+    print(f"[guidefold] Relevant organizational guidance for scope {node}:")
+    for c in top:
+        print(f"- {c['urn']} — {c['description'][:140]}")
+    print("Load with: .agents/skills/guidefold/scripts/guidefold load <urn>  (follow metadata.requires).")
+
+def cmd_prewarm(a, root, cfg):
+    """Copilot sessionStart: output is ignored, side effects are not."""
+    node = node_for(cfg, rel(root, Path.cwd()))
+    reg = registry_for(cfg, root)
+    for c in reg.search_scope(ancestors(node)):
+        dest = cache_dir(root, c["urn"])
+        if not (dest / "SKILL.md").exists():
+            try:
+                reg.download(c["urn"], dest)
+            except SystemExit:
+                pass
+
+# ------------------------------------------------------------------------ main
+def main():
+    p = argparse.ArgumentParser(prog="guidefold")
+    p.add_argument("--backend", choices=["local", "agent-registry"], help="override registry.backend from guidefold.yaml")
+    p.add_argument("--project", help="override registry.project from guidefold.yaml")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("where")
+    f = sub.add_parser("find"); f.add_argument("task"); f.add_argument("--scope"); f.add_argument("--limit", type=int, default=8)
+    l = sub.add_parser("load"); l.add_argument("urn")
+    sub.add_parser("validate")
+    dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")
+    pu = sub.add_parser("publish"); pu.add_argument("--changed", action="store_true"); pu.add_argument("--base", default="HEAD~1"); pu.add_argument("--revision"); pu.add_argument("--only", help="publish only skills whose logical URN contains this substring")
+    sub.add_parser("index")
+    m = sub.add_parser("materialize"); m.add_argument("--check", action="store_true")
+    sub.add_parser("hook")
+    sub.add_parser("prewarm")
+    a = p.parse_args()
+    root = repo_root(); cfg = load_map(root)
+    cfg.setdefault("registry", {})
+    if a.backend:
+        cfg["registry"]["backend"] = a.backend
+    if a.project:
+        cfg["registry"]["project"] = a.project
+    globals()[f"cmd_{a.cmd}"](a, root, cfg)
+
+if __name__ == "__main__":
+    main()

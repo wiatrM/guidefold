@@ -1,0 +1,19 @@
+# Meridian CODEOWNERS. One line per guidefold.yaml node; the team must equal the node owner
+# (or a listed subteam). guidefold validate cross-checks this file against guidefold.yaml.
+*  @meridian/platform-engineering
+/platforms/forge/  @meridian/forge-platform
+/platforms/forge/ontology/  @meridian/ontology-team
+/platforms/forge/pipelines/  @meridian/pipelines-team
+/platforms/forge/pipelines/streaming/  @meridian/streaming-team
+/platforms/atlas/  @meridian/atlas-platform
+/platforms/atlas/geo/  @meridian/geo-team
+/platforms/atlas/graph/  @meridian/graph-team
+/platforms/atlas/identity/  @meridian/identity-platform
+/platforms/atlas/identity/turnstile/  @meridian/turnstile-team @meridian/turnstile-oncall
+/infra/relay/  @meridian/relay-infra
+/infra/relay/edge/  @meridian/edge-team
+/infra/relay/k8s/  @meridian/k8s-team
+/security/  @meridian/security-org
+/security/audit/  @meridian/audit-team
+/libs/  @meridian/shared-libs
+/libs/auth-sdk/  @meridian/identity-platform

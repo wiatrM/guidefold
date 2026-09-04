@@ -1,0 +1,30 @@
+# Vector tile configuration for atlas geo layers.
+# tilectl renders tiles/sql/<layer>.sql.tmpl from this file; see the map-tile-serving skill.
+defaults:
+  minZoom: 4
+  maxZoom: 14
+  tolerance: 8          # simplification in metres per zoom step
+  buffer: 64            # tile buffer in pixels
+  extent: 4096
+  cacheTtl: 3600        # seconds; emitted as Cache-Control max-age
+layers:
+  admin-boundaries:
+    layerVersion: 3
+    minZoom: 0
+    maxZoom: 12
+    properties: [id, name, level, updatedAt]
+    generalize:
+      zoom: 6
+      h3ParentResolution: 3
+  infrastructure-sites:
+    layerVersion: 7
+    minZoom: 6
+    maxZoom: 16
+    tolerance: 4
+    cacheTtl: 900
+    properties: [id, name, category, observedAt]
+    generalize:
+      zoom: 9
+      h3ParentResolution: 5
+warm:
+  - admin-boundaries

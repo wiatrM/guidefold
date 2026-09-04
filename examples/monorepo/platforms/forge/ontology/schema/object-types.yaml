@@ -1,0 +1,41 @@
+# Forge ontology: object types and link types.
+# Compiled by `forge ontology compile` into Postgres DDL and typings.
+# Keep objectTypes sorted by id; linkTypes sorted by from, then to.
+ontologyVersion: 3
+
+objectTypes:
+  - id: Facility
+    backingDataset: facilities.site_current
+    primaryKey: id
+    titleProperty: name
+    properties:
+      - { name: name, type: string, nullable: false }
+      - { name: facilityType, type: string, nullable: false, enum: [depot, station, warehouse, office] }
+      - { name: location, type: geopoint, nullable: true }
+      - { name: classification, type: string, nullable: false }
+
+  - id: Incident
+    backingDataset: incidents.incident_event
+    primaryKey: id
+    titleProperty: summary
+    properties:
+      - { name: summary, type: string, nullable: false }
+      - { name: severity, type: integer, nullable: false }
+      - { name: reportedAt, type: timestamp, nullable: false }
+      - { name: facilityId, type: string, nullable: true }
+      - { name: classification, type: string, nullable: false }
+
+  - id: Vehicle
+    backingDataset: fleet.vehicle_daily
+    primaryKey: id
+    titleProperty: callSign
+    properties:
+      - { name: callSign, type: string, nullable: false }
+      - { name: vehicleClass, type: string, nullable: false, enum: [truck, van, ambulance, utility] }
+      - { name: homeFacilityId, type: string, nullable: false }
+      - { name: inService, type: boolean, nullable: false }
+      - { name: classification, type: string, nullable: false }
+
+linkTypes:
+  - { id: IncidentAtFacility, from: Incident, to: Facility, cardinality: one-to-many, foreignKey: facilityId }
+  - { id: VehicleAssignedToFacility, from: Vehicle, to: Facility, cardinality: one-to-many, foreignKey: homeFacilityId }

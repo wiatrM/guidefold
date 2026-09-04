@@ -1,0 +1,54 @@
+# Turnstile authorization service. Behaviour flags live ONLY in the ConfigMap below
+# (config.auth.*) and are read once at start-up via auth.Config. See the postgres-auth skill.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turnstile
+  namespace: turnstile
+  labels:
+    app.kubernetes.io/name: turnstile
+    app.kubernetes.io/part-of: atlas
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: turnstile
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: turnstile
+    spec:
+      containers:
+        - name: turnstile
+          image: meridian/turnstile:1.14.2
+          ports:
+            - containerPort: 8081
+          env:
+            - name: AUTH_BUNDLE_VERSION
+              value: "2026.09.01"
+            - name: PG_DSN
+              valueFrom:
+                secretKeyRef: { name: turnstile-pg, key: dsn }
+          volumeMounts:
+            - { name: config, mountPath: /etc/turnstile, readOnly: true }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8081 }
+      volumes:
+        - name: config
+          configMap: { name: turnstile-config }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: turnstile-config
+  namespace: turnstile
+data:
+  config.yaml: |
+    config:
+      auth:
+        legacyAuthMode: true          # transitional; retire dev -> staging -> prod, one release apart
+        decisionCacheVersion: 4
+        decisionCacheTtlSeconds: 30
+        failClosed: true
+      postgres:
+        maxConns: 20                  # matches _root postgres-production defaults

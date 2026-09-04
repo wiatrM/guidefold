@@ -1,0 +1,7 @@
+{
+  "_comment": "Template for ~/.codex/hooks.json — Claude-Code-style schema, timeout in seconds. Verify that UserPromptSubmit stdout is injected as context in your Codex version.",
+  "hooks": {
+    "SessionStart":     [ { "hooks": [ { "type": "command", "command": ".agents/skills/guidefold/scripts/guidefold hook", "timeout": 15 } ] } ],
+    "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": ".agents/skills/guidefold/scripts/guidefold hook", "timeout": 20 } ] } ]
+  }
+}
