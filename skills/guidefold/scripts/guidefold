@@ -12,6 +12,8 @@ Subcommands
   materialize [--check]     CI: generate L0 scope cards (AGENTS.md per node, applyTo instructions, CLAUDE.md/GEMINI.md)
   hook                      harness hook (Claude Code / Codex): read JSON on stdin, print top-3 cards for the prompt
   prewarm                   Copilot sessionStart: download the node chain's skills into <cache_root>/skills
+  init                      bootstrap a consumer monorepo in one command: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore entries
+  doctor [--json]           diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness — prints a fix for every failure
 
 Design notes
   * All registry access goes through the `registry` section so it can be swapped for MCP
@@ -899,6 +901,17 @@ def cmd_load(a, root, cfg):
     print(dest / "SKILL.md")
 
 def cmd_validate(a, root, cfg):
+    skills, errors = _validate_errors(root, cfg)
+    for e in errors:
+        print("ERROR", e)
+    print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
+    sys.exit(1 if errors else 0)
+
+def _validate_errors(root, cfg):
+    """Core CONVENTIONS.md enforcement, split out of cmd_validate so `doctor` can reuse it
+    without duplicating the logic or triggering cmd_validate's sys.exit. Returns
+    (skills, errors) — skills is the same list `all_skills()` produced, errors is a list of
+    human-readable strings (no ERROR prefix, no printing, no exit)."""
     errors = []
     skills = list(all_skills(root, cfg))
     urns = {urn(cfg, node, d.name): fm for d, node, fm in skills}
@@ -953,10 +966,7 @@ def cmd_validate(a, root, cfg):
     check_cycles(requires_graph, "requires", errors)
     refines_graph = {u: [r for r in md_list(fm.get("metadata") or {}, "refines") if r in urns] for u, fm in urns.items()}
     check_cycles(refines_graph, "refines", errors)
-    for e in errors:
-        print("ERROR", e)
-    print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
-    sys.exit(1 if errors else 0)
+    return skills, errors
 
 def cmd_drift(a, root, cfg):
     diff = subprocess.run(["git", "diff", "--name-only", "--relative", a.base], capture_output=True, text=True, cwd=root).stdout.split()
@@ -1123,6 +1133,581 @@ def cmd_prewarm(a, root, cfg):
             pass
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
 
+# ------------------------------------------------------------ init / doctor
+# E0.4: `guidefold init` bootstraps a *consumer* monorepo (guidefold.yaml skeleton,
+# .agents/skills/guidefold, harness hooks, CI workflow, .gitignore) in one idempotent command;
+# `guidefold doctor` diagnoses one and prints a concrete fix for every failure. Both must work
+# on a repo that has no guidefold.yaml yet, so neither uses repo_root()/load_map() (which
+# require one) — see _target_root() and _check_guidefold_yaml() below.
+
+SCRIPT_PATH = Path(__file__).resolve()
+TOOL_SKILL_SRC = SCRIPT_PATH.parent.parent            # .../skills/guidefold (the distributable unit)
+TOOL_REPO_ROOT = TOOL_SKILL_SRC.parent.parent          # the guidefold tool checkout, if run from one
+TOOL_TEMPLATES_DIR = TOOL_REPO_ROOT / "templates"
+
+# harness -> (template filename under skills/guidefold/hooks/, dest path relative to consumer root)
+# Claude and Copilot destinations match docs/CONVENTIONS.md §10. Codex is installed repo-local
+# (.codex/hooks.json) rather than at CONVENTIONS.md's documented ~/.codex/hooks.json: `init`
+# only ever touches the target repo, never the invoking user's home directory, and the shipped
+# codex.hooks.json template's own hook command is repo-relative anyway
+# (".agents/skills/guidefold/scripts/guidefold hook"), which only resolves correctly when the
+# harness's cwd is the repo root — true for a repo-local hook file, not guaranteed for a global
+# one shared across every repo on the machine. docs/ASSESSMENT.md's Day-1 checklist already
+# flags <project>/.codex/hooks.json as the thing to test, with ~/.codex/hooks.json kept as a
+# documented fallback for Codex builds that hit issue #17532 (repo-local hooks not firing).
+HARNESS_HOOK_FILES = {
+    "claude":  ("claude.settings.json", ".claude/settings.json"),
+    "copilot": ("copilot.hooks.json",   ".github/hooks/guidefold.json"),
+    "codex":   ("codex.hooks.json",     ".codex/hooks.json"),
+}
+
+
+def _target_root() -> Path:
+    """Resolve the target repo for init/doctor. Mirrors repo_root()'s search (env var, nearest
+    guidefold.yaml ancestor, git toplevel) but never exits — init runs before guidefold.yaml
+    exists, and doctor must always produce a report, even outside a git repo."""
+    env = os.environ.get("GUIDEFOLD_ROOT")
+    if env:
+        return Path(env).resolve()
+    here = Path.cwd().resolve()
+    for d in (here, *here.parents):
+        if (d / "guidefold.yaml").is_file():
+            return d
+    try:
+        out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            return Path(out.stdout.strip()).resolve()
+    except Exception:
+        pass
+    return here
+
+
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+def _slugify(s: str) -> str:
+    s = _ascii_lower(s or "")
+    s = _SLUG_RE.sub("-", s).strip("-")
+    return s or "org"
+
+
+def _infer_publisher(root: Path, override: str = None) -> str:
+    if override:
+        return _slugify(override)
+    try:
+        out = subprocess.run(["git", "config", "--get", "remote.origin.url"],
+                              capture_output=True, text=True, cwd=root, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            name = out.stdout.strip().rstrip("/").rsplit("/", 1)[-1]
+            if name.endswith(".git"):
+                name = name[:-4]
+            if name:
+                return _slugify(name)
+    except Exception:
+        pass
+    return _slugify(root.name)
+
+
+def _infer_owner_from_codeowners(root: Path) -> str:
+    """Best-effort whole-repo owner from a CODEOWNERS `* @org/team` (or `/*`, `**`, `/**`) rule.
+    Falls back to "unknown" (the same default load_map() uses for a node with no explicit
+    owner) when there's no CODEOWNERS file, or no whole-repo rule in it."""
+    for candidate in (root / "CODEOWNERS", root / ".github" / "CODEOWNERS", root / "docs" / "CODEOWNERS"):
+        if not candidate.is_file():
+            continue
+        for line in candidate.read_text(errors="ignore").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) < 2 or parts[0] not in ("*", "/*", "**", "/**"):
+                continue
+            owner = parts[1].lstrip("@")
+            return owner.rsplit("/", 1)[-1]
+    return "unknown"
+
+
+def _render_guidefold_yaml(publisher: str, owner: str) -> str:
+    # Written as plain text, not yaml.dump(), so `init` never needs to import PyYAML (the CLI
+    # stays lazy about it — see load_map()); publisher/owner are already slug-safe bare scalars.
+    return (
+        "# Guidefold hierarchy map — generated by `guidefold init`.\n"
+        "# Add one node per team/component as your monorepo grows; see templates/guidefold.example.yaml\n"
+        "# in the guidefold tool repo for a worked multi-node example.\n"
+        f"publisher: {publisher}\n"
+        "registry:\n"
+        "  backend: local              # local | agent-registry — flip once you publish to Agent Registry\n"
+        "nodes:\n"
+        "  _root:\n"
+        '    paths: ["**"]\n'
+        f"    owner: {owner}\n"
+    )
+
+
+def _write_guidefold_yaml(dry: bool, root: Path, publisher: str, owner: str):
+    dest = root / "guidefold.yaml"
+    if dest.is_file():
+        print(f"guidefold.yaml already exists at {rel(root, dest)} — leaving it untouched.")
+        return
+    if dry:
+        print(f"[dry-run] would create guidefold.yaml (publisher={publisher}, _root owner={owner})")
+        return
+    dest.write_text(_render_guidefold_yaml(publisher, owner))
+    print(f"created guidefold.yaml (publisher={publisher}, _root owner={owner})")
+
+
+def _stamp_bootstrap_skill(dest: Path, publisher: str, owner: str):
+    """skills/guidefold/SKILL.md ships as a template (see its own header comment): its
+    description embeds a literal `<publisher>` placeholder and its metadata.owner is hardcoded
+    to "platform-engineering" — both would otherwise fail `guidefold validate` in every
+    consumer repo whose publisher/root-owner differ. `init` stamps in the real values so a
+    freshly-bootstrapped repo validates clean without a manual edit."""
+    skill_md = dest / "SKILL.md"
+    if not skill_md.is_file():
+        return
+    text = skill_md.read_text()
+    text = text.replace("<publisher>", publisher)
+    text = text.replace("owner: platform-engineering", f"owner: {owner}")
+    skill_md.write_text(text)
+
+
+def _copy_skill_dir(dry: bool, root: Path, publisher: str, owner: str):
+    dest = root / ".agents" / "skills" / "guidefold"
+    if dest.resolve() == TOOL_SKILL_SRC.resolve():
+        print("skipping .agents/skills/guidefold — this is the guidefold tool checkout itself.")
+        return
+    if dest.exists():
+        print(f"{rel(root, dest)} already exists — leaving it untouched.")
+        return
+    if not TOOL_SKILL_SRC.is_dir():
+        print(f"warning: cannot find {TOOL_SKILL_SRC} — skipping the .agents/skills/guidefold install "
+              f"(run `init` from a full guidefold tool checkout, not a copied CLI)")
+        return
+    if dry:
+        print(f"[dry-run] would copy skills/guidefold/ -> .agents/skills/guidefold/ "
+              f"(stamping publisher={publisher}, owner={owner} into SKILL.md)")
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(TOOL_SKILL_SRC, dest)
+    _stamp_bootstrap_skill(dest, publisher, owner)
+    print("copied skills/guidefold/ -> .agents/skills/guidefold/")
+
+
+def _merge_hook_config(existing: dict, template: dict):
+    """Additively merge `template` into `existing`: top-level scalar keys are added only if
+    absent; the "hooks" dict is merged per event, appending template entries the existing list
+    doesn't already have (by JSON equality). Re-merging the same template is a no-op — this is
+    what makes `init` idempotent for hook files. Returns (merged, changed)."""
+    merged = json.loads(json.dumps(existing)) if existing else {}
+    changed = False
+    for k, v in template.items():
+        if k == "hooks":
+            merged.setdefault("hooks", {})
+            for event, entries in (v or {}).items():
+                bucket = merged["hooks"].setdefault(event, [])
+                for entry in entries:
+                    if entry not in bucket:
+                        bucket.append(entry)
+                        changed = True
+        elif k not in merged:
+            merged[k] = v
+            changed = True
+    return merged, changed
+
+
+def _install_hook(dry: bool, root: Path, harness: str):
+    tmpl_name, dest_rel = HARNESS_HOOK_FILES[harness]
+    tmpl_path = TOOL_SKILL_SRC / "hooks" / tmpl_name
+    if not tmpl_path.is_file():
+        print(f"warning: hook template missing: {tmpl_path} — skipping {harness}")
+        return
+    template = json.loads(tmpl_path.read_text())
+    dest = root / dest_rel
+    existing = {}
+    if dest.is_file():
+        try:
+            existing = json.loads(dest.read_text())
+        except json.JSONDecodeError:
+            print(f"warning: {dest_rel} is not valid JSON — leaving it untouched, not merging the {harness} hook")
+            return
+    merged, changed = _merge_hook_config(existing, template)
+    if not changed:
+        print(f"{dest_rel} already has the {harness} guidefold hook — nothing to do.")
+        return
+    if dry:
+        verb = "update" if dest.is_file() else "create"
+        print(f"[dry-run] would {verb} {dest_rel} (merge {harness} hook)")
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    existed = dest.is_file()
+    dest.write_text(json.dumps(merged, indent=2) + "\n")
+    print(("updated " if existed else "created ") + dest_rel)
+
+
+def _install_github_action(dry: bool, root: Path):
+    src = TOOL_TEMPLATES_DIR / "github-workflows-skills.yml"
+    dest = root / ".github" / "workflows" / "skills.yml"
+    if dest.is_file():
+        print(f"{rel(root, dest)} already exists — leaving it untouched.")
+        return
+    if not src.is_file():
+        print(f"warning: cannot find {src} — skipping the CI workflow install "
+              f"(run `init` from a full guidefold tool checkout, not a copied CLI)")
+        return
+    if dry:
+        print("[dry-run] would create .github/workflows/skills.yml")
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(src.read_text())
+    print("created .github/workflows/skills.yml")
+
+
+def _ensure_gitignore(dry: bool, root: Path):
+    dest = root / ".gitignore"
+    marker = ".guidefold/"
+    existing = dest.read_text() if dest.is_file() else ""
+    if any(line.strip() == marker for line in existing.splitlines()):
+        print(".gitignore already ignores .guidefold/ — nothing to do.")
+        return
+    if dry:
+        verb = "append to" if dest.is_file() else "create"
+        print(f"[dry-run] would {verb} .gitignore (add {marker})")
+        return
+    addition = ("" if not existing or existing.endswith("\n") else "\n")
+    addition += "\n# generated guidefold artifacts (ADR-0012): cards, index, cache\n" + marker + "\n"
+    with dest.open("a") as f:
+        f.write(addition)
+    print(("appended to " if existing else "created ") + ".gitignore")
+
+
+def cmd_init(a):
+    root = _target_root()
+    dry = a.dry_run
+    publisher = _infer_publisher(root, a.publisher)
+    owner = _infer_owner_from_codeowners(root)
+    harnesses = ("claude", "copilot", "codex") if a.harness == "all" else (a.harness,)
+    print(f"guidefold init — target repo: {root}")
+    _write_guidefold_yaml(dry, root, publisher, owner)
+    _copy_skill_dir(dry, root, publisher, owner)
+    for h in harnesses:
+        _install_hook(dry, root, h)
+    _install_github_action(dry, root)
+    _ensure_gitignore(dry, root)
+    print()
+    if dry:
+        print("[dry-run] nothing was written.")
+    else:
+        print("Next: run `guidefold doctor` to verify the setup.")
+
+
+# ---------------------------------------------------------------------- doctor
+
+def _doctor_check(name: str, status: str, detail: str, fix: str = None) -> dict:
+    return {"name": name, "status": status, "detail": detail, "fix": fix}
+
+
+def _check_python() -> dict:
+    v = sys.version_info
+    ok = (v.major, v.minor) >= (3, 10)
+    detail = f"Python {v.major}.{v.minor}.{v.micro}"
+    return _doctor_check("python-version", "ok" if ok else "warn", detail,
+                          None if ok else "upgrade to Python 3.10+ (CI matrix: 3.10, 3.11, 3.12)")
+
+
+def _check_cli_compiles(root: Path) -> dict:
+    cli_path = root / ".agents" / "skills" / "guidefold" / "scripts" / "guidefold"
+    if not cli_path.is_file():
+        return _doctor_check("cli-installed", "fail", "no .agents/skills/guidefold/scripts/guidefold found",
+                              "run `guidefold init` to install the CLI into .agents/skills/guidefold/")
+    import py_compile
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            py_compile.compile(str(cli_path), cfile=str(Path(td) / "out.pyc"), doraise=True)
+        return _doctor_check("cli-compiles", "ok", f"{rel(root, cli_path)} compiles cleanly")
+    except py_compile.PyCompileError as e:
+        return _doctor_check("cli-compiles", "fail", f"{rel(root, cli_path)} failed to compile: {e.exc_value}",
+                              "fix the syntax error, or re-run `guidefold init`")
+    except Exception as e:
+        return _doctor_check("cli-compiles", "fail", f"could not compile {rel(root, cli_path)}: {e}",
+                              "re-run `guidefold init`")
+
+
+def _check_guidefold_yaml(root: Path):
+    """Returns (checks, cfg) — cfg is None if guidefold.yaml is missing/unparseable, so later
+    checks that need it (skill layout, registry backend) can degrade to a single "skipped" entry
+    instead of crashing."""
+    checks = []
+    yaml_path = root / "guidefold.yaml"
+    if not yaml_path.is_file():
+        checks.append(_doctor_check("guidefold-yaml", "fail", "guidefold.yaml not found at repo root",
+                                     "run `guidefold init` to create a skeleton"))
+        return checks, None
+    checks.append(_doctor_check("guidefold-yaml", "ok", "guidefold.yaml found"))
+    try:
+        import yaml
+    except ImportError:
+        checks.append(_doctor_check("guidefold-yaml-parses", "fail", "PyYAML not installed",
+                                     "pip install pyyaml"))
+        return checks, None
+    try:
+        cfg = yaml.safe_load(yaml_path.read_text())
+    except Exception as e:
+        checks.append(_doctor_check("guidefold-yaml-parses", "fail", f"guidefold.yaml did not parse: {e}",
+                                     "fix the YAML syntax error in guidefold.yaml"))
+        return checks, None
+    if not isinstance(cfg, dict) or not cfg.get("publisher"):
+        checks.append(_doctor_check("guidefold-yaml-parses", "fail",
+                                     "guidefold.yaml parsed but is missing a top-level `publisher:`",
+                                     "add `publisher: <your-org>` to guidefold.yaml"))
+        return checks, None
+    checks.append(_doctor_check("guidefold-yaml-parses", "ok", f"publisher={cfg['publisher']}"))
+    cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    bad_nodes = [n for n, spec in cfg["nodes"].items() if not spec.get("paths") or not spec.get("owner")]
+    if bad_nodes:
+        checks.append(_doctor_check("guidefold-yaml-nodes", "fail",
+                                     f"node(s) missing paths/owner: {', '.join(sorted(bad_nodes))}",
+                                     "add `paths:` and `owner:` to every node in guidefold.yaml"))
+    else:
+        checks.append(_doctor_check("guidefold-yaml-nodes", "ok",
+                                     f"{len(cfg['nodes'])} node(s), all have paths+owner"))
+    empty = []
+    for node, spec in cfg["nodes"].items():
+        matched = False
+        for g in spec.get("paths", []) or []:
+            try:
+                if next(iter(root.glob(g)), None) is not None:
+                    matched = True
+                    break
+            except Exception:
+                pass
+        if not matched:
+            empty.append(node)
+    if empty:
+        checks.append(_doctor_check("guidefold-yaml-globs", "warn",
+                                     f"node(s) whose path globs match nothing yet: {', '.join(sorted(empty))}",
+                                     "check the `paths:` globs, or remove the node until it has code"))
+    else:
+        checks.append(_doctor_check("guidefold-yaml-globs", "ok", "every node's path globs match at least one path"))
+    return checks, cfg
+
+
+def _check_skill_layout(root: Path, cfg) -> list:
+    if cfg is None:
+        return [_doctor_check("skill-layout", "warn", "skipped (guidefold.yaml invalid)", None)]
+    checks = []
+    try:
+        skills = list(all_skills(root, cfg))
+    except Exception as e:
+        checks.append(_doctor_check("skill-layout", "fail", f"error scanning .agents/skills: {e}",
+                                     "check every SKILL.md's frontmatter is valid YAML"))
+        checks.append(_doctor_check("validate", "warn", "skipped (skill layout scan failed)", None))
+        return checks
+    if not skills:
+        checks.append(_doctor_check("skill-layout", "warn", "no SKILL.md found under any .agents/skills/",
+                                     "add at least one skill (fine to ignore for a brand-new repo)"))
+    else:
+        checks.append(_doctor_check("skill-layout", "ok", f"{len(skills)} skill(s) found"))
+    try:
+        _, errors = _validate_errors(root, cfg)
+    except Exception as e:
+        checks.append(_doctor_check("validate", "fail", f"validate crashed: {e}",
+                                     "run `guidefold validate` directly for the full traceback"))
+        return checks
+    if errors:
+        checks.append(_doctor_check("validate", "fail", f"{len(errors)} validation error(s), e.g. {errors[0]}",
+                                     "run `guidefold validate` for the full list and fix each SKILL.md"))
+    else:
+        checks.append(_doctor_check("validate", "ok", f"{len(skills)} skill(s), 0 errors"))
+    return checks
+
+
+def _check_hook(root: Path, harness: str) -> dict:
+    _tmpl_name, dest_rel = HARNESS_HOOK_FILES[harness]
+    dest = root / dest_rel
+    if not dest.is_file():
+        return _doctor_check(f"hook-{harness}", "warn", f"{dest_rel} not found",
+                              f"run `guidefold init --harness {harness}` to install it")
+    try:
+        cfg_json = json.loads(dest.read_text())
+    except Exception as e:
+        return _doctor_check(f"hook-{harness}", "fail", f"{dest_rel} is not valid JSON: {e}",
+                              f"fix or remove {dest_rel}, then re-run `guidefold init --harness {harness}`")
+    if "scripts/guidefold" not in json.dumps(cfg_json):
+        return _doctor_check(f"hook-{harness}", "warn", f"{dest_rel} exists but doesn't reference scripts/guidefold",
+                              f"re-run `guidefold init --harness {harness}` to add the guidefold hook")
+    cli_path = root / ".agents" / "skills" / "guidefold" / "scripts" / "guidefold"
+    if not cli_path.is_file():
+        return _doctor_check(f"hook-{harness}", "fail", f"{dest_rel} points at scripts/guidefold, which doesn't exist",
+                              "run `guidefold init` to install .agents/skills/guidefold/")
+    if not os.access(cli_path, os.X_OK):
+        return _doctor_check(f"hook-{harness}", "fail", f"{rel(root, cli_path)} exists but isn't executable",
+                              f"chmod +x {rel(root, cli_path)}")
+    return _doctor_check(f"hook-{harness}", "ok", f"{dest_rel} wired to an executable scripts/guidefold")
+
+
+def _check_gitignore(root: Path) -> dict:
+    dest = root / ".gitignore"
+    if not dest.is_file():
+        return _doctor_check("gitignore", "fail", ".gitignore not found", "run `guidefold init` to create one")
+    if ".guidefold/" not in dest.read_text():
+        return _doctor_check("gitignore", "fail", ".gitignore does not exclude .guidefold/",
+                              "add `.guidefold/` to .gitignore (ADR-0012)")
+    return _doctor_check("gitignore", "ok", ".gitignore excludes .guidefold/")
+
+
+def _check_github_action(root: Path) -> dict:
+    dest = root / ".github" / "workflows" / "skills.yml"
+    if not dest.is_file():
+        return _doctor_check("github-action", "warn", ".github/workflows/skills.yml not found",
+                              "run `guidefold init` to install the CI workflow")
+    return _doctor_check("github-action", "ok", ".github/workflows/skills.yml present")
+
+
+def _gcloud_json(args: list, timeout: int = 5):
+    """Run a gcloud command with --format=json, timeout-guarded, never raising. Returns
+    (parsed_json_or_None, error_message_or_None)."""
+    try:
+        out = subprocess.run(["gcloud", *args, "--format=json"], capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return None, "gcloud not found on PATH"
+    except subprocess.TimeoutExpired:
+        return None, "gcloud call timed out (network or auth prompt?)"
+    except Exception as e:
+        return None, f"gcloud call failed: {e}"
+    if out.returncode != 0:
+        lines = [l for l in (out.stderr or "").strip().splitlines() if l.strip()]
+        return None, lines[-1] if lines else f"gcloud exited {out.returncode}"
+    try:
+        return json.loads(out.stdout or "null"), None
+    except json.JSONDecodeError:
+        return None, "gcloud returned non-JSON output"
+
+
+def _check_registry(root: Path, cfg) -> list:
+    if cfg is None:
+        return [_doctor_check("registry-backend", "warn", "skipped (guidefold.yaml invalid)", None)]
+    backend = (cfg.get("registry") or {}).get("backend", "agent-registry")
+    if backend == "local":
+        try:
+            n = len(list(all_skills(root, cfg)))
+            return [_doctor_check("registry-backend", "ok", f"local backend: {n} skill(s) readable")]
+        except Exception as e:
+            return [_doctor_check("registry-backend", "fail", f"local backend tree unreadable: {e}",
+                                   "check filesystem permissions under .agents/skills")]
+    checks = []
+    if shutil.which("gcloud") is None:
+        checks.append(_doctor_check("registry-gcloud", "fail", "gcloud not found on PATH",
+                                     "install the Google Cloud SDK and ensure gcloud is on PATH"))
+        for name in ("registry-adc", "registry-project", "registry-roles"):
+            checks.append(_doctor_check(name, "warn", "skipped (gcloud unavailable)", "resolve registry-gcloud first"))
+        return checks
+    checks.append(_doctor_check("registry-gcloud", "ok", "gcloud found on PATH"))
+    accounts, err = _gcloud_json(["auth", "list"])
+    active = None
+    if err:
+        checks.append(_doctor_check("registry-adc", "warn", f"could not verify ADC/login: {err}",
+                                     "run `gcloud auth login` and `gcloud auth application-default login`"))
+    else:
+        active_entries = [x for x in (accounts or []) if x.get("status") == "ACTIVE"]
+        if not active_entries:
+            checks.append(_doctor_check("registry-adc", "fail", "no active gcloud account",
+                                         "run `gcloud auth login` and `gcloud auth application-default login`"))
+        else:
+            active = active_entries[0].get("account")
+            checks.append(_doctor_check("registry-adc", "ok", f"active account: {active}"))
+    project = (cfg.get("registry") or {}).get("project")
+    if not project:
+        checks.append(_doctor_check("registry-project", "fail", "registry.project not set in guidefold.yaml",
+                                     "add `registry.project: <gcp-project-id>` to guidefold.yaml"))
+        checks.append(_doctor_check("registry-roles", "warn", "skipped (no project configured)",
+                                     "set registry.project first"))
+        return checks
+    _proj, err = _gcloud_json(["projects", "describe", project])
+    if err:
+        checks.append(_doctor_check("registry-project", "fail", f"project {project}: {err}",
+                                     f"verify registry.project: {project} exists and is accessible"))
+        checks.append(_doctor_check("registry-roles", "warn", "skipped (project check failed)",
+                                     "resolve registry-project first"))
+        return checks
+    checks.append(_doctor_check("registry-project", "ok", f"project {project} reachable"))
+    if not active:
+        checks.append(_doctor_check("registry-roles", "warn", "skipped (no active gcloud account)",
+                                     "resolve registry-adc first"))
+        return checks
+    policy, err = _gcloud_json(["projects", "get-iam-policy", project])
+    if err:
+        checks.append(_doctor_check("registry-roles", "warn", f"could not read IAM policy: {err}",
+                                     "verify resourcemanager.projects.getIamPolicy on the project"))
+        return checks
+    has_role = any(
+        b.get("role") == "roles/agentregistry.admin" and any(active in m for m in b.get("members", []))
+        for b in (policy or {}).get("bindings", []) or []
+    )
+    if has_role:
+        checks.append(_doctor_check("registry-roles", "ok", f"{active} has roles/agentregistry.admin on {project}"))
+    else:
+        checks.append(_doctor_check("registry-roles", "fail", f"{active} lacks roles/agentregistry.admin on {project}",
+                                     f"grant roles/agentregistry.admin to {active} on {project}"))
+    return checks
+
+
+def _check_index_freshness(root: Path) -> dict:
+    candidates = [root / ".guidefold" / "index"]
+    try:
+        candidates.append(cache_root() / "index")
+    except Exception:
+        pass
+    sha_dirs = []
+    for c in candidates:
+        if c.is_dir():
+            try:
+                sha_dirs.extend(d for d in c.iterdir() if d.is_dir())
+            except Exception:
+                pass
+    if not sha_dirs:
+        return _doctor_check("index-freshness", "ok", "no index artifact found — nothing to check", None)
+    newest = max(d.stat().st_mtime for d in sha_dirs)
+    head_ts = None
+    try:
+        out = subprocess.run(["git", "log", "-1", "--format=%ct"], capture_output=True, text=True, cwd=root, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            head_ts = int(out.stdout.strip())
+    except Exception:
+        pass
+    if head_ts is None:
+        return _doctor_check("index-freshness", "warn", "could not determine HEAD commit time", None)
+    if newest < head_ts:
+        return _doctor_check("index-freshness", "warn", "index artifact is older than HEAD",
+                              "run `guidefold index` to refresh it")
+    return _doctor_check("index-freshness", "ok", "index artifact is at least as new as HEAD")
+
+
+def cmd_doctor(a):
+    root = _target_root()
+    checks = [_check_python(), _check_cli_compiles(root)]
+    yaml_checks, cfg = _check_guidefold_yaml(root)
+    checks.extend(yaml_checks)
+    checks.extend(_check_skill_layout(root, cfg))
+    for h in ("claude", "copilot", "codex"):
+        checks.append(_check_hook(root, h))
+    checks.append(_check_gitignore(root))
+    checks.append(_check_github_action(root))
+    checks.extend(_check_registry(root, cfg))
+    checks.append(_check_index_freshness(root))
+    ok = not any(c["status"] == "fail" for c in checks)
+    if a.json:
+        print(json.dumps({"root": str(root), "ok": ok, "checks": checks}, indent=2))
+    else:
+        for c in checks:
+            tag = {"ok": "OK", "warn": "WARN", "fail": "FAIL"}[c["status"]]
+            print(f"[{tag}] {c['name']}: {c['detail']}")
+            if c["status"] != "ok" and c.get("fix"):
+                print(f"       fix: {c['fix']}")
+        n_fail = sum(c["status"] == "fail" for c in checks)
+        n_warn = sum(c["status"] == "warn" for c in checks)
+        print(f"\nguidefold doctor: {len(checks)} checks, {n_fail} failed, {n_warn} warnings")
+    sys.exit(0 if ok else 1)
+
+
 # ------------------------------------------------------------------------ main
 def main():
     p = argparse.ArgumentParser(prog="guidefold")
@@ -1140,7 +1725,21 @@ def main():
     m = sub.add_parser("materialize"); m.add_argument("--check", action="store_true")
     sub.add_parser("hook")
     sub.add_parser("prewarm")
+    i = sub.add_parser("init", help="bootstrap a consumer monorepo: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore")
+    i.add_argument("--publisher", help="override the inferred publisher name")
+    i.add_argument("--harness", choices=["claude", "copilot", "codex", "all"], default="all")
+    i.add_argument("--dry-run", action="store_true", help="print what would be done; write nothing")
+    doc = sub.add_parser("doctor", help="diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness")
+    doc.add_argument("--json", action="store_true")
     a = p.parse_args()
+    # init/doctor must work on a repo with no guidefold.yaml yet, so they bypass the
+    # repo_root()/load_map() setup below (which requires one) — see _target_root().
+    if a.cmd == "init":
+        cmd_init(a)
+        return
+    if a.cmd == "doctor":
+        cmd_doctor(a)
+        return
     root = repo_root(); cfg = load_map(root)
     cfg.setdefault("registry", {})
     if a.backend:
