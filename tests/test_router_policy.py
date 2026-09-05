@@ -85,3 +85,23 @@ def test_negative_trigger_requires_all_its_words_present(gf):
     kept2, drops2 = router.policy_filter("_root", query="a planned rollout, nothing else")
     assert kept2 == ["u:noisy"]
     assert drops2 == []
+
+
+def test_policy_filter_tokenises_negative_triggers_once_per_router(gf, monkeypatch):
+    """Profiled on a 501-skill real corpus: re-tokenising every skill's negative-trigger phrases on
+    every query was 84 % of the query path. The phrases are static; tokenise them once."""
+    from _router_helpers import make_card
+    cards = {f"u:{i}": make_card(f"u:{i}", "_root", description=f"skill {i}",
+                                 negative_triggers=["planned auth change", "policy edit"]) for i in range(50)}
+    idx = gf.Index.from_cards(cards, {"_root": {"paths": ["**"], "owner": "p"}}, word_vectors=None)
+    r = gf.Router(idx)
+    calls = {"n": 0}; real = gf.tokenize
+    def counting(s):
+        calls["n"] += 1; return real(s)
+    monkeypatch.setattr(gf, "tokenize", counting)
+    for q in ("handle an outage", "write an adr", "add rbac", "deploy the widget", "planned auth change now"):
+        r.policy_filter("_root", q)
+    # 100 phrases tokenised once + 5 queries; NOT 100 phrases x 5 queries + 5
+    assert calls["n"] <= 100 + 5, f"tokenize called {calls['n']} times — phrases re-tokenised per query"
+    kept, drops = r.policy_filter("_root", "planned auth change now")
+    assert kept == [] and all(d[1].startswith("negative-trigger") for d in drops)   # semantics unchanged

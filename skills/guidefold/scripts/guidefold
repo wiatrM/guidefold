@@ -1118,9 +1118,25 @@ class Router:
                 out.add(n)
         return out
 
+    def _negative_trigger_tokens(self) -> dict:
+        """urn -> [(phrase, frozenset(tokens)), ...], tokenised ONCE per Router.
+
+        Profiled on the 501-skill SkillRetBench index (every skill has anti-triggers): re-tokenising
+        each phrase on every query made policy_filter 84 % of the in-process query path — 34 575
+        tokenize() calls for 25 queries. Phrases do not change between queries; tokenise them once."""
+        cache = getattr(self, "_neg_tok_cache", None)
+        if cache is None:
+            cache = {}
+            for u, c in self.index.cards.items():
+                toks = [(t, frozenset(tokenize(t))) for t in c.get("negative_triggers", [])]
+                cache[u] = [(t, s) for t, s in toks if s]
+            self._neg_tok_cache = cache
+        return cache
+
     def policy_filter(self, node: str, query: str = "", include_deprecated: bool = False):
         visible = self._visible_nodes(node)
         qtoks = set(tokenize(query))
+        neg = self._negative_trigger_tokens()
         kept, drops = [], []
         for u, c in sorted(self.index.cards.items()):
             if c["status"] == "deprecated" and not include_deprecated:
@@ -1128,9 +1144,8 @@ class Router:
             if c["node"] not in visible:
                 drops.append((u, "not-visible")); continue
             hit_neg = None
-            for t in c.get("negative_triggers", []):
-                ttoks = tokenize(t)
-                if ttoks and set(ttoks) <= qtoks:
+            for t, ttoks in neg.get(u, ()):
+                if ttoks <= qtoks:
                     hit_neg = t; break
             if hit_neg is not None:
                 drops.append((u, f"negative-trigger:{hit_neg}")); continue
