@@ -1,0 +1,263 @@
+{
+  "baseline": {
+    "bm25_units": {
+      "absolute_errors_after_unscaling": {
+        "a": 0.8333295186360676,
+        "b": 0.9803454268212412,
+        "c": 0.9975281085320813
+      },
+      "actual_integer_scores": {
+        "a": 4,
+        "b": 49,
+        "c": 499
+      },
+      "field_normalization": 1.0,
+      "field_weight": 6,
+      "idf": 1.0,
+      "integer_scale": 1048576,
+      "passes_reference_tolerance": false,
+      "reference_float_scores": {
+        "a": 0.8333333333333333,
+        "b": 0.9803921568627451,
+        "c": 0.998003992015968
+      },
+      "tf": [
+        1,
+        10,
+        100
+      ]
+    },
+    "cli_is_dirty": false,
+    "cli_sha256": "1d98dd87bd7f41b377ce922cd1184b7ec39ed208b584760cf3aba0bfbf04887a",
+    "dense_cosine": {
+      "expected_counterexample_order": [
+        "A",
+        "B"
+      ],
+      "historical_counterexample": [
+        "A",
+        "B"
+      ],
+      "tested_nontied_pairs": 1000,
+      "violations": 0
+    },
+    "dependency_eligibility": {
+      "direct_select_without_admissible": [
+        {
+          "description": "",
+          "name": "A",
+          "node": "a",
+          "score": 20000,
+          "urn": "A"
+        },
+        {
+          "description": "",
+          "name": "NEG",
+          "node": "a",
+          "score": 0,
+          "urn": "NEG"
+        },
+        {
+          "description": "",
+          "name": "SIB",
+          "node": "b",
+          "score": 0,
+          "urn": "SIB"
+        }
+      ],
+      "drops": [
+        [
+          "NEG",
+          "negative-trigger:forbidden"
+        ],
+        [
+          "SIB",
+          "not-visible"
+        ]
+      ],
+      "eligible": [
+        "A"
+      ],
+      "passes_route_eligibility": false,
+      "route_excluded_reintroduced": [
+        "NEG",
+        "SIB"
+      ],
+      "route_selected": [
+        {
+          "description": "",
+          "name": "A",
+          "node": "a",
+          "score": 17189,
+          "urn": "A"
+        },
+        {
+          "description": "",
+          "name": "NEG",
+          "node": "a",
+          "score": 0,
+          "urn": "NEG"
+        },
+        {
+          "description": "",
+          "name": "SIB",
+          "node": "b",
+          "score": 0,
+          "urn": "SIB"
+        }
+      ],
+      "select_accepts_admissible": false
+    },
+    "git_head": "c08c58c09c5a2aaa61cc9a0bbd2891d41e43c365",
+    "root": "/home/mike/projects/guidefold",
+    "source_kind": "git_revision",
+    "source_revision": "c2cc81219bda11a267bea3c04c1e8128c9c0a920",
+    "tracked_cli_diff": "",
+    "zero_weight_dense": {
+      "candidates_with_empty_table": [],
+      "candidates_with_nonempty_table": [
+        {
+          "bm25_rank": null,
+          "dense_rank": 1,
+          "node": "a",
+          "urn": "A"
+        },
+        {
+          "bm25_rank": null,
+          "dense_rank": 2,
+          "node": "a",
+          "urn": "B"
+        }
+      ],
+      "passes_no_channel_contribution": false,
+      "scored_with_nonempty_table": [
+        {
+          "bm25_rank": null,
+          "dense_rank": 1,
+          "node": "a",
+          "score": 17189,
+          "urn": "A"
+        },
+        {
+          "bm25_rank": null,
+          "dense_rank": 2,
+          "node": "a",
+          "score": 16912,
+          "urn": "B"
+        }
+      ],
+      "weight": 0
+    }
+  },
+  "comparison_status": "Dirty worktree results describe proposed fixes, not landed changes.",
+  "comparisons": [
+    {
+      "bm25_units": {
+        "absolute_errors_after_unscaling": {
+          "a": 3.1789143872806847e-07,
+          "b": 6.54482373962928e-07,
+          "c": 3.236020629238112e-08
+        },
+        "actual_integer_scores": {
+          "a": 873813,
+          "b": 1028015,
+          "c": 1046483
+        },
+        "field_normalization": 1.0,
+        "field_weight": 6,
+        "idf": 1.0,
+        "integer_scale": 1048576,
+        "passes_reference_tolerance": true,
+        "reference_float_scores": {
+          "a": 0.8333333333333333,
+          "b": 0.9803921568627451,
+          "c": 0.998003992015968
+        },
+        "tf": [
+          1,
+          10,
+          100
+        ]
+      },
+      "cli_is_dirty": false,
+      "cli_sha256": "915aba1a1c919f98de72abd7c5538a11fc6787f5297ed95c8f910aad37bbd989",
+      "dense_cosine": {
+        "expected_counterexample_order": [
+          "A",
+          "B"
+        ],
+        "historical_counterexample": [
+          "A",
+          "B"
+        ],
+        "tested_nontied_pairs": 1000,
+        "violations": 0
+      },
+      "dependency_eligibility": {
+        "direct_select_without_admissible": [
+          {
+            "description": "",
+            "name": "A",
+            "node": "a",
+            "score": 20000,
+            "urn": "A"
+          },
+          {
+            "description": "",
+            "name": "NEG",
+            "node": "a",
+            "score": 0,
+            "urn": "NEG"
+          },
+          {
+            "description": "",
+            "name": "SIB",
+            "node": "b",
+            "score": 0,
+            "urn": "SIB"
+          }
+        ],
+        "drops": [
+          [
+            "NEG",
+            "negative-trigger:forbidden"
+          ],
+          [
+            "SIB",
+            "not-visible"
+          ]
+        ],
+        "eligible": [
+          "A"
+        ],
+        "passes_route_eligibility": true,
+        "route_excluded_reintroduced": [],
+        "route_selected": [
+          {
+            "description": "",
+            "name": "A",
+            "node": "a",
+            "score": 17189,
+            "urn": "A"
+          }
+        ],
+        "select_accepts_admissible": true
+      },
+      "git_head": "c08c58c09c5a2aaa61cc9a0bbd2891d41e43c365",
+      "root": "/home/mike/projects/guidefold",
+      "source_kind": "working_tree",
+      "source_revision": null,
+      "tracked_cli_diff": "",
+      "zero_weight_dense": {
+        "candidates_with_empty_table": [],
+        "candidates_with_nonempty_table": [],
+        "passes_no_channel_contribution": true,
+        "scored_with_nonempty_table": [],
+        "weight": 0
+      }
+    }
+  ],
+  "generated_at": "2026-09-05T08:28:52.104141+00:00",
+  "purpose": "CPU contract audit; not retrieval quality or holdout evaluation.",
+  "schema_version": 1
+}

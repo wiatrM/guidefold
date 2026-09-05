@@ -149,3 +149,29 @@ Nothing in E0 + E1 ships differently tomorrow. What ships differently is the *cl
 is the best-measured configuration, and the path back to dense is a tuned encoder judged on bundle
 completeness and task success at pilot scale." That sentence is the one the review asked for, and
 it is the true one.
+
+---
+
+## 6. Contract audit on the landed fixes (added 2026-09-05, after PR #21)
+
+The reviewer's `tools/eval/audit_router_contract.py` probes four numerical/policy contracts with
+hand-controlled statistics — no tokenizer, no index build, CPU only — so a failure is a formula
+error, not a corpus effect. Their run compared the pre-fix baseline with the fix branch
+(`router-contract-review-2026-09-05.json`, status "dirty worktree, proposed fixes"). The same
+probe re-run on **landed `main` `c08c58c`, clean tree** (`router-contract-main-c08c58c.json`):
+
+| contract | pre-fix | landed main |
+|---|---|---|
+| BM25 fixed-point units, tf 1/10/100 vs reference | scores 4 / 49 / 499; abs. error 0.83–0.99 | error ≤ 6.5e-7 · **passes** |
+| dense cosine ordering | counterexample inverted | 1 000 non-tied pairs, **0 violations** |
+| dependency eligibility via `route()` | — | negative-trigger and out-of-scope deps **not re-introduced** |
+| `w_dense = 0` contributes nothing | channel voted | **no contribution** |
+
+**Still open, from the same audit:** `select()` called *directly* without `admissible` keeps the
+legacy deprecated-only check and will still admit a rejected dependency. The product paths
+(`route`, `find`, `hook`) all pass the admissible set; the direct call is used only by tests. Under
+ADR-0022 §1 the parameter should become mandatory — follow-up, with the affected tests updated.
+
+`papers-manifest-2026-09-05.json` inventories the local paper cache with SHA-256 per file and
+verifies SkillRouter v5 / SkillRet v3 as the versions cited; it records that the SIF and RRF local
+copies are not the publications (a JS challenge page and a 279-byte error page respectively).
