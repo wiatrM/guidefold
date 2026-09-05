@@ -1,0 +1,326 @@
+{
+  "E-field-1": {
+    "q-train-003577": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.version-control:8b4b06e6-38e1-4001-a4d7-428ef6eccc0c"
+      ],
+      "lost": []
+    },
+    "q-train-012988": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3ce46fdc-6863-4a49-a3c3-1a8efccb454e"
+      ],
+      "lost": []
+    },
+    "q-train-014635": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3afecd76-4429-4500-815e-3dcfe36fe000"
+      ],
+      "lost": []
+    },
+    "q-train-018540": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:3908c99e-cccd-4b55-a466-3f00fdc21565"
+      ],
+      "lost": []
+    },
+    "q-train-032395": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:3a55c3a5-2554-4289-9d44-dc7513b52fa8"
+      ],
+      "lost": []
+    },
+    "q-train-034641": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:0f220f19-5a5c-401c-a3ca-15fade1e95eb"
+      ],
+      "lost": []
+    },
+    "q-train-040459": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:35394946-d416-472e-a287-bc74ea4daf77"
+      ],
+      "lost": []
+    },
+    "q-train-043434": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:813abfec-5f75-432a-94ac-08adfdd4a863"
+      ],
+      "lost": []
+    },
+    "q-train-046754": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:76b3b56f-a073-447f-9258-6d518604e618"
+      ],
+      "lost": []
+    },
+    "q-train-047748": {
+      "recovered": [
+        "urn:skill:skillret:content-creation.visual-media:9b7e7c53-ec03-4cdf-811a-1c00ccc6a133"
+      ],
+      "lost": []
+    },
+    "q-train-049599": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.infrastructure-devops:8bd42a7e-a65d-4894-bd4d-71fb3369e858"
+      ],
+      "lost": []
+    },
+    "q-train-049955": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:36a88b7b-dc0e-492d-88bd-b00c9e450643"
+      ],
+      "lost": []
+    },
+    "q-train-054302": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:7dac35c9-c5a8-4ac0-b36f-04a49bc86fe7"
+      ],
+      "lost": []
+    },
+    "q-train-054652": {
+      "recovered": [
+        "urn:skill:skillret:ai-agents.agent-orchestration:3d562f21-e2b8-4649-af69-a8c7a698a26a"
+      ],
+      "lost": []
+    },
+    "q-train-056167": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:40bc6bfe-88b9-4bfd-9955-c53372879290"
+      ],
+      "lost": []
+    },
+    "q-train-061412": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:526167ca-26fd-48e0-b435-36414458bc87"
+      ],
+      "lost": []
+    },
+    "q-train-062602": {
+      "recovered": [
+        "urn:skill:skillret:data-ml.data-engineering:464eed5b-ef55-4fbe-aed9-9c71c963c237"
+      ],
+      "lost": []
+    }
+  },
+  "E-field-w": {
+    "q-train-003577": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.version-control:8b4b06e6-38e1-4001-a4d7-428ef6eccc0c"
+      ],
+      "lost": []
+    },
+    "q-train-012988": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3ce46fdc-6863-4a49-a3c3-1a8efccb454e"
+      ],
+      "lost": []
+    },
+    "q-train-014635": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3afecd76-4429-4500-815e-3dcfe36fe000"
+      ],
+      "lost": []
+    },
+    "q-train-017617": {
+      "recovered": [
+        "urn:skill:skillret:ai-agents.agent-development:3207563b-06dc-41e8-8928-dc63941131c0"
+      ],
+      "lost": []
+    },
+    "q-train-018540": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:3908c99e-cccd-4b55-a466-3f00fdc21565"
+      ],
+      "lost": []
+    },
+    "q-train-032395": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:3a55c3a5-2554-4289-9d44-dc7513b52fa8"
+      ],
+      "lost": []
+    },
+    "q-train-034641": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:0f220f19-5a5c-401c-a3ca-15fade1e95eb"
+      ],
+      "lost": []
+    },
+    "q-train-040459": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:35394946-d416-472e-a287-bc74ea4daf77"
+      ],
+      "lost": []
+    },
+    "q-train-041281": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:2af3ad6c-b84e-4e2b-a334-c693f757847d"
+      ],
+      "lost": []
+    },
+    "q-train-043434": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:813abfec-5f75-432a-94ac-08adfdd4a863"
+      ],
+      "lost": []
+    },
+    "q-train-046754": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:76b3b56f-a073-447f-9258-6d518604e618"
+      ],
+      "lost": []
+    },
+    "q-train-047748": {
+      "recovered": [
+        "urn:skill:skillret:content-creation.visual-media:9b7e7c53-ec03-4cdf-811a-1c00ccc6a133"
+      ],
+      "lost": []
+    },
+    "q-train-049599": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.infrastructure-devops:8bd42a7e-a65d-4894-bd4d-71fb3369e858"
+      ],
+      "lost": []
+    },
+    "q-train-049955": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:36a88b7b-dc0e-492d-88bd-b00c9e450643"
+      ],
+      "lost": []
+    },
+    "q-train-053953": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:346ae8d3-cd7c-4b6b-9c35-18d3e98ddb40"
+      ],
+      "lost": []
+    },
+    "q-train-054302": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:7dac35c9-c5a8-4ac0-b36f-04a49bc86fe7"
+      ],
+      "lost": []
+    },
+    "q-train-054652": {
+      "recovered": [
+        "urn:skill:skillret:ai-agents.agent-orchestration:3d562f21-e2b8-4649-af69-a8c7a698a26a"
+      ],
+      "lost": []
+    },
+    "q-train-056167": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:40bc6bfe-88b9-4bfd-9955-c53372879290"
+      ],
+      "lost": []
+    },
+    "q-train-061412": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:526167ca-26fd-48e0-b435-36414458bc87"
+      ],
+      "lost": []
+    },
+    "q-train-062602": {
+      "recovered": [
+        "urn:skill:skillret:data-ml.data-engineering:464eed5b-ef55-4fbe-aed9-9c71c963c237"
+      ],
+      "lost": []
+    }
+  },
+  "E-append": {
+    "q-train-003577": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.version-control:8b4b06e6-38e1-4001-a4d7-428ef6eccc0c"
+      ],
+      "lost": []
+    },
+    "q-train-012988": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3ce46fdc-6863-4a49-a3c3-1a8efccb454e"
+      ],
+      "lost": []
+    },
+    "q-train-014635": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.security:3afecd76-4429-4500-815e-3dcfe36fe000"
+      ],
+      "lost": []
+    },
+    "q-train-017617": {
+      "recovered": [
+        "urn:skill:skillret:ai-agents.agent-development:3207563b-06dc-41e8-8928-dc63941131c0"
+      ],
+      "lost": []
+    },
+    "q-train-032395": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:3a55c3a5-2554-4289-9d44-dc7513b52fa8"
+      ],
+      "lost": []
+    },
+    "q-train-034459": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.documentation:ebcba0ea-a1e7-4658-9387-c8b8c60decae"
+      ],
+      "lost": []
+    },
+    "q-train-034641": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:0f220f19-5a5c-401c-a3ca-15fade1e95eb"
+      ],
+      "lost": []
+    },
+    "q-train-041281": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:2af3ad6c-b84e-4e2b-a334-c693f757847d"
+      ],
+      "lost": []
+    },
+    "q-train-043434": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.analysis-testing:813abfec-5f75-432a-94ac-08adfdd4a863"
+      ],
+      "lost": []
+    },
+    "q-train-046754": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:76b3b56f-a073-447f-9258-6d518604e618"
+      ],
+      "lost": []
+    },
+    "q-train-047748": {
+      "recovered": [
+        "urn:skill:skillret:content-creation.visual-media:9b7e7c53-ec03-4cdf-811a-1c00ccc6a133"
+      ],
+      "lost": []
+    },
+    "q-train-049599": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.infrastructure-devops:8bd42a7e-a65d-4894-bd4d-71fb3369e858"
+      ],
+      "lost": []
+    },
+    "q-train-049955": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:36a88b7b-dc0e-492d-88bd-b00c9e450643"
+      ],
+      "lost": []
+    },
+    "q-train-054652": {
+      "recovered": [
+        "urn:skill:skillret:ai-agents.agent-orchestration:3d562f21-e2b8-4649-af69-a8c7a698a26a"
+      ],
+      "lost": []
+    },
+    "q-train-056167": {
+      "recovered": [
+        "urn:skill:skillret:software-engineering.development:40bc6bfe-88b9-4bfd-9955-c53372879290"
+      ],
+      "lost": []
+    },
+    "q-train-062602": {
+      "recovered": [
+        "urn:skill:skillret:data-ml.data-engineering:464eed5b-ef55-4fbe-aed9-9c71c963c237"
+      ],
+      "lost": []
+    }
+  }
+}
