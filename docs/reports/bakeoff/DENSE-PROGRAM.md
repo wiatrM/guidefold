@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.3
+# Dense retrieval programme — pre-registered, v2.4
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -72,6 +72,15 @@ choice, not a law.
 A result on test-A or test-B never decides what to run next. If a family needs more tries, it uses
 its dev budget.
 
+**Power rule (v2.4, added 2026-09-05).** (a) SKILLRET-test (test-A, 4,392 queries, paired-bootstrap
+CI ≈ ±1.1 pp at the completeness gate's typical effect size) is the primary corpus for the
+bundle-completeness gate (`all_required@4`, §5); SkillRetBench (test-B, 1,250 queries, CI ≈ ±2.2 pp)
+is the transfer test for `hit@1`/`nDCG@10`/HSR@4, and reports `all_required@4` there as
+**informative only** — its CI is wider than §5's own +2.0 pp minimum-benefit bar, so test-B alone
+can neither exclude nor confirm a 2 pp effect on that metric with confidence (see the §7 correction
+entry below). (b) A third corpus built from synthetic (LLM-generated) labels was considered for
+exactly this reason and is registered here as **not run** in this programme.
+
 ## 4. Method families and budgets
 
 Each family gets a **bounded budget of dev configurations**. Within it, coverage is measured first
@@ -87,6 +96,7 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F4 small contextual** | MiniLM-class ONNX (~22M) via onnxruntime from Python; measured, not estimated | T500 | ≤ 4 |
 | **F6 offline dense sibling map** *(v2.2)* | use the encoder **offline** to compute, per skill, its confusable set (same-capability neighbours above a cosine threshold); ship it as a small typed graph in the artifact; at query time apply a deterministic integer rule when two confusables both reach the top 4 — demote the one the query matches less on discriminating terms. **No model, no vectors at query time.** | T300 | ≤ 4 (threshold, neighbours per skill, the tie-break rule) |
 | **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
+| **C composition** *(v2.4)* | composer stage behind `select()`'s `compose_mode` key (ADR-0022 §4 / ADR-0024 §4): (a) **deterministic** — score-plateau bundle detection (no `requires` edges needed), coverage-aware fill, `requires` closure, integer-only, `(-score, urn)` ties, in the CLI; (b) **model** — `tools/eval/composer_model.py` (never the CLI), gated by (a)'s detector, replay-cached | T300 (a) / offline eval only (b) | ≤ 6 total: C0 baseline + C-det-1..4 (τ × coverage grid) + C-model-1..2 |
 
 **Why F6 exists (v2.2).** The full-encoder reference on test-B (PR #35) failed the completeness
 gate (`all_required@4` +0.67 pp, CI straddles zero) but **reduced harmful-sibling exposure by
@@ -106,6 +116,24 @@ candidate edges), 84 % have a "when to use" section, 25 % a "do not use" section
 derivable. F5 tests whether deriving them recovers what authored fields give, on corpora that have
 none. Its evaluation is the same as every family's: dev budget, freeze, both tests once. Its
 gate is the same too — a derived `requires` graph must raise `all_required@4`, not merely exist.
+
+**Why C exists (v2.4).** Every family above changes *ranking* — the order `score()` returns
+candidates in. None of them can move `all_required@4` on either test corpus by itself, because
+`select()` has no composition stage: it takes the literal top-k by score plus a `requires` closure,
+and neither test corpus carries `requires` edges (F5, above, addresses that gap in isolation; C
+addresses what `select()` does once fields exist, or once a query is a bundle for other reasons).
+ADR-0022 §4 and ADR-0024 §4 specify composition as its own pipeline stage, distinct from ranking,
+with two admitted implementations behind one interface: (a) a **deterministic** integer composer
+that detects a bundle from the score distribution alone (no `requires` edges required), fills by
+term coverage against the query, and reports `cannot_fit` rather than silently truncating; (b) a
+**model** composer, evaluated only in `tools/eval/` and never wired into the CLI, gated by (a)'s
+detector to bound cost. This family measures both against **C0** (shipped `select()`,
+`compose_mode="off"`) on SKILLRET-train dev, freezes at most one deterministic and at most one
+model configuration by the pre-registered rule in
+`docs/reports/bakeoff/DEV-C-composer-2026-09-05.md`, runs the frozen composer(s) once on each test
+corpus, and — dense caches permitting — re-runs the R1 dense reference (§6) with the frozen
+composer, since a composer that cannot see whether a bundle is needed cannot show what dense
+candidates add to one either.
 
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
@@ -405,3 +433,24 @@ required for T0 admission per ADR-0024 §1. Artifact size: -4.6% net at 6,006 sk
 `terms.bin` growing 20.6% (fixed directory overhead) — `postings.idx` shrinks 48.6% (a term's
 bytes are now stored once, not once per field). Full breakdown, tables, machine-quiet log:
 `docs/reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md`.
+
+### Correction, 2026-09-05 — what R1 on test-B did and did not show
+
+The full-encoder R1 reference on test-B (§7, "full-encoder R1 reference on test-B (SkillRetBench),
+PR #35") is quoted elsewhere, correctly, as failing the adoption gate: `all_required@4` **+0.67 pp
+[−1.50, +2.83]** on test-B, CI straddling zero, in contrast to test-A's **+17.96 pp
+[16.80, 19.08]**. Read alone, that reads as "dense failed the completeness gate on foreign data."
+The same run also measured `hit@1` **+8.33 pp [5.75, 11.25]** and `nDCG@10` **+8.05 pp** — both
+clear, significant improvements — and HSR@4 (harmful-sibling exposure) **−10.00 pp
+[−15.67, −4.00]**, the strongest unambiguous win measured anywhere in this programme so far. Three
+of the gate's four criteria were clean wins; only `all_required@4` did not move, and it could not
+have: this programme's own dev diagnosis of the k = 3 (three-required-skill) stratum reads
+`all_required@4` at **0.000 for every arm**, sparse or dense, because `select()` has no composition
+stage — a ranking change cannot lift a metric that composition alone gates (family C, §4, exists to
+remove exactly this confound). The [−1.50, +2.83] interval is also, independently, underpowered:
+at test-B's 1,250 queries, the gate's own +2.0 pp minimum-benefit bar sits inside the metric's
+typical CI half-width (the §3 power rule). Net: R1 failed the pre-registered *gate*, correctly,
+because the gate requires all four criteria and one was unmet — but "failed the gate" was true of
+the gate's applicability here, not of the model's quality. Once family C's frozen composer exists,
+§Step 2 of the E7.3 composer work re-runs this exact R1 configuration to check whether the
+confound was the whole story.
