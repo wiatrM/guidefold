@@ -1,5 +1,5 @@
 {
-  "source_cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+  "source_cli_sha256": "d24f9bb007038a077a5407447ceb3c2bfce13b8b2ba749adf3874fed9f7ba39b",
   "nodes": {
     "_root": {
       "owner": "platform",
@@ -279,7 +279,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -452,7 +455,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -627,7 +633,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -805,7 +814,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -950,7 +962,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -1097,7 +1112,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -1247,7 +1265,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -1392,7 +1413,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -1539,7 +1563,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -1689,7 +1716,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -1834,7 +1864,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -1981,7 +2014,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -2131,7 +2167,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -2248,7 +2287,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -2367,7 +2409,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -2489,7 +2534,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -2606,7 +2654,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -2725,7 +2776,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -2847,7 +2901,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -2992,7 +3049,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -3139,7 +3199,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -3289,7 +3352,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -3406,7 +3472,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -3525,7 +3594,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -3647,7 +3719,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -3764,7 +3839,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -3883,7 +3961,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -4005,7 +4086,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -4094,7 +4178,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -4185,7 +4272,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -4279,7 +4369,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -4368,7 +4461,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -4459,7 +4555,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -4553,7 +4652,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -4642,7 +4744,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -4733,7 +4838,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -4827,7 +4935,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -5000,7 +5111,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -5173,7 +5287,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -5346,7 +5463,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -5491,7 +5611,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -5636,7 +5759,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -5781,7 +5907,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -5926,7 +6055,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -6071,7 +6203,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -6216,7 +6351,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -6361,7 +6499,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -6506,7 +6647,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -6651,7 +6795,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -6768,7 +6915,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -6885,7 +7035,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -7002,7 +7155,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -7119,7 +7275,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -7236,7 +7395,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -7353,7 +7515,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -7498,7 +7663,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -7643,7 +7811,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -7788,7 +7959,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -7905,7 +8079,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -8022,7 +8199,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -8139,7 +8319,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -8256,7 +8439,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -8373,7 +8559,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -8490,7 +8679,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -8579,7 +8771,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -8668,7 +8863,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -8757,7 +8955,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -8846,7 +9047,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -8935,7 +9139,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -9024,7 +9231,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -9113,7 +9323,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -9202,7 +9415,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -9291,7 +9507,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -9464,7 +9683,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -9639,7 +9861,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -9817,7 +10042,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -9962,7 +10190,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -10109,7 +10340,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -10259,7 +10493,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -10404,7 +10641,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -10551,7 +10791,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -10701,7 +10944,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -10846,7 +11092,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -10993,7 +11242,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -11143,7 +11395,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -11260,7 +11515,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -11379,7 +11637,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -11501,7 +11762,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -11618,7 +11882,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -11737,7 +12004,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -11859,7 +12129,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -12004,7 +12277,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -12151,7 +12427,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -12301,7 +12580,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -12418,7 +12700,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -12537,7 +12822,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -12659,7 +12947,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -12776,7 +13067,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -12895,7 +13189,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -13017,7 +13314,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -13106,7 +13406,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -13197,7 +13500,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -13291,7 +13597,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -13380,7 +13689,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -13471,7 +13783,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -13565,7 +13880,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -13654,7 +13972,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -13745,7 +14066,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "magnitude",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -13839,7 +14163,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -14012,7 +14339,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -14185,7 +14515,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -14358,7 +14691,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -14503,7 +14839,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -14648,7 +14987,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -14793,7 +15135,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -14938,7 +15283,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -15083,7 +15431,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -15228,7 +15579,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -15373,7 +15727,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -15518,7 +15875,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -15663,7 +16023,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -15780,7 +16143,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -15897,7 +16263,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -16014,7 +16383,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -16131,7 +16503,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -16248,7 +16623,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -16365,7 +16743,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -16510,7 +16891,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -16655,7 +17039,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -16800,7 +17187,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -16917,7 +17307,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -17034,7 +17427,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -17151,7 +17547,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -17268,7 +17667,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -17385,7 +17787,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -17502,7 +17907,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -17591,7 +17999,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -17680,7 +18091,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -17769,7 +18183,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -17858,7 +18275,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -17947,7 +18367,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
@@ -18036,7 +18459,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 0,
       "allowed": [
@@ -18125,7 +18551,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 1,
       "allowed": [
@@ -18214,7 +18643,10 @@
         "closure_decay_num": 1,
         "closure_decay_den": 2,
         "abstain_mode": "margin",
-        "abstain_margin_threshold": 1200
+        "abstain_margin_threshold": 1200,
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": true
       },
       "k": 4,
       "allowed": [
