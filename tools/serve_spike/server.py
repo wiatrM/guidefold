@@ -105,14 +105,43 @@ def install_resident_dense(router):
 
 class Engine:
     def __init__(self, *, cache_dir=None, disable_model=False, device="cuda",
-                 optimized=False, cli_path=None, torch_threads=None):
+                 optimized=False, cli_path=None, torch_threads=None, pipeline=False,
+                 native_dense_rank=False, native_compiler="/usr/bin/g++", native_build_dir=None, gil_switch_ms=None,
+                 encoder_process=False, encoder_worker_timeout=5.0):
         if torch_threads is not None and (isinstance(torch_threads, bool) or
                 not isinstance(torch_threads, int) or not 1 <= torch_threads <= 256):
             raise ValueError("invalid_torch_threads")
+        if gil_switch_ms is not None:
+            import math
+            if (isinstance(gil_switch_ms, bool) or not isinstance(gil_switch_ms, (int, float))
+                    or not math.isfinite(gil_switch_ms) or not 0.1 <= gil_switch_ms <= 10):
+                raise ValueError("invalid_gil_switch_ms")
+        if native_dense_rank and not optimized:
+            raise ValueError("native_dense_rank_requires_optimized")
+        if native_dense_rank and disable_model:
+            raise ValueError("native_dense_rank_requires_hybrid")
+        if encoder_process and not pipeline:
+            raise ValueError("encoder_process_requires_pipeline")
+        if encoder_process and disable_model:
+            raise ValueError("encoder_process_requires_hybrid")
+        if (isinstance(encoder_worker_timeout, bool) or not isinstance(encoder_worker_timeout, (int, float))
+                or not 0.05 <= encoder_worker_timeout <= 30):
+            raise ValueError("invalid_encoder_worker_timeout")
+        self.encoder_process = encoder_process
+        self.encoder_worker_timeout = encoder_worker_timeout
+        self._worker_proxy = None
+        self._closed = False
+        self._lifecycle_lock = threading.Lock()
         self.ready = False
         self.error = None
         self.backend = "sparse_only" if disable_model else "hybrid_full"
         self.optimized = optimized
+        self.pipeline = pipeline
+        self.gil_switch_ms_requested = gil_switch_ms
+        self.gil_switch_ms_effective = None
+        self.native_dense_rank = native_dense_rank
+        self.native_compiler = native_compiler
+        self.native_build_dir = native_build_dir
         self.cli_path = Path(cli_path) if cli_path else REPO_ROOT / "skills/guidefold/scripts/guidefold"
         self.torch_threads_requested = torch_threads
         self.torch_threads_effective = None
@@ -122,18 +151,50 @@ class Engine:
         self.live_encode_calls = 0
         self.initialization_ms = {}
         self._lock = threading.Lock()
+        self._encoder_lock = threading.Lock()
+        self._counter_lock = threading.Lock()
         self.model = None
         self.snapshot = None
         self.policy_revision = None
         self.model_load_calls = 0
         self.telemetry_errors = 0
 
+    def _worker_health(self):
+        if self._worker_proxy is None:
+            return None
+        state = self._worker_proxy.health()
+        with self._counter_lock:
+            self.live_encode_calls = state["live_encode_calls"]
+        if state["failed"] or (self.ready and not state["alive"]):
+            self.ready = False
+            self.error = "encoder_worker_unavailable"
+        return state
+
+    def close(self):
+        with self._lifecycle_lock:
+            self._closed = True
+            self.ready = False
+            proxy = self._worker_proxy
+        if proxy is not None:
+            proxy.close()
+
     def status(self):
+        worker = self._worker_health()
+        optimizations = {name: dict(meta) for name, meta in self.optimizations.copy().items()}
+        for meta in optimizations.values():
+            if "fallback_reasons" in meta:
+                meta["fallback_reasons"] = dict(meta["fallback_reasons"])
         return {"ready": self.ready, "backend": self.backend, "device": self.device,
                 "snapshot": self.snapshot, "model": self.model, "policy": POLICY,
-                "live_encode_calls": self.live_encode_calls,
+                "live_encode_calls": self._encode_count(),
                 "model_load_calls": self.model_load_calls,
-                "optimized": self.optimized, "optimizations": self.optimizations,
+                "model_load_calls_scope": "api_process",
+                "encoder_process": self.encoder_process, "encoder_worker": worker,
+                "model_location": "encoder_process" if self.encoder_process else "api_process",
+                "optimized": self.optimized, "pipeline": self.pipeline, "optimizations": optimizations,
+                "native_dense_rank": self.native_dense_rank,
+                "gil_switch_ms_requested": self.gil_switch_ms_requested,
+                "gil_switch_ms_effective": self.gil_switch_ms_effective,
                 "cli_path": str(self.cli_path.resolve()),
                 "torch_threads_requested": self.torch_threads_requested,
                 "torch_threads_effective": self.torch_threads_effective,
@@ -142,8 +203,16 @@ class Engine:
                 "n_skills": len(getattr(self, "cards", {})),
                 "reranker": False, "production_iam": False}
 
+    def _configure_runtime(self):
+        # Process-global CPython scheduling experiment. The server owns a
+        # dedicated process; default None must not change its existing interval.
+        if self.gil_switch_ms_requested is not None:
+            sys.setswitchinterval(self.gil_switch_ms_requested / 1000.0)
+        self.gil_switch_ms_effective = sys.getswitchinterval() * 1000.0
+
     def initialize(self):
         start = time.monotonic()
+        self._configure_runtime()
         sys.path.insert(0, str(REPO_ROOT / "tools/eval"))
         import skillret
         self.cli, self.policy_revision = load_cli_snapshot(self.cli_path)
@@ -191,7 +260,15 @@ class Engine:
             self.optimizations["bm25"] = install_bm25_cache(self.router)
             if self.backend != "sparse_only":
                 self.optimizations["dense"] = install_resident_dense(self.router)
-        if self.backend != "sparse_only":
+        if self.native_dense_rank:
+            from tools.serve_spike.native_rank import prepare_native_rank, install_native_dense_rank
+            started_native = time.monotonic()
+            prepared = prepare_native_rank(build_dir=self.native_build_dir, compiler=self.native_compiler)
+            self.optimizations["native_dense_rank"] = install_native_dense_rank(self.router, prepared=prepared)
+            self.initialization_ms["native_dense_rank"] = (time.monotonic() - started_native) * 1000
+        if self.backend != "sparse_only" and self.encoder_process:
+            self._initialize_encoder_process(skillret, np)
+        if self.backend != "sparse_only" and not self.encoder_process:
             stage = time.monotonic()
             # Force offline, even if the caller had explicitly disabled HF offline mode.
             os.environ["HF_HUB_OFFLINE"] = "1"
@@ -220,7 +297,37 @@ class Engine:
                 raise ValueError("model_dimension_mismatch")
             self.initialization_ms["model_warmup"] = (time.monotonic() - stage) * 1000
         self.initialization_ms["total"] = (time.monotonic() - start) * 1000
-        self.ready = True
+        with self._lifecycle_lock:
+            if self._closed:
+                raise RuntimeError("engine_closed_during_initialization")
+            self.ready = True
+
+    def _initialize_encoder_process(self, skillret, np):
+        from types import SimpleNamespace
+        sys.path.insert(0, str(REPO_ROOT))
+        from tools.serve_spike.encoder_worker import EncoderProcessProxy
+        started = time.monotonic()
+        config = {"device": self.device, "model_id": skillret.MODEL_HF_ID,
+                  "model_revision": skillret.MODEL_REV, "dims": self.router.skill_mat.shape[1],
+                  "torch_threads": self.torch_threads_requested,
+                  "worker_timeout_s": self.encoder_worker_timeout}
+        with self._lifecycle_lock:
+            if self._closed:
+                raise RuntimeError("engine_closed_during_initialization")
+            self._worker_proxy = EncoderProcessProxy(config)
+        metadata = self._worker_proxy.start()
+        self.initialization_ms["encoder_process_startup"] = (time.monotonic() - started) * 1000
+        self.torch_threads_effective = metadata["torch_threads_effective"]
+        # Same content-addressed cache key as encode.py, without importing
+        # encode/torch into the API process. The owned child supplies its path.
+        cache_adapter = SimpleNamespace(
+            _cache_dir=lambda *_: Path(metadata["embedding_cache_dir"]),
+            _cache_key=lambda text, is_query: hashlib.sha256(json.dumps(
+                {"text": text, "is_query": is_query}, sort_keys=True).encode("utf-8")).hexdigest())
+        self._verify_text_cache(cache_adapter, skillret, np)
+        self.model = {"id": skillret.MODEL_HF_ID, "revision": skillret.MODEL_REV,
+                      "dtype": metadata["dtype"], "cache_evidence": self.cache_evidence,
+                      "location": "encoder_process", "worker_pid": metadata["pid"]}
 
     def _verify_text_cache(self, encode, skillret, np):
         # Legacy aggregate metadata binds IDs, not source text. Verify every int8
@@ -246,34 +353,79 @@ class Engine:
         self.cache_evidence["text_binding"] = "all_rows_verified_against_content_addressed_float_cache"
         self.initialization_ms["cache_text_verification"] = (time.monotonic() - started) * 1000
 
+    def _encode_count(self):
+        with self._counter_lock:
+            return self.live_encode_calls
+
+    def _encode_query_vector(self, query, deadline=None):
+        # The caller holds the encoder lock in pipeline mode, or the single
+        # engine lock in reference mode. Batch size remains one in both modes.
+        if self.encoder_process:
+            from tools.serve_spike.encoder_worker import EncoderWorkerError, EncoderDeadlineExceeded
+            try:
+                vec = self._worker_proxy.encode(query, deadline)
+            except EncoderDeadlineExceeded as exc:
+                raise ApiError(504, "deadline_exceeded") from exc
+            except EncoderWorkerError as exc:
+                self.ready = False
+                self.error = "encoder_worker_unavailable"
+                raise ApiError(503, "encoder_worker_unavailable") from exc
+            finally:
+                self._worker_health()
+        else:
+            vec = self.encoder._encode_uncached([query], is_query=True)
+            with self._counter_lock:
+                self.live_encode_calls += 1
+        import numpy as np
+        norms = np.linalg.norm(vec, axis=1, keepdims=True)
+        if not np.isfinite(vec).all() or not (norms > 0).all():
+            raise ApiError(503, "encoder_invalid_output")
+        return self.quantize(vec / norms)[0].astype("int64")
+
+    def _pipeline_encode(self, query, deadline, stages):
+        waited = time.monotonic()
+        if not self._encoder_lock.acquire(timeout=max(0, deadline - waited)):
+            raise ApiError(504, "deadline_exceeded")
+        stages["encoder_queue"] = (time.monotonic() - waited) * 1000
+        try:
+            check_deadline(deadline)
+            started = time.monotonic()
+            qvec = self._encode_query_vector(query, deadline)
+            stages["encode"] = (time.monotonic() - started) * 1000
+            check_deadline(deadline)
+            return qvec  # Request-local int64 copy; never bind Router state here.
+        finally:
+            # Release BEFORE this request even attempts the Router lock, so
+            # the next GPU forward can overlap the previous request's CPU work.
+            self._encoder_lock.release()
+
     def search(self, payload, deadline):
         validate_payload("/v1/search", payload)
+        self._worker_health()
         if not self.ready:
             raise ApiError(503, "not_ready")
         query, node = payload["query"], payload.get("node", "_root")
         if node not in self.nodes:
             raise ApiError(400, "invalid_node")
         stages = {}
+        qvec = None
+        if self.pipeline and self.backend != "sparse_only":
+            qvec = self._pipeline_encode(query, deadline, stages)
         waited = time.monotonic()
         if not self._lock.acquire(timeout=max(0, deadline - waited)):
             raise ApiError(504, "deadline_exceeded")
-        stages["engine_queue"] = (time.monotonic() - waited) * 1000
+        stages["router_queue" if self.pipeline else "engine_queue"] = (time.monotonic() - waited) * 1000
         try:
             check_deadline(deadline)
             if self.backend != "sparse_only":
-                stage = time.monotonic()
-                # Deliberately bypass Encoder.encode's per-text disk cache. Every
-                # accepted hybrid SEARCH runs a real forward pass, including repeats.
-                vec = self.encoder._encode_uncached([query], is_query=True)
-                self.live_encode_calls += 1
-                import numpy as np
-                norms = np.linalg.norm(vec, axis=1, keepdims=True)
-                if not np.isfinite(vec).all() or not (norms > 0).all():
-                    raise ApiError(503, "encoder_invalid_output")
-                self.router.query_vec_of = {"live": self.quantize(vec / norms)[0].astype("int64")}
+                if not self.pipeline:
+                    stage = time.monotonic()
+                    qvec = self._encode_query_vector(query, deadline)
+                    stages["encode"] = (time.monotonic() - stage) * 1000
+                    check_deadline(deadline)
+                # Binding and cleanup happen only while owning the Router lock.
+                self.router.query_vec_of = {"live": qvec}
                 self.router._current_qid = "live"
-                stages["encode"] = (time.monotonic() - stage) * 1000
-                check_deadline(deadline)
             stage = time.monotonic()
             admissible, drops = self.router.policy_filter(node, query)
             stages["policy"] = (time.monotonic() - stage) * 1000
@@ -297,14 +449,16 @@ class Engine:
                         "name": c["name"], "description": c["description"]}
             return {"search_id": str(uuid.uuid4()), "backend": self.backend,
                     "snapshot": self.snapshot, "model": self.model, "policy": POLICY,
-                    "policy_revision": self.policy_revision, "optimized": self.optimized,
+                    "policy_revision": self.policy_revision, "optimized": self.optimized, "pipeline": self.pipeline,
+                    "native_dense_rank": self.native_dense_rank, "encoder_process": self.encoder_process,
+                    "gil_switch_ms_effective": self.gil_switch_ms_effective,
                     "torch_threads_effective": self.torch_threads_effective,
                     "profile": payload.get("profile", "hook"), "reranker": False,
                     "ranked": [dict(card(c["urn"]), score=c["score"]) for c in scored if c["urn"] in admissible][:10],
                     "cards": [card(c["urn"]) for c in selected],
                     "composition": {"status": "not_evaluated", "incomplete": None},
                     "abstained": not bool(selected), "policy_drops": len(drops),
-                    "stages_ms": stages, "live_encode_calls": self.live_encode_calls}
+                    "stages_ms": stages, "live_encode_calls": self._encode_count()}
         finally:
             if self.backend != "sparse_only":
                 self.router.query_vec_of = {}
@@ -313,6 +467,7 @@ class Engine:
     def use(self, payload, deadline):
         validate_payload("/v1/use", payload)
         check_deadline(deadline)
+        self._worker_health()
         if not self.ready:
             raise ApiError(503, "not_ready")
         sid = payload["skill_id"]
@@ -426,7 +581,7 @@ class Handler(BaseHTTPRequestHandler):
             check_deadline(deadline)
             status = 200
             for key in ("search_id", "skill_id", "revision", "snapshot", "backend", "policy",
-                        "profile", "stages_ms", "live_encode_calls", "policy_revision", "optimized", "torch_threads_effective", "execution_observed",
+                        "profile", "stages_ms", "live_encode_calls", "policy_revision", "optimized", "pipeline", "native_dense_rank", "encoder_process", "gil_switch_ms_effective", "torch_threads_effective", "execution_observed",
                         "search_id_verified", "current_state"):
                 if key in result:
                     record[key] = result[key]
@@ -480,6 +635,13 @@ def main():
     parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--disable-model", action="store_true")
     parser.add_argument("--optimized", action="store_true", help="Enable exact resident sparse/dense caches")
+    parser.add_argument("--pipeline", action="store_true", help="Overlap batch-one encoding with prior request routing")
+    parser.add_argument("--encoder-process", action="store_true", help="Own a spawn-only encoder process; requires --pipeline and a model")
+    parser.add_argument("--encoder-worker-timeout", type=float, default=5.0, help="In-flight worker watchdog seconds (0.05..30); independent of query deadline")
+    parser.add_argument("--native-dense-rank", action="store_true", help="Use exact compiled dense ranking; requires --optimized and a model")
+    parser.add_argument("--gil-switch-ms", type=float, help="Process-global CPython switch interval (0.1..10 ms); default unchanged")
+    parser.add_argument("--native-compiler", default="/usr/bin/g++")
+    parser.add_argument("--native-build-dir", type=Path)
     parser.add_argument("--cli-path", type=Path, help="Load a pinned CLI source snapshot")
     parser.add_argument("--torch-threads", type=int, help="Override CPU torch threads after model loading")
     parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
@@ -487,7 +649,10 @@ def main():
     args = parser.parse_args()
     token = args.token_file.read_text().strip()
     engine = Engine(cache_dir=args.cache_dir, disable_model=args.disable_model, device=args.device,
-                    optimized=args.optimized, cli_path=args.cli_path, torch_threads=args.torch_threads)
+                    optimized=args.optimized, cli_path=args.cli_path, torch_threads=args.torch_threads, pipeline=args.pipeline,
+                    native_dense_rank=args.native_dense_rank, native_compiler=args.native_compiler, native_build_dir=args.native_build_dir,
+                    gil_switch_ms=args.gil_switch_ms, encoder_process=args.encoder_process,
+                    encoder_worker_timeout=args.encoder_worker_timeout)
     server = make_server(engine, token, args.host, args.port, args.max_inflight, args.log_file)
     def initialize():
         try:
@@ -495,9 +660,14 @@ def main():
             server.emit({"event": "ready", **engine.status(), "timestamp": time.time()})
             print(json.dumps(engine.status()), flush=True)
         except (Exception, SystemExit) as exc:
+            engine.close()
             engine.error = type(exc).__name__
             server.emit({"event": "initialization_failed", "error": engine.error})
             print("Initialization failed: " + str(exc), file=sys.stderr, flush=True)
+    import signal
+    def stop_on_signal(signum, frame):
+        raise KeyboardInterrupt
+    previous_sigterm = signal.signal(signal.SIGTERM, stop_on_signal)
     threading.Thread(target=initialize, daemon=True).start()
     print(json.dumps({"listening": "http://" + args.host + ":" + str(server.server_port),
                       "local_feasibility_spike": True}), flush=True)
@@ -506,7 +676,9 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        engine.close()
         server.server_close()
+        signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,12 @@ skill owners review usability evidence and decide changes through GitHub.
 This contract refines [KNOWLEDGE-DESIGN](KNOWLEDGE-DESIGN.md) §4 telemetry,
 §5 probation and §9 privacy. The older `loaded → outcome` shorthand, plain prompt
 hashes and treating salt rotation as erasure do not apply to the proposed MVP.
-It specifies planned behavior; it is not a claim that the endpoints exist today.
+The [local E1.1b spike](../tools/serve_spike/README.md) implements experimental
+SEARCH/USE endpoints. This production contract remains Proposed; the spike does
+not implement its full authorization, dependency, delivery or event guarantees.
+Its server event `use_hydrated` means a revision response was prepared, not that a
+client verified or hydrated it, an agent used it, or anyone assessed its usability.
+It is not `skill_load_completed`, `skill_use_observed` or usefulness evidence.
 
 ## 1. What SEARCH and USE mean
 

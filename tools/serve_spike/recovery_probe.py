@@ -42,6 +42,28 @@ def sha256_file(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def child_identities(pid):
+    children_file = pathlib.Path('/proc') / str(pid) / 'task' / str(pid) / 'children'
+    if not children_file.exists():
+        return {}
+    children = {}
+    for child in children_file.read_text().split():
+        try:
+            fields = (pathlib.Path('/proc') / child / 'stat').read_text().rpartition(')')[2].split()
+            children[child] = fields[19]
+        except FileNotFoundError:
+            pass
+    return children
+
+
+def child_still_running(pid, start_ticks):
+    try:
+        fields = (pathlib.Path('/proc') / str(pid) / 'stat').read_text().rpartition(')')[2].split()
+        return fields[19] == start_ticks and fields[0] != 'Z'
+    except FileNotFoundError:
+        return False
+
+
 class OwnService:
     """Own exactly one subprocess; never inspect or stop unrelated processes."""
 
@@ -53,6 +75,7 @@ class OwnService:
         self.url = None
         self.stdout_file = scratch / ("service-" + str(ordinal) + ".log")
         self.stop_evidence = None
+        self.children = {}
 
     def start(self):
         command = [sys.executable, str(SERVER), "--port", str(self.port),
@@ -61,6 +84,20 @@ class OwnService:
             command.append("--disable-model")
         if self.args.cache_dir is not None:
             command.extend(["--cache-dir", str(self.args.cache_dir)])
+        if self.args.optimized:
+            command.append("--optimized")
+        if self.args.pipeline:
+            command.append("--pipeline")
+        if self.args.native_dense_rank:
+            command.append("--native-dense-rank")
+        if self.args.encoder_process:
+            command.append("--encoder-process")
+        if self.args.gil_switch_ms is not None:
+            command.extend(["--gil-switch-ms", str(self.args.gil_switch_ms)])
+        if self.args.cli_path is not None:
+            command.extend(["--cli-path", str(self.args.cli_path)])
+        if self.args.torch_threads is not None:
+            command.extend(["--torch-threads", str(self.args.torch_threads)])
         self.stream = self.stdout_file.open("wb")
         started = time.perf_counter()
         self.process = subprocess.Popen(command, stdout=self.stream, stderr=subprocess.STDOUT,
@@ -83,6 +120,7 @@ class OwnService:
                                                 timeout=min(self.args.timeout, 1.0))
                 body = ready.get("response") or {}
                 if ready["http_status"] == 200 and body.get("ready") is True:
+                    self.children.update(child_identities(self.process.pid))
                     return {"pid": self.process.pid,
                             "process_start_to_ready_ms": (time.perf_counter() - started) * 1000,
                             "ready": body}
@@ -96,6 +134,8 @@ class OwnService:
             return self.stop_evidence
         started = time.perf_counter()
         forced = False
+        if self.process is not None:
+            self.children.update(child_identities(self.process.pid))
         if self.process is not None and self.process.poll() is None:
             self.process.terminate()
             try:
@@ -106,7 +146,13 @@ class OwnService:
                 self.process.wait(timeout=5)
         if self.stream is not None:
             self.stream.close()
+        cleanup_deadline = time.monotonic() + 5
+        while any(child_still_running(pid, ticks) for pid, ticks in self.children.items()) and time.monotonic() < cleanup_deadline:
+            time.sleep(.05)
+        children_stopped = {pid: not child_still_running(pid, ticks) for pid, ticks in self.children.items()}
         self.stop_evidence = {
+            "owned_children_stopped": children_stopped,
+            "all_owned_children_stopped": all(children_stopped.values()),
             "pid": self.process.pid if self.process is not None else None,
             "stopped": self.process is not None and self.process.poll() is not None,
             "exit_code": self.process.returncode if self.process is not None else None,
@@ -153,6 +199,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=pathlib.Path, required=True)
     parser.add_argument("--disable-model", action="store_true")
+    parser.add_argument("--optimized", action="store_true")
+    parser.add_argument("--pipeline", action="store_true")
+    parser.add_argument("--encoder-process", action="store_true")
+    parser.add_argument("--native-dense-rank", action="store_true")
+    parser.add_argument("--cli-path", type=pathlib.Path)
+    parser.add_argument("--torch-threads", type=int)
+    parser.add_argument("--gil-switch-ms", type=float)
     parser.add_argument("--cache-dir", type=pathlib.Path)
     parser.add_argument("--startup-timeout", type=float, default=180)
     parser.add_argument("--timeout", type=float, default=5)
@@ -283,7 +336,7 @@ def main(argv=None):
             report["failure"]["code"] = str(exc)
     finally:
         report["cleanup"] = [service.stop() for service in services]
-        report["all_owned_processes_stopped"] = all(row["stopped"] for row in report["cleanup"])
+        report["all_owned_processes_stopped"] = all(row["stopped"] and row["all_owned_children_stopped"] for row in report["cleanup"])
         token_file.unlink(missing_ok=True)
         report["temporary_token_removed"] = not token_file.exists()
         report["passed"] = bool(report.get("passed") and report["all_owned_processes_stopped"]

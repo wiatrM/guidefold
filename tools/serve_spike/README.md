@@ -125,14 +125,14 @@ at a time; unrelated CPU/GPU work changes the result and should be recorded.
   --url http://127.0.0.1:8765 --label hybrid \
   --token-file .guidefold/serve-spike/token \
   --count 200 --fresh-count 200 --use-count 20 --concurrency 1,4 \
-  --deadline-ms 1000 --timeout 5 --budget-ms 300 \
+  --deadline-ms 1000 --timeout 5 --budget-ms 400 \
   --output .guidefold/serve-spike/hybrid.json
 
 "$GF_PY" tools/serve_spike/probe.py \
   --url http://127.0.0.1:8766 --label sparse \
   --token-file .guidefold/serve-spike/token \
   --count 200 --fresh-count 200 --use-count 20 --concurrency 1,4 \
-  --deadline-ms 1000 --timeout 5 --budget-ms 300 \
+  --deadline-ms 1000 --timeout 5 --budget-ms 400 \
   --output .guidefold/serve-spike/sparse.json
 ```
 
@@ -143,8 +143,10 @@ exact revision returned by SEARCH, and verifies the returned body checksum.
 The fresh-client arm includes Python startup, imports, token-file read, HTTP and
 process exit; it is not the actual product harness or whole-hook measurement.
 
-The 300 ms value is an evaluation threshold, distinct from the 1000 ms request
-deadline and five-second transport timeout. Results report attempted/succeeded/
+The current acceptance threshold is strictly below 400 ms, distinct from the
+1000 ms request deadline and five-second transport timeout. Historical 300 ms
+results remain unchanged. `compare.py` recomputes the strict threshold from raw
+attempts. Results report attempted/succeeded/
 failed requests, successful and all-attempt latencies, errors, budget misses,
 throughput, server stages, readiness evidence and the live-forward counter audit.
 A fast rejection is counted as a failed attempt, not a successful low latency.
@@ -178,34 +180,35 @@ cp --no-clobber skills/guidefold/scripts/guidefold .guidefold/serve-spike/guidef
 sha256sum .guidefold/serve-spike/guidefold-pinned
 
 "$GF_PY" tools/serve_spike/server.py \
-  --port 8767 --max-inflight 4 --optimized --torch-threads 1 \
+  --port 8767 --max-inflight 4 --optimized --torch-threads 16 \
   --cli-path .guidefold/serve-spike/guidefold-pinned \
   --token-file .guidefold/serve-spike/token \
-  --log-file .guidefold/serve-spike/optimized-t1-events.jsonl
+  --log-file .guidefold/serve-spike/optimized-t16-events.jsonl
 ```
 
 `--torch-threads` overrides CPU PyTorch threads **after** the encoder adapter has
 loaded the model and set its own default, and before warmup. Readiness records
-both requested and effective values. To compare 1 versus 16 threads, stop the
-first process, restart with `--torch-threads 16` and a distinct log/output label,
-then run the same workload. Do not run the model arms simultaneously.
+both requested and effective values. The canonical comparison uses 16 threads.
+One thread is a separate ablation: stop the first process, restart with
+`--torch-threads 1` and a distinct log/output label, then run the same workload.
+Do not run the model arms simultaneously.
 
 After readiness, in a second terminal with the same setup variables:
 
 ```bash
 "$GF_PY" tools/serve_spike/probe.py \
-  --url http://127.0.0.1:8767 --label optimized-t1 \
+  --url http://127.0.0.1:8767 --label optimized-t16 \
   --token-file .guidefold/serve-spike/token \
-  --count 200 --fresh-count 200 --fresh-concurrency 4 \
+  --count 200 --fresh-count 200 --fresh-concurrency 1 \
   --use-count 20 --concurrency 1,4 \
   --deadline-ms 1000 --timeout 5 --budget-ms 400 \
-  --output .guidefold/serve-spike/optimized-t1.json
+  --output .guidefold/serve-spike/optimized-t16.json
 ```
 
-The optimization command measures 200 fresh processes with four concurrent
-workers (`--fresh-concurrency 4`). Repeat with `--fresh-concurrency 1` and a
-distinct output name for the sequential whole-client comparison. Ordered ranking
-and selected-card digests are retained for parity checks across runs.
+The primary optimization command measures 200 sequential fresh processes alongside
+HTTP c1/c4. A separate burst uses four fresh workers and a 400 ms server deadline,
+as shown below. Ordered ranking and selected-card digests are retained for parity
+checks across runs; no successful-request-only result establishes the whole gate.
 
 Compare against a reference process started with the **same** pinned CLI and
 thread count, without `--optimized`. Evaluate fresh-client p95 and success rate,
@@ -214,6 +217,143 @@ itself establish the requested whole-client gate. These are still Python client
 process measurements, not the product harness or WAN path. Any language rewrite,
 dynamic batching or wider concurrency redesign should follow the measured stage
 costs and retain score/policy parity.
+
+## Separate pipeline and native ranking switches
+
+`--pipeline` uses separate encoder and Router locks. Each query is encoded and
+quantized into its own vector, then releases the encoder lock before waiting for
+the Router. That permits the next GPU forward to overlap the preceding request's
+CPU routing. Batch size stays one. The vector is bound to the Router only while
+holding its lock; all error/deadline paths release their own locks and never
+clear another request's vector. Pipeline timings expose `encoder_queue` and
+`router_queue`; the reference continues to expose `engine_queue`.
+
+`--native-dense-rank` requires both `--optimized` and the full-model backend.
+It replaces only dense ordering with the exact integer comparator from
+`native_dense_rank.cpp`; policy, candidate assembly and selection remain the
+shared Router implementation. It uses signed 128-bit intermediates, preserving
+negative scores and tie ordering. Linux and a local C++17 compiler are required.
+The compiler defaults to `/usr/bin/g++`; override it with `--native-compiler`.
+Build output defaults to the ignored `.guidefold/serve-spike/native` directory,
+with an optional `--native-build-dir` override.
+
+Compilation/library verification/loading happen before readiness. If explicitly
+requested native support cannot compile or load, startup fails; it never reports
+native success while silently running the reference. Readiness exposes compiler
+path/version/flags, source/compiler/library hashes, prepare/load times and build
+reuse. Values outside the supported numeric contract use the original Python
+comparator with explicit `fallback_calls` and `fallback_reasons`; native and empty
+calls have separate counters. No compiler or file lookup runs inside a request.
+
+Run the combined candidate after stopping other service instances:
+
+```bash
+"$GF_PY" tools/serve_spike/server.py \
+  --port 8767 --max-inflight 4 --optimized --pipeline --native-dense-rank \
+  --torch-threads 16 --cli-path .guidefold/serve-spike/guidefold-pinned \
+  --token-file .guidefold/serve-spike/token \
+  --log-file .guidefold/serve-spike/pipeline-native-events.jsonl
+```
+
+After readiness, capture both the primary run and a separate burst using the same
+distinct-query workload. The primary server deadline is 1000 ms so tails remain
+visible; the burst uses a 400 ms server deadline. Both are evaluated against the
+strictly below 400 ms client threshold; transport timeout remains separate.
+
+```bash
+"$GF_PY" tools/serve_spike/probe.py \
+  --url http://127.0.0.1:8767 --label optimized-pipeline-native-primary-t16 \
+  --token-file .guidefold/serve-spike/token \
+  --count 200 --fresh-count 200 --fresh-concurrency 1 \
+  --use-count 20 --concurrency 1,4 \
+  --deadline-ms 1000 --timeout 5 --budget-ms 400 \
+  --output .guidefold/serve-spike/pipeline-native-primary-t16.json
+
+"$GF_PY" tools/serve_spike/probe.py \
+  --url http://127.0.0.1:8767 --label optimized-pipeline-native-burst-t16 \
+  --token-file .guidefold/serve-spike/token \
+  --count 200 --fresh-count 200 --fresh-concurrency 4 \
+  --use-count 20 --concurrency 1,4 \
+  --deadline-ms 400 --timeout 5 --budget-ms 400 \
+  --output .guidefold/serve-spike/pipeline-native-burst-t16.json
+```
+
+For an ablation, remove only `--pipeline` or only `--native-dense-rank`, keep the
+same pinned CLI, workload, thread count and client, and use a distinct output
+name. All switches remain opt-in. Compare failures and ordered result digests,
+not just successful-request latency. These commands describe a reproducible
+candidate; passing a gate requires its actual measured result.
+
+## Compare the complete primary and burst evidence
+
+Capture the pinned reference before or after the contender, with other service
+instances stopped. Start this reference in one terminal:
+
+```bash
+"$GF_PY" tools/serve_spike/server.py \
+  --port 8765 --max-inflight 4 --torch-threads 16 \
+  --cli-path .guidefold/serve-spike/guidefold-pinned \
+  --token-file .guidefold/serve-spike/token \
+  --log-file .guidefold/serve-spike/reference-t16-events.jsonl
+```
+
+After readiness, probe it from a second terminal, then stop it:
+
+```bash
+"$GF_PY" tools/serve_spike/probe.py \
+  --url http://127.0.0.1:8765 --label reference-t16 \
+  --token-file .guidefold/serve-spike/token \
+  --count 200 --fresh-count 200 --fresh-concurrency 1 \
+  --use-count 20 --concurrency 1,4 \
+  --deadline-ms 1000 --timeout 5 --budget-ms 400 \
+  --output .guidefold/serve-spike/reference-t16.json
+```
+
+Once the reference and both contender files above are complete, compare them:
+
+```bash
+"$GF_PY" tools/serve_spike/compare.py \
+  --reference .guidefold/serve-spike/reference-t16.json \
+  --contender .guidefold/serve-spike/pipeline-native-primary-t16.json \
+  --burst .guidefold/serve-spike/pipeline-native-burst-t16.json \
+  --budget-ms 400 \
+  --output .guidefold/serve-spike/pipeline-native-comparison-t16.json
+```
+
+The complete performance gate requires 200/200 successful expected requests and
+p95 <400 ms in contender HTTP c1/c4 and fresh c1, plus burst HTTP c4 and fresh c4.
+The comparison validates workload/code/policy/model/snapshot identities and reports
+missing, duplicate, failed and mismatched query IDs. Different primary/burst server
+deadlines are recorded; no burst speedup is reported against an arm with a different
+deadline or concurrency. Missing identities or evidence cannot produce a complete
+verdict. Returned ranking/selection parity is separate from the latency gate and
+establishes no retrieval-quality gain or task usefulness. Loopback success remains
+separate from production harness, network, authorization and operational gates.
+
+## Separate CPython scheduling ablation
+
+`--gil-switch-ms 0.5` changes the interpreter scheduling interval only in the
+dedicated service process. Accepted values are finite 0.1..10 ms; omitting the flag
+preserves the existing interval. Startup readiness records requested and effective
+values (the default observed on this host was 5 ms). It does not change the model,
+batch size, ranking formulas or client. A shorter interval may reduce dispatch
+waiting for the GIL, while more switching can reduce CPU throughput.
+
+For this ablation, stop the other server and start:
+
+```bash
+"$GF_PY" tools/serve_spike/server.py \
+  --port 8767 --max-inflight 4 --optimized --pipeline --native-dense-rank \
+  --torch-threads 16 --gil-switch-ms 0.5 \
+  --cli-path .guidefold/serve-spike/guidefold-pinned \
+  --token-file .guidefold/serve-spike/token \
+  --log-file .guidefold/serve-spike/pipeline-native-gil0p5-events.jsonl
+```
+
+Use `pipeline-native-gil0p5` in distinct primary, burst and comparison labels/output
+names. Repeat the complete protocol above with the same reference, workload
+and comparison tool, including c1/c4, fresh processes and result digests. An interval
+change is an experiment; no latency benefit or passing gate is implied.
 
 ## API and telemetry contract
 
@@ -233,32 +373,39 @@ skills required by a task have been selected. Empty selection reports abstention
 `search_id` and `deadline_ms` are optional. Missing/invalid inputs return 400,
 unknown skills 404, and stale revisions or inactive skills 409. Success returns
 `status:"hydrated"`, current state, body, SHA-256 checksum and
-`execution_observed:false`. The supplied `search_id` is echoed with
-`search_id_verified:false`; a server-validated search/use ledger is future work.
+`execution_observed:false`. Here `status:"hydrated"` means the server prepared the
+revision body for its response; it does not confirm client receipt, integrity
+verification or hydration into agent context. The supplied `search_id` is echoed
+with `search_id_verified:false`; a server-validated search/use ledger is future work.
 
 JSONL telemetry records request identity, outcome, versions, returned skill IDs
 and stage timings. It omits query text, skill bodies and the bearer token.
-Successful events are `search_completed` and `use_hydrated`; failed requests have
-HTTP status/error. Write failures increment readiness `telemetry_errors`; this
+Successful server events are `search_completed` and `use_hydrated`; the latter is
+emitted when the response is prepared, before confirmed client hydration. Neither
+is an observed skill-use or usability event. Failed requests have HTTP status/error.
+Write failures increment readiness `telemetry_errors`; this
 is observable loss, not guaranteed delivery. There is no analytics database,
 retention policy, deduplication, user/session identity or outcome attribution yet.
 
 ## What this validates and leaves open
 
-- **Latency scope:** loopback HTTP with resident weights/index and serialized
-  encoder/Router access. Admission and connection-worker counts are bounded;
+- **Latency scope:** loopback HTTP with resident weights/index. Encoder and Router
+  access are each serialized; only --pipeline overlaps the two stages. Admission and connection-worker counts are bounded;
   saturation returns 429. This is not a WAN, TLS, multi-tenant or production-load
   result. No cloud resource is created.
 - **Request limits:** JSON payloads are limited to 16 KiB, queries to 4096 characters,
   deadline to 1..5000 ms. Deadlines are checked between stages and while acquiring
-  the engine lock. A running model forward pass is not preempted; the client may
+  the relevant engine/encoder/Router lock. A running model forward pass is not preempted; the client may
   time out before the server finishes work. There is no dynamic batching.
 - **Readiness scope:** startup readiness verifies the data and one forward pass.
-  It is not a continuous GPU health check; a later encoder error does not
-  automatically eject/restart the process. Readiness and model counters are
-  process-local and reset on restart.
-- **Counter meaning:** `model_load_calls` counts completed explicit model loads;
-  it is one for a ready hybrid process and zero for sparse. `live_encode_calls`
+  In the default in-process encoder mode it is not a continuous GPU health
+  check, and a later encoder error does not automatically eject the process.
+  The optional worker mode below fails readiness after child failure; neither
+  mode restarts automatically. Counters reset on restart.
+- **Counter meaning:** `model_load_calls` counts completed explicit model loads
+  in the API process (`model_load_calls_scope:api_process`): one for the default
+  hybrid mode, zero for sparse or the optional child-worker mode. The worker's
+  own count is under `encoder_worker.metadata.model_load_calls`. `live_encode_calls`
   excludes the startup warmup and increments after a query forward returns.
   Work that later exceeds its deadline can still increment the counter. Failed
   forward calls are not counted. No simultaneous external traffic should occur
@@ -277,6 +424,42 @@ retention policy, deduplication, user/session identity or outcome attribution ye
   be converted into cached disclosure.
 - **Quality and usefulness:** the probe does not measure routing quality, bundle
   completeness, usability, application, successful execution or usefulness.
-  SEARCH counts retrieval; USE counts hydration. Outcome and usefulness require
-  explicit later client events/evaluation. A successful local latency gate cannot
+  SEARCH records retrieval; USE records a revision response prepared by the server.
+  Confirmed client hydration, observed use, outcomes and usefulness require explicit
+  later client events/evaluation. A successful local latency gate cannot
   close those product gates.
+
+## Optional encoder process: future hybrid shadow experiment
+
+The next product measurement is optimized sparse-only. `--encoder-process` is
+an opt-in hybrid experiment; CPU correctness tests do not establish model-vector
+parity, retrieval quality or a latency admission result. It requires `--pipeline`
+and a model, and leaves the default path unchanged.
+
+For a later, explicitly scheduled offline GPU experiment, add
+`--encoder-process` to the existing `--optimized --pipeline --native-dense-rank
+--torch-threads 16` command, using a separate result label and log file. Omit the
+failed `--gil-switch-ms` ablation to preserve the default CPython interval.
+The owned child uses `multiprocessing.spawn`, loads and warms the pinned encoder
+once, and runs uncached batch-one forwards. The API process does not import
+`encode` or torch in this mode. IPC carries one query and its matching raw
+float32 vector; the API performs the same extra normalization and int8
+quantization used by the reference path. It does not batch, retry or cache queries.
+
+A normal query deadline is checked before dispatch. Once dispatched, the encoder
+lock is held until the matching reply is drained; a late result yields 504 under
+the ordinary server deadline check, and a later query can still succeed. This
+is not hard cancellation at the client deadline. A separate finite watchdog
+(`--encoder-worker-timeout`, default 5 seconds, allowed 0.05..30) bounds the IPC
+operation. Watchdog expiry, child death or a malformed/mismatched reply ends the
+owned worker and makes requests/readiness fail; no stale vector is reused.
+
+Readiness includes the child PID, spawn mode, model/load/warmup metadata, effective
+torch/GIL settings and live forward count. `model_load_calls` remains zero in the
+API process while the child's completed-load count is one. SIGTERM closes the
+owned worker; a daemon checks the child's parent PID every 100 ms so parent
+process death also exits the worker. This uses process parentage because Linux
+`PR_SET_PDEATHSIG` follows the creating thread, and service initialization runs
+in a short-lived thread. The guard still needs Python scheduling in the child.
+CPU tests cover initialization-thread exit, parent SIGTERM/SIGKILL with a blocked
+fake forward, deadline recovery, response isolation and failure cleanup.
