@@ -1,6 +1,7 @@
 # ADR-0023: Central SEARCH/USE service, bounded hooks, and measured skill utility
 
-**Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: deployment tiers; sparse-only is the admitted profile until dense earns admission per tenant
+**Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: deployment tiers; sparse-only is the admitted profile until dense earns admission per tenant · request boundary amended by [ADR-0025](ADR-0025-harness-service-context-contract.md) (Accepted); architecture status unchanged
+**Implemented request contract:** [Harness-service 1.1](../HARNESS-SERVICE-CONTRACT.md); repository/path resolution and delivery limits are covered by schema/runtime/HTTP tests. Broader production and telemetry guarantees below remain proposed.
 **Proposes amendments to:** ADR-0009 (serving location), ADR-0013 and ADR-0018 (online service dependency), ADR-0015 and ADR-0020 (resident contextual models), ADR-0021 (local artifact budget), ADR-0016 (usage is not probation success).
 **Preserves:** Git as source of truth, owner approval, one Postgres, GCS artifacts, single-file stdlib + PyYAML client, and ADR-0022's eligibility/composition requirements.
 **Delivery:** [MVP](../MVP.md), immediate blocking **E1.1b service feasibility**, then E2 client/distribution and new E6 service/measurement. Existing E3 remains promotion; story IDs are not renumbered.
@@ -38,7 +39,13 @@ SEARCH responses contain `search_id`, snapshot/model/pipeline/policy versions, a
 
 Proposed targets, to validate rather than advertise as achieved:
 
-- Whole-hook warm p95 <400 ms, including process start, local reads, authentication, network, policy, composition and output. Retain a separate portable 3 s crash watchdog; it is not the normal timeout or SLO.
+E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over loopback, measured separately at c1 and c4 with a fresh client process per request and a ready resident server/index. Server-side p95 must be ≤300 ms at both loads, measured from HTTP admission before authentication or queueing through synchronous logging and JSON response serialization. Whole-client timing includes startup/imports, local reads, auth, transport, queues, retrieval/composition, telemetry and output/exit. Report all attempts, errors and successful-within-budget counts under frozen workload, corpus, hardware and runtime identities. WAN/TLS/IAM and the actual harness remain a separate E6 integration gate, never implied by loopback success. Optimized sparse is the production candidate; hybrid remains shadow until independent latency and quality admission.
+
+Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
+
+See [E1.1b service feasibility](../reports/bakeoff/E1.1b-service-feasibility-2026-09-05.md) for measured results and the final decision.
+
+- Retain a separate portable 3 s crash watchdog; it is not the normal timeout or SLO.
 - Interactive SEARCH client-observed p95 <=1 s initially, including requested reranking. Measure encoder-only and reranked profiles separately; disable the latter if it cannot meet its budget.
 - USE has separate cache-hit/cold-hydration p50/p95, error and byte metrics. It is outside the automatic hook budget. Freeze its pilot target from measured bundle sizes in week 1.
 
@@ -64,7 +71,7 @@ Prompt text is transient SEARCH input, excluded from normal logs/traces/spool by
 
 ### 6. Rebaseline MVP around delivery and evidence
 
-E1.1b first validates a runnable HTTP/live-encoder service spike with startup, latency, concurrency, failure/fallback and revision hydration evidence. Review its proceed/change/stop decision before service-dependent E2/E6 implementation; a local benchmark does not establish target-network/TLS/IAM performance. E2 then delivers distribution and thin clients; E6 delivers the operational service and measurement. E1 closes scorer/evaluation/composition blockers. Preserve a concierge owner-reviewed E3 slice, basic E4 validation/withdrawal and one diagnostic E5 view. Defer automated induction, full promotion orchestration, automatic probation promotion, custom graph UI, own training and HA. Eight weeks from this revision at 2 engineers +0.5 ML is a capacity estimate with narrower scope, not an extension that retains every old feature.
+E1.1b first validates the optimized sparse HTTP service with startup, latency, concurrency, failure/fallback and revision delivery evidence; live-encoder and separate-worker experiments remain hybrid shadow work. Review its proceed/change/stop decision before service-dependent E2/E6 implementation; a local benchmark does not establish target-network/TLS/IAM performance. E2 then delivers distribution and thin clients; E6 delivers the operational service and measurement. E1 closes scorer/evaluation/composition blockers. Preserve a concierge owner-reviewed E3 slice, basic E4 validation/withdrawal and one diagnostic E5 view. Defer automated induction, full promotion orchestration, automatic probation promotion, custom graph UI, own training and HA. Eight weeks from this revision at 2 engineers +0.5 ML is a capacity estimate with narrower scope, not an extension that retains every old feature.
 
 Admission requires a corrected sparse baseline, independent labelled tasks, common denominators including empty results, shared eligibility/composition, and whole-client latency under load. Cached query embeddings cannot pass the serving gate. Ship the same API with sparse retrieval if no contextual profile earns adoption. Freeze the prospective remote experiment separately; do not rewrite DENSE-PROGRAM's historical, pre-registered sections after seeing results.
 

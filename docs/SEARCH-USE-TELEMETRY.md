@@ -7,7 +7,12 @@ skill owners review usability evidence and decide changes through GitHub.
 This contract refines [KNOWLEDGE-DESIGN](KNOWLEDGE-DESIGN.md) §4 telemetry,
 §5 probation and §9 privacy. The older `loaded → outcome` shorthand, plain prompt
 hashes and treating salt rotation as erasure do not apply to the proposed MVP.
-It specifies planned behavior; it is not a claim that the endpoints exist today.
+The [local E1.1b spike](../tools/serve_spike/README.md) implements experimental
+SEARCH/USE endpoints. This production contract remains Proposed; the spike does
+not implement its full authorization, dependency, delivery or event guarantees.
+Its server event `use_hydrated` means a revision response was prepared, not that a
+client verified or hydrated it, an agent used it, or anyone assessed its usability.
+It is not `skill_load_completed`, `skill_use_observed` or usefulness evidence.
 
 ## 1. What SEARCH and USE mean
 
@@ -26,6 +31,16 @@ may be reused without another download; a task may SEARCH several times; one USE
 may expand into several dependencies. Record explicit links, not nearest timestamps.
 
 ## 2. API boundary
+
+The implemented local request boundary is [contract 1.1](HARNESS-SERVICE-CONTRACT.md),
+accepted in [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). Adapters send
+repository-relative cwd/targets and stable request/session/task IDs; the service
+returns resolved scopes/owners, snapshot/map versions, explicit used/unused fields
+and exact skill revisions. Paths and free-text metadata are transient and do not
+enter the telemetry spool. Contextual scope checks are not production tenant IAM.
+The table below remains the target E6 contract: event ingestion, durable deduplication,
+actual harness hydration and invocation evidence are not implemented by the spike.
+
 
 | Endpoint | Request | Response / contract |
 |---|---|---|
@@ -188,8 +203,13 @@ Pair them with unauthorized disclosures (target zero), closure/cap violations (z
 event delivery coverage, unsupported observation share and feedback coverage. Include
 all logical requests in reliability denominators; publish offline/denied/error slices.
 
-Proposed targets: whole-hook p95 <400 ms and interactive online SEARCH p95 ≤1 s,
-measured from the client under declared pilot concurrency and network conditions.
+Proposed latency targets follow the same service protocol as MVP §3:
+
+E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over loopback, measured separately at c1 and c4 with a fresh client process per request and a ready resident server/index. Server-side p95 must be ≤300 ms at both loads, measured from HTTP admission before authentication or queueing through synchronous logging and JSON response serialization. Whole-client timing includes startup/imports, local reads, auth, transport, queues, retrieval/composition, telemetry and output/exit. Report all attempts, errors and successful-within-budget counts under frozen workload, corpus, hardware and runtime identities. WAN/TLS/IAM and the actual harness remain a separate E6 integration gate, never implied by loopback success. Optimized sparse is the production candidate; hybrid remains shadow until independent latency and quality admission.
+
+Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
+
+Measured results and the final decision are tracked in [E1.1b service feasibility](reports/bakeoff/E1.1b-service-feasibility-2026-09-05.md). Interactive online SEARCH retains client-observed p95 ≤1 s under declared pilot concurrency and network conditions.
 Measure startup/index loading, auth, network, queue, ranking and output costs; report
 cold/warm modes separately. Retain a separate portable 3 s crash watchdog; validate it on every supported OS, without treating it as the normal latency target.
 Optional interactive reranking is included in its profile budget; a warmed GPU is no latency guarantee.

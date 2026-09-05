@@ -51,10 +51,25 @@ def validate_url(url):
     return url.rstrip("/")
 
 
+def server_elapsed_header(headers):
+    """Missing or invalid server measurements are never interpreted as zero."""
+    values = headers.get_all("X-Guidefold-Server-Ms") if headers is not None else None
+    if not values:
+        return None, "missing_header"
+    if len(values) != 1:
+        return None, "invalid_header"
+    try:
+        value = float(values[0])
+    except (ValueError, TypeError):
+        return None, "invalid_header"
+    return (value, "measured") if math.isfinite(value) and value >= 0 else (None, "invalid_header")
+
+
 def request_json(url, token, path, payload=None, timeout=5.0):
     """A complete JSON-over-HTTP roundtrip, including serialization and decoding."""
     started = time.perf_counter()
     status, body, error = None, None, None
+    server_elapsed_ms, server_elapsed_measurement = None, "missing_header"
     try:
         data = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
@@ -66,9 +81,11 @@ def request_json(url, token, path, payload=None, timeout=5.0):
         try:
             with opener.open(request, timeout=timeout) as response:
                 status = response.status
+                server_elapsed_ms, server_elapsed_measurement = server_elapsed_header(response.headers)
                 body = json.loads(response.read())
         except urllib.error.HTTPError as exc:
             status = exc.code
+            server_elapsed_ms, server_elapsed_measurement = server_elapsed_header(exc.headers)
             try:
                 body = json.loads(exc.read())
             except (ValueError, UnicodeDecodeError):
@@ -80,6 +97,8 @@ def request_json(url, token, path, payload=None, timeout=5.0):
     except (ValueError, UnicodeDecodeError, OSError):
         error = "invalid_response_or_transport"
     return {"http_status": status, "response": body, "error": error,
+            "server_elapsed_ms": server_elapsed_ms,
+            "server_elapsed_measurement": server_elapsed_measurement,
             "client_ms": (time.perf_counter() - started) * 1000}
 
 
@@ -119,6 +138,8 @@ def compact_result(result, query_id=None):
         "ranked_sha256": hashlib.sha256(canonical(ranked)).hexdigest() if "ranked" in body else None,
         "selected_sha256": hashlib.sha256(canonical(selected)).hexdigest() if "cards" in body else None,
         "error": result.get("error"), "client_ms": result.get("client_ms"),
+        "server_elapsed_ms": result.get("server_elapsed_ms"),
+        "server_elapsed_measurement": result.get("server_elapsed_measurement", "missing_header"),
         "search_id": body.get("search_id"), "backend": body.get("backend"),
         "snapshot": body.get("snapshot"), "model": body.get("model"),
         "policy": body.get("policy"), "stages_ms": body.get("stages_ms", {}),
@@ -132,6 +153,10 @@ def compact_result(result, query_id=None):
 def summarize(rows, budget_ms, elapsed_ms=None):
     ok = [r for r in rows if r.get("http_status") == 200 and not r.get("error")]
     times = [r["client_ms"] for r in ok]
+    server_times = [r["server_elapsed_ms"] for r in ok
+                    if not isinstance(r.get("server_elapsed_ms"), bool)
+                    and isinstance(r.get("server_elapsed_ms"), (int, float))
+                    and math.isfinite(r["server_elapsed_ms"]) and r["server_elapsed_ms"] >= 0]
     all_times = [r["client_ms"] for r in rows if isinstance(r.get("client_ms"), (int, float))]
     codes = Counter(str(r.get("http_status")) for r in rows)
     errors = Counter(r["error"] for r in rows if r.get("error"))
@@ -148,6 +173,13 @@ def summarize(rows, budget_ms, elapsed_ms=None):
         "within_budget_fraction_of_all_attempts": within / len(rows) if rows else None,
         "budget_failures_including_rejections": len(rows) - within,
         "successful_backend_counts": dict(Counter(r.get("backend") for r in ok)),
+        "server_elapsed_ms": {
+            "p50": percentile(server_times, .50), "p95": percentile(server_times, .95),
+            "p99": percentile(server_times, .99), "count": len(server_times),
+            "missing_or_invalid_success_count": len(ok) - len(server_times),
+            "successful_measurement_status_counts": dict(Counter(
+                r.get("server_elapsed_measurement", "missing_header") for r in ok)),
+        },
     }
     if elapsed_ms is not None:
         result["batch_elapsed_ms"] = elapsed_ms
@@ -279,6 +311,8 @@ def probe_use(args, token, query):
         rows.append({
             "http_status": result["http_status"], "error": result["error"],
             "client_ms": result["client_ms"], "backend": "revision_pinned_hydration",
+            "server_elapsed_ms": result.get("server_elapsed_ms"),
+            "server_elapsed_measurement": result.get("server_elapsed_measurement", "missing_header"),
             "status": response.get("status"), "revision": response.get("revision"),
             "revision_matches_requested": response.get("revision") == payload["revision"],
             "checksum_matches_body": expected is not None and response.get("checksum") == expected,
@@ -440,6 +474,12 @@ def main(argv=None):
         "scope": "local resident service feasibility; not deployment or product readiness",
         "workload": provenance, "request_profile": "hook", "request_node": "_root",
         "requested_deadline_ms": args.deadline_ms, "client_timeout_seconds": args.timeout,
+        "server_elapsed_measurement": {
+            "header": "X-Guidefold-Server-Ms",
+            "scope": "POST handler start through synchronous telemetry and JSON serialization, before response headers/body transmission",
+            "excludes": "socket accept/HTTP header parsing before do_POST, response transmission, WAN/TLS, client startup and decoding",
+            "missing_or_invalid": "null, never zero",
+        },
         "ready_before_warmups": ready.get("response"),
         "warmup_requests_excluded": len(warmups),
         "warmup_successes": sum(r["http_status"] == 200 for r in warmups),

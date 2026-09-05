@@ -174,6 +174,16 @@ tested once: if none clears the gates on both corpora, the programme ends with t
 *"none of the studied variants earned deployment"*, plus the best dev result per family and the
 gate each failed, so the next attempt starts from evidence.
 
+### E1.1b service protocol v2 — separate versioned note (2026-09-05)
+
+This service-protocol note supplements the historical programme; it does not change the original T300/T500 cost row above, any quality gate, historical measurement or adoption decision. It does not authorize another test-corpus run; the frozen evaluation protocol still applies.
+
+E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over loopback, measured separately at c1 and c4 with a fresh client process per request and a ready resident server/index. Server-side p95 must be ≤300 ms at both loads, measured from HTTP admission before authentication or queueing through synchronous logging and JSON response serialization. Whole-client timing includes startup/imports, local reads, auth, transport, queues, retrieval/composition, telemetry and output/exit. Report all attempts, errors and successful-within-budget counts under frozen workload, corpus, hardware and runtime identities. WAN/TLS/IAM and the actual harness remain a separate E6 integration gate, never implied by loopback success. Optimized sparse is the production candidate; hybrid remains shadow until independent latency and quality admission.
+
+Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
+
+Measured service results and the sparse proceed / hybrid shadow decision are tracked in [E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md).
+
 ## 6. Reference run R1 — what it is and is not
 
 R1 (already running on both test corpora, unfused config chosen from tooling defaults, latency
