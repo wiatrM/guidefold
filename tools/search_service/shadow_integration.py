@@ -144,6 +144,8 @@ def main():
             len(capture["sparse_ranked"]) <= 20 and len(capture["hybrid_ranked"]) <= 20
         )
         assert capture["hybrid_ranked"]
+        assert capture["timings"]["reused_sparse_preparation"] is True
+        assert capture["timings"]["encoder_batch_requests"] == 1
         rows.append(
             {
                 "search_id": answer["search_id"],

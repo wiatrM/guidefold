@@ -217,3 +217,23 @@ def test_ingest_requires_a_verified_tenant_id_it_never_trusts_the_event_body(gf_
         assert False, "expected ValueError for empty tenant_id"
     except ValueError:
         pass
+
+
+def test_same_batch_duplicate_keeps_first_payload_and_order(gf_conn):
+    first = _card_injected()
+    second = _card_injected()
+    changed = dict(first, position=99)
+    invalid = dict(first, schema_version="future")
+    result = ledger.ingest(gf_conn, TENANT, [first, second, changed, invalid, second])
+    assert result["accepted"] == [first["event_id"], second["event_id"]]
+    assert result["duplicate"] == [first["event_id"], second["event_id"]]
+    assert result["rejected"] == [
+        {
+            "event_id": first["event_id"],
+            "reason": "unsupported_schema_version",
+            "retryable": False,
+        }
+    ]
+    stored = {row["event_id"]: row for row in ledger.fetch(gf_conn, TENANT)}
+    assert stored[first["event_id"]] == first
+    assert stored[second["event_id"]] == second

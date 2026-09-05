@@ -1,0 +1,3228 @@
+{
+  "schema_version": 1,
+  "purpose": "Engineering throughput and parity only; no new neural quality evaluation",
+  "production_ready": false,
+  "resource_isolation": false,
+  "source_sha256": {
+    "services/search/bm25f.go": "cb46c7b204b30bdfeebfeb098e9901373b783c4581f8b556ffd6a0c704559078",
+    "services/search/bm25f_test.go": "f0985c86f896411fa82cf675c2b3813c3538006328ada3f6bdf6a20164b0b17a",
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/dense.go": "6aa2bf8b860bd4ecde96fb1a793d783acc0fc595b0e354a33c44cb1cc32aee18",
+    "services/search/dense_test.go": "f5afc5e62851271d619a1e676b48a061cf85067698f17e14365ff49718ec8976",
+    "services/search/main.go": "5288e31bfd47ff506dd26a385b830d1a28b2fd8b345a08fb50d37013b8e4c994",
+    "services/search/routing.go": "2ec53ab2837d968268e993f82d51a6391634c17dfa16351459a5b0ebceee5c66",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/shadow.go": "ae67ea888834ef455b2db6006699d77b17f9cecf5679f12eb003cd630c9083d4",
+    "services/search/shadow_test.go": "96c46f7d49bcec2786faeb03eaac3a483aac414100c384d9ef5f3be9c8f8bc55",
+    "services/search/store.go": "8e872922f536b066c3b81735ec465eeb2894a17d5453df03196ab589f28d95b5",
+    "services/search/telemetry.go": "450eb75018c956d44ceace1e917b4a7f56542f8aa305fe5c496c6563d15b8007",
+    "services/search/telemetry_test.go": "21d1a72abb0ae894329433250592f93385ea4a1c9a84835f84077e1968b76821"
+  },
+  "raw_format": "gzip of original UTF-8 JSON bytes, mtime=0; SHA-256 covers both compressed and original bytes",
+  "artifacts": {
+    "throughput-ledger-before-a.json": {
+      "file": "throughput-ledger-before-a.json.gz",
+      "json_bytes": 29918,
+      "gzip_bytes": 2862,
+      "json_sha256": "c988f420a0029cd955bb1f3438e87cfc16735e76a659819f010497c8d366e829",
+      "gzip_sha256": "4ab06ef9205df6327a31d9d807d0fd48abf04fa729ede1ffc46108748e7f7e9d",
+      "summary": {
+        "kind": "ledger_batch_throughput",
+        "label": "before-a",
+        "quality_evaluated": false,
+        "batch_size": 500,
+        "batches_per_arm": 30,
+        "warmup_batches": 5,
+        "resources_isolated": false,
+        "source_commit": "fd225753c3dc435c279a11c54d46122a89056099",
+        "image": "guidefold-search:pre-throughput-fd22575",
+        "arms": {
+          "insert_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 3.88961641700007,
+            "events_per_second": 3856.4214030053363,
+            "client_ms": {
+              "p50": 120.432,
+              "p95": 182.313,
+              "p99": 217.155
+            },
+            "server_ms": {
+              "p50": 118.809,
+              "p95": 179.029,
+              "p99": 211.568
+            }
+          },
+          "replay_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 3.1776552949959296,
+            "events_per_second": 4720.461663548442,
+            "client_ms": {
+              "p50": 103.594,
+              "p95": 114.94,
+              "p99": 116.531
+            },
+            "server_ms": {
+              "p50": 101.659,
+              "p95": 113.306,
+              "p99": 114.569
+            }
+          },
+          "insert_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 1.9078657870049938,
+            "events_per_second": 7862.188264064058,
+            "client_ms": {
+              "p50": 124.713,
+              "p95": 133.899,
+              "p99": 133.923
+            },
+            "server_ms": {
+              "p50": 122.779,
+              "p95": 131.8,
+              "p99": 132.135
+            }
+          },
+          "replay_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 1.7974390650051646,
+            "events_per_second": 8345.206406180396,
+            "client_ms": {
+              "p50": 110.693,
+              "p95": 172.838,
+              "p99": 178.443
+            },
+            "server_ms": {
+              "p50": 108.982,
+              "p95": 170.994,
+              "p99": 175.552
+            }
+          }
+        },
+        "production_ready": false,
+        "image_id": "sha256:838af0ab950294a58514e43679fc9a7a036da2dcb3808bd47962f0afbbfe307e",
+        "passed": true
+      }
+    },
+    "throughput-ledger-after-b.json": {
+      "file": "throughput-ledger-after-b.json.gz",
+      "json_bytes": 29694,
+      "gzip_bytes": 2810,
+      "json_sha256": "ba10e042dc2964d07332969bf7312e2a85049d514743c0032bc626559c83ea11",
+      "gzip_sha256": "7889cbde8b4919a1d2ea20ee3958b7b17e0847cf8ac9f34068847606b6627fc0",
+      "summary": {
+        "kind": "ledger_batch_throughput",
+        "label": "after-b",
+        "quality_evaluated": false,
+        "batch_size": 500,
+        "batches_per_arm": 30,
+        "warmup_batches": 5,
+        "resources_isolated": false,
+        "source_commit": "775d0d1c35fe67e23bb92e101f8c98a6dbbba362",
+        "image": "guidefold-search:local",
+        "arms": {
+          "insert_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 1.4806639960006578,
+            "events_per_second": 10130.590086958078,
+            "client_ms": {
+              "p50": 47.219,
+              "p95": 54.413,
+              "p99": 55.6
+            },
+            "server_ms": {
+              "p50": 45.286,
+              "p95": 52.58,
+              "p99": 53.992
+            }
+          },
+          "replay_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 1.2287986049996107,
+            "events_per_second": 12207.04510809951,
+            "client_ms": {
+              "p50": 37.783,
+              "p95": 56.252,
+              "p99": 60.046
+            },
+            "server_ms": {
+              "p50": 35.853,
+              "p95": 53.759,
+              "p99": 57.062
+            }
+          },
+          "insert_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 0.7919762780002202,
+            "events_per_second": 18939.961229490043,
+            "client_ms": {
+              "p50": 51.305,
+              "p95": 56.751,
+              "p99": 56.845
+            },
+            "server_ms": {
+              "p50": 49.494,
+              "p95": 54.511,
+              "p99": 54.715
+            }
+          },
+          "replay_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 0.6336840360017959,
+            "events_per_second": 23671.102864831344,
+            "client_ms": {
+              "p50": 40.875,
+              "p95": 47.0,
+              "p99": 47.245
+            },
+            "server_ms": {
+              "p50": 38.188,
+              "p95": 43.612,
+              "p99": 44.364
+            }
+          }
+        },
+        "production_ready": false,
+        "image_id": "sha256:c609e69557c21a12932eef7c43cc6f2536441f27a834ba874a3774064915e553",
+        "passed": true
+      }
+    },
+    "throughput-ledger-final-c.json": {
+      "file": "throughput-ledger-final-c.json.gz",
+      "json_bytes": 29749,
+      "gzip_bytes": 2778,
+      "json_sha256": "b33f73605024930cc24ea03c2ec2b9cfdb1f941833944801e98ac1061085d6ed",
+      "gzip_sha256": "c4b5b6eada86c83b6401ac94add7e49b50a6cb8294d4e79068b1a5012fd48cfb",
+      "summary": {
+        "kind": "ledger_batch_throughput",
+        "label": "final-c",
+        "quality_evaluated": false,
+        "batch_size": 500,
+        "batches_per_arm": 30,
+        "warmup_batches": 5,
+        "resources_isolated": false,
+        "source_commit": "2fd964578e339a7895f0c327c98269e92c776236",
+        "image": "guidefold-search:throughput-final",
+        "arms": {
+          "insert_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 0.9366510649997508,
+            "events_per_second": 16014.501622334663,
+            "client_ms": {
+              "p50": 30.315,
+              "p95": 32.512,
+              "p99": 32.554
+            },
+            "server_ms": {
+              "p50": 28.365,
+              "p95": 30.591,
+              "p99": 30.978
+            }
+          },
+          "replay_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 0.6346393109997734,
+            "events_per_second": 23635.472527489484,
+            "client_ms": {
+              "p50": 20.158,
+              "p95": 22.582,
+              "p99": 24.044
+            },
+            "server_ms": {
+              "p50": 18.118,
+              "p95": 20.39,
+              "p99": 22.118
+            }
+          },
+          "insert_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 0.5322883360058768,
+            "events_per_second": 28180.215468471943,
+            "client_ms": {
+              "p50": 33.571,
+              "p95": 39.691,
+              "p99": 43.641
+            },
+            "server_ms": {
+              "p50": 31.61,
+              "p95": 37.615,
+              "p99": 41.757
+            }
+          },
+          "replay_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 0.41387399900122546,
+            "events_per_second": 36242.91459767587,
+            "client_ms": {
+              "p50": 26.843,
+              "p95": 30.219,
+              "p99": 30.432
+            },
+            "server_ms": {
+              "p50": 23.17,
+              "p95": 27.579,
+              "p99": 27.62
+            }
+          }
+        },
+        "production_ready": false,
+        "image_id": "sha256:8d378985742f090beba5f900da7ffdd1d3363c2e9c4e169f02bf3ab2c232483d",
+        "passed": true
+      }
+    },
+    "throughput-ledger-baseline-repeat-d.json": {
+      "file": "throughput-ledger-baseline-repeat-d.json.gz",
+      "json_bytes": 29950,
+      "gzip_bytes": 2901,
+      "json_sha256": "876043668b12f270cdf1cc8fd83752222ffb1c228de7ed612de934d1ebe634b5",
+      "gzip_sha256": "6e71a3873b9b8357e461c34c783ad0f15db74f50ff2b97f9014d83b839e5cb17",
+      "summary": {
+        "kind": "ledger_batch_throughput",
+        "label": "baseline-repeat-d",
+        "quality_evaluated": false,
+        "batch_size": 500,
+        "batches_per_arm": 30,
+        "warmup_batches": 5,
+        "resources_isolated": false,
+        "source_commit": "2fd964578e339a7895f0c327c98269e92c776236",
+        "image": "guidefold-search:pre-throughput-fd22575",
+        "arms": {
+          "insert_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 4.072670822999498,
+            "events_per_second": 3683.0867634307324,
+            "client_ms": {
+              "p50": 126.747,
+              "p95": 185.013,
+              "p99": 233.197
+            },
+            "server_ms": {
+              "p50": 124.856,
+              "p95": 182.676,
+              "p99": 231.01
+            }
+          },
+          "replay_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 3.3776540139951976,
+            "events_per_second": 4440.9521928083805,
+            "client_ms": {
+              "p50": 110.899,
+              "p95": 124.806,
+              "p99": 127.02
+            },
+            "server_ms": {
+              "p50": 109.166,
+              "p95": 122.937,
+              "p99": 125.275
+            }
+          },
+          "insert_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 2.0879933120013447,
+            "events_per_second": 7183.931056571478,
+            "client_ms": {
+              "p50": 134.909,
+              "p95": 189.054,
+              "p99": 190.144
+            },
+            "server_ms": {
+              "p50": 132.922,
+              "p95": 186.353,
+              "p99": 188.455
+            }
+          },
+          "replay_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 1.7840886900012265,
+            "events_per_second": 8407.653769717966,
+            "client_ms": {
+              "p50": 117.546,
+              "p95": 124.741,
+              "p99": 125.935
+            },
+            "server_ms": {
+              "p50": 115.862,
+              "p95": 122.616,
+              "p99": 123.036
+            }
+          }
+        },
+        "production_ready": false,
+        "image_id": "sha256:838af0ab950294a58514e43679fc9a7a036da2dcb3808bd47962f0afbbfe307e",
+        "passed": true
+      }
+    },
+    "throughput-ledger-final-repeat-e.json": {
+      "file": "throughput-ledger-final-repeat-e.json.gz",
+      "json_bytes": 29749,
+      "gzip_bytes": 2821,
+      "json_sha256": "3d68204badc4436dd32641268e71693c26a5f1815ac65ba066295492fc9a371c",
+      "gzip_sha256": "90733fb73fb46bffe4d3d36ddff7853f2273074ffb5e027187d39f0a06a91f48",
+      "summary": {
+        "kind": "ledger_batch_throughput",
+        "label": "final-repeat-e",
+        "quality_evaluated": false,
+        "batch_size": 500,
+        "batches_per_arm": 30,
+        "warmup_batches": 5,
+        "resources_isolated": false,
+        "source_commit": "2fd964578e339a7895f0c327c98269e92c776236",
+        "image": "guidefold-search:throughput-final",
+        "arms": {
+          "insert_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 0.956886307001696,
+            "events_per_second": 15675.843504335373,
+            "client_ms": {
+              "p50": 30.553,
+              "p95": 34.392,
+              "p99": 37.239
+            },
+            "server_ms": {
+              "p50": 28.856,
+              "p95": 32.58,
+              "p99": 35.197
+            }
+          },
+          "replay_c1": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 0.6856543840040104,
+            "events_per_second": 21876.91109390218,
+            "client_ms": {
+              "p50": 20.335,
+              "p95": 33.356,
+              "p99": 36.699
+            },
+            "server_ms": {
+              "p50": 18.377,
+              "p95": 30.761,
+              "p99": 33.375
+            }
+          },
+          "insert_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 15000,
+            "duplicate": 0,
+            "rejected": 0,
+            "wall_seconds": 0.5709066720010014,
+            "events_per_second": 26273.99667169013,
+            "client_ms": {
+              "p50": 33.78,
+              "p95": 67.771,
+              "p99": 69.139
+            },
+            "server_ms": {
+              "p50": 31.681,
+              "p95": 65.702,
+              "p99": 67.464
+            }
+          },
+          "replay_c2": {
+            "attempted": 30,
+            "http_ok": 30,
+            "accepted": 0,
+            "duplicate": 15000,
+            "rejected": 0,
+            "wall_seconds": 0.3774121739988914,
+            "events_per_second": 39744.34592574659,
+            "client_ms": {
+              "p50": 23.646,
+              "p95": 26.86,
+              "p99": 26.959
+            },
+            "server_ms": {
+              "p50": 21.441,
+              "p95": 24.701,
+              "p99": 24.801
+            }
+          }
+        },
+        "production_ready": false,
+        "image_id": "sha256:8d378985742f090beba5f900da7ffdd1d3363c2e9c4e169f02bf3ab2c232483d",
+        "passed": true
+      }
+    },
+    "throughput-shadow-before-batch1.json": {
+      "file": "throughput-shadow-before-batch1.json.gz",
+      "json_bytes": 529249,
+      "gzip_bytes": 106733,
+      "json_sha256": "fe6d2e352db2032d7e1b03310bf040759b428c67ad174e78694d6594813c5d69",
+      "gzip_sha256": "65d56ba5e05a8c2fdf14955187636e7c281c762e7e4f4f3b68ed00f6c385a6e7",
+      "summary": {
+        "kind": "sparse_response_under_gpu_shadow",
+        "label": "before-batch1",
+        "batch_requests": 1,
+        "image": "guidefold-search:pre-throughput-fd22575",
+        "resources_isolated": false,
+        "quality_evaluated": false,
+        "workload": {
+          "dataset": "SKILLRET frozen DEV subset of train",
+          "sample_size": 200,
+          "distinct_query_texts": 200,
+          "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+          "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+          "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+          "sample_query_ids": [
+            "q-train-017617",
+            "q-train-007487",
+            "q-train-053007",
+            "q-train-036226",
+            "q-train-049664",
+            "q-train-036648",
+            "q-train-059069",
+            "q-train-010229",
+            "q-train-030224",
+            "q-train-028734",
+            "q-train-048344",
+            "q-train-029489",
+            "q-train-004137",
+            "q-train-040106",
+            "q-train-008972",
+            "q-train-057584",
+            "q-train-006745",
+            "q-train-003069",
+            "q-train-019309",
+            "q-train-050914",
+            "q-train-011104",
+            "q-train-014487",
+            "q-train-012418",
+            "q-train-027336",
+            "q-train-004461",
+            "q-train-053949",
+            "q-train-012994",
+            "q-train-005184",
+            "q-train-022503",
+            "q-train-022099",
+            "q-train-046341",
+            "q-train-051832",
+            "q-train-043304",
+            "q-train-050377",
+            "q-train-006064",
+            "q-train-011151",
+            "q-train-016841",
+            "q-train-000252",
+            "q-train-042320",
+            "q-train-026271",
+            "q-train-050707",
+            "q-train-003216",
+            "q-train-056628",
+            "q-train-063213",
+            "q-train-035085",
+            "q-train-060798",
+            "q-train-026265",
+            "q-train-038242",
+            "q-train-042719",
+            "q-train-016937",
+            "q-train-062175",
+            "q-train-047641",
+            "q-train-060749",
+            "q-train-043984",
+            "q-train-024980",
+            "q-train-023187",
+            "q-train-024386",
+            "q-train-047629",
+            "q-train-047178",
+            "q-train-008433",
+            "q-train-025617",
+            "q-train-001019",
+            "q-train-039850",
+            "q-train-052650",
+            "q-train-004854",
+            "q-train-048991",
+            "q-train-036910",
+            "q-train-015841",
+            "q-train-001907",
+            "q-train-027586",
+            "q-train-046841",
+            "q-train-009990",
+            "q-train-015179",
+            "q-train-032843",
+            "q-train-022867",
+            "q-train-057585",
+            "q-train-032663",
+            "q-train-049178",
+            "q-train-032117",
+            "q-train-013616",
+            "q-train-019005",
+            "q-train-040521",
+            "q-train-035858",
+            "q-train-018254",
+            "q-train-062995",
+            "q-train-042570",
+            "q-train-012355",
+            "q-train-052476",
+            "q-train-050873",
+            "q-train-019568",
+            "q-train-036545",
+            "q-train-034699",
+            "q-train-011288",
+            "q-train-044048",
+            "q-train-011624",
+            "q-train-002921",
+            "q-train-019598",
+            "q-train-045026",
+            "q-train-000761",
+            "q-train-028079",
+            "q-train-056981",
+            "q-train-050552",
+            "q-train-012354",
+            "q-train-022875",
+            "q-train-010889",
+            "q-train-004075",
+            "q-train-026673",
+            "q-train-027970",
+            "q-train-061491",
+            "q-train-023860",
+            "q-train-052228",
+            "q-train-032502",
+            "q-train-000668",
+            "q-train-023745",
+            "q-train-005166",
+            "q-train-030031",
+            "q-train-003360",
+            "q-train-060438",
+            "q-train-030092",
+            "q-train-062661",
+            "q-train-035674",
+            "q-train-038844",
+            "q-train-003055",
+            "q-train-051903",
+            "q-train-052770",
+            "q-train-040483",
+            "q-train-047679",
+            "q-train-032583",
+            "q-train-050340",
+            "q-train-020022",
+            "q-train-044660",
+            "q-train-028578",
+            "q-train-023738",
+            "q-train-012091",
+            "q-train-060981",
+            "q-train-017261",
+            "q-train-034459",
+            "q-train-003577",
+            "q-train-003924",
+            "q-train-041123",
+            "q-train-003451",
+            "q-train-050162",
+            "q-train-058650",
+            "q-train-030713",
+            "q-train-006671",
+            "q-train-012445",
+            "q-train-019164",
+            "q-train-034950",
+            "q-train-047465",
+            "q-train-062602",
+            "q-train-060678",
+            "q-train-056157",
+            "q-train-018138",
+            "q-train-038194",
+            "q-train-050767",
+            "q-train-047229",
+            "q-train-014031",
+            "q-train-049068",
+            "q-train-050513",
+            "q-train-030150",
+            "q-train-006402",
+            "q-train-034217",
+            "q-train-012386",
+            "q-train-048248",
+            "q-train-014140",
+            "q-train-052528",
+            "q-train-060300",
+            "q-train-030628",
+            "q-train-061546",
+            "q-train-009968",
+            "q-train-059844",
+            "q-train-033178",
+            "q-train-004347",
+            "q-train-049700",
+            "q-train-035926",
+            "q-train-045990",
+            "q-train-015846",
+            "q-train-003298",
+            "q-train-035074",
+            "q-train-059667",
+            "q-train-026794",
+            "q-train-028796",
+            "q-train-057117",
+            "q-train-053897",
+            "q-train-043684",
+            "q-train-040861",
+            "q-train-011818",
+            "q-train-013425",
+            "q-train-009273",
+            "q-train-021821",
+            "q-train-047896",
+            "q-train-062461",
+            "q-train-014196",
+            "q-train-031273",
+            "q-train-012808",
+            "q-train-018554",
+            "q-train-056688",
+            "q-train-029903",
+            "q-train-014635",
+            "q-train-036179"
+          ],
+          "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+          "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+          "labels_used_for_selection_or_quality": false,
+          "retrieval_pool_may_differ_from_dev": true,
+          "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+        },
+        "health": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 0,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "4f0de63f-bbd9-4d59-95a9-0658e873c814",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        },
+        "arms": {
+          "c4": {
+            "concurrency": 4,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 1.6264940769979148,
+            "requests_per_second": 122.96386616368625,
+            "client_ms": {
+              "p50": 31.14,
+              "p95": 46.667,
+              "p99": 51.75
+            },
+            "server_ms": {
+              "p50": 28.34,
+              "p95": 42.55,
+              "p99": 48.011
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 19.087,
+                "p95": 28.756,
+                "p99": 37.331
+              },
+              "catalog": {
+                "p50": 0.432,
+                "p95": 1.055,
+                "p99": 5.878
+              },
+              "policy": {
+                "p50": 5.236,
+                "p95": 10.773,
+                "p99": 16.581
+              },
+              "score": {
+                "p50": 2.02,
+                "p95": 4.447,
+                "p99": 6.156
+              },
+              "select": {
+                "p50": 0.014,
+                "p95": 0.025,
+                "p99": 0.257
+              }
+            },
+            "shadow_recorded": 96,
+            "shadow_ok": 96,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 104,
+            "drain_wait_seconds": 5.030877192999469,
+            "shadow_compute_ms": {
+              "p50": 81.289,
+              "p95": 151.116,
+              "p99": 273.218
+            },
+            "shadow_queue_ms": {
+              "p50": 677.03,
+              "p95": 745.698,
+              "p99": 785.017
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 0.729887922,
+              "te_request_queue_duration_count": 96.0,
+              "te_request_tokenization_duration_sum": 0.15527408499999995,
+              "te_request_tokenization_duration_count": 96.0,
+              "te_request_inference_duration_sum": 1.91790947,
+              "te_request_inference_duration_count": 96.0,
+              "te_batch_next_size_sum": 96.0,
+              "te_batch_next_size_count": 190.0
+            }
+          },
+          "c8": {
+            "concurrency": 8,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 1.2927763210027479,
+            "requests_per_second": 154.70580389720402,
+            "client_ms": {
+              "p50": 48.496,
+              "p95": 75.04,
+              "p99": 85.749
+            },
+            "server_ms": {
+              "p50": 43.476,
+              "p95": 68.431,
+              "p99": 80.024
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 28.602,
+                "p95": 45.498,
+                "p99": 57.058
+              },
+              "catalog": {
+                "p50": 0.717,
+                "p95": 6.159,
+                "p99": 8.269
+              },
+              "policy": {
+                "p50": 8.717,
+                "p95": 19.774,
+                "p99": 30.127
+              },
+              "score": {
+                "p50": 2.376,
+                "p95": 8.458,
+                "p99": 9.849
+              },
+              "select": {
+                "p50": 0.016,
+                "p95": 0.029,
+                "p99": 0.046
+              }
+            },
+            "shadow_recorded": 72,
+            "shadow_ok": 72,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 128,
+            "drain_wait_seconds": 5.090293046996521,
+            "shadow_compute_ms": {
+              "p50": 92.495,
+              "p95": 154.161,
+              "p99": 199.254
+            },
+            "shadow_queue_ms": {
+              "p50": 717.301,
+              "p95": 969.035,
+              "p99": 977.462
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 0.6823010019999998,
+              "te_request_queue_duration_count": 72.0,
+              "te_request_tokenization_duration_sum": 0.08880597600000001,
+              "te_request_tokenization_duration_count": 72.0,
+              "te_request_inference_duration_sum": 1.5335722020000002,
+              "te_request_inference_duration_count": 72.0,
+              "te_batch_next_size_sum": 72.0,
+              "te_batch_next_size_count": 143.0
+            }
+          }
+        },
+        "production_ready": false,
+        "control": {
+          "attempted": 200,
+          "client_ms": {
+            "p50": 24.888,
+            "p95": 44.105,
+            "p99": 83.698
+          },
+          "server_ms": {
+            "p50": 23.006,
+            "p95": 41.662,
+            "p99": 81.094
+          }
+        },
+        "passed": true
+      }
+    },
+    "throughput-shadow-before-batch4.json": {
+      "file": "throughput-shadow-before-batch4.json.gz",
+      "json_bytes": 539539,
+      "gzip_bytes": 108068,
+      "json_sha256": "80b89ddb3a789b51afbcff7abf4f25e9ee25b33759e11b15f25a0bfa78d7d9d3",
+      "gzip_sha256": "fdf977e52f1d3449d878a0adc5227344f4e40ddcc8fb8fa8de54443d0e299a26",
+      "summary": {
+        "kind": "sparse_response_under_gpu_shadow",
+        "label": "before-batch4",
+        "batch_requests": 4,
+        "image": "guidefold-search:pre-throughput-fd22575",
+        "resources_isolated": false,
+        "quality_evaluated": false,
+        "workload": {
+          "dataset": "SKILLRET frozen DEV subset of train",
+          "sample_size": 200,
+          "distinct_query_texts": 200,
+          "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+          "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+          "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+          "sample_query_ids": [
+            "q-train-017617",
+            "q-train-007487",
+            "q-train-053007",
+            "q-train-036226",
+            "q-train-049664",
+            "q-train-036648",
+            "q-train-059069",
+            "q-train-010229",
+            "q-train-030224",
+            "q-train-028734",
+            "q-train-048344",
+            "q-train-029489",
+            "q-train-004137",
+            "q-train-040106",
+            "q-train-008972",
+            "q-train-057584",
+            "q-train-006745",
+            "q-train-003069",
+            "q-train-019309",
+            "q-train-050914",
+            "q-train-011104",
+            "q-train-014487",
+            "q-train-012418",
+            "q-train-027336",
+            "q-train-004461",
+            "q-train-053949",
+            "q-train-012994",
+            "q-train-005184",
+            "q-train-022503",
+            "q-train-022099",
+            "q-train-046341",
+            "q-train-051832",
+            "q-train-043304",
+            "q-train-050377",
+            "q-train-006064",
+            "q-train-011151",
+            "q-train-016841",
+            "q-train-000252",
+            "q-train-042320",
+            "q-train-026271",
+            "q-train-050707",
+            "q-train-003216",
+            "q-train-056628",
+            "q-train-063213",
+            "q-train-035085",
+            "q-train-060798",
+            "q-train-026265",
+            "q-train-038242",
+            "q-train-042719",
+            "q-train-016937",
+            "q-train-062175",
+            "q-train-047641",
+            "q-train-060749",
+            "q-train-043984",
+            "q-train-024980",
+            "q-train-023187",
+            "q-train-024386",
+            "q-train-047629",
+            "q-train-047178",
+            "q-train-008433",
+            "q-train-025617",
+            "q-train-001019",
+            "q-train-039850",
+            "q-train-052650",
+            "q-train-004854",
+            "q-train-048991",
+            "q-train-036910",
+            "q-train-015841",
+            "q-train-001907",
+            "q-train-027586",
+            "q-train-046841",
+            "q-train-009990",
+            "q-train-015179",
+            "q-train-032843",
+            "q-train-022867",
+            "q-train-057585",
+            "q-train-032663",
+            "q-train-049178",
+            "q-train-032117",
+            "q-train-013616",
+            "q-train-019005",
+            "q-train-040521",
+            "q-train-035858",
+            "q-train-018254",
+            "q-train-062995",
+            "q-train-042570",
+            "q-train-012355",
+            "q-train-052476",
+            "q-train-050873",
+            "q-train-019568",
+            "q-train-036545",
+            "q-train-034699",
+            "q-train-011288",
+            "q-train-044048",
+            "q-train-011624",
+            "q-train-002921",
+            "q-train-019598",
+            "q-train-045026",
+            "q-train-000761",
+            "q-train-028079",
+            "q-train-056981",
+            "q-train-050552",
+            "q-train-012354",
+            "q-train-022875",
+            "q-train-010889",
+            "q-train-004075",
+            "q-train-026673",
+            "q-train-027970",
+            "q-train-061491",
+            "q-train-023860",
+            "q-train-052228",
+            "q-train-032502",
+            "q-train-000668",
+            "q-train-023745",
+            "q-train-005166",
+            "q-train-030031",
+            "q-train-003360",
+            "q-train-060438",
+            "q-train-030092",
+            "q-train-062661",
+            "q-train-035674",
+            "q-train-038844",
+            "q-train-003055",
+            "q-train-051903",
+            "q-train-052770",
+            "q-train-040483",
+            "q-train-047679",
+            "q-train-032583",
+            "q-train-050340",
+            "q-train-020022",
+            "q-train-044660",
+            "q-train-028578",
+            "q-train-023738",
+            "q-train-012091",
+            "q-train-060981",
+            "q-train-017261",
+            "q-train-034459",
+            "q-train-003577",
+            "q-train-003924",
+            "q-train-041123",
+            "q-train-003451",
+            "q-train-050162",
+            "q-train-058650",
+            "q-train-030713",
+            "q-train-006671",
+            "q-train-012445",
+            "q-train-019164",
+            "q-train-034950",
+            "q-train-047465",
+            "q-train-062602",
+            "q-train-060678",
+            "q-train-056157",
+            "q-train-018138",
+            "q-train-038194",
+            "q-train-050767",
+            "q-train-047229",
+            "q-train-014031",
+            "q-train-049068",
+            "q-train-050513",
+            "q-train-030150",
+            "q-train-006402",
+            "q-train-034217",
+            "q-train-012386",
+            "q-train-048248",
+            "q-train-014140",
+            "q-train-052528",
+            "q-train-060300",
+            "q-train-030628",
+            "q-train-061546",
+            "q-train-009968",
+            "q-train-059844",
+            "q-train-033178",
+            "q-train-004347",
+            "q-train-049700",
+            "q-train-035926",
+            "q-train-045990",
+            "q-train-015846",
+            "q-train-003298",
+            "q-train-035074",
+            "q-train-059667",
+            "q-train-026794",
+            "q-train-028796",
+            "q-train-057117",
+            "q-train-053897",
+            "q-train-043684",
+            "q-train-040861",
+            "q-train-011818",
+            "q-train-013425",
+            "q-train-009273",
+            "q-train-021821",
+            "q-train-047896",
+            "q-train-062461",
+            "q-train-014196",
+            "q-train-031273",
+            "q-train-012808",
+            "q-train-018554",
+            "q-train-056688",
+            "q-train-029903",
+            "q-train-014635",
+            "q-train-036179"
+          ],
+          "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+          "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+          "labels_used_for_selection_or_quality": false,
+          "retrieval_pool_may_differ_from_dev": true,
+          "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+        },
+        "health": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 0,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "f229b374-603b-4a12-a630-c438fe035a6d",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        },
+        "arms": {
+          "c4": {
+            "concurrency": 4,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 2.137866518998635,
+            "requests_per_second": 93.55121015398048,
+            "client_ms": {
+              "p50": 39.692,
+              "p95": 61.941,
+              "p99": 75.558
+            },
+            "server_ms": {
+              "p50": 35.896,
+              "p95": 58.246,
+              "p99": 68.562
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 23.468,
+                "p95": 40.878,
+                "p99": 45.127
+              },
+              "catalog": {
+                "p50": 0.532,
+                "p95": 3.077,
+                "p99": 7.889
+              },
+              "policy": {
+                "p50": 7.322,
+                "p95": 16.789,
+                "p99": 25.365
+              },
+              "score": {
+                "p50": 2.329,
+                "p95": 5.411,
+                "p99": 9.75
+              },
+              "select": {
+                "p50": 0.017,
+                "p95": 0.026,
+                "p99": 0.035
+              }
+            },
+            "shadow_recorded": 113,
+            "shadow_ok": 106,
+            "shadow_error": 7,
+            "shadow_missing_after_drain": 87,
+            "drain_wait_seconds": 9.268187559995567,
+            "shadow_compute_ms": {
+              "p50": 97.726,
+              "p95": 1012.008,
+              "p99": 2001.121
+            },
+            "shadow_queue_ms": {
+              "p50": 769.658,
+              "p95": 920.803,
+              "p99": 1619.031
+            },
+            "tei_metric_deltas": {
+              "te_request_inference_duration_sum": 2.1610740030000004,
+              "te_request_inference_duration_count": 106.0,
+              "te_request_tokenization_duration_sum": 0.10298238399999998,
+              "te_request_tokenization_duration_count": 106.0,
+              "te_request_queue_duration_sum": 0.6425882219999999,
+              "te_request_queue_duration_count": 106.0,
+              "te_batch_next_size_sum": 108.0,
+              "te_batch_next_size_count": 215.0
+            }
+          },
+          "c8": {
+            "concurrency": 8,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 1.2376058800000465,
+            "requests_per_second": 161.60233498566805,
+            "client_ms": {
+              "p50": 47.589,
+              "p95": 67.055,
+              "p99": 76.529
+            },
+            "server_ms": {
+              "p50": 42.613,
+              "p95": 60.83,
+              "p99": 73.317
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 25.624,
+                "p95": 42.503,
+                "p99": 55.003
+              },
+              "catalog": {
+                "p50": 0.815,
+                "p95": 6.06,
+                "p99": 9.288
+              },
+              "policy": {
+                "p50": 8.082,
+                "p95": 17.873,
+                "p99": 20.838
+              },
+              "score": {
+                "p50": 2.586,
+                "p95": 8.108,
+                "p99": 12.088
+              },
+              "select": {
+                "p50": 0.016,
+                "p95": 0.034,
+                "p99": 0.178
+              }
+            },
+            "shadow_recorded": 71,
+            "shadow_ok": 71,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 129,
+            "drain_wait_seconds": 5.162036955000076,
+            "shadow_compute_ms": {
+              "p50": 97.249,
+              "p95": 157.738,
+              "p99": 283.981
+            },
+            "shadow_queue_ms": {
+              "p50": 759.243,
+              "p95": 909.371,
+              "p99": 945.777
+            },
+            "tei_metric_deltas": {
+              "te_request_inference_duration_sum": 1.4056550099999994,
+              "te_request_inference_duration_count": 71.0,
+              "te_request_tokenization_duration_sum": 0.07869327899999998,
+              "te_request_tokenization_duration_count": 71.0,
+              "te_request_queue_duration_sum": 0.6538480369999999,
+              "te_request_queue_duration_count": 71.0,
+              "te_batch_next_size_sum": 71.0,
+              "te_batch_next_size_count": 139.0
+            }
+          }
+        },
+        "production_ready": false,
+        "control": {
+          "attempted": 200,
+          "client_ms": {
+            "p50": 25.311,
+            "p95": 33.617,
+            "p99": 57.738
+          },
+          "server_ms": {
+            "p50": 22.824,
+            "p95": 31.44,
+            "p99": 55.457
+          }
+        },
+        "passed": true
+      }
+    },
+    "throughput-shadow-after-reuse-batch1.json": {
+      "file": "throughput-shadow-after-reuse-batch1.json.gz",
+      "json_bytes": 558802,
+      "gzip_bytes": 108660,
+      "json_sha256": "49be8ecb6aecf6d6e65ede097b278d8d25883328bda3ccfe28b46cb2fbf529c2",
+      "gzip_sha256": "689ccf83fda96f71011a897efb2b07d2f6bf42e6d5e694cf242c3aca001d57d6",
+      "summary": {
+        "kind": "sparse_response_under_gpu_shadow",
+        "label": "after-reuse-batch1",
+        "batch_requests": 1,
+        "image": "guidefold-search:local",
+        "resources_isolated": false,
+        "quality_evaluated": false,
+        "workload": {
+          "dataset": "SKILLRET frozen DEV subset of train",
+          "sample_size": 200,
+          "distinct_query_texts": 200,
+          "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+          "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+          "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+          "sample_query_ids": [
+            "q-train-017617",
+            "q-train-007487",
+            "q-train-053007",
+            "q-train-036226",
+            "q-train-049664",
+            "q-train-036648",
+            "q-train-059069",
+            "q-train-010229",
+            "q-train-030224",
+            "q-train-028734",
+            "q-train-048344",
+            "q-train-029489",
+            "q-train-004137",
+            "q-train-040106",
+            "q-train-008972",
+            "q-train-057584",
+            "q-train-006745",
+            "q-train-003069",
+            "q-train-019309",
+            "q-train-050914",
+            "q-train-011104",
+            "q-train-014487",
+            "q-train-012418",
+            "q-train-027336",
+            "q-train-004461",
+            "q-train-053949",
+            "q-train-012994",
+            "q-train-005184",
+            "q-train-022503",
+            "q-train-022099",
+            "q-train-046341",
+            "q-train-051832",
+            "q-train-043304",
+            "q-train-050377",
+            "q-train-006064",
+            "q-train-011151",
+            "q-train-016841",
+            "q-train-000252",
+            "q-train-042320",
+            "q-train-026271",
+            "q-train-050707",
+            "q-train-003216",
+            "q-train-056628",
+            "q-train-063213",
+            "q-train-035085",
+            "q-train-060798",
+            "q-train-026265",
+            "q-train-038242",
+            "q-train-042719",
+            "q-train-016937",
+            "q-train-062175",
+            "q-train-047641",
+            "q-train-060749",
+            "q-train-043984",
+            "q-train-024980",
+            "q-train-023187",
+            "q-train-024386",
+            "q-train-047629",
+            "q-train-047178",
+            "q-train-008433",
+            "q-train-025617",
+            "q-train-001019",
+            "q-train-039850",
+            "q-train-052650",
+            "q-train-004854",
+            "q-train-048991",
+            "q-train-036910",
+            "q-train-015841",
+            "q-train-001907",
+            "q-train-027586",
+            "q-train-046841",
+            "q-train-009990",
+            "q-train-015179",
+            "q-train-032843",
+            "q-train-022867",
+            "q-train-057585",
+            "q-train-032663",
+            "q-train-049178",
+            "q-train-032117",
+            "q-train-013616",
+            "q-train-019005",
+            "q-train-040521",
+            "q-train-035858",
+            "q-train-018254",
+            "q-train-062995",
+            "q-train-042570",
+            "q-train-012355",
+            "q-train-052476",
+            "q-train-050873",
+            "q-train-019568",
+            "q-train-036545",
+            "q-train-034699",
+            "q-train-011288",
+            "q-train-044048",
+            "q-train-011624",
+            "q-train-002921",
+            "q-train-019598",
+            "q-train-045026",
+            "q-train-000761",
+            "q-train-028079",
+            "q-train-056981",
+            "q-train-050552",
+            "q-train-012354",
+            "q-train-022875",
+            "q-train-010889",
+            "q-train-004075",
+            "q-train-026673",
+            "q-train-027970",
+            "q-train-061491",
+            "q-train-023860",
+            "q-train-052228",
+            "q-train-032502",
+            "q-train-000668",
+            "q-train-023745",
+            "q-train-005166",
+            "q-train-030031",
+            "q-train-003360",
+            "q-train-060438",
+            "q-train-030092",
+            "q-train-062661",
+            "q-train-035674",
+            "q-train-038844",
+            "q-train-003055",
+            "q-train-051903",
+            "q-train-052770",
+            "q-train-040483",
+            "q-train-047679",
+            "q-train-032583",
+            "q-train-050340",
+            "q-train-020022",
+            "q-train-044660",
+            "q-train-028578",
+            "q-train-023738",
+            "q-train-012091",
+            "q-train-060981",
+            "q-train-017261",
+            "q-train-034459",
+            "q-train-003577",
+            "q-train-003924",
+            "q-train-041123",
+            "q-train-003451",
+            "q-train-050162",
+            "q-train-058650",
+            "q-train-030713",
+            "q-train-006671",
+            "q-train-012445",
+            "q-train-019164",
+            "q-train-034950",
+            "q-train-047465",
+            "q-train-062602",
+            "q-train-060678",
+            "q-train-056157",
+            "q-train-018138",
+            "q-train-038194",
+            "q-train-050767",
+            "q-train-047229",
+            "q-train-014031",
+            "q-train-049068",
+            "q-train-050513",
+            "q-train-030150",
+            "q-train-006402",
+            "q-train-034217",
+            "q-train-012386",
+            "q-train-048248",
+            "q-train-014140",
+            "q-train-052528",
+            "q-train-060300",
+            "q-train-030628",
+            "q-train-061546",
+            "q-train-009968",
+            "q-train-059844",
+            "q-train-033178",
+            "q-train-004347",
+            "q-train-049700",
+            "q-train-035926",
+            "q-train-045990",
+            "q-train-015846",
+            "q-train-003298",
+            "q-train-035074",
+            "q-train-059667",
+            "q-train-026794",
+            "q-train-028796",
+            "q-train-057117",
+            "q-train-053897",
+            "q-train-043684",
+            "q-train-040861",
+            "q-train-011818",
+            "q-train-013425",
+            "q-train-009273",
+            "q-train-021821",
+            "q-train-047896",
+            "q-train-062461",
+            "q-train-014196",
+            "q-train-031273",
+            "q-train-012808",
+            "q-train-018554",
+            "q-train-056688",
+            "q-train-029903",
+            "q-train-014635",
+            "q-train-036179"
+          ],
+          "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+          "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+          "labels_used_for_selection_or_quality": false,
+          "retrieval_pool_may_differ_from_dev": true,
+          "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+        },
+        "health": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 0,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "956c8117-7c20-43d0-8b8b-310e59b1357b",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        },
+        "arms": {
+          "c4": {
+            "concurrency": 4,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 2.215779840000323,
+            "requests_per_second": 90.26167509492768,
+            "client_ms": {
+              "p50": 37.596,
+              "p95": 84.715,
+              "p99": 98.413
+            },
+            "server_ms": {
+              "p50": 35.235,
+              "p95": 76.907,
+              "p99": 89.356
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 22.972,
+                "p95": 51.216,
+                "p99": 63.784
+              },
+              "catalog": {
+                "p50": 0.487,
+                "p95": 2.184,
+                "p99": 4.887
+              },
+              "policy": {
+                "p50": 6.617,
+                "p95": 22.195,
+                "p99": 28.866
+              },
+              "score": {
+                "p50": 2.329,
+                "p95": 7.648,
+                "p99": 12.878
+              },
+              "select": {
+                "p50": 0.017,
+                "p95": 0.041,
+                "p99": 0.106
+              }
+            },
+            "shadow_recorded": 114,
+            "shadow_ok": 114,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 86,
+            "drain_wait_seconds": 5.067089080002916,
+            "shadow_compute_ms": {
+              "p50": 81.384,
+              "p95": 170.462,
+              "p99": 204.975
+            },
+            "shadow_queue_ms": {
+              "p50": 652.071,
+              "p95": 919.363,
+              "p99": 944.714
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 0.8488634739999998,
+              "te_request_queue_duration_count": 114.0,
+              "te_batch_next_size_sum": 114.0,
+              "te_batch_next_size_count": 228.0,
+              "te_request_inference_duration_sum": 2.3307233629999997,
+              "te_request_inference_duration_count": 114.0,
+              "te_request_tokenization_duration_sum": 0.115354679,
+              "te_request_tokenization_duration_count": 114.0
+            }
+          },
+          "c8": {
+            "concurrency": 8,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 1.2829206030000933,
+            "requests_per_second": 155.89429270393086,
+            "client_ms": {
+              "p50": 46.93,
+              "p95": 77.631,
+              "p99": 83.774
+            },
+            "server_ms": {
+              "p50": 41.763,
+              "p95": 67.967,
+              "p99": 77.192
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 27.916,
+                "p95": 45.946,
+                "p99": 51.986
+              },
+              "catalog": {
+                "p50": 0.642,
+                "p95": 4.669,
+                "p99": 6.701
+              },
+              "policy": {
+                "p50": 8.49,
+                "p95": 19.626,
+                "p99": 23.947
+              },
+              "score": {
+                "p50": 2.496,
+                "p95": 7.426,
+                "p99": 9.079
+              },
+              "select": {
+                "p50": 0.017,
+                "p95": 0.049,
+                "p99": 0.12
+              }
+            },
+            "shadow_recorded": 72,
+            "shadow_ok": 72,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 128,
+            "drain_wait_seconds": 5.182922068001062,
+            "shadow_compute_ms": {
+              "p50": 87.463,
+              "p95": 183.223,
+              "p99": 211.707
+            },
+            "shadow_queue_ms": {
+              "p50": 696.431,
+              "p95": 979.487,
+              "p99": 1021.502
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 0.7729801159999998,
+              "te_request_queue_duration_count": 72.0,
+              "te_batch_next_size_sum": 72.0,
+              "te_batch_next_size_count": 143.0,
+              "te_request_inference_duration_sum": 1.5675487409999995,
+              "te_request_inference_duration_count": 72.0,
+              "te_request_tokenization_duration_sum": 0.05840799999999999,
+              "te_request_tokenization_duration_count": 72.0
+            }
+          }
+        },
+        "production_ready": false,
+        "control": {
+          "attempted": 200,
+          "client_ms": {
+            "p50": 24.96,
+            "p95": 32.594,
+            "p99": 35.287
+          },
+          "server_ms": {
+            "p50": 22.604,
+            "p95": 29.516,
+            "p99": 32.704
+          }
+        },
+        "passed": true
+      }
+    },
+    "throughput-shadow-final-compact-q128.json": {
+      "file": "throughput-shadow-final-compact-q128.json.gz",
+      "json_bytes": 730611,
+      "gzip_bytes": 125995,
+      "json_sha256": "77847cda1992f7ce50c062210c8b95a2033bee091f2e2e824508030840b70ea9",
+      "gzip_sha256": "c71f7d4e47f8722409b3d3e2b9daaec11343b6462b9b7e1efd37907830fdbca6",
+      "summary": {
+        "kind": "sparse_response_under_gpu_shadow",
+        "label": "final-compact-q128",
+        "batch_requests": 1,
+        "queue_capacity_override": 128,
+        "image_id": "sha256:8d378985742f090beba5f900da7ffdd1d3363c2e9c4e169f02bf3ab2c232483d",
+        "image": "guidefold-search:throughput-final",
+        "resources_isolated": false,
+        "quality_evaluated": false,
+        "workload": {
+          "dataset": "SKILLRET frozen DEV subset of train",
+          "sample_size": 200,
+          "distinct_query_texts": 200,
+          "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+          "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+          "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+          "sample_query_ids": [
+            "q-train-017617",
+            "q-train-007487",
+            "q-train-053007",
+            "q-train-036226",
+            "q-train-049664",
+            "q-train-036648",
+            "q-train-059069",
+            "q-train-010229",
+            "q-train-030224",
+            "q-train-028734",
+            "q-train-048344",
+            "q-train-029489",
+            "q-train-004137",
+            "q-train-040106",
+            "q-train-008972",
+            "q-train-057584",
+            "q-train-006745",
+            "q-train-003069",
+            "q-train-019309",
+            "q-train-050914",
+            "q-train-011104",
+            "q-train-014487",
+            "q-train-012418",
+            "q-train-027336",
+            "q-train-004461",
+            "q-train-053949",
+            "q-train-012994",
+            "q-train-005184",
+            "q-train-022503",
+            "q-train-022099",
+            "q-train-046341",
+            "q-train-051832",
+            "q-train-043304",
+            "q-train-050377",
+            "q-train-006064",
+            "q-train-011151",
+            "q-train-016841",
+            "q-train-000252",
+            "q-train-042320",
+            "q-train-026271",
+            "q-train-050707",
+            "q-train-003216",
+            "q-train-056628",
+            "q-train-063213",
+            "q-train-035085",
+            "q-train-060798",
+            "q-train-026265",
+            "q-train-038242",
+            "q-train-042719",
+            "q-train-016937",
+            "q-train-062175",
+            "q-train-047641",
+            "q-train-060749",
+            "q-train-043984",
+            "q-train-024980",
+            "q-train-023187",
+            "q-train-024386",
+            "q-train-047629",
+            "q-train-047178",
+            "q-train-008433",
+            "q-train-025617",
+            "q-train-001019",
+            "q-train-039850",
+            "q-train-052650",
+            "q-train-004854",
+            "q-train-048991",
+            "q-train-036910",
+            "q-train-015841",
+            "q-train-001907",
+            "q-train-027586",
+            "q-train-046841",
+            "q-train-009990",
+            "q-train-015179",
+            "q-train-032843",
+            "q-train-022867",
+            "q-train-057585",
+            "q-train-032663",
+            "q-train-049178",
+            "q-train-032117",
+            "q-train-013616",
+            "q-train-019005",
+            "q-train-040521",
+            "q-train-035858",
+            "q-train-018254",
+            "q-train-062995",
+            "q-train-042570",
+            "q-train-012355",
+            "q-train-052476",
+            "q-train-050873",
+            "q-train-019568",
+            "q-train-036545",
+            "q-train-034699",
+            "q-train-011288",
+            "q-train-044048",
+            "q-train-011624",
+            "q-train-002921",
+            "q-train-019598",
+            "q-train-045026",
+            "q-train-000761",
+            "q-train-028079",
+            "q-train-056981",
+            "q-train-050552",
+            "q-train-012354",
+            "q-train-022875",
+            "q-train-010889",
+            "q-train-004075",
+            "q-train-026673",
+            "q-train-027970",
+            "q-train-061491",
+            "q-train-023860",
+            "q-train-052228",
+            "q-train-032502",
+            "q-train-000668",
+            "q-train-023745",
+            "q-train-005166",
+            "q-train-030031",
+            "q-train-003360",
+            "q-train-060438",
+            "q-train-030092",
+            "q-train-062661",
+            "q-train-035674",
+            "q-train-038844",
+            "q-train-003055",
+            "q-train-051903",
+            "q-train-052770",
+            "q-train-040483",
+            "q-train-047679",
+            "q-train-032583",
+            "q-train-050340",
+            "q-train-020022",
+            "q-train-044660",
+            "q-train-028578",
+            "q-train-023738",
+            "q-train-012091",
+            "q-train-060981",
+            "q-train-017261",
+            "q-train-034459",
+            "q-train-003577",
+            "q-train-003924",
+            "q-train-041123",
+            "q-train-003451",
+            "q-train-050162",
+            "q-train-058650",
+            "q-train-030713",
+            "q-train-006671",
+            "q-train-012445",
+            "q-train-019164",
+            "q-train-034950",
+            "q-train-047465",
+            "q-train-062602",
+            "q-train-060678",
+            "q-train-056157",
+            "q-train-018138",
+            "q-train-038194",
+            "q-train-050767",
+            "q-train-047229",
+            "q-train-014031",
+            "q-train-049068",
+            "q-train-050513",
+            "q-train-030150",
+            "q-train-006402",
+            "q-train-034217",
+            "q-train-012386",
+            "q-train-048248",
+            "q-train-014140",
+            "q-train-052528",
+            "q-train-060300",
+            "q-train-030628",
+            "q-train-061546",
+            "q-train-009968",
+            "q-train-059844",
+            "q-train-033178",
+            "q-train-004347",
+            "q-train-049700",
+            "q-train-035926",
+            "q-train-045990",
+            "q-train-015846",
+            "q-train-003298",
+            "q-train-035074",
+            "q-train-059667",
+            "q-train-026794",
+            "q-train-028796",
+            "q-train-057117",
+            "q-train-053897",
+            "q-train-043684",
+            "q-train-040861",
+            "q-train-011818",
+            "q-train-013425",
+            "q-train-009273",
+            "q-train-021821",
+            "q-train-047896",
+            "q-train-062461",
+            "q-train-014196",
+            "q-train-031273",
+            "q-train-012808",
+            "q-train-018554",
+            "q-train-056688",
+            "q-train-029903",
+            "q-train-014635",
+            "q-train-036179"
+          ],
+          "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+          "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+          "labels_used_for_selection_or_quality": false,
+          "retrieval_pool_may_differ_from_dev": true,
+          "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+        },
+        "health": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 0,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "9e9a7945-3c47-4c53-bb97-285802e062ed",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        },
+        "arms": {
+          "c4": {
+            "concurrency": 4,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 3.130657859997882,
+            "requests_per_second": 63.8843364378806,
+            "client_ms": {
+              "p50": 61.438,
+              "p95": 96.039,
+              "p99": 122.68
+            },
+            "server_ms": {
+              "p50": 56.956,
+              "p95": 91.836,
+              "p99": 111.18
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 35.204,
+                "p95": 64.641,
+                "p99": 78.696
+              },
+              "catalog": {
+                "p50": 0.635,
+                "p95": 5.654,
+                "p99": 10.944
+              },
+              "policy": {
+                "p50": 10.204,
+                "p95": 25.288,
+                "p99": 33.331
+              },
+              "score": {
+                "p50": 3.016,
+                "p95": 10.772,
+                "p99": 17.529
+              },
+              "select": {
+                "p50": 0.017,
+                "p95": 0.04,
+                "p99": 0.249
+              }
+            },
+            "shadow_recorded": 200,
+            "shadow_ok": 200,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 0,
+            "drain_wait_seconds": 3.2161634899966884,
+            "shadow_compute_ms": {
+              "p50": 103.227,
+              "p95": 157.351,
+              "p99": 178.302
+            },
+            "shadow_queue_ms": {
+              "p50": 1822.726,
+              "p95": 2615.583,
+              "p99": 2711.915
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 1.092825452,
+              "te_request_queue_duration_count": 200.0,
+              "te_batch_next_size_sum": 200.0,
+              "te_batch_next_size_count": 400.0,
+              "te_request_inference_duration_sum": 4.475020918000001,
+              "te_request_inference_duration_count": 200.0,
+              "te_request_tokenization_duration_sum": 0.2686656210000001,
+              "te_request_tokenization_duration_count": 200.0
+            }
+          },
+          "c8": {
+            "concurrency": 8,
+            "attempted": 200,
+            "http_ok": 200,
+            "stable_ranking_mismatches": 0,
+            "wall_seconds": 2.1020124330025283,
+            "requests_per_second": 95.14691581263328,
+            "client_ms": {
+              "p50": 77.306,
+              "p95": 137.447,
+              "p99": 152.494
+            },
+            "server_ms": {
+              "p50": 71.075,
+              "p95": 127.929,
+              "p99": 144.986
+            },
+            "stages_ms": {
+              "candidates": {
+                "p50": 44.473,
+                "p95": 82.612,
+                "p99": 107.087
+              },
+              "catalog": {
+                "p50": 1.393,
+                "p95": 10.416,
+                "p99": 15.902
+              },
+              "policy": {
+                "p50": 15.291,
+                "p95": 36.28,
+                "p99": 46.976
+              },
+              "score": {
+                "p50": 4.295,
+                "p95": 16.915,
+                "p99": 21.564
+              },
+              "select": {
+                "p50": 0.018,
+                "p95": 0.048,
+                "p99": 0.082
+              }
+            },
+            "shadow_recorded": 189,
+            "shadow_ok": 189,
+            "shadow_error": 0,
+            "shadow_missing_after_drain": 11,
+            "drain_wait_seconds": 7.282835502002854,
+            "shadow_compute_ms": {
+              "p50": 80.068,
+              "p95": 151.572,
+              "p99": 178.423
+            },
+            "shadow_queue_ms": {
+              "p50": 1642.138,
+              "p95": 2527.874,
+              "p99": 2563.193
+            },
+            "tei_metric_deltas": {
+              "te_request_queue_duration_sum": 1.8413624969999995,
+              "te_request_queue_duration_count": 189.0,
+              "te_batch_next_size_sum": 189.0,
+              "te_batch_next_size_count": 377.0,
+              "te_request_inference_duration_sum": 3.7286055770000015,
+              "te_request_inference_duration_count": 189.0,
+              "te_request_tokenization_duration_sum": 0.14804188299999993,
+              "te_request_tokenization_duration_count": 189.0
+            }
+          }
+        },
+        "production_ready": false,
+        "control": {
+          "attempted": 200,
+          "client_ms": {
+            "p50": 22.486,
+            "p95": 28.606,
+            "p99": 33.098
+          },
+          "server_ms": {
+            "p50": 20.39,
+            "p95": 25.917,
+            "p99": 28.083
+          }
+        },
+        "passed": true
+      }
+    },
+    "throughput-final-latency.json": {
+      "file": "throughput-final-latency.json.gz",
+      "json_bytes": 594039,
+      "gzip_bytes": 106746,
+      "json_sha256": "7f21301ccd22a445e6c7cc79a7aa20a8626375eac737543ee61dff74c080dcf3",
+      "gzip_sha256": "b4d8d47cfcbf22aa7ae5f94532ec0c8295e0262fb72a1a6160b61bdb9d98ba9e",
+      "summary": {
+        "schema_version": 1,
+        "workload": {
+          "dataset": "SKILLRET frozen DEV subset of train",
+          "sample_size": 200,
+          "distinct_query_texts": 200,
+          "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+          "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+          "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+          "sample_query_ids": [
+            "q-train-017617",
+            "q-train-007487",
+            "q-train-053007",
+            "q-train-036226",
+            "q-train-049664",
+            "q-train-036648",
+            "q-train-059069",
+            "q-train-010229",
+            "q-train-030224",
+            "q-train-028734",
+            "q-train-048344",
+            "q-train-029489",
+            "q-train-004137",
+            "q-train-040106",
+            "q-train-008972",
+            "q-train-057584",
+            "q-train-006745",
+            "q-train-003069",
+            "q-train-019309",
+            "q-train-050914",
+            "q-train-011104",
+            "q-train-014487",
+            "q-train-012418",
+            "q-train-027336",
+            "q-train-004461",
+            "q-train-053949",
+            "q-train-012994",
+            "q-train-005184",
+            "q-train-022503",
+            "q-train-022099",
+            "q-train-046341",
+            "q-train-051832",
+            "q-train-043304",
+            "q-train-050377",
+            "q-train-006064",
+            "q-train-011151",
+            "q-train-016841",
+            "q-train-000252",
+            "q-train-042320",
+            "q-train-026271",
+            "q-train-050707",
+            "q-train-003216",
+            "q-train-056628",
+            "q-train-063213",
+            "q-train-035085",
+            "q-train-060798",
+            "q-train-026265",
+            "q-train-038242",
+            "q-train-042719",
+            "q-train-016937",
+            "q-train-062175",
+            "q-train-047641",
+            "q-train-060749",
+            "q-train-043984",
+            "q-train-024980",
+            "q-train-023187",
+            "q-train-024386",
+            "q-train-047629",
+            "q-train-047178",
+            "q-train-008433",
+            "q-train-025617",
+            "q-train-001019",
+            "q-train-039850",
+            "q-train-052650",
+            "q-train-004854",
+            "q-train-048991",
+            "q-train-036910",
+            "q-train-015841",
+            "q-train-001907",
+            "q-train-027586",
+            "q-train-046841",
+            "q-train-009990",
+            "q-train-015179",
+            "q-train-032843",
+            "q-train-022867",
+            "q-train-057585",
+            "q-train-032663",
+            "q-train-049178",
+            "q-train-032117",
+            "q-train-013616",
+            "q-train-019005",
+            "q-train-040521",
+            "q-train-035858",
+            "q-train-018254",
+            "q-train-062995",
+            "q-train-042570",
+            "q-train-012355",
+            "q-train-052476",
+            "q-train-050873",
+            "q-train-019568",
+            "q-train-036545",
+            "q-train-034699",
+            "q-train-011288",
+            "q-train-044048",
+            "q-train-011624",
+            "q-train-002921",
+            "q-train-019598",
+            "q-train-045026",
+            "q-train-000761",
+            "q-train-028079",
+            "q-train-056981",
+            "q-train-050552",
+            "q-train-012354",
+            "q-train-022875",
+            "q-train-010889",
+            "q-train-004075",
+            "q-train-026673",
+            "q-train-027970",
+            "q-train-061491",
+            "q-train-023860",
+            "q-train-052228",
+            "q-train-032502",
+            "q-train-000668",
+            "q-train-023745",
+            "q-train-005166",
+            "q-train-030031",
+            "q-train-003360",
+            "q-train-060438",
+            "q-train-030092",
+            "q-train-062661",
+            "q-train-035674",
+            "q-train-038844",
+            "q-train-003055",
+            "q-train-051903",
+            "q-train-052770",
+            "q-train-040483",
+            "q-train-047679",
+            "q-train-032583",
+            "q-train-050340",
+            "q-train-020022",
+            "q-train-044660",
+            "q-train-028578",
+            "q-train-023738",
+            "q-train-012091",
+            "q-train-060981",
+            "q-train-017261",
+            "q-train-034459",
+            "q-train-003577",
+            "q-train-003924",
+            "q-train-041123",
+            "q-train-003451",
+            "q-train-050162",
+            "q-train-058650",
+            "q-train-030713",
+            "q-train-006671",
+            "q-train-012445",
+            "q-train-019164",
+            "q-train-034950",
+            "q-train-047465",
+            "q-train-062602",
+            "q-train-060678",
+            "q-train-056157",
+            "q-train-018138",
+            "q-train-038194",
+            "q-train-050767",
+            "q-train-047229",
+            "q-train-014031",
+            "q-train-049068",
+            "q-train-050513",
+            "q-train-030150",
+            "q-train-006402",
+            "q-train-034217",
+            "q-train-012386",
+            "q-train-048248",
+            "q-train-014140",
+            "q-train-052528",
+            "q-train-060300",
+            "q-train-030628",
+            "q-train-061546",
+            "q-train-009968",
+            "q-train-059844",
+            "q-train-033178",
+            "q-train-004347",
+            "q-train-049700",
+            "q-train-035926",
+            "q-train-045990",
+            "q-train-015846",
+            "q-train-003298",
+            "q-train-035074",
+            "q-train-059667",
+            "q-train-026794",
+            "q-train-028796",
+            "q-train-057117",
+            "q-train-053897",
+            "q-train-043684",
+            "q-train-040861",
+            "q-train-011818",
+            "q-train-013425",
+            "q-train-009273",
+            "q-train-021821",
+            "q-train-047896",
+            "q-train-062461",
+            "q-train-014196",
+            "q-train-031273",
+            "q-train-012808",
+            "q-train-018554",
+            "q-train-056688",
+            "q-train-029903",
+            "q-train-014635",
+            "q-train-036179"
+          ],
+          "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+          "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+          "labels_used_for_selection_or_quality": false,
+          "retrieval_pool_may_differ_from_dev": true,
+          "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+        },
+        "health_before": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 410,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "767a98f2-ad9f-415f-a6b5-4773deca65c2",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        },
+        "environment": {
+          "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+          "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+          "cpu_count": 16,
+          "transport": "WSL2 to Docker Desktop loopback; HTTP, new TCP connection per request",
+          "resources_isolated": false
+        },
+        "git_head": "2fd964578e339a7895f0c327c98269e92c776236",
+        "images": [
+          {
+            "id": "sha256:8d378985742f090beba5f900da7ffdd1d3363c2e9c4e169f02bf3ab2c232483d",
+            "digests": [
+              "guidefold-search@sha256:8d378985742f090beba5f900da7ffdd1d3363c2e9c4e169f02bf3ab2c232483d"
+            ],
+            "size_bytes": 5297616
+          },
+          {
+            "id": "sha256:044b8cc5b40159714e88e3f546fc74de11cf215c030190cc82c6627015d728ea",
+            "digests": [
+              "paradedb/paradedb@sha256:044b8cc5b40159714e88e3f546fc74de11cf215c030190cc82c6627015d728ea"
+            ],
+            "size_bytes": 365585715
+          }
+        ],
+        "production_ready": false,
+        "quality_evaluated": false,
+        "legacy_ranking_parity_claimed": false,
+        "arms": {
+          "http_c1": {
+            "concurrency": 1,
+            "fresh_process": false,
+            "burst": false,
+            "wall_seconds": 4.518078079003317,
+            "summary": {
+              "attempted": 200,
+              "ok": 200,
+              "errors": 0,
+              "client_ms": {
+                "p50": 21.085,
+                "p95": 31.69,
+                "p99": 38.834
+              },
+              "server_ms": {
+                "p50": 19.154,
+                "p95": 29.815,
+                "p99": 36.852
+              },
+              "over_400_ms": 0,
+              "over_300_ms": 0,
+              "stages_ms": {
+                "candidates": {
+                  "p50": 12.4,
+                  "p95": 18.153,
+                  "p99": 23.486
+                },
+                "catalog": {
+                  "p50": 0.369,
+                  "p95": 0.518,
+                  "p99": 1.253
+                },
+                "policy": {
+                  "p50": 3.786,
+                  "p95": 10.964,
+                  "p99": 17.486
+                },
+                "score": {
+                  "p50": 1.476,
+                  "p95": 3.003,
+                  "p99": 3.946
+                },
+                "select": {
+                  "p50": 0.01,
+                  "p95": 0.02,
+                  "p99": 0.04
+                }
+              }
+            }
+          },
+          "http_c4": {
+            "concurrency": 4,
+            "fresh_process": false,
+            "burst": false,
+            "wall_seconds": 1.6972856910069822,
+            "summary": {
+              "attempted": 200,
+              "ok": 200,
+              "errors": 0,
+              "client_ms": {
+                "p50": 32.677,
+                "p95": 46.997,
+                "p99": 54.98
+              },
+              "server_ms": {
+                "p50": 29.649,
+                "p95": 44.803,
+                "p99": 51.08
+              },
+              "over_400_ms": 0,
+              "over_300_ms": 0,
+              "stages_ms": {
+                "candidates": {
+                  "p50": 19.525,
+                  "p95": 30.51,
+                  "p99": 40.422
+                },
+                "catalog": {
+                  "p50": 0.444,
+                  "p95": 1.388,
+                  "p99": 4.058
+                },
+                "policy": {
+                  "p50": 5.581,
+                  "p95": 11.16,
+                  "p99": 17.04
+                },
+                "score": {
+                  "p50": 2.089,
+                  "p95": 4.911,
+                  "p99": 6.07
+                },
+                "select": {
+                  "p50": 0.015,
+                  "p95": 0.024,
+                  "p99": 0.033
+                }
+              }
+            }
+          },
+          "fresh_c1": {
+            "concurrency": 1,
+            "fresh_process": true,
+            "burst": false,
+            "wall_seconds": 22.935216720004973,
+            "summary": {
+              "attempted": 200,
+              "ok": 200,
+              "errors": 0,
+              "client_ms": {
+                "p50": 110.331,
+                "p95": 140.561,
+                "p99": 180.534
+              },
+              "server_ms": {
+                "p50": 17.737,
+                "p95": 25.464,
+                "p99": 28.049
+              },
+              "over_400_ms": 0,
+              "over_300_ms": 0,
+              "stages_ms": {
+                "candidates": {
+                  "p50": 11.601,
+                  "p95": 16.26,
+                  "p99": 19.71
+                },
+                "catalog": {
+                  "p50": 0.432,
+                  "p95": 0.597,
+                  "p99": 0.75
+                },
+                "policy": {
+                  "p50": 3.658,
+                  "p95": 6.147,
+                  "p99": 7.006
+                },
+                "score": {
+                  "p50": 1.47,
+                  "p95": 2.625,
+                  "p99": 3.177
+                },
+                "select": {
+                  "p50": 0.01,
+                  "p95": 0.02,
+                  "p99": 0.041
+                }
+              }
+            }
+          },
+          "burst_fresh_c4": {
+            "concurrency": 4,
+            "fresh_process": true,
+            "burst": true,
+            "wall_seconds": 7.840939606001484,
+            "summary": {
+              "attempted": 200,
+              "ok": 200,
+              "errors": 0,
+              "client_ms": {
+                "p50": 141.732,
+                "p95": 179.628,
+                "p99": 197.868
+              },
+              "server_ms": {
+                "p50": 23.11,
+                "p95": 37.374,
+                "p99": 47.749
+              },
+              "over_400_ms": 0,
+              "over_300_ms": 0,
+              "stages_ms": {
+                "candidates": {
+                  "p50": 15.61,
+                  "p95": 28.212,
+                  "p99": 33.934
+                },
+                "catalog": {
+                  "p50": 0.422,
+                  "p95": 0.633,
+                  "p99": 0.867
+                },
+                "policy": {
+                  "p50": 4.235,
+                  "p95": 7.053,
+                  "p99": 8.666
+                },
+                "score": {
+                  "p50": 1.949,
+                  "p95": 4.081,
+                  "p99": 6.1
+                },
+                "select": {
+                  "p50": 0.013,
+                  "p95": 0.025,
+                  "p99": 0.064
+                }
+              }
+            }
+          }
+        },
+        "determinism": {
+          "paired_responses": 600,
+          "passed": true
+        },
+        "gates": {
+          "http_c1": {
+            "client_400_passed": true,
+            "server_300_passed": true
+          },
+          "http_c4": {
+            "client_400_passed": true,
+            "server_300_passed": true
+          },
+          "fresh_c1": {
+            "client_400_passed": true,
+            "server_300_passed": true
+          },
+          "burst_fresh_c4": {
+            "client_400_passed": true,
+            "server_300_passed": true
+          }
+        },
+        "health_after": {
+          "api_schema_versions": [
+            "legacy-unversioned",
+            "1.1"
+          ],
+          "backend": "router_bm25f_v1",
+          "body_cache": false,
+          "database_search_calls": 1220,
+          "database_use_calls": 0,
+          "degradation_reason": null,
+          "live_encode_calls": 0,
+          "model_load_calls": 0,
+          "n_skills": 6006,
+          "pg_search_version": "0.25.6",
+          "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+          "production_iam": false,
+          "python_runtime": false,
+          "ready": true,
+          "repository": {
+            "repo_id": "skillret-service-bench",
+            "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+          },
+          "request_id": "c3db9f80-249b-4c35-8771-4aea7c1cc356",
+          "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+          "runtime": "go",
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+        }
+      }
+    },
+    "throughput-final-parity.json": {
+      "file": "throughput-final-parity.json.gz",
+      "json_bytes": 445343,
+      "gzip_bytes": 62345,
+      "json_sha256": "0d48336496933e2804b33ae8a13b79fc6ed669c9f226d3f92924a4e2e665b063",
+      "gzip_sha256": "402f8cad5a5d6eb06e8402ca2e1997ea806d7f76aea3ce2ba5ac8e142045d7ad",
+      "summary": {
+        "schema_version": 1,
+        "kind": "exact_default_router_api_parity",
+        "dataset": "frozen_skillret_train_dev",
+        "attempted": 1000,
+        "http_ok": 1000,
+        "mismatches": 0,
+        "exact_output_parity_passed": true,
+        "scope": "API top10 URN+integer score, selected ordered URNs, immutable card revisions; same query/scope/snapshot; c=4",
+        "quality_evaluated": false,
+        "test_a_or_b_queries_used": false,
+        "cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+        "snapshot_sha256": "dc3030e074b5602c0caf2a85f9b93fbc60c32a2350501a05b2fa59c356366de1",
+        "router_index_sha256": "70e21b5a706a44252da7a8e2657e4eeb9d86a081a3553a78d4681202050cb3db",
+        "documents": 10123,
+        "wall_s": 12.208062066994898
+      }
+    },
+    "telemetry-final-integration.json": {
+      "file": "telemetry-final-integration.json.gz",
+      "json_bytes": 6344,
+      "gzip_bytes": 976,
+      "json_sha256": "11c2b7ffd3426b32fd00f92e0042860f1cf6767669b7f4fe6bb9df1cc12a44b5",
+      "gzip_sha256": "8897db12b5596c61ec828441fe3d0b3ae535af17e5bcef7b906516c5c02d2945",
+      "summary": {
+        "passed": true,
+        "contract_tests_same_assertions_both_backends": true,
+        "checks": [
+          "auth_batch_limit_partial_ack",
+          "concurrent_replay_never_double_counts",
+          "client_tenant_cannot_choose_partition",
+          "storage_failure_rolls_back_no_false_ack_retry_same_ids",
+          "20_find_5_load_spool_flush_sqlite_postgres_report_parity",
+          "identical_spool_replay_zero_accept_N_duplicate",
+          "retention_expires_derived_shadow_rows",
+          "committed_ledger_and_report_survive_db_api_restart"
+        ],
+        "cycle": {
+          "find_commands": 20,
+          "load_commands": 5,
+          "event_count": 210,
+          "event_types": {
+            "search_requested": 20,
+            "search_results": 20,
+            "card_injected": 160,
+            "skill_load_requested": 5,
+            "skill_load_completed": 5
+          },
+          "first_flush_accepted": 210,
+          "second_flush_accepted": 0,
+          "second_flush_duplicate": 210,
+          "report_equal": true,
+          "report": {
+            "tenant_id": "local",
+            "skills": [
+              {
+                "skill_id": "urn:skill:meridian:_root:postgres-production",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:atlas.graph:link-analysis-api",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 5,
+                "use_rate": 0.25,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": "2026-09-05T19:53:02Z",
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:atlas.identity:rbac-policies",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:atlas:atlas-api-conventions",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:security.audit:audit-logging",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:security:classification-labels",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              },
+              {
+                "skill_id": "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+                "revision": "worktree",
+                "exposures": 20,
+                "loads": 0,
+                "use_rate": 0.0,
+                "distinct_scopes": [
+                  "_root"
+                ],
+                "distinct_producers": [
+                  "guidefold-cli"
+                ],
+                "last_exposure": "2026-09-05T19:53:02Z",
+                "last_load": null,
+                "feedback": {
+                  "helped": 0,
+                  "hindered": 0,
+                  "mixed": 0,
+                  "not_applicable": 0,
+                  "unknown": 0
+                },
+                "state": "exposed_never_loaded"
+              }
+            ],
+            "summary": {
+              "never_exposed": 0,
+              "exposed_never_loaded": 7,
+              "loaded": 1
+            }
+          },
+          "cli_changed": false,
+          "auth_transport": "test-only loopback credential injection; current CLI has no bearer option"
+        },
+        "production_ready": false
+      }
+    },
+    "shadow-final-integration.json": {
+      "file": "shadow-final-integration.json.gz",
+      "json_bytes": 4862,
+      "gzip_bytes": 1173,
+      "json_sha256": "a5d7f56bcd360aa7531a8cac7699db8741b8a181a17a6c9414b5cc2a50e5cfc2",
+      "gzip_sha256": "66fdbaa25db390f5b161f62b82d546342670c38e002fa6463935cfba1f037ba7",
+      "summary": {
+        "passed": true,
+        "http_attempts_shadow_on": 12,
+        "concurrency": 4,
+        "full_stable_payload_parity_passed": true,
+        "excluded_volatile_fields": [
+          "request_id",
+          "search_id",
+          "stages_ms"
+        ],
+        "byte_exact_delivery_unit_test": "TestShadowCannotChangeDeliveredBytesOrWaitForGPU",
+        "byte_exact_across_independent_http_requests_claimed": false,
+        "search_results_and_load_join_passed": true,
+        "joined_event_counts": {
+          "search_results": 1,
+          "skill_load_completed": 1,
+          "skill_load_requested": 1
+        },
+        "client_emitter_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+        "client_file_modified": false,
+        "gpu_outage_keeps_sparse_ready_and_identical_stable_payload": true,
+        "worker_recovery_passed": true,
+        "snapshot_pinned": true,
+        "production_ready": false
+      }
+    },
+    "vector-storage-probe.json": {
+      "file": "vector-storage-probe.json.gz",
+      "json_bytes": 916939,
+      "gzip_bytes": 19206,
+      "json_sha256": "fbd1827c2d99ab7c91320b5c268b77a15708f896edf2c3893845fcdc8292f344",
+      "gzip_sha256": "9a03252a343e2169722340c05b6cfc9a9a67cc34c68a8e1c062cc76c5d208470",
+      "summary": {
+        "kind": "bounded_temp_vector_storage_probe",
+        "quality_evaluated": false,
+        "identity": {
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f",
+          "encoder": "d9c94fd282392d544f376ce2e90760f4252c4747ff480391e66631357ffdd23f"
+        },
+        "rows_per_layout": 6006,
+        "paired_iterations": 30,
+        "original_table_modified": false,
+        "original_statistics_modified": false,
+        "tables_dropped_at_transaction_end": true,
+        "resources_isolated": false,
+        "arms": {
+          "external": {
+            "execution_ms": [
+              42.117,
+              39.621,
+              40.237,
+              41.47,
+              39.831,
+              39.299,
+              39.444,
+              41.959,
+              41.63,
+              39.891,
+              40.413,
+              41.525,
+              42.816,
+              50.551,
+              40.864,
+              39.47,
+              39.603,
+              49.8,
+              49.433,
+              40.747,
+              42.019,
+              39.713,
+              40.496,
+              39.481,
+              40.085,
+              40.08,
+              41.856,
+              42.566,
+              40.529,
+              40.501
+            ],
+            "ranked_sha256": "4c5e1400eac753a0568844f626cf149939dfcb7cd9e566b6c6468be88a33d159",
+            "size": {
+              "heap_bytes": 2334720,
+              "total_bytes": 37601280,
+              "toast_bytes": 33251328
+            },
+            "summary_ms": {
+              "p50": 40.501,
+              "p95": 49.8,
+              "p99": 50.551
+            }
+          },
+          "plain": {
+            "execution_ms": [
+              58.024,
+              59.833,
+              58.524,
+              59.146,
+              58.226,
+              58.721,
+              59.14,
+              60.62,
+              61.294,
+              59.368,
+              60.315,
+              60.368,
+              67.772,
+              62.273,
+              65.299,
+              58.999,
+              58.417,
+              65.601,
+              70.347,
+              61.479,
+              60.678,
+              61.511,
+              62.596,
+              61.48,
+              64.686,
+              58.887,
+              61.27,
+              61.794,
+              59.566,
+              60.208
+            ],
+            "ranked_sha256": "4c5e1400eac753a0568844f626cf149939dfcb7cd9e566b6c6468be88a33d159",
+            "size": {
+              "heap_bytes": 49201152,
+              "total_bytes": 54624256,
+              "toast_bytes": 3399680
+            },
+            "summary_ms": {
+              "p50": 60.368,
+              "p95": 67.772,
+              "p99": 70.347
+            }
+          }
+        },
+        "production_ready": false,
+        "exact_rank_parity": true
+      }
+    },
+    "vector-storage-target6144-probe.json": {
+      "file": "vector-storage-target6144-probe.json.gz",
+      "json_bytes": 917071,
+      "gzip_bytes": 19261,
+      "json_sha256": "7fbc8f3ed780837073d37c930e7b43ba25cbe28b21e11826aa37e28da27b5d68",
+      "gzip_sha256": "fb3e5b9eef7bda7fa2a9585c7b71fc6e88cf37c713f09090bef145d487955912",
+      "summary": {
+        "kind": "bounded_temp_vector_storage_probe",
+        "quality_evaluated": false,
+        "identity": {
+          "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f",
+          "encoder": "d9c94fd282392d544f376ce2e90760f4252c4747ff480391e66631357ffdd23f"
+        },
+        "inline_toast_target": 6144,
+        "rows_per_layout": 6006,
+        "paired_iterations": 30,
+        "original_table_modified": false,
+        "original_statistics_modified": false,
+        "tables_dropped_at_transaction_end": true,
+        "resources_isolated": false,
+        "arms": {
+          "external": {
+            "execution_ms": [
+              39.619,
+              39.51,
+              40.356,
+              42.956,
+              41.018,
+              39.14,
+              39.528,
+              54.681,
+              48.748,
+              49.909,
+              55.672,
+              48.185,
+              45.562,
+              41.513,
+              42.033,
+              44.956,
+              41.942,
+              44.621,
+              43.86,
+              41.362,
+              39.966,
+              42.83,
+              40.355,
+              39.657,
+              39.481,
+              45.98,
+              41.459,
+              39.967,
+              39.439,
+              40.136
+            ],
+            "ranked_sha256": "4c5e1400eac753a0568844f626cf149939dfcb7cd9e566b6c6468be88a33d159",
+            "size": {
+              "heap_bytes": 2334720,
+              "total_bytes": 37601280,
+              "toast_bytes": 33251328
+            },
+            "summary_ms": {
+              "p50": 41.459,
+              "p95": 54.681,
+              "p99": 55.672
+            }
+          },
+          "plain": {
+            "execution_ms": [
+              29.486,
+              27.782,
+              30.399,
+              30.553,
+              28.917,
+              28.795,
+              27.997,
+              27.298,
+              31.615,
+              32.962,
+              39.713,
+              44.293,
+              28.147,
+              32.43,
+              33.028,
+              33.29,
+              32.635,
+              31.183,
+              27.92,
+              27.816,
+              32.643,
+              31.641,
+              27.494,
+              27.433,
+              29.147,
+              31.519,
+              28.568,
+              27.812,
+              30.831,
+              28.289
+            ],
+            "ranked_sha256": "4c5e1400eac753a0568844f626cf149939dfcb7cd9e566b6c6468be88a33d159",
+            "size": {
+              "heap_bytes": 49201152,
+              "total_bytes": 51232768,
+              "toast_bytes": 8192
+            },
+            "summary_ms": {
+              "p50": 29.486,
+              "p95": 39.713,
+              "p99": 44.293
+            }
+          }
+        },
+        "production_ready": false,
+        "exact_rank_parity": true
+      }
+    }
+  }
+}

@@ -47,13 +47,21 @@ func (s *Store) searchCaptured(ctx context.Context, p M, capture *ShadowJob) (M,
 	if e != nil {
 		return nil, e
 	}
-	return s.searchCatalog(ctx, c, p, M{"catalog": elapsed(start)}, capture)
+	return s.searchCatalog(ctx, c, p, M{"catalog": elapsed(start)}, capture, nil)
 }
-func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, capture *ShadowJob) (M, error) {
+func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, capture *ShadowJob, prepared *SparsePreparation) (M, error) {
 	var e error
 	scopes, contextualData, e := c.resolve(p)
 	if e != nil {
 		return nil, e
+	}
+	if prepared != nil {
+		if e := prepared.verify(c, str(p["query"]), scopes); e != nil {
+			return nil, e
+		}
+	}
+	if capture != nil && s.Dense == nil {
+		capture.Preparation = &SparsePreparation{Snapshot: c.ID, QueryDigest: hash([]byte(str(p["query"]))), Scopes: map[string]PreparedScope{}}
 	}
 	contextual := str(p["schema_version"]) == "1.1"
 	admissible := map[string]bool{}
@@ -80,7 +88,13 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
 	for _, node := range scopes {
 		stage := time.Now()
-		allowed, drops := c.allowed(node, str(p["query"]))
+		var allowed map[string]bool
+		var drops int
+		if prepared != nil {
+			allowed, drops = prepared.Scopes[node].allowed(c), prepared.Scopes[node].Drops
+		} else {
+			allowed, drops = c.allowed(node, str(p["query"]))
+		}
 		dropCount += drops
 		for u := range allowed {
 			admissible[u] = true
@@ -91,8 +105,18 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 		var candidates []Candidate
 		if s.Dense != nil {
 			if s.Dense.Mode == "hybrid" {
-				candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+				if prepared != nil {
+					candidates = prepared.Scopes[node].Top
+				} else {
+					candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+				}
 			}
+		} else if capture != nil && capture.Preparation != nil && s.LexicalEngine == "router" {
+			// Capture compact full ranks before the unchanged top-50 truncation.
+			prep := prepareScope(c, allowed, drops)
+			candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 50, prep.Ranks)
+			prep.Top = candidates
+			capture.Preparation.Scopes[node] = prep
 		} else {
 			candidates, e = s.search(ctx, c, str(p["query"]), allowed)
 		}
@@ -122,7 +146,11 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 			}
 			previous, _ := stages["dense_database"].(float64)
 			stages["dense_database"] = previous + elapsed(denseStart)
-			candidates = fuseCandidates(candidates, dense)
+			if prepared != nil {
+				candidates = fusePrepared(c, prepared.Scopes[node], dense)
+			} else {
+				candidates = fuseCandidates(candidates, dense)
+			}
 		}
 		stage = time.Now()
 		for _, row := range c.score(candidates, node) {

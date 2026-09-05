@@ -134,7 +134,7 @@ journalctl -u guidefold-retention.service --no-pager
 The report reuses the existing SQLite implementation's formulas. Loads remain loads;
 missing feedback does not imply usable skills. Shadow export joins event counts on
 tenant/search_id; reconcile requested searches, recorded successes/errors and missing
-shadow rows. No query/path text is stored in shadow. Its 32-job queue is best-effort;
+shadow rows. No query/path text is stored in shadow. Its bounded queue defaults to 128 jobs (`GUIDEFOLD_SHADOW_QUEUE_CAPACITY`, 1–256) and is best-effort;
 queue overflow and DB persistence failure are logged, and shutdown may drop queued jobs.
 
 The daily retention job removes events older than 90 days using the reference's
