@@ -63,16 +63,19 @@ policy, composer, metric version and code SHA.
 
 ### E1.1b — immediate service feasibility and latency optimization (2026-09-05)
 
-The product owner requested this experiment before service-dependent E2/E6 implementation,
-and then revised the whole-client latency target to **p95 <400 ms**. Preserve all historical
-300 ms results. The new budget covers process startup and response delivery, not just encoder
-inference or server time; concurrency=1 and four simultaneous fresh clients are separate gates.
+The product owner requested this experiment before service-dependent E2/E6 implementation.
+The current product path to validate is the optimized sparse service; resident full-encoder
+and separate-worker experiments remain shadow work and do not block its feasibility decision.
 
-Implement and measure a loopback HTTP service with a pinned resident full encoder, live query
-inference, resident 6,006-skill index, exact revision hydration and local operational traces.
-Publish cold process readiness, HTTP/fresh-client p50/p95/p99, all failure denominators,
+E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over loopback, measured separately at c1 and c4 with a fresh client process per request and a ready resident server/index. Server-side p95 must be ≤300 ms at both loads, measured from HTTP admission before authentication or queueing through synchronous logging and JSON response serialization. Whole-client timing includes startup/imports, local reads, auth, transport, queues, retrieval/composition, telemetry and output/exit. Report all attempts, errors and successful-within-budget counts under frozen workload, corpus, hardware and runtime identities. WAN/TLS/IAM and the actual harness remain a separate E6 integration gate, never implied by loopback success. Optimized sparse is the production candidate; hybrid remains shadow until independent latency and quality admission.
+
+Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
+
+Measure the resident 6,006-skill sparse index, exact revision delivery and local operational
+traces. Publish cold process readiness, HTTP/fresh-client p50/p95/p99, all failure denominators,
 deadline/denial/outage/restart behavior and an explicit proceed/change/stop decision in
-[E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md).
+[E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md). Publish hybrid shadow
+measurements separately; latency success alone cannot admit a neural profile.
 
 Optimize the measured hot path before deciding whether a native rewrite is needed. Precomputed
 integer BM25 contributions and resident dense matrices must preserve scores and ranking;

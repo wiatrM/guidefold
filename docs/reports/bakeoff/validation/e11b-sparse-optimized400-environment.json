@@ -1,0 +1,177 @@
+{
+  "label": "sparse-optimized400",
+  "scope": "loopback, unisolated WSL host; no target deployment or SLO claim",
+  "created_unix": 1788617590.0919807,
+  "machine_before": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+    "cpu_count": 16,
+    "load_average": [
+      0.84423828125,
+      0.78759765625,
+      1.5546875
+    ],
+    "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 2235 MiB, 11 %, 591.86",
+    "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz\nCPU family:                              6\nModel:                                   165\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                5\nBogoMIPS:                                7584.02\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm arch_perfmon rep_good nopl xtopology cpuid tsc_known_freq pni pclmulqdq vmx ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow ept vpid ept_ad fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt xsaveopt xsavec xgetbv1 xsaves vnmi md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                2 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             KVM: Mitigation: Split huge pages\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT Host state unknown\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Unknown: Dependent on hypervisor status\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected"
+  },
+  "source_sha256": {
+    "tools/serve_spike/server.py": "986e0c006c357560b8f8748713f3deb51ae9d2abfa4786b13925dc4249e3e303",
+    "tools/serve_spike/encoder_worker.py": "3a8eac3988794ca5a110ece58063b15647de4b13e0bcba1657abadb04739402a",
+    "tools/serve_spike/probe.py": "2ff9367717ec0cf95ee3ccbc34bead3cae8f803d53922eb20e25b7e2bbf52245",
+    "tools/serve_spike/sparse_cache.py": "31ac39e65a6b2de45b3c7d3b5aaa1fd9fe03b181f1520bde140dc1ca792fa2c6",
+    "tools/serve_spike/native_rank.py": "7dc395c3206724c11fa0c8fe71acbb013c3c7fbdc062be90a32c7bfe21996b78",
+    "tools/serve_spike/native_dense_rank.cpp": "4180e34bdbb9462c0d1f0b2a4bef0226941148fa7fa731167c6255421b2940b7",
+    ".guidefold/serve-spike/frozen-cli.py": "e508929f33efefe6517aec146406571919c78b1385465b1ea0a4aceee6eab5ac",
+    "tools/eval/dense_ref.py": "e1314dafa853e2c39a66063e3a6ca74fb8423b844f04aac5725f5cd13395d54d",
+    "tools/bakeoff/encode.py": "982fce6fffd3922387b12565bce07403e70c56f76fa3ed3dd58ac91b724eb644",
+    "tools/eval/skillret.py": "3578d3f48810958520d33aedec3345a4466b77a3e0d5a3c7a6299f060591f025",
+    "tools/eval/corpora.py": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298"
+  },
+  "git_head": "af65991f85c1d20c6e863d7f3cfcee438680cc98",
+  "own_document_encoding_finished": true,
+  "server_arguments_without_secret": [
+    "--port",
+    "8765",
+    "--max-inflight",
+    "4",
+    "--token-file",
+    "/home/mike/projects/guidefold/.guidefold/serve-spike/sparse-optimized400.token",
+    "--log-file",
+    "/home/mike/projects/guidefold/.guidefold/serve-spike/sparse-optimized400-events.jsonl",
+    "--cli-path",
+    "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+    "--optimized"
+  ],
+  "experiment_budget_ms": 400,
+  "process_to_observed_readiness_ms": 13514.244915000745,
+  "ready": {
+    "ready": true,
+    "backend": "sparse_only",
+    "device": null,
+    "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+    "model": null,
+    "policy": "shared-router-policy-candidates-score-select-v1",
+    "live_encode_calls": 0,
+    "model_load_calls": 0,
+    "model_load_calls_scope": "api_process",
+    "encoder_process": false,
+    "encoder_worker": null,
+    "model_location": "api_process",
+    "optimized": true,
+    "pipeline": false,
+    "optimizations": {
+      "bm25": {
+        "kind": "precomputed_exact_bm25_term_scores",
+        "max_bytes": 268435456,
+        "estimated_cache_bytes": 130404592,
+        "memory_estimate_scope": "retained cache dicts and score objects; excludes shared index strings, fixed wrapper and transient build work; not RSS",
+        "cached_terms": 89630,
+        "total_terms": 89630,
+        "uncacheable_term_keys": 0,
+        "cached_term_doc_pairs": 2078230,
+        "total_term_doc_pairs": 2078230,
+        "term_coverage": 1.0,
+        "posting_coverage": 1.0,
+        "fully_cached": true,
+        "admission_order": "corpus IDF ascending, stop retaining at budget; all terms counted",
+        "query_cache": false,
+        "lazy_warmup": false,
+        "active": true,
+        "startup_ms": 2548.347754003771
+      }
+    },
+    "native_dense_rank": false,
+    "gil_switch_ms_requested": null,
+    "gil_switch_ms_effective": 5.0,
+    "cli_path": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+    "torch_threads_requested": null,
+    "torch_threads_effective": null,
+    "policy_revision": "e508929f33efefe6517aec146406571919c78b1385465b1ea0a4aceee6eab5ac",
+    "initialization_ms": {
+      "verified_corpus": 1304.4730110050295,
+      "resident_index": 9568.293642005301,
+      "total": 13422.827989001235
+    },
+    "error": null,
+    "n_skills": 6006,
+    "reranker": false,
+    "production_iam": false,
+    "telemetry_errors": 0
+  },
+  "machine_ready": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+    "cpu_count": 16,
+    "load_average": [
+      1.1689453125,
+      0.86376953125,
+      1.5673828125
+    ],
+    "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 1949 MiB, 11 %, 591.86",
+    "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz\nCPU family:                              6\nModel:                                   165\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                5\nBogoMIPS:                                7584.02\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm arch_perfmon rep_good nopl xtopology cpuid tsc_known_freq pni pclmulqdq vmx ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow ept vpid ept_ad fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt xsaveopt xsavec xgetbv1 xsaves vnmi md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                2 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             KVM: Mitigation: Split huge pages\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT Host state unknown\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Unknown: Dependent on hypervisor status\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected"
+  },
+  "own_process_memory_ready": {
+    "VmSize": "658136 kB",
+    "VmHWM": "532284 kB",
+    "VmRSS": "526844 kB",
+    "Threads": "1",
+    "start_ticks": "4158016",
+    "Pss": "516753 kB",
+    "Private_Clean": "240 kB",
+    "Private_Dirty": "515184 kB"
+  },
+  "own_children_memory_ready": {},
+  "machine_after": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+    "cpu_count": 16,
+    "load_average": [
+      1.41015625,
+      0.958984375,
+      1.572265625
+    ],
+    "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 1874 MiB, 0 %, 591.86",
+    "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz\nCPU family:                              6\nModel:                                   165\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                5\nBogoMIPS:                                7584.02\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm arch_perfmon rep_good nopl xtopology cpuid tsc_known_freq pni pclmulqdq vmx ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow ept vpid ept_ad fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt xsaveopt xsavec xgetbv1 xsaves vnmi md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                2 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             KVM: Mitigation: Split huge pages\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT Host state unknown\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Unknown: Dependent on hypervisor status\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected"
+  },
+  "own_process_memory_after": {
+    "VmSize": "871136 kB",
+    "VmHWM": "532936 kB",
+    "VmRSS": "532936 kB",
+    "Threads": "1",
+    "start_ticks": "4158016",
+    "Pss": "523715 kB",
+    "Private_Clean": "492 kB",
+    "Private_Dirty": "521276 kB"
+  },
+  "own_children_memory_after": {},
+  "machine_after_all_probes": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+    "cpu_count": 16,
+    "load_average": [
+      1.4794921875,
+      0.9951171875,
+      1.5732421875
+    ],
+    "gpu": "NVIDIA GeForce RTX 4090, 24564 MiB, 1881 MiB, 22 %, 591.86",
+    "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz\nCPU family:                              6\nModel:                                   165\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                5\nBogoMIPS:                                7584.02\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm arch_perfmon rep_good nopl xtopology cpuid tsc_known_freq pni pclmulqdq vmx ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow ept vpid ept_ad fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt xsaveopt xsavec xgetbv1 xsaves vnmi md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nHypervisor vendor:                       Microsoft\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                2 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             KVM: Mitigation: Split huge pages\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT Host state unknown\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Unknown: Dependent on hypervisor status\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected"
+  },
+  "source_sha256_after": {
+    "tools/serve_spike/server.py": "986e0c006c357560b8f8748713f3deb51ae9d2abfa4786b13925dc4249e3e303",
+    "tools/serve_spike/encoder_worker.py": "3a8eac3988794ca5a110ece58063b15647de4b13e0bcba1657abadb04739402a",
+    "tools/serve_spike/probe.py": "2ff9367717ec0cf95ee3ccbc34bead3cae8f803d53922eb20e25b7e2bbf52245",
+    "tools/serve_spike/sparse_cache.py": "31ac39e65a6b2de45b3c7d3b5aaa1fd9fe03b181f1520bde140dc1ca792fa2c6",
+    "tools/serve_spike/native_rank.py": "7dc395c3206724c11fa0c8fe71acbb013c3c7fbdc062be90a32c7bfe21996b78",
+    "tools/serve_spike/native_dense_rank.cpp": "4180e34bdbb9462c0d1f0b2a4bef0226941148fa7fa731167c6255421b2940b7",
+    ".guidefold/serve-spike/frozen-cli.py": "e508929f33efefe6517aec146406571919c78b1385465b1ea0a4aceee6eab5ac",
+    "tools/eval/dense_ref.py": "e1314dafa853e2c39a66063e3a6ca74fb8423b844f04aac5725f5cd13395d54d",
+    "tools/bakeoff/encode.py": "982fce6fffd3922387b12565bce07403e70c56f76fa3ed3dd58ac91b724eb644",
+    "tools/eval/skillret.py": "3578d3f48810958520d33aedec3345a4466b77a3e0d5a3c7a6299f060591f025",
+    "tools/eval/corpora.py": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298"
+  },
+  "source_unchanged_during_run": true,
+  "server_exit_code": 0,
+  "stopped_owned_server": true,
+  "owned_children_stopped": {},
+  "all_owned_children_stopped": true
+}

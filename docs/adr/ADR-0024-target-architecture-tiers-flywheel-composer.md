@@ -1,6 +1,7 @@
 # ADR-0024: Target architecture — one contract, three deployment tiers, a telemetry flywheel for dense, and model-based composition
 
-**Status:** Proposed · 2026-09-05 · the target system beyond the MVP; nothing here is deployed, trained or admitted by this ADR
+**Status:** Proposed · 2026-09-05 · the target system beyond the MVP; nothing here is deployed, trained or admitted by this ADR · request boundary amended by [ADR-0025](ADR-0025-harness-service-context-contract.md) (Accepted); architecture status unchanged
+**Implemented request contract:** [Harness-service 1.1](../HARNESS-SERVICE-CONTRACT.md); repository/path resolution and delivery limits are covered by schema/runtime/HTTP tests. Broader production and telemetry guarantees below remain proposed.
 **Amends:** ADR-0023 (adds deployment tiers; the admitted service profile is sparse-only until dense earns admission per tenant), ADR-0020 (the static student is closed as a quality path and kept only as an optional offline artifact), ADR-0021 (sharding is scoped to the local tier), ADR-0022 (the composition stage may be a model), ADR-0009 (client-side hybrid becomes tier T0 only).
 **Confirms:** ADR-0001 (Git is the source of truth), ADR-0003 (bootstrap skill + CLI, not per-harness plumbing), ADR-0006/0012 (deterministic L0 delivery, nothing generated committed), ADR-0015 (self-hosted skill-tuned models — this ADR names where their training data comes from), ADR-0017, ADR-0019.
 **Delivery:** [MVP](../MVP.md) §2 (tiers), §4 (E2.9, E6.2, new E7), §5 (plan).
