@@ -87,3 +87,15 @@ python3 tools/eval/corpora.py verify                                  # stdlib; 
 ```
 
 The 26-skill fixture and its golden set are the dev/regression suite only. See `CLAUDE.md`.
+
+## Never stage from the shared checkout
+
+`/home/mike/projects/guidefold` (or whatever your main checkout is) may have **more than one agent
+or session writing into it at once**. `git add -A` there will commit whatever anyone else happens
+to have in flight — this happened in PR #40, which swept ~65 800 lines of an unrelated service
+spike into a documentation commit.
+
+- Do every change in its own worktree: `git worktree add ../gf-<topic> -b <branch> origin/main`.
+- If you must commit from the shared checkout, stage **named paths only** (`git add docs/x.md`),
+  never `-A`, `.` or `-u`.
+- Before committing anywhere, read `git status --short` and confirm every listed path is yours.
