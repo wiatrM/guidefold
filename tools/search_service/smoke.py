@@ -12,11 +12,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
 
 
 def request(url, path, token='', payload=None, raw=None):
@@ -66,11 +68,13 @@ def main():
         return body
     status, health, _, _ = request(args.url, '/health/ready')
     assert status == 200 and health['runtime'] == 'go' and not health['python_runtime']
+    assert health['backend']=='router_bm25f_v1' and health['router_index_revision']
     workspace = {'repo_id': bundle['repo_id'], 'revision':bundle['revision'], 'cwd':'.'}
     base = {'schema_version':'1.1', 'query':'pytest pipeline testing', 'workspace':workspace}
     search = expect('search_response_schema_and_generated_request_id', payload=base)
     assert search['cards'], 'Expected nonempty fixture result'
-    assert search['retrieval']['engine'] == 'ParadeDB/Tantivy'
+    assert search['retrieval']['engine'] == 'Guidefold integer BM25F / Postgres postings'
+    assert search['retrieval']['exact_legacy_ranking_parity'] is True
     explicit = expect('correlation', payload={**base, 'request_id':'test-request',
                       'session_id':'test-session', 'task_id':'test-task'})
     assert explicit['request_id'] == 'test-request' and explicit['session_id'] == 'test-session'
@@ -144,7 +148,11 @@ def main():
     candidate = ROOT/'.guidefold/compose/integration-snapshot.json'
     def write_bundle(data, valid=True):
         raw = json.dumps(data,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()
-        candidate.write_text(json.dumps({'snapshot':data,'sha256':hashlib.sha256(raw).hexdigest() if valid else 'invalid'},ensure_ascii=False))
+        from tools.search_service.index import with_router_index
+        from tools.serve_spike.server import load_cli_snapshot
+        cli,_=load_cli_snapshot(ROOT/'skills/guidefold/scripts/guidefold')
+        value={'snapshot':data,'sha256':hashlib.sha256(raw).hexdigest() if valid else 'invalid'}
+        candidate.write_text(json.dumps(with_router_index(cli,value),ensure_ascii=False))
     other = deepcopy(original['snapshot'])
     other['repo_id'] = 'isolation-probe'
     for item in other['cards'].values():

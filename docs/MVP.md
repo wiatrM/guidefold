@@ -233,7 +233,7 @@ Deferred: full automated promotion workflow and probation, induction/consolidati
 | 0002, 0011 | Historical deleted decisions; do not reuse their IDs |
 | [0023 SEARCH/USE and utility](adr/ADR-0023-search-use-service-and-measured-utility.md) | New Proposed amendment: central serving, bounded clients, event semantics and narrower MVP; proposes amendments to 0009/0013/0015/0016/0018/0020/0021; ADR-0024 proposes an amendment |
 | [0024 target architecture](adr/ADR-0024-target-architecture-tiers-flywheel-composer.md) | New Proposed: one contract, three deployment tiers, per-tenant dense admission through a telemetry flywheel, model-based composition, a cost model for 5 000 developers with a measured-vs-assumed table; amends 0009/0020/0021/0022/0023 |
-| [0026 native Go/ParadeDB](adr/ADR-0026-native-search-paradedb-compose.md) | Accepted implementation/deployment choice only; latency passes, retrieval admission fails test-B HSR; production admission remains separate |
+| [0026 native Go/ParadeDB](adr/ADR-0026-native-search-paradedb-compose.md) | Accepted Go/Postgres/Compose hosting only; default ranking must retain CLI BM25F parity; experimental Tantivy fails HSR admission |
 | [0025 harness-service context](adr/ADR-0025-harness-service-context-contract.md) | Accepted request contract 1.1: versioning, repository-relative context, explicit feature semantics and schema/runtime/HTTP conformance; narrows the request boundary of 0023/0024 without admitting their production architecture |
 
 Older DESIGN/KNOWLEDGE-DESIGN remain historical target descriptions and current CLI notes where marked. Their local-only hot path, delayed telemetry, load-based probation and old phase schedules must not be read as acceptance criteria for this proposed MVP. No runtime behavior changed in this documentation revision.
@@ -242,18 +242,19 @@ Older DESIGN/KNOWLEDGE-DESIGN remain historical target descriptions and current 
 
 The owner selected Go + ParadeDB for the resident SEARCH/USE backend, deployed by
 Docker Compose; see [ADR-0026](adr/ADR-0026-native-search-paradedb-compose.md) and
-[runbook](../services/search/README.md). The full resident service is Go and BM25 runs
-in Rust/Tantivy inside Postgres. API 1.1 and the unchanged T0 CLI remain the boundaries.
+[runbook](../services/search/README.md). The resident service is Go; default BM25F uses canonical CLI build statistics and
+integer scoring over Postgres postings. Tantivy remains an explicit experiment. API 1.1 and the unchanged T0 CLI remain the boundaries.
 This replaces the Python spike as the implementation target while preserving its
-reports. Retrieval quality receives a separate paired F0 comparison; changing the
-engine is not a quality pass. Dense remains a separate admitted/shadow evaluation.
+reports. Default sparse routing must pass exact CLI parity, including the full retrieval
+stage; shared policy fixtures alone are insufficient. Dense remains a separate admitted/shadow evaluation.
 Kubernetes deployment, production IAM/network/HA and durable E6.4 SEARCH/USE telemetry
 are subsequent work, not implied by local Compose success.
 
 **Completed reference:** [Go/ParadeDB report](reports/bakeoff/GO-PARADEDB-2026-09-05.md):
 800/800 SEARCH requests, HTTP p95 21/28 ms and fresh-client p95 117/138 ms at c1/c4.
 Retrieval quality **is not admitted**: test-B HSR rises from 39.67% to 50.33%, exceeding
-the +1 pp guardrail. The prior admitted sparse profile keeps its status; this new
-Compose implementation remains for local evaluation until a separately valid quality
-admission. [GPU serving follow-up](reports/bakeoff/DENSE-SERVING-NEXT-2026-09-05.md)
+the +1 pp guardrail. The prior admitted sparse profile keeps its status. These numbers describe only
+the experimental Tantivy mode; the corrected default serves the reference BM25F. [GPU serving follow-up](reports/bakeoff/DENSE-SERVING-NEXT-2026-09-05.md)
 is a proposal with no new test-budget authorization or active GPU implementation.
+
+Default-router correction and measured parity/latency: [report](reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

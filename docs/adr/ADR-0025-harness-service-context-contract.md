@@ -34,6 +34,8 @@ The approved Go/ParadeDB service implements this same 1.1 wire/context contract.
 The policy and selection port is checked against 144 shared-CLI cases; native race
 checks and real Compose HTTP/publication/recovery tests supplement the Python suite.
 Decision 4's Python/C++ implementation and optimization parity remain historical.
-The native backend advertises `paradedb_bm25_v1` and its distinct retrieval revision;
-1.1 compatibility does not assert identical BM25F rankings across retrieval backends.
+The default native backend advertises `router_bm25f_v1` and preserves the reference
+CLI BM25F ranking/selection contract. Full BM25F fixtures and the 1,000-query HTTP
+parity gate supplement schema compatibility. The explicitly experimental Tantivy
+backend has a separate identity and is not admitted as a tier-equivalent ranker.
 The active Go service does not run the C++ dense comparator or a GPU encoder.

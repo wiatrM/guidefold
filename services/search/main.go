@@ -161,7 +161,10 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	if e = ctx.Err(); e != nil {
 		return nil, e
 	}
-	result := M{"search_id": uuid(), "backend": backend, "snapshot": c.ID, "model": nil, "policy": "go-router-policy-select-v1", "policy_revision": c.PolicySHA, "optimized": true, "pipeline": false, "native_dense_rank": false, "encoder_process": false, "gil_switch_ms_effective": nil, "torch_threads_effective": nil, "profile": text(p, "profile", "hook"), "reranker": false, "ranked": ranked, "cards": cards, "composition": M{"status": "not_evaluated", "incomplete": nil}, "abstained": len(selected) == 0, "policy_drops": dropCount, "stages_ms": stages, "live_encode_calls": 0, "retrieval": M{"engine": "ParadeDB/Tantivy", "pg_search_version": s.Version, "revision": "bm25-concatenated-unicode-v1", "dense": "disabled", "exact_legacy_ranking_parity": false}}
+	result := M{"search_id": uuid(), "backend": s.backendName(), "snapshot": c.ID, "model": nil, "policy": "go-router-policy-select-v1", "policy_revision": c.PolicySHA, "optimized": true, "pipeline": false, "native_dense_rank": false, "encoder_process": false, "gil_switch_ms_effective": nil, "torch_threads_effective": nil, "profile": text(p, "profile", "hook"), "reranker": false, "ranked": ranked, "cards": cards, "composition": M{"status": "not_evaluated", "incomplete": nil}, "abstained": len(selected) == 0, "policy_drops": dropCount, "stages_ms": stages, "live_encode_calls": 0, "retrieval": M{"engine": "ParadeDB/Tantivy", "pg_search_version": s.Version, "revision": "bm25-concatenated-unicode-v1", "dense": "disabled", "exact_legacy_ranking_parity": false}}
+	if s.LexicalEngine != "paradedb-experimental" {
+		result["retrieval"] = M{"engine": "Guidefold integer BM25F / Postgres postings", "revision": "router-bm25f-v1", "index_revision": c.RouterIndexSHA, "dense": "disabled", "exact_legacy_ranking_parity": true}
+	}
 	if contextual {
 		result["schema_version"] = "1.1"
 		result["context"] = contextualData
@@ -261,7 +264,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		ms := elapsed(start)
 		// Allowlist only. No raw queries, bodies, paths, token or free-text metadata.
-		fields := []any{"event", endpoint, "attempt_id", attempt, "status", status, "duration_ms", ms, "backend", backend}
+		fields := []any{"event", endpoint, "attempt_id", attempt, "status", status, "duration_ms", ms, "backend", a.Store.backendName()}
 		for _, k := range []string{"request_id", "session_id", "task_id"} {
 			if v, ok := payload[k]; ok {
 				fields = append(fields, k, v)
@@ -329,7 +332,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respondError(e)
 			return
 		}
-		result = M{"ready": true, "backend": backend, "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
+		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
 		send()
 		return
 	}
@@ -428,6 +431,10 @@ func run() error {
 		return e
 	}
 	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha}
+	store.LexicalEngine = env("GUIDEFOLD_LEXICAL_ENGINE", "router")
+	if store.LexicalEngine != "router" && store.LexicalEngine != "paradedb-experimental" {
+		return fmt.Errorf("invalid_lexical_engine")
+	}
 	ctx, done := context.WithTimeout(root, 120*time.Second)
 	defer done()
 	if command == "migrate" {
@@ -457,7 +464,7 @@ func run() error {
 	server := &http.Server{Addr: ":8080", Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 6 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	errs := make(chan error, 1)
 	go func() { errs <- server.ListenAndServe() }()
-	slog.Info("listening", "address", server.Addr, "backend", backend, "runtime", "go")
+	slog.Info("listening", "address", server.Addr, "backend", store.backendName(), "runtime", "go")
 	select {
 	case <-root.Done():
 		stop, cancel := context.WithTimeout(context.Background(), 10*time.Second)
