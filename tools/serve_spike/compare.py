@@ -131,7 +131,7 @@ def _arms(run, label):
     return arms, issues
 
 
-def _metrics(arm, expected, budget):
+def _metrics(arm, expected, budget, server_budget=None, inclusive=False):
     rows = arm.get("rows") if isinstance(arm, dict) else None
     rows_valid = isinstance(rows, list) and all(isinstance(row, dict) for row in rows)
     rows = rows if rows_valid else []
@@ -146,7 +146,12 @@ def _metrics(arm, expected, budget):
     ok = [row for row in rows if _success(row)]
     success_times = [row["client_ms"] for row in ok if _number(row.get("client_ms"))]
     all_times = [row["client_ms"] for row in rows if _number(row.get("client_ms"))]
-    within = sum(row["client_ms"] < budget for row in ok if _number(row.get("client_ms")))
+    under = lambda value, limit: value <= limit if inclusive else value < limit
+    strictly_within = sum(row["client_ms"] < budget for row in ok if _number(row.get("client_ms")))
+    within = sum(under(row["client_ms"], budget) for row in ok if _number(row.get("client_ms")))
+    server_times = [row["server_elapsed_ms"] for row in ok if _number(row.get("server_elapsed_ms"))]
+    server_all_times = [row["server_elapsed_ms"] for row in rows if _number(row.get("server_elapsed_ms"))]
+    server_p95 = _percentile(server_times, .95)
     integrity = (rows_valid and len(rows) == EXPECTED_COUNT and not missing and not unexpected
                  and not duplicate and not unknown_ids and len(all_times) == len(rows))
     errors = Counter(str(row.get("error") or row.get("failure_code") or
@@ -163,12 +168,21 @@ def _metrics(arm, expected, budget):
         "error_counts": dict(errors),
         "success_latency_ms": _latencies(success_times),
         "all_attempt_latency_ms": _latencies(all_times),
-        "strictly_under_budget_successes": within,
-        "strict_success_fraction_of_all_attempts": within / len(rows) if rows else None,
-        "strict_success_fraction_of_expected": within / EXPECTED_COUNT,
+        "strictly_under_budget_successes": strictly_within,
+        "strict_success_fraction_of_all_attempts": strictly_within / len(rows) if rows else None,
+        "strict_success_fraction_of_expected": strictly_within / EXPECTED_COUNT,
+        "within_budget_successes": within,
+        "within_budget_fraction_of_all_attempts": within / len(rows) if rows else None,
+        "within_budget_fraction_of_expected": within / EXPECTED_COUNT,
+        "server_elapsed_ms": _latencies(server_times),
+        "missing_or_invalid_server_elapsed_count": len(rows) - len(server_all_times),
+        "server_elapsed_evidence_complete": bool(integrity and len(server_all_times) == len(rows)),
+        "server_latency_gate_passed": bool(integrity and len(server_all_times) == len(rows)
+            and len(ok) == EXPECTED_COUNT and server_p95 is not None and under(server_p95, server_budget))
+            if server_budget is not None else None,
         "budget_failures_including_rejections": len(rows) - within,
         "evidence_complete": integrity,
-        "latency_gate_passed": bool(integrity and len(ok) == EXPECTED_COUNT and p95 is not None and p95 < budget),
+        "latency_gate_passed": bool(integrity and len(ok) == EXPECTED_COUNT and p95 is not None and under(p95, budget)),
     }
     return metrics, unique
 
@@ -217,9 +231,13 @@ def _pair(reference_rows, contender_rows, expected, comparable_concurrency=True)
     }
 
 
-def compare_runs(reference, contender, *, burst=None, budget_ms=400):
+def compare_runs(reference, contender, *, burst=None, budget_ms=400, server_budget_ms=None, inclusive_budget=False):
     if not _number(budget_ms) or budget_ms <= 0:
         raise ValueError("budget_ms must be finite and positive")
+    if server_budget_ms is not None and (not _number(server_budget_ms) or server_budget_ms <= 0):
+        raise ValueError("server_budget_ms must be finite and positive")
+    if not isinstance(inclusive_budget, bool):
+        raise ValueError("inclusive_budget must be boolean")
     identities, code, issues, runs = {}, {}, [], {"reference": reference, "contender": contender}
     if burst is not None:
         runs["burst"] = burst
@@ -248,19 +266,20 @@ def compare_runs(reference, contender, *, burst=None, budget_ms=400):
     if burst is not None and code["burst"]["optimized"] is not True:
         issues.append("burst:expected_optimized")
     identity_complete = not issues
-    comparisons, required_metrics, parity_reports = {}, [], []
+    comparisons, required_metrics, parity_reports, server_evidence_metrics = {}, [], [], []
     for arm_name in ("http_c1", "http_c4", "fresh_c1"):
-        ref_metrics, ref_rows = _metrics(arm_sets["reference"].get(arm_name), expected, budget_ms)
-        cont_metrics, cont_rows = _metrics(arm_sets["contender"].get(arm_name), expected, budget_ms)
+        ref_metrics, ref_rows = _metrics(arm_sets["reference"].get(arm_name), expected, budget_ms, server_budget_ms, inclusive_budget)
+        cont_metrics, cont_rows = _metrics(arm_sets["contender"].get(arm_name), expected, budget_ms, server_budget_ms, inclusive_budget)
         parity = _pair(ref_rows, cont_rows, expected)
         comparisons[arm_name] = {"reference": ref_metrics, "contender": cont_metrics, "output_parity": parity}
         required_metrics.append(cont_metrics)
+        server_evidence_metrics.extend([ref_metrics, cont_metrics])
         parity_reports.append(parity)
     burst_report = {}
     if burst is not None:
         for burst_name, baseline_name in (("http_c4", "http_c4"), ("fresh_c4", "fresh_c1")):
-            base_metrics, base_rows = _metrics(arm_sets["contender"].get(baseline_name), expected, budget_ms)
-            burst_metrics, burst_rows = _metrics(arm_sets["burst"].get(burst_name), expected, budget_ms)
+            base_metrics, base_rows = _metrics(arm_sets["contender"].get(baseline_name), expected, budget_ms, server_budget_ms, inclusive_budget)
+            burst_metrics, burst_rows = _metrics(arm_sets["burst"].get(burst_name), expected, budget_ms, server_budget_ms, inclusive_budget)
             same_conditions = (burst_name == baseline_name and
                                identities["burst"]["requested_deadline_ms"] == identities["contender"]["requested_deadline_ms"])
             parity = _pair(base_rows, burst_rows, expected, same_conditions)
@@ -269,6 +288,7 @@ def compare_runs(reference, contender, *, burst=None, budget_ms=400):
                 "burst": burst_metrics, "output_parity": parity,
             }
             required_metrics.append(burst_metrics)
+            server_evidence_metrics.append(burst_metrics)
             parity_reports.append(parity)
     perf_complete = identity_complete and all(row["evidence_complete"] for row in required_metrics)
     parity_complete = identity_complete and all(row["complete"] for row in parity_reports)
@@ -277,9 +297,16 @@ def compare_runs(reference, contender, *, burst=None, budget_ms=400):
     parity_passed = False if any_mismatch else (True if parity_complete else None)
     complete = perf_complete and parity_complete and all(
         row["reference"]["evidence_complete"] for row in comparisons.values())
+    server_complete = (identity_complete and all(row["server_elapsed_evidence_complete"]
+                       for row in server_evidence_metrics)) if server_budget_ms is not None else None
+    server_passed = (all(row["server_latency_gate_passed"] for row in required_metrics)
+                     if server_complete else None) if server_budget_ms is not None else None
+    complete = complete and (server_complete if server_budget_ms is not None else True)
     return {
-        "schema_version": "e11b-probe-comparison-v1", "budget_ms": budget_ms,
-        "budget_comparator": "strictly_less_than", "expected_query_count": EXPECTED_COUNT,
+        "schema_version": "e11b-probe-comparison-v2" if server_budget_ms is not None or inclusive_budget else "e11b-probe-comparison-v1",
+        "budget_ms": budget_ms, "server_budget_ms": server_budget_ms,
+        "budget_comparator": "less_than_or_equal" if inclusive_budget else "strictly_less_than",
+        "expected_query_count": EXPECTED_COUNT,
         "identities": identities, "identity_checks": {"complete": identity_complete, "issues": issues},
         "code_and_optimization": {
             "runs": code, "optimization_flag_difference_expected": expected_flags,
@@ -298,11 +325,16 @@ def compare_runs(reference, contender, *, burst=None, budget_ms=400):
             "output_parity_evidence_complete": parity_complete,
             "exact_output_parity_passed": parity_passed,
             "complete": complete,
-            "overall_passed": bool(complete and perf_passed and parity_passed),
+            "server_performance_evidence_complete": server_complete,
+            "server_performance_passed": server_passed,
+            "server_gate_scope": "required contender and burst arms; reference server timings also required for evidence completeness"
+                                 if server_budget_ms is not None else "not_requested",
+            "overall_passed": bool(complete and perf_passed and parity_passed
+                                   and (server_passed if server_budget_ms is not None else True)),
             "required_contender_arms": ["http_c1", "http_c4", "fresh_c1"],
             "required_burst_arms": ["http_c4", "fresh_c4"] if burst is not None else [],
         },
-        "interpretation": "Output parity checks returned ranked IDs/scores and selected IDs/revisions on the same frozen policy. It is not a retrieval-quality gain, task-utility or production-SLO claim. Latencies are client-observed loopback measurements.",
+        "interpretation": "Output parity checks returned ranked IDs/scores and selected IDs/revisions on the same frozen policy. It is not a retrieval-quality gain, task-utility or production-SLO claim. Client latency is a loopback measurement; optional server elapsed timing ends after synchronous telemetry and JSON serialization, before response transmission.",
     }
 
 
@@ -312,12 +344,15 @@ def main(argv=None):
     parser.add_argument("--contender", type=Path, required=True)
     parser.add_argument("--burst", type=Path)
     parser.add_argument("--budget-ms", type=float, default=400)
+    parser.add_argument("--server-budget-ms", type=float, help="Require complete server elapsed measurements and a separate p95 gate")
+    parser.add_argument("--inclusive-budget", action="store_true", help="Use <= for client and optional server budgets; default preserves historical <")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     reference = json.loads(args.reference.read_text())
     contender = json.loads(args.contender.read_text())
     burst = json.loads(args.burst.read_text()) if args.burst else None
-    result = compare_runs(reference, contender, burst=burst, budget_ms=args.budget_ms)
+    result = compare_runs(reference, contender, burst=burst, budget_ms=args.budget_ms,
+                          server_budget_ms=args.server_budget_ms, inclusive_budget=args.inclusive_budget)
     result["input_files"] = {key: {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                              for key, path in (("reference", args.reference), ("contender", args.contender),
                                                ("burst", args.burst)) if path is not None}

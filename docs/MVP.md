@@ -46,13 +46,13 @@ CI publishes matching sparse/vector/body/graph revisions together and changes th
 
 **Promise:** Guidefold finds eligible skills for a task, delivers approved revisions under a context budget, and shows owners where those skills were delivered, used with observable evidence, and useful or problematic. Promotion remains human-reviewed.
 
-**Must ship:** corrected ranking/evaluation contracts; usable local fallback; central SEARCH with online sparse and an evaluated encoder challenger; explicit USE/hydration; traceable events and a weekly skill report; controlled usefulness/usability evaluation; verified primary Claude Code integration and a second Copilot CLI explicit find/load path with honest capability limits; onboarding <=30 minutes.
+**Must ship:** corrected ranking/evaluation contracts; usable local fallback; central SEARCH with the optimized sparse production candidate; any encoder challenger stays in shadow pending separate admission; explicit USE/hydration; traceable events and a weekly skill report; controlled usefulness/usability evaluation; verified primary Claude Code integration and a second Copilot CLI explicit find/load path with honest capability limits; onboarding <=30 minutes.
 
 **Not required to ship:** a winning dense model, a 15 MB global catalog, mandatory reranking, automatic skill generation/promotion/retirement, own fine-tuning, full custom UI, HA/multi-region GPU serving, additional harnesses or analytics databases. If no neural profile clears the gate, release the observable API with the corrected sparse profile and disclose that result.
 
 | Requirement | Proposed acceptance / how measured |
 |---|---|
-| Fast hook | Whole client warm p95 <400 ms on a named laptop, supported OS and named corpus; includes startup, auth, network, queue, retrieval, composition, telemetry enqueue and output. Separate portable 3 s crash watchdog, not the normal deadline |
+| Fast hook / local service | E1.1b service protocol v2 below: whole-client p95 ≤400 ms over loopback for fresh-process c1/c4; server-side p95 ≤300 ms at both loads. The actual harness and WAN/TLS/IAM require separate E6 validation. Retain a portable 3 s crash watchdog, separate from normal deadlines |
 | Interactive SEARCH | Client-observed p95 <=1 s, separately for encoder-only and reranked profiles; record cold start and p99. The reranked profile is disabled if it misses its budget |
 | USE/hydration | Exact approved revision and verified checksum; no remote code execution. Separate cache-hit/cold p50/p95 and bytes; freeze the cold target against actual bundle sizes in week 1 |
 | Reliability | Provisional API availability target >=99.5% over the instrumented pilot window; valid zero-result/abstention separate from transport/server failure. Report semantic-profile availability/fallback separately so sparse degradation cannot hide GPU failure |
@@ -62,7 +62,11 @@ CI publishes matching sparse/vector/body/graph revisions together and changes th
 | Traceability and privacy | Versioned IDs/events, dedupe, async retry, recorded loss/lag; no prompt/source text in normal logs/traces/spool; separate opt-in redacted evaluation corpus; 90-day event retention and actual deletion |
 | Usability | Task-based pilot covers discovery, loading, following instructions, dependencies, tool permissions/compatibility, stale instructions and feedback; report failures and unknowns, not one opaque score |
 
-The product owner revised the whole-client latency target from 300 to <400 ms during E1.1b on 2026-09-05. Historical 300 ms runs remain unchanged; new comparisons explicitly use 400 ms. This target includes client startup and must also be checked with four concurrent clients before declaring that capacity supported. These are proposed targets, not achieved measurements. Freeze pilot load/SLO definitions and quality non-inferiority margins before the admission run. Any missed must-ship requirement narrows the supported profile/scope or delays release; it is not waived because the GPU is warm.
+E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over loopback, measured separately at c1 and c4 with a fresh client process per request and a ready resident server/index. Server-side p95 must be ≤300 ms at both loads, measured from HTTP admission before authentication or queueing through synchronous logging and JSON response serialization. Whole-client timing includes startup/imports, local reads, auth, transport, queues, retrieval/composition, telemetry and output/exit. Report all attempts, errors and successful-within-budget counts under frozen workload, corpus, hardware and runtime identities. WAN/TLS/IAM and the actual harness remain a separate E6 integration gate, never implied by loopback success. Optimized sparse is the production candidate; hybrid remains shadow until independent latency and quality admission.
+
+Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
+
+These targets do not claim achieved measurements; see [E1.1b service feasibility](reports/bakeoff/E1.1b-service-feasibility-2026-09-05.md) for results and the final decision. Freeze pilot load/SLO definitions and quality non-inferiority margins before the admission run. Any missed must-ship requirement narrows the supported profile/scope or delays release; it is not waived because the GPU is warm.
 
 ## 4. Epics and user stories
 

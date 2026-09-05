@@ -20,6 +20,10 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from tools.serve_spike import context as harness_context
+
 MAX_BODY_BYTES = 16_384
 MAX_QUERY_CHARS = 4096
 POLICY = "shared-router-policy-candidates-score-select-v1"
@@ -59,6 +63,10 @@ def validate_payload(path, payload):
             raise ApiError(400, "invalid_search_id")
     else:
         raise ApiError(404, "not_found")
+    try:
+        harness_context.validate(payload, path)
+    except harness_context.ContextError as exc:
+        raise ApiError(exc.status, exc.code) from exc
     return budget
 
 
@@ -107,7 +115,7 @@ class Engine:
     def __init__(self, *, cache_dir=None, disable_model=False, device="cuda",
                  optimized=False, cli_path=None, torch_threads=None, pipeline=False,
                  native_dense_rank=False, native_compiler="/usr/bin/g++", native_build_dir=None, gil_switch_ms=None,
-                 encoder_process=False, encoder_worker_timeout=5.0):
+                 encoder_process=False, encoder_worker_timeout=5.0, repository_snapshot=None):
         if torch_threads is not None and (isinstance(torch_threads, bool) or
                 not isinstance(torch_threads, int) or not 1 <= torch_threads <= 256):
             raise ValueError("invalid_torch_threads")
@@ -127,6 +135,10 @@ class Engine:
         if (isinstance(encoder_worker_timeout, bool) or not isinstance(encoder_worker_timeout, (int, float))
                 or not 0.05 <= encoder_worker_timeout <= 30):
             raise ValueError("invalid_encoder_worker_timeout")
+        if repository_snapshot is not None and not disable_model:
+            raise ValueError("repository_snapshot_requires_sparse_backend")
+        self.repository_snapshot = Path(repository_snapshot) if repository_snapshot else None
+        self.repository = None
         self.encoder_process = encoder_process
         self.encoder_worker_timeout = encoder_worker_timeout
         self._worker_proxy = None
@@ -201,7 +213,8 @@ class Engine:
                 "policy_revision": self.policy_revision,
                 "initialization_ms": dict(self.initialization_ms), "error": self.error,
                 "n_skills": len(getattr(self, "cards", {})),
-                "reranker": False, "production_iam": False}
+                "reranker": False, "production_iam": False,
+                "api_schema_versions": ["1.0", "1.1"], "repository": self.repository}
 
     def _configure_runtime(self):
         # Process-global CPython scheduling experiment. The server owns a
@@ -214,8 +227,11 @@ class Engine:
         start = time.monotonic()
         self._configure_runtime()
         sys.path.insert(0, str(REPO_ROOT / "tools/eval"))
-        import skillret
         self.cli, self.policy_revision = load_cli_snapshot(self.cli_path)
+        if self.repository_snapshot is not None:
+            self._initialize_repository(start)
+            return
+        import skillret
         data, self.nodes, self.cards, self.id_to_urn, _, _ = skillret.load_corpus_and_build(self.cli)
         self.skills = {s["id"]: s for s in data["skills"]}
         self.urn_to_id = {u: sid for sid, u in self.id_to_urn.items()}
@@ -296,6 +312,25 @@ class Engine:
             if (warm.shape != (1, self.router.skill_mat.shape[1]) or not np.isfinite(warm).all() or not np.linalg.norm(warm) > 0):
                 raise ValueError("model_dimension_mismatch")
             self.initialization_ms["model_warmup"] = (time.monotonic() - stage) * 1000
+        self.initialization_ms["total"] = (time.monotonic() - start) * 1000
+        with self._lifecycle_lock:
+            if self._closed:
+                raise RuntimeError("engine_closed_during_initialization")
+            self.ready = True
+
+    def _initialize_repository(self, start):
+        from tools.serve_spike.repository import load
+        self.index, self.repository, self.snapshot = load(
+            self.repository_snapshot, self.cli, self.policy_revision)
+        self.cards, self.nodes = self.index.cards, self.index.nodes
+        self.id_to_urn = {urn: urn for urn in self.cards}
+        self.urn_to_id = dict(self.id_to_urn)
+        self.revisions = {urn: hashlib.sha256(json.dumps(card, sort_keys=True,
+            ensure_ascii=False).encode()).hexdigest() for urn, card in self.cards.items()}
+        self.router = self.cli.Router(self.index)
+        if self.optimized:
+            from tools.serve_spike.sparse_cache import install_bm25_cache
+            self.optimizations["bm25"] = install_bm25_cache(self.router)
         self.initialization_ms["total"] = (time.monotonic() - start) * 1000
         with self._lifecycle_lock:
             if self._closed:
@@ -404,8 +439,11 @@ class Engine:
         self._worker_health()
         if not self.ready:
             raise ApiError(503, "not_ready")
-        query, node = payload["query"], payload.get("node", "_root")
-        if node not in self.nodes:
+        query = payload["query"]
+        contextual = payload.get("schema_version") == harness_context.VERSION
+        context = harness_context.resolve(self, payload) if contextual else None
+        scopes = context["resolved_scopes"] if context else [payload.get("node", "_root")]
+        if any(node not in self.nodes for node in scopes):
             raise ApiError(400, "invalid_node")
         stages = {}
         qvec = None
@@ -423,31 +461,60 @@ class Engine:
                     qvec = self._encode_query_vector(query, deadline)
                     stages["encode"] = (time.monotonic() - stage) * 1000
                     check_deadline(deadline)
-                # Binding and cleanup happen only while owning the Router lock.
                 self.router.query_vec_of = {"live": qvec}
                 self.router._current_qid = "live"
+            admissible, drop_count, scored_by_urn, eligible_scopes = set(), 0, {}, {}
+            for node in scopes:
+                stage = time.monotonic()
+                allowed, drops = self.router.policy_filter(node, query)
+                allowed = set(allowed)
+                admissible.update(allowed)
+                drop_count += len(drops)
+                stages["policy"] = stages.get("policy", 0) + (time.monotonic() - stage) * 1000
+                check_deadline(deadline)
+                stage = time.monotonic()
+                candidates = self.router.candidates(query, node)
+                stages["candidates"] = stages.get("candidates", 0) + (time.monotonic() - stage) * 1000
+                check_deadline(deadline)
+                stage = time.monotonic()
+                node_scored = self.router.score(candidates, query, node)
+                stages["score"] = stages.get("score", 0) + (time.monotonic() - stage) * 1000
+                if len(scopes) == 1:
+                    scored = node_scored  # Preserve legacy score/order/selection exactly.
+                else:
+                    for row in node_scored:
+                        urn = row["urn"]
+                        if urn in allowed:
+                            old = scored_by_urn.get(urn)
+                            if old is None or row["score"] > old["score"]:
+                                scored_by_urn[urn] = row
+                if contextual:
+                    for urn in allowed:
+                        eligible_scopes.setdefault(urn, []).append(node)
+                check_deadline(deadline)
+            if len(scopes) > 1:
+                scored = sorted(scored_by_urn.values(), key=lambda row: (-row["score"], row["urn"]))
             stage = time.monotonic()
-            admissible, drops = self.router.policy_filter(node, query)
-            stages["policy"] = (time.monotonic() - stage) * 1000
-            check_deadline(deadline)
-            stage = time.monotonic()
-            candidates = self.router.candidates(query, node)
-            stages["candidates"] = (time.monotonic() - stage) * 1000
-            check_deadline(deadline)
-            stage = time.monotonic()
-            scored = self.router.score(candidates, query, node)
-            stages["score"] = (time.monotonic() - stage) * 1000
-            check_deadline(deadline)
-            stage = time.monotonic()
-            selected = self.router.select(scored, k=4, admissible=set(admissible))
+            k = payload.get("budget", {}).get("max_cards", 4) if contextual else 4
+            selected = self.router.select(scored, k=k, admissible=admissible) if k else []
             stages["select"] = (time.monotonic() - stage) * 1000
             check_deadline(deadline)
             def card(urn):
                 sid = self.urn_to_id[urn]
                 c = self.cards[urn]
-                return {"skill_id": sid, "urn": urn, "revision": self.revisions[sid],
-                        "name": c["name"], "description": c["description"]}
-            return {"search_id": str(uuid.uuid4()), "backend": self.backend,
+                out = {"skill_id": sid, "urn": urn, "revision": self.revisions[sid],
+                       "name": c["name"], "description": c["description"]}
+                if contextual:
+                    out["eligible_scopes"] = eligible_scopes.get(urn, [])
+                return out
+            cards = [card(c["urn"]) for c in selected]
+            if contextual:
+                loaded = harness_context.loaded_ids(self, payload, context)
+                context["loaded_cards_omitted"] = sum(c["skill_id"] in loaded for c in cards)
+                cards = [c for c in cards if c["skill_id"] not in loaded]
+                cards, rendered = harness_context.apply_budget(cards, payload, context)
+                context["fusion"] = "max_score_then_urn" if len(scopes) > 1 else "shared_router"
+            result = {"search_id": str(uuid.uuid4()), "backend": self.backend,
                     "snapshot": self.snapshot, "model": self.model, "policy": POLICY,
                     "policy_revision": self.policy_revision, "optimized": self.optimized, "pipeline": self.pipeline,
                     "native_dense_rank": self.native_dense_rank, "encoder_process": self.encoder_process,
@@ -455,10 +522,13 @@ class Engine:
                     "torch_threads_effective": self.torch_threads_effective,
                     "profile": payload.get("profile", "hook"), "reranker": False,
                     "ranked": [dict(card(c["urn"]), score=c["score"]) for c in scored if c["urn"] in admissible][:10],
-                    "cards": [card(c["urn"]) for c in selected],
+                    "cards": cards,
                     "composition": {"status": "not_evaluated", "incomplete": None},
-                    "abstained": not bool(selected), "policy_drops": len(drops),
+                    "abstained": not bool(selected), "policy_drops": drop_count,
                     "stages_ms": stages, "live_encode_calls": self._encode_count()}
+            if contextual:
+                result.update(schema_version=harness_context.VERSION, context=context, card_context=rendered)
+            return result
         finally:
             if self.backend != "sparse_only":
                 self.router.query_vec_of = {}
@@ -470,6 +540,8 @@ class Engine:
         self._worker_health()
         if not self.ready:
             raise ApiError(503, "not_ready")
+        contextual = payload.get("schema_version") == harness_context.VERSION
+        context = harness_context.resolve(self, payload) if contextual else None
         sid = payload["skill_id"]
         if sid not in self.id_to_urn:
             raise ApiError(404, "skill_not_found")
@@ -478,12 +550,28 @@ class Engine:
         c = self.cards[self.id_to_urn[sid]]
         if c["status"] != "active":
             raise ApiError(409, "skill_not_active")
+        if context is not None:
+            allowed = set().union(*(set(self.router.policy_filter(node, "")[0])
+                                  for node in context["resolved_scopes"]))
+            if self.id_to_urn[sid] not in allowed:
+                raise ApiError(403, "skill_outside_resolved_scope")
         body = c["_body"]
-        return {"status": "hydrated", "execution_observed": False, "skill_id": sid,
+        if contextual:
+            budget = payload.get("budget", {})
+            caps = [budget[key] for key in ("max_bytes", "remaining_skill_tokens") if key in budget]
+            if caps and len(body.encode("utf-8")) > min(caps):
+                raise ApiError(413, "skill_body_exceeds_budget")
+            context["body_bytes"] = len(body.encode("utf-8"))
+            if "remaining_skill_tokens" in budget:
+                context["warnings"].append("verify_final_harness_token_count")
+        result = {"status": "hydrated", "execution_observed": False, "skill_id": sid,
                 "revision": self.revisions[sid], "search_id": payload.get("search_id"),
                 "search_id_verified": False, "current_state": c["status"],
                 "snapshot": self.snapshot, "body": body,
                 "checksum": hashlib.sha256(body.encode()).hexdigest()}
+        if contextual:
+            result.update(schema_version=harness_context.VERSION, context=context)
+        return result
 
 
 class SpikeHTTPServer(ThreadingHTTPServer):
@@ -523,9 +611,14 @@ class Handler(BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(5)
 
-    def reply(self, status, data):
+    def reply(self, status, data, request_started=None):
         body = json.dumps(data, ensure_ascii=False, allow_nan=False).encode()
+        # POST's synchronous telemetry emit has already completed. Include JSON
+        # serialization, but stop before writing any response headers or body.
+        server_ms = None if request_started is None else (time.monotonic() - request_started) * 1000
         self.send_response(status)
+        if server_ms is not None:
+            self.send_header("X-Guidefold-Server-Ms", format(server_ms, ".3f"))
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
@@ -572,6 +665,11 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, UnicodeDecodeError):
                 raise ApiError(400, "invalid_json")
             budget = validate_payload(self.path, payload)
+            if payload.get("schema_version") == harness_context.VERSION:
+                record["attempt_id"] = record["request_id"]
+                for key in ("request_id", "session_id", "task_id", "harness", "query_source", "schema_version"):
+                    if key in payload:
+                        record[key] = payload[key]
             deadline = started + budget / 1000
             check_deadline(deadline)
             if not self.server.engine.ready:
@@ -585,12 +683,18 @@ class Handler(BaseHTTPRequestHandler):
                         "search_id_verified", "current_state"):
                 if key in result:
                     record[key] = result[key]
+            if result.get("context"):
+                ctx = result["context"]
+                record["context"] = {key: ctx[key] for key in ("resolved_scopes", "scope_source", "scope_owners",
+                    "repository", "scope_map_revision", "used_fields", "unused_fields", "warnings") if key in ctx}
             if self.path == "/v1/search":
+                record["returned_skill_revisions"] = [{"skill_id": c["skill_id"], "revision": c["revision"]}
+                                                      for c in result.get("cards", [])]
                 record["event"] = "search_completed"
                 record["returned_skill_ids"] = [c["skill_id"] for c in result.get("cards", [])]
             else:
                 record["event"] = "use_hydrated"
-        except ApiError as exc:
+        except (ApiError, harness_context.ContextError) as exc:
             status, result = exc.status, {"error": exc.code}
         except (TimeoutError, OSError):
             status, result = 408, {"error": "request_timeout"}
@@ -599,13 +703,17 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             if acquired:
                 self.server.slots.release()
+        result["request_id"] = record["request_id"]
+        for key in ("session_id", "task_id"):
+            if key in record:
+                result[key] = record[key]
         record.update(status=status, total_ms=(time.monotonic() - started) * 1000,
                       timestamp=time.time())
         if status >= 400:
             record["error"] = result["error"]
         self.server.emit(record)
         try:
-            self.reply(status, result)
+            self.reply(status, result, request_started=started)
         except (BrokenPipeError, ConnectionResetError, TimeoutError):
             pass
 
@@ -633,6 +741,7 @@ def main():
     parser.add_argument("--token-file", type=Path, required=True)
     parser.add_argument("--log-file", type=Path)
     parser.add_argument("--cache-dir", type=Path)
+    parser.add_argument("--repository-snapshot", type=Path, help="Committed repository bundle; requires --disable-model")
     parser.add_argument("--disable-model", action="store_true")
     parser.add_argument("--optimized", action="store_true", help="Enable exact resident sparse/dense caches")
     parser.add_argument("--pipeline", action="store_true", help="Overlap batch-one encoding with prior request routing")
@@ -652,7 +761,7 @@ def main():
                     optimized=args.optimized, cli_path=args.cli_path, torch_threads=args.torch_threads, pipeline=args.pipeline,
                     native_dense_rank=args.native_dense_rank, native_compiler=args.native_compiler, native_build_dir=args.native_build_dir,
                     gil_switch_ms=args.gil_switch_ms, encoder_process=args.encoder_process,
-                    encoder_worker_timeout=args.encoder_worker_timeout)
+                    encoder_worker_timeout=args.encoder_worker_timeout, repository_snapshot=args.repository_snapshot)
     server = make_server(engine, token, args.host, args.port, args.max_inflight, args.log_file)
     def initialize():
         try:

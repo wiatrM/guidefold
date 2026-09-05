@@ -43,17 +43,46 @@ def sha256_file(path):
 
 
 def child_identities(pid):
-    children_file = pathlib.Path('/proc') / str(pid) / 'task' / str(pid) / 'children'
-    if not children_file.exists():
-        return {}
+    # A spawned encoder belongs initially to the initialization thread. Reading
+    # only /task/<main-pid>/children can silently omit a live GPU child.
+    tasks = pathlib.Path('/proc') / str(pid) / 'task'
     children = {}
-    for child in children_file.read_text().split():
+    for task in tasks.glob('*'):
         try:
-            fields = (pathlib.Path('/proc') / child / 'stat').read_text().rpartition(')')[2].split()
-            children[child] = fields[19]
+            child_pids = (task / 'children').read_text().split()
         except FileNotFoundError:
-            pass
+            continue  # A thread exited while the snapshot was being read.
+        for child in child_pids:
+            try:
+                fields = (pathlib.Path('/proc') / child / 'stat').read_text().rpartition(')')[2].split()
+                if fields[1] == str(pid):
+                    children[child] = fields[19]
+            except FileNotFoundError:
+                pass
     return children
+
+
+def model_load_checks(ready, disable_model, encoder_process):
+    expected_parent = 0 if disable_model or encoder_process else 1
+    worker = ready.get('encoder_worker')
+    checks = {
+        'api_process_load_count_matches_backend':
+            type(ready.get('model_load_calls')) is int and ready['model_load_calls'] == expected_parent
+            and ready.get('model_load_calls_scope') == 'api_process',
+        'encoder_process_mode_matches_requested': ready.get('encoder_process') is encoder_process,
+    }
+    if encoder_process:
+        metadata = worker.get('metadata', {}) if isinstance(worker, dict) else {}
+        checks['worker_model_load_ownership_matches_mode'] = bool(
+            not disable_model and isinstance(worker, dict)
+            and worker.get('alive') is True and worker.get('closed') is False
+            and worker.get('failed') is None
+            and type(metadata.get('model_load_calls')) is int and metadata['model_load_calls'] == 1
+            and metadata.get('warmup_calls') == 1 and metadata.get('start_method') == 'spawn'
+            and type(worker.get('pid')) is int and metadata.get('pid') == worker['pid'])
+    else:
+        checks['worker_model_load_ownership_matches_mode'] = worker is None
+    return checks
 
 
 def child_still_running(pid, start_ticks):
@@ -76,6 +105,8 @@ class OwnService:
         self.stdout_file = scratch / ("service-" + str(ordinal) + ".log")
         self.stop_evidence = None
         self.children = {}
+        self.ready_seen = False
+        self.expected_worker = None
 
     def start(self):
         command = [sys.executable, str(SERVER), "--port", str(self.port),
@@ -120,7 +151,14 @@ class OwnService:
                                                 timeout=min(self.args.timeout, 1.0))
                 body = ready.get("response") or {}
                 if ready["http_status"] == 200 and body.get("ready") is True:
+                    self.ready_seen = True
                     self.children.update(child_identities(self.process.pid))
+                    if self.args.encoder_process:
+                        worker = body.get("encoder_worker") or {}
+                        worker_pid = worker.get("pid")
+                        if type(worker_pid) is not int or str(worker_pid) not in self.children:
+                            raise RuntimeError("ready_encoder_child_not_verified_in_procfs")
+                        self.expected_worker = (str(worker_pid), self.children[str(worker_pid)])
                     return {"pid": self.process.pid,
                             "process_start_to_ready_ms": (time.perf_counter() - started) * 1000,
                             "ready": body}
@@ -150,9 +188,15 @@ class OwnService:
         while any(child_still_running(pid, ticks) for pid, ticks in self.children.items()) and time.monotonic() < cleanup_deadline:
             time.sleep(.05)
         children_stopped = {pid: not child_still_running(pid, ticks) for pid, ticks in self.children.items()}
+        expected_stopped = (not child_still_running(*self.expected_worker)) if self.expected_worker else None
+        worker_verified = (not self.args.encoder_process or not self.ready_seen
+                           or (self.expected_worker is not None and expected_stopped is True))
         self.stop_evidence = {
+            "child_discovery": "procfs_children_of_all_parent_threads",
+            "expected_encoder_child_observed": self.expected_worker is not None if self.args.encoder_process else None,
+            "expected_encoder_child_stopped": expected_stopped,
             "owned_children_stopped": children_stopped,
-            "all_owned_children_stopped": all(children_stopped.values()),
+            "all_owned_children_stopped": all(children_stopped.values()) and worker_verified,
             "pid": self.process.pid if self.process is not None else None,
             "stopped": self.process is not None and self.process.poll() is not None,
             "exit_code": self.process.returncode if self.process is not None else None,
@@ -302,7 +346,6 @@ def main(argv=None):
             restarted.url, token, "/health/ready", timeout=args.timeout).get("response")
         first_ready = report["first_start"]["ready"]
         second_ready = report["restart"]["ready"]
-        expected_loads = 0 if args.disable_model else 1
         expected_encodes = 0 if args.disable_model else 1
         checks = {
             "initial_search_http_200": search["http_status"] == 200 and search["error"] is None,
@@ -320,13 +363,15 @@ def main(argv=None):
             "snapshot_unchanged_after_restart": recovered_body.get("snapshot") == snapshot,
             "recovered_search_http_200": recovered["http_status"] == 200 and recovered["error"] is None,
             "recovered_original_revision_use_correct": report["recovered_use_of_original_revision"]["passed"],
-            "model_loaded_once_per_process": first_ready.get("model_load_calls") == expected_loads and
-                second_ready.get("model_load_calls") == expected_loads,
             "query_counter_resets_on_restart": first_ready.get("live_encode_calls") == 0 and
                 second_ready.get("live_encode_calls") == 0,
             "each_hybrid_search_runs_forward_pass": body.get("live_encode_calls") == expected_encodes and
                 recovered_body.get("live_encode_calls") == expected_encodes,
         }
+        first_load_checks = model_load_checks(first_ready, args.disable_model, args.encoder_process)
+        second_load_checks = model_load_checks(second_ready, args.disable_model, args.encoder_process)
+        checks.update({key: first_load_checks[key] and second_load_checks[key] for key in first_load_checks})
+        checks["owned_first_children_stopped"] = report["stopped_first_process"]["all_owned_children_stopped"]
         report["checks"] = checks
         report["passed"] = all(checks.values())
     except Exception as exc:

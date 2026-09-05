@@ -1,0 +1,1097 @@
+{
+  "complete": true,
+  "count_requested": 40,
+  "counter_audit_passed": true,
+  "created_unix": 1788618840.355996,
+  "execution": "two resident models; sequential batch-one forwards; alternating reference-worker / worker-reference",
+  "owned_worker_cleanup_passed": true,
+  "parent_torch_imported_before_worker_start": false,
+  "passed": true,
+  "persists_query_text_or_vectors": false,
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "query_cache": false,
+  "reference_identity": {
+    "batch_size": 1,
+    "device": "cuda",
+    "dtype": "torch.float16",
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+    "model_revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+    "torch_threads_effective": 16
+  },
+  "reference_live_encode_calls": 40,
+  "reference_model_load_calls": 1,
+  "reference_warmup_calls": 1,
+  "rows": [
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-017617"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-007487"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-053007"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-036226"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-049664"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-036648"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-059069"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-010229"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-030224"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-028734"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-048344"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-029489"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-004137"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-040106"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-008972"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-057584"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-006745"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-003069"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-019309"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-050914"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-011104"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-014487"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-012418"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-027336"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-004461"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-053949"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-012994"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-005184"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-022503"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-022099"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-046341"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-051832"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-043304"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-050377"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-006064"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-011151"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-016841"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-000252"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "reference",
+        "worker"
+      ],
+      "query_id": "q-train-042320"
+    },
+    {
+      "float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "int8_exact": true,
+      "int8_max_abs_difference": 0,
+      "int8_mismatched_elements": 0,
+      "normalized_float32": {
+        "bitwise_mismatched_elements": 0,
+        "exact": true,
+        "max_abs_difference": 0.0,
+        "numerically_mismatched_elements": 0
+      },
+      "order": [
+        "worker",
+        "reference"
+      ],
+      "query_id": "q-train-026271"
+    }
+  ],
+  "schema_version": "e11b-encoder-process-numeric-v1",
+  "scope": "paired encoder numerical comparison only; no latency, routing quality or production claim",
+  "source_sha256": {
+    "tools/bakeoff/encode.py": "982fce6fffd3922387b12565bce07403e70c56f76fa3ed3dd58ac91b724eb644",
+    "tools/eval/corpora.py": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298",
+    "tools/eval/dense_ref.py": "e1314dafa853e2c39a66063e3a6ca74fb8423b844f04aac5725f5cd13395d54d",
+    "tools/eval/skillret.py": "3578d3f48810958520d33aedec3345a4466b77a3e0d5a3c7a6299f060591f025",
+    "tools/serve_spike/encoder_process_probe.py": "4a301763073fcd47d148278d49760521afd079520dc86a7b7ed45294310518e7",
+    "tools/serve_spike/encoder_worker.py": "3a8eac3988794ca5a110ece58063b15647de4b13e0bcba1657abadb04739402a",
+    "tools/serve_spike/probe.py": "13a56d971ddd4012a16c3c4999546ebaa609e612cba324772f880f43611a6efd"
+  },
+  "source_sha256_after": {
+    "tools/bakeoff/encode.py": "982fce6fffd3922387b12565bce07403e70c56f76fa3ed3dd58ac91b724eb644",
+    "tools/eval/corpora.py": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298",
+    "tools/eval/dense_ref.py": "e1314dafa853e2c39a66063e3a6ca74fb8423b844f04aac5725f5cd13395d54d",
+    "tools/eval/skillret.py": "3578d3f48810958520d33aedec3345a4466b77a3e0d5a3c7a6299f060591f025",
+    "tools/serve_spike/encoder_process_probe.py": "4a301763073fcd47d148278d49760521afd079520dc86a7b7ed45294310518e7",
+    "tools/serve_spike/encoder_worker.py": "3a8eac3988794ca5a110ece58063b15647de4b13e0bcba1657abadb04739402a",
+    "tools/serve_spike/probe.py": "13a56d971ddd4012a16c3c4999546ebaa609e612cba324772f880f43611a6efd"
+  },
+  "source_unchanged_during_run": true,
+  "summary": {
+    "float32_exact_pairs": 40,
+    "float32_max_abs_difference": 0.0,
+    "int8_exact_pairs": 40,
+    "int8_mismatched_elements": 0,
+    "mismatch_query_ids": [],
+    "normalized_float32_exact_pairs": 40,
+    "normalized_float32_max_abs_difference": 0.0,
+    "paired_count": 40
+  },
+  "warmup_text_sha256": "b8347ebf1699377f3fe8a83882a17ef9794355bb34e39f5c99a57edf74abcafc",
+  "worker_after_close": {
+    "alive": false,
+    "closed": true,
+    "failed": null,
+    "live_encode_calls": 40,
+    "metadata": {
+      "batch_size": 1,
+      "device": "cuda",
+      "dims": 1024,
+      "dtype": "torch.float16",
+      "embedding_cache_dir": "/home/mike/projects/gf-serve/tools/bakeoff/.bakeoff-cache/ThakiCloud/SKILLRET-Embedding-0.6B__0e10886e80a0aacc9efddc28282a258e2ab7eae1/cuda-float16",
+      "gil_switch_ms_effective": 5.0,
+      "live_encode_calls": 0,
+      "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+      "model_load_calls": 1,
+      "model_revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+      "parent_death_guard": "parent_pid_watchdog_100ms",
+      "parent_pid": 607310,
+      "pid": 607336,
+      "query_cache": false,
+      "start_method": "spawn",
+      "startup_ms": {
+        "import": 4185.843252998893,
+        "model_load": 1983.8977299950784,
+        "model_warmup": 462.4090600045747,
+        "total": 6632.150042998546
+      },
+      "torch_threads_effective": 16,
+      "vector_format": "float32-le",
+      "warmup_calls": 1
+    },
+    "pid": 607336,
+    "worker_watchdog_seconds": 30.0
+  },
+  "worker_after_queries": {
+    "alive": true,
+    "closed": false,
+    "failed": null,
+    "live_encode_calls": 40,
+    "metadata": {
+      "batch_size": 1,
+      "device": "cuda",
+      "dims": 1024,
+      "dtype": "torch.float16",
+      "embedding_cache_dir": "/home/mike/projects/gf-serve/tools/bakeoff/.bakeoff-cache/ThakiCloud/SKILLRET-Embedding-0.6B__0e10886e80a0aacc9efddc28282a258e2ab7eae1/cuda-float16",
+      "gil_switch_ms_effective": 5.0,
+      "live_encode_calls": 0,
+      "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+      "model_load_calls": 1,
+      "model_revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+      "parent_death_guard": "parent_pid_watchdog_100ms",
+      "parent_pid": 607310,
+      "pid": 607336,
+      "query_cache": false,
+      "start_method": "spawn",
+      "startup_ms": {
+        "import": 4185.843252998893,
+        "model_load": 1983.8977299950784,
+        "model_warmup": 462.4090600045747,
+        "total": 6632.150042998546
+      },
+      "torch_threads_effective": 16,
+      "vector_format": "float32-le",
+      "warmup_calls": 1
+    },
+    "pid": 607336,
+    "worker_watchdog_seconds": 30.0
+  },
+  "worker_config": {
+    "device": "cuda",
+    "dims": 1024,
+    "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+    "model_revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+    "torch_threads": 16,
+    "worker_timeout_s": 30.0
+  },
+  "worker_ready": {
+    "batch_size": 1,
+    "device": "cuda",
+    "dims": 1024,
+    "dtype": "torch.float16",
+    "embedding_cache_dir": "/home/mike/projects/gf-serve/tools/bakeoff/.bakeoff-cache/ThakiCloud/SKILLRET-Embedding-0.6B__0e10886e80a0aacc9efddc28282a258e2ab7eae1/cuda-float16",
+    "gil_switch_ms_effective": 5.0,
+    "live_encode_calls": 0,
+    "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+    "model_load_calls": 1,
+    "model_revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+    "parent_death_guard": "parent_pid_watchdog_100ms",
+    "parent_pid": 607310,
+    "pid": 607336,
+    "query_cache": false,
+    "start_method": "spawn",
+    "startup_ms": {
+      "import": 4185.843252998893,
+      "model_load": 1983.8977299950784,
+      "model_warmup": 462.4090600045747,
+      "total": 6632.150042998546
+    },
+    "torch_threads_effective": 16,
+    "vector_format": "float32-le",
+    "warmup_calls": 1
+  },
+  "workload": {
+    "dataset": "SKILLRET frozen DEV subset of train",
+    "distinct_query_texts": 40,
+    "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+    "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+    "labels_used_for_selection_or_quality": false,
+    "quality_claim": "none; frozen DEV texts are used only for numerical parity",
+    "retrieval_pool_may_differ_from_dev": true,
+    "sample_query_ids": [
+      "q-train-017617",
+      "q-train-007487",
+      "q-train-053007",
+      "q-train-036226",
+      "q-train-049664",
+      "q-train-036648",
+      "q-train-059069",
+      "q-train-010229",
+      "q-train-030224",
+      "q-train-028734",
+      "q-train-048344",
+      "q-train-029489",
+      "q-train-004137",
+      "q-train-040106",
+      "q-train-008972",
+      "q-train-057584",
+      "q-train-006745",
+      "q-train-003069",
+      "q-train-019309",
+      "q-train-050914",
+      "q-train-011104",
+      "q-train-014487",
+      "q-train-012418",
+      "q-train-027336",
+      "q-train-004461",
+      "q-train-053949",
+      "q-train-012994",
+      "q-train-005184",
+      "q-train-022503",
+      "q-train-022099",
+      "q-train-046341",
+      "q-train-051832",
+      "q-train-043304",
+      "q-train-050377",
+      "q-train-006064",
+      "q-train-011151",
+      "q-train-016841",
+      "q-train-000252",
+      "q-train-042320",
+      "q-train-026271"
+    ],
+    "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+    "sample_size": 40,
+    "sample_text_sha256": "fa29932be69af045e9a382fcd94cbaaa68a8a13f32d9a73008d23a622b2e0044",
+    "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c"
+  }
+}
