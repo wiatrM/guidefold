@@ -757,6 +757,13 @@ def cmd_latency(args):
 
     cli = load_cli()
     data, nodes, cards, id_to_urn, cases, major_of_qid = load_corpus_and_build(cli)
+    if getattr(args, "n_skills", 0):
+        # T0 size curve (R4b): a deterministic subset -- sorted by SKILLRET's own skill `id`
+        # (stable across runs, independent of node/urn construction), first N -- not a random
+        # sample, so the same --n-skills value always names the same subset.
+        subset_ids = sorted(s["id"] for s in data["skills"])[: args.n_skills]
+        subset_urns = {id_to_urn[sid] for sid in subset_ids if sid in id_to_urn}
+        cards = {u: c for u, c in cards.items() if u in subset_urns}
     idx = build_r0_index(cli, cards, nodes)  # F0: w_dense=0, the shipped configuration
 
     scratch = Path(tempfile.mkdtemp(prefix="skillret-latency-"))
@@ -831,12 +838,15 @@ def cmd_latency(args):
     result = {
         "n": n, "cold_start_ms": cold_ms, "p50_ms": p50, "p95_ms": p95,
         "mean_ms": statistics.mean(lat), "min_ms": min(lat), "max_ms": max(lat),
-        "machine": _machine_spec(), "n_skills": len(cards),
+        "machine": _machine_spec(), "n_skills": len(cards), "n_terms": n_terms,
         "artifact_bytes_total": total_bytes, "artifact_files": file_sizes,
         "gate_t300_ms": 300, "gate_t500_ms": 500,
         "pass_t300": p95 <= 300, "pass_t500": p95 <= 500,
     }
-    out_path = VALIDATION_DIR / "skillret-latency.json"
+    # --out-suffix (R4b size curve): a subset run (--n-skills < 6,006) must not clobber the
+    # canonical skillret-latency.json that the full-corpus T300/T500 gate check reads.
+    out_name = f"skillret-latency{getattr(args, 'out_suffix', '') or ''}.json"
+    out_path = VALIDATION_DIR / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
@@ -881,6 +891,14 @@ def main(argv=None):
 
     p_lat = sub.add_parser("latency")
     p_lat.add_argument("--n", type=int, default=200)
+    p_lat.add_argument("--n-skills", type=int, default=0,
+                        help="R4b size curve: measure a deterministic subset of the corpus -- "
+                             "first N skills sorted by SKILLRET's own skill id -- instead of all "
+                             "6,006 (0 = full corpus, the default)")
+    p_lat.add_argument("--out-suffix", default="",
+                        help="write to skillret-latency<suffix>.json instead of the canonical "
+                             "file, so a --n-skills subset run does not clobber the full-corpus "
+                             "gate-check result (e.g. '-500skills')")
     p_lat.set_defaults(fn=cmd_latency)
 
     args = p.parse_args(argv)

@@ -374,3 +374,24 @@ of the three, best coverage recovery, negligible cost) — proposed for the TL's
 test-A/test-B run, with that calibrated caveat. 4th dev-budget slot intentionally not spent
 (weight1→weight2 already shows diminishing/mixed returns). Full report, tables, samples, CIs:
 `docs/reports/bakeoff/DEV-F3-doc-expansion-2026-09-05.md`.
+
+### 2026-09-05 — R4b: lazy terms.bin/postings.idx closes R4's open item; T0 size curve
+
+Infra fix, not a retrieval-method arm — closes R4's named follow-on ("R5"): `terms.bin`
+(per-term IDF) and `postings.idx` (the `(field,term)→(offset,length)` table) were the *larger*
+remaining eager-parse cost R4 left untouched (~250ms of ~271ms `load_index_artifact` at 6,006
+skills, scaling with vocabulary, not doc count). Both now get the same mmap+binary-search
+treatment `postings.bin` already had: a fixed-width sorted directory searched in `O(log V)` per
+term, never materialised as a Python dict. **Parity**: 0/1,000 mismatches vs. `main`'s CLI on the
+frozen SKILLRET-train dev queries, at 6,006 skills, hashing ranked list + selected set through the
+real product path — no score changed. **Latency at 6,006 skills**: p95 581.2ms (R4-after) →
+**320.5ms**, p50 511.3ms → 258.2ms; **T300 still FAILS** (320.5ms, stable on rerun at 347.5ms),
+**T500 now passes with margin**. **T0 size curve** (deterministic subsets, sorted skill id, first
+N): 500/1,000/2,000/4,000 skills all pass T300 (p50 91.5–206.7ms, p95 113.3–261.7ms); the
+interpolated T300 crossover sits at **≈5,300 skills** — below that, ADR-0021 sharding buys a
+consumer monorepo nothing not already free; at/above it (including this programme's own
+6,006-skill benchmark corpus), sharding or a further load/query-time optimization is still
+required for T0 admission per ADR-0024 §1. Artifact size: -4.6% net at 6,006 skills despite
+`terms.bin` growing 20.6% (fixed directory overhead) — `postings.idx` shrinks 48.6% (a term's
+bytes are now stored once, not once per field). Full breakdown, tables, machine-quiet log:
+`docs/reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md`.
