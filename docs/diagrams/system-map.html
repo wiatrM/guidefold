@@ -1,0 +1,317 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guidefold System Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --g950:#081014; --g900:#0f1418; --g850:#121a1f; --g800:#162126; --g700:#253139;
+    --s100:#e6e8ea; --s300:#aeb8be; --steel:#677681;
+    --teal:#2ba6a0; --teal-dim:#174d4c; --orange:#ff6a28; --orange-dim:#3a2418;
+    --warn:#efad3f; --red:#e24a4a;
+    --line:rgba(174,184,190,.20); --line-strong:rgba(174,184,190,.34);
+    --cond:"Barlow Condensed","Arial Narrow",Impact,sans-serif;
+    --body:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  html { color-scheme: dark; }
+  body { margin:0; background:var(--g950); color:var(--s100); font:400 14px/22px var(--body); }
+  .wrap { max-width:1120px; margin:0 auto; padding:40px 24px 80px; }
+  .eyebrow { font:600 12px/16px var(--cond); letter-spacing:.14em; text-transform:uppercase; color:var(--teal); }
+  h1 { font:700 28px/32px var(--cond); margin:6px 0 10px; text-wrap:balance; }
+  h2 { font:600 20px/26px var(--cond); margin:0 0 6px; }
+  h3 { font:600 16px/22px var(--cond); margin:0 0 6px; color:var(--s100); }
+  p { margin:0 0 12px; max-width:72ch; color:var(--s300); }
+  p strong { color:var(--s100); font-weight:600; }
+  code, .mono { font:400 12.5px/20px var(--mono); color:var(--s100); }
+  section { margin-top:40px; padding-top:24px; border-top:1px solid var(--line); }
+  .lede { font-size:15px; line-height:24px; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 22px; margin:14px 0 4px; font-size:13px; color:var(--s300); }
+  .legend span { display:inline-flex; align-items:center; gap:8px; }
+  .sw { width:14px; height:14px; border-radius:2px; border:1.5px solid; box-sizing:border-box; }
+  .sw.done { background:var(--teal-dim); border-color:var(--teal); }
+  .sw.wip  { background:var(--orange-dim); border-color:var(--orange); }
+  .sw.plan { background:var(--g850); border-color:var(--steel); border-style:dashed; }
+  .sw.ext  { background:var(--g900); border-color:var(--s300); }
+  .diagram { background:var(--g900); border:1px solid var(--line); border-radius:4px; padding:16px 12px; overflow-x:auto; margin:12px 0 8px; }
+  .diagram pre.mermaid { margin:0; min-width:720px; }
+  .caption { font-size:12px; line-height:18px; color:var(--steel); margin:0 0 4px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; line-height:20px; margin:12px 0; }
+  th { text-align:left; font:600 12px/16px var(--cond); letter-spacing:.08em; text-transform:uppercase; color:var(--s300); background:var(--g800); padding:8px 10px; border-bottom:1px solid var(--line-strong); }
+  td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--s300); }
+  td:first-child { color:var(--s100); }
+  td.num { font-variant-numeric:tabular-nums; font-family:var(--mono); font-size:12.5px; white-space:nowrap; }
+  .tscroll { overflow-x:auto; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:2px; font:600 11px/18px var(--cond); letter-spacing:.06em; text-transform:uppercase; border:1px solid; }
+  .pill.done { color:var(--teal); border-color:var(--teal); background:var(--teal-dim); }
+  .pill.wip  { color:var(--orange); border-color:var(--orange); background:var(--orange-dim); }
+  .pill.plan { color:var(--s300); border-color:var(--steel); border-style:dashed; }
+  .pill.fail { color:var(--red); border-color:var(--red); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .panel { background:var(--g850); border:1px solid var(--line); border-radius:4px; padding:14px 16px; }
+  .panel p { font-size:13px; line-height:20px; margin-bottom:6px; }
+  .chain { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin:12px 0; }
+  .step { background:var(--g850); border:1px solid var(--line); border-left:3px solid var(--steel); border-radius:3px; padding:10px 12px; }
+  .step.done { border-left-color:var(--teal); } .step.wip { border-left-color:var(--orange); } .step.fail { border-left-color:var(--red); }
+  .step .k { font:600 12px/16px var(--cond); letter-spacing:.1em; text-transform:uppercase; color:var(--s300); }
+  .step .v { font:600 15px/20px var(--cond); margin-top:2px; }
+  .step .m { font-size:12px; line-height:17px; color:var(--steel); margin-top:4px; }
+  .foot { margin-top:40px; padding-top:16px; border-top:1px solid var(--line); font-size:12px; line-height:18px; color:var(--steel); }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style></head><body>
+
+<div class="wrap">
+  <div class="eyebrow">Guidefold · mapa systemu · stan na 2026-09-05, main 9f1a8f4</div>
+  <h1>Od SKILL.md w repo do czterech kart w kontekście agenta — i z powrotem do liczb</h1>
+  <p class="lede">Jedna strona, cztery obrazy: <strong>komponenty</strong> (kto z kim rozmawia), <strong>ścieżka promptu</strong> (co dzieje się w 300 ms), <strong>ścieżka CI</strong> (co dzieje się, gdy ktoś zmieni skill) i <strong>flywheel</strong> (jak dense ma zasłużyć na wejście). Kolor mówi, ile z tego istnieje naprawdę.</p>
+  <div class="legend">
+    <span><i class="sw done"></i> na <code>main</code>, zmierzone</span>
+    <span><i class="sw wip"></i> w budowie (agent lub sesja Codexa, gałąź)</span>
+    <span><i class="sw plan"></i> zaplanowane (ADR-0024 / E7 / tier T2)</span>
+    <span><i class="sw ext"></i> zewnętrzne: harness, dane, korpusy</span>
+  </div>
+
+  <section>
+    <div class="eyebrow">1 · Komponenty</div>
+    <h2>Trzy repozytoria pojęć: monorepo konsumenta, klient, serwis — plus warsztat pomiarowy</h2>
+    <p>Klient to <strong>jeden plik Pythona</strong> (stdlib + PyYAML) i jest taki sam we wszystkich trzech tierach; zmienia się tylko to, <em>gdzie</em> liczą się kandydaci. Serwis jest opcjonalny — bez niego wszystko działa lokalnie do ≈ 5 300 skilli.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {'theme':'base','flowchart':{'curve':'basis','htmlLabels':true,'nodeSpacing':28,'rankSpacing':36},'themeVariables':{'fontFamily':'Inter, system-ui, sans-serif','fontSize':'12px','primaryColor':'#162126','primaryTextColor':'#e6e8ea','primaryBorderColor':'#aeb8be','lineColor':'#aeb8be','secondaryColor':'#121a1f','tertiaryColor':'#0f1418','clusterBkg':'#0f1418','clusterBorder':'rgba(174,184,190,0.34)','titleColor':'#e6e8ea','edgeLabelBackground':'#0f1418'}}}%%
+flowchart LR
+  subgraph MONO["Monorepo konsumenta (git = źródło prawdy, ADR-0001)"]
+    SK["skills/**/SKILL.md<br/>frontmatter, triggers, requires"]:::done
+    YAML["guidefold.yaml<br/>nodes · publisher · search.backend"]:::done
+    CIW["CI workflow<br/>validate → index → publish"]:::done
+    L0["AGENTS.md karty L0<br/>≤ 80 linii, digest per węzeł"]:::done
+  end
+
+  subgraph CLIENT["Klient — skills/guidefold/scripts/guidefold (1 plik)"]
+    HOOK["hook<br/>SessionStart · UserPromptSubmit"]:::done
+    FIND["find / load / doctor / init"]:::done
+    RT["Router<br/>policy_filter → candidates → score → select"]:::done
+    COMP["compose (rodzina C)<br/>wiązka, cannot_fit"]:::wip
+    IDX["Index artifact (mmap)<br/>postings.bin · cards · graph · vectors.i8"]:::done
+    SPOOL["telemetry spool<br/>eventy bez tekstu promptu"]:::done
+    SW{"search.backend<br/>local | service"}:::done
+  end
+
+  subgraph HARN["Harness"]
+    AG["Claude Code · Copilot · Codex · Gemini<br/>kontekst agenta: L0 + ≤ 4 karty"]:::ext
+  end
+
+  subgraph SVC["Serwis SEARCH/USE — tier T1 (tools/serve_spike, ADR-0023/0025)"]
+    SRCH["POST /v1/search<br/>sparse-only, BM25 cache, snapshot w RAM"]:::done
+    USE["POST /v1/use<br/>rewizja + checksum, bez wykonywania kodu"]:::done
+    SHD["shadow hybrid<br/>encoder worker (GPU), tylko log"]:::wip
+    EVT["POST /v1/events:batch<br/>ledger na Postgres (port z tools/telemetry)"]:::plan
+    SNAP["atomic snapshot swap + rollback"]:::wip
+  end
+
+  subgraph DATA["Dane"]
+    PG[("Postgres<br/>ledger · rollups · rewizje")]:::plan
+    GCS[("GCS / CDN<br/>ciała skilli, snapshoty")]:::plan
+    REG[("Agent Registry<br/>opcjonalne lustro")]:::ext
+  end
+
+  subgraph LAB["Warsztat pomiarowy (tools/eval, tools/telemetry, tools/pilot)"]
+    CORP[("Korpusy przypięte sha256<br/>SKILLRET 6 006/4 392 · SkillRetBench 501/1 250 · dev 1 000")]:::ext
+    EVAL["DENSE-PROGRAM v2.5<br/>bramki, paired bootstrap, test raz"]:::done
+    FAMC["rodzina C — kompozytor<br/>dev, model przez claude -p"]:::wip
+    FAMD["rodzina D — dekompozycja zapytań<br/>dev"]:::wip
+    LEDG["ledger referencyjny (sqlite)<br/>+ raport per skill"]:::done
+    PILOT["E6.7 protokół pilota<br/>analyze.py, 8 placeholderów"]:::done
+    FLY["E7 flywheel<br/>pary z USE → fine-tune → dopuszczenie per tenant"]:::plan
+  end
+
+  SK --> CIW --> IDX
+  YAML --> RT
+  CIW --> L0 --> AG
+  CIW -.-> REG
+  CIW -.-> GCS -.-> SNAP
+  AG -->|prompt| HOOK --> RT --> SW
+  SW -->|local T0| IDX
+  SW -->|service T1| SRCH
+  RT --> COMP -->|≤ 4 karty| AG
+  AG -->|load urn@rev| FIND --> USE
+  HOOK --> SPOOL -.->|flush poza hookiem| EVT --> PG
+  SRCH -.-> SHD
+  PG -.-> FLY -.-> SHD
+  CORP --> EVAL
+  EVAL --> FAMC & FAMD
+  LEDG --> PILOT
+  SPOOL --> LEDG
+
+  classDef done fill:#174d4c,stroke:#2ba6a0,color:#e6e8ea;
+  classDef wip  fill:#3a2418,stroke:#ff6a28,color:#e6e8ea;
+  classDef plan fill:#121a1f,stroke:#677681,color:#aeb8be,stroke-dasharray:4 2;
+  classDef ext  fill:#0f1418,stroke:#aeb8be,color:#e6e8ea;
+</pre>
+    </div>
+    <p class="caption">Strzałki ciągłe = ścieżka istniejąca; kreskowane = zaplanowana lub w budowie. Węzeł „search.backend” to jedyne miejsce, w którym tiery się różnią.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">2 · Sekwencja A</div>
+    <h2>Developer pisze prompt — co się dzieje w budżecie 300 ms i tuż po nim</h2>
+    <p>Tor gorący (hook) kończy się na wstrzyknięciu ≤ 4 kart. Wszystko, co sieciowe i „ciężkie” — flush telemetrii, shadow hybrydy, raporty — dzieje się poza nim. Liczby to pomiary z <code>main</code> (R4b, PR #45) i z serwisu (PR #44).</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {'theme':'base','sequence':{'mirrorActors':false,'actorMargin':28,'messageMargin':26,'noteMargin':8,'width':150},'themeVariables':{'fontFamily':'Inter, system-ui, sans-serif','fontSize':'12px','actorBkg':'#162126','actorBorder':'#aeb8be','actorTextColor':'#e6e8ea','actorLineColor':'#677681','signalColor':'#aeb8be','signalTextColor':'#e6e8ea','noteBkgColor':'#174d4c','noteBorderColor':'#2ba6a0','noteTextColor':'#e6e8ea','activationBkgColor':'#253139','activationBorderColor':'#2ba6a0','labelBoxBkgColor':'#121a1f','labelBoxBorderColor':'#aeb8be','labelTextColor':'#e6e8ea','loopTextColor':'#e6e8ea','sequenceNumberColor':'#081014'}}}%%
+sequenceDiagram
+  autonumber
+  participant D as Developer
+  participant H as Harness (Claude Code)
+  participant C as CLI hook (1 plik)
+  participant R as Router
+  participant S as Serwis T1 /v1/*
+  participant T as Spool telemetrii
+
+  D->>H: prompt
+  H->>C: UserPromptSubmit (cwd, prompt)
+  C->>R: węzeł z guidefold.yaml · policy_filter
+  Note over R: admissible = zakres ∩ nie-deprecated ∩ bez negative_trigger<br/>wiąże WSZYSTKO poniżej (ADR-0022 §1)
+  alt search.backend = local (T0)
+    R->>R: candidates (BM25F, mmap) → score (RRF, integer)
+    Note over R: p95 320 ms @ 6 006 skilli · < 300 ms poniżej ≈ 5 300
+  else search.backend = service (T1)
+    C->>S: POST /v1/search (profile=hook, deadline)
+    Note over C,S: równolegle: lokalny sparse jako fallback (E2.6, w planie)
+    S-->>C: ranked · selected · search_id · backend
+    Note over S: sparse-only: c1 54 ms · c4 128 ms · świeży proces 121 ms
+    S-)S: shadow hybrid → log {search_id, rankingi} (nie wpływa na odpowiedź)
+  end
+  R->>R: select / compose ≤ 4 karty · requires closure · cannot_fit
+  C->>T: search_requested · search_results · card_injected (HMAC, bez tekstu)
+  C-->>H: ≤ 4 karty (digesty) do kontekstu
+  H->>H: agent czyta karty, decyduje
+  opt agent potrzebuje pełnego skilla
+    H->>C: guidefold load urn@rev
+    C->>S: POST /v1/use (rewizja, checksum)
+    S-->>C: ciało skilla + manifest
+    C->>T: skill_load_requested · skill_load_completed
+    C-->>H: treść skilla
+  end
+  H-->>D: odpowiedź / praca wykonana
+  opt feedback
+    D->>C: helped / hindered
+    C->>T: skill_feedback
+  end
+  Note over T,S: poza hookiem: guidefold telemetry flush → /v1/events:batch → ledger<br/>guidefold telemetry report → ekspozycje · załadowania · use rate z mianownikiem
+</pre>
+    </div>
+    <p class="caption">Krok 12 i 13 są tym, co widzi developer. Reszta jest po to, żeby dało się policzyć, czy warto było.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">3 · Sekwencja B</div>
+    <h2>Ktoś zmienia skill — od PR-a do nowego snapshotu w serwisie</h2>
+    <p>Registry jest artefaktem builda, nigdy ręcznie edytowanym (ADR-0001). Wszystko, co wygenerowane, powstaje wyłącznie z <code>materialize</code> / <code>index</code> (ADR-0012). Bramka jakości w buildzie (E7.5) to jedyny nowy element w tej ścieżce.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {'theme':'base','sequence':{'mirrorActors':false,'actorMargin':30,'messageMargin':26,'width':150},'themeVariables':{'fontFamily':'Inter, system-ui, sans-serif','fontSize':'12px','actorBkg':'#162126','actorBorder':'#aeb8be','actorTextColor':'#e6e8ea','actorLineColor':'#677681','signalColor':'#aeb8be','signalTextColor':'#e6e8ea','noteBkgColor':'#174d4c','noteBorderColor':'#2ba6a0','noteTextColor':'#e6e8ea','activationBkgColor':'#253139','activationBorderColor':'#2ba6a0','labelBoxBkgColor':'#121a1f','labelBoxBorderColor':'#aeb8be','labelTextColor':'#e6e8ea','loopTextColor':'#e6e8ea','sequenceNumberColor':'#081014'}}}%%
+sequenceDiagram
+  autonumber
+  participant O as Właściciel skilla
+  participant G as Git (PR → main)
+  participant CI as CI (templates/ci.yml)
+  participant A as Artefakty (snapshot, GCS, Registry)
+  participant S as Serwis T1
+  participant C as Klienci
+
+  O->>G: PR: skills/x/SKILL.md (+ CODEOWNERS review, ADR-0017)
+  G->>CI: guidefold validate
+  Note over CI: frontmatter · prefiks [node] w description · karta ≤ 80 linii · URN wyprowadzony
+  CI-->>G: zielono → merge
+  G->>CI: guidefold index (tylko zmienione skille)
+  Note over CI: postings.bin · cards · graph · manifest z sha256<br/>(opcjonalnie vectors.i8 z encodera w CI — nigdy u klienta)
+  CI->>CI: eval na zamrożonym dev secie (E7.5, w planie)
+  alt regresja bramki
+    CI-->>O: build zatrzymany, wskaźnik snapshotu nie zmieniony
+  else bramki OK
+    CI->>A: publish snapshot + ciała (checksum) · lustro w Agent Registry (opcjonalne)
+    A->>S: preload nowego snapshotu
+    S->>S: weryfikacja → atomic swap · poprzedni snapshot zostaje do rollbacku
+    Note over A,S: cel: ≤ 10 min od merge do aktywnego snapshotu (E2.3)
+    S-->>C: kolejne /v1/search zwraca nowy index_snapshot
+    C->>C: doctor: świeżość cache, lease, rekomendacja tieru
+  end
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">4 · Sekwencja C</div>
+    <h2>Jak dense ma zasłużyć na wejście — flywheel per tenant (E7, zaplanowane)</h2>
+    <p>Ten sam encoder dał <strong>+17,96 pp</strong> <code>all_required@4</code> na danych ze swojego rozkładu i <strong>+0,67 pp</strong> (CI zawiera zero) na obcych. Różnica to dane treningowe, nie model. Flywheel robi z danych organizacji „swój rozkład”; shadow mierzy to bez ryzyka dla użytkownika; bramki decydują — per tenant, z rollbackiem.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {'theme':'base','sequence':{'mirrorActors':false,'actorMargin':30,'messageMargin':26,'width':150},'themeVariables':{'fontFamily':'Inter, system-ui, sans-serif','fontSize':'12px','actorBkg':'#162126','actorBorder':'#aeb8be','actorTextColor':'#e6e8ea','actorLineColor':'#677681','signalColor':'#aeb8be','signalTextColor':'#e6e8ea','noteBkgColor':'#174d4c','noteBorderColor':'#2ba6a0','noteTextColor':'#e6e8ea','activationBkgColor':'#253139','activationBorderColor':'#2ba6a0','labelBoxBkgColor':'#121a1f','labelBoxBorderColor':'#aeb8be','labelTextColor':'#e6e8ea','loopTextColor':'#e6e8ea','sequenceNumberColor':'#081014'}}}%%
+sequenceDiagram
+  autonumber
+  participant L as Ledger (Postgres)
+  participant ML as Pipeline ML (E7.1–E7.2)
+  participant B as Build snapshotu
+  participant S as Serwis (shadow)
+  participant GATE as Bramki (DENSE-PROGRAM §5)
+  participant TEN as Tenant
+
+  loop co tydzień, per tenant
+    L->>ML: pary (zapytanie ↔ USE) + twarde negatywy (pokazane, nie użyte)
+    Note over L,ML: tylko zredagowany korpus za zgodą (opt-in) · pseudonimy · bez rankingu ludzi
+    ML->>ML: fine-tune encodera (self-hosted, ADR-0015) → nowa tożsamość modelu
+    ML->>B: re-embed dotkniętych wektorów pod nową tożsamością
+    B->>S: snapshot z dense w SHADOW (odpowiedzi nadal sparse-only)
+    S->>L: log {search_id, ranking sparse, ranking hybrid} + późniejsze USE
+    L->>GATE: held-out slice tenanta przez ścieżkę produktu
+    Note over GATE: all_required@4 ≥ sparse + 2,0 pp, CI bez zera<br/>HSR@4 i hit@1 nie gorzej niż o 1,0 pp · server-side p95 ≤ 300 ms
+    alt bramki przeszły
+      GATE->>TEN: dense DOPUSZCZONY dla tego tenanta (rollback: poprzedni snapshot / sparse-only)
+    else nie przeszły
+      GATE->>TEN: zostaje sparse-only · dense dalej w shadow · raport E7.6 pokazuje dlaczego
+    end
+  end
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">5 · Gdzie jesteśmy w łańcuchu pomiarów</div>
+    <h2>Każdy krok odpowiada na jedno pytanie; kolejność wynika z tego, co poprzedni odkrył</h2>
+    <div class="chain">
+      <div class="step done"><div class="k">F0 sparse</div><div class="v">baza, dostarczona</div><div class="m">BM25F integer, bit-reproducible; T0 próg ≈ 5 300 skilli</div></div>
+      <div class="step done"><div class="k">R1 dense (ref.)</div><div class="v">+18 pp in-dist · +0,7 pp OOD</div><div class="m">3 z 4 metryk wygrane na test-B; bramka kompletności zablokowana</div></div>
+      <div class="step fail"><div class="k">C-det (dev)</div><div class="v">−3,2 pp, k=1 −12,5 pp</div><div class="m">dopełnianie wypycha primary; detektor nie strzela</div></div>
+      <div class="step wip"><div class="k">C-model (dev)</div><div class="v">w toku</div><div class="m">sufit: recall@10 przy k=3 = 0,36</div></div>
+      <div class="step wip"><div class="k">D dekompozycja (dev)</div><div class="v">w toku</div><div class="m">podzapytanie per intencja → kandydaci, których dziś brak</div></div>
+      <div class="step"><div class="k">C + D</div><div class="v">jeden przebieg na obu testach</div><div class="m">zamrożone razem, testowane raz</div></div>
+      <div class="step"><div class="k">R1 re-run</div><div class="v">z kompozycją</div><div class="m">pierwsza osiągalna bramka dla dense</div></div>
+      <div class="step"><div class="k">E6.7 pilot</div><div class="v">3 zespoły, 20–40 zadań</div><div class="m">czy „1 minuta dziennie” to prawda</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">6 · Tiery i liczby</div>
+    <h2>Ten sam klient, trzy miejsca liczenia</h2>
+    <div class="tscroll">
+    <table>
+      <thead><tr><th>Tier</th><th>Dla kogo</th><th>Backend</th><th>Dense</th><th>Zmierzone</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>T0 lokalny</td><td>jeden zespół, offline, ≤ ≈ 5 300 skilli</td><td>in-process, sharding per węzeł (ADR-0021)</td><td>brak</td><td class="num">p95 113 @500 · 188 @2 000 · 262 @4 000 · 320 @6 006</td><td><span class="pill done">na main</span></td></tr>
+        <tr><td>T1 departament</td><td>do ≈ 10 000 skilli, jeden region</td><td>jeden węzeł <code>serve</code>, snapshot w RAM, sparse-only</td><td>tylko shadow</td><td class="num">c1 54 · c4 128 · świeży 121 · burst-4 173 ms</td><td><span class="pill done">dopuszczony profil</span></td></tr>
+        <tr><td>T2 organizacja</td><td>cały katalog, tysiące developerów</td><td>HA + worker GPU z batchowaniem</td><td>per tenant, po bramkach</td><td class="num">hybryda c4 444 ms — encoder szeregowy (86 ms/encode)</td><td><span class="pill plan">zaplanowany</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">7 · Kto co posiada</div>
+    <h2>Trzy strony, zero wspólnych plików w locie</h2>
+    <div class="grid2">
+      <div class="panel"><h3>Sesja Claude (TL)</h3><p>Klient (CLI), Router, indeks, telemetria klienta + ledger referencyjny, warsztat ewaluacyjny, rodziny C i D, protokół pilota, ADR-0024, MVP.</p><p class="mono">gf-c · gf-d · worktree per PR</p></div>
+      <div class="panel"><h3>Sesja Codex (serwis)</h3><p>Spike serwisu, kontrakt harness↔serwis 1.1 (ADR-0025), shadow hybrydy, batching encodera, port ledgera na Postgres, runbook T1.</p><p class="mono">gf-serve · feat/e11b-service-optimization</p></div>
+      <div class="panel"><h3>Właściciel produktu</h3><p>Decyzje tierów i akceptacja ADR-ów, 8 placeholderów protokołu pilota (zespoły, daty, kontender, ewaluatorzy, przydział, skala H3, próg p, zgoda na korpus).</p><p class="mono">docs/pilot/E6.7-PROTOCOL.md §10</p></div>
+    </div>
+  </section>
+
+  <div class="foot">Źródła: docs/adr/ADR-0022…0025, docs/MVP.md, docs/SEARCH-USE-TELEMETRY.md, docs/HARNESS-SERVICE-CONTRACT.md, docs/reports/bakeoff/DENSE-PROGRAM.md (v2.5), R4b, E1.1b, PR #44–#49. Każda liczba na tej stronie ma plik z pomiarem w <code>docs/reports/bakeoff/validation/</code>.</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,securityLevel:"loose"});</script></body></html>
