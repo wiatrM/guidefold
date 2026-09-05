@@ -57,3 +57,21 @@ jobs:
 
       - name: Run the E1.2 golden set and gate on regression vs the committed baseline
         run: python3 tools/eval/run_golden.py --check
+
+  index-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Build the E1.4 index artifact for the example monorepo fixture
+        run: cd examples/monorepo && python3 ../../skills/guidefold/scripts/guidefold index
+
+      - name: index --check must pass immediately after a fresh build
+        run: cd examples/monorepo && python3 ../../skills/guidefold/scripts/guidefold index --check

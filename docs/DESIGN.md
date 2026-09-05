@@ -195,7 +195,34 @@ Components: `guidefold` CLI (single file), `guidefold-ui` (single HTML + stdlib 
 
 ## 7. Index artifact
 
-Built by `guidefold index` in CI (and locally for `backend: local`). Contents, per shard:
+**E1.4 (shipped):** `guidefold index` builds an immutable, sha-keyed artifact at
+`<cache_root>/index/<sha>/` (`--check` rebuilds in memory and diffs every file's sha256 against
+`manifest.json`, catching both a tampered artifact and a stale one — a `SKILL.md` edited without
+rerunning `index`). One flat artifact per sha, no sharding yet (see "target design" below). Files:
+
+| File | Content | Loaded |
+|------|---------|--------|
+| `manifest.json` | `git_sha`, `build_time` (the commit's own timestamp — reproducible; wall-clock only for the uncommitted `worktree` sha), `weights`, `student_dims`, `quant_scale`, `counts` (cards/terms/words), sha256 `checksums` of every file below | eager |
+| `cards.jsonl` | one compact JSON object per doc, one line per doc, **sorted-URN order** — that order *is* the doc-id map used by `postings.bin`/`vectors.i8`. No `_body`/`requires`/`refines`: BM25 is already baked into `postings.bin` and the graph is `graph.json` — Router never reads those two keys at query time | eager |
+| `graph.json` | `requires`/`refines`/`replaces`/`similar` adjacency (`Index.graph`, unchanged shape) | eager |
+| `nodes.json` | `guidefold.yaml`'s `nodes` map, verbatim — `cwd → node` at hook time resolves from **this**, never the working-tree `guidefold.yaml` (§4 determinism) | eager |
+| `terms.bin` | global per-term integer IDF (`Index.idf`): varint-length-prefixed term + varint idf, sorted by term | eager |
+| `norms.bin` | per-`(field, doc)` BM25 length norm (`Index.field_norm`): one little-endian uint32 array per field, explicit `struct.pack("<...I", ...)` — never `array.fromfile`/raw `array.array('I', ...)`, both native-order | eager |
+| `postings.bin` | delta-varint doc-id postings, one contiguous block per `(field, term)` — mmap'd, only a query's own terms are ever paged in (measured: eager JSON postings 193 ms at 2k skills against the 300 ms budget; this format 0.3 ms) | lazy, mmap |
+| `postings.idx` | offset+length table for `postings.bin`, sorted by `(field, term)` | eager |
+| `vectors.i8` | tier-1 dense skill vectors, one `dims`-byte int8 row per doc (doc order = `cards.jsonl`); empty iff `dims == 0` | lazy, mmap |
+| `words.bin` | tier-1 dense word table, one `dims`-byte int8 row per distinct word, row order = `sorted(word)`; **empty this release** — no distilled table ships yet, `manifest["student_dims"] == 0` / `weights.w_dense == 0` (ADR-0020); the format and its lazy-load path are exercised by a synthetic hand-built table in `tests/test_index_artifact.py`, never invented vectors | lazy, mmap |
+| `words.idx` | vocabulary list backing `words.bin`'s row order, one word per line UTF-8 | eager |
+
+`terms.bin`/`norms.bin`/`words.idx` are additions beyond an earlier sketch of this table (below):
+that sketch didn't say where per-term IDF or per-field length norms would live on disk, and named
+only the BM25 side of the lazy-postings idea. Nothing about Router's read contract changed —
+`idx.idf`/`idx.field_norm`/`idx.postings`/`idx.word_vectors`/`idx.skill_vectors`/`idx.skill_normsq`
+are still exactly the attributes `Router` reads; only their storage moved from "always in memory"
+(`Index.build` scanning the tree, still what `find`/`materialize`/`validate` use) to "lazily
+faulted in from disk" (what `hook` uses, via `load_index_artifact`).
+
+**Target design (not yet built — sharding, real embeddings, CI-computed expansion):**
 
 | Part | Content | Size at 2k skills |
 |------|---------|-------------------|
@@ -213,7 +240,7 @@ Embeddings: Vertex `gemini-embedding` (or `text-embedding-005`) over `name | des
 
 Evidence-ranked, per query. Deterministic given (prompt, cwd, index sha) and the cached outputs of stage 1; every model-dependent stage has a deterministic fallback.
 
-**Router 0.1 (E0.2 + E1.1, shipped):** three collaborators — `Registry`/`LocalRegistry` (storage and transport only: `publish`/`download`/`search_scope`), an in-memory `Index` (built by `Index.build()` scanning the tree: cards, field-weighted BM25 postings with precomputed integer IDF, the `requires`/`refines`/`replaces`/`similar` graph — not persisted to disk yet, see C1 in §9), and `Router` (constructed from an `Index`, depends on it and never on `Registry`). `Router` implements a subset of the stages below, integer-only end to end so identical (prompt, cwd) is byte-identical output: stage 2 as `policy_filter` (deprecated, visibility = own subtree ∪ ancestor chain, negative triggers — hard drops with a recorded reason, never demotions); stage 3 as `candidates` (BM25 top-N ∪ dense top-N, dense channel shipped at `w_dense=0` per ADR-0020 until the E1.3 bake-off); stages 4–5 collapsed into `score` (RRF k=60 fusion of the bm25/dense ranks, an additive `w_scope/(1+hops)` scope feature — a feature and filter, never the first sort key — then reverse PPR seeded from the scope-adjusted RRF score, fixed 20 iterations, fixed-point integers); stage 7 as `select` (7b only: `requires` closure depth ≤ 2 as hard membership counting toward the `k=4` cap; 7d only: final order general → specific by depth, ties by score then urn; abstain below `abstain_threshold`). Not yet built: 1b query rewrite, 6 listwise rerank, 7a coverage backfill / 7c family caps, 8 hydration budget shaping, 9 telemetry — all still describe the target design below.
+**Router 0.1 (E0.2 + E1.1, shipped):** three collaborators — `Registry`/`LocalRegistry` (storage and transport only: `publish`/`download`/`search_scope`), an `Index` (cards, field-weighted BM25 postings with precomputed integer IDF, the `requires`/`refines`/`replaces`/`similar` graph — built in memory by `Index.build()` scanning the tree for `find`/`materialize`/`validate`, or loaded lazily from the on-disk artifact by `load_index_artifact()` for `hook`, E1.4, see §7/C1 in §9; both produce the same public attributes, so `Router` cannot tell them apart), and `Router` (constructed from an `Index`, depends on it and never on `Registry`). `Router` implements a subset of the stages below, integer-only end to end so identical (prompt, cwd) is byte-identical output: stage 2 as `policy_filter` (deprecated, visibility = own subtree ∪ ancestor chain, negative triggers — hard drops with a recorded reason, never demotions); stage 3 as `candidates` (BM25 top-N ∪ dense top-N, dense channel shipped at `w_dense=0` per ADR-0020 until the E1.3 bake-off); stages 4–5 collapsed into `score` (RRF k=60 fusion of the bm25/dense ranks, an additive `w_scope/(1+hops)` scope feature — a feature and filter, never the first sort key — then reverse PPR seeded from the scope-adjusted RRF score, fixed 20 iterations, fixed-point integers); stage 7 as `select` (7b only: `requires` closure depth ≤ 2 as hard membership counting toward the `k=4` cap; 7d only: final order general → specific by depth, ties by score then urn; abstain below `abstain_threshold`). Not yet built: 1b query rewrite, 6 listwise rerank, 7a coverage backfill / 7c family caps, 8 hydration budget shaping, 9 telemetry — all still describe the target design below.
 
 ```
 0  where(cwd) → scope chain [node … _root]; load global + org shard (cache C1)
@@ -304,12 +331,12 @@ All cache paths live under one `cache_root`: `$GUIDEFOLD_CACHE` if set, else `~/
 
 | Level | Key | Store | TTL / invalidation | Hit path |
 |-------|-----|-------|--------------------|----------|
-| C1 index shards | index sha | `<cache_root>/index/<sha>/` | LRU eviction (cap `cache.max_index_shards`, default 20); path/eviction helpers ship in E1.7, the writer (persisting the built `Index`) is E1.4 — Router 0.1 (E0.2/E1.1) rebuilds the `Index` in memory every invocation | load ≤ 150 ms once populated |
+| C1 index artifact | index sha | `<cache_root>/index/<sha>/` | LRU eviction (cap `cache.max_index_shas`, default 20); path/eviction helpers shipped in E1.7, the writer/reader (`write_index_artifact`/`load_index_artifact`, `guidefold index [--check]` / `guidefold hook`) shipped in E1.4 — one flat artifact per sha, no sharding yet (§7). `find`/`materialize`/`validate` still rebuild an in-memory `Index` from the tree every invocation; only `hook` reads the cached artifact | load ≤ 150 ms once populated |
 | C2 query | sha256(normalized prompt) + index sha | *(not implemented — Router 0.1 has no model-dependent stage to cache; deferred until 1b/6 below land)* | LRU 2,000, TTL 7 d | embedding + rerank skipped |
 | C3 bodies | urn + revision | `<cache_root>/skills/<urn>/<rev>/` (urn percent-encoded: `%`→`%25` then `:`→`%3A`, so it round-trips and stays filesystem-safe) | LRU eviction (cap `cache.max_skill_revisions`, default 500) | `load` offline |
 | C4 registry (fallback leg) | query + location | in C2 | TTL 1 h | only when embeddings unavailable |
 
-Hook budget: warm p50 ≤ 300 ms (index load + BM25 + local dense + PPR); cold ≤ 2 s (one embedding call); a watchdog prints the L0-only line and exits 0 at 3 s. Registry calls never sit on the hook path except as the C4 fallback; `gcloud` subprocess (≈ 3 s per call) is replaced by REST with a cached access token for `load` and `publish`.
+Hook budget: warm p50 ≤ 300 ms (index load + BM25 + local dense + PPR); cold ≤ 2 s (one embedding call); a hard SIGALRM watchdog (E1.5, default 3 s, `$GUIDEFOLD_HOOK_TIMEOUT_S` overrides) prints **nothing** and exits 0 on expiry — injecting late or from stale state is worse than injecting nothing — and appends one `hook_timeout` record to `.guidefold/telemetry/hook.jsonl` so timeouts are visible without ever reaching stdout; timed-out runs are excluded from the determinism claim in §4. Registry calls never sit on the hook path except as the C4 fallback; `gcloud` subprocess (≈ 3 s per call) is replaced by REST with a cached access token for `load` and `publish`.
 
 ## 10. Context delivery per harness (unchanged layers, new content)
 
