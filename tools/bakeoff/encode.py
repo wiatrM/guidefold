@@ -45,6 +45,25 @@ from transformers import AutoModel, AutoTokenizer  # noqa: E402
 
 CACHE_ROOT = Path(__file__).resolve().parent / ".bakeoff-cache"
 
+# Local GCS-mirrored model weights (E1.3 phase 2, GPU pass): pulled from gs://guidefold-models-b6a18a
+# to `/home/mike/.cache/guidefold/models/<org>__<name>/<hf-commit-sha>/` so the run never touches
+# HuggingFace. Falls back to hf_id/revision (network) only if the local mirror is absent, e.g. on
+# a machine that never ran the phase-2 GPU pass.
+MODELS_ROOT = Path(os.environ.get("GUIDEFOLD_MODELS_ROOT", "/home/mike/.cache/guidefold/models"))
+
+# Device/dtype for this process. GPU floating-point reductions are not bit-reproducible across
+# batch sizes (different batch -> different reduction order -> different rounding) -- this is
+# offline evidence for *choosing* an embedder, not a determinism claim; the runtime determinism
+# guarantee lives entirely in the integer-only CLI path (words.bin / vectors.i8), never here.
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
+DEFAULT_BATCH_SIZE = 64 if DEVICE == "cuda" else 8
+
+
+def _local_model_path(hf_id: str, revision: str) -> Optional[Path]:
+    p = MODELS_ROOT / hf_id.replace("/", "__") / revision
+    return p if p.is_dir() else None
+
 # Models that ship their own sentence-transformers config (modules.json + 1_Pooling) and can be
 # loaded directly with SentenceTransformer(). Anything not in this set falls back to a plain
 # transformers AutoModel with hand-rolled last-token pooling (pipizhao/SkillRouter-Embedding-0.6B).
@@ -79,7 +98,10 @@ QUERY_PROMPTS: dict[str, Optional[str]] = {
 
 
 def _cache_dir(hf_id: str, revision: str) -> Path:
-    return CACHE_ROOT / f"{hf_id}__{revision}"
+    # device/dtype in the path: a GPU fp16 encoding and a CPU fp32 encoding of the same text are
+    # not the same vector (see DEVICE/DTYPE above), so they must never share a cache entry -- a
+    # rerun on different hardware gets a clean cache instead of silently mixing precisions.
+    return CACHE_ROOT / f"{hf_id}__{revision}" / f"{DEVICE}-{str(DTYPE).rsplit('.', 1)[-1]}"
 
 
 def _cache_key(text: str, is_query: bool) -> str:
@@ -101,10 +123,10 @@ def _last_token_pool(last_hidden_states: torch.Tensor, attention_mask: torch.Ten
 class Encoder:
     """Encoder(hf_id, revision).encode(texts, is_query=False) -> np.ndarray[float32], unit rows."""
 
-    def __init__(self, hf_id: str, revision: str, batch_size: int = 8):
+    def __init__(self, hf_id: str, revision: str, batch_size: int = None):
         self.hf_id = hf_id
         self.revision = revision
-        self.batch_size = batch_size
+        self.batch_size = batch_size or DEFAULT_BATCH_SIZE
         self.cache_dir = _cache_dir(hf_id, revision)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._backend = "sentence-transformers" if hf_id in _SENTENCE_TRANSFORMERS_MODELS else "transformers"
@@ -117,19 +139,30 @@ class Encoder:
         if self._model is not None:
             return
         torch.set_num_threads(max(1, os.cpu_count() or 1))
+        local = _local_model_path(self.hf_id, self.revision)
+        source = str(local) if local is not None else self.hf_id
+        # A local path is an exact snapshot dir already named by its commit SHA -- passing
+        # `revision` alongside a local path is meaningless (and errors on some transformers
+        # versions), so only pass it through for the HF-network fallback.
+        rev = None if local is not None else self.revision
         if self._backend == "sentence-transformers":
-            self._model = SentenceTransformer(
-                self.hf_id, revision=self.revision, device="cpu", trust_remote_code=True
-            )
+            kwargs = dict(device=DEVICE, trust_remote_code=True)
+            if rev is not None:
+                kwargs["revision"] = rev
+            if DEVICE == "cuda":
+                kwargs["model_kwargs"] = {"dtype": DTYPE}
+            self._model = SentenceTransformer(source, **kwargs)
             self._model.eval()
         else:
-            self._tokenizer = AutoTokenizer.from_pretrained(
-                self.hf_id, revision=self.revision, trust_remote_code=True, padding_side="left"
-            )
-            self._model = AutoModel.from_pretrained(
-                self.hf_id, revision=self.revision, trust_remote_code=True, dtype=torch.float32
-            )
-            self._model.eval().to("cpu")
+            tok_kwargs = dict(trust_remote_code=True, padding_side="left")
+            if rev is not None:
+                tok_kwargs["revision"] = rev
+            self._tokenizer = AutoTokenizer.from_pretrained(source, **tok_kwargs)
+            model_kwargs = dict(trust_remote_code=True, dtype=DTYPE)
+            if rev is not None:
+                model_kwargs["revision"] = rev
+            self._model = AutoModel.from_pretrained(source, **model_kwargs)
+            self._model.eval().to(DEVICE)
 
     def _encode_uncached(self, texts: list[str], is_query: bool) -> np.ndarray:
         self._ensure_loaded()
@@ -145,20 +178,34 @@ class Encoder:
                     show_progress_bar=False,
                 )
             return np.asarray(vecs, dtype=np.float32)
-        # raw transformers path: pipizhao/SkillRouter-Embedding-0.6B
+        # raw transformers path: pipizhao/SkillRouter-Embedding-0.6B. Sentence-transformers sorts
+        # by length internally before batching (minimising padding); this hand-rolled path has to
+        # do the same explicitly, or an unsorted batch pads every short text up to the batch's
+        # longest one and wastes exactly as much of the GPU as it wasted the CPU.
         prefixed = [(prompt + " " + t if prompt else t) for t in texts]
+        lengths = [
+            len(self._tokenizer(t, truncation=True, max_length=4096)["input_ids"]) for t in prefixed
+        ]
+        order = sorted(range(len(prefixed)), key=lambda i: lengths[i])
+        sorted_texts = [prefixed[i] for i in order]
         out_chunks = []
-        for i in range(0, len(prefixed), self.batch_size):
-            chunk = prefixed[i : i + self.batch_size]
+        for i in range(0, len(sorted_texts), self.batch_size):
+            chunk = sorted_texts[i : i + self.batch_size]
             encoded = self._tokenizer(
                 chunk, padding=True, truncation=True, max_length=4096, return_tensors="pt"
-            )
+            ).to(DEVICE)
             with torch.no_grad():
                 outputs = self._model(**encoded)
                 pooled = _last_token_pool(outputs.last_hidden_state, encoded["attention_mask"])
                 pooled = torch.nn.functional.normalize(pooled, p=2, dim=1)
-            out_chunks.append(pooled.numpy().astype(np.float32))
-        return np.concatenate(out_chunks, axis=0) if out_chunks else np.zeros((0, 0), dtype=np.float32)
+            out_chunks.append(pooled.float().cpu().numpy().astype(np.float32))
+        sorted_out = (
+            np.concatenate(out_chunks, axis=0) if out_chunks else np.zeros((0, 0), dtype=np.float32)
+        )
+        out = np.zeros_like(sorted_out)
+        for pos, orig_i in enumerate(order):
+            out[orig_i] = sorted_out[pos]
+        return out
 
     def encode(self, texts: list[str], is_query: bool = False) -> np.ndarray:
         """Returns float32 rows, one per input text, unit-normalised (L2 == 1). Cached on disk."""
