@@ -1,0 +1,1949 @@
+{
+  "corpus_report": {
+    "dangling_requires": [],
+    "n_categories": 102,
+    "n_korean_trigger_phrases_dropped": 1044,
+    "n_skills": 501,
+    "total_composable_edges": 1241
+  },
+  "header": {
+    "corpus": "skillretbench",
+    "encoder": {
+      "batch_size": 64,
+      "device": "cuda",
+      "dims": 1024,
+      "dtype": "torch.float16",
+      "encode_time_queries_s": 4.592604398727417,
+      "encode_time_skills_s": 30.526174068450928,
+      "hf_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+      "max_seq_length": 8192,
+      "n_queries": 1250,
+      "n_skills": 501,
+      "quant_error_queries": {
+        "mean_cosine": 0.9973704218864441,
+        "min_cosine": 0.9970898628234863
+      },
+      "quant_error_skills": {
+        "mean_abs_diff": 0.0019665975123643875,
+        "mean_cosine": 0.9973694086074829,
+        "min_cosine": 0.9971858859062195
+      },
+      "revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1"
+    },
+    "n_queries_latin": 1099,
+    "n_queries_run": 1250,
+    "n_skills": 501,
+    "status": "REFERENCE RUN R1 per docs/reports/bakeoff/DENSE-PROGRAM.md v2.1 §6: tooling defaults, w_dense=1, no tuning of anything on this corpus, gates nothing; adoption is decided only for the eventual dev-tuned frozen variant, run once per family on both test corpora",
+    "w_dense_f0": 0,
+    "w_dense_r1": 1
+  },
+  "query_report": {
+    "dropped_empty_gold": 0,
+    "missing_distractor_urn": [],
+    "missing_gold_urn": [],
+    "n_cases": 1250,
+    "n_hangul": 151,
+    "n_hangul_by_setting": {
+      "budget_constrained": 4,
+      "distractor": 39,
+      "multi_skill_composition": 4,
+      "outdated_redundant": 1,
+      "single_skill": 103
+    },
+    "n_queries": 1250
+  },
+  "settings": {
+    "node_root": {
+      "all_queries": {
+        "F0": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.36769786984126984,
+              "mrr": 0.4589488888888889,
+              "n": 1250,
+              "ndcg@1": 0.3648,
+              "ndcg@10": 0.43613832530326635,
+              "ndcg@3": 0.3928792052342069,
+              "ndcg@5": 0.4119745683673046,
+              "recall@1": 0.275976,
+              "recall@10": 0.5192293333333333,
+              "recall@3": 0.39265066666666665,
+              "recall@5": 0.4498586666666667
+            },
+            "budget_constrained": {
+              "map": 0.029172301587301587,
+              "mrr": 0.31367261904761906,
+              "n": 200,
+              "ndcg@1": 0.19,
+              "ndcg@10": 0.15524534110067195,
+              "ndcg@3": 0.15648040955482934,
+              "ndcg@5": 0.1533586915444693,
+              "recall@1": 0.0076,
+              "recall@10": 0.06060000000000001,
+              "recall@3": 0.0174,
+              "recall@5": 0.0292
+            },
+            "distractor": {
+              "map": 0.27943253968253967,
+              "mrr": 0.27943253968253967,
+              "n": 300,
+              "ndcg@1": 0.21333333333333335,
+              "ndcg@10": 0.3123917243245253,
+              "ndcg@3": 0.27424414613095477,
+              "ndcg@5": 0.29748051773274437,
+              "recall@1": 0.21333333333333335,
+              "recall@10": 0.4166666666666667,
+              "recall@3": 0.31333333333333335,
+              "recall@5": 0.37
+            },
+            "multi_skill_composition": {
+              "map": 0.4147548611111111,
+              "mrr": 0.7005734126984128,
+              "n": 200,
+              "ndcg@1": 0.565,
+              "ndcg@10": 0.5484276257921765,
+              "ndcg@3": 0.45860666803395256,
+              "ndcg@5": 0.4827517630350271,
+              "recall@1": 0.19225,
+              "recall@10": 0.6295833333333334,
+              "recall@3": 0.38166666666666665,
+              "recall@5": 0.48741666666666666
+            },
+            "outdated_redundant": {
+              "map": 0.7209497354497355,
+              "mrr": 0.7209497354497355,
+              "n": 150,
+              "ndcg@1": 0.6133333333333333,
+              "ndcg@10": 0.770880760260986,
+              "ndcg@3": 0.7274573004761944,
+              "ndcg@5": 0.7443922044602044,
+              "recall@1": 0.6133333333333333,
+              "recall@10": 0.9266666666666666,
+              "recall@3": 0.8066666666666666,
+              "recall@5": 0.8466666666666667
+            },
+            "single_skill": {
+              "map": 0.4471617063492064,
+              "mrr": 0.4471617063492064,
+              "n": 400,
+              "ndcg@1": 0.3725,
+              "ndcg@10": 0.48772170478501947,
+              "ndcg@3": 0.44172438028571664,
+              "ndcg@5": 0.46710783388594385,
+              "recall@1": 0.3725,
+              "recall@10": 0.6175,
+              "recall@3": 0.49,
+              "recall@5": 0.5525
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": 0.0,
+              "abstention_recall": NaN,
+              "all_required@4": 0.375,
+              "completeness@4": 0.5275,
+              "coverage": 0.96,
+              "distractor_rate@4": 0.39666666666666667,
+              "hit@1": 0.38,
+              "n": 1250,
+              "n_answerable": 1250,
+              "n_answered": 1200,
+              "ndcg@10": 0.46345301252802407,
+              "recall@8": 0.5157666666666666
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.23,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.19,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.17291636108408995,
+              "recall@8": 0.0506
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.2833333333333333,
+              "completeness@4": 0.3433333333333333,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.39666666666666667,
+              "hit@1": 0.21333333333333335,
+              "n": 300,
+              "n_answerable": 300,
+              "n_answered": 300,
+              "ndcg@10": 0.3123917243245253,
+              "recall@8": 0.4
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.355,
+              "completeness@4": 0.755,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.565,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.585610147831488,
+              "recall@8": 0.589
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.7266666666666667,
+              "completeness@4": 0.84,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.6133333333333333,
+              "n": 150,
+              "n_answerable": 150,
+              "n_answered": 150,
+              "ndcg@10": 0.770880760260986,
+              "recall@8": 0.9133333333333333
+            },
+            "single_skill": {
+              "abstention_precision": 0.0,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5285714285714286,
+              "completeness@4": 0.5914285714285714,
+              "coverage": 0.875,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.4257142857142857,
+              "n": 400,
+              "n_answerable": 400,
+              "n_answered": 350,
+              "ndcg@10": 0.5573962340400223,
+              "recall@8": 0.6685714285714286
+            }
+          }
+        },
+        "R1-encoder": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.42923700317460317,
+              "mrr": 0.5500990476190476,
+              "n": 1250,
+              "ndcg@1": 0.4488,
+              "ndcg@10": 0.512855504320611,
+              "ndcg@3": 0.4770409368967642,
+              "ndcg@5": 0.49035146541508595,
+              "recall@1": 0.31232,
+              "recall@10": 0.611016,
+              "recall@3": 0.468448,
+              "recall@5": 0.5281413333333332
+            },
+            "budget_constrained": {
+              "map": 0.047717777777777776,
+              "mrr": 0.5501071428571429,
+              "n": 200,
+              "ndcg@1": 0.45,
+              "ndcg@10": 0.22781674813555466,
+              "ndcg@3": 0.31089492609489267,
+              "ndcg@5": 0.27000906360024407,
+              "recall@1": 0.018000000000000002,
+              "recall@10": 0.0756,
+              "recall@3": 0.0328,
+              "recall@5": 0.0458
+            },
+            "distractor": {
+              "map": 0.2548862433862434,
+              "mrr": 0.2548862433862434,
+              "n": 300,
+              "ndcg@1": 0.14,
+              "ndcg@10": 0.3188327398917825,
+              "ndcg@3": 0.24194180458333672,
+              "ndcg@5": 0.28311043118765916,
+              "recall@1": 0.14,
+              "recall@10": 0.5233333333333333,
+              "recall@3": 0.31333333333333335,
+              "recall@5": 0.41333333333333333
+            },
+            "multi_skill_composition": {
+              "map": 0.487075,
+              "mrr": 0.7400734126984128,
+              "n": 200,
+              "ndcg@1": 0.635,
+              "ndcg@10": 0.6157989861111014,
+              "ndcg@3": 0.5202646477955838,
+              "ndcg@5": 0.5371860210229347,
+              "recall@1": 0.214,
+              "recall@10": 0.70825,
+              "recall@3": 0.44,
+              "recall@5": 0.5400833333333334
+            },
+            "outdated_redundant": {
+              "map": 0.8347301587301588,
+              "mrr": 0.8347301587301588,
+              "n": 150,
+              "ndcg@1": 0.72,
+              "ndcg@10": 0.8733566360691903,
+              "ndcg@3": 0.860234022309529,
+              "ndcg@5": 0.8711344138469682,
+              "recall@1": 0.72,
+              "recall@10": 0.9866666666666667,
+              "recall@3": 0.9533333333333334,
+              "recall@5": 0.98
+            },
+            "single_skill": {
+              "map": 0.569780753968254,
+              "mrr": 0.569780753968254,
+              "n": 400,
+              "ndcg@1": 0.485,
+              "ndcg@10": 0.614232290433798,
+              "ndcg@3": 0.5711290290535739,
+              "ndcg@5": 0.5897425585271967,
+              "recall@1": 0.485,
+              "recall@10": 0.755,
+              "recall@3": 0.635,
+              "recall@5": 0.68
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.3712,
+              "completeness@4": 0.624,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.2966666666666667,
+              "hit@1": 0.4488,
+              "n": 1250,
+              "n_answerable": 1250,
+              "n_answered": 1250,
+              "ndcg@10": 0.5254587486881008,
+              "recall@8": 0.5887146666666666
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.52,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.45,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.2894091077500874,
+              "recall@8": 0.0638
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.17333333333333334,
+              "completeness@4": 0.37,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.2966666666666667,
+              "hit@1": 0.14,
+              "n": 300,
+              "n_answerable": 300,
+              "n_answered": 300,
+              "ndcg@10": 0.3188327398917825,
+              "recall@8": 0.49
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.32,
+              "completeness@4": 0.775,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.635,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.6329769037933806,
+              "recall@8": 0.6656666666666666
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.82,
+              "completeness@4": 0.9666666666666667,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.72,
+              "n": 150,
+              "n_answerable": 150,
+              "n_answered": 150,
+              "ndcg@10": 0.8733566360691903,
+              "recall@8": 0.9866666666666667
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5625,
+              "completeness@4": 0.6625,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.485,
+              "n": 400,
+              "n_answerable": 400,
+              "n_answered": 400,
+              "ndcg@10": 0.614232290433798,
+              "recall@8": 0.7375
+            }
+          }
+        }
+      },
+      "coverage": {
+        "OVERALL": {
+          "coverage": 0.08758782201405152,
+          "n_gold_missed_by_bm25_top50": 4270,
+          "n_recovered_by_encoder": 374
+        },
+        "budget_constrained": {
+          "coverage": 0.08824273072060683,
+          "n_gold_missed_by_bm25_top50": 3955,
+          "n_recovered_by_encoder": 349
+        },
+        "distractor": {
+          "coverage": 0.08130081300813008,
+          "n_gold_missed_by_bm25_top50": 123,
+          "n_recovered_by_encoder": 10
+        },
+        "multi_skill_composition": {
+          "coverage": 0.056179775280898875,
+          "n_gold_missed_by_bm25_top50": 89,
+          "n_recovered_by_encoder": 5
+        },
+        "outdated_redundant": {
+          "coverage": 0.0,
+          "n_gold_missed_by_bm25_top50": 1,
+          "n_recovered_by_encoder": 0
+        },
+        "single_skill": {
+          "coverage": 0.09803921568627451,
+          "n_gold_missed_by_bm25_top50": 102,
+          "n_recovered_by_encoder": 10
+        }
+      },
+      "elapsed_s": {
+        "F0": 4.452966213226318,
+        "R1-encoder": 8.26144289970398
+      },
+      "gates_vs_f0": {
+        "OVERALL": {
+          "HSR@4": {
+            "b1": 0.39666666666666667,
+            "delta": -0.09999999999999998,
+            "dense": 0.2966666666666667,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.02833333333333332,
+            "ci_lo": -0.015000000000000013,
+            "delta": 0.006666666666666654,
+            "gate_bundle_completeness": false,
+            "n": 1200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.11249999999999999,
+            "ci_lo": 0.057499999999999996,
+            "delta": 0.08333333333333331,
+            "gate_primary_quality": true,
+            "n": 1200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.4449148920269031,
+            "delta": 0.08054385666119773,
+            "dense": 0.5254587486881008,
+            "gate_primary_quality": true
+          }
+        },
+        "budget_constrained": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.0,
+            "ci_lo": 0.0,
+            "delta": 0.0,
+            "gate_bundle_completeness": false,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.32499999999999996,
+            "ci_lo": 0.19999999999999998,
+            "delta": 0.26,
+            "gate_primary_quality": true,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.17291636108408995,
+            "delta": 0.11649274666599743,
+            "dense": 0.2894091077500874,
+            "gate_primary_quality": true
+          }
+        },
+        "distractor": {
+          "HSR@4": {
+            "b1": 0.39666666666666667,
+            "delta": -0.09999999999999998,
+            "dense": 0.2966666666666667,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": -0.06666666666666668,
+            "ci_lo": -0.15000000000000002,
+            "delta": -0.10999999999999999,
+            "gate_bundle_completeness": false,
+            "n": 300,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": -0.03,
+            "ci_lo": -0.11333333333333331,
+            "delta": -0.07333333333333333,
+            "gate_primary_quality": false,
+            "n": 300,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.3123917243245253,
+            "delta": 0.0064410155672572356,
+            "dense": 0.3188327398917825,
+            "gate_primary_quality": true
+          }
+        },
+        "multi_skill_composition": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.015000000000000013,
+            "ci_lo": -0.08499999999999996,
+            "delta": -0.034999999999999976,
+            "gate_bundle_completeness": false,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.1299999999999999,
+            "ci_lo": 0.010000000000000009,
+            "delta": 0.07000000000000006,
+            "gate_primary_quality": true,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.585610147831488,
+            "delta": 0.04736675596189255,
+            "dense": 0.6329769037933806,
+            "gate_primary_quality": true
+          }
+        },
+        "outdated_redundant": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.17999999999999994,
+            "ci_lo": 0.00666666666666671,
+            "delta": 0.09333333333333327,
+            "gate_bundle_completeness": false,
+            "n": 150,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.20666666666666667,
+            "ci_lo": 0.013333333333333308,
+            "delta": 0.10666666666666669,
+            "gate_primary_quality": true,
+            "n": 150,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.770880760260986,
+            "delta": 0.10247587580820439,
+            "dense": 0.8733566360691903,
+            "gate_primary_quality": true
+          }
+        },
+        "single_skill": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.15142857142857147,
+            "ci_lo": 0.0485714285714286,
+            "delta": 0.09714285714285709,
+            "gate_bundle_completeness": true,
+            "n": 350,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.16285714285714287,
+            "ci_lo": 0.06285714285714283,
+            "delta": 0.11428571428571432,
+            "gate_primary_quality": true,
+            "n": 350,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.48772170478501947,
+            "delta": 0.12651058564877854,
+            "dense": 0.614232290433798,
+            "gate_primary_quality": true
+          }
+        }
+      },
+      "hsr_bootstrap_vs_f0": {
+        "OVERALL": {
+          "ci_hi": -0.03999999999999998,
+          "ci_lo": -0.15666666666666668,
+          "delta": -0.09999999999999998,
+          "n": 300,
+          "n_resamples": 1000
+        },
+        "budget_constrained": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "distractor": {
+          "ci_hi": -0.03999999999999998,
+          "ci_lo": -0.15666666666666668,
+          "delta": -0.09999999999999998,
+          "n": 300,
+          "n_resamples": 1000
+        },
+        "multi_skill_composition": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "outdated_redundant": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "single_skill": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        }
+      },
+      "latin_only": {
+        "F0": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.4086914691566648,
+              "mrr": 0.510345263370741,
+              "n": 1099,
+              "ndcg@1": 0.4067333939945405,
+              "ndcg@10": 0.4841667639794673,
+              "ndcg@3": 0.437130695396936,
+              "ndcg@5": 0.4578179698272753,
+              "recall@1": 0.3080588413709433,
+              "recall@10": 0.5739733090688505,
+              "recall@3": 0.43680012132241436,
+              "recall@5": 0.4994601152562936
+            },
+            "budget_constrained": {
+              "map": 0.029026158082280533,
+              "mrr": 0.3073189990281827,
+              "n": 196,
+              "ndcg@1": 0.1836734693877551,
+              "ndcg@10": 0.15419049867042225,
+              "ndcg@3": 0.15337470687731883,
+              "ndcg@5": 0.15059704836013987,
+              "recall@1": 0.007346938775510204,
+              "recall@10": 0.06061224489795919,
+              "recall@3": 0.017142857142857144,
+              "recall@5": 0.02877551020408163
+            },
+            "distractor": {
+              "map": 0.3199096880131363,
+              "mrr": 0.3199096880131363,
+              "n": 261,
+              "ndcg@1": 0.24521072796934865,
+              "ndcg@10": 0.35715523868719384,
+              "ndcg@3": 0.31330744766010127,
+              "ndcg@5": 0.34001592076560655,
+              "recall@1": 0.24521072796934865,
+              "recall@10": 0.47509578544061304,
+              "recall@3": 0.3563218390804598,
+              "recall@5": 0.421455938697318
+            },
+            "multi_skill_composition": {
+              "map": 0.41042122206025267,
+              "mrr": 0.7021157272432783,
+              "n": 196,
+              "ndcg@1": 0.5714285714285714,
+              "ndcg@10": 0.5441708583695661,
+              "ndcg@3": 0.4586455633767724,
+              "ndcg@5": 0.47928782719388513,
+              "recall@1": 0.19447278911564625,
+              "recall@10": 0.6220238095238095,
+              "recall@3": 0.3810374149659864,
+              "recall@5": 0.48095238095238096
+            },
+            "outdated_redundant": {
+              "map": 0.7241104719292639,
+              "mrr": 0.7241104719292639,
+              "n": 149,
+              "ndcg@1": 0.6174496644295302,
+              "ndcg@10": 0.7731640099400973,
+              "ndcg@3": 0.7323395642377796,
+              "ndcg@5": 0.7464976785970286,
+              "recall@1": 0.6174496644295302,
+              "recall@10": 0.9261744966442953,
+              "recall@3": 0.8120805369127517,
+              "recall@5": 0.8456375838926175
+            },
+            "single_skill": {
+              "map": 0.5778833306611084,
+              "mrr": 0.5778833306611084,
+              "n": 297,
+              "ndcg@1": 0.48148148148148145,
+              "ndcg@10": 0.6289612554045952,
+              "ndcg@3": 0.5709051257936538,
+              "ndcg@5": 0.6050915952889094,
+              "recall@1": 0.48148148148148145,
+              "recall@10": 0.7912457912457912,
+              "recall@3": 0.632996632996633,
+              "recall@5": 0.7171717171717171
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.4012738853503185,
+              "completeness@4": 0.565059144676979,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.44061302681992337,
+              "hit@1": 0.4067333939945405,
+              "n": 1099,
+              "n_answerable": 1099,
+              "n_answered": 1099,
+              "ndcg@10": 0.494429040050012,
+              "recall@8": 0.5502092811646951
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.23469387755102042,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.1836734693877551,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.17187236447825624,
+              "recall@8": 0.05040816326530612
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.3218390804597701,
+              "completeness@4": 0.39080459770114945,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.44061302681992337,
+              "hit@1": 0.24521072796934865,
+              "n": 261,
+              "n_answerable": 261,
+              "n_answered": 261,
+              "ndcg@10": 0.35715523868719384,
+              "recall@8": 0.4559386973180077
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.3622448979591837,
+              "completeness@4": 0.7602040816326531,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.5714285714285714,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.5840310405287145,
+              "recall@8": 0.5806122448979592
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.7315436241610739,
+              "completeness@4": 0.8389261744966443,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.6174496644295302,
+              "n": 149,
+              "n_answerable": 149,
+              "n_answered": 149,
+              "ndcg@10": 0.7731640099400974,
+              "recall@8": 0.912751677852349
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5959595959595959,
+              "completeness@4": 0.67003367003367,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.48148148148148145,
+              "n": 297,
+              "n_answerable": 297,
+              "n_answered": 297,
+              "ndcg@10": 0.6289612554045952,
+              "recall@8": 0.7609427609427609
+            }
+          }
+        },
+        "R1-encoder": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.46550252755029825,
+              "mrr": 0.5998393200167541,
+              "n": 1099,
+              "ndcg@1": 0.4886260236578708,
+              "ndcg@10": 0.5559589317820862,
+              "ndcg@3": 0.5204599624793619,
+              "ndcg@5": 0.5340829728728145,
+              "recall@1": 0.3386381558993024,
+              "recall@10": 0.6556232939035487,
+              "recall@3": 0.5101668183196845,
+              "recall@5": 0.5730664240218379
+            },
+            "budget_constrained": {
+              "map": 0.04786167800453515,
+              "mrr": 0.5460276967930029,
+              "n": 196,
+              "ndcg@1": 0.44387755102040816,
+              "ndcg@10": 0.22786293200315164,
+              "ndcg@3": 0.31005688286178706,
+              "ndcg@5": 0.269658811360794,
+              "recall@1": 0.017755102040816328,
+              "recall@10": 0.07591836734693878,
+              "recall@3": 0.03285714285714286,
+              "recall@5": 0.04591836734693878
+            },
+            "distractor": {
+              "map": 0.28914127592288513,
+              "mrr": 0.28914127592288513,
+              "n": 261,
+              "ndcg@1": 0.15708812260536398,
+              "ndcg@10": 0.3626429960441944,
+              "ndcg@3": 0.2742626106321878,
+              "ndcg@5": 0.32158287109692624,
+              "recall@1": 0.15708812260536398,
+              "recall@10": 0.5977011494252874,
+              "recall@3": 0.3563218390804598,
+              "recall@5": 0.47126436781609193
+            },
+            "multi_skill_composition": {
+              "map": 0.4796892209264658,
+              "mrr": 0.7347687884677682,
+              "n": 196,
+              "ndcg@1": 0.6275510204081632,
+              "ndcg@10": 0.6093315297731364,
+              "ndcg@3": 0.5134953743931046,
+              "ndcg@5": 0.5312533512966134,
+              "recall@1": 0.21267006802721086,
+              "recall@10": 0.702295918367347,
+              "recall@3": 0.43486394557823127,
+              "recall@5": 0.5346938775510204
+            },
+            "outdated_redundant": {
+              "map": 0.8386545222115692,
+              "mrr": 0.8386545222115692,
+              "n": 149,
+              "ndcg@1": 0.7248322147651006,
+              "ndcg@10": 0.8763276433040614,
+              "ndcg@3": 0.8660074050095928,
+              "ndcg@5": 0.8740905068387371,
+              "recall@1": 0.7248322147651006,
+              "recall@10": 0.9865771812080537,
+              "recall@3": 0.959731543624161,
+              "recall@5": 0.9798657718120806
+            },
+            "single_skill": {
+              "map": 0.6995350328683662,
+              "mrr": 0.6995350328683662,
+              "n": 297,
+              "ndcg@1": 0.5993265993265994,
+              "ndcg@10": 0.7464178811465334,
+              "ndcg@3": 0.7069077832371365,
+              "ndcg@5": 0.7266188162663355,
+              "recall@1": 0.5993265993265994,
+              "recall@10": 0.8922558922558923,
+              "recall@3": 0.7845117845117845,
+              "recall@5": 0.8316498316498316
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.4021838034576888,
+              "completeness@4": 0.6824385805277525,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.31800766283524906,
+              "hit@1": 0.4886260236578708,
+              "n": 1099,
+              "n_answerable": 1099,
+              "n_answered": 1099,
+              "ndcg@10": 0.5702530688367079,
+              "recall@8": 0.6320776463451623
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.5153061224489796,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.44387755102040816,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.28828401460607317,
+              "recall@8": 0.06387755102040817
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.19540229885057472,
+              "completeness@4": 0.421455938697318,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.31800766283524906,
+              "hit@1": 0.15708812260536398,
+              "n": 261,
+              "n_answerable": 261,
+              "n_answered": 261,
+              "ndcg@10": 0.3626429960441944,
+              "recall@8": 0.5593869731800766
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.3163265306122449,
+              "completeness@4": 0.7755102040816326,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.6275510204081632,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.6290597156550577,
+              "recall@8": 0.6588435374149659
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.825503355704698,
+              "completeness@4": 0.9664429530201343,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7248322147651006,
+              "n": 149,
+              "n_answerable": 149,
+              "n_answered": 149,
+              "ndcg@10": 0.8763276433040615,
+              "recall@8": 0.9865771812080537
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.6936026936026936,
+              "completeness@4": 0.8181818181818182,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.5993265993265994,
+              "n": 297,
+              "n_answerable": 297,
+              "n_answered": 297,
+              "ndcg@10": 0.7464178811465334,
+              "recall@8": 0.8754208754208754
+            }
+          }
+        }
+      }
+    },
+    "node_scoped": {
+      "all_queries": {
+        "F0": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.5766970116402116,
+              "mrr": 0.7602371428571428,
+              "n": 1250,
+              "ndcg@1": 0.6744,
+              "ndcg@10": 0.6761231825763719,
+              "ndcg@3": 0.6736683611150444,
+              "ndcg@5": 0.6734000997997791,
+              "recall@1": 0.4758453333333333,
+              "recall@10": 0.705624,
+              "recall@3": 0.6121840000000001,
+              "recall@5": 0.649904
+            },
+            "budget_constrained": {
+              "map": 0.1281740476190476,
+              "mrr": 0.8281785714285713,
+              "n": 200,
+              "ndcg@1": 0.73,
+              "ndcg@10": 0.4580352361304028,
+              "ndcg@3": 0.5927382025335273,
+              "ndcg@5": 0.5366857408518626,
+              "recall@1": 0.0292,
+              "recall@10": 0.1594,
+              "recall@3": 0.0664,
+              "recall@5": 0.0974
+            },
+            "distractor": {
+              "map": 0.6454047619047619,
+              "mrr": 0.6454047619047619,
+              "n": 300,
+              "ndcg@1": 0.5333333333333333,
+              "ndcg@10": 0.6972316824612754,
+              "ndcg@3": 0.6479727963690519,
+              "ndcg@5": 0.6729369148366785,
+              "recall@1": 0.5333333333333333,
+              "recall@10": 0.86,
+              "recall@3": 0.7233333333333334,
+              "recall@5": 0.7833333333333333
+            },
+            "multi_skill_composition": {
+              "map": 0.43992037037037035,
+              "mrr": 0.8870416666666666,
+              "n": 200,
+              "ndcg@1": 0.82,
+              "ndcg@10": 0.5669630818847458,
+              "ndcg@3": 0.5614509338104848,
+              "ndcg@5": 0.5510439645581141,
+              "recall@1": 0.2798333333333333,
+              "recall@10": 0.5357500000000001,
+              "recall@3": 0.44975000000000004,
+              "recall@5": 0.49950000000000006
+            },
+            "outdated_redundant": {
+              "map": 0.8648412698412699,
+              "mrr": 0.8648412698412699,
+              "n": 150,
+              "ndcg@1": 0.7866666666666666,
+              "ndcg@10": 0.8937275942936541,
+              "ndcg@3": 0.8872991737142888,
+              "ndcg@5": 0.8872991737142888,
+              "recall@1": 0.7866666666666666,
+              "recall@10": 0.98,
+              "recall@3": 0.96,
+              "recall@5": 0.96
+            },
+            "single_skill": {
+              "map": 0.7097619047619048,
+              "mrr": 0.7097619047619048,
+              "n": 400,
+              "ndcg@1": 0.6375,
+              "ndcg@10": 0.7423141768375112,
+              "ndcg@3": 0.7094022728928603,
+              "ndcg@5": 0.7230705828989542,
+              "recall@1": 0.6375,
+              "recall@10": 0.845,
+              "recall@3": 0.7525,
+              "recall@5": 0.785
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": 0.0,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5658333333333333,
+              "completeness@4": 0.8525,
+              "coverage": 0.96,
+              "distractor_rate@4": 0.7433333333333333,
+              "hit@1": 0.7025,
+              "n": 1250,
+              "n_answerable": 1250,
+              "n_answered": 1200,
+              "ndcg@10": 0.7296261578239646,
+              "recall@8": 0.7152916666666667
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.77,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.73,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.5039685538384029,
+              "recall@8": 0.136
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.6866666666666666,
+              "completeness@4": 0.7633333333333333,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.7433333333333333,
+              "hit@1": 0.5333333333333333,
+              "n": 300,
+              "n_answerable": 300,
+              "n_answered": 300,
+              "ndcg@10": 0.6972316824612754,
+              "recall@8": 0.83
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.155,
+              "completeness@4": 0.925,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.82,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.6730168200182085,
+              "recall@8": 0.52075
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.94,
+              "completeness@4": 0.96,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7866666666666666,
+              "n": 150,
+              "n_answerable": 150,
+              "n_answered": 150,
+              "ndcg@10": 0.8937275942936541,
+              "recall@8": 0.98
+            },
+            "single_skill": {
+              "abstention_precision": 0.0,
+              "abstention_recall": NaN,
+              "all_required@4": 0.86,
+              "completeness@4": 0.8885714285714286,
+              "coverage": 0.875,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7285714285714285,
+              "n": 400,
+              "n_answerable": 400,
+              "n_answered": 350,
+              "ndcg@10": 0.8483590592428699,
+              "recall@8": 0.9457142857142857
+            }
+          }
+        },
+        "R1-encoder": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.6409050687830687,
+              "mrr": 0.8315377777777778,
+              "n": 1250,
+              "ndcg@1": 0.7544,
+              "ndcg@10": 0.7468613246676771,
+              "ndcg@3": 0.7479422226934387,
+              "ndcg@5": 0.7439681878911767,
+              "recall@1": 0.5368453333333333,
+              "recall@10": 0.7717733333333333,
+              "recall@3": 0.67048,
+              "recall@5": 0.7109893333333334
+            },
+            "budget_constrained": {
+              "map": 0.15263412698412698,
+              "mrr": 0.8995892857142858,
+              "n": 200,
+              "ndcg@1": 0.83,
+              "ndcg@10": 0.5225308476809659,
+              "ndcg@3": 0.6938000910605184,
+              "ndcg@5": 0.6080422205886186,
+              "recall@1": 0.0332,
+              "recall@10": 0.182,
+              "recall@3": 0.079,
+              "recall@5": 0.1096
+            },
+            "distractor": {
+              "map": 0.7019391534391535,
+              "mrr": 0.7019391534391535,
+              "n": 300,
+              "ndcg@1": 0.58,
+              "ndcg@10": 0.7630035338660771,
+              "ndcg@3": 0.6984092288809568,
+              "ndcg@5": 0.7282392264394516,
+              "recall@1": 0.58,
+              "recall@10": 0.9566666666666667,
+              "recall@3": 0.7766666666666666,
+              "recall@5": 0.85
+            },
+            "multi_skill_composition": {
+              "map": 0.46841739417989414,
+              "mrr": 0.9129166666666667,
+              "n": 200,
+              "ndcg@1": 0.86,
+              "ndcg@10": 0.5882515486754304,
+              "ndcg@3": 0.5862657628984601,
+              "ndcg@5": 0.5759807745230695,
+              "recall@1": 0.2970833333333333,
+              "recall@10": 0.5415833333333333,
+              "recall@3": 0.46649999999999997,
+              "recall@5": 0.5140833333333333
+            },
+            "outdated_redundant": {
+              "map": 0.9357777777777778,
+              "mrr": 0.9357777777777778,
+              "n": 150,
+              "ndcg@1": 0.8866666666666667,
+              "ndcg@10": 0.9521290864415922,
+              "ndcg@3": 0.9438077136190499,
+              "ndcg@5": 0.9521290864415922,
+              "recall@1": 0.8866666666666667,
+              "recall@10": 1.0,
+              "recall@3": 0.98,
+              "recall@5": 1.0
+            },
+            "single_skill": {
+              "map": 0.8149315476190476,
+              "mrr": 0.8149315476190476,
+              "n": 400,
+              "ndcg@1": 0.745,
+              "ndcg@10": 0.8492493835931377,
+              "ndcg@3": 0.8195517046696452,
+              "ndcg@5": 0.8296612623588974,
+              "recall@1": 0.745,
+              "recall@10": 0.9575,
+              "recall@3": 0.8725,
+              "recall@5": 0.8975
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5792,
+              "completeness@4": 0.8928,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.7366666666666667,
+              "hit@1": 0.7544,
+              "n": 1250,
+              "n_answerable": 1250,
+              "n_answered": 1250,
+              "ndcg@10": 0.7735955850355514,
+              "recall@8": 0.7581786666666667
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.925,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.83,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.5901115131281951,
+              "recall@8": 0.1562
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.7166666666666667,
+              "completeness@4": 0.81,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.7366666666666667,
+              "hit@1": 0.58,
+              "n": 300,
+              "n_answerable": 300,
+              "n_answered": 300,
+              "ndcg@10": 0.7630035338660771,
+              "recall@8": 0.9366666666666666
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.15,
+              "completeness@4": 0.93,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.86,
+              "n": 200,
+              "n_answerable": 200,
+              "n_answered": 200,
+              "ndcg@10": 0.6877600105274156,
+              "recall@8": 0.5324166666666666
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.9533333333333334,
+              "completeness@4": 0.9933333333333333,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.8866666666666667,
+              "n": 150,
+              "n_answerable": 150,
+              "n_answered": 150,
+              "ndcg@10": 0.9521290864415922,
+              "recall@8": 1.0
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.84,
+              "completeness@4": 0.8825,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.745,
+              "n": 400,
+              "n_answerable": 400,
+              "n_answered": 400,
+              "ndcg@10": 0.8492493835931377,
+              "recall@8": 0.9475
+            }
+          }
+        }
+      },
+      "coverage": {
+        "OVERALL": {
+          "coverage": 0.11495884189611127,
+          "n_gold_missed_by_bm25_top50": 3523,
+          "n_recovered_by_encoder": 405
+        },
+        "budget_constrained": {
+          "coverage": 0.11625708884688091,
+          "n_gold_missed_by_bm25_top50": 3174,
+          "n_recovered_by_encoder": 369
+        },
+        "distractor": {
+          "coverage": NaN,
+          "n_gold_missed_by_bm25_top50": 0,
+          "n_recovered_by_encoder": 0
+        },
+        "multi_skill_composition": {
+          "coverage": 0.0,
+          "n_gold_missed_by_bm25_top50": 299,
+          "n_recovered_by_encoder": 0
+        },
+        "outdated_redundant": {
+          "coverage": NaN,
+          "n_gold_missed_by_bm25_top50": 0,
+          "n_recovered_by_encoder": 0
+        },
+        "single_skill": {
+          "coverage": 0.72,
+          "n_gold_missed_by_bm25_top50": 50,
+          "n_recovered_by_encoder": 36
+        }
+      },
+      "elapsed_s": {
+        "F0": 1.3409082889556885,
+        "R1-encoder": 1.6417350769042969
+      },
+      "gates_vs_f0": {
+        "OVERALL": {
+          "HSR@4": {
+            "b1": 0.7433333333333333,
+            "delta": -0.006666666666666599,
+            "dense": 0.7366666666666667,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.03166666666666662,
+            "ci_lo": 0.005833333333333246,
+            "delta": 0.018333333333333313,
+            "gate_bundle_completeness": false,
+            "n": 1200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.09166666666666667,
+            "ci_lo": 0.04916666666666669,
+            "delta": 0.06999999999999995,
+            "gate_primary_quality": true,
+            "n": 1200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.700441111511006,
+            "delta": 0.0731544735245454,
+            "dense": 0.7735955850355514,
+            "gate_primary_quality": true
+          }
+        },
+        "budget_constrained": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.0,
+            "ci_lo": 0.0,
+            "delta": 0.0,
+            "gate_bundle_completeness": false,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.15500000000000003,
+            "ci_lo": 0.04500000000000004,
+            "delta": 0.09999999999999998,
+            "gate_primary_quality": true,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.5039685538384029,
+            "delta": 0.08614295928979221,
+            "dense": 0.5901115131281951,
+            "gate_primary_quality": true
+          }
+        },
+        "distractor": {
+          "HSR@4": {
+            "b1": 0.7433333333333333,
+            "delta": -0.006666666666666599,
+            "dense": 0.7366666666666667,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.06333333333333335,
+            "ci_lo": -0.0033333333333332993,
+            "delta": 0.030000000000000027,
+            "gate_bundle_completeness": false,
+            "n": 300,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.08666666666666667,
+            "ci_lo": 0.0033333333333334103,
+            "delta": 0.046666666666666634,
+            "gate_primary_quality": true,
+            "n": 300,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.6972316824612754,
+            "delta": 0.06577185140480168,
+            "dense": 0.7630035338660771,
+            "gate_primary_quality": true
+          }
+        },
+        "multi_skill_composition": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.0,
+            "ci_lo": -0.015000000000000013,
+            "delta": -0.0050000000000000044,
+            "gate_bundle_completeness": false,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.08000000000000007,
+            "ci_lo": -0.0050000000000000044,
+            "delta": 0.040000000000000036,
+            "gate_primary_quality": true,
+            "n": 200,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.6730168200182085,
+            "delta": 0.014743190509207138,
+            "dense": 0.6877600105274156,
+            "gate_primary_quality": true
+          }
+        },
+        "outdated_redundant": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.053333333333333344,
+            "ci_lo": -0.026666666666666616,
+            "delta": 0.01333333333333342,
+            "gate_bundle_completeness": false,
+            "n": 150,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.17333333333333334,
+            "ci_lo": 0.033333333333333326,
+            "delta": 0.10000000000000009,
+            "gate_primary_quality": true,
+            "n": 150,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.8937275942936541,
+            "delta": 0.058401492147938106,
+            "dense": 0.9521290864415922,
+            "gate_primary_quality": true
+          }
+        },
+        "single_skill": {
+          "HSR@4": {
+            "b1": NaN,
+            "delta": NaN,
+            "dense": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          },
+          "all_required@4": {
+            "ci_hi": 0.06857142857142862,
+            "ci_lo": 0.0,
+            "delta": 0.03428571428571425,
+            "gate_bundle_completeness": false,
+            "n": 350,
+            "n_resamples": 1000
+          },
+          "hit@1": {
+            "ci_hi": 0.11428571428571432,
+            "ci_lo": 0.037142857142857144,
+            "delta": 0.07714285714285718,
+            "gate_primary_quality": true,
+            "n": 350,
+            "n_resamples": 1000
+          },
+          "ndcg@10": {
+            "b1": 0.7423141768375112,
+            "delta": 0.10693520675562651,
+            "dense": 0.8492493835931377,
+            "gate_primary_quality": true
+          }
+        }
+      },
+      "hsr_bootstrap_vs_f0": {
+        "OVERALL": {
+          "ci_hi": 0.020000000000000018,
+          "ci_lo": -0.033333333333333326,
+          "delta": -0.006666666666666599,
+          "n": 300,
+          "n_resamples": 1000
+        },
+        "budget_constrained": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "distractor": {
+          "ci_hi": 0.020000000000000018,
+          "ci_lo": -0.033333333333333326,
+          "delta": -0.006666666666666599,
+          "n": 300,
+          "n_resamples": 1000
+        },
+        "multi_skill_composition": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "outdated_redundant": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        },
+        "single_skill": {
+          "ci_hi": NaN,
+          "ci_lo": NaN,
+          "delta": NaN,
+          "n": 0,
+          "n_resamples": 1000
+        }
+      },
+      "latin_only": {
+        "F0": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.6080270616385266,
+              "mrr": 0.8111042506174445,
+              "n": 1099,
+              "ndcg@1": 0.7224749772520473,
+              "ndcg@10": 0.7161569630827033,
+              "ndcg@3": 0.7162615121480254,
+              "ndcg@5": 0.714656946835604,
+              "recall@1": 0.5018835304822566,
+              "recall@10": 0.7386290567182286,
+              "recall@3": 0.6432696390658175,
+              "recall@5": 0.6816226872914771
+            },
+            "budget_constrained": {
+              "map": 0.13007555879494653,
+              "mrr": 0.8272230320699707,
+              "n": 196,
+              "ndcg@1": 0.7295918367346939,
+              "ndcg@10": 0.4633056606291468,
+              "ndcg@3": 0.5961414409064864,
+              "ndcg@5": 0.5413555167847813,
+              "recall@1": 0.029183673469387755,
+              "recall@10": 0.16183673469387755,
+              "recall@3": 0.06693877551020408,
+              "recall@5": 0.09857142857142857
+            },
+            "distractor": {
+              "map": 0.6766420361247948,
+              "mrr": 0.6766420361247948,
+              "n": 261,
+              "ndcg@1": 0.5593869731800766,
+              "ndcg@10": 0.7315531846832677,
+              "ndcg@3": 0.6790696940339399,
+              "ndcg@5": 0.7061139813221182,
+              "recall@1": 0.5593869731800766,
+              "recall@10": 0.9042145593869731,
+              "recall@3": 0.7586206896551724,
+              "recall@5": 0.8237547892720306
+            },
+            "multi_skill_composition": {
+              "map": 0.44320105820105815,
+              "mrr": 0.8847363945578232,
+              "n": 196,
+              "ndcg@1": 0.8163265306122449,
+              "ndcg@10": 0.5700230544369281,
+              "ndcg@3": 0.5633319992755405,
+              "ndcg@5": 0.5537790571648551,
+              "recall@1": 0.2798469387755102,
+              "recall@10": 0.5409863945578232,
+              "recall@3": 0.4532312925170068,
+              "recall@5": 0.5039965986394558
+            },
+            "outdated_redundant": {
+              "map": 0.8672898689677213,
+              "mrr": 0.8672898689677213,
+              "n": 149,
+              "ndcg@1": 0.7919463087248322,
+              "ndcg@10": 0.8954913381911184,
+              "ndcg@3": 0.8890197738494756,
+              "ndcg@5": 0.8890197738494756,
+              "recall@1": 0.7919463087248322,
+              "recall@10": 0.9798657718120806,
+              "recall@3": 0.959731543624161,
+              "recall@5": 0.959731543624161
+            },
+            "single_skill": {
+              "map": 0.8418510501843834,
+              "mrr": 0.8418510501843834,
+              "n": 297,
+              "ndcg@1": 0.7643097643097643,
+              "ndcg@10": 0.8759612245189583,
+              "ndcg@3": 0.8424695997595033,
+              "ndcg@5": 0.8552252951163478,
+              "recall@1": 0.7643097643097643,
+              "recall@10": 0.9831649831649831,
+              "recall@3": 0.8888888888888888,
+              "recall@5": 0.9191919191919192
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5623293903548681,
+              "completeness@4": 0.8680618744313012,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.735632183908046,
+              "hit@1": 0.7224749772520473,
+              "n": 1099,
+              "n_answerable": 1099,
+              "n_answered": 1099,
+              "ndcg@10": 0.7424826598889347,
+              "recall@8": 0.7198119502578102
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.7653061224489796,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7295918367346939,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.5068984887741492,
+              "recall@8": 0.13795918367346938
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.7126436781609196,
+              "completeness@4": 0.8007662835249042,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.735632183908046,
+              "hit@1": 0.5593869731800766,
+              "n": 261,
+              "n_answerable": 261,
+              "n_answered": 261,
+              "ndcg@10": 0.7315531846832677,
+              "recall@8": 0.8697318007662835
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.15816326530612246,
+              "completeness@4": 0.923469387755102,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.8163265306122449,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.674042169098295,
+              "recall@8": 0.5256802721088435
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.9395973154362416,
+              "completeness@4": 0.959731543624161,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7919463087248322,
+              "n": 149,
+              "n_answerable": 149,
+              "n_answered": 149,
+              "ndcg@10": 0.8954913381911186,
+              "recall@8": 0.9798657718120806
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.8787878787878788,
+              "completeness@4": 0.9124579124579124,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.7643097643097643,
+              "n": 297,
+              "n_answerable": 297,
+              "n_answered": 297,
+              "ndcg@10": 0.8759612245189585,
+              "recall@8": 0.9696969696969697
+            }
+          }
+        },
+        "R1-encoder": {
+          "ir": {
+            "OVERALL": {
+              "map": 0.6511196205304486,
+              "mrr": 0.8618271300027442,
+              "n": 1099,
+              "ndcg@1": 0.7870791628753412,
+              "ndcg@10": 0.7626256161927073,
+              "ndcg@3": 0.7719204112908243,
+              "ndcg@5": 0.7654405961160761,
+              "recall@1": 0.5457506824385805,
+              "recall@10": 0.7665514103730665,
+              "recall@3": 0.6777282377919321,
+              "recall@5": 0.7174340309372157
+            },
+            "budget_constrained": {
+              "map": 0.15493278263686427,
+              "mrr": 0.8975400874635568,
+              "n": 196,
+              "ndcg@1": 0.826530612244898,
+              "ndcg@10": 0.5287030738316371,
+              "ndcg@3": 0.6983821597347585,
+              "ndcg@5": 0.6135296086562717,
+              "recall@1": 0.03306122448979592,
+              "recall@10": 0.18489795918367347,
+              "recall@3": 0.07979591836734694,
+              "recall@5": 0.11102040816326532
+            },
+            "distractor": {
+              "map": 0.7246168582375478,
+              "mrr": 0.7246168582375478,
+              "n": 261,
+              "ndcg@1": 0.5938697318007663,
+              "ndcg@10": 0.7856103817906238,
+              "ndcg@3": 0.7261408761083795,
+              "ndcg@5": 0.7556458314500158,
+              "recall@1": 0.5938697318007663,
+              "recall@10": 0.9770114942528736,
+              "recall@3": 0.8122605363984674,
+              "recall@5": 0.8850574712643678
+            },
+            "multi_skill_composition": {
+              "map": 0.4722796539250621,
+              "mrr": 0.9111394557823129,
+              "n": 196,
+              "ndcg@1": 0.8571428571428571,
+              "ndcg@10": 0.5917459797335451,
+              "ndcg@3": 0.5886532534469439,
+              "ndcg@5": 0.5792247816188912,
+              "recall@1": 0.2974489795918367,
+              "recall@10": 0.5469387755102041,
+              "recall@3": 0.4703231292517007,
+              "recall@5": 0.5188775510204082
+            },
+            "outdated_redundant": {
+              "map": 0.9353467561521254,
+              "mrr": 0.9353467561521254,
+              "n": 149,
+              "ndcg@1": 0.8859060402684564,
+              "ndcg@10": 0.9518078051425425,
+              "ndcg@3": 0.9434305841802516,
+              "ndcg@5": 0.9518078051425425,
+              "recall@1": 0.8859060402684564,
+              "recall@10": 1.0,
+              "recall@3": 0.9798657718120806,
+              "recall@5": 1.0
+            },
+            "single_skill": {
+              "map": 0.8894113088557534,
+              "mrr": 0.8894113088557534,
+              "n": 297,
+              "ndcg@1": 0.835016835016835,
+              "ndcg@10": 0.9146594783953468,
+              "ndcg@3": 0.8955813647065916,
+              "ndcg@5": 0.9036916823668102,
+              "recall@1": 0.835016835016835,
+              "recall@10": 0.9932659932659933,
+              "recall@3": 0.9393939393939394,
+              "recall@5": 0.9595959595959596
+            }
+          },
+          "metrics": {
+            "OVERALL": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.5768880800727935,
+              "completeness@4": 0.9208371246587808,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.7279693486590039,
+              "hit@1": 0.7870791628753412,
+              "n": 1099,
+              "n_answerable": 1099,
+              "n_answered": 1099,
+              "ndcg@10": 0.7916402208516115,
+              "recall@8": 0.7565483773127085
+            },
+            "budget_constrained": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.0,
+              "completeness@4": 0.923469387755102,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.826530612244898,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.5940518457847154,
+              "recall@8": 0.15857142857142859
+            },
+            "distractor": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.7394636015325671,
+              "completeness@4": 0.842911877394636,
+              "coverage": 1.0,
+              "distractor_rate@4": 0.7279693486590039,
+              "hit@1": 0.5938697318007663,
+              "n": 261,
+              "n_answerable": 261,
+              "n_answered": 261,
+              "ndcg@10": 0.7856103817906238,
+              "recall@8": 0.9655172413793104
+            },
+            "multi_skill_composition": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.15306122448979592,
+              "completeness@4": 0.9285714285714286,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.8571428571428571,
+              "n": 196,
+              "n_answerable": 196,
+              "n_answered": 196,
+              "ndcg@10": 0.6890862410464654,
+              "recall@8": 0.5375850340136054
+            },
+            "outdated_redundant": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.9530201342281879,
+              "completeness@4": 0.9932885906040269,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.8859060402684564,
+              "n": 149,
+              "n_answerable": 149,
+              "n_answered": 149,
+              "ndcg@10": 0.9518078051425425,
+              "recall@8": 1.0
+            },
+            "single_skill": {
+              "abstention_precision": NaN,
+              "abstention_recall": NaN,
+              "all_required@4": 0.9057239057239057,
+              "completeness@4": 0.9461279461279462,
+              "coverage": 1.0,
+              "distractor_rate@4": NaN,
+              "hit@1": 0.835016835016835,
+              "n": 297,
+              "n_answerable": 297,
+              "n_answered": 297,
+              "ndcg@10": 0.9146594783953468,
+              "recall@8": 0.98989898989899
+            }
+          }
+        }
+      }
+    }
+  }
+}

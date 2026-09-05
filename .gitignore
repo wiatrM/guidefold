@@ -46,6 +46,7 @@ private/
 # committed -- see tools/bakeoff/README.md), then re-exclude just the binaries inside it.
 tools/bakeoff/.bakeoff-cache/
 tools/eval/.skillret-cache/
+tools/eval/.skillretbench-r1-cache/
 !tools/bakeoff/build/
 !tools/bakeoff/build/**/
 !tools/bakeoff/build/**/words.json
