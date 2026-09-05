@@ -525,3 +525,29 @@ Loopback latency passes: fresh-client p95 117/138 ms at c1/c4. Test-B HSR@4 wors
 not admitted. All test outcomes are retained, and this entry grants no extra family
 or test reruns. The [GPU serving proposal](DENSE-SERVING-NEXT-2026-09-05.md) concerns
 inference engineering and future DEV work; it does not change frozen quality results.
+
+### 2026-09-05 — family D (query decomposition) dev run: no arm frozen, gate failed on the hit@1 guard
+
+Six arms (D0 = C0, D-det-1/2/3, D-model-1/2 — pre-registered above, PR #51) on the same
+SKILLRET-train dev split as F0/F3/C0 (10,123 skills, 1,000 queries). Splitting a multi-intent
+query into ≤ 4 clauses (deterministic marker rules, or `claude -p --model haiku`, replay-cached),
+retrieving per clause, and RRF-merging into a synthetic scored list before the real `select()`
+call **does** recover completeness at k = 2/3 (`all_required@4` +7.5 to +10.5 pp) and clears the
+primary bar overall (+1.70 to +2.80 pp, four of five arms with CI excluding 0 and ≥ +2.0 pp) — but
+does so by demoting the single best match on already single-intent queries: `hit@1` falls
+4.00–9.60 pp overall and 6.71–11.28 pp at k = 1, 4×–11× past the pre-registered ±1.0 pp guard, on
+every one of the five arms. **No D-det arm and no D-model arm is frozen** — the guard fails
+categorically, not marginally, so no amount of within-budget tuning was attempted to rescue it, per
+the pre-registered "a gate that fails is a valid result" rule. Cost would have been independently
+disqualifying: ≈610–770 ms extra p95 latency at 6,006 skills for the 2.9–3.7 mean extra
+`candidates()` calls a decomposed query pays, before counting the model splitter's own 6–7 s/call
+when uncached. A genuine bug (bare ASCII periods splitting inside code identifiers/filenames, e.g.
+`Node.js`, `vite.config.ts`) was found and fixed pre-measurement by requiring trailing whitespace
+after ASCII sentence-enders; the resulting ~95–99% decomposition rate on this corpus is a measured
+finding (paragraph-style enumerations triggering the brief's own marker list), not a residual
+splitter bug. This dev-only result is independent evidence for the direction PR #55 (also merged
+2026-09-05) already took at the agent/harness layer — repeated `find()` calls composed by the
+calling agent, rather than decomposition inside `candidates()`/`select()` — since decomposing
+in-ranker recovers exactly the same completeness gap but cannot do so without the k = 1 damage this
+gate exists to catch. Full tables (per-k quality, candidate ceiling @4/10/15/50, paired CIs vs D0,
+cost/latency, freeze-gate detail): `docs/reports/bakeoff/DEV-D-decomposition-2026-09-05.md`.
