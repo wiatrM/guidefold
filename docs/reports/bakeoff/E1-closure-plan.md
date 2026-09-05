@@ -218,3 +218,39 @@ benchmark had been crediting closure dependencies the product rejects. Baseline 
 `papers-manifest-2026-09-05.json` inventories the local paper cache with SHA-256 per file and
 verifies SkillRouter v5 / SkillRet v3 as the versions cited; it records that the SIF and RRF local
 copies are not the publications (a JS challenge page and a 279-byte error page respectively).
+
+---
+
+## 7. E1.1b/E2.9 — structured-corpus SEARCH parity gate (added 2026-09-06)
+
+PR #61's end-to-end run on the Meridian fixture fired `telemetry_health.parity_mismatch`. PR #54's
+parity gate only ran the flat SKILLRET DEV corpus, which has no `requires`/`refines` edges, no
+scope hierarchy, no `negative_triggers`, no deprecated skills and no node context — it could not
+have caught this. Root cause (full detail in
+[PARITY-STRUCTURED-CORPUS-2026-09-05](PARITY-STRUCTURED-CORPUS-2026-09-05.md)): two client-side
+defects in the CLI's `search_with_backend`, not a Go ranking defect. The client never sent
+`budget.max_cards`, so the service silently applied its own hardcoded default of 4 regardless of
+the caller's actual `k` (hook `k=3`, `find`'s default `k=8`); and `--include-deprecated --backend
+service` had no way to express that intent on the wire, so the service always dropped deprecated
+cards regardless. Both are fixed in `search_with_backend` (never race the remote when `k` falls
+outside `0..4` or `include_deprecated=True`; otherwise send the real `k` as `budget.max_cards`),
+covered by tests, and verified live against an isolated Go/ParadeDB stack.
+
+With both fixed, `tools/search_service/parity.py --fixture` (new mode, same PR) reports **0/243
+mismatches** — 220 golden queries plus 23 synthetic probes covering every structural feature named
+above, at `k=4` through direct HTTP comparison, and hook/find-default/interactive `k` values
+through the real `search_with_backend` adapter. The Go service shows no ranking disagreement with
+the reference CLI on this corpus. The gate is wired into `compose-service` (not `native-service` —
+that job has no Compose/HTTP capability; see the report §8) as a strictly blocking step, next to
+the existing 1,000-query DEV gate. This closes the parity gap PR #61 surfaced; the acceptance
+criterion (0 mismatches on `parity.py --fixture`) is already met.
+
+Independently corroborated by a parallel investigation (branch `codex/graph-parity`, commit
+`a0ad16d`, not merged): 3,448/3,448 identical SEARCH responses across the same golden set × 2
+graph modes × 4 budgets × 2 addressing methods, reaching the same root cause and the same
+`compose-service`-not-`native-service` conclusion independently.
+
+Out of scope, flagged not fixed: under the shipped `ppr_mode="closure"` default, the `replaces`
+edge (deprecated → replacement propagation) is dead code in both Python and Go — only the
+non-default `pagerank` mode reads it, and even there both languages' edge direction appears
+inverted relative to their own documentation (consistent between the two, so not a parity gap).
