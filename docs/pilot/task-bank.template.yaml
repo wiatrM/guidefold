@@ -1,0 +1,80 @@
+# Task bank template for the E6.7 pilot (docs/pilot/E6.7-PROTOCOL.md §3).
+#
+# This file is a TEMPLATE, not the frozen task bank. To use it:
+#   1. Copy to a new file (e.g. task-bank.yaml), keep it out of docs/pilot/ until frozen so it
+#      is never mistaken for the template.
+#   2. Fill every [PLACEHOLDER: ...] below. Delete the `- id: EXAMPLE-1` entry.
+#   3. Reach `min_tasks: 20` (aim 40) meeting every inclusion criterion in `inclusion_criteria`.
+#   4. Freeze: compute the sha256 of the finished task-bank file, record it here in
+#      `frozen.task_bank_sha256`, get owner sign-off, then follow
+#      docs/pilot/E6.7-PROTOCOL.md §11 (Freeze procedure) for the protocol-level sha.
+#   5. After freeze, no task is added, removed or edited (§6 forbidden moves). A task that turns
+#      out to be unusable is DROPPED with a logged reason (see `dropped_tasks` below), never
+#      silently deleted from this list.
+#
+# Schema per task (docs/pilot/E6.7-PROTOCOL.md §3):
+#   id                 - stable task id, referenced verbatim in scoring-sheet.template.csv's
+#                        `task` column. Format: <TEAM-SLUG>-<NN>, e.g. atlas-01.
+#   team               - which of the 3 pilot teams owns/contributed this task (§8 usability
+#                        sessions reuse the same 3 teams; see placeholder list, §10).
+#   description        - the task as given to the developer. No skill names, no hints about
+#                        which condition is running. Real work, not a synthetic benchmark item.
+#   acceptance_check   - the PRE-WRITTEN, frozen check that decides success/failure. Prefer a
+#                        deterministic check (tests pass, diff matches an expected shape, a
+#                        command's exit code) over evaluator judgement call; if only a human
+#                        judgement call is possible, name the evaluator role here, not a person.
+#   expected_skills    - URNs (or descriptive names, if not yet published) of the skill(s) the
+#                        task owner expects a correct run to use. Used only for the oracle
+#                        condition (D) and for after-the-fact "wrong-skill detour" scoring
+#                        (docs/pilot/E6.7-PROTOCOL.md §1 H3) — never shown to the developer or
+#                        used to steer conditions A-C.
+#   estimated_minutes  - the task owner's best estimate of solo completion time. Used only to
+#                        enforce the ≤60 minute inclusion bound (§3); not a target or a score.
+#
+# Inclusion / exclusion criteria (docs/pilot/E6.7-PROTOCOL.md §3) — every task in this bank must
+# satisfy ALL of:
+#   - at least one real, published (or imminently publishable) skill plausibly applies to it;
+#   - a developer unaided can plausibly close it in <= 60 minutes (estimated_minutes <= 60);
+#   - a pre-written acceptance check exists BEFORE the task is ever run under any condition,
+#     and is deterministic wherever the work allows it;
+#   - it is real work requested by one of the 3 pilot teams, not authored to make a condition win.
+# Excluded: tasks requiring production access/secrets the pilot cannot safely grant; tasks whose
+# only plausible skill is still in draft/unreviewed; tasks a team cannot spare a developer-hour
+# for across up to 4 conditions.
+
+meta:
+  protocol_ref: docs/pilot/E6.7-PROTOCOL.md
+  min_tasks: 20
+  aim_tasks: 40
+  teams: # [PLACEHOLDER: 3 team names/slugs the product owner selects — MVP.md's "3 teams" (E6.7, §3 Usability)]
+    - "[PLACEHOLDER: team A slug]"
+    - "[PLACEHOLDER: team B slug]"
+    - "[PLACEHOLDER: team C slug]"
+  frozen:
+    task_bank_sha256: "[PLACEHOLDER: sha256 of this file's final content, filled at freeze — see §11]"
+    frozen_on: "[PLACEHOLDER: ISO date, owner sign-off]"
+
+tasks:
+  - id: EXAMPLE-1  # delete this entry before freeze; it exists only to document the shape
+    team: "[PLACEHOLDER: team slug]"
+    description: >
+      [PLACEHOLDER: the real task text as a developer would receive it — a genuine unit of work
+      requested by the team, not written to favor any condition]
+    acceptance_check: >
+      [PLACEHOLDER: the deterministic or named-evaluator-role check, written and frozen before
+      any condition runs this task, e.g. "tests/test_x.py::test_y passes" or "diff matches
+      docs/pilot/checks/EXAMPLE-1.expected.diff"]
+    expected_skills:
+      - "[PLACEHOLDER: urn:skill:... or a descriptive name if unpublished]"
+    estimated_minutes: 0 # [PLACEHOLDER: integer, must be <= 60]
+
+# Tasks dropped after being added to the bank but before their outcome is observed (docs/pilot/
+# E6.7-PROTOCOL.md §6: "every dropped task logged with a reason before its outcome is seen").
+# A task moved here is never re-added and never contributes to n. Do not remove a task's row here
+# once logged, even if a replacement task is added elsewhere in `tasks:` to keep n at 20/40.
+dropped_tasks:
+  []
+  # - id: EXAMPLE-2
+  #   dropped_on: "[PLACEHOLDER: ISO date]"
+  #   reason: "[PLACEHOLDER: e.g. 'no relevant skill existed at freeze time' / 'team withdrew access']"
+  #   outcome_observed_before_drop: false  # must be false; a task is logged BEFORE its outcome is known
