@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adversarial graph lifecycle E2E against real Go/Postgres, in this Compose project.
+"""Validated graph lifecycle E2E against real Go/Postgres, in this Compose project.
 
 Publishes only synthetic test repositories; restores the configured repository.
 No GPU, quality corpora, production graph or CLI modifications are involved.
@@ -68,18 +68,18 @@ def fixture(cli, sha, mode):
     add("chain-c", requires=("chain-d",))
     add("chain-d")
     add("cycle", "alpha.child", "cycleanchor", ("cycle-b",))
-    add("cycle-b", "alpha", requires=("cycle", "cycle-c"))
-    add("cycle-c", requires=("cycle-b",))
+    add("cycle-b", "alpha", requires=("cycle-c",))
+    add("cycle-c")
     add("diamond", "alpha.child", "diamondanchor", ("left", "left", "right"))
     add("left", "alpha", requires=("shared",))
     add("right", "alpha", requires=("shared",))
     add("shared")
-    add("self", "alpha.child", "selfanchor", ("self",))
+    add("self", "alpha.child", "selfanchor")
     add(
         "filtered",
         "alpha.child",
         "filteranchor",
-        ("hidden", "retired", "negative", "missing", "eligible"),
+        ("hidden", "retired", "negative", "eligible"),
     )
     add("hidden", "beta")
     add("retired", "alpha", status="deprecated", replaced_by=urn("eligible"))
@@ -264,6 +264,124 @@ def run(args):
             publish(original)
             compose("up", "-d", "--wait", "api")
             metadata(original)
+            if mode == "closure":
+                invalids = [
+                    (
+                        "requires_self",
+                        "chain",
+                        "requires",
+                        [urn("chain")],
+                        "requires_cycle",
+                    ),
+                    (
+                        "requires_cycle",
+                        "chain-d",
+                        "requires",
+                        [urn("chain")],
+                        "requires_cycle",
+                    ),
+                    (
+                        "requires_missing",
+                        "chain",
+                        "requires",
+                        [urn("absent")],
+                        "requires_target_missing",
+                    ),
+                    (
+                        "requires_type",
+                        "chain",
+                        "requires",
+                        urn("chain-b"),
+                        "requires_type",
+                    ),
+                    (
+                        "requires_element_type",
+                        "chain",
+                        "requires",
+                        [123],
+                        "requires_type",
+                    ),
+                    (
+                        "refines_missing",
+                        "refine",
+                        "refines",
+                        [urn("absent")],
+                        "refines_target_missing",
+                    ),
+                    (
+                        "refines_deeper",
+                        "chain-c",
+                        "refines",
+                        [urn("chain")],
+                        "refines_deeper_target",
+                    ),
+                    (
+                        "refines_cycle",
+                        "chain-c",
+                        "refines",
+                        [urn("chain-c")],
+                        "refines_cycle",
+                    ),
+                    (
+                        "replacement_missing",
+                        "obsolete",
+                        "replaced_by",
+                        urn("absent"),
+                        "replaced_by_target_missing",
+                    ),
+                    (
+                        "replacement_required",
+                        "obsolete",
+                        "replaced_by",
+                        None,
+                        "replacement_required",
+                    ),
+                    (
+                        "replacement_type",
+                        "obsolete",
+                        "replaced_by",
+                        [urn("replacement")],
+                        "replaced_by_type",
+                    ),
+                    (
+                        "replacement_cycle",
+                        "replacement",
+                        "replaced_by",
+                        urn("obsolete"),
+                        "replaced_by_cycle",
+                    ),
+                ]
+                valid_index = cli.Index.from_cards(
+                    base["cards"], base["nodes"], weights=base["weights"]
+                )
+                for name, card_name, field, value, code in invalids:
+                    bad = deepcopy(base)
+                    bad["revision"] = "rejected-" + name
+                    bad["cards"][urn(card_name)][field] = value
+                    # Graph-only mutation: retain valid lexical postings so the publisher
+                    # itself, rather than Python's index builder, validates the graph.
+                    bad_bundle = with_router_index(
+                        cli, {"snapshot": bad, "sha256": digest(bad)}, valid_index
+                    )
+                    proc = publish(bad_bundle, must_pass=False)
+                    check(
+                        "admission:" + name,
+                        proc.returncode != 0
+                        and "invalid_graph_" + code in proc.stdout + proc.stderr,
+                    )
+                    status, unchanged = search("chainanchor")
+                    check(
+                        "admission:" + name + ":head_unchanged",
+                        status == 200
+                        and unchanged["snapshot"] == "repository:" + original["sha256"]
+                        and response(unchanged) == oracle(base, "chainanchor"),
+                    )
+                    count = sql(
+                        "SELECT count(*) FROM gf.snapshots WHERE snapshot_id='repository:"
+                        + bad_bundle["sha256"]
+                        + "'"
+                    )
+                    check("admission:" + name + ":no_snapshot_written", count == "0")
             for query, names in manual.items():
                 status, body = search(query)
                 wanted = [urn(x) for x in names]
@@ -528,7 +646,8 @@ def run(args):
             and len(checks) > 0
             and all(c["passed"] for c in checks),
             "completed_modes": completed_modes,
-            "publisher_full_graph_lint": False,
+            "publisher_graph_admission": True,
+            "publisher_full_catalog_lint": False,
             "production_ready": False,
         }
         args.output.parent.mkdir(parents=True, exist_ok=True)

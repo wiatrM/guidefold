@@ -1,5 +1,8 @@
 # Go graph lifecycle E2E
 
+Update 2026-09-06: [graph publication validation](GRAPH-ADMISSION-2026-09-06.md) closes the
+graph admission gap described below. These earlier measurements remain historical evidence.
+
 **410 checks passed; 2,121/2,121 concurrent SEARCH responses were consistent and HTTP 200.**
 Both `closure` and `pagerank` completed the full lifecycle against real Go and Postgres.
 No runtime graph defect was found in these cases. This is stronger coverage than matching a
