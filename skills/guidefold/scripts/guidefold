@@ -2376,7 +2376,12 @@ def cmd_find(a, root, cfg):
                                   search_cfg=search_cfg)
     t_select = time.perf_counter()
     selected = result["selected"]
-    for c in selected:
+    # `select()` returns the *injection* order (general -> specific, ADR-0006) so that a hook's
+    # ≤ 4 cards read root-most first. `find` is the interactive command a person or an agent reads
+    # top-down to pick ONE skill, so it prints the same set in *relevance* order: the card that best
+    # matches the task first, root-level conventions last. Same membership, different order — the
+    # hook path is untouched. (Before this, the exact match sat 7th of 8 behind four root cards.)
+    for c in sorted(selected, key=lambda c: (-c["score"], c["urn"])):
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c.get('node')})")
     if getattr(a, "experimental", False):
         _write_shadow_record(root, a.task, scope, result["local_scored"],
