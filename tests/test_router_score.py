@@ -136,3 +136,100 @@ def test_ties_are_broken_on_urn_never_on_insertion_order(gf):
     scored = router.score(cands, "q", "_root")
     assert scored[0]["score"] == scored[1]["score"]
     assert [c["urn"] for c in scored] == ["u:aaa", "u:zzz"]  # (-score, urn) tie-break
+
+
+# ---- _decayed_closure: ADR-0020's rejected-alternative note, "ppr_mode": "closure" ----
+
+def test_decayed_closure_flows_from_a_hit_toward_what_it_requires(gf):
+    """Same fixture and seed as test_reverse_ppr_flows_from_a_hit_toward_what_it_requires: A
+    requires B, C is unrelated. Seed mass only on A. Expect the same qualitative shape PPR
+    produces (mass[C] == 0, mass[B] > 0, mass[A] > 0) since both are prerequisite-propagation
+    implementations selected by the same `ppr_mode` flag."""
+    cards = {
+        "u:a": make_card("u:a", "_root", description="a", requires=["u:b"]),
+        "u:b": make_card("u:b", "_root", description="b"),
+        "u:c": make_card("u:c", "_root", description="c"),
+    }
+    idx = gf.Index.from_cards(cards, make_nodes("_root"))
+    router = gf.Router(idx)
+
+    seed = {"u:a": idx.IDF_SCALE, "u:b": 0, "u:c": 0}
+    mass = router._decayed_closure(seed)
+
+    assert mass["u:c"] == 0
+    assert mass["u:b"] > 0
+    assert mass["u:a"] > 0
+
+
+def test_decayed_closure_matches_the_documented_per_hop_fraction(gf):
+    """A requires B requires C requires D (chain). Seed all mass on A. With the default decay
+    1/2 per hop and max_depth=2, B (1 hop) must receive exactly seed/2 and C (2 hops) exactly
+    seed/4; D (3 hops, beyond max_depth) must receive nothing -- an exact, hand-computable
+    check, not just a directional one, since the whole point of this alternative is being
+    easier to verify than PPR's power iteration."""
+    cards = {
+        "u:a": make_card("u:a", "_root", description="a", requires=["u:b"]),
+        "u:b": make_card("u:b", "_root", description="b", requires=["u:c"]),
+        "u:c": make_card("u:c", "_root", description="c", requires=["u:d"]),
+        "u:d": make_card("u:d", "_root", description="d"),
+    }
+    idx = gf.Index.from_cards(cards, make_nodes("_root"))
+    router = gf.Router(idx)
+    seed = {"u:a": idx.IDF_SCALE, "u:b": 0, "u:c": 0, "u:d": 0}
+    mass = router._decayed_closure(seed)
+
+    assert mass["u:a"] == idx.IDF_SCALE          # restart term: seed keeps its own mass
+    assert mass["u:b"] == idx.IDF_SCALE // 2      # 1 hop, decay 1/2
+    assert mass["u:c"] == idx.IDF_SCALE // 4      # 2 hops, decay 1/4
+    assert mass["u:d"] == 0                       # 3 hops -- beyond max_depth=2
+
+
+def test_decayed_closure_is_deterministic(gf):
+    cards = {
+        "u:a": make_card("u:a", "_root", description="a", requires=["u:b"]),
+        "u:b": make_card("u:b", "_root", description="b"),
+    }
+    idx = gf.Index.from_cards(cards, make_nodes("_root"))
+    router = gf.Router(idx)
+    seed = {"u:a": 12345, "u:b": 0}
+    assert router._decayed_closure(seed) == router._decayed_closure(seed)
+
+
+def test_score_uses_decayed_closure_when_ppr_mode_is_closure(gf):
+    """`weights["ppr_mode"]` must actually select between the two implementations and change
+    score()'s output, on a fixture where they diverge (out-degree > 1, so PPR's out-degree
+    normalisation and closure's lack of it disagree) -- otherwise the flag would be dead code,
+    silently never taking the branch it claims to. "closure" is the shipped default (E1
+    config-selection found the two indistinguishable on the golden set, on both the tune and
+    holdout halves, and picked the simpler/hand-verifiable one -- see
+    docs/reports/tuning/E1-config-selection.md); "pagerank" is requested here via an explicit
+    override so this test does not depend on which one happens to be the default."""
+    cards = {
+        "u:hub": make_card("u:hub", "_root", description="hub", requires=["u:dep1", "u:dep2"]),
+        "u:dep1": make_card("u:dep1", "_root", description="dep1"),
+        "u:dep2": make_card("u:dep2", "_root", description="dep2"),
+    }
+    nodes = make_nodes("_root")
+    idx_pagerank = gf.Index.from_cards(cards, nodes, weights={"ppr_mode": "pagerank"})
+    idx_closure = gf.Index.from_cards(cards, nodes, weights={"ppr_mode": "closure"})
+    assert idx_pagerank.weights["ppr_mode"] == "pagerank"
+    assert idx_closure.weights["ppr_mode"] == "closure"
+
+    cands = [
+        {"urn": "u:hub", "node": "_root", "bm25_rank": 1, "dense_rank": None},
+        {"urn": "u:dep1", "node": "_root", "bm25_rank": 2, "dense_rank": None},
+        {"urn": "u:dep2", "node": "_root", "bm25_rank": 3, "dense_rank": None},
+    ]
+    scored_pagerank = {c["urn"]: c["score"] for c in gf.Router(idx_pagerank).score(cands, "q", "_root")}
+    scored_closure = {c["urn"]: c["score"] for c in gf.Router(idx_closure).score(cands, "q", "_root")}
+    assert scored_pagerank != scored_closure
+
+
+def test_closure_mode_is_now_the_default(gf):
+    """E1 config-selection (docs/reports/tuning/E1-config-selection.md) shipped "closure" as the
+    default -- not "pagerank" -- after finding them indistinguishable on the golden set on both
+    the tune and holdout halves. Pin that choice explicitly so a future edit cannot silently flip
+    it back without a test failure prompting a look at the report."""
+    cards = {"u:only": make_card("u:only", "_root", description="only")}
+    idx = gf.Index.from_cards(cards, make_nodes("_root"))
+    assert idx.weights["ppr_mode"] == "closure"

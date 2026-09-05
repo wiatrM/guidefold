@@ -504,6 +504,26 @@ class Index:
         "w_scope": 200, "w_ppr": 250, "w_dense": 0,   # w_dense = 0 until the E1.3 bake-off (ADR-0020)
         "edge.requires": 100, "edge.refines": 60, "edge.replaces": 40, "edge.similar": 30,
         "abstain_threshold": 1200,
+        # ppr_mode selects which prerequisite-propagation implementation `score()` calls:
+        # "pagerank" (_reverse_ppr) or "closure" (default, _decayed_closure, ADR-0020's rejected-
+        # alternative note -- a decayed two-hop `requires` walk, no power iteration, no out-degree
+        # normalisation). E1 config-selection (docs/reports/tuning/E1-config-selection.md) measured
+        # both against the golden set on a held-out split: byte-identical on every metric, on both
+        # the tune half and the holdout half independently. Given that equivalence, "closure" ships
+        # as the default -- it is exactly hand-verifiable (see test_decayed_closure_matches_the_
+        # documented_per_hop_fraction) where pagerank's fixed-point iteration is not. This was
+        # measured on a shallow, sparse requires-graph (out-degree ~0.6, see ADR-0020); revisit if
+        # a monorepo's graph grows deep/dense enough that out-degree normalisation could matter.
+        "ppr_mode": "closure",
+        "closure_decay_num": 1, "closure_decay_den": 2,   # _decayed_closure: mass *= 1/2 per hop
+        # abstain_mode selects the confidence signal `select()` gates on: "magnitude" (default,
+        # scored[0]["score"] < abstain_threshold) or "margin" (rank1-rank2 score gap <
+        # abstain_margin_threshold). RRF gives any rank-1 hit a near-constant high score, so
+        # magnitude cannot discriminate no_applicable cases from real ones (see
+        # docs/reports/golden/README.md); margin was measured as the obvious alternative signal
+        # in docs/reports/tuning/E1-config-selection.md -- see that report for the verdict.
+        "abstain_mode": "magnitude",
+        "abstain_margin_threshold": 1200,
     }
 
     def __init__(self, cards, nodes, weights):
@@ -1227,6 +1247,52 @@ class Router:
             mass = new_mass
         return mass
 
+    def _decayed_closure(self, seed_scaled: dict, max_depth: int = 2) -> dict:
+        """Alternative to `_reverse_ppr`, named in ADR-0020's rejected-alternative note: on a
+        graph with out-degree ~= 0.6 and few `refines`/`replaces` edges, reverse PPR's power
+        iteration may be indistinguishable from a much simpler decayed `requires`-closure walk,
+        while being harder to explain in the Probe UI. Selected via `weights["ppr_mode"] ==
+        "closure"` (default stays "pagerank" -- see docs/reports/tuning/E1-config-selection.md
+        for the measured comparison and the ship/no-ship verdict).
+
+        No power iteration, no restart term, no out-degree normalisation, `requires` edges only
+        (the same relation `_requires_closure` walks for hard membership in `select`): each
+        seed's normalised mass is propagated a fixed `closure_decay_num/closure_decay_den`
+        fraction per hop, up to `max_depth` hops. Same seed normalisation as `_reverse_ppr` (
+        positive mass scaled so it sums to `idx.IDF_SCALE`) so `score()` can call either
+        implementation interchangeably and get comparable magnitudes."""
+        idx = self.index
+        nodes = list(idx.cards.keys())
+        total_seed = sum(v for v in seed_scaled.values() if v > 0)
+        if total_seed <= 0:
+            return {u: 0 for u in nodes}
+        scale = idx.IDF_SCALE
+        p = {u: (max(0, seed_scaled.get(u, 0)) * scale) // total_seed for u in nodes}
+        decay_num = idx.weights.get("closure_decay_num", 1)
+        decay_den = idx.weights.get("closure_decay_den", 2)
+        requires = idx.graph.get("requires", {})
+        mass = dict(p)   # each node keeps its own seed mass (mirrors _reverse_ppr's restart term)
+        for u, s in p.items():
+            if s <= 0:
+                continue
+            frontier, seen = [u], {u}
+            num, den = 1, 1
+            for _ in range(max_depth):
+                num, den = num * decay_num, den * decay_den
+                nxt = []
+                for x in frontier:
+                    for t in requires.get(x, []):
+                        if t in seen:
+                            continue
+                        seen.add(t)
+                        nxt.append(t)
+                        if t in mass:
+                            mass[t] += (s * num) // den
+                frontier = nxt
+                if not frontier:
+                    break
+        return mass
+
     def score(self, cands: list, query: str, node: str) -> list:
         idx = self.index
         rrf = {}
@@ -1241,7 +1307,8 @@ class Router:
         w_scope = idx.weights["w_scope"]
         for c in cands:
             rrf[c["urn"]] += w_scope // (1 + self._hops(c["node"], node))
-        ppr = self._reverse_ppr(rrf)
+        ppr = self._decayed_closure(rrf) if idx.weights.get("ppr_mode", "pagerank") == "closure" \
+            else self._reverse_ppr(rrf)
         w_ppr = idx.weights["w_ppr"]
         scored = []
         for c in cands:
@@ -1271,11 +1338,24 @@ class Router:
     def _depth(self, node: str) -> int:
         return 0 if node == "_root" else node.count(".") + 1
 
+    def _top_margin(self, scored: list) -> int:
+        """rank1-rank2 score gap -- the alternative confidence signal to raw magnitude (RRF gives
+        any rank-1 hit a near-constant high score, so magnitude alone cannot tell a confident hit
+        apart from a `no_applicable` case with a lucky top candidate; see
+        docs/reports/tuning/E1-config-selection.md). A pool of fewer than 2 candidates has no
+        second place to compare against, so it is never abstained on margin grounds alone."""
+        if len(scored) < 2:
+            return 1 << 30
+        return scored[0]["score"] - scored[1]["score"]
+
     def select(self, scored: list, k: int = 4, abstain_threshold: int = None) -> list:
         idx = self.index
+        mode = idx.weights.get("abstain_mode", "magnitude")
         if abstain_threshold is None:
-            abstain_threshold = idx.weights["abstain_threshold"]
-        if not scored or scored[0]["score"] < abstain_threshold:
+            abstain_threshold = idx.weights["abstain_margin_threshold"] if mode == "margin" \
+                else idx.weights["abstain_threshold"]
+        signal = self._top_margin(scored) if mode == "margin" else (scored[0]["score"] if scored else 0)
+        if not scored or signal < abstain_threshold:
             return []
         score_by_urn = {c["urn"]: c["score"] for c in scored}
         chosen, chosen_set = [], set()

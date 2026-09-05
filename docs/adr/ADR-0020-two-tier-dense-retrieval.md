@@ -111,3 +111,19 @@ indistinguishable from a decayed two-hop `requires` closure, splits mass by out-
 prior for a prerequisite relation — and is hard to explain in the Probe UI. It is therefore shipped
 with `w_ppr` as a manifest weight and a `w_ppr = 0` arm in the bake-off. It is expected to earn its
 place once model-derived `similar` edges exist, which is the setting it was designed for.
+
+**Resolved by E1 config selection** (`docs/reports/tuning/E1-config-selection.md`): the decayed
+closure (`_decayed_closure`, `weights["ppr_mode"]="closure"`) was implemented behind a flag
+alongside the existing reverse-PPR (`weights["ppr_mode"]="pagerank"`) and measured head-to-head on
+the 220-case golden set, split into a stratified tune/holdout pair. Result: **byte-identical on
+every metric, on both halves independently, and unchanged (only the recorded git SHA moved) when
+`docs/reports/golden/baseline.json` was regenerated over the full 220 cases.** Mechanistically,
+`w_ppr`'s own sweep (0/100/250/500, same report) showed PPR's contribution to the final score is
+three-plus orders of magnitude smaller than the RRF/scope gaps between candidates on this graph, so
+whichever algorithm computes that already-negligible quantity cannot show up in the outcome.
+`ppr_mode` now **defaults to `"closure"`** — the simpler, exactly hand-verifiable implementation
+(a fixed fraction of mass per `requires`-hop, no power iteration) — since it is measurably free on
+every case tried. `_reverse_ppr` stays in the code, selectable via `weights: {ppr_mode: pagerank}`;
+this equivalence was demonstrated on a shallow, sparse graph (out-degree ≈ 0.6) and should be
+re-measured if a monorepo's `requires` graph grows deep or dense enough for out-degree
+normalisation to plausibly matter, or once model-derived `similar` edges exist as noted above.

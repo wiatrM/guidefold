@@ -105,3 +105,51 @@ def test_k_cap_is_enforced(gf):
     scored = [_scored(u, "_root", 100 - i) for i, u in enumerate(cards)]
     out = router.select(scored, k=4, abstain_threshold=0)
     assert len(out) == 4
+
+
+# ---- abstain_mode="margin": the rank1/rank2 score-gap alternative to raw magnitude ----
+
+def test_margin_mode_abstains_on_a_close_top_two(gf):
+    """weights["abstain_mode"]="margin": a tight rank1/rank2 gap abstains even though rank1's
+    raw score is high -- the failure magnitude-mode cannot express (see
+    docs/reports/tuning/E1-config-selection.md, the abstention-signal question)."""
+    cards = {"u:top": make_card("u:top", "_root", description="top"),
+             "u:second": make_card("u:second", "_root", description="second")}
+    idx = gf.Index.from_cards(cards, make_nodes("_root"),
+                               weights={"abstain_mode": "margin", "abstain_margin_threshold": 10})
+    router = gf.Router(idx)
+    scored = [_scored("u:top", "_root", 1000), _scored("u:second", "_root", 995)]  # margin=5 < 10
+    assert router.select(scored) == []
+
+
+def test_margin_mode_answers_on_a_wide_top_two(gf):
+    cards = {"u:top": make_card("u:top", "_root", description="top"),
+             "u:second": make_card("u:second", "_root", description="second")}
+    idx = gf.Index.from_cards(cards, make_nodes("_root"),
+                               weights={"abstain_mode": "margin", "abstain_margin_threshold": 10})
+    router = gf.Router(idx)
+    scored = [_scored("u:top", "_root", 1000), _scored("u:second", "_root", 500)]  # margin=500 >= 10
+    assert router.select(scored) != []
+
+
+def test_margin_mode_never_abstains_on_a_single_candidate(gf):
+    """No rank2 to compare against -- a lone candidate is never ambiguous by construction, so
+    margin mode must not abstain on it regardless of the raw score's magnitude."""
+    cards = {"u:only": make_card("u:only", "_root", description="only")}
+    idx = gf.Index.from_cards(cards, make_nodes("_root"),
+                               weights={"abstain_mode": "margin", "abstain_margin_threshold": 999999})
+    router = gf.Router(idx)
+    scored = [_scored("u:only", "_root", 1)]
+    assert router.select(scored) != []
+
+
+def test_magnitude_mode_is_still_the_default(gf):
+    """Unset abstain_mode must fall back to today's shipped behaviour (magnitude, gated on
+    abstain_threshold) -- the new flag must be opt-in, never a silent default change."""
+    cards = {"u:weak": make_card("u:weak", "_root", description="weak")}
+    idx = gf.Index.from_cards(cards, make_nodes("_root"))
+    assert idx.weights["abstain_mode"] == "magnitude"
+    router = gf.Router(idx)
+    scored = [_scored("u:weak", "_root", 50)]
+    assert router.select(scored, abstain_threshold=51) == []
+    assert router.select(scored, abstain_threshold=50) != []
