@@ -1,12 +1,14 @@
 # Native SEARCH/USE: Go + ParadeDB
 
-The running API, migrations and publisher are one static Go executable. BM25 runs
-in ParadeDB's Rust/Tantivy index. The API image contains no Python interpreter.
-Python is used only by existing repository tooling, operator preparation and tests.
+The running API, migrations and publisher are one static Go executable. Default
+SEARCH uses the reference CLI's integer BM25F with Postgres postings. The API image
+contains no Python interpreter; Python is operator and evaluation tooling only.
 
-**Measured status:** loopback latency passes (fresh-client p95 117/138 ms at c1/c4),
-but retrieval admission fails test-B HSR (+10.67 pp). This is a local evaluation
-backend, not the admitted production profile. See the [full report](../../docs/reports/bakeoff/GO-PARADEDB-2026-09-05.md).
+**Measured default:** 0/1000 HTTP/CLI parity mismatches; whole-client p95 116/136 ms
+at c1/c4. See the [default report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).
+The old Tantivy scorer is an explicit, unadmitted reproduction mode.
+An opt-in [GPU profile](GPU.md) adds pinned TEI encoding and exact pgvector fusion;
+it keeps separate quality admission and does not change default ranking.
 
 ## Run with Docker Compose
 
@@ -70,8 +72,8 @@ avoid locale-dependent tie ordering. Filters apply before the top-50 limit.
 The API reads the active DB head for each request. It caches immutable policy/card
 metadata, without bodies. It resolves cwd/target scopes, checks negative triggers and
 status, retrieves BM25 candidates from SQL, then applies the Go policy/score/closure/
-selection port. USE reads the exact body from SQL. The API DB role has SELECT only;
-admin credentials exist only in migration/publication jobs.
+selection port. USE reads the exact body from SQL. The API DB role has SELECT plus INSERT on the append-only event/shadow tables;
+it cannot update or delete catalog rows. Admin credentials exist only in operator jobs.
 
 The default backend is `router_bm25f_v1`: the reference CLI exports its integer IDF,
 field norms and postings; Go compiles exactly the same BM25F term contributions and
@@ -85,9 +87,9 @@ ranker for reproduction only. Its historical latency numbers do not describe the
 corrected default, and its test-B harmful-skill exposure failed admission. There is
 no automatic fallback to it. The CLI remains unchanged.
 
-Dense is explicitly disabled in this Go backend. The installed pgvector extension and
-nullable vector column are preparation, not an embedding or GPU service. A separately
-versioned encoder/index and measured fusion are required before enabling dense.
+Dense stays disabled in the default deployment. The separate [GPU runbook](GPU.md)
+provides the model/index publication lifecycle, Compose overlay and validation for
+background hybrid shadow. Direct neural responses require a separate experiment flag. USE and the harness context contract remain shared.
 
 ## Verify and measure
 
@@ -133,9 +135,28 @@ snapshot publication as ordered Jobs. Budget eight DB connections per replica.
 Choose a Postgres operator or managed service that actually permits the pinned
 `pg_search` extension; ordinary managed Postgres compatibility is not sufficient.
 Add TLS/IAM, tenant credentials/RLS, backup/restore and failover drills, network/load
-SLOs, bounded snapshot retention/garbage collection and durable E6.4 telemetry before
+SLOs, bounded snapshot retention/garbage collection and authenticated harness integration before
 production admission. A retained snapshot currently retains its table and index;
 automatic GC is deliberately not implemented. No Kubernetes deployment or HA claim
 is made by this Compose release.
 
 Default-router correction and measured parity/latency: [report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).
+
+## Telemetry and operations
+
+`POST /v1/events:batch` accepts up to 500 schema-1.0 events with the same Bearer
+credential as SEARCH/USE. The service binds tenant identity, uses `(tenant_id,event_id)`
+idempotency, and returns `accepted`, `duplicate`, `rejected` after commit. A failed
+transaction receives no success ACK. Two separate ingest slots bound work; retry 429/
+transient 5xx with the same IDs. Unknown schema versions are permanent per-event rejects.
+
+The Go validator consumes constants exported from `tools/telemetry/ledger.py`; the
+same ledger/report pytest assertions run against SQLite and actual HTTP/Postgres in
+`telemetry-service` CI. The original report calculations are reused unchanged.
+The current CLI flush lacks Bearer support: its integration proof uses a test-only
+credential adapter. Complete that adapter in E2.6 before claiming a direct harness flow.
+
+[VM/systemd runbook, snapshots, rollback and retention](../../deploy/t1/README.md).
+`compose-service` is the exact branch-protection check name for the 1000-query HTTP/CLI
+parity gate; `native-service` checks the formula/policy port. Branch protection is
+configured by the repository owner, not by these workflow changes.

@@ -245,3 +245,20 @@ causal skill benefit. Set adoption/usability targets after a two-week covered ba
 Before launch, Platform publishes adapter evidence types, pilot cohorts, authorization/
 cache expiry rules and measured load profile. GPU capacity/cost and empirical KPI
 thresholds remain open; neither changes event semantics.
+
+### Go/Postgres implementation evidence (2026-09-05)
+
+The service ports the SQLite ledger to authenticated `/v1/events:batch` with the same
+schema vocabulary and pytest assertions, and reuses `report.py` through its storage
+interface. The isolated 20-find/5-load cycle produces 210 events; replay retains the
+same IDs, reports zero new accepted events and 210 duplicates, and leaves report
+counts equal to SQLite. Current CLI flush has no Bearer option; this test injects the
+credential in a test-only loopback transport. Direct authenticated adapter integration
+remains E2.6; the service does not trust the client's tenant header.
+
+Hybrid shadow stores no raw query/path text and joins client events on tenant/search_id.
+It is bounded, best-effort observation: record failures and missing comparisons in
+coverage, never silently exclude them from quality denominators. GPU availability does
+not enter the sparse response. [T1 operations](../deploy/t1/README.md) documents storage,
+retention and the still-pending clean-VM acceptance. No event or SEARCH schema version
+is changed by this port.

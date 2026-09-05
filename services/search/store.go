@@ -62,6 +62,8 @@ type Store struct {
 	Pool                             *pgxpool.Pool
 	Tenant, Repo, PolicySHA, Version string
 	LexicalEngine                    string
+	Dense                            *DenseClient
+	Shadow                           *ShadowWorker
 	mu                               sync.Mutex
 	cached                           *Catalog
 	Searches, Uses                   atomic.Uint64
@@ -148,6 +150,11 @@ func (s *Store) catalog(ctx context.Context) (*Catalog, error) {
 	}
 	if s.LexicalEngine != "paradedb-experimental" {
 		if e = s.verifyRouterIndex(ctx, c); e != nil {
+			return nil, e
+		}
+	}
+	if s.Dense != nil {
+		if e = s.Dense.verifyCatalog(ctx, s, c); e != nil {
 			return nil, e
 		}
 	}
@@ -249,7 +256,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(78350001)`); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, migration+routerMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, migration+routerMigration+denseMigration+telemetryMigration+shadowMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	password, e := secret(env("APP_PASSWORD_FILE", "/run/secrets/app_password"))
@@ -264,7 +271,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `ALTER ROLE guidefold_api PASSWORD `+escaped); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `GRANT CONNECT ON DATABASE guidefold TO guidefold_api; GRANT USAGE ON SCHEMA gf TO guidefold_api; GRANT SELECT ON ALL TABLES IN SCHEMA gf TO guidefold_api; ALTER ROLE guidefold_api SET default_transaction_read_only=on;`, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, `GRANT CONNECT ON DATABASE guidefold TO guidefold_api; GRANT USAGE ON SCHEMA gf TO guidefold_api; GRANT SELECT ON ALL TABLES IN SCHEMA gf TO guidefold_api; GRANT INSERT ON gf.events,gf.search_shadow TO guidefold_api; ALTER ROLE guidefold_api SET default_transaction_read_only=on;`, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	// Upgrade already published snapshots as well as empty, first-time installs.
@@ -330,7 +337,7 @@ func publish(ctx context.Context, s *Store, path string) error {
 	}
 	// Bound the integer-only policy arithmetic. Unsupported operator configurations fail publication.
 	for k, v := range weights {
-		if k == "ppr_mode" || k == "abstain_mode" {
+		if k == "ppr_mode" || k == "abstain_mode" || k == "compose_mode" || k == "compose_coverage" {
 			continue
 		}
 		n, ok := v.(json.Number)
@@ -346,6 +353,23 @@ func publish(ctx context.Context, s *Store, path string) error {
 	}
 	if m := text(weights, "abstain_mode", "magnitude"); m != "magnitude" && m != "margin" {
 		return fmt.Errorf("unsupported_abstain_mode")
+	}
+	// compose_mode/compose_tau_pct/compose_coverage (ADR-0022 §4 / ADR-0024 §4): the composer
+	// stage is not yet implemented in this service (DENSE-PROGRAM.md §4, family C, dev run
+	// 2026-09-05 — no configuration froze), so this only validates shape/value for storage and
+	// tier parity; it deliberately does not run composition. compose_tau_pct is a plain bounded
+	// integer weight and needs no special case above. Under the shipped default
+	// (compose_mode="off"), this service's behaviour (no composition) already matches the CLI's,
+	// so ADR-0024 tier parity holds; a value of "on" is accepted for forward-storage but has no
+	// runtime effect here yet — same shape as ppr_mode/abstain_mode before their own Go
+	// implementation landed.
+	if m := text(weights, "compose_mode", "off"); m != "off" && m != "on" {
+		return fmt.Errorf("unsupported_compose_mode")
+	}
+	if v, present := weights["compose_coverage"]; present {
+		if _, ok := v.(bool); !ok {
+			return fmt.Errorf("unsupported_compose_coverage")
+		}
 	}
 	id := "repository:" + str(envelope["sha256"])
 	check := &Catalog{Nodes: nodes, Cards: map[string]M{}}
@@ -406,7 +430,7 @@ func publish(ctx context.Context, s *Store, path string) error {
 	if e = ensureRouterIndex(ctx, tx, s, id, str(envelope["router_index_sha256"]), terms, len(cards)); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, s.Tenant, s.Repo, id); e != nil {
+	if e = activateSnapshot(ctx, tx, s, id); e != nil {
 		return e
 	}
 	if e = tx.Commit(ctx); e != nil {

@@ -18,6 +18,7 @@ type pathRule struct {
 	specificity   int
 }
 type Catalog struct {
+	DensePrompt                             string
 	ID, Repo, Revision, PolicySHA, ScopeSHA string
 	RouterIndexSHA                          string
 	Nodes                                   M

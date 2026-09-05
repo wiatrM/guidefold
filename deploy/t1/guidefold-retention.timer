@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Guidefold telemetry retention
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+Unit=guidefold-retention.service
+
+[Install]
+WantedBy=timers.target

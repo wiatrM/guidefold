@@ -13,16 +13,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
 
 type App struct {
-	Store     *Store
-	Validator *Validator
-	Token     string
-	Slots     chan struct{}
+	Store      *Store
+	Validator  *Validator
+	Token      string
+	Slots      chan struct{}
+	EventSlots chan struct{}
 }
 
 func uuid() string {
@@ -37,12 +39,18 @@ func uuid() string {
 }
 func elapsed(t time.Time) float64 { return float64(time.Since(t).Microseconds()) / 1000 }
 func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
+	return s.searchCaptured(ctx, p, nil)
+}
+func (s *Store) searchCaptured(ctx context.Context, p M, capture *ShadowJob) (M, error) {
 	start := time.Now()
 	c, e := s.catalog(ctx)
 	if e != nil {
 		return nil, e
 	}
-	stages := M{"catalog": elapsed(start)}
+	return s.searchCatalog(ctx, c, p, M{"catalog": elapsed(start)}, capture)
+}
+func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, capture *ShadowJob) (M, error) {
+	var e error
 	scopes, contextualData, e := c.resolve(p)
 	if e != nil {
 		return nil, e
@@ -52,6 +60,23 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	eligible := map[string][]string{}
 	merged := map[string]Candidate{}
 	dropCount := 0
+	type encodedQuery struct {
+		vector []float32
+		ms     float64
+		err    error
+	}
+	var encodeResult chan encodedQuery
+	var vector []float32
+	if s.Dense != nil {
+		encodeResult = make(chan encodedQuery, 1)
+		go func() {
+			started := time.Now()
+			denseCtx, cancel := context.WithTimeout(ctx, s.Dense.EncodeTimeout)
+			defer cancel()
+			v, e := s.Dense.encode(denseCtx, str(p["query"]), c.DensePrompt)
+			encodeResult <- encodedQuery{v, elapsed(started), e}
+		}()
+	}
 	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
 	for _, node := range scopes {
 		stage := time.Now()
@@ -63,11 +88,42 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 		}
 		policyMS += elapsed(stage)
 		stage = time.Now()
-		candidates, e := s.search(ctx, c, str(p["query"]), allowed)
+		var candidates []Candidate
+		if s.Dense != nil {
+			if s.Dense.Mode == "hybrid" {
+				candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+			}
+		} else {
+			candidates, e = s.search(ctx, c, str(p["query"]), allowed)
+		}
 		if e != nil {
 			return nil, e
 		}
 		searchMS += elapsed(stage)
+		if s.Dense != nil {
+			if vector == nil {
+				waitStart := time.Now()
+				select {
+				case encoded := <-encodeResult:
+					if encoded.err != nil {
+						return nil, encoded.err
+					}
+					vector = encoded.vector
+					stages["encode_http"] = encoded.ms
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				stages["encoder_wait_after_sparse"] = elapsed(waitStart)
+			}
+			denseStart := time.Now()
+			dense, e := s.denseSearch(ctx, c, vector, allowed, candidates)
+			if e != nil {
+				return nil, e
+			}
+			previous, _ := stages["dense_database"].(float64)
+			stages["dense_database"] = previous + elapsed(denseStart)
+			candidates = fuseCandidates(candidates, dense)
+		}
 		stage = time.Now()
 		for _, row := range c.score(candidates, node) {
 			if old, ok := merged[row.URN]; !ok || row.Score > old.Score {
@@ -165,10 +221,25 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	if s.LexicalEngine != "paradedb-experimental" {
 		result["retrieval"] = M{"engine": "Guidefold integer BM25F / Postgres postings", "revision": "router-bm25f-v1", "index_revision": c.RouterIndexSHA, "dense": "disabled", "exact_legacy_ranking_parity": true}
 	}
+	if s.Dense != nil {
+		result["model"] = s.Dense.ID
+		result["encoder_batch_requests"] = s.Dense.BatchRequests
+		result["encoder_process"] = true
+		result["live_encode_calls"] = 1
+		result["retrieval"] = M{"engine": "Guidefold BM25F + pgvector exact cosine + TEI GPU", "revision": s.backendName(), "index_revision": c.RouterIndexSHA, "encoder_id": s.Dense.ID, "dense": s.Dense.Mode, "fusion": "rrf-k60-top50-union-full-channel-ranks", "exact_legacy_ranking_parity": false, "quality_admitted": false}
+	}
 	if contextual {
 		result["schema_version"] = "1.1"
 		result["context"] = contextualData
 		result["card_context"] = rendered
+	}
+	if capture != nil {
+		capture.SearchID = str(result["search_id"])
+		capture.Catalog = c
+		capture.Payload = p
+		capture.SparseRanked = compactRanks(scored, 20)
+		capture.Selected = compactCards(cards)
+		capture.SparseTimings = copyMetrics(stages)
 	}
 	return result, nil
 }
@@ -251,6 +322,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	attempt := uuid()
 	var payload M
 	send := func() {
+		if _, ok := result["backend"]; !ok {
+			result["backend"] = a.Store.backendName()
+		}
+		if _, ok := result["degradation_reason"]; !ok {
+			result["degradation_reason"] = result["error"]
+		}
 		result["request_id"] = attempt
 		for _, k := range []string{"request_id", "session_id", "task_id"} {
 			if v, ok := payload[k]; ok {
@@ -332,11 +409,26 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respondError(e)
 			return
 		}
+		if a.Store.Dense != nil {
+			if e = a.Store.Dense.ready(ctx); e != nil {
+				respondError(e)
+				return
+			}
+		}
 		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
+		if a.Store.Dense != nil {
+			result["encoder_id"] = a.Store.Dense.ID
+			result["encoder_batch_requests"] = a.Store.Dense.BatchRequests
+			result["retrieval_mode"] = a.Store.Dense.Mode
+			result["live_encode_calls"] = a.Store.Dense.Calls.Load()
+			result["database_dense_calls"] = a.Store.Dense.Searches.Load()
+			result["model_load_calls"] = nil
+			result["quality_admitted"] = false
+		}
 		send()
 		return
 	}
-	if r.Method != http.MethodPost || (endpoint != "search" && endpoint != "use") {
+	if r.Method != http.MethodPost || (endpoint != "search" && endpoint != "use" && endpoint != "events:batch") {
 		status = 404
 		result = M{"error": "not_found"}
 		send()
@@ -348,7 +440,11 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send()
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	bodyLimit := int64(16384)
+	if endpoint == "events:batch" {
+		bodyLimit = 2 * 1024 * 1024
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, bodyLimit)
 	body, e := io.ReadAll(r.Body)
 	if e != nil {
 		var limit *http.MaxBytesError
@@ -367,6 +463,33 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := obj(decoded)
+	if endpoint == "events:batch" {
+		batch, ok := p["events"].([]any)
+		if !ok {
+			respondError(fail(400, "missing_events_list"))
+			return
+		}
+		if len(batch) > 500 {
+			respondError(fail(413, "batch_too_large"))
+			return
+		}
+		select {
+		case a.EventSlots <- struct{}{}:
+			defer func() { <-a.EventSlots }()
+		default:
+			respondError(fail(429, "telemetry_overloaded"))
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		result, e = a.Store.ingestEvents(ctx, batch)
+		if e != nil {
+			respondError(e)
+			return
+		}
+		send()
+		return
+	}
 	if e = a.Validator.validate(p, endpoint); e != nil {
 		respondError(e)
 		return
@@ -381,8 +504,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respondError(fail(429, "overloaded"))
 		return
 	}
+	var shadowJob *ShadowJob
 	if endpoint == "search" {
-		result, e = a.Store.searchResponse(ctx, p)
+		if a.Store.Shadow != nil {
+			shadowJob = &ShadowJob{}
+		}
+		result, e = a.Store.searchCaptured(ctx, p, shadowJob)
 	} else {
 		result, e = a.Store.useResponse(ctx, p)
 	}
@@ -394,7 +521,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respondError(e)
 		return
 	}
-	send()
+	deliverThenShadow(send, a.Store.Shadow, shadowJob)
 }
 func arrM(v any) []M { a, _ := v.([]M); return a }
 func policySHA() (string, error) {
@@ -403,9 +530,17 @@ func policySHA() (string, error) {
 	return hash(b), e
 }
 func run() error {
+	shadowEnabled := env("GUIDEFOLD_SHADOW", "false") == "true"
 	command := "serve"
 	if len(os.Args) > 1 {
 		command = os.Args[1]
+	}
+	if command == "--shadow" {
+		command = "serve"
+		shadowEnabled = true
+	}
+	if command == "serve" && len(os.Args) > 2 && os.Args[2] == "--shadow" {
+		shadowEnabled = true
 	}
 	if command == "healthcheck" {
 		client := &http.Client{Timeout: 2 * time.Second}
@@ -446,11 +581,80 @@ func run() error {
 		}
 		return publish(ctx, store, os.Args[2])
 	}
+	if command == "publish-embeddings" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("publish_embeddings_requires_path")
+		}
+		return publishEmbeddings(ctx, store, os.Args[2])
+	}
+	if command == "shadow-export" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("shadow_export_requires_search_id")
+		}
+		value, e := store.exportShadow(ctx, os.Args[2])
+		return printOperatorResult(value, e)
+	}
+	if command == "telemetry-export" {
+		value, e := store.exportEvents(ctx)
+		return printOperatorResult(value, e)
+	}
+	if command == "telemetry-tenants" {
+		value, e := store.eventTenants(ctx)
+		return printOperatorResult(value, e)
+	}
+	if command == "telemetry-retain" {
+		days := 90
+		if len(os.Args) > 2 {
+			days, e = strconv.Atoi(os.Args[2])
+			if e != nil {
+				return e
+			}
+		}
+		now := time.Now()
+		if len(os.Args) > 3 {
+			now, e = time.Parse(time.RFC3339, os.Args[3])
+			if e != nil {
+				return e
+			}
+		}
+		n, e := store.retainEvents(ctx, days, now)
+		return printOperatorResult(M{"deleted": n}, e)
+	}
 	if command != "serve" {
 		return fmt.Errorf("unknown_command")
 	}
 	if e = pool.QueryRow(ctx, `SELECT extversion FROM pg_extension WHERE extname='pg_search'`).Scan(&store.Version); e != nil {
 		return e
+	}
+	store.Dense, e = newDenseClient()
+	if e != nil {
+		return e
+	}
+	if shadowEnabled && store.Dense != nil {
+		return fmt.Errorf("shadow_requires_sparse_responses")
+	}
+	if store.Dense != nil {
+		if env("GUIDEFOLD_EXPERIMENTAL_OUTPUT", "false") != "true" {
+			return fmt.Errorf("neural_response_requires_explicit_experiment")
+		}
+		if store.LexicalEngine != "router" {
+			return fmt.Errorf("dense_requires_router_baseline")
+		}
+		if e = store.Dense.ready(ctx); e != nil {
+			return e
+		}
+	}
+	if shadowEnabled {
+		if store.LexicalEngine != "router" {
+			return fmt.Errorf("shadow_requires_router_baseline")
+		}
+		store.Shadow, e = newShadowWorker(root, store)
+		if e != nil {
+			return e
+		}
+	}
+	if store.Shadow != nil {
+		defer func() { cancel(); store.Shadow.WG.Wait() }()
 	}
 	validator, e := newValidator(env("GUIDEFOLD_CONTRACT", "/app/contract.json"))
 	if e != nil {
@@ -460,7 +664,7 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	app := &App{Store: store, Validator: validator, Token: token, Slots: make(chan struct{}, 8)}
+	app := &App{Store: store, Validator: validator, Token: token, Slots: make(chan struct{}, 8), EventSlots: make(chan struct{}, 2)}
 	server := &http.Server{Addr: ":8080", Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 6 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	errs := make(chan error, 1)
 	go func() { errs <- server.ListenAndServe() }()

@@ -1,7 +1,7 @@
 name: guidefold-search
 
 x-app: &app
-  image: guidefold-search:local
+  image: ${GUIDEFOLD_IMAGE:-guidefold-search:local}
   build:
     context: .
     dockerfile: services/search/Dockerfile

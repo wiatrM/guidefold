@@ -233,6 +233,8 @@ def ingest(conn: sqlite3.Connection, tenant_id: str, batch: list) -> dict:
     """
     if not tenant_id:
         raise ValueError("ingest() requires a verified tenant_id")
+    if hasattr(conn, "ingest_events"):
+        return conn.ingest_events(tenant_id, batch)
     received_at = _iso(_utc_now())
     accepted, duplicate, rejected = [], [], []
     for event in batch:
@@ -262,6 +264,8 @@ def retention_delete(conn: sqlite3.Connection, older_than_days: int = 90, now=No
     """Delete events whose occurred_at is older than `older_than_days` (Sec5). Returns the number
     of rows deleted. No derived rollup tables exist in this reference ledger to also expire --
     report.py always computes rollups fresh from `events`."""
+    if hasattr(conn, "retention_delete"):
+        return conn.retention_delete(older_than_days=older_than_days, now=now)
     now = now or _utc_now()
     cutoff = _iso(now - datetime.timedelta(days=older_than_days))
     cur = conn.execute("DELETE FROM events WHERE occurred_at < ?", (cutoff,))
@@ -273,6 +277,8 @@ def fetch(conn: sqlite3.Connection, tenant_id: str, event_type: str = None) -> l
     """All events for one tenant (optionally filtered by type), oldest occurred_at first, decoded
     from their stored payload JSON. Callers must never pass a tenant_id whose data the ultimate
     caller is not entitled to see -- this module has no authorization model of its own."""
+    if hasattr(conn, "fetch_events"):
+        return conn.fetch_events(tenant_id, event_type)
     if event_type:
         rows = conn.execute(
             "SELECT payload FROM events WHERE tenant_id=? AND event_type=? ORDER BY occurred_at",
@@ -287,5 +293,7 @@ def fetch(conn: sqlite3.Connection, tenant_id: str, event_type: str = None) -> l
 def tenants(conn: sqlite3.Connection) -> list:
     """Distinct tenant_ids present in the ledger -- report.py iterates this to produce one report
     per tenant rather than silently pooling every tenant's events together."""
+    if hasattr(conn, "tenants"):
+        return conn.tenants()
     return [r[0] for r in
             conn.execute("SELECT DISTINCT tenant_id FROM events ORDER BY tenant_id").fetchall()]

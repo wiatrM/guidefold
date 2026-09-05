@@ -190,6 +190,9 @@ func accumulatePostings(scores map[int]int64, packed []byte, nQuery int64, nDocs
 	return nil
 }
 func (s *Store) routerSearch(ctx context.Context, c *Catalog, query string, allowed map[string]bool) ([]Candidate, error) {
+	return s.routerCandidates(ctx, c, query, allowed, 50)
+}
+func (s *Store) routerCandidates(ctx context.Context, c *Catalog, query string, allowed map[string]bool, limit int) ([]Candidate, error) {
 	frequencies := map[string]int64{}
 	for _, t := range tokens(query) {
 		frequencies[t]++
@@ -228,8 +231,8 @@ func (s *Store) routerSearch(ctx context.Context, c *Catalog, query string, allo
 		}
 		return a < b
 	})
-	if len(docs) > 50 {
-		docs = docs[:50]
+	if limit > 0 && len(docs) > limit {
+		docs = docs[:limit]
 	}
 	out := make([]Candidate, 0, len(docs))
 	for rank, doc := range docs {
@@ -238,6 +241,12 @@ func (s *Store) routerSearch(ctx context.Context, c *Catalog, query string, allo
 	return out, nil
 }
 func (s *Store) backendName() string {
+	if s != nil && s.Dense != nil {
+		if s.Dense.Mode == "dense" {
+			return "skillret_tei_dense_v1"
+		}
+		return "router_bm25f_skillret_tei_rrf_v1"
+	}
 	if s != nil && s.LexicalEngine == "paradedb-experimental" {
 		return "paradedb_bm25_v1"
 	}
