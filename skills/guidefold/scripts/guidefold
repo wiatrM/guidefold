@@ -1373,7 +1373,7 @@ class Router:
             return 1 << 30
         return scored[0]["score"] - scored[1]["score"]
 
-    def select(self, scored: list, k: int = 4, abstain_threshold: int = None, admissible: set = None) -> list:
+    def select(self, scored: list, k: int = 4, abstain_threshold: int = None, *, admissible: set) -> list:
         idx = self.index
         mode = idx.weights.get("abstain_mode", "magnitude")
         if abstain_threshold is None:
@@ -1399,9 +1399,7 @@ class Router:
                 # Admissibility is decided once, by policy_filter, and applies everywhere (ADR-0022):
                 # a dependency the filter rejected — out of scope, deprecated, negative-trigger — must
                 # not be re-admitted through `requires`. It is an unresolved requirement instead.
-                if admissible is not None and dep not in admissible:
-                    continue
-                if admissible is None and idx.cards[dep]["status"] == "deprecated":
+                if dep not in admissible:
                     continue
                 chosen.append(dep); chosen_set.add(dep)
         # emit general -> specific (root-most first); ties on score then urn

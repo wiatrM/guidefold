@@ -53,7 +53,10 @@ class _FakeRouter:
     def score(self, cands, query, node):
         return [dict(c, score=100 - i) for i, c in enumerate(cands)]
 
-    def select(self, scored, k=4):
+    def policy_filter(self, node, query, include_deprecated=False):
+        return [f"urn:skill:m:{node}:{i}" for i in range(4)], []
+
+    def select(self, scored, k=4, *, admissible):
         return list(reversed(scored[:k]))
 
 

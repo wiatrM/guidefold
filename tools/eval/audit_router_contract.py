@@ -63,7 +63,16 @@ def inspect_root(root, revision=None):
         checked += 1
         violations += cli._dense_rank({"A": (da,na), "B": (db,nb)}) != expected
     dense.update(tested_nontied_pairs=checked, violations=violations)
-    def card(urn, node, negative=()):
+    def _direct_select(router, seed):
+    """After ADR-0022 the parameter is mandatory: a direct call without it must be rejected,
+    not silently fall back to a weaker policy. Record which of the two happened."""
+    try:
+        return router.select(seed, k=4)
+    except TypeError as e:
+        return {"rejected": True, "error": str(e)}
+
+
+def card(urn, node, negative=()):
         return {"urn": urn, "node": node, "name": urn, "description": "",
                 "status": "active", "negative_triggers": list(negative)}
     weights = {**cli.Index.DEFAULT_WEIGHTS, "w_dense": 0, "w_scope": 0, "w_ppr": 0}
@@ -91,7 +100,7 @@ def inspect_root(root, revision=None):
     seed = [{"urn": "A", "node": "a", "score": 20000, "bm25_rank": 1, "dense_rank": None}]
     policy = {"eligible": eligible, "drops": drops, "route_selected": selected,
         "route_excluded_reintroduced": leaked, "passes_route_eligibility": not leaked,
-        "direct_select_without_admissible": router.select(seed, k=4),
+        "direct_select_without_admissible": _direct_select(router, seed),
         "select_accepts_admissible": "admissible" in inspect.signature(router.select).parameters}
     return {"root": str(root), "git_head": git(root,"rev-parse","HEAD"),
         "source_kind": "git_revision" if revision else "working_tree",

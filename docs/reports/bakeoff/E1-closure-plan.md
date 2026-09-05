@@ -167,10 +167,12 @@ probe re-run on **landed `main` `c08c58c`, clean tree** (`router-contract-main-c
 | dependency eligibility via `route()` | — | negative-trigger and out-of-scope deps **not re-introduced** |
 | `w_dense = 0` contributes nothing | channel voted | **no contribution** |
 
-**Still open, from the same audit:** `select()` called *directly* without `admissible` keeps the
-legacy deprecated-only check and will still admit a rejected dependency. The product paths
-(`route`, `find`, `hook`) all pass the admissible set; the direct call is used only by tests. Under
-ADR-0022 §1 the parameter should become mandatory — follow-up, with the affected tests updated.
+**Closed (PR after #22):** `admissible` is now a **keyword-only, mandatory** parameter of
+`select()`; the legacy deprecated-only fallback is gone. The reviewer's probe records the direct
+call as rejected by signature. Both evaluation tools (`run_golden.py`, `sweep.py`) now pass the
+product's admissible set, so injection metrics are measured exactly as the product injects. That
+moved `all_required@4` on multi_skill from 0.6061 to **0.5758** (overall 0.8276 → 0.8161): the
+benchmark had been crediting closure dependencies the product rejects. Baseline regenerated.
 
 `papers-manifest-2026-09-05.json` inventories the local paper cache with SHA-256 per file and
 verifies SkillRouter v5 / SkillRet v3 as the versions cited; it records that the SIF and RRF local
