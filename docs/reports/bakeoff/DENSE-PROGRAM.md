@@ -592,11 +592,19 @@ C0 on all 1,000 queries (`C-det-2`/`C-det-4`); with it on, `all_required@4` **re
 overall, −12.5 pp at k = 1 (`C-det-1`/`C-det-3`), because covering unique query terms outranks
 the single best-scored answer once that answer's terms are already "covered." Both model arms'
 `all_required@4` point estimates are positive (+2.7 to +4.0 pp overall, +10.0 pp at k = 2) but
-neither's CI excludes zero on the low side (`C-model-2`'s low edge sits exactly at 0.0, the
-closest near-miss in either family); the pre-registered rule requires `ci_low > 0`, applied
-mechanically. **No arm qualifies in either family** — the deterministic family has no config that
-both changes the ranking and helps, and the model family's best result touches but does not clear
-the zero line. Test-once (both corpora) and the R1 dense re-run this family exists to unblock
+neither's CI excludes zero on the low side. `C-model-1`'s CI is negative on the low side
+(ci_low=−0.0133) and its guard also fails — a clear non-qualifier. `C-model-2`'s CI is
+`[0.0, +8.0]` pp — low edge exactly 0.0, entirely non-negative — which is **inconclusive, not
+negative**: the pre-registered rule requires `ci_low > 0` strictly, so it does not qualify, but
+the 150-query pre-registered subsample lacks the power to say whether the true effect is above or
+below zero. Resolving that needs the full 1,000-query dev run (≈850 more queries beyond the
+150-query subsample, ≈$16 at this run's own measured per-call rate) — not run here (would be a
+result-driven scope expansion), recorded as an open follow-up in
+`docs/reports/bakeoff/DEV-C-composer-2026-09-05.md` ("Open follow-up"). **No arm qualifies in
+either family** — the deterministic family has no config that both changes the ranking and helps,
+and the model family's best result is inconclusive at the boundary rather than clearing it; the
+mechanical freeze decision is unaffected either way: **nothing frozen**. Test-once (both corpora)
+and the R1 dense re-run this family exists to unblock
 (§7, "requested Go/ParadeDB service" entry above, and the R1/test-B entry's own note) are both
 skipped, per the pre-registered "freeze, then test" order — nothing froze, and R1's dense caches
 are independently confirmed absent from `~/.cache/guidefold/` regardless. A live model-arm

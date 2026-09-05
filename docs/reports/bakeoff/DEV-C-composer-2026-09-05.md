@@ -22,8 +22,15 @@ essentially every query, but their fallback path reproduces C0's own ranking exa
 measure a delta of precisely zero. The other two (`C-det-1`, `C-det-3`) do change the composed
 list, and **regress**: `all_required@4` falls 3.2 pp overall, entirely because coverage-greedy fill
 demotes the single best match at k = 1 (−12.5 pp there). Both model arms show a positive point
-estimate on completeness but neither excludes zero on the low side of its CI, and the run that
-produced these numbers spent real, unusual engineering effort resolving a live infrastructure
+estimate on completeness; neither qualifies under the pre-registered rule, but the two miss for
+different reasons. `C-model-1` (ci_low = −0.0133, Δhit1_injected −3.33 pp) is a clear non-qualifier
+on both criteria. `C-model-2` (ci_low = 0.0000 exactly, guard passes) is **inconclusive, not
+negative** — its point estimate is positive (+4.0 pp) and its CI's lower edge sits exactly on the
+qualification boundary rather than below it; the pre-registered rule (`ci_low > 0`, strict) still
+calls this a non-qualifier, but "does not qualify" and "the effect is negative" are different
+claims, and only the first is supported here. Resolving it needs more statistical power than the
+pre-registered 150-query subsample provides — see "Open follow-up" below. The run that produced
+these numbers also spent real, unusual engineering effort resolving a live infrastructure
 reliability problem — see "Model-arm reliability" below. This is a **valid, reportable gate
 failure**, not tuned away.
 
@@ -200,7 +207,7 @@ report why the closest candidate fell short. `cmd_freeze` applies this mechanica
 | C-det-3 | no (ci_low=−0.0510) | −6.00 pp | no | **no** | CI does not exclude 0; guard also fails |
 | C-det-4 | no (ci_low=0.0000) | 0.00 pp | yes | **no** | CI does not exclude 0 (delta is exactly 0) |
 | C-model-1 | no (ci_low=−0.0133) | −3.33 pp | no | **no** | CI does not exclude 0; guard also fails |
-| C-model-2 | no (ci_low=0.0000) | 0.00 pp | yes | **no** | CI does not exclude 0 (delta touches, does not exceed, 0) |
+| C-model-2 | no (ci_low=0.0000) | 0.00 pp | yes | **no** | inconclusive, not negative: point estimate +4.0pp, CI low edge exactly 0 — touches, does not exceed, the qualification boundary |
 
 **No deterministic arm and no model arm is frozen.** In the deterministic family, the only two
 arms with any nonzero effect (`C-det-1`/`C-det-3`, coverage=on) move the wrong direction on the
@@ -211,7 +218,14 @@ family, both arms' point estimates are positive and `C-model-2`'s CI low edge si
 — one point-estimate closer to qualifying than either deterministic arm — but "exactly zero" is not
 "excludes zero on the low side" under the pre-registered rule, and the rule is applied mechanically,
 not rounded in the arm's favor. This is reported as the closest near-miss in either family, not as
-a qualifying result.
+a qualifying result. **It is also, specifically, inconclusive rather than negative**: unlike
+`C-model-1` (CI low edge below zero, guard also fails) or the coverage-on deterministic arms (CI
+low edge below zero, effect genuinely the wrong sign), `C-model-2`'s interval is `[0.0, +8.0]` pp —
+entirely non-negative, touching the qualification boundary at its very edge rather than crossing to
+the wrong side of it. The mechanical decision is unchanged (the pre-registered rule requires
+`ci_low > 0`, strictly, so this arm does not qualify and nothing freezes), but the correct
+description of *why* is "not enough power to resolve which side of zero the effect is really on,"
+not "the effect is negative." See "Open follow-up" below for what settling this would take.
 
 ## Model-arm reliability — an infrastructure-failure investigation, reported in full
 
@@ -275,6 +289,24 @@ pre-registered on the full 1,000-query split. This report holds that pre-registe
 the model arms to 1,000 queries after seeing partial 150-query results, as this session was asked
 to consider mid-run, would itself be the result-driven scope change the pre-registration exists to
 rule out, and was independently infeasible at this run's measured throughput; it was not done.
+
+## Open follow-up — `C-model-2` needs a full-power run to resolve
+
+`C-model-2`'s inconclusive result (above) is a power problem, not a scope violation: the
+150-query subsample was always going to produce a wider CI than the 1,000-query dev split the
+deterministic arms ran on, and this is the one case in this family where the point estimate landed
+close enough to the gate that the extra width mattered. Settling whether the true effect is above
+or below zero needs the **full 1,000-query dev split**, i.e. the same ≈850 additional queries
+(1,000 − 150) the deterministic arms already cover. At this run's own measured, cache-adjusted rate
+($2.88 / 146 genuine calls ≈ $0.0197/call), ≈850 more queries costs **≈$16** — consistent with the
+independent estimate this was flagged at. This is **not run in this report**: doing it now, after
+seeing this run's numbers, would be exactly the result-driven scope expansion the "On scope"
+paragraph above declines for the same reason. It is recorded here as an open, pre-registerable
+follow-up for whoever next touches family C — run the full 1,000 on `C-model-2` (and, for a clean
+comparison, `C-model-1`) *before* looking at the partial result, then apply the same freeze rule
+mechanically. The mechanical decision in this report is unaffected either way: **nothing is frozen
+here**, because the pre-registered rule requires `ci_low > 0` on the 150-query subsample as
+declared, not on a hypothetical larger one.
 
 ## R1 re-run and test-once
 
