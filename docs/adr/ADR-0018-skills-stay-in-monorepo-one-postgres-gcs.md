@@ -1,6 +1,7 @@
 # ADR-0018: Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts
 
 **Status:** Proposed · 2026-09-04 · replaces the deleted ADR-0011 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
+**T1 implementation amended by:** [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (Go/ParadeDB/Compose); retrieval and production admission remain separate.
 
 ## Context
 Dedicated skills repositories are not possible at the design partner. The workflow analysis behind KNOWLEDGE-DESIGN v0.1 showed that ≥ 95 % of the conflicts projected for v0.3 were synthetic, caused by committed generated files, not by engineers editing independent `SKILL.md` files. The user requires a single database at most and accepts GCS.
@@ -17,4 +18,4 @@ Option 1. Plan B is documented and only triggered if skill files are banned from
 ## Consequences
 - ADR-0005 stands; ADR-0011 deleted; ADR-0013 and ADR-0014 revised accordingly.
 - Merge-queue impact is bounded by the path-filtered check; genuine conflicts are estimated at 1–3 per day org-wide and measured from week 4 (MVP.md K1).
-- The hot path never touches the database or the registry; both can be down without breaking injection.
+- T0 local injection never touches the database or registry. Accepted [ADR-0026](ADR-0026-native-search-paradedb-compose.md) amends T1: Go SEARCH and USE read ParadeDB/Postgres and report database unavailability explicitly.

@@ -1,6 +1,7 @@
 # ADR-0025: One versioned harness-service context contract
 
 **Status:** Accepted · 2026-09-05 · the product owner approved adding the context contract, service changes and conformance tests before the service PR.
+**T1 implementation amended by:** [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (Go/ParadeDB/Compose); retrieval and production admission remain separate.
 **Amends:** ADR-0023 and ADR-0024, only for the harness-to-service request boundary and compatibility rules. Their production architecture and admission decisions remain Proposed.
 **Contract:** [HARNESS-SERVICE-CONTRACT](../HARNESS-SERVICE-CONTRACT.md), [JSON Schema 1.1](../../tools/serve_spike/contracts/harness-service-v1.1.schema.json).
 
@@ -26,3 +27,13 @@ The owner approved repository-relative cwd and target paths, task/query provenan
 The contract is executable and reviewable by service and adapter authors. Adding context does not require changing the single-file shipped CLI. A separate serving snapshot includes full skill bodies because the current compact CLI index omits them; one immutable bundle keeps SEARCH and USE aligned. Repository-backed serving is sparse-only until a verified repository embedding pipeline exists. Hybrid experiments remain available on the pinned SKILLRET corpus.
 
 Metadata can now change scope selection and delivery in ways covered by tests. It does not automatically establish retrieval-quality gains, actual skill application, task utility, complete bundles, production IAM, network SLOs or an installed harness integration. Existing historical benchmarks remain immutable; new API code receives new regression/latency evidence. The event vocabulary, spool, ingestion and usability assessment remain governed by ADR-0023 and E6.4/E6.7.
+
+## Native implementation amendment (ADR-0026)
+
+The approved Go/ParadeDB service implements this same 1.1 wire/context contract.
+The policy and selection port is checked against 144 shared-CLI cases; native race
+checks and real Compose HTTP/publication/recovery tests supplement the Python suite.
+Decision 4's Python/C++ implementation and optimization parity remain historical.
+The native backend advertises `paradedb_bm25_v1` and its distinct retrieval revision;
+1.1 compatibility does not assert identical BM25F rankings across retrieval backends.
+The active Go service does not run the C++ dense comparator or a GPU encoder.

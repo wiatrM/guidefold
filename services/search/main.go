@@ -1,0 +1,479 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+)
+
+type App struct {
+	Store     *Store
+	Validator *Validator
+	Token     string
+	Slots     chan struct{}
+}
+
+func uuid() string {
+	var b [16]byte
+	if _, e := rand.Read(b[:]); e != nil {
+		panic(e)
+	}
+	b[6] = (b[6] & 15) | 64
+	b[8] = (b[8] & 63) | 128
+	s := hex.EncodeToString(b[:])
+	return s[:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:]
+}
+func elapsed(t time.Time) float64 { return float64(time.Since(t).Microseconds()) / 1000 }
+func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
+	start := time.Now()
+	c, e := s.catalog(ctx)
+	if e != nil {
+		return nil, e
+	}
+	stages := M{"catalog": elapsed(start)}
+	scopes, contextualData, e := c.resolve(p)
+	if e != nil {
+		return nil, e
+	}
+	contextual := str(p["schema_version"]) == "1.1"
+	admissible := map[string]bool{}
+	eligible := map[string][]string{}
+	merged := map[string]Candidate{}
+	dropCount := 0
+	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
+	for _, node := range scopes {
+		stage := time.Now()
+		allowed, drops := c.allowed(node, str(p["query"]))
+		dropCount += drops
+		for u := range allowed {
+			admissible[u] = true
+			eligible[u] = append(eligible[u], node)
+		}
+		policyMS += elapsed(stage)
+		stage = time.Now()
+		candidates, e := s.search(ctx, c, str(p["query"]), allowed)
+		if e != nil {
+			return nil, e
+		}
+		searchMS += elapsed(stage)
+		stage = time.Now()
+		for _, row := range c.score(candidates, node) {
+			if old, ok := merged[row.URN]; !ok || row.Score > old.Score {
+				merged[row.URN] = row
+			}
+		}
+		scoreMS += elapsed(stage)
+	}
+	scored := make([]Candidate, 0, len(merged))
+	for _, v := range merged {
+		scored = append(scored, v)
+	}
+	sortCandidates(scored)
+	stages["policy"], stages["candidates"], stages["score"] = policyMS, searchMS, scoreMS
+	stage := time.Now()
+	budget := obj(p["budget"])
+	selected := c.selectCards(scored, int(integer(budget, "max_cards", 4)), admissible)
+	stages["select"] = elapsed(stage)
+	ranked := []M{}
+	for _, row := range scored {
+		if len(ranked) >= 10 {
+			break
+		}
+		card := c.card(row.URN, eligible, contextual)
+		card["score"] = row.Score
+		ranked = append(ranked, card)
+	}
+	cards := []M{}
+	for _, u := range selected {
+		cards = append(cards, c.card(u, eligible, contextual))
+	}
+	rendered := ""
+	if contextual {
+		loaded := map[string]bool{}
+		for _, x := range arr(p["loaded_skills"]) {
+			l := obj(x)
+			id := str(l["skill_id"])
+			if str(l["state"]) == "hydrated" && c.Revisions[id] == str(l["revision"]) {
+				loaded[id] = true
+			} else {
+				appendContext(contextualData, "warnings", "unconfirmed_or_stale_loaded_skill")
+			}
+		}
+		if _, ok := p["loaded_skills"]; ok {
+			appendContext(contextualData, "used_fields", "loaded_skills")
+		}
+		kept := []M{}
+		omitted := 0
+		for _, card := range cards {
+			if loaded[str(card["skill_id"])] {
+				omitted++
+			} else {
+				kept = append(kept, card)
+			}
+		}
+		cards = kept
+		contextualData["loaded_cards_omitted"] = omitted
+		lines := []string{}
+		for _, card := range cards {
+			lines = append(lines, "- "+str(card["skill_id"])+"@"+str(card["revision"])+": "+str(card["description"]))
+		}
+		rendered = strings.Join(lines, "\n")
+		used := len([]byte(rendered))
+		fits := true
+		for _, key := range []string{"max_bytes", "remaining_skill_tokens"} {
+			if v, ok := budget[key]; ok && int64(used) > number(v) {
+				fits = false
+			}
+		}
+		accounting := M{"candidate_rendered_bytes": used, "returned_rendered_bytes": used, "token_accounting": "not_requested"}
+		contextualData["delivery_status"] = "ok"
+		if _, ok := budget["remaining_skill_tokens"]; ok {
+			accounting["token_accounting"] = "utf8_byte_proxy_adapter_must_verify"
+			appendContext(contextualData, "warnings", "verify_final_harness_token_count")
+		}
+		if len(budget) > 0 {
+			appendContext(contextualData, "used_fields", "budget")
+		}
+		if !fits {
+			cards = []M{}
+			rendered = ""
+			accounting["returned_rendered_bytes"] = 0
+			contextualData["delivery_status"] = "cannot_fit"
+		}
+		contextualData["budget_accounting"] = accounting
+		contextualData["fusion"] = "shared_router"
+		if len(scopes) > 1 {
+			contextualData["fusion"] = "max_score_then_urn"
+		}
+	}
+	if e = ctx.Err(); e != nil {
+		return nil, e
+	}
+	result := M{"search_id": uuid(), "backend": backend, "snapshot": c.ID, "model": nil, "policy": "go-router-policy-select-v1", "policy_revision": c.PolicySHA, "optimized": true, "pipeline": false, "native_dense_rank": false, "encoder_process": false, "gil_switch_ms_effective": nil, "torch_threads_effective": nil, "profile": text(p, "profile", "hook"), "reranker": false, "ranked": ranked, "cards": cards, "composition": M{"status": "not_evaluated", "incomplete": nil}, "abstained": len(selected) == 0, "policy_drops": dropCount, "stages_ms": stages, "live_encode_calls": 0, "retrieval": M{"engine": "ParadeDB/Tantivy", "pg_search_version": s.Version, "revision": "bm25-concatenated-unicode-v1", "dense": "disabled", "exact_legacy_ranking_parity": false}}
+	if contextual {
+		result["schema_version"] = "1.1"
+		result["context"] = contextualData
+		result["card_context"] = rendered
+	}
+	return result, nil
+}
+func (s *Store) useResponse(ctx context.Context, p M) (M, error) {
+	c, e := s.catalog(ctx)
+	if e != nil {
+		return nil, e
+	}
+	scopes, contextData, e := c.resolve(p)
+	if e != nil {
+		return nil, e
+	}
+	contextual := str(p["schema_version"]) == "1.1"
+	id := str(p["skill_id"])
+	card, ok := c.Cards[id]
+	if !ok {
+		return nil, fail(404, "skill_not_found")
+	}
+	if str(p["revision"]) != c.Revisions[id] {
+		return nil, fail(409, "revision_mismatch")
+	}
+	if str(card["status"]) != "active" {
+		return nil, fail(409, "skill_not_active")
+	}
+	if contextual {
+		allowed := false
+		for _, node := range scopes {
+			a, _ := c.allowed(node, "")
+			allowed = allowed || a[id]
+		}
+		if !allowed {
+			return nil, fail(403, "skill_outside_resolved_scope")
+		}
+	}
+	body, e := s.body(ctx, c, id, str(p["revision"]))
+	if e != nil {
+		return nil, e
+	}
+	if contextual {
+		budget := obj(p["budget"])
+		caps := false
+		for _, key := range []string{"max_bytes", "remaining_skill_tokens"} {
+			if v, ok := budget[key]; ok {
+				caps = true
+				if int64(len([]byte(body))) > number(v) {
+					return nil, fail(413, "skill_body_exceeds_budget")
+				}
+			}
+		}
+		contextData["body_bytes"] = len([]byte(body))
+		if caps {
+			appendContext(contextData, "used_fields", "budget")
+		}
+		unused := contextData["unused_fields"].([]M)
+		for _, k := range []string{"max_cards"} {
+			if _, ok := budget[k]; ok {
+				unused = append(unused, M{"field": "budget." + k, "reason": "not_applicable_to_use"})
+			}
+		}
+		if _, ok := p["loaded_skills"]; ok {
+			unused = append(unused, M{"field": "loaded_skills", "reason": "not_applicable_to_use"})
+		}
+		contextData["unused_fields"] = unused
+		if _, ok := budget["remaining_skill_tokens"]; ok {
+			appendContext(contextData, "warnings", "verify_final_harness_token_count")
+		}
+	}
+	result := M{"status": "hydrated", "execution_observed": false, "skill_id": id, "revision": c.Revisions[id], "search_id": p["search_id"], "search_id_verified": false, "current_state": card["status"], "snapshot": c.ID, "body": body, "checksum": hash([]byte(body))}
+	if contextual {
+		result["schema_version"] = "1.1"
+		result["context"] = contextData
+	}
+	return result, nil
+}
+func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	status := 200
+	result := M{}
+	endpoint := strings.TrimPrefix(r.URL.Path, "/v1/")
+	attempt := uuid()
+	var payload M
+	send := func() {
+		result["request_id"] = attempt
+		for _, k := range []string{"request_id", "session_id", "task_id"} {
+			if v, ok := payload[k]; ok {
+				result[k] = v
+			}
+		}
+		body, e := json.Marshal(result)
+		if e != nil {
+			status = 500
+			body = []byte(`{"error":"serialization_failed"}`)
+		}
+		ms := elapsed(start)
+		// Allowlist only. No raw queries, bodies, paths, token or free-text metadata.
+		fields := []any{"event", endpoint, "attempt_id", attempt, "status", status, "duration_ms", ms, "backend", backend}
+		for _, k := range []string{"request_id", "session_id", "task_id"} {
+			if v, ok := payload[k]; ok {
+				fields = append(fields, k, v)
+			}
+		}
+		for _, k := range []string{"schema_version", "harness", "query_source"} {
+			if v, ok := payload[k]; ok {
+				fields = append(fields, k, v)
+			}
+		}
+		for _, k := range []string{"search_id", "skill_id", "revision"} {
+			if v, ok := result[k]; ok {
+				fields = append(fields, k, v)
+			}
+		}
+		if c := obj(result["context"]); c != nil {
+			fields = append(fields, "resolved_scopes", c["resolved_scopes"], "scope_map_revision", c["scope_map_revision"])
+		}
+		if cards := arrM(result["cards"]); len(cards) > 0 {
+			revisions := []M{}
+			for _, card := range cards {
+				revisions = append(revisions, M{"skill_id": card["skill_id"], "revision": card["revision"]})
+			}
+			fields = append(fields, "card_revisions", revisions)
+		}
+		if v, ok := result["snapshot"]; ok {
+			fields = append(fields, "snapshot", v)
+		}
+		if r.URL.Path == "/v1/search" {
+			fields = append(fields, "cards", len(arrM(result["cards"])))
+		}
+		if strings.HasPrefix(r.URL.Path, "/v1/") {
+			slog.Info("request", fields...)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Guidefold-Server-Ms", fmt.Sprintf("%.3f", elapsed(start)))
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(status)
+		_, _ = w.Write(body)
+	}
+	respondError := func(e error) {
+		var api *APIError
+		if errors.As(e, &api) {
+			status = api.Status
+			result = M{"error": api.Code}
+		} else if errors.Is(e, context.DeadlineExceeded) || errors.Is(e, context.Canceled) {
+			status = 504
+			result = M{"error": "deadline_exceeded"}
+		} else {
+			status = 503
+			result = M{"error": "backend_unavailable"}
+		}
+		send()
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/health/live" {
+		result = M{"live": true}
+		send()
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/health/ready" {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		c, e := a.Store.catalog(ctx)
+		if e != nil {
+			respondError(e)
+			return
+		}
+		result = M{"ready": true, "backend": backend, "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
+		send()
+		return
+	}
+	if r.Method != http.MethodPost || (endpoint != "search" && endpoint != "use") {
+		status = 404
+		result = M{"error": "not_found"}
+		send()
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+a.Token)) != 1 {
+		status = 401
+		result = M{"error": "unauthorized"}
+		send()
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	body, e := io.ReadAll(r.Body)
+	if e != nil {
+		var limit *http.MaxBytesError
+		if errors.As(e, &limit) {
+			status = 413
+			result = M{"error": "body_too_large"}
+			send()
+		} else {
+			respondError(fail(400, "invalid_body"))
+		}
+		return
+	}
+	decoded, e := strictJSON(body)
+	if e != nil {
+		respondError(fail(400, "invalid_json"))
+		return
+	}
+	p := obj(decoded)
+	if e = a.Validator.validate(p, endpoint); e != nil {
+		respondError(e)
+		return
+	}
+	payload = p
+	ctx, cancel := context.WithDeadline(r.Context(), start.Add(time.Duration(integer(p, "deadline_ms", 1000))*time.Millisecond))
+	defer cancel()
+	select {
+	case a.Slots <- struct{}{}:
+		defer func() { <-a.Slots }()
+	default:
+		respondError(fail(429, "overloaded"))
+		return
+	}
+	if endpoint == "search" {
+		result, e = a.Store.searchResponse(ctx, p)
+	} else {
+		result, e = a.Store.useResponse(ctx, p)
+	}
+	if e != nil {
+		respondError(e)
+		return
+	}
+	if e = ctx.Err(); e != nil {
+		respondError(e)
+		return
+	}
+	send()
+}
+func arrM(v any) []M { a, _ := v.([]M); return a }
+func policySHA() (string, error) {
+	p := env("GUIDEFOLD_POLICY_SOURCE", "/app/policy-source")
+	b, e := os.ReadFile(p)
+	return hash(b), e
+}
+func run() error {
+	command := "serve"
+	if len(os.Args) > 1 {
+		command = os.Args[1]
+	}
+	if command == "healthcheck" {
+		client := &http.Client{Timeout: 2 * time.Second}
+		r, e := client.Get("http://127.0.0.1:8080/health/ready")
+		if e != nil {
+			return e
+		}
+		defer r.Body.Close()
+		if r.StatusCode != 200 {
+			return fmt.Errorf("not_ready")
+		}
+		return nil
+	}
+	root, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	pool, e := openPool(root)
+	if e != nil {
+		return e
+	}
+	defer pool.Close()
+	sha, e := policySHA()
+	if e != nil {
+		return e
+	}
+	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha}
+	ctx, done := context.WithTimeout(root, 120*time.Second)
+	defer done()
+	if command == "migrate" {
+		return migrate(ctx, pool)
+	}
+	if command == "publish" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("publish_requires_snapshot_path")
+		}
+		return publish(ctx, store, os.Args[2])
+	}
+	if command != "serve" {
+		return fmt.Errorf("unknown_command")
+	}
+	if e = pool.QueryRow(ctx, `SELECT extversion FROM pg_extension WHERE extname='pg_search'`).Scan(&store.Version); e != nil {
+		return e
+	}
+	validator, e := newValidator(env("GUIDEFOLD_CONTRACT", "/app/contract.json"))
+	if e != nil {
+		return e
+	}
+	token, e := secret(env("GUIDEFOLD_TOKEN_FILE", "/run/secrets/api_token"))
+	if e != nil {
+		return e
+	}
+	app := &App{Store: store, Validator: validator, Token: token, Slots: make(chan struct{}, 8)}
+	server := &http.Server{Addr: ":8080", Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 6 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	errs := make(chan error, 1)
+	go func() { errs <- server.ListenAndServe() }()
+	slog.Info("listening", "address", server.Addr, "backend", backend, "runtime", "go")
+	select {
+	case <-root.Done():
+		stop, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(stop)
+	case e := <-errs:
+		if errors.Is(e, http.ErrServerClosed) {
+			return nil
+		}
+		return e
+	}
+}
+func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	if e := run(); e != nil {
+		slog.Error("service_failed", "error", e.Error())
+		os.Exit(1)
+	}
+}
