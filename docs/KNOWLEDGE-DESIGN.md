@@ -1,10 +1,12 @@
 # Guidefold Knowledge Layer — Design v0.1
 
+> **Proposed MVP revision (2026-09-05):** [MVP.md](MVP.md) and [ADR-0023](adr/ADR-0023-search-use-service-and-measured-utility.md) propose central SEARCH/USE, bounded local fallback and usage/usability measurement. Their scope and [event contract](SEARCH-USE-TELEMETRY.md) replace this document's older local-only serving, delayed telemetry, load-based probation and phase schedule for the proposed MVP. This is a plan amendment, not a claim that the service is implemented; sections explicitly describing shipped CLI behavior remain historical implementation notes.
+
 **Status:** Draft v0.1 · 2026-09-04 · companion to `DESIGN.md` v0.3; supersedes its §7 (distribution), §10 (L0), §11, §13 and the ADRs listed in §10. Produced by a 4-architect / 3-judge synthesis; adversarial verification in §14 was done by hand after the automated refuters hit a session limit.
 **Owner:** Platform / Developer Productivity
 **One-liner:** Skills stay in the code monorepo next to the code they govern (dedicated repositories were rejected on 2026-09-04, see ADR-0018 and `docs/MVP.md` §2); nothing generated is committed; one Postgres behind a Knowledge API holds everything that is not skill text; GCS serves immutable index shards; knowledge climbs through a gated lifecycle with SkillPyramid-style induction; retrieval uses public skill-tuned models as-is.
 
-> **Storage revision (2026-09-04, after review):** §1.1, §2 and §3 below describe the dedicated-repo variant that the judge panel ranked first. It is **not applicable at the design partner**. The binding storage decision is in `docs/MVP.md` §2 and ADR-0018: monorepo-native, path-filtered skill CI, bot on `proposal/*`, one Cloud SQL Postgres (+ pgvector, offline only), GCS artifacts, registry downstream. Sections 4–9 (data model, lifecycle, write model, serving, models, governance) apply unchanged with "skills repo" read as "the monorepo".
+> **Storage revision (2026-09-04, after review):** §1.1, §2 and §3 below describe the dedicated-repo variant that the judge panel ranked first. It is **not applicable at the design partner**. The binding storage decision is in `docs/MVP.md` §2 and ADR-0018: monorepo-native, path-filtered skill CI, bot on `proposal/*`, one Cloud SQL Postgres (+ pgvector, offline only), GCS artifacts, registry downstream. Sections 4–9 are also narrowed by the proposed 2026-09-05 MVP revision above; in retained historical sections, read "skills repo" as "the monorepo".
 
 ---
 
@@ -180,7 +182,7 @@ Decision rule: a skill-tuned 0.6B embedder beats its base by 12–19 nDCG@10 on 
 - **Ownership:** CODEOWNERS per node directory, generated from `guidefold.yaml`; `_root` families owned by councils (DESIGN Q2); nightly check that node owner = CODEOWNERS team of its `code_paths` in the monorepo.
 - **Review:** GitHub PR review is the only approval mechanism for skill text. The Knowledge API refuses approve/reject/vouch calls carrying `origin=agent_session`; the bot never merges; humans never push `proposal/*`; everyone but CI is `agentregistry.viewer`.
 - **Audit:** `audit_event` and the GitHub Enterprise audit log streamed to BigQuery for 7 years (PCI DSS 10.7); each registry revision carries `revision_of_proposal: "<id>"`.
-- **Privacy (GDPR):** prompts stored as hashes; principal hashes salted monthly, so erasure is salt rotation; the G0 scanner drops secrets and PII on the machine; `Proprietary` skills excluded from external export.
+- **Privacy correction (2026-09-05):** salt rotation is not erasure and hashes are not anonymous data. The proposed [SEARCH/USE event contract](SEARCH-USE-TELEMETRY.md) requires transient prompt processing without default content logging, tenant-scoped keyed pseudonyms, and actual deletion/expiry of linked events and derived data. Evaluation/training samples are separately redacted and opt-in; a query hash cannot reconstruct a training example. `Proprietary` skill content remains excluded from unauthorized external export.
 - **Residency:** default one registry project, bucket and shard per L1 division in its region (`eu`/`us`); `global` only where legal signs off, given the known cross-region leak in `global` search (ASSESSMENT R11). Per-division projects also multiply the 100-skill default quota.
 - **Budgets:** ≤ 5 lifted units per proposal, ≤ 3 open bot PRs per node, 14-day bot PR expiry; GCS reads require the developer's ADC identity (ADR-0007).
 

@@ -1,6 +1,6 @@
 # ADR-0020: Two-tier dense retrieval — a distilled static table in the artifact, neural models in CI only
 
-**Status:** Accepted · 2026-09-04
+**Status:** Accepted · 2026-09-04 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
 **Amends:** [ADR-0015](ADR-0015-self-hosted-skill-tuned-models.md) — the winning encoder no longer
 serves hook queries from a GPU endpoint; it serves CI and `find --experimental` only.
 **Builds on:** [ADR-0009](ADR-0009-hybrid-retrieval-client-side.md) (hybrid retrieval, client side),

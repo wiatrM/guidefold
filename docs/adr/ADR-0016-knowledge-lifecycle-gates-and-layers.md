@@ -1,6 +1,6 @@
 # ADR-0016: Knowledge lifecycle with gates G0–G7 and SkillPyramid layers
 
-**Status:** Accepted · 2026-09-04 (approved: SkillPyramid mechanics with owner acceptance replacing reward)
+**Status:** Accepted · 2026-09-04 (approved: SkillPyramid mechanics with owner acceptance replacing reward) · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
 
 ## Context
 SkillPyramid (arXiv 2606.03692) shows grounded upward induction of abstract skills beats flat libraries (+38 % reward, −27.7 % steps) and that append-only libraries degrade, but it validates induced skills only by end reward. SkillsBench shows self-generated skills can score below none.
