@@ -12,7 +12,10 @@ so the size breakdown is never mistaken for including the dense channel.
 import json
 import random
 
-VOCAB_SIZE = 900
+# A 900-word vocabulary understates the artifact: postings size is driven by term diversity.
+# Measured sweep at 2000 cards -- 900 -> 1.99 MB, 5k -> 2.28 MB, 20k -> 3.00 MB, 40k -> 3.64 MB.
+# 40k is the realistic order of magnitude for a 2000-skill corpus, so the assertion is made there.
+VOCAB_SIZE = 40000
 NODE_COUNT = 25
 CARD_COUNT = 2000
 FIFTEEN_MB = 15 * 1024 * 1024
@@ -24,13 +27,16 @@ def _make_vocab(rng):
     consonants, vowels = "bcdfghjklmnprstvwz", "aeiou"
 
     def word():
-        n = rng.randint(3, 5)
+        n = rng.randint(4, 8)
         chars = []
         for i in range(n):
             pool = consonants if i % 2 == 0 else vowels
             chars.append(rng.choice(pool))
         return "".join(chars)
-    return [word() for _ in range(VOCAB_SIZE)]
+    out = set()
+    while len(out) < VOCAB_SIZE:
+        out.add(word())
+    return sorted(out)
 
 
 def _make_nodes():
@@ -107,3 +113,45 @@ def test_2000_skill_synthetic_corpus_artifact_is_at_most_15mb(gf, tmp_path):
     )
     print(f"\n2000-skill synthetic artifact: {total:,} bytes ({total / 1024 / 1024:.2f} MiB) "
           f"of a {FIFTEEN_MB:,}-byte (15 MiB) budget, {manifest['counts']['terms']:,} distinct terms\n{breakdown}")
+
+
+def test_projected_size_with_a_dense_word_table_still_fits_15mb(gf, tmp_path):
+    """The sparse artifact is only a third of the story, and quoting it alone is misleading.
+
+    `vectors.i8` / `words.bin` / `words.idx` are empty in this release (`w_dense = 0`, ADR-0020 --
+    the distilled table arrives with E1.3). When it does, it becomes the single largest file in the
+    artifact, so the budget has to be checked against the *projected* total rather than against
+    today's sparse-only measurement.
+
+    Sizes are arithmetic, not guesses: an int8 word table is `vocab x dims` bytes, the skill
+    vectors are `cards x dims`, and the integer norms are 8 bytes per card.
+    """
+    rng = random.Random(20260904)
+    idx = gf.Index.from_cards(_make_cards(rng, _make_vocab(rng)), _make_nodes(), word_vectors=None)
+    sparse = sum(len(b) for b in gf._serialize_artifact_files(idx).values())
+
+    DIMS = 256
+    def projected(vocab_words):
+        word_table = vocab_words * DIMS          # int8, one byte per dimension
+        word_index = vocab_words * 8             # offset table
+        skill_vectors = CARD_COUNT * DIMS
+        return sparse + word_table + word_index + skill_vectors
+
+    at_40k = projected(40_000)
+    # Where does it actually stop fitting? Solve rather than guess.
+    per_word = 256 + 8
+    max_words = (FIFTEEN_MB - sparse - CARD_COUNT * DIMS) // per_word
+
+    # 40k words fits -- with about 6% to spare, not the 87% the sparse-only number implies.
+    assert at_40k <= FIFTEEN_MB, f"projected {at_40k:,} bytes at 40k words exceeds {FIFTEEN_MB:,}"
+    # ...and the headroom is genuinely thin: a 60k vocabulary does not fit.
+    assert projected(60_000) > FIFTEEN_MB, (
+        "a 60k-word table was expected to blow the budget; if it now fits, the sparse side shrank "
+        "and the vocabulary guidance should be re-derived rather than silently kept")
+
+    print(f"\nprojected artifact at {DIMS} dims, {CARD_COUNT} skills:")
+    print(f"  sparse only (this release)   {sparse:>12,} bytes  ({100*sparse/FIFTEEN_MB:5.1f}% of budget)")
+    print(f"  + dense table @ 34k words    {projected(34_000):>12,} bytes  ({100*projected(34_000)/FIFTEEN_MB:5.1f}%)")
+    print(f"  + dense table @ 40k words    {at_40k:>12,} bytes  ({100*at_40k/FIFTEEN_MB:5.1f}%)")
+    print(f"  + dense table @ 60k words    {projected(60_000):>12,} bytes  ({100*projected(60_000)/FIFTEEN_MB:5.1f}%)  OVER")
+    print(f"  => max vocabulary that fits at {DIMS} dims: {max_words:,} words")
