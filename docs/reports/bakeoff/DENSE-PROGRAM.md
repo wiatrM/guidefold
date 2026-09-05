@@ -148,3 +148,41 @@ precision issue found and **not** fixed — generic-English-word skill ids (`arc
 `onboarding`, ...) produce false-positive `similar`/`requires` edges via bare mention, documented as
 a known limitation for family evaluation to address. Full report:
 `docs/reports/bakeoff/F5-enrichment-2026-09-05.md`.
+
+### 2026-09-05 — F0 and R1 on test-B (SkillRetBench), PR #30
+
+- **F0 (shipped sparse), fair `_root` setting (no scope leak):** IR-aligned nDCG@10 **0.436** vs the
+  dataset's own BM25 **0.534**; recall@10 0.519 vs 0.598. We lose on 4 of 5 settings by 6–16 pp.
+  Under `node_scoped` (gold category as cwd) we read 0.676 — that number is a leak of the answer and
+  is **not** the comparison. Diagnosis so far: the policy filter drops **0 / 6 473** gold skills at
+  `_root`, so `negative_triggers` are not the cause; the gap is in BM25F construction (field
+  weighting, tokenizer, k1/b) or protocol. The dataset does not ship `run_baselines.py`, so its
+  BM25 protocol cannot be reproduced exactly. **The diagnosis moves to dev (SKILLRET train), where
+  a config may be chosen**; test-B is not touched again until a frozen variant exists.
+- **Structural findings that constrain every family:** `budget_constrained` has 25 required skills
+  per query, so `all_required@4` is 0 by construction — that setting is excluded from the
+  completeness gate and reported on its own. In `multi_skill_composition`, 77.5 % of queries have a
+  required companion in a *different* category, so hard scope admissibility conflicts with bundle
+  completeness — F0-closure gains +2.67 pp `all_required@4` at +2.67 pp HSR@4.
+- **R1 reference (static student distilled from SKILLRET-0.6B, tooling defaults, no tuning):**
+  coverage ceiling **7.64 %** overall (gold skills the dense candidates add that BM25F's top-50
+  missed); every quality gate fails; HSR@4 passes where defined. Gates nothing (v2 §6). Note: this
+  reference used the *distilled student*, not the full encoder; the full-encoder reference is on
+  test-A (pending).
+- **Korean:** 151/1 250 queries (12.1 %); all 50 abstentions in the run are Korean single-skill
+  queries; Latin-only numbers are 2–4 pp higher throughout.
+- **Latency at 501 skills (real hook, fresh process):** measured **p50 210.7 / p95 255.0 ms** by
+  the run; profiled afterwards — the query path was 9 ms of which **84 % was `policy_filter`
+  re-tokenising every skill's `negative_triggers` on every query**. Fixed (phrases tokenised once
+  per Router): **p50 126.6 / p95 145.3 ms**. Remaining fixed costs: interpreter + CLI import 60 ms,
+  artifact load 49.5 ms (`cards.jsonl` parsed eagerly) — the latter scales with corpus size and is
+  the next R4 target once the 6 006-skill number lands.
+
+### 2026-09-05 — F5 extractor built, PR #31
+
+Derived from `full_text` alone on test-B, agreement vs authored fields: edges P/R **0.60 / 0.95**
+(precision hurt by common-word skill ids, documented), triggers token P/R 0.59 / 0.43,
+**negative triggers P/R 0.69 / 0.81**. On 2 037 local skills: 97.5 % gain triggers, 24.5 %
+negative triggers, 91.1 % `similar`, 4.5 % `requires`. A semantic-reversal bug ("do not use for X"
+read as a trigger for X) was found and fixed; a corpus-wide frequency guard drops boilerplate
+negative phrases. Family evaluation (`all_required@4` on dev, then tests) pending.
