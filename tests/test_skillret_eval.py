@@ -200,6 +200,26 @@ def test_build_r0_index_merges_default_weights(cli):
     assert idx.weights["w_dense"] == 0
 
 
+def test_build_r0_index_flat_arm_differs_from_shipped_only_in_field_weights(cli):
+    """weights_arm="flat" is the ONE frozen sparse candidate this test run touches
+    (docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md, PR #36): every `field.*` weight is
+    forced to 1 and every other weight (w_scope, w_ppr, abstain_threshold, ppr_mode, edge.*, ...)
+    stays at its shipped default -- same guarantee test_skillretbench.py pins for its B1-flat arm."""
+    from _router_helpers import make_card, make_nodes
+
+    nodes = make_nodes("a")
+    cards = {"urn:skill:skillret:a:one": make_card("urn:skill:skillret:a:one", "a", description="x")}
+    idx_shipped = skillret.build_r0_index(cli, cards, nodes, weights_arm="shipped")
+    idx_flat = skillret.build_r0_index(cli, cards, nodes, weights_arm="flat")
+
+    diff_keys = {k for k in idx_flat.weights
+                 if idx_flat.weights[k] != idx_shipped.weights.get(k)}
+    assert diff_keys == set(skillret.FLAT_FIELD_WEIGHTS)
+    for key, val in skillret.FLAT_FIELD_WEIGHTS.items():
+        assert idx_flat.weights[key] == val == 1
+        assert idx_shipped.weights[key] != 1  # shipped defaults are not already flat
+
+
 # --------------------------------------------------------------------------- DenseCandidateRouter wiring
 def test_dense_candidate_router_returns_empty_without_a_query_vector(cli):
     """_dense_scores must fail closed (empty dict, not an exception) when _current_qid has no

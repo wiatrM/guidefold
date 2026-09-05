@@ -68,6 +68,18 @@ PUBLISHER = "srb"
 EVAL_K = 10          # >= nDCG@10's k; retrieval lists are sliced from this one ranking per case
 K_CARDS = 4           # the hook's real card cap (E1.5) — same constant tools/eval/run_golden.py uses
 
+# Frozen sparse variant (docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md, PR #36):
+# uniform `field.*` weights recover 99.5% of the dev-corpus gap to plain BM25 (P-flat, +3.72 pp
+# nDCG@10 [+3.16, +4.34] vs shipped). This is the ONE frozen candidate this test run touches --
+# see DENSE-PROGRAM.md v2.1 §3's "touched once" rule. Kept as its own constant here (not imported
+# from tools/eval/skillret.py) so this module's independence from that one — asserted by
+# test_skillretbench_module_imports_cleanly_with_torch_blocked and this file's own module
+# docstring — is never put at risk by a cross-script import.
+FLAT_FIELD_WEIGHTS = {
+    "field.name": 1, "field.description": 1, "field.digest": 1,
+    "field.triggers": 1, "field.body": 1,
+}
+
 # SkillRetBench's five query "settings" onto the golden set's category vocabulary
 # (tests/golden/README.md / docs/reports/golden/README.md), per the bake-off brief's own mapping.
 SETTING_TO_CATEGORY = {
@@ -334,7 +346,7 @@ def read_word_table(path: Path) -> dict:
 
 # ------------------------------------------------------------------------- Deliverable 2: arms
 def build_arms(cli, cards: dict, nodes: dict, word_vectors: dict = None) -> dict:
-    """Four arms, each differing from B1 by exactly ONE parameter (see
+    """Five arms, each differing from B1 by exactly ONE parameter (see
     tests/test_skillretbench.py::test_arms_differ_by_exactly_one_parameter_from_b1):
 
       B1          Index.from_cards(cards, nodes, word_vectors=word_vectors)  -- shipped defaults
@@ -352,6 +364,11 @@ def build_arms(cli, cards: dict, nodes: dict, word_vectors: dict = None) -> dict
                   pure ON/OFF gate everywhere it is read, never a fusion magnitude -- confirmed by
                   grep across the whole CLI; any positive value is equivalent). Word vectors come
                   from `SKILLRET-Embedding-0.6B`, distilled by `distill` subcommand.
+      B1-flat     weights=FLAT_FIELD_WEIGHTS (the five `field.*` weights -> 1) -- the ONE frozen
+                  sparse-programme candidate this run touches (docs/reports/bakeoff/
+                  DEV-sparse-diagnosis-2026-09-05.md, PR #36); every other weight (w_scope, w_ppr,
+                  k1/b, abstain_threshold, ...) stays at its shipped default, same as every other
+                  arm above.
     """
     wv = word_vectors or {}
     b1_idx = cli.Index.from_cards(cards, nodes, word_vectors=wv)
@@ -359,11 +376,13 @@ def build_arms(cli, cards: dict, nodes: dict, word_vectors: dict = None) -> dict
     cards_no_requires = {u: {**c, "requires": []} for u, c in cards.items()}
     noclosure_idx = cli.Index.from_cards(cards_no_requires, nodes, word_vectors=wv)
     dense_idx = cli.Index.from_cards(cards, nodes, weights={"w_dense": 1}, word_vectors=wv)
+    flat_idx = cli.Index.from_cards(cards, nodes, weights=dict(FLAT_FIELD_WEIGHTS), word_vectors=wv)
     return {
         "B1": cli.Router(b1_idx),
         "B1-scope": cli.Router(noscope_idx),
         "B1-closure": cli.Router(noclosure_idx),
         "B3b+B5": cli.Router(dense_idx),
+        "B1-flat": cli.Router(flat_idx),
     }
 
 
@@ -574,32 +593,49 @@ def format_coverage_table(coverage: dict) -> str:
 def dense_vs_b1_gate_report(metrics_mod, cases: list,
                              retrieval_b1: list, injection_b1: list,
                              retrieval_dense: list, injection_dense: list,
-                             k_cards: int = K_CARDS, n_resamples: int = 1000) -> dict:
-    """Per-setting delta (B3b+B5 - B1) + gate status against DENSE-PROGRAM.md SS5's rules. R1 is a
-    REFERENCE run -- SS6 states explicitly it gates nothing -- so `gate_*` fields here answer
-    "would this reference run have cleared the rule", never "is dense adopted"; adoption is a
-    decision for the eventual dev-tuned frozen variant, on both test corpora, not for this run.
+                             k_cards: int = K_CARDS, n_resamples: int = 1000,
+                             b_label: str = "dense") -> dict:
+    """Per-setting delta (arm B - B1) + gate status against DENSE-PROGRAM.md SS5's rules. Despite
+    the parameter names (kept for the original B3b+B5-vs-B1 caller / its tests), this function is
+    generic over ANY second arm run through the same cases -- it is reused unchanged for the
+    frozen sparse variant's B1-flat-vs-B1 comparison (`b_label="flat"`), which is why the output
+    dict's second-arm key is controlled by `b_label` rather than hardcoded.
 
-    `all_required@4` and `hit@1` get the paired bootstrap (1,000 resamples over queries) SS5
-    requires; `ndcg@10` and `distractor_rate@4` (named HSR@4 for SkillRetBench in SS5 -- computed
-    by the exact same tools/eval/metrics.py::distractor_rate() function, not a second metric) get
-    a point-estimate delta only, matching what was actually requested. "answered" pairing (both
-    arms must have produced a non-empty ranking/injection for a query to count) matches
-    tools/eval/metrics.py::evaluate()'s own "answered" population convention."""
+    For a REFERENCE run (R1, SS6 states explicitly it gates nothing) `gate_*` fields here answer
+    "would this run have cleared the rule", never "is this arm adopted"; adoption is a decision
+    for the eventual dev-tuned frozen variant, on both test corpora -- and IS the decision this
+    function's flat-vs-B1 caller uses `ndcg@10`'s new `ci_lo`/`ci_hi` fields for (DENSE-PROGRAM.md
+    v2.1 SS3-5's acceptance rule requires a CI on nDCG@10, not just the point delta SS5 originally
+    asked for from a reference run).
+
+    `all_required@4`, `hit@1` and `ndcg@10` all get the paired bootstrap (1,000 resamples over
+    queries) SS5/the frozen-variant rule requires; `distractor_rate@4` (named HSR@4 for
+    SkillRetBench in SS5 -- computed by the exact same tools/eval/metrics.py::distractor_rate()
+    function, not a second metric) gets a point-estimate delta only, matching what was actually
+    requested there. "answered" pairing (both arms must have produced a non-empty ranking/
+    injection for a query to count) matches tools/eval/metrics.py::evaluate()'s own "answered"
+    population convention. nDCG@10's NaN pattern (abstention cases: no relevant items) is
+    arm-independent -- it comes from `case`, not the ranking -- so the same index filter safely
+    pairs both arms' values."""
     out: dict = {}
     for setting in list(SETTING_TO_CATEGORY) + ["OVERALL"]:
         idx = [i for i, (_, c) in enumerate(retrieval_b1)
                if setting == "OVERALL" or c["setting"] == setting]
         hit_idx = [i for i in idx if retrieval_b1[i][0] and retrieval_dense[i][0]]
         req_idx = [i for i in idx if injection_b1[i][0] and injection_dense[i][0]]
+        ndcg_idx = [i for i in idx
+                    if metrics_mod.ndcg_at_k(retrieval_b1[i][0], retrieval_b1[i][1], 10) == metrics_mod.ndcg_at_k(retrieval_b1[i][0], retrieval_b1[i][1], 10)]  # noqa: E501 (drop NaN/abstention cases)
 
         hit_a = [metrics_mod.hit_at_1(retrieval_b1[i][0], retrieval_b1[i][1]) for i in hit_idx]
         hit_b = [metrics_mod.hit_at_1(retrieval_dense[i][0], retrieval_dense[i][1]) for i in hit_idx]
         req_a = [metrics_mod.all_required_at_k(injection_b1[i][0], injection_b1[i][1], k_cards) for i in req_idx]
         req_b = [metrics_mod.all_required_at_k(injection_dense[i][0], injection_dense[i][1], k_cards) for i in req_idx]
+        ndcg_a_list = [metrics_mod.ndcg_at_k(retrieval_b1[i][0], retrieval_b1[i][1], 10) for i in ndcg_idx]
+        ndcg_b_list = [metrics_mod.ndcg_at_k(retrieval_dense[i][0], retrieval_dense[i][1], 10) for i in ndcg_idx]
 
         hit_boot = _bootstrap_paired_delta(hit_a, hit_b, n_resamples=n_resamples, seed=1)
         req_boot = _bootstrap_paired_delta(req_a, req_b, n_resamples=n_resamples, seed=2)
+        ndcg_boot = _bootstrap_paired_delta(ndcg_a_list, ndcg_b_list, n_resamples=n_resamples, seed=3)
 
         ndcg_a = _mean(metrics_mod.ndcg_at_k(retrieval_b1[i][0], retrieval_b1[i][1], 10) for i in idx)
         ndcg_b = _mean(metrics_mod.ndcg_at_k(retrieval_dense[i][0], retrieval_dense[i][1], 10) for i in idx)
@@ -617,9 +653,10 @@ def dense_vs_b1_gate_report(metrics_mod, cases: list,
         out[setting] = {
             "all_required@4": {**req_boot, "gate_bundle_completeness": bundle_gate},
             "hit@1": {**hit_boot, "gate_primary_quality": hit_gate},
-            "ndcg@10": {"b1": ndcg_a, "dense": ndcg_b, "delta": ndcg_b - ndcg_a,
+            "ndcg@10": {"b1": ndcg_a, b_label: ndcg_b, "delta": ndcg_b - ndcg_a,
+                        "ci_lo": ndcg_boot["ci_lo"], "ci_hi": ndcg_boot["ci_hi"],
                         "gate_primary_quality": ndcg_gate},
-            "HSR@4": {"b1": hsr_a, "dense": hsr_b, "delta": hsr_b - hsr_a,
+            "HSR@4": {"b1": hsr_a, b_label: hsr_b, "delta": hsr_b - hsr_a,
                       "gate_harmful_exposure": hsr_gate,
                       "note": "computed via metrics.py's distractor_rate(); named HSR@4 for "
                               "SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"},
@@ -627,7 +664,7 @@ def dense_vs_b1_gate_report(metrics_mod, cases: list,
     return out
 
 
-def format_gate_table(gates: dict) -> str:
+def format_gate_table(gates: dict, title: str = "B3b+B5 vs B1") -> str:
     def _f(v):
         return "—" if v != v else f"{v:+.4f}"
 
@@ -636,7 +673,7 @@ def format_gate_table(gates: dict) -> str:
         # no labelled distractors in this setting) -- None must never render as "fail".
         return "n/a" if v is None else ("PASS" if v else "fail")
 
-    lines = ["\n=== B3b+B5 vs B1 -- DENSE-PROGRAM.md SS5 gate rules ===",
+    lines = [f"\n=== {title} -- DENSE-PROGRAM.md SS5 gate rules ===",
               "    (REFERENCE RUN R1: gates nothing per SS6; adoption is decided only for the",
               "     eventual dev-tuned frozen variant, run once per family on both test corpora)"]
     head = (f"{'setting':<24}{'all_req D':>11}{'[95% CI]':>18}{'gate':>6}"
@@ -1027,31 +1064,76 @@ def main(argv=None) -> int:
             "gates_vs_b1": dense_gates,
         }
 
-        # Supplementary scope ablation: B1 at node_root, over every query, ALL queries only.
-        retrieval_root, injection_root, records_root = run_arm(arms["B1"], all_cases, "node_root")
-        for r in records_root:
-            r["arm"] = "B1"; r["node_key"] = "node_root"
-        per_setting_root = {}
-        for setting in SETTING_TO_CATEGORY:
-            ret_s = [(r, c) for r, c in retrieval_root if c["setting"] == setting]
-            inj_s = [(r, c) for r, c in injection_root if c["setting"] == setting]
-            ev = metrics.evaluate(ret_s, k_cards=K_CARDS)
-            ev_inj = metrics.evaluate(inj_s, k_cards=K_CARDS)
-            ev[f"all_required@{K_CARDS}"] = ev_inj.get(f"all_required@{K_CARDS}")
-            ev[f"distractor_rate@{K_CARDS}"] = ev_inj.get(f"distractor_rate@{K_CARDS}")
-            per_setting_root[setting] = ev
-        ov = metrics.evaluate(retrieval_root, k_cards=K_CARDS)
-        ov_inj = metrics.evaluate(injection_root, k_cards=K_CARDS)
-        ov[f"all_required@{K_CARDS}"] = ov_inj.get(f"all_required@{K_CARDS}")
-        ov[f"distractor_rate@{K_CARDS}"] = ov_inj.get(f"distractor_rate@{K_CARDS}")
-        per_setting_root["OVERALL"] = ov
-        ir_root = {setting: ir_alignment_metrics(
-            [(r, c) for r, c in retrieval_root if c["setting"] == setting], metrics)
-            for setting in SETTING_TO_CATEGORY}
-        ir_root["OVERALL"] = ir_alignment_metrics(retrieval_root, metrics)
-        print("\n########## B1 @ node=_root (scope ablation, ALL QUERIES) ##########")
-        print(format_setting_arm_table({"B1@_root": per_setting_root}))
-        print(format_ir_alignment_table({"B1@_root": ir_root}))
+        # Supplementary scope ablation: B1 (and, PR #36's frozen sparse variant, B1-flat) at
+        # node_root -- the FAIR setting for the flat-vs-B1 comparison (node_scoped leaks the
+        # answer for this corpus, DENSE-PROGRAM.md v2.1 §7 2026-09-05 PR #30 note) -- over every
+        # query, ALL queries only.
+        root_arms = ["B1", "B1-flat"]
+        retrieval_root_by_arm, injection_root_by_arm = {}, {}
+        records_root = []
+        per_setting_root_by_arm, ir_root_by_arm = {}, {}
+        for arm_name in root_arms:
+            retrieval_root, injection_root, recs = run_arm(arms[arm_name], all_cases, "node_root")
+            for r in recs:
+                r["arm"] = arm_name; r["node_key"] = "node_root"
+            records_root.extend(recs)
+            retrieval_root_by_arm[arm_name] = retrieval_root
+            injection_root_by_arm[arm_name] = injection_root
+            per_setting_root = {}
+            for setting in SETTING_TO_CATEGORY:
+                ret_s = [(r, c) for r, c in retrieval_root if c["setting"] == setting]
+                inj_s = [(r, c) for r, c in injection_root if c["setting"] == setting]
+                ev = metrics.evaluate(ret_s, k_cards=K_CARDS)
+                ev_inj = metrics.evaluate(inj_s, k_cards=K_CARDS)
+                ev[f"all_required@{K_CARDS}"] = ev_inj.get(f"all_required@{K_CARDS}")
+                ev[f"distractor_rate@{K_CARDS}"] = ev_inj.get(f"distractor_rate@{K_CARDS}")
+                per_setting_root[setting] = ev
+            ov = metrics.evaluate(retrieval_root, k_cards=K_CARDS)
+            ov_inj = metrics.evaluate(injection_root, k_cards=K_CARDS)
+            ov[f"all_required@{K_CARDS}"] = ov_inj.get(f"all_required@{K_CARDS}")
+            ov[f"distractor_rate@{K_CARDS}"] = ov_inj.get(f"distractor_rate@{K_CARDS}")
+            per_setting_root["OVERALL"] = ov
+            ir_root = {setting: ir_alignment_metrics(
+                [(r, c) for r, c in retrieval_root if c["setting"] == setting], metrics)
+                for setting in SETTING_TO_CATEGORY}
+            ir_root["OVERALL"] = ir_alignment_metrics(retrieval_root, metrics)
+            per_setting_root_by_arm[arm_name] = per_setting_root
+            ir_root_by_arm[arm_name] = ir_root
+            print(f"\n########## {arm_name} @ node=_root (scope ablation, ALL QUERIES) ##########")
+            print(format_setting_arm_table({f"{arm_name}@_root": per_setting_root}))
+            print(format_ir_alignment_table({f"{arm_name}@_root": ir_root}))
+
+        # backward-compatible aliases: the pre-existing single-arm names, still B1-only.
+        per_setting_root = per_setting_root_by_arm["B1"]
+        ir_root = ir_root_by_arm["B1"]
+
+        # Frozen sparse variant (PR #36) gates: B1-flat vs B1, at node_root (FAIR/primary, per
+        # DENSE-PROGRAM.md v2.1 §3-5's acceptance rule) and at node_scoped (the corpus's other
+        # setting, kept "for completeness" only -- not the adoption comparison).
+        flat_gates_root = dense_vs_b1_gate_report(
+            metrics, all_cases,
+            retrieval_root_by_arm["B1"], injection_root_by_arm["B1"],
+            retrieval_root_by_arm["B1-flat"], injection_root_by_arm["B1-flat"],
+            b_label="flat",
+        )
+        flat_gates_scoped = dense_vs_b1_gate_report(
+            metrics, all_cases,
+            retrieval_all["B1"], injection_all["B1"],
+            retrieval_all["B1-flat"], injection_all["B1-flat"],
+            b_label="flat",
+        )
+        print("\n########## B1-flat vs B1 -- frozen sparse variant, node=_root (FAIR) ##########")
+        print(format_gate_table(flat_gates_root, title="B1-flat vs B1 @ node_root (frozen sparse variant, PR #36)"))
+        print("\n########## B1-flat vs B1 -- node=_scoped (completeness only, leaks scope) ##########")
+        print(format_gate_table(flat_gates_scoped, title="B1-flat vs B1 @ node_scoped (completeness only)"))
+        flat_vs_b1_frozen_variant = {
+            "status": "frozen sparse variant per docs/reports/bakeoff/DEV-sparse-diagnosis-"
+                      "2026-09-05.md (PR #36); the ONE candidate this run touches, DENSE-PROGRAM.md "
+                      "v2.1 §3's 'touched once' rule",
+            "fair_setting": "node_root",
+            "gates_vs_b1_at_root": flat_gates_root,
+            "gates_vs_b1_at_node_scoped_completeness_only": flat_gates_scoped,
+        }
 
         with gzip.open(str(args.jsonl) + ".gz", "wt") if False else open(args.jsonl, "w") as f:
             for r in records_all + records_root:
@@ -1070,7 +1152,10 @@ def main(argv=None) -> int:
             "latin_only": results_latin, "ir_alignment_latin": ir_latin,
             "b1_scope_ablation_root": per_setting_root,
             "b1_scope_ablation_root_ir": ir_root,
+            "scope_ablation_root_by_arm": per_setting_root_by_arm,
+            "scope_ablation_root_ir_by_arm": ir_root_by_arm,
             "dense_reference_run_r1": dense_reference_run_r1,
+            "flat_vs_b1_frozen_variant": flat_vs_b1_frozen_variant,
             "dataset_baseline_bm25": data["baselines"].get("baselines", {}).get("BM25"),
             "dataset_dense_backend": dataset_dense_backend,
         }, indent=2, ensure_ascii=False))
