@@ -273,3 +273,25 @@ through the product path on test-B, both `node_scoped` and fair `_root`, tooling
   `tools/eval/skillret.py` into a corpus-agnostic `tools/eval/dense_ref.py`; both `skillret.py`
   (test-A) and the new `tools/eval/skillretbench_r1.py` (test-B) now call it, rather than each
   reimplementing it.
+
+### 2026-09-05 — dev-only diagnosis of the F0 BM25F gap, PR #36
+
+Isolated why F0 (shipped sparse) trails each dataset's own BM25 baseline (test-B −9.8 pp, test-A
+−11.7 pp nDCG@10), using only SKILLRET **train** (dev split, 10,123 skills / 1,000 queries) —
+**test-A and test-B were not touched**. Nine-arm coordinate-descent ablation through the real
+product path (`Index.from_cards → policy_filter → candidates → score → select`) against an
+independent textbook-BM25 reference (R-BM25) on the same corpus/queries. **Attribution: the
+shipped differential field weights, not BM25F's per-field normalisation, cause the gap.** Setting
+`field.*` weights uniform (P-flat) closes 99.5% of the dev-measured deficit (P-shipped −3.74 pp
+[−4.34,−3.07] vs R-BM25 → P-flat −0.01 pp [−0.27,+0.25], CI straddles zero) while collapsing to a
+single field (P-onefield, matching R-BM25's normalisation structure) does **not** close it
+(−3.90 pp, statistically indistinguishable from P-shipped) — ruling out per-field normalisation
+as the driver. k1/b retuning (`0.9/0.4`) made things markedly worse (−10.60 pp); tokenizer choice
+moved nothing meaningful (+0.04 pp); IDF is algebraically identical to textbook IDF (not run as a
+separate arm); the abstain gate never fires (0/1,000 queries, every arm). P-noscope/P-nopprocl/
+P-top200 are confirmed byte-identical to P-shipped on all 1,000 real queries (predicted from
+`Router.score`/`candidates` structure: per-query-constant `w_scope`, zero-edge `requires` graph,
+and a candidate-pool cap that never bound). Frozen-config proposal: `field.*` weights → 1,
+everything else unchanged — a one-line `DEFAULT_WEIGHTS` change, not a structural rewrite; not
+yet validated on test-A/test-B (out of scope for this diagnosis). Full report, tables, and CIs:
+`docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md`.
