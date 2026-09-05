@@ -108,7 +108,7 @@
       ],
       "select_accepts_admissible": false
     },
-    "git_head": "c08c58c09c5a2aaa61cc9a0bbd2891d41e43c365",
+    "git_head": "757d4f04ef68356f0ceca3116ffd762975170c23",
     "root": "/home/mike/projects/guidefold",
     "source_kind": "git_revision",
     "source_revision": "c2cc81219bda11a267bea3c04c1e8128c9c0a920",
@@ -243,7 +243,7 @@
         ],
         "select_accepts_admissible": true
       },
-      "git_head": "c08c58c09c5a2aaa61cc9a0bbd2891d41e43c365",
+      "git_head": "757d4f04ef68356f0ceca3116ffd762975170c23",
       "root": "/home/mike/projects/guidefold",
       "source_kind": "working_tree",
       "source_revision": null,
@@ -257,7 +257,7 @@
       }
     }
   ],
-  "generated_at": "2026-09-05T08:28:52.104141+00:00",
+  "generated_at": "2026-09-05T08:32:04.951302+00:00",
   "purpose": "CPU contract audit; not retrieval quality or holdout evaluation.",
   "schema_version": 1
 }

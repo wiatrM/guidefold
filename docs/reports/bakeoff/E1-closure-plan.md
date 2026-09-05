@@ -3,7 +3,14 @@
 **Status:** Accepted by the TL · 2026-09-05
 **Responds to:** [`E1.3-peer-review-2026-09-05.md`](E1.3-peer-review-2026-09-05.md)
 **Inputs:** the review's two audit scripts and data, PR #19 (config sweep with a held-out split),
-five papers analysed in [`docs/RESEARCH.md`](../../RESEARCH.md)
+five papers analysed in [`docs/RESEARCH.md`](../../RESEARCH.md), followed by the full-cache
+review [`E1.3-architecture-after-research.md`](E1.3-architecture-after-research.md) and
+[ADR-0022](../../adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md) (Proposed).
+
+**Revision note, 2026-09-05:** `c08c58c` has repaired CLI BM25F units, the dense zero-weight gate
+and inadmissible dependency injection through the product entry points. This note preserves the
+TL's Accepted status and historical findings; complete bundle composition, benchmark parity and
+post-repair performance measurement remain open.
 
 ---
 
@@ -30,8 +37,9 @@ Where the review and the TL still differ, it is on emphasis, not fact:
   input, metrics, cost, *then* tuning.
 
 Two things the review did **not** change: `w_dense = 0` ships, and the reranker stays in shadow
-mode. Both survive on cost and on fairly-filtered quality. What changed is *why*, and how honestly
-the numbers are labelled.
+mode. The reranker's measured scoring latency exceeds the hook budget. Dense remains disabled
+pending a comparison on the corrected product path; historical unfiltered results do not establish
+which method wins after all repairs.
 
 ---
 
@@ -39,9 +47,9 @@ the numbers are labelled.
 
 | paper | its evidence | our measurement | decision |
 |---|---|---|---|
-| SkillRet | BM25 51.69 vs off-the-shelf 0.6B 61.94 vs **tuned 0.6B 81.12** NDCG@10 | BM25 0.8736 hit@1; best untuned teacher 0.8678 | dense stays off; **fine-tuning is the only credible path back**, and it is gated on an execution-level win (§3, P2) |
-| SkillRet | +30 NDCG → **+0.3 % Terminal-Bench success** | — | ranking metrics are a proxy; §3 adds an execution eval before any model change |
-| SkillRouter | body access 37–44 pp; FC@10 only 35 % even for the winner | body weight 1 optimal; removing it −9.2 pp; **all_required@4 = 74 %** on multi_skill | keep weights; **completeness is the product gap**, not hit@1 |
+| SkillRet | BM25 51.69 vs off-the-shelf 0.6B 61.94 vs **tuned 0.6B 81.12** NDCG@10 | historical unfiltered B1 hit@1 0.8736; skill-tuned SKILLRET teacher 0.8678 | test released checkpoints fairly after repairs; own fine-tuning is conditional on residual errors and pilot evidence |
+| SkillRet | Terminal-Bench: no retrieval 65.5 % success / $0.86 vs SkillRet 65.8 % / $0.78 per trial | a different experiment from its BM25 comparison; no reported confidence interval for this difference | measure success and cost directly; do not attribute the execution delta to the NDCG gain over BM25 |
+| SkillRouter | body access 37–44 pp; compact pipeline multi FC@10 35.3 % | historical B1 sweep preferred body weight 1; its all_required@4 was 49/66 on multi_skill | preserve body access; retest weights with corrected BM25F and measure complete bundles separately from primary hits |
 | GoS | graph propagation +5.1 reward at 1 000 skills; bundle > top-1 | PPR ≡ closure at 26 skills, byte-identical | ship closure; re-test PPR at pilot scale (§3, P2) |
 | SkillResolve | HSR@K — harmful sibling exposure | B6 exposed deprecated at #1 in 10/22 | **adopt HSR@K** on (helpful, risky) pairs; deprecated/postgres-auth is pair #1 |
 
@@ -49,16 +57,17 @@ the numbers are labelled.
 
 ## 3. The experiments that close E0 + E1 — in order, with stop conditions
 
-Everything below is **measurement infrastructure first, models last.** The review's central point
-is that we tuned against a ruler with three defects; nothing measured against it should be re-run
-until the ruler is fixed.
+Measurement infrastructure and product parity precede model selection. Historical float B1,
+pre-repair CLI baselines and corrected CLI runs are separate series; each run records its scorer,
+policy, composer, metric version and code SHA.
 
 ### P0 — fix the ruler *(this PR + one follow-up, ~1 day)*
 
 | work | done when |
 |---|---|
 | `all_required@4` alongside `completeness@4`; both series in every table, never rewritten | ✅ this PR |
-| `_dense_rank` is true cosine; counterexample is a test | ✅ this PR |
+| `_dense_rank` is true cosine; counterexample is a test | ✅ merged before `c08c58c` |
+| CLI BM25F units, effective `w_dense=0`, excluded dependencies skipped by `route`/`find` | ✅ `c08c58c`; explicit unresolved results and atomic full closure remain open |
 | retire the Recall@8 gate; **new gate written before the next run**: `all_required@4` non-inferior and HSR@4 non-worsening on filtered candidates, at the real 4-card budget | ADR-0020 amended, this PR |
 | explicit denominators in every report (174 answerable, 46 should-abstain, 133 with distractors, **1** multi_skill with a distractor) | this PR, report headers |
 | runner records **per-query** rankings, scores, filtered/unfiltered candidates, drop reasons, and the input hashes — so paired bootstrap is possible next time | follow-up PR |
@@ -67,7 +76,7 @@ until the ruler is fixed.
 
 | work | done when |
 |---|---|
-| every arm runs `policy_filter → candidates → score → select` from the shipped `Router`, at the shipped 4-card cap, from the case's `cwd` | B1 reproduces the CLI's ranking 220/220 |
+| every arm shares the shipped policy, sparse scorer and composer, at the shipped 4-card cap, from the case's `cwd`; neural adapters stay outside the CLI | candidate sets, scores and rankings match the CLI on all 220 cases |
 | one BM25 definition: the arms' pseudo-document BM25 is replaced by the CLI's per-field-normalised BM25F | identical scores, not just identical order |
 | dense artifact round-trip test: build → serialise → load → rank, offline and in CLI, same result | passes on the fixture with a synthetic word table |
 
@@ -75,16 +84,21 @@ until the ruler is fixed.
 
 Run **once**, all arms, on filtered candidates, reporting `hit@1 · nDCG@10 · all_required@4 · HSR@4 ·
 warm p50/p95`: sparse · sparse + closure · sparse + PPR · sparse + static student · sparse + tuned
-teacher (SKILLRET) · each + reranker (filtered, full body ≤ 4 096 tokens). One change per arm.
-Expect: sparse + closure wins on `all_required@4`; reranker still fails on p95. Say so if not.
+teacher (SKILLRET) · each + reranker. Compare the checkpoint's documented prefix-capped input
+with full-body input up to 4 096 tokens as separate arms; record truncation and latency for each.
+Measure candidate union and an oracle candidate pool separately from final bundle selection.
+Freeze configurations before the run; no expected winner is an acceptance criterion.
 
 ### P1 — golden set repair *(~1 day)*
 
-- Distractors by SkillRouter's four-source recipe (semantic neighbour, BM25 lexical, same-taxonomy,
-  random) so `distractor_rate@4` is never computed over one case again.
-- HSR pairs: every `stale_adversarial` case gets an explicit (helpful, risky-sibling) label.
-- Mark cases whose full required bundle **cannot fit in 4 cards** rather than penalising the ranker
-  for an impossible target (review §6).
+- Build independently judged distractors from semantic, lexical, taxonomy and random candidates.
+  This adapts SkillRouter's **training** recipe (Appendix F); its Hard evaluation instead uses
+  three synthetic strategies (Appendix B). Audit functional substitutes before labelling negatives.
+- HSR pairs: label helpful/risky siblings where a valid helpful skill exists; retain no-applicable
+  cases separately rather than inventing a positive. Report both query and pair denominators.
+- Label AND requirements, OR alternatives and transitive prerequisites separately. Mark cases whose
+  eligible complete bundle **cannot fit in 4 cards**; report feasibility and incomplete responses
+  separately instead of hiding them by changing the metric denominator (review §6).
 - The current 220 stays as the **dev/regression** set. It is not evidence of generalisation.
 
 ### P2 — the pilot test set *(blocks any model decision)*
@@ -96,40 +110,40 @@ Minimum detectable difference agreed before sizing.
 
 ### P2 — execution-level evaluation *(the metric the MVP actually promises)*
 
-No Guidefold · sparse + closure · best bundle · oracle bundle, on paired tasks: **task success,
-policy violations, tokens, wall-clock.** SkillRet's 65.5 → 65.8 % is the warning: a retrieval win
-that does not move this row is not a win. Owner acceptance of proposed knowledge (MVP §3) is
-measured here too.
+No Guidefold · sparse + closure · contender bundle · eligible oracle bundle, on paired tasks:
+**task success, policy violations, tokens, cost and wall-clock.** Keep execution conditions matched.
+SkillRet's Terminal-Bench comparison is no retrieval versus SkillRet, not BM25 versus SkillRet; it
+reports similar success and lower cost without establishing a significant success gain. A cost
+reduction can justify deployment under a predeclared success non-inferiority bound. If even oracle
+skills do not help, investigate skill content and use before further retrieval optimisation. Owner
+acceptance of proposed knowledge (MVP §3) remains a separate product metric.
 
 ---
 
-## 4. The system we ship — and why it is the best available choice
+## 4. The system we ship, and the next decision
 
-**Sparse BM25F over all fields + policy filter + `requires` closure + general→specific injection,
-4 cards, integer-only, fresh process, 65 ms.** Dense off. Reranker in shadow. PPR replaced by the
-byte-identical closure.
+At `c08c58c`, the product uses **integer BM25F over all fields, a policy filter, greedy depth-2
+`requires` selection and general→specific injection, up to 4 cards**. Dense is disabled; the
+reranker stays in shadow. Decayed closure is the default propagation mode; its equivalence to PPR
+was measured on the earlier shallow fixture, not established for arbitrary graphs.
 
-This is not a fallback. It is the choice every piece of evidence in this document points at:
+The merge fixes BM25F units, enforces the dense zero-weight gate and passes admissibility into
+selection through `route` and `find`. Selection now skips excluded dependencies but does not yet
+report unresolved requirements or reject an incomplete bundle atomically. Direct legacy
+`select(admissible=None)` calls keep only the deprecated dependency check. ADR-0022 records the
+remaining target contract.
 
-1. **It is the strongest thing we have measured on the product's own metric.** `all_required@4` —
-   the whole bundle, not the headline — is where sparse + closure leads, and it is the metric
-   GoS and SkillRouter both say predicts task success better than hit@1.
-2. **It is the only configuration that is exact.** Integer ranking, no model at query time,
-   identical output under any `PYTHONHASHSEED`. GoS's 25 % reward gain was measured with none of
-   that discipline; ours has to hold on a developer laptop with no GPU.
-3. **It is within 0.6 pp of the best untuned teacher on hit@1** (0.8736 vs 0.8678) at zero model
-   cost, and SkillRet's table says untuned encoders are not the ceiling — tuned ones are, and
-   tuning is a P2 experiment gated on an execution win, not a default.
-4. **Its two known weaknesses are measured and owned**, not hidden: `all_required@4` on
-   multi_skill is 74 %, and it never abstains. Both are on the P0/P1 list above, and neither is
-   fixed by a bigger model — one is a selection-budget problem, the other a missing component.
+Historical B1 hit@1 0.8736 versus the skill-tuned SKILLRET teacher's 0.8678, B1 multi-skill
+`all_required@4 = 49/66`, and the earlier 65 ms timing remain labelled historical results. They do
+not establish corrected product completeness, superiority or latency. Measure a fresh baseline
+with numerator/denominator, machine and SHA before selecting a challenger.
 
-What would change this recommendation: a tuned SKILLRET-class encoder, fine-tuned on pilot skills
-with four-source hard negatives, that beats sparse + closure on `all_required@4` **and** HSR@4 on the
-frozen pilot set, **and** moves the execution row — inside the artifact budget from ADR-0021.
-That is a real experiment with a real chance of winning. It is P2 because it needs the ruler and
-the pilot set first, and because SkillRet's own downstream result says to expect a small
-execution gain even from a large retrieval one.
+A released contextual checkpoint may earn a place without further training. Admission requires
+measured marginal eligible coverage, complete-bundle and harmful-sibling guardrails on the frozen
+pilot set, and useful execution or cost improvement within the relevant artifact and whole-hook
+budgets. Own fine-tuning follows only if controlled residual errors and available labels justify it.
+Neither retrieval papers nor a single local sweep establish that a larger model cannot improve
+completeness, or that improving completeness necessarily improves execution.
 
 ---
 
@@ -138,17 +152,17 @@ execution gain even from a large retrieval one.
 | item | state after this plan |
 |---|---|
 | E0.1–E0.5 | closed; unaffected by the review |
-| E1.1, E1.7 | closed; unaffected |
+| E1.1, E1.7 | historical closure retained; shared eligibility across all adapters and complete model/cache identity require follow-up under ADR-0022 |
 | E1.2 golden set + metrics | **reopened** for P0 (metric versioning, denominators) and P1 (distractors, HSR pairs); the 220 cases stand as dev/regression |
 | E1.3 bake-off | conclusion (`w_dense = 0`) stands; **report re-labelled**: unreachable gate retired, denominators stated, arms marked as unfiltered-corpus, SkillRet table complete |
-| E1.4, E1.5 | closed; cosine fix is a latent-bug repair on a disabled path, measured artifact and latency unchanged |
+| E1.4, E1.5 | original implementation milestones retained; `c08c58c` changes scoring/selection behavior, so corrected baseline, parity and whole-hook latency must be measured; full composer remains open |
 | E1.6 | conclusion (shadow) stands **on cost**; quality re-attributed from domain shift to the deprecated leak |
 
-Nothing in E0 + E1 ships differently tomorrow. What ships differently is the *claim*: from
-"BM25 beat dense" to "on a 26-skill dev fixture, with a ruler we have since fixed, BM25 + closure
-is the best-measured configuration, and the path back to dense is a tuned encoder judged on bundle
-completeness and task success at pilot scale." That sentence is the one the review asked for, and
-it is the true one.
+The repairs change product scoring and dependency selection. The justified release decision is
+to keep dense disabled and the reranker in shadow while measuring the corrected sparse baseline,
+then compare optional models on eligible complete bundles and execution utility at pilot scale.
+The original 26-skill fixture remains regression evidence, not a claim that sparse retrieval is
+universally superior.
 
 ---
 

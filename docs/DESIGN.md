@@ -238,6 +238,15 @@ Embeddings: Vertex `gemini-embedding` (or `text-embedding-005`) over `name | des
 
 ## 8. Retrieval pipeline (the router)
 
+> **Status after the research review, 2026-09-05:** the numbered pipeline, weights and model-serving
+> choices below are a historical target sketch. The current Proposed target is
+> [ADR-0022](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md), supported by the
+> [architecture review](reports/bakeoff/E1.3-architecture-after-research.md). Dense, PPR, neural
+> serving and sharding are conditional on measurements, not mandatory stages. At `c08c58c`,
+> dense is disabled, decayed closure is the default, and the BM25F/eligibility repairs have landed.
+> Explicit unresolved requirements, atomic complete bundles and shared evaluation adapters remain
+> follow-up work. Earlier implementation notes and timings below describe their recorded versions.
+
 Evidence-ranked, per query. Deterministic given (prompt, cwd, index sha) and the cached outputs of stage 1; every model-dependent stage has a deterministic fallback.
 
 **Router 0.1 (E0.2 + E1.1, shipped):** three collaborators — `Registry`/`LocalRegistry` (storage and transport only: `publish`/`download`/`search_scope`), an `Index` (cards, field-weighted BM25 postings with precomputed integer IDF, the `requires`/`refines`/`replaces`/`similar` graph — built in memory by `Index.build()` scanning the tree for `find`/`materialize`/`validate`, or loaded lazily from the on-disk artifact by `load_index_artifact()` for `hook`, E1.4, see §7/C1 in §9; both produce the same public attributes, so `Router` cannot tell them apart), and `Router` (constructed from an `Index`, depends on it and never on `Registry`). `Router` implements a subset of the stages below, integer-only end to end so identical (prompt, cwd) is byte-identical output: stage 2 as `policy_filter` (deprecated, visibility = own subtree ∪ ancestor chain, negative triggers — hard drops with a recorded reason, never demotions); stage 3 as `candidates` (BM25 top-N ∪ dense top-N, dense channel shipped at `w_dense=0` per ADR-0020 until the E1.3 bake-off); stages 4–5 collapsed into `score` (RRF k=60 fusion of the bm25/dense ranks, an additive `w_scope/(1+hops)` scope feature — a feature and filter, never the first sort key — then reverse PPR seeded from the scope-adjusted RRF score, fixed 20 iterations, fixed-point integers); stage 7 as `select` (7b only: `requires` closure depth ≤ 2 as hard membership counting toward the `k=4` cap; 7d only: final order general → specific by depth, ties by score then urn; abstain below `abstain_threshold`). Not yet built: 1b query rewrite, 6 listwise rerank, 7a coverage backfill / 7c family caps, 8 hydration budget shaping, 9 telemetry — all still describe the target design below.
