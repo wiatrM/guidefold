@@ -4,7 +4,7 @@
 **Decision owner:** product owner · **Capacity assumption:** 2 engineers + 0.5 ML engineer · **Planning horizon:** 8 weeks from this rebaseline · **Pilot:** 3 partner teams; access and labelled tasks are dependencies
 **Architecture:** [ADR-0023](adr/ADR-0023-search-use-service-and-measured-utility.md) · **Measurement:** [SEARCH/USE contract](SEARCH-USE-TELEMETRY.md)
 
-This update prepares the requested plan; it does not deploy a service, enable uploads or adopt a new model. Existing story IDs remain stable: **E2 is client/distribution; E3 already means promotion; E6 is the new SEARCH/USE and measurement epic.** Delivery order is E1 repairs -> E2 + E6 -> a thin E3/E4 pilot, not numerical epic order.
+This update prepares the requested plan; it does not deploy a service, enable uploads or adopt a new model. Existing story IDs remain stable: **E2 is client/distribution; E3 already means promotion; E6 is the new SEARCH/USE and measurement epic.** Delivery order is **E1.1b service feasibility + E1 correctness repairs -> E2 + E6 -> a thin E3/E4 pilot**, not numerical epic order. Per the user correction, E1.1b is an immediate blocking experiment, not deferred service validation in E6.
 
 ## 1. What changes and why
 
@@ -52,7 +52,7 @@ CI publishes matching sparse/vector/body/graph revisions together and changes th
 
 | Requirement | Proposed acceptance / how measured |
 |---|---|
-| Fast hook | Whole client warm p95 <=300 ms on a named laptop, supported OS and named corpus; includes startup, auth, network, queue, retrieval, composition, telemetry enqueue and output. Separate portable 3 s crash watchdog, not the normal deadline |
+| Fast hook | Whole client warm p95 <400 ms on a named laptop, supported OS and named corpus; includes startup, auth, network, queue, retrieval, composition, telemetry enqueue and output. Separate portable 3 s crash watchdog, not the normal deadline |
 | Interactive SEARCH | Client-observed p95 <=1 s, separately for encoder-only and reranked profiles; record cold start and p99. The reranked profile is disabled if it misses its budget |
 | USE/hydration | Exact approved revision and verified checksum; no remote code execution. Separate cache-hit/cold p50/p95 and bytes; freeze the cold target against actual bundle sizes in week 1 |
 | Reliability | Provisional API availability target >=99.5% over the instrumented pilot window; valid zero-result/abstention separate from transport/server failure. Report semantic-profile availability/fallback separately so sparse degradation cannot hide GPU failure |
@@ -62,7 +62,7 @@ CI publishes matching sparse/vector/body/graph revisions together and changes th
 | Traceability and privacy | Versioned IDs/events, dedupe, async retry, recorded loss/lag; no prompt/source text in normal logs/traces/spool; separate opt-in redacted evaluation corpus; 90-day event retention and actual deletion |
 | Usability | Task-based pilot covers discovery, loading, following instructions, dependencies, tool permissions/compatibility, stale instructions and feedback; report failures and unknowns, not one opaque score |
 
-These are proposed targets, not achieved measurements. Freeze pilot load/SLO definitions and quality non-inferiority margins before the admission run. Any missed must-ship requirement narrows the supported profile/scope or delays release; it is not waived because the GPU is warm.
+The product owner revised the whole-client latency target from 300 to <400 ms during E1.1b on 2026-09-05. Historical 300 ms runs remain unchanged; new comparisons explicitly use 400 ms. This target includes client startup and must also be checked with four concurrent clients before declaring that capacity supported. These are proposed targets, not achieved measurements. Freeze pilot load/SLO definitions and quality non-inferiority margins before the admission run. Any missed must-ship requirement narrows the supported profile/scope or delays release; it is not waived because the GPU is warm.
 
 ## 4. Epics and user stories
 
@@ -83,6 +83,7 @@ Roles: Dev, Owner (CODEOWNER), Platform and ML. Rows describe target acceptance,
 | # | Revised scope | Acceptance |
 |---|---|---|
 | E1.1 | Query-sensitive ranking with one eligibility policy | Deprecated/disallowed candidates stay out of ranking, dependencies and hydration; repository context is not authorization |
+| E1.1b | **Validate the real SEARCH/USE service path now, before dependent E2/E6 work** | Runnable local HTTP spike with a resident pinned full encoder, live per-query inference (no precomputed query lookup), resident 6k-skill index and explicit revision hydration. Measure cold readiness, client/fresh-process p50/p95/p99, concurrency, malformed/auth-denied/deadline/outage handling and fallback. Publish reproducible code/results, a proceed/change/stop decision and explicit loopback-vs-target-network gaps. A failed budget changes the architecture before downstream commitments; local success is not a production SLO claim |
 | E1.2 | Versioned quality metrics and data splits | Empty results count as failures on answerable tasks; no-applicable cases measured separately; common paired populations and explicit denominators; real holdout, fixture for regression only |
 | E1.3 | Fair sparse/static/contextual comparison | Freeze dev-selected sparse weights and each challenger/fusion before holdout; separate teacher, student and hybrid; compare identical text-policy and eligibility contracts |
 | E1.4 | Versioned index artifact | CI->serialize->load parity, complete identities/checksums; measured size/load cost. 15 MB retained as a local-profile experiment, removed as global service gate |
@@ -153,10 +154,12 @@ Eight weeks starts at this planning revision. Completed E0/E1 work is reused. St
 
 | Weeks | Critical work | Reviewable exit |
 |---|---|---|
-| 1–2 | E1 repairs and measurement; E6.1 contracts; freeze operational envelope, data/access policy and pilot corpus | Corrected sparse baseline, common metric denominators, composition contract, API/events fixtures; revised local latency; prospective remote evaluation protocol |
+| 1–2 | **E1.1b service spike first**; E1 repairs and measurement; E6.1 contracts; freeze operational envelope, data/access policy and pilot corpus | E1.1b go/change/stop report from actual HTTP/live-model tests; corrected sparse baseline, common metric denominators, composition contract, API/events fixtures; revised local latency; prospective remote evaluation protocol |
 | 3–4 | E2 publication/client; E6.2 resident SEARCH in shadow; E6.3 USE; start E6.4 events | Coherent snapshot across server/client; SEARCH->USE correlation on real harness; online vs sparse shadow quality/latency; optional 10 concierge reviews |
 | 5–6 | E2 cache/offline/adapter coverage; E6.4–E6.6 reporting/ops; E4 withdrawal; limited 3-team pilot | Load/timeout/denial/rollback tests; no double-counted prewarm/retries; observable unknowns; per-skill report; guarded rollout of only admitted profiles |
 | 7–8 | E6.7 paired utility + hands-on usability; tune fixes on dev; final SLO/cost report | Evidence on task value, tool compatibility and user friction; declared supported capacity/latency/profile; owner/operator runbook; go/no-go for broader rollout and automated promotion |
+
+**Dependency gate:** E1.1b is reviewed before committing E2.3/E2.6 and E6.2 to the chosen serving topology. Other independent E1 correctness and event-schema work may continue. Unmeasured target-network/TLS/IAM behavior remains a named E6 integration gate, never implied by loopback results.
 
 **Release gates:** policy/revision correctness; bounded hook and supported SEARCH profile under the frozen workload; recoverable failures; trustworthy event accounting; measured quality non-inferiority to corrected sparse under the predeclared margin and harmful-exposure bound; useful execution improvement or lower cost at non-inferior task success. If utility evidence is underpowered, deliver a limited pilot with that label, not a proven-value claim. Owner acceptance remains an E3 hypothesis, not a proxy for retrieval relevance or downstream success.
 

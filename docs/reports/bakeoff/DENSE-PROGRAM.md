@@ -1,4 +1,4 @@
-# Dense retrieval programme — pre-registered, v2.2
+# Dense retrieval programme — pre-registered, v2.3
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
 review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** The v1 text is in git history. Results are appended under
@@ -110,6 +110,22 @@ gate is the same too — a derived `requires` graph must raise `all_required@4`,
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
 
+## 4a. Multiplicity — the rule that stops "keep trying until one passes" (v2.3, added 2026-09-05)
+
+The programme runs several families, each frozen once and tested once. That is a **multiple
+comparisons** setting, and the honest handling has to be written down *before* it becomes
+convenient. Three rules:
+
+1. **A family's budget is spent when its frozen variant has been run on both test corpora.** Flat
+   BM25F weights are now spent (PR #39): they may not be re-tested alone, whatever a later idea suggests.
+2. **A combination of two families is a new variant only if both were registered before either was
+   tested.** F6 (sibling map) was registered in PR #37 from the R1 result, *before* PR #39's flat-weight
+   test — so "flat weights + F6" is a legitimate single new variant with its own single test run.
+   A combination invented *after* seeing a failure, to rescue it, is not.
+3. **Every test-corpus run is counted in the final report**, so a reader can judge the multiplicity
+   themselves. Running k variants and reporting the best of k without saying k is the failure mode
+   this section exists to prevent.
+
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
 A frozen variant is **adopted** only if, on **both** test-A and test-B:
@@ -141,6 +157,30 @@ bounds how much *any* dense signal could add to candidates on these corpora.
 ---
 
 ## 7. Results (appended as they land; §1–6 are frozen from v2)
+
+### 2026-09-05 — frozen sparse variant (flat BM25F weights) once on both tests, PR #39 — NOT ADOPTED
+
+The dev diagnosis (PR #36) chose uniform `field.*` weights; this was its single test run.
+
+| | test-A `_root` | test-B `_root` |
+|---|---|---|
+| hit@1 | **+7.72 pp** [6.94, 8.58] | **+5.25 pp** [3.75, 6.83] |
+| nDCG@10 | **+6.44 pp** [6.04, 6.85] | **+4.31 pp** [3.70, 5.00] |
+| `all_required@4` | **+4.99 pp** [4.37, 5.62] | **+2.92 pp** [1.67, 4.25] |
+| HSR@4 (`distractor_rate@4`) | no labels | **+4.67 pp worse** — breaches the ±1.0 pp guardrail ~5× |
+
+It closes **58.2 %** of the gap to test-A's own BM25 baseline and **43.1 %** of test-B's. Every
+criterion passes on test-A; on test-B it passes three and fails the harmful-exposure guardrail,
+isolated entirely to the adversarial `distractor` category (n=300), where flat weights pull in more
+correct skills **and** more labelled distractors at once.
+
+**Not adopted**, because acceptance was pre-registered as a conjunction across both corpora and one
+breach is a no. The measured trade is now on record: **+5 to +8 pp of quality for +4.67 pp of
+harmful exposure.** Whether that trade is worth taking is a product judgement, not a gate — and it
+is precisely the trade family F6 (registered in PR #37, before this run) was designed to remove.
+If F6 reduces exposure on dev, "flat weights + F6" is a legitimate new frozen variant under §4a.2
+with its own single test run.
+
 
 ### 7.1 SKILLRET-test (test-A) — F0/R0 and R1, 2026-09-05
 
