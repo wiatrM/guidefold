@@ -23,7 +23,7 @@ discussion could. Everything below was measured through the product path
 | Document expansion, T5-base doc2query (F3) | PR #41 | nDCG@10 +0.81 / +0.90 pp; `all_required@4` +0.5–0.7 pp against a +2.0 pp gate |
 | Flat BM25F field weights | PR #39, [report](../reports/bakeoff/FROZEN-sparse-flat-2026-09-05.md) | +5–8 pp headline on both corpora; HSR@4 **+4.67 pp** against a ±1.0 pp guardrail — not adopted |
 | Bundle completeness, every arm | PR #36, [diagnosis](../reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md) | `all_required@4` at k = 3 is **0.000**: `select()` takes the literal top-4; nothing composes |
-| Local in-process hook at 6 006 skills | [R4](../reports/bakeoff/R4-latency-lazy-load-2026-09-05.md) | warm p95 **581 ms**; ~250 ms is eager parsing of 89 630 terms — cost scales with the vocabulary, not the document count |
+| Local in-process hook at 6 006 skills | [R4](../reports/bakeoff/R4-latency-lazy-load-2026-09-05.md) | warm p95 **581 ms**; ~250 ms was eager parsing of 89 630 terms — cost scales with the vocabulary, not the document count. After lazy terms/postings ([R4b](../reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md), PR #45): **320 ms**, still above T300; ranking bit-identical (0/1 000 mismatches) |
 | Service, **sparse-only**, optimised (BM25 contributions cached, resident snapshot) | E1.1b | HTTP c = 1 p95 **56 ms**, c = 4 **152 ms**, fresh client process **119 ms**, burst of four fresh clients **179 ms**, 200/200, **no GPU** |
 | Service, hybrid with a resident 0.6B encoder, optimised + C++ ranking | E1.1b | c = 1 152 ms, fresh 206 ms, **c = 4 444 ms**: one encode costs 86 ms and `encoder_queue` p95 is 289 ms ≈ three encodes — the encoder is a serialised resource |
 
@@ -58,7 +58,7 @@ The router contract is fixed (ADR-0022): `policy_filter → candidates → score
 
 | Tier | For | Search backend | Dense | Added infrastructure | Measured / expected |
 |---|---|---|---|---|---|
-| **T0 local** | one team; offline or air-gapped; a corpus small enough | in-process `skills/guidefold/scripts/guidefold` (stdlib + PyYAML), sharded by node (ADR-0021) | none; the static table only if it ever clears a gate | none | admitted only where `guidefold doctor` measures warm p95 < 300 ms on the consumer's own corpus — **fails at 6 006 skills (581 ms)** |
+| **T0 local** | one team; offline or air-gapped; a corpus small enough | in-process `skills/guidefold/scripts/guidefold` (stdlib + PyYAML), sharded by node (ADR-0021) | none; the static table only if it ever clears a gate | none | admitted only where `guidefold doctor` measures warm p95 < 300 ms on the consumer's own corpus. Measured curve (R4b, PR #45): p95 113 ms at 500 skills, 188 ms at 2 000, 262 ms at 4 000, **320 ms at 6 006** — the T300 crossover is **≈ 5 300 skills**; above it, T1 or sharding |
 | **T1 department** | up to ~10 000 skills, one region | single-node `serve` (CPU), resident sparse snapshot, atomic swap | shadow only | one small VM + the existing Postgres | sparse c = 4 p95 **152 ms** measured at 6 006 skills on one node |
 | **T2 organisation** | full catalogue, thousands of developers | HA regional SEARCH/USE service (ADR-0023): CPU API + GPU encoder worker with dynamic batching | admitted **per tenant** after the flywheel (§3) clears the gates in-distribution | 2 CPU nodes, 2 GPUs, HA Postgres, CDN | designed for 100 QPS; hybrid c = 4 must reach ≤ 300 ms server-side through batching — **not yet measured** |
 
@@ -192,7 +192,7 @@ people line does not scale down as kindly — a T1 department still needs an own
 | Claim this ADR relies on | Status |
 |---|---|
 | A sparse-only service clears 300 ms at c = 4 and 6 006 skills without a GPU | **measured** (E1.1b, f29f8ac) |
-| The local in-process hook fails at 6 006 skills for vocabulary reasons | **measured** (R4) |
+| The local in-process hook fails at 6 006 skills for vocabulary reasons; the T0 crossover is ≈ 5 300 skills | **measured** (R4, R4b: 320 ms at 6 006 after lazy terms/postings; size curve 500 → 6 006) |
 | Zero-shot dense fails the completeness gate out-of-distribution and passes it in-distribution | **measured** (PR #33, #35) |
 | Composition, not ranking, is where `all_required@4` is lost | **measured** (PR #36: k = 3 → 0.000) |
 | Token cost of injected cards | arithmetic on list prices; volumes assumed |

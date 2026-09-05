@@ -47,7 +47,7 @@ The 26-skill fixture/220 queries remains regression evidence. Real labelled task
 
 | Tier | Who | Search backend | Dense | MVP status |
 |---|---|---|---|---|
-| **T0 local** | one team; offline/air-gapped; a corpus small enough that `guidefold doctor` measures warm p95 < 300 ms on it | in-process CLI, sharded by node (ADR-0021) | none | exists (E1.5); sharding pending; **fails at 6 006 skills (581 ms)** |
+| **T0 local** | one team; offline/air-gapped; a corpus small enough that `guidefold doctor` measures warm p95 < 300 ms on it | in-process CLI, sharded by node (ADR-0021) | none | exists (E1.5); measured T300 crossover **≈ 5 300 skills** (p95 320 ms at 6 006 after R4b, PR #45); sharding needed only above it |
 | **T1 department** | up to ~10 000 skills, one region | single-node `serve`, resident sparse snapshot, atomic swap | shadow only | **pilot target** (E6.2): sparse c = 4 p95 152 ms measured |
 | **T2 organisation** | the full catalogue, thousands of developers | HA regional service + GPU encoder worker with dynamic batching | admitted per tenant through E7 | beyond the 8-week horizon |
 
