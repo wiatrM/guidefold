@@ -306,3 +306,14 @@ and a candidate-pool cap that never bound). Frozen-config proposal: `field.*` we
 everything else unchanged — a one-line `DEFAULT_WEIGHTS` change, not a structural rewrite; not
 yet validated on test-A/test-B (out of scope for this diagnosis). Full report, tables, and CIs:
 `docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md`.
+
+### 2026-09-05 — lazy artifact load (R4), hook p95 at test-A scale not yet under the T300 gate
+
+Infra fix, not a retrieval-method arm: `cards.jsonl`/`graph.json` were parsed whole on every hook
+invocation, cost scaling with corpus size (p95 639ms at 6,006 skills, both T300/T500 gates
+failed). Made cards/graph lazily mmap-backed (`cards.idx`/`cards.hdr`, `graph.bin`/`graph.idx`;
+`graph.json` dropped), cutting CLI import cost, artifact 14.9MB → 13.3MB. Result: p95 639 → 581ms
+at 6,006 skills — saves the ~46ms this fix targeted, but **T300/T500 still fail**: profiling found
+the larger, pre-existing, untouched cost is eager `terms.bin`/`postings.idx` parsing (~250ms of
+~271ms load time), which scales with vocabulary (89,630 terms) not doc count — a natural "R5"
+candidate. Full breakdown: `docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md`.
