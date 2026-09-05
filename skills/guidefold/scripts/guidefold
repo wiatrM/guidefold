@@ -543,6 +543,22 @@ class Index:
         # in docs/reports/tuning/E1-config-selection.md -- see that report for the verdict.
         "abstain_mode": "magnitude",
         "abstain_margin_threshold": 1200,
+        # compose_mode gates the composer stage `select()` runs after abstention and before
+        # emission (ADR-0022 §4 / ADR-0024 §4, DENSE-PROGRAM.md v2.4 family C): "off" (default)
+        # is the unmodified legacy closure-fill select() every existing test/golden fixture
+        # depends on; "on" runs the deterministic integer composer (_select_composed) instead,
+        # which only ever *diverges* from "off" on queries its own score-plateau detector (below)
+        # flags as needing more than one skill -- every other query is byte-identical to "off"
+        # because the composer falls back to the same closure fill (_select_closure) it shares
+        # with "off". compose_tau_pct: a candidate within this many percent of the top score
+        # counts toward the plateau (score-distribution bundle signal -- no `requires` edges
+        # needed, since neither test corpus has any, DENSE-PROGRAM.md v2.4 §4). compose_coverage:
+        # when true, fill greedily by query-term coverage gain over the plateau pool; when false,
+        # fill in plain score order (still capped to the plateau/top-15 pool) -- the (tau,
+        # coverage) grid the dev arms C-det-1..4 sweep.
+        "compose_mode": "off",
+        "compose_tau_pct": 20,
+        "compose_coverage": True,
     }
 
     def __init__(self, cards, nodes, weights):
@@ -1824,15 +1840,55 @@ class Router:
             return 1 << 30
         return scored[0]["score"] - scored[1]["score"]
 
-    def select(self, scored: list, k: int = 4, abstain_threshold: int = None, *, admissible: set) -> list:
+    # ---- composer (ADR-0022 §4 / ADR-0024 §4, DENSE-PROGRAM.md v2.4 family C) ----
+    def _card_terms(self, u: str) -> frozenset:
+        """Tokenized, memoized bag of a card's own terms (name/description/digest/triggers) --
+        the coverage-fill signal in `_select_composed`. Memoized on the Router instance because a
+        dev/eval harness calls `select()` thousands of times against the same Index."""
+        cache = self.__dict__.setdefault("_card_terms_cache", {})
+        terms = cache.get(u)
+        if terms is None:
+            c = self.index.cards[u]
+            text = " ".join([c.get("name", ""), c.get("description", ""), c.get("digest", ""),
+                              " ".join(c.get("triggers") or [])])
+            terms = frozenset(tokenize(text))
+            cache[u] = terms
+        return terms
+
+    def _detect_bundle(self, pool: list, tau_pct: int) -> bool:
+        """True when >= 2 candidates in `pool` (already sorted desc by score) sit within
+        `tau_pct` percent of the top score -- a plateau in the score distribution. This is the
+        only bundle signal available on corpora with no `requires` edges (neither test corpus in
+        DENSE-PROGRAM.md has any): a single dominant winner is a single-skill query; several
+        near-tied candidates is a query the ranking alone cannot resolve into one answer.
+        Integer-only: `threshold = top * (100 - tau_pct) // 100`, floor division."""
+        if len(pool) < 2:
+            return False
+        top = pool[0]["score"]
+        if top <= 0:
+            return False
+        threshold = (top * (100 - tau_pct)) // 100
+        return sum(1 for c in pool if c["score"] >= threshold) >= 2
+
+    def _emit(self, chosen: list, score_by_urn: dict) -> list:
+        """Shared tail of every select() path: general -> specific (root-most first) injection
+        order, ties on score then urn."""
         idx = self.index
-        mode = idx.weights.get("abstain_mode", "magnitude")
-        if abstain_threshold is None:
-            abstain_threshold = idx.weights["abstain_margin_threshold"] if mode == "margin" \
-                else idx.weights["abstain_threshold"]
-        signal = self._top_margin(scored) if mode == "margin" else (scored[0]["score"] if scored else 0)
-        if not scored or signal < abstain_threshold:
-            return []
+        chosen = sorted(chosen, key=lambda u: (self._depth(idx.cards[u]["node"]), -score_by_urn.get(u, 0), u))
+        out = []
+        for u in chosen:
+            c = idx.cards[u]
+            out.append({"urn": u, "node": c["node"], "name": c["name"],
+                        "description": c["description"], "score": score_by_urn.get(u, 0)})
+        return out
+
+    def _select_closure(self, scored: list, k: int, admissible: set) -> list:
+        """The legacy select() body (unchanged since before family C): greedy top-score fill,
+        each pick pulling in its own `requires` closure (depth<=2, hard membership, admissibility-
+        gated). `compose_mode="off"` calls this directly; `compose_mode="on"` falls back to it
+        for every query its own bundle detector does not flag (ADR-0022 §4: composition is its
+        own stage, and a single-skill query has nothing to compose)."""
+        idx = self.index
         score_by_urn = {c["urn"]: c["score"] for c in scored}
         chosen, chosen_set = [], set()
         for c in scored:
@@ -1853,21 +1909,93 @@ class Router:
                 if dep not in admissible:
                     continue
                 chosen.append(dep); chosen_set.add(dep)
-        # emit general -> specific (root-most first); ties on score then urn
-        chosen.sort(key=lambda u: (self._depth(idx.cards[u]["node"]), -score_by_urn.get(u, 0), u))
-        out = []
-        for u in chosen:
-            c = idx.cards[u]
-            out.append({"urn": u, "node": c["node"], "name": c["name"],
-                        "description": c["description"], "score": score_by_urn.get(u, 0)})
-        return out
+        return self._emit(chosen, score_by_urn)
+
+    def _select_composed(self, scored: list, k: int, admissible: set, query: str) -> list:
+        """Deterministic composer body (ADR-0022 §4's "cannot fit" semantics, ADR-0024 §4's
+        interface). Sets `self.last_multi_skill`/`self.last_cannot_fit` for the caller (an eval
+        harness reads these off the Router instance; the CLI itself never prints them)."""
+        idx = self.index
+        tau_pct = idx.weights.get("compose_tau_pct", 20)
+        coverage_on = bool(idx.weights.get("compose_coverage", True))
+        # ADR-0024 §4: the composer sees at most 15 admissible candidates.
+        pool = [c for c in scored if c["urn"] in admissible][:15]
+        is_bundle = self._detect_bundle(pool, tau_pct)
+        self.last_multi_skill = is_bundle
+        if not is_bundle:
+            return self._select_closure(scored, k, admissible)
+        score_by_urn = {c["urn"]: c["score"] for c in scored}
+        top = pool[0]["score"]
+        threshold = (top * (100 - tau_pct)) // 100
+        plateau = {c["urn"] for c in pool if c["score"] >= threshold}
+        qterms = set(tokenize(query)) if coverage_on else set()
+        chosen, chosen_set, covered = [], set(), set()
+
+        def _add(u: str) -> None:
+            if len(chosen) >= k or u in chosen_set or u not in idx.cards:
+                return
+            chosen.append(u); chosen_set.add(u)
+            covered.update((self._card_terms(u) & qterms) - covered)
+            for dep in self._requires_closure(u, max_depth=2):
+                if len(chosen) >= k:
+                    break
+                if dep in chosen_set or dep not in idx.cards or dep not in admissible:
+                    continue
+                chosen.append(dep); chosen_set.add(dep)
+                covered.update((self._card_terms(dep) & qterms) - covered)
+
+        if coverage_on and qterms:
+            remaining = list(pool)
+            while len(chosen) < k and remaining:
+                def _gain(c):
+                    return len((self._card_terms(c["urn"]) & qterms) - covered)
+                remaining.sort(key=lambda c: (-_gain(c), -c["score"], c["urn"]))
+                best = remaining[0]
+                if _gain(best) <= 0 and chosen:
+                    break   # no remaining candidate covers a new query term -- stop filling
+                _add(best["urn"])
+                remaining = [c for c in remaining if c["urn"] not in chosen_set]
+        else:
+            for c in pool:
+                if len(chosen) >= k:
+                    break
+                _add(c["urn"])
+        # cannot_fit (ADR-0022 §4): say so rather than silently truncating. With coverage
+        # signal, a plateau member left out that still holds an uncovered query term is the
+        # bundle not fitting the budget; without it (coverage_on=False or an empty query),
+        # any plateau member left out once the budget is exhausted is the same fact reported
+        # the only way available.
+        if qterms:
+            self.last_cannot_fit = any(
+                u not in chosen_set and len((self._card_terms(u) & qterms) - covered) > 0
+                for u in plateau
+            )
+        else:
+            self.last_cannot_fit = len(chosen) >= k and bool(plateau - chosen_set)
+        return self._emit(chosen, score_by_urn)
+
+    def select(self, scored: list, k: int = 4, abstain_threshold: int = None, *, admissible: set,
+               query: str = "") -> list:
+        idx = self.index
+        mode = idx.weights.get("abstain_mode", "magnitude")
+        if abstain_threshold is None:
+            abstain_threshold = idx.weights["abstain_margin_threshold"] if mode == "margin" \
+                else idx.weights["abstain_threshold"]
+        signal = self._top_margin(scored) if mode == "margin" else (scored[0]["score"] if scored else 0)
+        self.last_multi_skill = False
+        self.last_cannot_fit = False
+        if not scored or signal < abstain_threshold:
+            return []
+        if idx.weights.get("compose_mode", "off") == "on":
+            return self._select_composed(scored, k, admissible, query)
+        return self._select_closure(scored, k, admissible)
 
     def route(self, query: str, node: str, k: int = 4, include_deprecated: bool = False) -> list:
         cands = self.candidates(query, node, include_deprecated=include_deprecated)
         scored = self.score(cands, query, node)
         # The same admissibility decision governs candidates AND dependency expansion (ADR-0022).
         admissible, _ = self.policy_filter(node, query, include_deprecated)
-        return self.select(scored, k=k, admissible=set(admissible))
+        return self.select(scored, k=k, admissible=set(admissible), query=query)
 
 # ------------------------------------------------------------------------- commands
 def cmd_where(a, root, cfg):
@@ -1886,7 +2014,7 @@ def cmd_find(a, root, cfg):
     cands = router.candidates(a.task, scope, include_deprecated=a.include_deprecated)
     scored = router.score(cands, a.task, scope)
     admissible, _ = router.policy_filter(scope, a.task, a.include_deprecated)   # ADR-0022: same A as route()
-    selected = router.select(scored, k=a.limit, admissible=set(admissible))
+    selected = router.select(scored, k=a.limit, admissible=set(admissible), query=a.task)
     for c in selected:
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
     if getattr(a, "experimental", False):
