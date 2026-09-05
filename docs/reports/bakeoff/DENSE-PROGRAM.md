@@ -296,7 +296,7 @@ everything else unchanged — a one-line `DEFAULT_WEIGHTS` change, not a structu
 yet validated on test-A/test-B (out of scope for this diagnosis). Full report, tables, and CIs:
 `docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md`.
 
-### 2026-09-05 — F3 document expansion (doc2query) on dev, PR #PENDING
+### 2026-09-05 — F3 document expansion (doc2query) on dev, PR #41
 
 Doc2query/msmarco-t5-base-v1 pseudo-queries (`n=5`/skill, deterministic sampling, seed 42) indexed
 as a sixth BM25F field (`expansion`) or appended into `body`, against the frozen **P-flat**
