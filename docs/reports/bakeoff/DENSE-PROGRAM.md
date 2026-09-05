@@ -357,3 +357,20 @@ at 6,006 skills — saves the ~46ms this fix targeted, but **T300/T500 still fai
 the larger, pre-existing, untouched cost is eager `terms.bin`/`postings.idx` parsing (~250ms of
 ~271ms load time), which scales with vocabulary (89,630 terms) not doc count — a natural "R5"
 candidate. Full breakdown: `docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md`.
+
+### 2026-09-05 — F3 document expansion (doc2query) on dev, PR #41
+
+Doc2query/msmarco-t5-base-v1 pseudo-queries (`n=5`/skill, deterministic sampling, seed 42) indexed
+as a sixth BM25F field (`expansion`) or appended into `body`, against the frozen **P-flat**
+baseline (not P-shipped), on the same 10,123-skill/1,000-query dev split as PR #36. All three
+arms (field weight 1, field weight 2, append) beat P-flat on `nDCG@10`/`recall@10` with every
+paired-bootstrap CI excluding zero (+0.8–0.9 pp / +1.0–1.2 pp overall) and are purely additive on
+coverage (16–20 gold skill-instances recovered into BM25F's top-50, **zero lost**, of 2,011
+required), at near-zero cost (index +1.1–3.9%, query latency indistinguishable from baseline, no
+query-time model). `all_required@4` moves only **+0.5 to +0.7 pp**, well under §5's +2.0 pp
+test-adoption bar for that metric, so the frozen proposal below is not expected to clear gates on
+test with confidence. **Frozen proposal:** `expansion` field, `n=5`, weight 2 (best point estimate
+of the three, best coverage recovery, negligible cost) — proposed for the TL's once-per-family
+test-A/test-B run, with that calibrated caveat. 4th dev-budget slot intentionally not spent
+(weight1→weight2 already shows diminishing/mixed returns). Full report, tables, samples, CIs:
+`docs/reports/bakeoff/DEV-F3-doc-expansion-2026-09-05.md`.
