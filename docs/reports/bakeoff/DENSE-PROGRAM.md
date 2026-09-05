@@ -131,4 +131,20 @@ bounds how much *any* dense signal could add to candidates on these corpora.
 
 ## 7. Results (appended as they land; §1–6 are frozen from v2)
 
-*(none yet — F0 and R1 running on both test corpora; dev split not yet carved)*
+*(F0 and R1 running on both test corpora; dev split not yet carved)*
+
+**F5 offline enrichment** — extractor built (`tools/enrich/derive.py` + `apply.py`); the numbers
+below are the sanity check against authored fields specified in the family's plan, **not** the F5
+quality gate (`all_required@4` on dev/test, still pending). On SkillRetBench, deriving from
+`full_text` alone (pretending authored `trigger_phrases`/`anti_triggers`/`composable_skills` don't
+exist): edges (`requires ∪ similar` vs 1,241 gold `composable_skills`) precision 0.60 / recall 0.95;
+`negative_triggers` token-recall of authored `anti_triggers` 0.81 / token-precision 0.69; `triggers`
+token-recall of authored `trigger_phrases` 0.43 / token-precision 0.59 (token-level agreement, not
+semantic — see report). On the real 2,037-skill local corpus: 97.5% of skills gained `triggers`,
+24.5% `negative_triggers`, 95.5% at least one graph edge (9,484 edges total, mostly low-confidence
+`similar`). Two precision bugs found and fixed this session (boilerplate `negative_triggers`
+duplicated across 49–221 skills; "do not use for X" sentences misread as a trigger for X); one
+precision issue found and **not** fixed — generic-English-word skill ids (`architecture`,
+`onboarding`, ...) produce false-positive `similar`/`requires` edges via bare mention, documented as
+a known limitation for family evaluation to address. Full report:
+`docs/reports/bakeoff/F5-enrichment-2026-09-05.md`.
