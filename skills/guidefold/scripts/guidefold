@@ -1146,7 +1146,14 @@ class Router:
         qtf = {}
         for t in qterms:
             qtf[t] = qtf.get(t, 0) + 1
-        k1_scaled = round(idx.K1 * idx.IDF_SCALE)
+        # Fixed-point contract (peer review, 2026-09-05): k1, idf, field_norm and the weighted TF
+        # must all live on the SAME scale S = IDF_SCALE. Previously wtf was (w*tf*S)//norm with norm
+        # already scaled by S — i.e. wtf came out UNSCALED (order 1..100) while k1_scaled was ~1.26M.
+        # Two consequences: denom ~= k1_scaled regardless of tf, so there was no saturation (near-
+        # linear in tf), and idf*wtf // denom truncated to 0 for tf=1 on most terms. Scoring wtf by
+        # S*S//norm restores wtf on scale S; the quotient idf*wtf//(k1+wtf) then lands on scale S.
+        S = idx.IDF_SCALE
+        k1_scaled = round(idx.K1 * S)
         scores = {}
         for t, n_q in qtf.items():
             idf = idx.idf.get(t)
@@ -1162,7 +1169,7 @@ class Router:
                     if u not in visible:
                         continue
                     norm = idx.field_norm[field][u]
-                    wtf_by_doc[u] = wtf_by_doc.get(u, 0) + (w * tf * idx.IDF_SCALE) // norm
+                    wtf_by_doc[u] = wtf_by_doc.get(u, 0) + (w * tf * S * S) // norm
             for u, wtf in wtf_by_doc.items():
                 denom = k1_scaled + wtf
                 term_score = (idf * wtf) // denom if denom else 0
@@ -1198,7 +1205,9 @@ class Router:
         visible, drops = self.policy_filter(node, query, include_deprecated)
         visible_set = set(visible)
         bm25 = self._bm25_scores(query, visible_set)
-        dense = self._dense_scores(query, visible_set)
+        # w_dense = 0 switches the channel OFF: no vector work, no dense rank, no RRF vote. Before
+        # this the weight was never read and the channel ran whenever a word table existed.
+        dense = self._dense_scores(query, visible_set) if self.index.weights.get("w_dense", 0) > 0 else {}
         bm25_order = sorted(bm25, key=lambda u: (-bm25[u], u))
         bm25_rank = {u: i + 1 for i, u in enumerate(bm25_order)}
         dense_order = _dense_rank(dense)
@@ -1364,7 +1373,7 @@ class Router:
             return 1 << 30
         return scored[0]["score"] - scored[1]["score"]
 
-    def select(self, scored: list, k: int = 4, abstain_threshold: int = None) -> list:
+    def select(self, scored: list, k: int = 4, abstain_threshold: int = None, admissible: set = None) -> list:
         idx = self.index
         mode = idx.weights.get("abstain_mode", "magnitude")
         if abstain_threshold is None:
@@ -1387,7 +1396,12 @@ class Router:
                     break
                 if dep in chosen_set or dep not in idx.cards:
                     continue
-                if idx.cards[dep]["status"] == "deprecated":
+                # Admissibility is decided once, by policy_filter, and applies everywhere (ADR-0022):
+                # a dependency the filter rejected — out of scope, deprecated, negative-trigger — must
+                # not be re-admitted through `requires`. It is an unresolved requirement instead.
+                if admissible is not None and dep not in admissible:
+                    continue
+                if admissible is None and idx.cards[dep]["status"] == "deprecated":
                     continue
                 chosen.append(dep); chosen_set.add(dep)
         # emit general -> specific (root-most first); ties on score then urn
@@ -1402,7 +1416,9 @@ class Router:
     def route(self, query: str, node: str, k: int = 4, include_deprecated: bool = False) -> list:
         cands = self.candidates(query, node, include_deprecated=include_deprecated)
         scored = self.score(cands, query, node)
-        return self.select(scored, k=k)
+        # The same admissibility decision governs candidates AND dependency expansion (ADR-0022).
+        admissible, _ = self.policy_filter(node, query, include_deprecated)
+        return self.select(scored, k=k, admissible=set(admissible))
 
 # ------------------------------------------------------------------------- commands
 def cmd_where(a, root, cfg):
@@ -1420,7 +1436,8 @@ def cmd_find(a, root, cfg):
     # have returned -- same three calls, same arguments -- so it is unaffected by --experimental.
     cands = router.candidates(a.task, scope, include_deprecated=a.include_deprecated)
     scored = router.score(cands, a.task, scope)
-    selected = router.select(scored, k=a.limit)
+    admissible, _ = router.policy_filter(scope, a.task, a.include_deprecated)   # ADR-0022: same A as route()
+    selected = router.select(scored, k=a.limit, admissible=set(admissible))
     for c in selected:
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
     if getattr(a, "experimental", False):
