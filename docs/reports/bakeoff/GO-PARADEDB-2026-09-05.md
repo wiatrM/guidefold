@@ -135,9 +135,8 @@ this is not a controlled experiment isolating any one of those choices.
 
 ## Validation and evidence
 
-- 633 existing Python tests passed; fixture validation, golden regression gate and
-  fresh `index --check` passed. Another 30 pilot-analysis tests passed after merging
-  the latest main. The shipped CLI source is unchanged.
+- 663 Python tests passed after merging the latest main; fixture validation, golden
+  regression gate and fresh `index --check` passed. The shipped CLI source is unchanged.
 - Go race tests and vet passed. 144 deterministic policy conformance cases are
   regenerated from the unchanged CLI, including scope, negative triggers, dependency
   closure, PageRank, abstention and selection caps. This is policy conformance, not
@@ -146,6 +145,11 @@ this is not a controlled experiment isolating any one of those choices.
   schema 1.1 and legacy requests, monorepo context, loaded revisions, budgets, exact
   NUL-containing body/checksum, atomic/idempotent publication, rank isolation,
   read-only SQL role, redacted diagnostics, DB failure/recovery and API restart pass.
+- A second install from an empty database caught a bootstrap readiness race. The
+  Compose healthcheck now waits for TCP, not the temporary init socket. Fresh deploy
+  and all 39 smoke/recovery checks then passed. The rebuilt image has byte-identical
+  Go binary, contract and policy source to the measured container; the image manifest
+  digest changes on rebuild. The original smoke evidence and this follow-up are both retained.
 - Every saved quality aggregate and paired CI was recomputed from saved rank lists,
   without new HTTP/model calls. All aggregates match exactly.
 

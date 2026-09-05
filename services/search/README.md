@@ -22,6 +22,8 @@ publishes the committed Meridian fixture and starts the API at
 `.guidefold/compose/secrets/`; the helper never prints them. The secret directory is
 0700; files are readable by the non-root container through Compose file secrets.
 Existing passwords and the named database volume survive subsequent deployments.
+DB readiness checks TCP, so the temporary socket-only bootstrap server cannot start
+migration jobs prematurely.
 
 For another committed monorepo:
 
