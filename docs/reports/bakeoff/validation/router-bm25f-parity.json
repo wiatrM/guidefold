@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "kind": "exact_default_router_api_parity",
+  "dataset": "frozen_skillret_train_dev",
+  "attempted": 1000,
+  "http_ok": 1000,
+  "mismatches": 0,
+  "exact_output_parity_passed": true,
+  "scope": "API top10 URN+integer score, selected ordered URNs, immutable card revisions; same query/scope/snapshot; c=4",
+  "quality_evaluated": false,
+  "test_a_or_b_queries_used": false,
+  "cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+  "snapshot_sha256": "dc3030e074b5602c0caf2a85f9b93fbc60c32a2350501a05b2fa59c356366de1",
+  "router_index_sha256": "70e21b5a706a44252da7a8e2657e4eeb9d86a081a3553a78d4681202050cb3db",
+  "documents": 10123,
+  "wall_s": 13.500969321001321,
+  "source_sha256": {
+    "services/search/bm25f.go": "44694ae78ad65aaf5d032e4cef183a2f4d5060e33dd29809586e1c793c3d0f1d",
+    "services/search/bm25f_test.go": "f0985c86f896411fa82cf675c2b3813c3538006328ada3f6bdf6a20164b0b17a",
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/main.go": "00e0da6036796b513900d430570a1ef8ac354b2811db6ebbb2f8197fdc594cbf",
+    "services/search/routing.go": "80b01b91ddc8e71e4e0631bcaf76c8291c04d0c021a301fbe992aaa29206e96d",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/store.go": "d5d01dfc0605ead4658246491c3a1d5a823f78aaaeb9918d770f9408de32e5d7"
+  },
+  "runner_schema_correction": {
+    "original_capture_sha256": "ff0a0936c6c36c09c482f484ffce2637d123e3b3c57eb638d7f1e021087de245",
+    "correction": "CLI select() returns card objects; compare their ordered urn fields with API card urns. Recomputed from the same saved 1,000 HTTP responses and CLI results. No service code or output was changed. Permanent parity.py comparator corrected.",
+    "additional_http_requests": 0
+  },
+  "responses_file": "router-bm25f-parity-rows.jsonl.gz",
+  "responses_sha256": "ac323d531981386eed7f2c4eccfc788f5d22629b2636cb44d6b6b3f01c7ef6bd"
+}

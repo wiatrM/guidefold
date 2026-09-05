@@ -10,7 +10,7 @@ import (
 )
 
 const scale int64 = 1 << 20
-const backend = "paradedb_bm25_v1"
+const backend = "router_bm25f_v1"
 
 type pathRule struct {
 	node, pattern string
@@ -19,6 +19,7 @@ type pathRule struct {
 }
 type Catalog struct {
 	ID, Repo, Revision, PolicySHA, ScopeSHA string
+	RouterIndexSHA                          string
 	Nodes                                   M
 	Weights                                 M
 	Cards                                   map[string]M

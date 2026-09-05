@@ -1,0 +1,226 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "search_response_schema_and_generated_request_id",
+      "status": 200,
+      "elapsed_ms": 2.662
+    },
+    {
+      "name": "correlation",
+      "status": 200,
+      "elapsed_ms": 2.482
+    },
+    {
+      "name": "search_to_use",
+      "status": 200,
+      "elapsed_ms": 2.695
+    },
+    {
+      "name": "legacy_search",
+      "status": 200,
+      "elapsed_ms": 2.467
+    },
+    {
+      "name": "legacy_use_nullable_search_id",
+      "status": 200,
+      "elapsed_ms": 2.302
+    },
+    {
+      "name": "unauthorized",
+      "status": 401,
+      "elapsed_ms": 1.256
+    },
+    {
+      "name": "duplicate_key",
+      "status": 400,
+      "elapsed_ms": 1.257
+    },
+    {
+      "name": "invalid_unicode",
+      "status": 400,
+      "elapsed_ms": 1.274
+    },
+    {
+      "name": "unknown_field",
+      "status": 400,
+      "elapsed_ms": 1.203
+    },
+    {
+      "name": "body_limit",
+      "status": 413,
+      "elapsed_ms": 1.449
+    },
+    {
+      "name": "float_integer",
+      "status": 400,
+      "elapsed_ms": 1.315
+    },
+    {
+      "name": "wrong_repo",
+      "status": 409,
+      "elapsed_ms": 1.698
+    },
+    {
+      "name": "stale_revision",
+      "status": 409,
+      "elapsed_ms": 1.565
+    },
+    {
+      "name": "path_traversal",
+      "status": 400,
+      "elapsed_ms": 1.32
+    },
+    {
+      "name": "unknown_scope",
+      "status": 422,
+      "elapsed_ms": 1.98
+    },
+    {
+      "name": "stale_skill",
+      "status": 409,
+      "elapsed_ms": 1.91
+    },
+    {
+      "name": "use_budget_atomic",
+      "status": 413,
+      "elapsed_ms": 2.638
+    },
+    {
+      "name": "search_budget_atomic",
+      "status": 200,
+      "elapsed_ms": 2.833
+    },
+    {
+      "name": "loaded_hydrated_no_backfill",
+      "status": 200,
+      "elapsed_ms": 2.489
+    },
+    {
+      "name": "loaded_exposed_still_delivered",
+      "status": 200,
+      "elapsed_ms": 2.425
+    },
+    {
+      "name": "monorepo_scope",
+      "status": 200,
+      "elapsed_ms": 2.561
+    },
+    {
+      "name": "target_paths_override_cwd",
+      "status": 200,
+      "elapsed_ms": 3.315
+    },
+    {
+      "name": "outside_card_lookup",
+      "status": 200,
+      "elapsed_ms": 2.6
+    },
+    {
+      "name": "use_scope_policy",
+      "status": 403,
+      "elapsed_ms": 1.684
+    },
+    {
+      "name": "literal_query_not_sql",
+      "status": 200,
+      "elapsed_ms": 2.473
+    },
+    {
+      "name": "unused_signals_reported",
+      "status": 200,
+      "elapsed_ms": 2.533
+    },
+    {
+      "name": "concurrent_determinism",
+      "passed_requests": 40
+    },
+    {
+      "name": "database_index_readonly_role_idempotent_publish",
+      "passed": true
+    },
+    {
+      "name": "other_repository_does_not_change_bm25",
+      "status": 200,
+      "elapsed_ms": 3.501
+    },
+    {
+      "name": "bad_publication_keeps_head",
+      "status": 200,
+      "elapsed_ms": 3.276
+    },
+    {
+      "name": "snapshot_head_rejects_old_workspace",
+      "status": 409,
+      "elapsed_ms": 5.551
+    },
+    {
+      "name": "exact_nul_body_after_atomic_publication",
+      "status": 200,
+      "elapsed_ms": 3.805
+    },
+    {
+      "name": "changed_skill_rejects_old_revision",
+      "status": 409,
+      "elapsed_ms": 2.332
+    },
+    {
+      "name": "reactivate_previous_snapshot",
+      "status": 200,
+      "elapsed_ms": 5.704
+    },
+    {
+      "name": "database_down_no_inmemory_search_fallback",
+      "status": 504,
+      "elapsed_ms": 1002.623
+    },
+    {
+      "name": "database_down_no_body_cache_fallback",
+      "status": 504,
+      "elapsed_ms": 1002.577
+    },
+    {
+      "name": "database_recovery_same_body",
+      "status": 200,
+      "elapsed_ms": 3.939
+    },
+    {
+      "name": "api_restart_persisted_catalog",
+      "status": 200,
+      "elapsed_ms": 2.876
+    },
+    {
+      "name": "telemetry_allowlist_redaction",
+      "passed": true
+    }
+  ],
+  "health": {
+    "api_schema_versions": [
+      "legacy-unversioned",
+      "1.1"
+    ],
+    "backend": "router_bm25f_v1",
+    "body_cache": false,
+    "database_search_calls": 53,
+    "database_use_calls": 3,
+    "live_encode_calls": 0,
+    "model_load_calls": 0,
+    "n_skills": 26,
+    "pg_search_version": "0.25.6",
+    "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+    "production_iam": false,
+    "python_runtime": false,
+    "ready": true,
+    "repository": {
+      "repo_id": "meridian",
+      "revision": "191532e40ecddf4cc2723612edec6319143f1b05"
+    },
+    "request_id": "eed60832-b29d-48f2-8541-3bbe4ce2914a",
+    "router_index_revision": "ea321741c2598820943d597eb8dc079371217a70aceafa73a793722e16a1f45e",
+    "runtime": "go",
+    "snapshot": "repository:98a0a6fa82304a3a1dbf5b6e7b85152e2e6a3a66976ce94a25f632a6eee49a84"
+  },
+  "bm25_explain": "Limit  (cost=10.00..10.08 rows=6 width=68)\n  ->  Custom Scan (ParadeDB Base Scan) on search_0e8f9727c13572dd3c1ce5b9ac78e616f49ff02dc69abef8  (cost=10.00..10.08 rows=6 width=68)\n        Table: search_0e8f9727c13572dd3c1ce5b9ac78e616f49ff02dc69abef8\n        Index: search_0e8f9727c13572dd3c1ce5_id_search_text_tenant_repo_sn_idx\n        Segment Count: 1\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc, urn asc\n           TopK Limit: 50\n        Tantivy Query: {\"with_index\":{\"query\":{\"match\":{\"field\":\"search_text\",\"value\":\"pytest\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}}",
+  "recovery_exercised": true,
+  "production_ready": false
+}
