@@ -62,16 +62,33 @@ releases. `cwd → node` resolves from the artifact's `nodes.json`, never from t
 
 **The dense channel is on probation.** `w_dense` is a weight in the index manifest, and the bake-off
 must earn it: ship `w_dense > 0` only if BM25 + static dense beats the better BM25 arm by **≥ 3
-percentage points Recall@8 with no regression on the sibling-ambiguity or no-applicable strata**.
-Otherwise the artifact ships `w_dense = 0` and the report says so.
+percentage points Recall@8 with no regression in hit@1 or nDCG@10 on the sibling-ambiguity or
+no-applicable strata**. Otherwise the artifact ships `w_dense = 0` and the report says so.
+
+> **Amended by [ADR-0021](ADR-0021-index-sharding-and-a-global-word-table.md).** The regression
+> clause originally read "no regression on the sibling-ambiguity or no-applicable strata" without
+> naming a metric, which in practice meant Recall@8 — and the E1.3 bake-off found Recall@8 is
+> **saturated at 1.0000 on `sibling_ambiguity` for both arms** while the fused arm regressed hit@1
+> by 16.67 pp and nDCG@10 by 7.40 pp there. A gate phrased against a saturated metric cannot fail,
+> so the clause now names the metrics that still discriminate at this corpus size.
+
+**Outcome, E1.3 (2026-09-05):** the gate **failed** — +1.24 pp Recall@8 against the 3 pp bar, plus
+the regression above. The artifact ships `w_dense = 0`. The distilled table is still built and
+shipped, because it costs nothing at query time and may earn its weight on a larger corpus. Of the
+four teachers, SKILLRET-Embedding-0.6B leads on hit@1 and nDCG@10 and is the pick if a bigger corpus
+later justifies switching the channel on.
 
 ## Consequences
 
 **Good.** The shipped CLI keeps its stdlib-only constraint and its 300 ms budget with room to spare
 (measured budget at 256 dims: ~210 ms including interpreter start-up). Routing is bit-reproducible
 across operating systems and Python versions. The teacher can be replaced without touching the CLI —
-a new index artifact is the whole migration. The 15 MB cap at 2k skills closes: ~4.7 MB for postings,
-cards, graph and skill vectors, leaving room for a ~40k-word table at 256 dims.
+a new index artifact is the whole migration. The 15 MB cap at 2k skills closes, but only with a
+**capped vocabulary of ~34 000 words** at 256 dims — see
+[ADR-0021](ADR-0021-index-sharding-and-a-global-word-table.md), which corrects the estimate this
+paragraph originally carried. Measured against a real 889-skill corpus rather than synthetic filler:
+sparse is ~4.97 MB at 2k skills, and a full Heaps vocabulary (41 473 words) would take the total to
+**104 % of budget**. At 34k words it is 83.5 %. The cap is load-bearing, not advisory.
 
 **Bad.** Three models to reason about (teacher, distilled student, reranker), and E1.3 measures a
 teacher the hook never runs — so the bake-off must carry an explicit static-student arm or it

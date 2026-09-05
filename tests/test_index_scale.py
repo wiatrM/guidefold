@@ -15,28 +15,21 @@ import random
 # A 900-word vocabulary understates the artifact: postings size is driven by term diversity.
 # Measured sweep at 2000 cards -- 900 -> 1.99 MB, 5k -> 2.28 MB, 20k -> 3.00 MB, 40k -> 3.64 MB.
 # 40k is the realistic order of magnitude for a 2000-skill corpus, so the assertion is made there.
-VOCAB_SIZE = 40000
+# Corpus profile measured from 889 real SKILL.md files (benjaminasterA/antigravity-awesome-skills,
+# MIT) rather than invented. Synthetic filler made this test optimistic in two ways that both
+# understate the artifact: its documents were 120 tokens where real ones run to 803, and its terms
+# were sampled uniformly where real text is Zipfian. See ADR-0021 for the full measurement.
+#
+#   measured:  889 skills -> 26,489 distinct terms, 757,089 tokens, 852 tokens/skill
+#   Heaps:     V = 620.2 * n^0.553   (exponent in the natural-language range 0.4-0.6)
+REAL_TOKENS_PER_SKILL = 852
+REAL_HEAPS_K = 620.2
+REAL_HEAPS_BETA = 0.553
+VOCAB_SIZE = int(REAL_HEAPS_K * (2000 ** REAL_HEAPS_BETA))   # ~41,473 at 2000 skills
+ZIPF_EXPONENT = 1.142                                        # measured on the same corpus
 NODE_COUNT = 25
 CARD_COUNT = 2000
 FIFTEEN_MB = 15 * 1024 * 1024
-
-
-def _make_vocab(rng):
-    # Fake but word-shaped tokens (consonant/vowel alternation) so tokenize() sees plausible
-    # natural-language terms rather than e.g. pure digit strings it might treat specially.
-    consonants, vowels = "bcdfghjklmnprstvwz", "aeiou"
-
-    def word():
-        n = rng.randint(4, 8)
-        chars = []
-        for i in range(n):
-            pool = consonants if i % 2 == 0 else vowels
-            chars.append(rng.choice(pool))
-        return "".join(chars)
-    out = set()
-    while len(out) < VOCAB_SIZE:
-        out.add(word())
-    return sorted(out)
 
 
 def _make_nodes():
@@ -45,6 +38,32 @@ def _make_nodes():
     for i in range(NODE_COUNT):
         nodes[f"team{i:02d}"] = {"paths": [f"team{i:02d}/**"], "owner": f"team-{i:02d}"}
     return nodes
+
+
+def _make_vocab(rng):
+    """A frequency-sorted vocabulary of distinct word-shaped tokens.
+
+    Order matters: `_zipf` indexes into this list, so index 0 must be the most frequent term.
+    Lengths run 4-8 characters because the real corpus averages that; 3-character tokens made the
+    earlier synthetic vocabulary collide constantly and understated the distinct-term count.
+    """
+    consonants, vowels = "bcdfghjklmnprstvwz", "aeiou"
+
+    def word():
+        n = rng.randint(4, 8)
+        return "".join(rng.choice(consonants if i % 2 == 0 else vowels) for i in range(n))
+
+    out = set()
+    while len(out) < VOCAB_SIZE:
+        out.add(word())
+    return sorted(out)
+
+
+def _zipf(rng):
+    """Index into a frequency-sorted vocabulary, Zipf-distributed with the measured exponent."""
+    # inverse-transform on a truncated zeta-ish tail; exact shape does not matter, the skew does
+    u = rng.random()
+    return min(int((u ** (-1.0 / (ZIPF_EXPONENT - 1))) - 1), VOCAB_SIZE - 1)
 
 
 def _make_cards(rng, vocab):
@@ -57,8 +76,10 @@ def _make_cards(rng, vocab):
         name = f"skill-{i:04d}"
         urn = f"urn:skill:synthetic:{node}:{name}"
         urns.append(urn)
-        desc_words = [rng.choice(vocab) for _ in range(15)]
-        body_words = [rng.choice(vocab) for _ in range(120)]
+        # Zipfian draw, matching the measured slope: a few terms dominate, ~53% are hapax.
+        # Uniform sampling spreads postings evenly and makes the artifact look smaller than it is.
+        desc_words = [vocab[_zipf(rng)] for _ in range(15)]
+        body_words = [vocab[_zipf(rng)] for _ in range(REAL_TOKENS_PER_SKILL)]
         triggers = [" ".join(rng.choice(vocab) for _ in range(3)) for _ in range(2)]
         requires = [urns[rng.randrange(i)]] if i > 0 and rng.random() < 0.15 else []
         cards[urn] = make_card(
@@ -130,6 +151,13 @@ def test_projected_size_with_a_dense_word_table_still_fits_15mb(gf, tmp_path):
     idx = gf.Index.from_cards(_make_cards(rng, _make_vocab(rng)), _make_nodes(), word_vectors=None)
     sparse = sum(len(b) for b in gf._serialize_artifact_files(idx).values())
 
+    # Honest caveat on this projection. Two independent routes to the 2000-skill sparse size
+    # disagree by ~20%: this test's synthetic-with-real-profile corpus gives ~3.97 MB, while
+    # extrapolating the *direct* measurement of 889 real SKILL.md files gives ~4.97 MB (ADR-0021).
+    # A generated Zipf draw does not reproduce real term co-occurrence, so it packs postings better
+    # than reality does. Where they disagree, trust the direct measurement and take the lower
+    # vocabulary cap: the ~34k figure in ADR-0021 is safe under BOTH, which is why it is the number
+    # the distillation must honour rather than the ~42k this test alone would allow.
     DIMS = 256
     def projected(vocab_words):
         word_table = vocab_words * DIMS          # int8, one byte per dimension
