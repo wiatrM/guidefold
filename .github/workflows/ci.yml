@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install pyyaml pytest
+        run: pip install pyyaml pytest numpy "jsonschema>=4.23,<5"
 
       - name: Syntax check the CLI
         run: python -m py_compile skills/guidefold/scripts/guidefold

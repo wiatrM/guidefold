@@ -32,7 +32,10 @@ committed" line in the PR checklist.
 ## Running tests
 
 `tests/` is not built yet (`docs/MVP.md` story E0.1). Once it exists, run `pytest` from the
-repo root. Tests that talk to the registry must mock `Registry`/`subprocess` — no test may hit
+repo root. The service contract tests also use NumPy and JSON Schema validation; install
+`pyyaml pytest numpy "jsonschema>=4.23,<5"` in the test environment, as CI does. C++ parity
+tests require Linux and `g++` and compile only the local source. The shipped CLI still
+requires only stdlib + PyYAML. Tests that talk to the registry must mock `Registry`/`subprocess` — no test may hit
 GCP.
 
 ## The single-file CLI constraint

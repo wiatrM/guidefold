@@ -289,3 +289,139 @@ def test_repository_builder_pins_committed_content_and_checks_integrity(cli_snap
     file.write_bytes(repository.canonical(bundle))
     with pytest.raises(ValueError, match="integrity"):
         repository.load(file, cli, sha)
+
+
+def schema_validator(name):
+    from jsonschema import Draft202012Validator
+    schema = json.loads((ROOT / "tools/serve_spike/contracts/harness-service-v1.1.schema.json").read_text())
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema["$defs"][name])
+
+
+def test_published_example_matches_schema_and_runtime():
+    example = json.loads((ROOT / "tools/serve_spike/contracts/search-example.json").read_text())
+    schema_validator("search_request").validate(example)
+    assert context.validate(example, "/v1/search")
+
+
+@pytest.mark.parametrize("field,value", [("schema_version", "2.0"), ("deadline_ms", True),
+    ("budget", {"max_cards": 5}), ("capabilities", "terminal"),
+    ("loaded_skills", [{"skill_id": "x", "revision": "r"}]),
+    ("intent", {"action": "guess"}), ("stack", {"secret": "hidden"})])
+def test_schema_and_runtime_agree_on_invalid_requests(field, value):
+    data = {**payload(), field: value}
+    assert list(schema_validator("search_request").iter_errors(data))
+    from tools.serve_spike.server import validate_payload, ApiError
+    with pytest.raises(ApiError):
+        validate_payload("/v1/search", data)
+
+
+def test_two_hook_shapes_normalize_to_same_scope_and_real_http_results(cli_snapshot, tmp_path):
+    from tools.serve_spike.harness_adapter import from_hook
+    engine = make_engine(cli_snapshot)
+    repo = tmp_path / "checkout"
+    work = repo / "services/alpha"
+    work.mkdir(parents=True)
+    results = []
+    server = make_server(engine, TOKEN, port=0)
+    with running_server(server) as url:
+        for harness, field in (("claude-code", "prompt"), ("copilot-cli", "user_prompt")):
+            data = from_hook({field: payload()["query"], "cwd": str(work)}, harness=harness,
+                repo_id="fixture-repo", repo_root=repo, revision="a"*40,
+                request_id="retry-stable-1", session_id="session-1", task_id="task-1")
+            assert data["workspace"]["cwd"] == "services/alpha"
+            assert str(repo) not in json.dumps(data)
+            schema_validator("search_request").validate(data)
+            result = probe.request_json(url, TOKEN, "/v1/search", data)
+            assert result["http_status"] == 200
+            schema_validator("search_response").validate(result["response"])
+            results.append(result["response"])
+        assert results[0]["cards"] == results[1]["cards"]
+        assert results[0]["ranked"] == results[1]["ranked"]
+        card = results[0]["cards"][0]
+        use = {"schema_version":"1.1", "request_id":"use-2", "skill_id":card["skill_id"],
+               "revision":card["revision"], "workspace":data["workspace"]}
+        schema_validator("use_request").validate(use)
+        response = probe.request_json(url, TOKEN, "/v1/use", use)
+        assert response["http_status"] == 200
+        schema_validator("use_response").validate(response["response"])
+    with pytest.raises(ValueError, match="outside_repository"):
+        from_hook({"prompt":"Implement retry", "cwd":str(tmp_path)}, harness="fixture",
+                  repo_id="fixture-repo", repo_root=repo)
+
+
+def test_adapter_resolves_symlinks_before_sending_relative_paths(tmp_path):
+    from tools.serve_spike.harness_adapter import observed_relative
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside"
+    root.mkdir(); outside.mkdir()
+    (root / "escape").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="outside_repository"):
+        observed_relative(root, root / "escape")
+
+
+def test_duplicate_json_keys_and_invalid_unicode_are_rejected(cli_snapshot):
+    import http.client
+    engine = make_engine(cli_snapshot)
+    server = make_server(engine, TOKEN, port=0)
+    with running_server(server):
+        for raw in (b'{"query":"retry","query":"different"}', b'{"query":"\\ud800"}'):
+            connection = http.client.HTTPConnection(*server.server_address, timeout=3)
+            try:
+                connection.request("POST", "/v1/search", body=raw,
+                    headers={"Authorization":"Bearer " + TOKEN, "Content-Type":"application/json"})
+                response = connection.getresponse()
+                assert response.status == 400
+                assert json.loads(response.read())["error"] in ("invalid_json", "invalid_query")
+            finally:
+                connection.close()
+
+
+def test_real_repository_server_process_starts_serves_and_stops(cli_snapshot, tmp_path):
+    cli, sha = cli_snapshot
+    bundle = repository.build(ROOT / "examples/monorepo", "meridian", "HEAD", cli, sha)
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_bytes(repository.canonical(bundle))
+    token = tmp_path / "token"
+    token.write_text(TOKEN)
+    log = tmp_path / "process.log"
+    with log.open("w") as output:
+        process = subprocess.Popen([sys.executable, str(ROOT / "tools/serve_spike/server.py"),
+            "--port", "0", "--disable-model", "--optimized", "--token-file", str(token),
+            "--repository-snapshot", str(snapshot)], cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
+    try:
+        url = None
+        expires = time.monotonic() + 15
+        while time.monotonic() < expires:
+            assert process.poll() is None, log.read_text()
+            for line in log.read_text().splitlines():
+                if line.startswith('{"listening":'):
+                    url = json.loads(line)["listening"]
+            if url and probe.request_json(url, "", "/health/ready")["http_status"] == 200:
+                break
+            time.sleep(.05)
+        else:
+            pytest.fail("repository service readiness timeout")
+        ready = probe.request_json(url, "", "/health/ready")["response"]
+        assert ready["repository"]["revision"] == bundle["snapshot"]["revision"]
+        assert ready["model_load_calls"] == 0
+        data = {"schema_version":"1.1", "query":"postgres authentication connection pool", "deadline_ms":1000,
+                "workspace":{"repo_id":"meridian", "cwd":"platforms/atlas/identity/turnstile"}}
+        reply = probe.request_json(url, TOKEN, "/v1/search", data)
+        assert reply["http_status"] == 200
+        result = reply["response"]
+        assert result["context"]["resolved_scopes"] == ["atlas.identity.turnstile"]
+        assert result["cards"]
+        card = result["cards"][0]
+        use = {"schema_version":"1.1", "skill_id":card["skill_id"], "revision":card["revision"],
+               "workspace":data["workspace"], "search_id":result["search_id"]}
+        hydrated = probe.request_json(url, TOKEN, "/v1/use", use)
+        assert hydrated["http_status"] == 200
+        assert hashlib.sha256(hydrated["response"]["body"].encode()).hexdigest() == hydrated["response"]["checksum"]
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill(); process.wait(timeout=5)
+    assert process.poll() is not None

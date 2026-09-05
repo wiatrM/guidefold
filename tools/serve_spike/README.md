@@ -10,10 +10,26 @@
 > `docs/adr/ADR-0023-search-use-service-and-measured-utility.md`. Git history cannot be rewritten
 > after a squash-merge, so this note is the correction.
 
-This tool validates a local HTTP boundary around the existing retrieval pipeline.
-It keeps the index and full SKILLRET encoder resident, encodes every SEARCH query
-live, and records request timings and revision-pinned USE hydration. It does not
-switch the shipped hook/CLI to a service.
+The recommended local service is **optimized sparse** (`--disable-model --optimized`).
+It keeps the index resident and provides revision-pinned SEARCH/USE. The optional
+Python/C++ hybrid is a measured shadow experiment, not an admitted product profile.
+The service does not switch or modify the shipped hook/CLI.
+
+The implemented [harness contract 1.1](../../docs/HARNESS-SERVICE-CONTRACT.md) adds
+repository-relative cwd/targets, snapshot resolution, trace IDs, loaded revisions,
+delivery budgets and explicit unused-signal reporting. It is backed by
+[ADR-0025](../../docs/adr/ADR-0025-harness-service-context-contract.md), a
+[JSON Schema](contracts/harness-service-v1.1.schema.json) and real HTTP conformance tests.
+For actual monorepo paths, build a committed repository snapshot as documented there;
+the corpus benchmark backend cannot resolve real repository paths.
+
+Recommended corpus benchmark server, after the sparse prerequisites below:
+
+```bash
+"$GF_PY" tools/serve_spike/server.py --disable-model --optimized \
+  --port 8765 --max-inflight 4 --token-file .guidefold/serve-spike/token \
+  --log-file .guidefold/serve-spike/sparse-events.jsonl
+```
 
 Architecture and MVP sequencing: [ADR-0023](../../docs/adr/ADR-0023-search-use-service-and-measured-utility.md).
 The shared admissibility/ranking/selection contract remains
@@ -26,7 +42,7 @@ enter `wsl -d Ubuntu-24.04` first. The existing GPU environment must already hav
 its dependencies installed; this procedure downloads nothing.
 
 ```bash
-cd /home/mike/projects/guidefold
+cd /path/to/your/guidefold-checkout
 GF_PY=/home/mike/.cache/guidefold/gpu-venv/bin/python
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
@@ -153,10 +169,11 @@ exact revision returned by SEARCH, and verifies the returned body checksum.
 The fresh-client arm includes Python startup, imports, token-file read, HTTP and
 process exit; it is not the actual product harness or whole-hook measurement.
 
-The current acceptance threshold is strictly below 400 ms, distinct from the
-1000 ms request deadline and five-second transport timeout. Historical 300 ms
-results remain unchanged. `compare.py` recomputes the strict threshold from raw
-attempts. Results report attempted/succeeded/
+The current versioned acceptance is whole-client p95 <=400 ms and server-side
+p95 <=300 ms, including fresh c1 and c4. Compare with `--inclusive-budget
+--server-budget-ms 300`; its default strict comparison preserves historical artifacts.
+The 1000 ms primary deadline, 400 ms burst deadline and five-second transport timeout
+are separate controls. Historical 300/400 ms results remain unchanged. Results report attempted/succeeded/
 failed requests, successful and all-attempt latencies, errors, budget misses,
 throughput, server stages, readiness evidence and the live-forward counter audit.
 A fast rejection is counted as a failed attempt, not a successful low latency.
@@ -473,3 +490,37 @@ process death also exits the worker. This uses process parentage because Linux
 in a short-lived thread. The guard still needs Python scheduling in the child.
 CPU tests cover initialization-thread exit, parent SIGTERM/SIGKILL with a blocked
 fake forward, deadline recovery, response isolation and failure cleanup.
+
+## Current sparse admission comparison
+
+Freeze the same CLI bytes and probe in a reference and optimized run. Retain the
+primary c1/c4/fresh-c1 and burst HTTP-c4/fresh-c4 outputs. Run both budgets:
+
+```bash
+for budget in 300 400; do
+  "$GF_PY" tools/serve_spike/compare.py \
+    --reference .guidefold/serve-spike/sparse-reference.json \
+    --contender .guidefold/serve-spike/sparse-optimized.json \
+    --burst .guidefold/serve-spike/sparse-optimized-burst.json \
+    --budget-ms "$budget" --server-budget-ms 300 --inclusive-budget \
+    --output ".guidefold/serve-spike/sparse-comparison-$budget.json"
+done
+```
+
+Each required arm must complete all 200 requests. Exact parity requires 1,000
+successful matching pairs across the five arms (200 distinct queries), not a claim
+about 1,000 independent tasks. The server-time header includes synchronous logging
+and JSON serialization. Whole-client timing additionally includes the fresh process.
+The benchmark does not exercise real harness hooks or prove metadata improves quality.
+
+Run real process outage/restart checks separately:
+
+```bash
+"$GF_PY" tools/serve_spike/recovery_probe.py --disable-model --optimized \
+  --cli-path .guidefold/serve-spike/guidefold-pinned \
+  --output .guidefold/serve-spike/sparse-recovery.json
+```
+
+The recovery cache is an unsigned controlled fixture, not a shipped offline fallback.
+The complete measured decision and preserved failed hybrid experiments are in the
+[E1.1b report](../../docs/reports/bakeoff/E1.1b-service-feasibility-2026-09-05.md).

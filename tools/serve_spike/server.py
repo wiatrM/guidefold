@@ -50,6 +50,10 @@ def validate_payload(path, payload):
         query = payload.get("query")
         if not isinstance(query, str) or not query.strip() or len(query) > MAX_QUERY_CHARS:
             raise ApiError(400, "invalid_query")
+        try:
+            query.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ApiError(400, "invalid_query") from None
         if payload.get("profile", "hook") not in ("hook", "interactive"):
             raise ApiError(400, "invalid_profile")
         if not isinstance(payload.get("node", "_root"), str):
@@ -214,7 +218,7 @@ class Engine:
                 "initialization_ms": dict(self.initialization_ms), "error": self.error,
                 "n_skills": len(getattr(self, "cards", {})),
                 "reranker": False, "production_iam": False,
-                "api_schema_versions": ["1.0", "1.1"], "repository": self.repository}
+                "api_schema_versions": ["legacy-unversioned", "1.1"], "repository": self.repository}
 
     def _configure_runtime(self):
         # Process-global CPython scheduling experiment. The server owns a
@@ -562,6 +566,12 @@ class Engine:
             if caps and len(body.encode("utf-8")) > min(caps):
                 raise ApiError(413, "skill_body_exceeds_budget")
             context["body_bytes"] = len(body.encode("utf-8"))
+            if caps:
+                context["used_fields"].append("budget")
+            if "max_cards" in budget:
+                context["unused_fields"].append({"field": "budget.max_cards", "reason": "not_applicable_to_use"})
+            if "loaded_skills" in payload:
+                context["unused_fields"].append({"field": "loaded_skills", "reason": "not_applicable_to_use"})
             if "remaining_skill_tokens" in budget:
                 context["warnings"].append("verify_final_harness_token_count")
         result = {"status": "hydrated", "execution_observed": False, "skill_id": sid,
@@ -599,6 +609,15 @@ class SpikeHTTPServer(ThreadingHTTPServer):
             super().process_request_thread(request, client_address)
         finally:
             self.workers.release()
+
+
+def unique_json_object(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate_json_key")
+        out[key] = value
+    return out
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -661,7 +680,7 @@ class Handler(BaseHTTPRequestHandler):
             if len(body) != size:
                 raise ApiError(400, "incomplete_payload")
             try:
-                payload = json.loads(body)
+                payload = json.loads(body, object_pairs_hook=unique_json_object)
             except (ValueError, UnicodeDecodeError):
                 raise ApiError(400, "invalid_json")
             budget = validate_payload(self.path, payload)

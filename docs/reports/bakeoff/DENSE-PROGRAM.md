@@ -154,7 +154,7 @@ E1.1b service protocol v2 (2026-09-05) requires whole-client p95 ≤400 ms over 
 
 Protocol v2 uses inclusive ≤ comparisons. Historical T300/T500 budgets and E1.1b JSON evaluated with strict <400 retain their original definitions and results. Historical T300 means the whole hook in a fresh process, not an in-process kernel or the new server-side 300 ms target. A p95 target is not hard cancellation; the server allocation provides planning headroom, not a guarantee that the client target passes.
 
-Measured service results and the pending final decision are tracked in [E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md).
+Measured service results and the sparse proceed / hybrid shadow decision are tracked in [E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md).
 
 ## 6. Reference run R1 — what it is and is not
 

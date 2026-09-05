@@ -32,6 +32,16 @@ may expand into several dependencies. Record explicit links, not nearest timesta
 
 ## 2. API boundary
 
+The implemented local request boundary is [contract 1.1](HARNESS-SERVICE-CONTRACT.md),
+accepted in [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). Adapters send
+repository-relative cwd/targets and stable request/session/task IDs; the service
+returns resolved scopes/owners, snapshot/map versions, explicit used/unused fields
+and exact skill revisions. Paths and free-text metadata are transient and do not
+enter the telemetry spool. Contextual scope checks are not production tenant IAM.
+The table below remains the target E6 contract: event ingestion, durable deduplication,
+actual harness hydration and invocation evidence are not implemented by the spike.
+
+
 | Endpoint | Request | Response / contract |
 |---|---|---|
 | `POST /v1/search` | `request_id`, `search_id`, task/session IDs, transient query, scope, profile (`hook`/`interactive`), remaining deadline, optional pinned snapshot | Ordered cards with URN + revision, reasons, scores, dependency metadata, snapshot/model/policy versions, timings and terminal status. Hook returns ≤4 cards; interactive ≤8; debug candidates ≤20. |
