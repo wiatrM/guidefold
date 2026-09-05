@@ -1,6 +1,6 @@
 # ADR-0018: Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts
 
-**Status:** Proposed · 2026-09-04 · replaces the deleted ADR-0011
+**Status:** Proposed · 2026-09-04 · replaces the deleted ADR-0011 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
 
 ## Context
 Dedicated skills repositories are not possible at the design partner. The workflow analysis behind KNOWLEDGE-DESIGN v0.1 showed that ≥ 95 % of the conflicts projected for v0.3 were synthetic, caused by committed generated files, not by engineers editing independent `SKILL.md` files. The user requires a single database at most and accepts GCS.

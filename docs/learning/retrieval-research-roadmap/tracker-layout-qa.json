@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "viewports": [
+    {
+      "width": 1440,
+      "view": "tracker",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "view": "starter",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "view": "library",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "view": "tracker",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "view": "starter",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "view": "library",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "view": "tracker",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "view": "starter",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "view": "library",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "view": "tracker",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "view": "starter",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "view": "library",
+      "overflow": false
+    }
+  ],
+  "keyboard_summary": true,
+  "keyboard_checkbox": true,
+  "all_fields_labelled": true,
+  "page_errors": [],
+  "external_requests": []
+}

@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.1
+# Dense retrieval programme — pre-registered, v2.2
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; **v2.1 adds family F5 (offline enrichment) — still before any result was measured.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -85,7 +85,18 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F2 static** | (a) prebuilt `potion-retrieval-32M` quantised to our table; (b) Model2Vec-proper distillation from **two** teachers (SKILLRET, Qwen3), their weighting, PCA-256, int8; (c) if budget remains, a static student trained on SKILLRET train with 4-source negatives | T300 | ≤ 8 total |
 | **F3 document expansion** | doc2query-T5 pseudo-queries per skill at index time, indexed as a sixth BM25F field; lexical at query time | T300 | ≤ 4 (n queries per doc, field weight) |
 | **F4 small contextual** | MiniLM-class ONNX (~22M) via onnxruntime from Python; measured, not estimated | T500 | ≤ 4 |
+| **F6 offline dense sibling map** *(v2.2)* | use the encoder **offline** to compute, per skill, its confusable set (same-capability neighbours above a cosine threshold); ship it as a small typed graph in the artifact; at query time apply a deterministic integer rule when two confusables both reach the top 4 — demote the one the query matches less on discriminating terms. **No model, no vectors at query time.** | T300 | ≤ 4 (threshold, neighbours per skill, the tie-break rule) |
 | **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
+
+**Why F6 exists (v2.2).** The full-encoder reference on test-B (PR #35) failed the completeness
+gate (`all_required@4` +0.67 pp, CI straddles zero) but **reduced harmful-sibling exposure by
+10.00 pp [−15.67, −4.00]** — the one clean, significant dense win in the programme, and exactly the
+failure mode SkillResolve-Bench isolates (a router finds the right capability family and exposes the
+wrong representative). Every dense arm so far used the encoder as a *candidate source*, which is
+where it is weakest here (coverage 8.76 %). F6 tests the hypothesis that its real value is
+**discrimination between near-identical skills**, a job that can be precomputed: the pairs are a
+property of the corpus, not of the query. If it holds, we get the −10 pp exposure without any
+query-time model — the only shape in which a dense signal can pass the T300 gate at all.
 
 **Why F5 exists (v2.1).** Real skills do not carry our fields. Measured 2026-09-05: SkillRetBench
 has analogues (85 % `trigger_phrases`, 100 % `anti_triggers`, 66 % with `composable_skills`,
