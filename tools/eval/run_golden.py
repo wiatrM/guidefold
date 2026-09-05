@@ -121,7 +121,11 @@ def run_cases(router, cases: list, k: int = EVAL_K) -> tuple:
         cands = router.candidates(c["query"], c["node"])
         scored = router.score(cands, c["query"], c["node"])
         retrieval.append(([s["urn"] for s in scored[:k]], c))
-        injection.append(([r["urn"] for r in router.select(scored, k=K_CARDS)], c))
+        # ADR-0022: injection is measured exactly as the product injects — the same admissible set
+        # governs candidates and dependency expansion. Without this the benchmark admitted closure
+        # dependencies the product rejects, which is the "benchmark != product" flaw the review named.
+        admissible, _ = router.policy_filter(c["node"], c["query"])
+        injection.append(([r["urn"] for r in router.select(scored, k=K_CARDS, admissible=set(admissible))], c))
     return retrieval, injection
 
 

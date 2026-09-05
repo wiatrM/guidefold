@@ -67,7 +67,7 @@ def test_the_two_orderings_actually_differ(router_and_index):
     for q, node in probes:
         scored = router.score(router.candidates(q, node), q, node)
         by_score = [c["urn"] for c in scored][:4]
-        by_inject = [c["urn"] for c in router.select(scored, k=4)]
+        by_inject = [c["urn"] for c in router.select(scored, k=4, admissible=set(router.policy_filter(node, q)[0]))]
         if by_score != by_inject:
             differed += 1
     assert differed, "score order and injection order coincided on every probe — one of them is wrong"
@@ -90,4 +90,4 @@ def test_runner_reports_retrieval_and_injection_separately(router_and_index):
 def test_injection_respects_the_card_cap(router_and_index):
     gf, idx, router = router_and_index
     scored = router.score(router.candidates(QUERY, NODE), QUERY, NODE)
-    assert len(router.select(scored, k=4)) <= 4
+    assert len(router.select(scored, k=4, admissible=set(router.policy_filter(NODE, QUERY)[0]))) <= 4

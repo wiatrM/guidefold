@@ -34,7 +34,7 @@
       "all_required@4": 1.0,
       "completeness@4": 0.9848484848484849,
       "coverage": 1.0,
-      "distractor_rate@4": 0.5303030303030303,
+      "distractor_rate@4": 0.5151515151515151,
       "hit@1": 0.9090909090909091,
       "n": 66,
       "n_answerable": 66,
@@ -77,7 +77,7 @@
     "all_required@4": 0.8275862068965517,
     "completeness@4": 0.9482758620689655,
     "coverage": 1.0,
-    "distractor_rate@4": 0.44360902255639095,
+    "distractor_rate@4": 0.43609022556390975,
     "hit@1": 0.8448275862068966,
     "n": 220,
     "n_answerable": 174,
@@ -85,5 +85,5 @@
     "ndcg@10": 0.8784809559898115,
     "recall@8": 0.9281609195402298
   },
-  "sha": "c2cc812"
+  "sha": "757d4f0"
 }
