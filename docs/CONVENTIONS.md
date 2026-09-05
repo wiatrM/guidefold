@@ -224,3 +224,49 @@ only the server's `accepted`/`duplicate` acknowledgements (never `rejected`) to 
 and is never called from the hook path — no command reachable from `hook` makes a network call.
 `guidefold telemetry report` wraps `tools/telemetry/report.py` (per-skill/per-revision usage from
 the ledger) when running from a guidefold tool checkout.
+
+## 12. Authoring loop: what CI tells a skill author
+
+Search quality is 80% the quality of what is searched. A new or edited `SKILL.md` can silently
+steal queries from a sibling in the same node — that is the HSR@4 failure `guidefold validate`'s
+gates (§8) catch only *after* the fact, once the skill is already merged. The `skill-authoring-report`
+CI job (`templates/ci.yml`; this repo's own copy is `.github/workflows/ci.yml`) shows the author,
+**in the PR, before merge**, what their text change does to retrieval — one sticky comment,
+found and updated by a hidden marker on every push, never a new comment per push. It runs on
+every PR that touches a `SKILL.md`.
+
+This job **informs — it never gates the build**. It never computes a pass/fail threshold; there
+is nothing here for a reviewer to override. Nothing it reports is auto-applied to any `SKILL.md` —
+every suggestion is paste-and-decide, by the skill's owner, same as everything else in this table.
+
+The comment has two parts, both produced by replaying the *exact* product path
+(`policy_filter → candidates → score → select(admissible=…)`, never `Router.route()`, and never a
+second ranking implementation — see `tools/authoring/collision_report.py`'s module docstring) at
+the PR's base and head commits:
+
+1. **Collision report** (`tools/authoring/collision_report.py`) — which queries' top-k changed;
+   for each new or changed skill, which sibling skill in the *same node* it took queries from or
+   lost queries to (the HSR proxy, § naming below), with the query ids; which new/changed skills
+   are exposed by **zero** queries ("never exposed — check description/triggers"); and, only when
+   the query file carries graded labels (the `tests/golden/*.yaml` schema — a top-level `cases`
+   list with `relevant`/`distractors`), paired Δhit@1 / Δall_required@k / Δdistractor_rate@k with
+   a 95% confidence interval. Point of care: "top-k changed" and "takes from"/"loses to" are read
+   from **retrieval** order (`Router.score`'s ranked list), not injection-set membership — two
+   same-node siblings can already both fit inside `select`'s k=4 cap, so their injected set can
+   stay byte-identical even when a text edit swaps which one a developer sees ranked first. Only
+   "never exposed" reads injection, because that is the one place the different, product-facing
+   question ("does the agent ever actually receive this card") is the right one to ask.
+2. **Trigger/negative-trigger suggestions** (`tools/authoring/suggest_triggers.py`) — for any
+   added or changed skill still missing `metadata.triggers` and/or `metadata.negative_triggers`
+   (§4), a ready-to-paste `metadata:` block plus the body line each suggested phrase came from,
+   produced by the same deterministic F5 extractor `tools/enrich/derive.py` uses offline
+   (section mining on a `## When to use / when NOT to use` heading, §5; sentence mining in
+   unheaded prose). No model is ever called in CI — an eventual LLM-assisted pass is
+   `derive.py`'s documented, unused `LLM_EXTENSION_POINT` seam, opt-in only, never wired here.
+
+In your own monorepo (`templates/ci.yml`), the query set comes from `guidefold.yaml`'s optional
+`eval: {queries: <path>}` key (a golden-format file you maintain). Omit that key and the job falls
+back to **exposure-only mode**: its query set is the union of the changed skills' own `triggers`
+phrases, and the comment says "unlabelled: exposure changes only" instead of computing Δmetrics —
+you get collision/exposure signal from day one, with zero authoring effort beyond writing
+`triggers` at all.
