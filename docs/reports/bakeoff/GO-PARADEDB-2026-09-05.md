@@ -180,3 +180,16 @@ The [GPU serving proposal](DENSE-SERVING-NEXT-2026-09-05.md) explains the next d
 experiment and its independent correctness, latency and quality questions. Kubernetes,
 production IAM/TLS, HA/backup/restore, index retention and durable E6.4 telemetry remain
 separate follow-ups. Diagnostic SEARCH/USE logs are not an observed-use event ledger.
+
+### Post-benchmark compatibility with main telemetry (PR #49)
+
+Before final CI, main merged CLI telemetry and changed its full source SHA from
+`75f8884e56b4551cbf9c0e922d068f74b50cff5d2f96d2e7c278957fc6dfcacd` to
+`8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e`.
+Only existing definitions `cmd_find`, `cmd_load`, `cmd_hook` and `main` changed;
+`Index`, `Router` and all other existing definitions have identical ASTs. All 144
+regenerated policy cases are identical except for the source SHA header. The Go
+runtime source is unchanged. The conformance fixture now tracks main, while the
+measurements above retain their original CLI/snapshot/image identities. No test
+corpus was rerun or result relabelled. CLI spool/ledger tooling now exists on main;
+Go diagnostic logs still do not constitute integration with that durable ledger.
