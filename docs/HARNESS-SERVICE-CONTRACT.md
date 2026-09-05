@@ -131,3 +131,16 @@ integration defect from scorer parity. Limits above four and `include_deprecated
 matching request semantics in contract 1.1: preserve the requested local behavior via explicit
 fallback, or introduce a negotiated contract version before remote execution. Do not silently
 clamp k or suppress the parity counter.
+
+The additional [graph lifecycle E2E](../tools/search_service/graph_lifecycle.py) exercises
+Postgres metadata persistence, adversarial traversal, dependency delivery, repository/tenant
+isolation, concurrent snapshot replacement, transaction failure, rollback and restart. It runs
+only in a dedicated `guidefold-graph-*` Compose project because it installs a temporary,
+test-repository-scoped failure trigger. See the
+[lifecycle report](reports/bakeoff/GRAPH-LIFECYCLE-E2E-2026-09-05.md).
+
+Graph runtime tolerance is not catalog admission validation. The publisher currently accepts
+cyclic and dangling dependency metadata; bounded traversal ignores unknown targets and avoids
+revisiting a node. The CLI catalog validator separately rejects cycles/invalid references.
+Do not treat successful publication or graph parity as a full graph lint or a complete-bundle
+guarantee. This test extension does not change that admission policy.
