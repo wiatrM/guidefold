@@ -1,6 +1,6 @@
 # ADR-0023: Central SEARCH/USE service, bounded hooks, and measured skill utility
 
-**Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR
+**Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: deployment tiers; sparse-only is the admitted profile until dense earns admission per tenant
 **Proposes amendments to:** ADR-0009 (serving location), ADR-0013 and ADR-0018 (online service dependency), ADR-0015 and ADR-0020 (resident contextual models), ADR-0021 (local artifact budget), ADR-0016 (usage is not probation success).
 **Preserves:** Git as source of truth, owner approval, one Postgres, GCS artifacts, single-file stdlib + PyYAML client, and ADR-0022's eligibility/composition requirements.
 **Delivery:** [MVP](../MVP.md), immediate blocking **E1.1b service feasibility**, then E2 client/distribution and new E6 service/measurement. Existing E3 remains promotion; story IDs are not renumbered.
