@@ -211,3 +211,38 @@ def format_table(overall: Mapping, per_cat: Mapping[str, Mapping]) -> str:
                 f"{'—':>22}" if isinstance(v, float) and math.isnan(v) else f"{v:>22.4f}")
         lines.append(row)
     return "\n".join(lines)
+
+
+# ----------------------------------------------------------------- paired comparison (authoring loop)
+def paired_delta_ci(pairs: Sequence[tuple[float, float]], z: float = 1.96) -> dict:
+    """Paired base-vs-head comparison over the *same* query ids run through two Router snapshots
+    (tools/authoring/collision_report.py: base ref vs head ref of a skill-authoring PR).
+
+    Returns n, mean_base, mean_head, mean_delta (= mean_head - mean_base) and a 95 % CI on
+    mean_delta via the normal approximation on the per-case deltas (mean +/- z * SEM). This is a
+    paired-difference test, not two independent samples: pairing on query id is what lets a small,
+    consistent shift show up as a narrow CI even with few queries, which is the common case for a
+    single-PR report. Deterministic and stdlib-only by construction (no bootstrap) — this module
+    has no I/O and no dependency beyond math, and collision_report.py must stay reviewable without
+    a second, hidden ranking or statistics implementation.
+
+    n == 0 has no defined mean; every field comes back NaN. n == 1 has a mean_delta but no defined
+    SEM (denominator n-1 == 0), so the CI collapses to (mean_delta, mean_delta) rather than raising
+    — "one query flipped" is still a fact worth reporting even without a confidence interval.
+    """
+    pairs = [(float(b), float(h)) for b, h in pairs]
+    n = len(pairs)
+    if n == 0:
+        nan = float("nan")
+        return {"n": 0, "mean_base": nan, "mean_head": nan, "mean_delta": nan, "ci_lo": nan, "ci_hi": nan}
+    deltas = [h - b for b, h in pairs]
+    mean_base = sum(b for b, _ in pairs) / n
+    mean_head = sum(h for _, h in pairs) / n
+    mean_delta = sum(deltas) / n
+    if n < 2:
+        return {"n": n, "mean_base": mean_base, "mean_head": mean_head, "mean_delta": mean_delta,
+                "ci_lo": mean_delta, "ci_hi": mean_delta}
+    var = sum((d - mean_delta) ** 2 for d in deltas) / (n - 1)
+    sem = math.sqrt(var / n)
+    return {"n": n, "mean_base": mean_base, "mean_head": mean_head, "mean_delta": mean_delta,
+            "ci_lo": mean_delta - z * sem, "ci_hi": mean_delta + z * sem}
