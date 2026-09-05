@@ -4,6 +4,7 @@ absent or guidefold.yaml is missing/broken. Tests exercise the individual `_chec
 directly (precise, matches the existing unit-test style in test_repo_helpers.py) plus a couple
 of full gf.cmd_doctor(...) runs for the end-to-end exit-code/--json contract."""
 import json
+import shutil
 
 import pytest
 
@@ -118,8 +119,11 @@ def test_doctor_gitignore_present_but_missing_marker_reports_fail(gf, tmp_path):
 def test_doctor_gcloud_absent_never_crashes(gf, tmp_path, monkeypatch, capsys):
     root = tmp_path / "acme"
     write_guidefold_yaml(root, nodes=default_nodes(), backend="agent-registry")
-    real_which = gf.shutil.which
-    monkeypatch.setattr(gf.shutil, "which", lambda name: None if name == "gcloud" else real_which(name))
+    # _check_registry imports shutil locally (E1.5 lazy-import: shutil is never touched on the
+    # hook path), so patch the real `shutil` module object rather than a `gf.shutil` attribute --
+    # `import shutil` inside the function fetches the same cached module from sys.modules.
+    real_which = shutil.which
+    monkeypatch.setattr(shutil, "which", lambda name: None if name == "gcloud" else real_which(name))
     cfg = gf.load_map(root)
     checks = gf._check_registry(root, cfg)
     assert checks[0]["name"] == "registry-gcloud"

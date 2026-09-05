@@ -93,13 +93,67 @@ def test_loaded_artifact_matches_in_memory_index_on_every_bm25_field(gf, fixture
     loaded = gf.load_index_artifact(dest)
 
     assert loaded.idf == mem_idx.idf
-    assert loaded.graph == mem_idx.graph
+    # loaded.graph is a _LazyGraph (R4: backed by mmap'd graph.bin/graph.idx, never the whole
+    # edge-type mapping materialised at once) -- compare it against the in-memory plain-dict graph
+    # by walking the same (edge_type, urn) space mem_idx.graph itself is keyed over, decoding one
+    # doc's adjacency at a time exactly as Router would.
+    for et in gf.Index.GRAPH_EDGE_TYPES:
+        for u in mem_idx.cards:
+            assert loaded.graph[et].get(u, []) == mem_idx.graph[et].get(u, []), (et, u)
+            assert loaded.graph.get(et, {}).get(u, []) == mem_idx.graph[et].get(u, []), (et, u)
     assert loaded.nodes == mem_idx.nodes
     for field in gf.Index.FIELDS:
         assert loaded.field_norm[field] == mem_idx.field_norm[field]
         for term, tf_by_urn in mem_idx.postings[field].items():
             assert loaded.postings[field].get(term) == tf_by_urn
     assert loaded.postings["name"].get("no-such-term-anywhere") is None
+
+
+def test_lazy_card_materialization_is_byte_identical_to_the_in_memory_build(gf, fixture_root, tmp_path):
+    """R4 acceptance: idx.cards is a _LazyCards backed by cards.jsonl/cards.idx/cards.hdr, never a
+    plain dict, once loaded from an artifact -- but every field Router ever reads off a materialised
+    card must come back identical to what Index.build() produced directly from the tree (modulo
+    requires/refines, which are deliberately dropped here: the graph already carries that
+    adjacency and Router never reads those two keys off a card at query time)."""
+    cfg = gf.load_map(fixture_root)
+    mem_idx = gf.Index.build(fixture_root, cfg)
+    dest = tmp_path / "artifact"
+    gf.write_index_artifact(fixture_root, cfg, dest, "testsha-lazycards")
+    loaded = gf.load_index_artifact(dest)
+
+    assert isinstance(loaded.cards, gf._LazyCards)
+    assert set(loaded.cards.keys()) == set(mem_idx.cards.keys())
+    for u, c in mem_idx.cards.items():
+        got = loaded.cards[u]
+        assert got == {
+            "urn": u, "node": c["node"], "name": c["name"], "description": c["description"],
+            "digest": c.get("digest", ""), "triggers": c.get("triggers", []),
+            "negative_triggers": c.get("negative_triggers", []),
+            "requires": [], "refines": [],
+            "status": c.get("status", "active"), "replaced_by": c.get("replaced_by"),
+            "kind": c.get("kind"), "layer": c.get("layer"), "owner": c.get("owner"),
+            "_body": "",
+        }, u
+        # .get() is the other read path (Router never uses bare __getitem__ everywhere) and must
+        # agree; a missing urn must come back None rather than raising.
+        assert loaded.cards.get(u) == got
+    assert loaded.cards.get("urn:skill:does-not-exist:anywhere:x") is None
+    assert "urn:skill:does-not-exist:anywhere:x" not in loaded.cards
+
+
+def test_cards_hdr_header_table_is_in_sorted_urn_order(gf, fixture_root, tmp_path):
+    """R4 acceptance: cards.hdr's doc-id order is sorted-URN order, matching cards.idx/postings/
+    vectors -- there is exactly one doc-id numbering for the whole artifact, and header_items()
+    must walk it in that same order (Router.policy_filter relies on this for deterministic
+    drop-order, matching what `sorted(self.index.cards.items())` produced before this PR)."""
+    cfg = gf.load_map(fixture_root)
+    dest = tmp_path / "artifact"
+    gf.write_index_artifact(fixture_root, cfg, dest, "testsha-hdrorder")
+    loaded = gf.load_index_artifact(dest)
+
+    urns_from_header = [u for u, _node, _status, _has_neg in loaded.cards.header_items()]
+    assert urns_from_header == sorted(urns_from_header)
+    assert urns_from_header == sorted(loaded.cards.keys())
 
 
 def test_loaded_artifact_router_output_matches_in_memory_router_for_real_queries(gf, fixture_root, tmp_path):
@@ -294,7 +348,26 @@ def test_check_index_artifact_detects_a_tampered_file_on_disk(gf, fixture_copy):
     sha = gf._git_head_short(fixture_copy)
     dest = fixture_copy / ".cache-index"
     gf.write_index_artifact(fixture_copy, cfg, dest, sha)
-    (dest / "graph.json").write_bytes(b'{"tampered": true}')
+    # R4: graph.json no longer exists on disk (superseded by graph.bin/graph.idx, ADR-0021 budget
+    # -- see _serialize_artifact_files); graph.bin is the on-disk graph representation now, and it
+    # is checksummed in manifest.json exactly like every other file, so tampering it must still
+    # be caught the same way.
+    (dest / "graph.bin").write_bytes(b"\xff\xff\xff\xff tampered \xff\xff")
+    ok, problems = gf.check_index_artifact(fixture_copy, cfg, sha, dest)
+    assert not ok
+    assert any("tampered or truncated" in p for p in problems)
+
+
+def test_check_index_artifact_detects_a_tampered_cards_idx(gf, fixture_copy):
+    """R4 acceptance: tampering cards.idx (the byte-offset table into cards.jsonl that lazy card
+    materialisation relies on) must be caught by `index --check` just like any other artifact
+    file -- a corrupted offset table would otherwise silently hand Router garbage or truncated
+    JSON the first time a card is materialised, long after `index --check` last said "clean"."""
+    cfg = gf.load_map(fixture_copy)
+    sha = gf._git_head_short(fixture_copy)
+    dest = fixture_copy / ".cache-index"
+    gf.write_index_artifact(fixture_copy, cfg, dest, sha)
+    (dest / "cards.idx").write_bytes(b"\x00\x00\x00\x00 not a real offset table")
     ok, problems = gf.check_index_artifact(fixture_copy, cfg, sha, dest)
     assert not ok
     assert any("tampered or truncated" in p for p in problems)

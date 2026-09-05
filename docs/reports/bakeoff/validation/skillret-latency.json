@@ -1,11 +1,11 @@
 {
   "n": 200,
-  "cold_start_ms": 584.7553629973845,
-  "p50_ms": 561.4709060027963,
-  "p95_ms": 638.8706830002775,
-  "mean_ms": 564.1072428051484,
-  "min_ms": 467.51878899885924,
-  "max_ms": 862.0007749996148,
+  "cold_start_ms": 480.30713600019226,
+  "p50_ms": 511.34351099972264,
+  "p95_ms": 581.231170999672,
+  "mean_ms": 511.34586476497134,
+  "min_ms": 422.47432799922535,
+  "max_ms": 632.4126470026386,
   "machine": {
     "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
     "glibc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39",
@@ -13,9 +13,11 @@
     "python": "3.12.3"
   },
   "n_skills": 6006,
-  "artifact_bytes_total": 14882560,
+  "artifact_bytes_total": 13325453,
   "artifact_files": {
     "cards.jsonl": 4170972,
+    "cards.idx": 48052,
+    "cards.hdr": 752492,
     "terms.bin": 1309620,
     "norms.bin": 120120,
     "postings.bin": 5028134,
@@ -23,9 +25,10 @@
     "vectors.i8": 0,
     "words.bin": 0,
     "words.idx": 0,
-    "graph.json": 2429981,
+    "graph.bin": 24024,
+    "graph.idx": 48052,
     "nodes.json": 3086,
-    "manifest.json": 1696
+    "manifest.json": 1950
   },
   "gate_t300_ms": 300,
   "gate_t500_ms": 500,

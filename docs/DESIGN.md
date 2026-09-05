@@ -1,5 +1,7 @@
 # Guidefold — Design Doc v0.3
 
+> **Proposed MVP revision (2026-09-05):** [MVP.md](MVP.md) and [ADR-0023](adr/ADR-0023-search-use-service-and-measured-utility.md) propose central SEARCH/USE, bounded local fallback and usage/usability measurement. Their scope and [event contract](SEARCH-USE-TELEMETRY.md) replace this document's older local-only serving, delayed telemetry, load-based probation and phase schedule for the proposed MVP. This is a plan amendment, not a claim that the service is implemented; sections explicitly describing shipped CLI behavior remain historical implementation notes.
+
 **Status:** Draft v0.3 · 2026-09-04 · supersedes v0.2 (kept in `docs/archive/DESIGN-v0.2.md`) · **§7, §10, §11 and §13 are superseded by `docs/KNOWLEDGE-DESIGN.md`** (skills leave the code monorepo; nothing generated is committed; Knowledge API holds proposals/evidence; SkillPyramid-style induction with gates G0–G7).
 **Owner:** Platform / Developer Productivity
 **One-liner:** Git-native skill CI plus an evidence-based skill router for a large organization: thousands of Agent Skills of every category and level of generality, organized general → specific, validated and drift-checked in CI, distributed through Google Cloud Agent Registry, and injected into any coding harness by a deterministic, cached, hybrid-retrieval pipeline. Knowledge flows upward: CI agents lift the generic parts of specific skills into parent scopes.
@@ -203,8 +205,11 @@ rerunning `index`). One flat artifact per sha, no sharding yet (see "target desi
 | File | Content | Loaded |
 |------|---------|--------|
 | `manifest.json` | `git_sha`, `build_time` (the commit's own timestamp — reproducible; wall-clock only for the uncommitted `worktree` sha), `weights`, `student_dims`, `quant_scale`, `counts` (cards/terms/words), sha256 `checksums` of every file below | eager |
-| `cards.jsonl` | one compact JSON object per doc, one line per doc, **sorted-URN order** — that order *is* the doc-id map used by `postings.bin`/`vectors.i8`. No `_body`/`requires`/`refines`: BM25 is already baked into `postings.bin` and the graph is `graph.json` — Router never reads those two keys at query time | eager |
-| `graph.json` | `requires`/`refines`/`replaces`/`similar` adjacency (`Index.graph`, unchanged shape) | eager |
+| `cards.jsonl` | one compact JSON object per doc, one line per doc, **sorted-URN order** — that order *is* the doc-id map used by `postings.bin`/`vectors.i8`/`cards.idx`. No `_body`/`requires`/`refines`: BM25 is already baked into `postings.bin` and the graph is `graph.bin` — Router never reads those two keys at query time. Never parsed whole; only the byte range `cards.idx` names for one URN is ever read (R4) | lazy, mmap |
+| `cards.idx` | byte-offset table into `cards.jsonl`: `n_docs` then, per doc in sorted-URN order, `(offset uint32, length uint32)` — gives `_LazyCards` O(1) seek-and-slice access to one card's JSON line without touching another (R4, superseded eager `cards.jsonl` parsing) | eager |
+| `cards.hdr` | compact per-doc header: `n_docs` then, per doc, `(urn, node, 1-byte flags)` varint-length-prefixed — `policy_filter` and closure/propagation read node/status/"has any negative_triggers" from here for every card, every query, without materializing a card body (R4) | eager |
+| `graph.bin` | `requires`/`refines`/`replaces`/`similar` adjacency (`Index.graph`), one varint-encoded block per doc — mmap'd; closure/propagation only ever expands the docs a query actually touches (R4, superseded `graph.json`) | lazy, mmap |
+| `graph.idx` | byte-offset table into `graph.bin`, same `(offset, length)` shape as `cards.idx`, sorted-URN order (R4) | eager |
 | `nodes.json` | `guidefold.yaml`'s `nodes` map, verbatim — `cwd → node` at hook time resolves from **this**, never the working-tree `guidefold.yaml` (§4 determinism) | eager |
 | `terms.bin` | global per-term integer IDF (`Index.idf`): varint-length-prefixed term + varint idf, sorted by term | eager |
 | `norms.bin` | per-`(field, doc)` BM25 length norm (`Index.field_norm`): one little-endian uint32 array per field, explicit `struct.pack("<...I", ...)` — never `array.fromfile`/raw `array.array('I', ...)`, both native-order | eager |
@@ -221,6 +226,21 @@ only the BM25 side of the lazy-postings idea. Nothing about Router's read contra
 are still exactly the attributes `Router` reads; only their storage moved from "always in memory"
 (`Index.build` scanning the tree, still what `find`/`materialize`/`validate` use) to "lazily
 faulted in from disk" (what `hook` uses, via `load_index_artifact`).
+
+**R4 (lazy card/graph load, 2026-09-05):** `cards.jsonl` and `graph.json` used to be parsed whole
+on every hook invocation — `json.loads()` over every line / the whole file, unconditionally, cost
+scaling linearly with corpus size. `graph.json` is gone from the artifact entirely (`graph.bin` +
+`graph.idx` are its binary, mmap'd replacement — droppable per ADR-0021's 15MB budget since
+reproducibility only needs the binary form, not a JSON mirror); `cards.jsonl` stays on disk (other
+tooling still reads it, and `cards.idx`'s offsets point into it) but `load_index_artifact` no
+longer parses it — `cards.hdr` covers everything `policy_filter` needs, and `cards.idx` gives
+`_LazyCards` O(1) access to one card body via mmap, only when something actually asks for one.
+Measured effect: ~46ms saved at 6 006 real skills. **Caveat, found while measuring R4:**
+`terms.bin` + `postings.idx` (both pre-existing, both still eager, both untouched by R4) are the
+*larger* remaining cost at real-corpus vocabulary sizes — ~250ms of ~271ms total load time at
+6 006 skills / 89 630 terms, because they scale with vocabulary, not doc count. Full breakdown in
+`docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md`; making them lazy is a natural next step
+("R5") but needs a term-keyed (not doc-id-keyed) on-disk structure, out of scope here.
 
 **Target design (not yet built — sharding, real embeddings, CI-computed expansion):**
 

@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Nauka z AI — Twój plan i postępy</title>
+<style>
+:root{color-scheme:light;--bg:#f5f7fb;--paper:#fff;--ink:#15223a;--muted:#58677d;--line:#dce3ee;--blue:#254dd9;--soft:#eaf0ff;--orange:#d76129;--radius:18px}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}button,a,input,select,textarea,summary{-webkit-tap-highlight-color:transparent}button,a,summary{touch-action:manipulation}
+button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}a{color:var(--blue);text-underline-offset:3px;overflow-wrap:anywhere}
+:focus-visible{outline:3px solid #dc762e;outline-offset:4px}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline-offset:2px}
+button{border:1px solid var(--line);border-radius:10px;padding:10px 15px;background:var(--paper);color:var(--ink);font-weight:650;min-height:44px}
+button:hover:not(:disabled){background:var(--soft)}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.primary:hover:not(:disabled){background:#193aa9}
+.skip{position:fixed;top:-100px;left:20px;z-index:20;padding:12px;background:white}.skip:focus{top:10px}
+.shell{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+.sidebar{position:sticky;top:0;height:100vh;overflow:auto;padding:30px 22px;background:#132039;color:#eef3ff;display:flex;flex-direction:column;gap:26px}
+.brand{display:flex;gap:11px;align-items:center;line-height:1.2}.brand-mark{width:36px;height:36px;display:grid;place-items:center;background:#91a8ff;color:#10203b;border-radius:11px;font-size:20px;font-weight:850}.brand strong{display:block;font-size:17px}.brand small{color:#acbdd7;font-size:12px;letter-spacing:.04em}
+.sidebar nav{display:grid;gap:7px}.sidebar nav button{text-align:left;color:#bfcee5;background:transparent;border-color:transparent;padding:12px}.sidebar nav button:hover{background:#20324e}.sidebar nav button[aria-current=page]{background:#e9efff;color:#152852}
+.nav-icon{display:inline-block;width:25px}.side-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#95aac8;margin:0 0 10px}.quick-nav{display:grid;gap:3px}
+.quick-nav button{display:flex;gap:9px;align-items:center;background:transparent;border:0;color:#c6d3e8;text-align:left;font-size:12px;min-height:36px;padding:7px 3px;font-weight:500;border-radius:4px}
+.quick-nav button:hover{background:#20324e}.dot{width:7px;height:7px;border-radius:50%;background:#69809f;flex:0 0 auto}.dot.active{background:#a7bbff}.dot.done{background:#8ddbba}.dot.paused{background:#e7be87}
+.side-footer{margin-top:auto;color:#b0c0d8;font-size:12px;border-top:1px solid #35435b;padding-top:18px}.side-footer p{margin:0 0 10px}.side-footer strong{color:#fff}
+.workspace{min-width:0}.topbar{padding:20px 40px;display:flex;justify-content:space-between;gap:18px;align-items:center;background:#ffffffb8;border-bottom:1px solid var(--line)}
+.breadcrumb{font-size:13px;color:var(--muted)}.top-actions{display:flex;gap:9px;flex-wrap:wrap}.top-actions button{font-size:12px;padding:7px 12px}
+main{max-width:1230px;margin:auto;padding:38px 42px 60px;min-width:0}.eyebrow{color:var(--blue);font-size:11px;letter-spacing:.15em;font-weight:750;text-transform:uppercase;margin:0 0 12px}
+h1{font-size:clamp(31px,3.6vw,48px);line-height:1.1;letter-spacing:-.035em;font-weight:750;margin:0 0 18px}h1 span{color:var(--blue)}h2{font-size:22px;letter-spacing:-.025em;line-height:1.25;margin:0 0 12px}h3{font-size:17px;margin:0 0 8px}
+.hero{display:flex;gap:30px;justify-content:space-between;align-items:center;margin-bottom:27px}.hero p{max-width:650px;color:var(--muted);margin:0;font-size:15px}.hero aside{max-width:175px;border-left:2px solid #ced8ef;padding:8px 0 8px 20px;font-size:12px;color:var(--muted);flex-shrink:0}
+.hero aside strong{display:block;font-size:29px;letter-spacing:-.04em;color:var(--ink);line-height:1.2}.stats{display:grid;grid-template-columns:1.1fr 1.1fr 1.2fr;gap:15px;margin:22px 0}
+.stat{padding:21px 23px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius)}.stat-label{color:var(--muted);font-size:12px;display:block}.stat strong{font-size:29px;letter-spacing:-.03em;font-weight:750;display:block;margin:7px 0 3px}.stat small{color:var(--muted);font-size:11px}.stat.blue{background:#eaf0ff;border-color:#d3dfff}
+.progress-line{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}progress{display:block;appearance:none;width:100%;height:7px;border:0;border-radius:20px;overflow:hidden;background:#dce5f6}progress::-webkit-progress-bar{background:#dce5f6}progress::-webkit-progress-value{background:var(--blue)}progress::-moz-progress-bar{background:var(--blue)}
+.next-step{background:#172842;color:white;border-radius:var(--radius);padding:22px 24px;display:flex;gap:20px;justify-content:space-between;align-items:center;margin:24px 0 30px}.next-step p{color:#bed0e9;font-size:12px;margin:0 0 4px}.next-step strong{font-size:18px}.next-step button{background:#f2f5ff;border:0;white-space:nowrap}
+.section-top{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:24px 0 16px}.section-top h2{margin:0}.section-top p{font-size:12px;color:var(--muted);margin:5px 0 0}
+.legend{font-size:12px;color:var(--muted);max-width:230px;text-align:right}.stage{background:var(--paper);border:1px solid var(--line);border-radius:15px;margin:12px 0;overflow:clip;scroll-margin-top:18px}
+.stage[open]{border-color:#b3c4f5;box-shadow:0 7px 24px #18376807}
+.stage>summary{list-style:none;display:flex;align-items:center;gap:14px;padding:18px 22px;cursor:pointer;min-height:77px}.stage>summary::-webkit-details-marker,.reading>summary::-webkit-details-marker{display:none}
+.stage-number{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto}.stage-title{flex:1;min-width:0}.stage-title strong{font-size:16px;display:block;letter-spacing:-.02em}.stage-title small{font-size:11px;color:var(--muted)}.summary-meta{display:flex;align-items:center;gap:11px}
+.chip{display:inline-block;white-space:nowrap;padding:4px 9px;border-radius:20px;background:#f0f3f8;color:#56637a;font-size:11px;font-weight:650}.chip.active{background:#e9efff;color:#244bbd}.chip.done{background:#e4f3ea;color:#276a49}.chip.paused{background:#fff1e1;color:#855521}
+.check-count{font-size:12px;color:var(--muted);white-space:nowrap}.chevron{font-size:20px;color:#77849a;transition:transform .12s}.stage[open] .chevron{transform:rotate(90deg)}
+.stage-body{border-top:1px solid #e6ebf4;padding:20px 23px 23px}.when{margin:0 0 17px;padding-left:12px;border-left:3px solid #a8baf3;color:var(--muted);font-size:13px}
+.tasks{border:0;padding:0;margin:0 0 22px;min-width:0}.tasks legend{font-size:12px;font-weight:750;margin-bottom:10px;color:var(--ink)}.task{display:flex;gap:11px;align-items:flex-start;padding:10px 0;cursor:pointer;font-size:13px;line-height:1.5}
+.task input{width:18px;height:18px;flex:0 0 auto;margin:2px 0 0;accent-color:var(--blue)}.task:has(input:checked) span{color:#4b6656}.task span{overflow-wrap:anywhere}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:18px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #cfd8e5;border-radius:9px;background:#fff;color:var(--ink);padding:10px 11px;min-height:43px}.field input[aria-invalid="true"]{border-color:#b34b2c;background:#fff4ee}.field textarea{min-height:85px;resize:vertical;line-height:1.5}.notes-field{grid-column:1/-1}.hint{display:block;font-size:11px;color:var(--muted);margin-top:5px}
+.stage-links{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px}.stage-links button{font-size:12px;padding:7px 12px}.completed-at{font-size:11px;color:var(--muted)}
+.save-strip{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted);margin-bottom:16px;min-height:20px}.save-dot{width:6px;height:6px;background:#468164;border-radius:50%}.save-strip.error{color:#9b422b}.save-strip.error .save-dot{background:#bd512e}
+.notice{padding:16px 18px;border:1px solid #e9bb8d;background:#fff5e9;border-radius:12px;font-size:13px;margin:16px 0}.notice p{margin:0 0 10px}.notice button{font-size:12px;margin-right:6px}
+[hidden]{display:none!important}.page-intro{max-width:720px;color:var(--muted);margin-bottom:24px}.starter-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.starter-card{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:26px}.starter-card .label{font-size:11px;text-transform:uppercase;color:var(--blue);letter-spacing:.08em;font-weight:750}.starter-card h3{font-size:20px;margin-top:9px}.starter-card p,.starter-card li{font-size:13px;color:var(--muted)}.starter-card ul{padding-left:19px}.starter-card button{margin-top:10px;font-size:13px}.wide{grid-column:1/-1}
+.rhythm{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:16px 0}.rhythm strong{font-size:28px;color:var(--blue);display:block}.rhythm span{font-size:12px;color:var(--muted)}
+.prompt{white-space:pre-wrap;background:#f1f4fa;border-radius:10px;padding:17px;font-size:13px;color:#2d4160}
+.reading{background:white;border:1px solid var(--line);border-radius:13px;margin:11px 0;scroll-margin-top:20px;min-width:0}.reading>summary{padding:18px 21px;font-weight:650;font-size:14px;cursor:pointer;list-style:none}.reading>summary:after{content:"+";float:right;color:var(--blue);margin-left:12px}.reading[open]>summary:after{content:"−"}
+.prose{padding:0 23px 20px;line-height:1.75;font-size:14px;overflow-wrap:anywhere}.prose p:first-child{margin-top:0}.prose h3{margin-top:22px}.prose table{display:block;max-width:100%;overflow:auto;border-collapse:collapse;font-size:12px;margin:15px 0}.prose th,.prose td{text-align:left;padding:11px;border:1px solid var(--line);vertical-align:top;min-width:120px}.prose th{background:#f1f4fa}.prose li{margin:7px 0}.prose code{font-size:.9em;background:#eef2f9;padding:2px 4px;border-radius:4px}
+dialog{width:min(540px,calc(100% - 32px));border:1px solid var(--line);border-radius:18px;padding:26px;color:var(--ink);box-shadow:0 24px 100px #10203b30}dialog::backdrop{background:#11244066}dialog p{font-size:13px;color:var(--muted)}.dialog-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:21px}.dialog-actions button{font-size:12px}.transfer-note{font-size:12px;color:var(--muted);margin:28px 0 0;max-width:780px}.footer{border-top:1px solid var(--line);margin-top:32px;padding-top:18px;color:var(--muted);font-size:11px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:13px 20px;border-radius:12px;background:#172842;color:white;font-size:13px;z-index:30;box-shadow:0 10px 30px #12274425}.error-message{font-size:12px;color:#9b422b}
+@media(max-width:1100px){.shell{grid-template-columns:218px minmax(0,1fr)}main{padding:30px 26px}.topbar{padding:17px 26px}.sidebar{padding:27px 17px}.hero aside{display:none}.stat{padding:18px}.summary-meta{gap:7px}}
+@media(max-width:800px){.shell{display:block}.sidebar{position:static;height:auto;padding:16px 20px;gap:14px}.brand{font-size:14px}.sidebar nav{display:flex;gap:6px}.sidebar nav button{font-size:12px;padding:8px 10px;min-height:40px}.sidebar .quick-section,.side-footer{display:none}.nav-icon{width:19px}.topbar{padding:12px 20px}.breadcrumb{font-size:11px}.top-actions button{min-height:38px;font-size:11px;padding:6px 9px}main{padding:28px 20px 45px}.hero{margin-bottom:18px}.stats{gap:10px}.stat{padding:15px}.stat strong{font-size:25px}.stage>summary{padding:16px}.stage-body{padding:18px}.starter-card{padding:21px}.legend{display:none}}
+@media(max-width:500px){.topbar{align-items:flex-start}.breadcrumb{max-width:90px}.top-actions{justify-content:flex-end;gap:5px}.hero h1{font-size:34px}.hero p{font-size:13px}.stats{grid-template-columns:1fr 1fr}.stat.blue{grid-column:1/-1}.stat.blue strong{display:inline-block;margin-right:9px}.stat.blue .progress-line{margin-top:8px}.next-step{padding:19px;gap:13px;align-items:flex-start;flex-direction:column}.next-step button{min-height:40px;font-size:12px}.stage>summary{gap:10px}.stage-title strong{font-size:14px}.stage-number{width:29px;height:32px;font-size:11px}.summary-meta{align-items:flex-end;gap:4px;flex-direction:column}.chevron{display:none}.chip{font-size:10px;padding:3px 7px}.check-count{font-size:10px}.fields{grid-template-columns:1fr}.notes-field{grid-column:auto}.starter-grid{grid-template-columns:1fr}.wide{grid-column:auto}.rhythm{gap:12px}.rhythm strong{font-size:24px}.sidebar nav{justify-content:space-between}.sidebar nav button{font-size:11px;padding:7px}.nav-icon{display:none}.stage-links{align-items:flex-start;flex-direction:column}.section-top h2{font-size:20px}.prose{padding:0 16px 17px}main{padding-left:16px;padding-right:16px}.reading>summary{padding:16px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@media print{.sidebar,.topbar,.stage-links,.top-actions,.next-step button,.save-strip,.notice,.toast{display:none!important}.shell{display:block}main{padding:0}.stage,.reading{break-inside:avoid}details>div{display:block!important}button{display:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Przejdź do treści</a>
+<div class="shell">
+<aside class="sidebar">
+<div class="brand"><span class="brand-mark" aria-hidden="true">↗</span><div><strong>Plan nauki</strong><small>AI · RETRIEVAL · BADANIA</small></div></div>
+<nav aria-label="Główna nawigacja">
+<button type="button" data-view="tracker" aria-current="page"><span class="nav-icon" aria-hidden="true">◉</span>Moje postępy</button>
+<button type="button" data-view="starter"><span class="nav-icon" aria-hidden="true">↗</span>Start z AI</button>
+<button type="button" data-view="library"><span class="nav-icon" aria-hidden="true">▤</span>Kursy i materiały</button>
+</nav>
+<div class="quick-section"><p class="side-label">Twoje tematy</p><div id="quick-nav" class="quick-nav"></div></div>
+<div class="side-footer"><p><strong>Projekt od pierwszego dnia.</strong></p><p>AI pomaga budować. Ty uczysz się sprawdzać kod i wnioski.</p><p>Materiały sprawdzone<br>5 września 2026</p></div>
+</aside>
+<div class="workspace">
+<header class="topbar"><div class="breadcrumb">Twój warsztat / Guidefold</div><div class="top-actions">
+<button id="export" type="button">↓ Eksport postępu</button><button id="import" type="button">↑ Import</button>
+<input id="import-file" type="file" accept=".json,application/json" hidden aria-label="Plik kopii postępu">
+</div></header>
+<main id="main">
+<noscript><style>#view-library[hidden]{display:block!important}</style><div class="notice">Włącz JavaScript, aby zapisywać postęp. Materiały i kursy poniżej pozostają dostępne.</div></noscript>
+<div id="save-strip" class="save-strip"><span class="save-dot" aria-hidden="true"></span><span id="save-status" role="status">Sprawdzam zapis lokalny…</span></div>
+<div id="conflict" class="notice" hidden role="alert"><p id="conflict-message"></p><button type="button" id="load-latest">Wczytaj zapis z przeglądarki</button><button type="button" id="keep-current">Zachowaj tę wersję</button><button type="button" id="export-current">Eksportuj tę wersję</button></div>
+<div id="corrupt" class="notice" hidden role="alert"><p>Zapis postępu ma niepoprawny format. Zachowaliśmy go bez zmian. Możesz pobrać jego kopię i rozpocząć nowy zapis.</p><button type="button" id="export-raw">Pobierz zachowaną kopię</button><button type="button" id="new-storage">Rozpocznij nowy zapis</button></div>
+<section id="view-tracker" aria-label="Moje postępy">
+<div class="hero"><div><p class="eyebrow">Ucz się na własnym projekcie</p><h1>Ucz się z AI.<br><span>Rozumiej wyniki.</span></h1><p>Od pierwszego skryptu do własnego retrievera i badań. Wybieraj potrzebne tematy, zapisuj pracę i sprawdzaj, co potrafisz wykonać samodzielnie.</p></div><aside><strong>15 h</strong>tygodniowo na projekt,<br>kursy i sprawdzenie wiedzy</aside></div>
+<div class="stats" aria-label="Podsumowanie postępu">
+<div class="stat"><span class="stat-label">Zaliczone etapy</span><strong id="done-count">0 / 10</strong><small>Po sprawdzeniu wszystkich umiejętności</small></div>
+<div class="stat"><span class="stat-label">Zapisany czas</span><strong id="hours-count">0 h</strong><small>Twoje godziny, niezależnie od statusu</small></div>
+<div class="stat blue"><span class="stat-label">Sprawdzone umiejętności</span><strong id="checks-count">0 / 30</strong><div class="progress-line"><progress id="overall-progress" max="30" value="0" aria-label="Sprawdzone umiejętności"></progress><span id="percent">0%</span></div></div>
+</div>
+<div class="next-step"><div><p id="next-label">Proponowany następny krok</p><strong id="next-title">Python w Twoim projekcie</strong></div><button id="continue" type="button">Otwórz etap →</button></div>
+<div class="section-top"><div><h2>Twoja ścieżka</h2><p>Tematy możesz łączyć. Zaliczenie oznacza umiejętność, a nie liczbę obejrzanych filmów.</p></div><div class="legend">Zaznacz sprawdzenia.<br>Potem wybierz „Zaliczony”.</div></div>
+<div id="stages"></div>
+<p class="transfer-note"><strong>Zapis lokalny:</strong> postęp zostaje w tej przeglądarce dla tej kopii pliku. Nie synchronizuje się między urządzeniami. Przed przeniesieniem pliku lub czyszczeniem danych przeglądarki wybierz „Eksport postępu”.</p>
+</section>
+<section id="view-starter" aria-label="Start z AI" hidden>
+<p class="eyebrow">Pierwsze 4 tygodnie</p><h1>Projekt napędza naukę.</h1><p class="page-intro">Nie czekaj na ukończenie całej listy kursów. Buduj małe eksperymenty z AI i uzupełniaj podstawy, które pozwalają rozumieć ich wynik. Daty są orientacyjne; przechodź dalej po sprawdzeniu wiedzy.</p>
+<div class="starter-grid">
+<article class="starter-card"><span class="label">Tygodnie 1–2 · 30 h</span><h3>Python + Twoje metryki</h3><p>Zacznij od <a href="https://www.deeplearning.ai/courses/ai-python-for-beginners">AI Python for Beginners</a>. Z AI napisz mały skrypt analizujący wyniki Guidefolda.</p><ul><li>Wczytanie JSONL i kontrola identyfikatorów.</li><li>Hit@1, Recall@k i prosty przypadek kompletności.</li><li>Ręczne sprawdzenie wyników i celowego błędu.</li></ul><button type="button" data-jump="stage1">Przejdź do sprawdzeń →</button></article>
+<article class="starter-card"><span class="label">Tygodnie 3–4 · 30 h</span><h3>BM25 + gotowy encoder</h3><p>Porównaj dwa sposoby wyszukiwania na tym samym małym zbiorze. Kurs ML i matematykę dobieraj do pytań z tego eksperymentu.</p><ul><li>Te same dane i poprawne odpowiedzi.</li><li>Zapis kandydatów, rang i porażek.</li><li>Audyt wejścia modelu oraz ograniczeń wniosku.</li></ul><button type="button" data-jump="stage5">Przejdź do sprawdzeń →</button></article>
+<article class="starter-card wide"><span class="label">Potem · po spełnieniu bramki</span><h3>Pierwszy mały fine-tuning</h3><p>Uruchom gotowy przykład treningu, kiedy masz niezależne splity, działający ewaluator, sprawdzone wejście i rozumiesz aktualizację wag. Wczesny pilot jest ćwiczeniem. Rozwinięte porównania i wnioski badawcze wymagają dalszej pracy.</p><button type="button" data-jump="stage7">Otwórz etap retrievera →</button></article>
+<article class="starter-card wide"><span class="label">Twój tydzień · autorska propozycja</span><h3>15 godzin, trzy rodzaje pracy</h3><div class="rhythm"><div><strong>9 h</strong><span>projekt z AI</span></div><div><strong>4 h</strong><span>kurs i podstawy</span></div><div><strong>2 h</strong><span>samodzielne sprawdzenie</span></div></div><p>Dokumentacja jest dozwolona. Sprawdzasz zrozumienie, nie pamięć składni. Ta proporcja to punkt startowy, a nie naukowo ustalona reguła.</p></article>
+<article class="starter-card wide"><span class="label">Prompt do nauki</span><h3>Poproś AI o sprawdzenie Twojego rozumienia</h3><div class="prompt" id="learning-prompt">Pomóż mi zbudować mały eksperyment. Wyjaśnij przepływ danych i założenia. Po każdym kroku poproś mnie o przewidzenie wyniku lub znalezienie błędu. Daj wskazówkę, zanim pokażesz rozwiązanie. Na końcu przygotuj podobne zadanie do samodzielnego wykonania i sprawdź moje uzasadnienie.</div><button id="copy-prompt" type="button">Kopiuj prompt</button></article>
+</div>
+</section>
+<section id="view-library" aria-label="Kursy i materiały" hidden>
+<p class="eyebrow">Biblioteka do Twojego projektu</p><h1>Sięgaj po to,<br><span>czego teraz potrzebujesz.</span></h1><p class="page-intro">Zachowane kursy, projekty i źródła. Dawny plan około 660 godzin opisuje zakres pełnej nauki, nie obowiązkową kolejkę przed pierwszym modelem. Ceny i dostęp: stan na 5 września 2026.</p>
+<details class="reading" id="reading-start"><summary>Zacznij od projektu z AI</summary><div class="prose"><ol>
+<li>W tygodniach 1–2 korzystaj z <a href="https://www.deeplearning.ai/courses/ai-python-for-beginners">AI Python for Beginners</a> i buduj skrypt do wyników Guidefolda. <a href="https://cs50.harvard.edu/python/">CS50P</a> wykorzystuj do uzupełniania luk.</li>
+<li>W tygodniach 3–4 porównaj BM25 i gotowy encoder na tych samych danych.</li>
+<li>Po sprawdzeniu splitów, wejścia i metryk oraz poznaniu aktualizacji wag uruchom mały przykład fine-tuningu.</li>
+<li>Kurs ML i matematykę realizuj równolegle. Dalsze eksperymenty powinny wskazywać, co warto pogłębić.</li>
+</ol>
+<p>Pierwsze tygodnie są orientacyjne. Trening pilotażowy jest ćwiczeniem; odrębnie zbieraj dowody do twierdzeń badawczych.</p>
+</div></details>
+<details class="reading" id="reading-ai-workflow"><summary>Jak korzystać z AI, żeby się uczyć</summary><div class="prose"><p>Zlecaj AI przygotowanie kodu, wykresów i przykładów. Po każdym kroku przewiduj wynik, zmieniaj założenie i sprawdzaj mały przypadek ręcznie. Nie musisz pamiętać całej składni; musisz umieć wskazać, co program oblicza i czego wynik nie dowodzi.</p>
+<p>Dokumentacja jest dozwolona przy samodzielnych sprawdzeniach. Poproś AI o podobne zadanie, wskazówkę przed rozwiązaniem i celowo błędny przykład do diagnozy. Oceniaj własne wyjaśnienie oraz wynik, nie samą zgodność z opinią kolejnego modelu.</p>
+<p>W małym randomizowanym badaniu nauki biblioteki Pythona grupa z AI uzyskała średnio 50% w quizie wobec 67% bez AI. Był to pomiar krótkoterminowy; nie rozstrzyga ogólnie skuteczności nauki z AI. Analiza sposobów korzystania z narzędzia była obserwacyjna. <a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Badanie Anthropic</a>.</p>
+</div></details>
+<details class="reading" id="reading-scope"><summary>Co właściwie będziesz umiał trenować</summary><div class="prose"><p><strong>Retriever / bi-encoder</strong> koduje zapytanie i skill do wektorów; służy do szybkiego wyszukania kandydatów. <strong>Reranker / cross-encoder</strong> analizuje zapytanie razem z kandydatem i poprawia kolejność krótkiej listy. <strong>Fine-tuning</strong> aktualizuje wagi istniejącego modelu na Twoich przykładach.</p>
+<p>W tej ścieżce najpierw dostrajasz mały dostępny model, a później odtwarzasz wybrany element podejścia <a href="https://arxiv.org/html/2605.05726v3">SkillRet</a> lub <a href="https://arxiv.org/html/2603.22455v5">SkillRouter</a>. Trenowanie modelu językowego od zera to dalsza specjalizacja; nie jest warunkiem prowadzenia dobrych badań nad routingiem.</p>
+<p><a href="https://arxiv.org/abs/2603.04448v3">SkillNet</a> jest osobną infrastrukturą tworzenia, oceniania i łączenia skilli. <a href="https://github.com/zjunlp/SkillNet">Oficjalne repozytorium</a> nadaje się do studiowania organizacji biblioteki i ewaluacji agentów. Nie traktuj nazwy SkillNet jako nazwy jednego checkpointu, który wystarczy „wytrenować”.</p>
+<p><strong>Trzy oddzielne pytania Guidefolda:</strong> czy skill wolno użyć w danym kontekście, czy odpowiada na zadanie, czy wybrany zestaw jest kompletny. Wynik podobieństwa nie rozstrzyga wszystkich trzech.</p>
+</div></details>
+<details class="reading" id="reading-schedule"><summary>Zakres pełnej ścieżki, bez sztywnego kalendarza</summary><div class="prose"><p>Wcześniejszy plan obejmował około 660 godzin kursów, ćwiczeń i projektów. Przy 15 godzinach tygodniowo odpowiada to 44 tygodniom pracy, lecz tematy można łączyć. Nie jest to termin pierwszego modelu ani gwarancja osiągnięcia kompetencji.</p>
+<p>W trackerze postęp wynika z 30 konkretnych sprawdzeń. Godziny zapisujesz oddzielnie. Minimum z ewaluacji, splitów, reprezentacji wejścia i PyTorch wykonaj przed fine-tuningiem; pełne kursy kontynuuj w jego trakcie.</p>
+</div></details>
+<details class="reading" id="reading-plan_table_context"><summary>Jak wybierać kolejny temat</summary><div class="prose"><p>Po działającym skrypcie z metrykami przejdź do BM25 i encodera. Przy encoderze sprawdź wejście i embeddingi. Do treningu dołóż splity i podstawy PyTorch. Matematyka, kurs ML oraz dziennik badawczy towarzyszą projektowi; reranker i integracja mogą korzystać z gotowych modeli.</p>
+</div></details>
+<details class="reading" id="reading-glossary"><summary>Mały słownik na pierwsze tygodnie</summary><div class="prose"><ul>
+<li><strong>Baseline:</strong> prosty system odniesienia, z którym porównujesz nowy pomysł.</li>
+<li><strong>Train / dev / test:</strong> dane do uczenia, do wyboru konfiguracji i do końcowej niezależnej oceny.</li>
+<li><strong>Embedding:</strong> liczbowy wektor reprezentujący tekst; podobne wektory mają pomagać znaleźć podobne znaczenia.</li>
+<li><strong>Checkpoint:</strong> zapisane wagi modelu; do reprodukcji potrzebujesz też konfiguracji i wersji danych.</li>
+<li><strong>Hard negative:</strong> niepoprawny kandydat podobny do poprawnego. <strong>False negative:</strong> poprawna odpowiedź błędnie oznaczona jako negatywna.</li>
+<li><strong>Recall@k:</strong> jaka część wszystkich poprawnych dokumentów znalazła się w pierwszych k wynikach. <strong>Hit@1:</strong> czy pierwszy wynik jest poprawny.</li>
+<li><strong>MRR:</strong> średnia odwrotność pozycji pierwszego poprawnego wyniku. <strong>nDCG:</strong> ocena kolejności uwzględniająca stopień trafności i większą wartość wysokich pozycji.</li>
+<li><strong>Ablacja:</strong> kontrolowany eksperyment wyłączający lub zmieniający jeden element podejścia.</li>
+<li><strong>AND / OR:</strong> potrzeba wszystkich wskazanych elementów / wystarczy jedna ze zweryfikowanych alternatyw.</li>
+<li><strong>Abstencja:</strong> decyzja o niewybraniu skilla, gdy system nie ma wystarczających podstaw.</li>
+</ul>
+</div></details>
+<details class="reading" id="reading-stage1"><summary>Python w Twoim projekcie</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Pierwsze 2 tygodnie. AI Python i skrypt z metrykami; CS50P do uzupełniania luk.</p>
+<p><strong>Materiał główny:</strong> <a href="https://www.deeplearning.ai/courses/ai-python-for-beginners">AI Python for Beginners</a>, z programowaniem wspieranym przez AI. <a href="https://cs50.harvard.edu/python/">CS50P</a> wykorzystuj do konkretnych braków: funkcji, pętli, wyjątków, bibliotek, testów i plików. Nie trzeba ukończyć całego kursu przed pierwszym projektem.</p>
+<p><strong>Zrób po kolei:</strong></p>
+<ol>
+<li>Wczytaj JSON i JSONL; zamień rekordy na słowniki i listy.</li>
+<li>Sprawdź brakujące identyfikatory, powtórzenia oraz puste odpowiedzi.</li>
+<li>Dla małego ręcznie opisanego przykładu policz Hit@1 i Recall@k.</li>
+<li>Zapisz wynik do CSV i przygotuj instrukcję uruchomienia.</li>
+<li>Dodaj test, który wykrywa błędny mianownik albo duplikat dokumentu.</li>
+</ol>
+<p><strong>Gotowe, gdy:</strong> umiesz odtworzyć obliczenia na papierze i wyjaśnić każdą linię skryptu. Sztuczne przykłady służą tu nauce; nie są dowodem jakości Guidefolda.</p>
+</div></details>
+<details class="reading" id="reading-stage2"><summary>Matematyka, którą wykorzystujesz</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Równolegle z encoderem i treningiem. Uzupełniaj pojęcia potrzebne w aktualnym eksperymencie.</p>
+<p><strong>Darmowy rdzeń:</strong> <a href="https://developers.google.com/machine-learning/crash-course/prereqs-and-prework">prework NumPy/pandas</a> i <a href="https://developers.google.com/machine-learning/crash-course">Google Machine Learning Crash Course</a>, którego organizator podaje około 15 godzin. Kurs wprowadza stratę, gradient descent, klasyfikację, generalizację i embeddingi.</p>
+<p><strong>Płatne lub darmowe wideo do uzupełniania luk:</strong> <a href="https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science">Mathematics for Machine Learning and Data Science</a>. Wybierz wektory, macierze, pochodną, średnią, wariancję i prawdopodobieństwo. Pełna specjalizacja ma około 94 godzin; nie dokładamy jej całej do tego etapu.</p>
+<p><strong>Zrób po kolei:</strong></p>
+<ol>
+<li>Oblicz iloczyn skalarny, normę i cosine similarity dwóch wektorów.</li>
+<li>Pokaż przykład, w którym zmiana norm wpływa na dot product, ale nie na cosine.</li>
+<li>Narysuj prostą funkcję straty i wykonaj kilka kroków gradient descent.</li>
+<li>Zbuduj mały przykład przeuczenia: błąd treningowy maleje, błąd na odłożonych danych rośnie.</li>
+</ol>
+<p><strong>Gotowe, gdy:</strong> potrafisz powiedzieć, co optymalizuje model i dlaczego dobry wynik treningowy nie wystarcza. Formalne dowody możesz pogłębiać później.</p>
+</div></details>
+<details class="reading" id="reading-stage3"><summary>ML i poprawny eksperyment</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Splity poznaj przed treningiem. Machine Learning Specialization realizuj równolegle z projektem.</p>
+<p><strong>Materiał główny:</strong> <a href="https://www.coursera.org/specializations/machine-learning-introduction">Machine Learning Specialization — Stanford / DeepLearning.AI</a>. Przejdź wszystkie trzy kursy i ćwiczenia. Aktualne części na Courserze sumują się do około 95 godzin; nagłówki i FAQ pokazują też inne szacunki. Plan rezerwuje dodatkowo około 40 godzin na Twoje eksperymenty.</p>
+<p>W tej fazie najważniejsze są funkcje straty, train/dev/test, bias/variance, regularyzacja, klasyfikacja i porównywanie baseline’ów. Drzewa, clustering i systemy rekomendacyjne pomogą rozumieć alternatywy dla deep learningu.</p>
+<p><strong>Projekt:</strong> wytrenuj prosty klasyfikator przewidujący, czy para zapytanie–skill jest trafna, korzystając początkowo z cech tekstowych i metadanych. Oddziel trening od strojenia progu i od testu. Porównaj wynik z prostą regułą.</p>
+<p><strong>Gotowe, gdy:</strong> wybierasz hiperparametry na dev, potrafisz rozpoznać leakage i umiesz odróżnić poprawę straty od poprawy produktu. Gdy oglądasz wielokrotnie test podczas strojenia, ten zbiór przestaje pełnić rolę niezależnego testu.</p>
+</div></details>
+<details class="reading" id="reading-stage4"><summary>Pierwszy trening w PyTorch</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Wcześnie, z gotowego małego przykładu. Teorię pogłębiaj na jego podstawie.</p>
+<p><strong>Praktyka bezpłatna:</strong> <a href="https://docs.pytorch.org/tutorials/beginner/basics/intro.html">PyTorch — Learn the Basics</a>: tensors → Dataset/DataLoader → model → autograd → optimization → save/load.</p>
+<p><strong>Teoria w wybranym abonamencie:</strong> z <a href="https://www.coursera.org/specializations/deep-learning">Deep Learning Specialization</a> wybierz „Neural Networks and Deep Learning” oraz „Structuring Machine Learning Projects”. Cała pięciokursowa specjalizacja jest rozszerzeniem, a nie dodatkowym obowiązkiem w tych czterech tygodniach.</p>
+<p><strong>Projekt:</strong> napisz pętlę treningową małej sieci. Rejestruj learning rate, batch size, seed i stratę; zapisuj checkpoint. W nowym procesie wczytaj model i porównaj predykcje. Następnie wykonaj mały kontrolowany sweep jednego parametru.</p>
+<p><strong>Gotowe, gdy:</strong> umiesz wskazać, gdzie powstaje gradient, kiedy wagi się zmieniają, czym różnią się tryby train/eval i dlaczego checkpoint bez konfiguracji danych nie odtwarza eksperymentu.</p>
+</div></details>
+<details class="reading" id="reading-stage5"><summary>BM25 i pierwszy encoder</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Tygodnie 3–4, po pierwszych metrykach. Kurs ML może trwać równolegle.</p>
+<p><strong>Kurs prowadzący:</strong> <a href="https://www.coursera.org/learn/retrieval-augmented-generation-rag">Retrieval Augmented Generation — DeepLearning.AI</a>, około 30–31 godzin. Zakres obejmuje wyszukiwanie leksykalne i semantyczne, RRF, reranking oraz ocenę jakości i kosztu.</p>
+<p><strong>Darmowa ścieżka i pogłębienie:</strong> <a href="https://nlp.stanford.edu/IR-book/">Introduction to Information Retrieval — Stanford</a>, rozdziały 1–2, 6, 8 i 11. To podręcznik, nie kurs wideo. Przeczytaj też <a href="https://arxiv.org/html/2104.08663v4">BEIR</a> jako ćwiczenie w pytaniu: „Na jakich danych porównano modele i jak powstały etykiety?”.</p>
+<p><strong>Projekt:</strong> uruchom BM25 i jeden gotowy encoder na tym samym korpusie. Zapisz kandydatów, score, rangi oraz uzasadnienie etykiety. Porównaj Recall@k, MRR i nDCG; sprawdź implementacje ręcznie na kilku przypadkach. Gdy dwa skille są potrzebne razem, trafienie jednego nie oznacza kompletności.</p>
+<p><strong>Gotowe, gdy:</strong> rozróżniasz generowanie kandydatów, ranking oraz dobór końcowego zestawu. Potrafisz wykazać, gdzie pipeline zgubił właściwą odpowiedź. Eksperyment z samym body nie ustala automatycznie optymalnej wagi body w BM25F.</p>
+<p><strong>Przygotowanie danych do treningu:</strong> przed treningiem sprawdź pary i splity z <a href="https://sbert.net/examples/sentence_transformer/training/ms_marco/README.html">przykładu MS MARCO</a>. To punkt startowy do nauki treningu, a nie zbiór skilli Guidefolda. Dla produktu potrzebujesz osobno rzeczywistych par query–skill z ocenami: wykorzystaj przypięty etykietowany korpus projektu i skontroluj próbkę ręcznie. Sam katalog SKILL.md nie jest zbiorem nadzorowanego treningu.</p>
+</div></details>
+<details class="reading" id="reading-stage6"><summary>Wejście modelu i embeddingi</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Przy pierwszym encoderze. Audyt wejścia wykonaj przed jego fine-tuningiem.</p>
+<p><strong>Materiał główny:</strong> <a href="https://huggingface.co/learn/llm-course/chapter1/1">Hugging Face LLM Course</a>, wybrane części rozdziałów 1–3, 5–6 i 10: architektury, tokenizacja, datasets, fine-tuning i jakość danych.</p>
+<p><strong>Krótkie wprowadzenia:</strong> <a href="https://www.deeplearning.ai/courses/embedding-models-from-architecture-to-implementation">Embedding Models: from Architecture to Implementation</a> — około 50 minut; <a href="https://www.skills.google/course_templates/537">Attention Mechanism</a> i <a href="https://www.skills.google/course_templates/538">Transformer Models and BERT Model</a> od Google — każde około 30–45 minut według niespójnych pól na stronach. Te mini-kursy dają orientację, nie zastępują treningu.</p>
+<p><strong>Projekt:</strong> sprawdź template query/document, wymagane prefiksy, pooling, normalizację i długości tokenów. Porównaj opis skilla z opisem + body przy jednakowym budżecie wejścia. Zapisz, które fragmenty ucięto i czy zniknęły informacje rozstrzygające.</p>
+<p><strong>Gotowe, gdy:</strong> umiesz odróżnić statyczne wektory słów od kontekstowych reprezentacji i wykryć porównanie dwóch modeli, które dostały różną informację.</p>
+<p><strong>Alternatywa do pogłębienia:</strong> bezpłatne <a href="https://www.skills.google/paths/3135">Google DeepMind — AI Research Foundations</a>. Ścieżka ma osiem aktywności i wymaga biegłego Pythona; Google potwierdza <a href="https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/">bezpłatny dostęp na całym świecie</a>. Realizuj ją po podstawach, wybierając odpowiednie moduły zamiast części materiału HF, albo dodaj czas poza planem.</p>
+</div></details>
+<details class="reading" id="reading-stage7"><summary>Twój dostrojony retriever</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Pierwszy pilot po sprawdzeniu splitów, wejścia, metryk i podstaw treningu. Nie czekaj na wszystkie kursy.</p>
+<p><strong>Praktyka główna, bezpłatna:</strong> <a href="https://sbert.net/docs/sentence_transformer/training_overview.html">SentenceTransformers — Training Overview</a>, <a href="https://sbert.net/docs/sentence_transformer/loss_overview.html">dobór funkcji straty</a> i <a href="https://sbert.net/examples/sentence_transformer/training/ms_marco/README.html">przykład treningu na MS MARCO</a>. To dokumentacja i kod, które teraz powinieneś już umieć przerobić samodzielnie.</p>
+<p><strong>Kolejne iteracje eksperymentu:</strong></p>
+<ol>
+<li><strong>Iteracja 1:</strong> wybierz mały dostępny checkpoint, przypnij wersję, sprawdź licencję i baseline. Pierwszy trening wykonaj na niewielkiej części par z przykładu MS MARCO, zachowując niezależną ewaluację. Następnie przygotuj wersjonowany zestaw query–skill dla adaptacji do routingu: pochodzenie, etykiety, poprawne alternatywy, grupy parafraz i zamrożony test.</li>
+<li><strong>Iteracja 2:</strong> uruchom krótki fine-tuning z MultipleNegativesRankingLoss. Sprawdź negatywy wewnątrz batcha: pozytyw innego zapytania może być poprawny również dla bieżącego. Użyj samplera bez duplikatów i osobnej ochrony semantycznych alternatyw oraz współwymaganych skilli; sam sampler nie rozpoznaje znaczenia. Porównaj model przed i po treningu na dev.</li>
+<li><strong>Iteracja 3:</strong> dołóż <a href="https://sbert.net/docs/package_reference/util/hard_negatives.html">hard-negative mining</a>. Przejrzyj wydobyte negatywy; poprawne alternatywy i uzupełniające skille nie mogą przypadkiem stać się negatywami.</li>
+<li><strong>Iteracja 4:</strong> wykonaj ablacje: bez treningu, trening bez hard negatives, trening z nimi. Zmieniaj jeden czynnik naraz; zachowaj te same splity i budżet strojenia.</li>
+<li><strong>Iteracja 5:</strong> powtórz wybrane konfiguracje, przeanalizuj porażki i zapisz model card.</li>
+</ol>
+<p><strong>Dodatkowa lekcja:</strong> <a href="https://www.skills.google/course_templates/1556">Google DeepMind — 05 Fine-Tune Your Model</a> trwa około 8 godzin i obejmuje full fine-tuning oraz LoRA. Wymaga wcześniejszego przygotowania ze ścieżki DeepMind lub równoważnej wiedzy. LoRA modelu językowego nie jest automatycznie treningiem dobrego retrievera; funkcję celu dobierasz do wyszukiwania.</p>
+<p><strong>Gotowe, gdy:</strong> masz checkpoint, dane z pochodzeniem, konfigurację i powtarzalny wynik. Brak poprawy jest poprawnym rezultatem, jeśli potrafisz ograniczyć i uzasadnić wniosek.</p>
+<p><strong>Rezerwa na dane:</strong> te 75 godzin zakłada dostęp do istniejącego etykietowanego zbioru. Jeżeli musisz budować i oznaczać dużą bibliotekę od zera, wydłuż etap danych. Zdefiniuj instrukcję etykietowania, sprawdzaj rozbieżności ocen i zapisuj przypadki niepewne przed treningiem.</p>
+</div></details>
+<details class="reading" id="reading-stage8"><summary>Reranker i abstencja</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Po działającym generatorze kandydatów. Możesz zacząć od gotowego encodera.</p>
+<p><strong>Materiały bezpłatne:</strong> <a href="https://sbert.net/examples/cross_encoder/training/rerankers/README.html">SentenceTransformers — trening rerankerów</a> i <a href="https://sbert.net/docs/package_reference/cross_encoder/losses.html">CrossEncoder losses</a>. Porównaj prosty trening pointwise z porównywaniem dwóch kandydatów przez RankNetLoss. Para tekstów query/document nie oznacza jeszcze pairwise learning-to-rank.</p>
+<p><strong>Projekt:</strong> wytrenuj mały cross-encoder. Porównaj top-5, top-10 i top-20 na tym samym zapisanym zbiorze kandydatów; osobno mierz kompletność kandydatów, jakość kolejności i latencję. Reranker nie odzyska dokumentu, który nie trafił do kandydatów.</p>
+<p>Następnie zbuduj na dev osobną regułę abstencji: kiedy lepiej nie zwrócić skilla. Oceń jakość przy różnych poziomach coverage, czyli odsetka obsłużonych zapytań. RRF scala rangi; jego score nie jest prawdopodobieństwem poprawności. Nie wystarczy dowolnie nazwać go confidence.</p>
+<p><strong>Gotowe, gdy:</strong> umiesz wykazać, czy poprawa rankingu rekompensuje koszt i czy system potrafi odmówić w przypadkach bez dobrej odpowiedzi. Test zawiera takie przypadki, a próg pozostaje ustalony przed końcowym pomiarem.</p>
+</div></details>
+<details class="reading" id="reading-stage9"><summary>Skills i działający agent</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Prosta integracja od baseline’u; optymalizacja po zmierzeniu ograniczeń.</p>
+<p><strong>Anthropic / dawny Skilljar:</strong> korzystaj z <a href="https://academy.claude.com/help/faq">Claude Academy i oficjalnego FAQ migracji</a>. Kursy są bezpłatne; odznaka ukończenia nie jest egzaminem zawodowym.</p>
+<ul>
+<li><a href="https://academy.claude.com/courses/introduction-to-agent-skills">Introduction to agent skills</a>: około 1 godziny, 6 lekcji o SKILL.md, metadanych, opisie i progressive disclosure.</li>
+<li><a href="https://academy.claude.com/courses/building-with-the-claude-api">Building with the Claude API</a>: około 9 godzin, 67 lekcji, ewaluacje, retrieval i integracja narzędzi. Potrzebne Python, JSON i klucz API; własne wywołania mogą kosztować.</li>
+</ul>
+<p><strong>Projekt:</strong> połącz politykę dopuszczalności, kandydatów, scoring, wybór zestawu i abstencję. Dodaj zależności AND i zweryfikowane alternatywy OR. Badaj wariant bez skilli, z wybranym zestawem oraz z poprawnym zestawem referencyjnym.</p>
+<p>Zmierz cały request, batch=1, p50/p95, cold/warm, na docelowym sprzęcie. Dopiero potem rozważ cache, krótszy input, kwantyzację, mniejszy model albo destylację. Oceniaj po każdej zmianie tę samą jakość; nowy runtime sam w sobie nie dowodzi poprawy.</p>
+<p><strong>Gotowe, gdy:</strong> umiesz wskazać, czy ograniczeniem jest dopuszczalność, wyszukiwanie, dobór zestawu, wykonanie czy koszt. Nauka integracji API nie zastępuje aktualizacji wag modelu.</p>
+</div></details>
+<details class="reading" id="reading-stage10"><summary>Badanie i publikacja</summary><div class="prose"><p><strong>Kiedy pracować:</strong> Dziennik prowadź od początku. Końcowy test wykonaj po zamrożeniu eksperymentu.</p>
+<p><strong>Materiały:</strong> <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html">SciPy — bootstrap</a> oraz <a href="https://neurips.cc/public/guides/PaperChecklist">NeurIPS Paper Checklist</a>. Pierwszy jest dokumentacją narzędzia statystycznego, drugi standardem raportowania; żaden nie jest kompletnym kursem metodologii.</p>
+<p><strong>Kurs metodologii:</strong> <a href="https://www.coursera.org/learn/research-methods">Understanding Research Methods — University of London / SOAS</a>, około 6 godzin, bez wymogu doświadczenia badawczego. Przy formułowaniu pytania przerób pytanie badawcze, przegląd literatury i projekt badania; część przykładów pochodzi z nauk społecznych, więc rygor eksperymentów ML uzupełnij protokołem poniżej.</p>
+<p><strong>Kurs pisania:</strong> <a href="https://www.coursera.org/learn/sciwrite">Writing in the Sciences — Stanford, Kristin Sainani</a>. Zacznij od modułów 1, 5 i 6: jasny tekst, struktura artykułu oraz publikowanie. Organizator szacuje je łącznie na około 8 godzin; możesz włączyć je do pracy nad tekstem. Cały kurs jest rozszerzeniem. Obie pozycje są na Courserze, poza abonamentem DLAI; pełny dostęp i cenę sprawdź przy zapisie. Darmowy podgląd nie oznacza pełnych ćwiczeń.</p>
+<p><strong>Krok 1 · Pytanie:</strong> wybierz jedną hipotezę, np. „Czy hard negatives rozróżniające rodzeństwo skilli poprawiają jakość routingu bez pogorszenia kompletności zestawu?”. Zrób przegląd najbliższych prac i opisz, co dokładnie dodajesz.</p>
+<p><strong>Krok 2 · Protokół:</strong> ustal główną metrykę, ograniczenia kosztu, baseline’y, splity, zakres strojenia i kryterium sukcesu. Protokół zapisujesz przed końcowym testem. Wcześniejsze oglądanie danych ujawniasz; nie nazywasz go rejestracją sprzed eksperymentu.</p>
+<p><strong>Krok 3 · Pomiar:</strong> zamroź konfigurację, uruchom test i analizę niepewności. Bootstrap powinien porównywać systemy na tych samych jednostkach; przy rodzinach parafraz losujesz grupy, a nie pojedyncze zależne zapytania.</p>
+<p><strong>Krok 4 · Tekst:</strong> abstract → problem i related work → dane i metody → wyniki → ablacje → ograniczenia. Każda liczba w tabeli prowadzi do zapisanego wyniku. Oddziel wynik rankingu od powodzenia zadania agenta.</p>
+<p><strong>Krok 5 · Recenzja i reprodukcja:</strong> uruchom całość z nowego środowiska, poproś drugą osobę o odtworzenie i krytykę, sprawdź twierdzenia checklistą. Przygotuj model card, dataset card i krótki raport. Wybór konferencji lub warsztatu wymaga później sprawdzenia aktualnych terminów i zasad.</p>
+<p><strong>Gotowe, gdy:</strong> inna osoba potrafi powtórzyć kluczowy wynik i wskazać, do jakiej populacji odnosi się Twój wniosek. Dalsza publikacja zależy także od nowości, skali dowodów i recenzji.</p>
+</div></details>
+<details class="reading" id="reading-budget"><summary>Co wybrać za darmo, a za co warto zapłacić</summary><div class="prose"><p><strong>Moja rekomendacja przy elastycznym budżecie:</strong> zapłać za ćwiczenia i uporządkowany rdzeń ML, korzystaj z bezpłatnych materiałów do PyTorch i retrieval. Nie kupuj kilku podobnych specjalizacji jednocześnie.</p>
+<table>
+<thead>
+<tr>
+<th>Wariant</th>
+<th>Co dostajesz</th>
+<th>Jak go zastosować</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0 USD za materiały</strong></td>
+<td>CS50P, Google MLCC, PyTorch, HF, podręcznik IR, dokumentacja ST, Claude Academy, DeepMind Research Foundations</td>
+<td>Pełna merytoryczna ścieżka jest możliwa; zamień płatne laboratoria na własne projekty z planu. Na DLAI bezpłatne są materiały wideo, a zakres ćwiczeń zależy od poziomu dostępu.</td>
+</tr>
+<tr>
+<td><strong>Polecany: DLAI Pro miesięcznie</strong></td>
+<td>Pełny dostęp do dostępnych na tej platformie kursów, laboratoriów, quizów i certyfikatów</td>
+<td>Publiczne FAQ podaje <strong>30 USD/mies.</strong>; roczny wariant odpowiada <strong>25 USD/mies.</strong>, płatne rocznie. Kupuj na miesiące aktywnej pracy nad MLS, matematyką lub DLS/RAG.</td>
+</tr>
+<tr>
+<td><strong>Coursera, konkretny kurs</strong></td>
+<td>Wygodna alternatywa platformy; sprawdź abonament wskazany przy zapisie</td>
+<td>Dobra, jeśli wolisz Courserę. Cena indywidualna w koszyku nie została sprawdzona.</td>
+</tr>
+<tr>
+<td><strong>Google Skills Pro — opcjonalnie</strong></td>
+<td>Laboratoria Google Cloud poza ofertą darmową</td>
+<td>Publicznie <strong>29 USD/mies.</strong>; Starter daje <strong>35 darmowych credits/mies.</strong> Bezpłatny program DeepMind nie wymaga kupowania Pro.</td>
+</tr>
+</tbody>
+</table>
+<p>Źródła dostępu i cen: <a href="https://info.deeplearning.ai/knowledge-base/what-do-i-get-with-the-deeplearning.ai-pro-membership-that-i-dont-get-for-free">DLAI Free/Pro</a>, <a href="https://www.deeplearning.ai/specializations/machine-learning">DLAI MLS — FAQ cenowe</a>, <a href="https://www.skills.google/subscriptions">Google Skills subscriptions</a>, <a href="https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/">bezpłatny DeepMind</a>.</p>
+<p><strong>Nie kupowałbym Coursera Plus specjalnie do tej listy.</strong> Publiczny cennik to 59 USD/mies. lub 399 USD/rok, ale aktualne FAQ DLAI mówi, że ich kursy nie są dostępne w Plus. <a href="https://www.coursera.org/courseraplus">Cennik Plus</a> · <a href="https://info.deeplearning.ai/knowledge-base/whats-the-difference-between-taking-deeplearning.ai-courses-on-learn.deeplearning.ai-vs-coursera">wyjaśnienie DLAI</a>.</p>
+<p>Na Courserze bezpłatny Preview zastąpił audit dla większości kursów: zwykle obejmuje pierwszy moduł. <a href="https://blog.coursera.org/introducing-courseras-new-course-preview-experience/">Oficjalne zasady Preview</a>. Trial nie jest bezterminowym darmowym dostępem. DLAI opisuje automatyczne naliczenie opłaty po 7 dniach; certyfikat wymaga płatności. <a href="https://info.deeplearning.ai/knowledge-base/are-professional-certificates-included-in-the-deeplearning.ai-pro-membership-0">Zasady trialu</a>.</p>
+<p><strong>Przykład budżetu, nie oferta:</strong> sześć miesięcznych opłat po 30 USD = 180 USD za kursy, przed ewentualnymi podatkami. Wywołania API i obliczenia rozliczasz osobno. Nie potwierdzałem ceny dla polskiego konta ani przeliczenia na PLN; <a href="https://info.deeplearning.ai/knowledge-base/are-taxes-included-in-my-pro-membership-payment">podatki zależą od adresu</a>.</p>
+</div></details>
+<details class="reading" id="reading-week"><summary>Pierwszy tydzień: konkretny plan na 15 godzin</summary><div class="prose"><table>
+<thead>
+<tr>
+<th>Dzień</th>
+<th style="text-align:right">Czas</th>
+<th>Zadanie i namacalny wynik</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poniedziałek</td>
+<td style="text-align:right">2 h</td>
+<td>AI Python for Beginners: funkcje i zmienne, z pomocą AI. Napisz program, który przyjmuje ścieżkę pliku.</td>
+</tr>
+<tr>
+<td>Wtorek</td>
+<td style="text-align:right">2 h</td>
+<td>Listy, słowniki i pętle. Ręcznie utwórz kilka rekordów zapytań i wyników.</td>
+</tr>
+<tr>
+<td>Środa</td>
+<td style="text-align:right">2 h</td>
+<td>Wczytaj JSON, wypisz identyfikatory, obsłuż brakujący plik.</td>
+</tr>
+<tr>
+<td>Czwartek</td>
+<td style="text-align:right">2 h</td>
+<td>Policz poprawne pierwsze wyniki i sprawdź mianownik na papierze.</td>
+</tr>
+<tr>
+<td>Piątek</td>
+<td style="text-align:right">2 h</td>
+<td>Przećwicz pustą listę, powtórzenia i kilka poprawnych odpowiedzi.</td>
+</tr>
+<tr>
+<td>Sobota</td>
+<td style="text-align:right">4 h</td>
+<td>Połącz skrypt, zapis CSV i krótkie testy. Napisz README z jedną komendą.</td>
+</tr>
+<tr>
+<td>Niedziela</td>
+<td style="text-align:right">1 h</td>
+<td>Odtwórz najważniejszą funkcję bez podpowiedzi i zapisz trzy rzeczy do wyjaśnienia.</td>
+</tr>
+</tbody>
+</table>
+<p>Od kolejnego tygodnia utrzymuj orientacyjnie <strong>9 godzin projektu z AI, 4 godziny kursów i podstaw, 2 godziny samodzielnego sprawdzania wiedzy</strong>. Oficjalne czasy kursów często obejmują laboratoria; nie dodawaj ich drugi raz do budżetu.</p>
+<p>Jeśli masz więcej niż 15 godzin, dodatkowy czas przeznacz najpierw na samodzielne zadania, matematykę i czytanie błędów. Tempo oceniaj po bramkach etapów.</p>
+</div></details>
+<details class="reading" id="reading-mapping"><summary>Jak ta nauka rozwiązuje problemy, które już widzieliśmy</summary><div class="prose"><p>Poniższe wnioski są wskazówkami do nowych eksperymentów. Ten plan nie wykonuje ponownie bake-offu ani nie zatwierdza aktualnej konfiguracji produkcyjnej.</p>
+<table>
+<thead>
+<tr>
+<th>Problem z rozmowy</th>
+<th>Co trzeba rozumieć</th>
+<th>Ćwiczenie i moment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>„w_dense = 0, więc dense nie pomaga”</td>
+<td>Wynik dotyczy konkretnego modelu, wejścia, korpusu, splitu i fusion. Statyczny student i kontekstowy encoder nie są tą samą interwencją.</td>
+<td>Etapy 5–7: porównaj BM25, encoder bazowy i dostrojony, przy zgodnych warunkach.</td>
+</tr>
+<tr>
+<td>„Body poprawia wynik, więc zwiększmy jego wagę”</td>
+<td>Usunięcie informacji i zmiana wagi pola to różne eksperymenty; ważna jest długość i obcinanie tekstu.</td>
+<td>Etapy 5–6: oddziel ablacje dostępu do body, reprezentacji i wag.</td>
+</tr>
+<tr>
+<td>Dobry Hit@1, zły zestaw</td>
+<td>Trafienie jednego dokumentu nie mierzy AND/OR, zależności ani dopuszczalności.</td>
+<td>Etapy 5 i 9: własny evaluator zestawów i pełny pipeline.</td>
+</tr>
+<tr>
+<td>Reranker pomaga części zapytań i szkodzi innym</td>
+<td>Rozkład danych, hard negatives, strata i kandydaci mogą zmieniać wynik.</td>
+<td>Etapy 7–8: zapis kandydatów, analiza podgrup i kontrolowane ablacje.</td>
+</tr>
+<tr>
+<td>Próg RRF nie działa</td>
+<td>Suma składników opartych na rangach nie jest skalibrowanym prawdopodobieństwem.</td>
+<td>Etap 8: osobna kalibracja/reguła na dev i wykres risk–coverage.</td>
+</tr>
+<tr>
+<td>Dobra średnia, niejasny sens dla produktu</td>
+<td>Niepewność, zależność próbek, koszt oraz powodzenie zadania to osobne osie.</td>
+<td>Etapy 9–10: pomiar wykonania, sparowane porównania i przedziały ufności.</td>
+</tr>
+</tbody>
+</table>
+<p>W <a href="https://sbert.net/docs/package_reference/sentence_transformer/evaluation.html">InformationRetrievalEvaluator SentenceTransformers</a> trafność jest zbiorem poprawnych dokumentów. Nie dostajesz automatycznie stopniowanych ocen 0–3 ani semantyki kompletności AND/OR. Dla tych celów waliduj własny evaluator.</p>
+</div></details>
+<details class="reading" id="reading-protocol"><summary>Protokół projektu badawczego, który warto zachować</summary><div class="prose"><p><strong>Dane.</strong> Zacznij od istniejącego rzeczywistego, etykietowanego korpusu i przypnij jego wersję. Demo Meridian jest dobre do testów regresji i nauki. Wnioski o jakości routingu sprawdzaj na rzeczywistych danych przez tę samą ścieżkę produktu.</p>
+<p><strong>Splity.</strong> Grupuj parafrazy i bliskie duplikaty przed podziałem; wybierz podział według rodzin zadań, repozytorium lub czasu zgodnie z twierdzeniem, które chcesz obronić. Nie ma jednego splitu gwarantującego wszystkie rodzaje generalizacji. Hard-negative mining nie może zaglądać do niezależnego testu.</p>
+<p><strong>Baseline’y.</strong> Minimum: BM25, gotowy encoder, ten sam encoder po fine-tuningu. Potem dodawaj hard negatives, fusion i reranker jako osobne interwencje. Każdy wariant dostaje jawny budżet strojenia. Przy większym korpusie warto sprawdzić, czy zmienia się wniosek.</p>
+<p><strong>Metryki.</strong> Przed końcowym testem wybierz jedną główną metrykę zgodną z pytaniem badawczym. Dodatkowo raportuj recall kandydatów, jakość rankingu, kompletność zestawu, niedopuszczalne wybory, ekspozycję szkodliwego rodzeństwa, abstencję i latencję. Definicję HSR weź z przypiętego kontraktu projektu. Przy każdej metryce podaj populację i mianownik.</p>
+<p><strong>Niepewność.</strong> Pokaż sparowaną różnicę względem baseline’u z przedziałem ufności oraz zmienność treningu między seedami. To dwa różne źródła niepewności. Tysiące resampli nie tworzą nowych niezależnych zapytań. Dla twierdzenia „nie gorzej” ustal wcześniej dopuszczalny margines i oceniaj przedział różnicy; brak istotności nie dowodzi równoważności.</p>
+<p><strong>Odtwarzalność.</strong> Zachowaj wersje danych i modeli, konfiguracje, seedy, komendy, środowisko, koszty, surowe wyniki per query i regułę wyboru checkpointu. Liczbę prób dobierz do zmienności i kosztu, zamiast uznawać arbitralnie trzy uruchomienia za wystarczające.</p>
+<p><strong>Wykonanie.</strong> Porównaj brak skilli, wybór systemu i zestaw referencyjny. Jeśli ranking rośnie, ale sukces agenta nie, opisz oba wyniki. To może być ciekawy rezultat badawczy; najpierw trzeba wykluczyć błąd eksperymentu.</p>
+<p>Punkty o bootstrapie i raportowaniu oprzyj na <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html">dokumentacji SciPy</a> i <a href="https://neurips.cc/public/guides/PaperChecklist">checkliście NeurIPS</a>. Dobór konkretnego testu statystycznego do Twoich zależności danych będzie osobnym krokiem metodologicznym.</p>
+</div></details>
+<details class="reading" id="reading-reading"><summary>Jak czytać SkillRet, SkillRouter i SkillNet</summary><div class="prose"><p>Czytaj prace dopiero równolegle z odpowiednim etapem, nie czekając na zrozumienie każdego wzoru. Dla każdej zapisz jedną stronę odpowiedzi:</p>
+<ol>
+<li>Jakie dokładnie zadanie rozwiązuje praca i co jest jednostką oceny?</li>
+<li>Co dostaje model na wejściu? Czy baseline ma tę samą informację?</li>
+<li>Skąd pochodzą pozytywy, negatywy i niezależny test?</li>
+<li>Który eksperyment izoluje główną zmianę?</li>
+<li>Jaki najmniejszy element umiem odtworzyć?</li>
+<li>Czego wynik nie pozwala stwierdzić o Guidefoldzie?</li>
+</ol>
+<p><strong>Kolejność:</strong> <a href="https://arxiv.org/html/2104.08663v4">BEIR</a> w etapie 5; <a href="https://arxiv.org/html/2603.22455v5">SkillRouter</a> i <a href="https://arxiv.org/html/2605.05726v3">SkillRet</a> w etapach 6–8; <a href="https://arxiv.org/abs/2603.04448v3">SkillNet</a> wraz z <a href="https://github.com/zjunlp/SkillNet">kodem autorów</a> w etapie 9.</p>
+<p>Pierwszym celem reprodukcji może być odtworzenie sposobu reprezentacji wejścia albo filtrowania false negatives. Nie musisz na początku odtwarzać pełnego kosztownego systemu. W raporcie precyzyjnie nazwij, co rzeczywiście zreprodukowałeś.</p>
+</div></details>
+<details class="reading" id="reading-optional"><summary>Rozszerzenia po rdzeniu — wybierz według pytania badawczego</summary><div class="prose"><table>
+<thead>
+<tr>
+<th>Kierunek</th>
+<th>Materiał</th>
+<th>Kiedy warto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Więcej matematyki</td>
+<td>Pełne <a href="https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science">Mathematics for ML and Data Science</a></td>
+<td>Gdy nie umiesz uzasadnić funkcji straty lub interpretować niepewności. Uzupełnienie pełnej specjalizacji wymaga czasu poza wybranymi modułami z planu.</td>
+</tr>
+<tr>
+<td>Głębsze NLP</td>
+<td><a href="https://www.coursera.org/specializations/natural-language-processing">NLP Specialization</a></td>
+<td>Po ML, macierzach, pochodnych i praktyce PyTorch; około trzech miesięcy po 10 h według strony kursu.</td>
+</tr>
+<tr>
+<td>Cykl życia LLM / PEFT</td>
+<td><a href="https://www.coursera.org/learn/generative-ai-with-llms">Generative AI with Large Language Models</a></td>
+<td>Po ML; około 20 h według organizatora. Dobry kontekst do fine-tuningu modeli generatywnych.</td>
+</tr>
+<tr>
+<td>Zaawansowane NLP akademickie</td>
+<td><a href="https://web.stanford.edu/class/cs224n/">Stanford CS224N</a></td>
+<td>Publiczne materiały i kompletne nagrania z 2024; nagrania edycji 2026 wymagają zapisu. Zajęcia są znacznie trudniejsze niż mini-kursy.</td>
+</tr>
+<tr>
+<td>Mały model językowy od podstaw</td>
+<td><a href="https://cs336.stanford.edu/">Stanford CS336</a></td>
+<td>Po solidnym PyTorch, matematyce i podstawach systemów GPU. Dane, tokenizacja, transformery, trening i ewaluacja. To kolejny projekt, nie skrót do pierwszego retrievera.</td>
+</tr>
+</tbody>
+</table>
+<p>Pełne DLS, NLP i CS336 nie są wymagane równocześnie. Gdy znasz już podstawy, największą wartość daje konkretny problem badawczy, próba jego rozwiązania i krytyka wyników.</p>
+</div></details>
+<details class="reading" id="reading-limits"><summary>Jak korzystać z planu i kiedy go zmienić</summary><div class="prose"><p><strong>Czas:</strong> 660 godzin to orientacyjny zakres pełnego materiału, odpowiadający 44 tygodniom po 15 godzin. Tematy łączysz, a małe modele uruchamiasz wcześniej po sprawdzeniu podstaw. Wideo, dokumentacja, samodzielne zadania i debugging mają różne tempo. Po etapach 1, 3 i 7 zrób przegląd: co potrafisz wykonać bez prowadzenia krok po kroku, czego jeszcze nie rozumiesz, czy pytanie badawcze nadal ma sens.</p>
+<p><strong>Sprzęt:</strong> pierwsze etapy można wykonywać na CPU. Przy treningu zacznij od małego modelu i krótkiego pilota, sprawdzając VRAM, długość sekwencji i batch size. Jeżeli nadal masz dostęp do używanego wcześniej RTX 4090, wykorzystaj go przed zakupem kolejnego sprzętu; zgodność konkretnego treningu z pamięcią trzeba zmierzyć. Dostęp do darmowego GPU w chmurze nie jest założeniem tego planu.</p>
+<p><strong>Źródła:</strong> użyto stron organizatorów kursów, oficjalnej dokumentacji i prac autorów. Sprawdzono ofertę oraz deklarowany zakres, nie ukończono wszystkich płatnych laboratoriów. Ceny w USD i zasady dostępu mogą się zmieniać; cena dla Twojego konta wymaga sprawdzenia przy zakupie. Odznaki i certyfikaty są dodatkiem, nie kryterium gotowości do badań.</p>
+<p><strong>Najbliższy rezultat:</strong> po pierwszym miesiącu własny skrypt do wyników; po podstawach ML uczciwy baseline; po treningu checkpoint z reprodukcją; na końcu raport, który daje się obronić przed krytycznym recenzentem. Zaczynasz dziś od pierwszego tygodnia, nie od zakupu całej listy.</p>
+</div></details>
+</section>
+<footer class="footer">Guidefold · Osobisty plan nauki. Bez konta i bez wysyłania postępu na serwer. <button id="previous-backup" type="button" hidden>Pobierz kopię sprzed ostatniego importu</button></footer>
+</main>
+</div>
+</div>
+<dialog id="import-dialog" aria-labelledby="import-title"><h2 id="import-title">Wczytać postęp z pliku?</h2><p id="import-summary"></p><p><strong>Import zastąpi bieżące statusy, sprawdzenia, godziny i notatki.</strong> Możesz najpierw wyeksportować obecny postęp. Przy działającym zapisie lokalnym zachowamy też poprzednią kopię.</p><div class="dialog-actions"><button type="button" id="cancel-import">Anuluj</button><button type="button" id="export-before-import">Eksportuj bieżący postęp</button><button type="button" class="primary" id="confirm-import">Zastąp postęp</button></div></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script id="tracker-data" type="application/json">{"version": 1, "title": "Ucz się z AI. Rozumiej wyniki.", "verified": "5 września 2026", "stages": [{"id": "stage1", "title": "Python w Twoim projekcie", "track": "Start", "when": "Pierwsze 2 tygodnie. AI Python i skrypt z metrykami; CS50P do uzupełniania luk.", "tasks": [["jsonl", "Uruchomiłem z AI skrypt: JSONL → sprawdzenie identyfikatorów → CSV z metrykami."], ["metrics", "Sam policzyłem Hit@1, Recall@k i kompletność zestawu na 3 przypadkach; kod daje ten sam wynik."], ["debug", "Poprawiłem celowy błąd mianownika bez gotowego rozwiązania i uruchomiłem projekt według README."]]}, {"id": "stage5", "title": "BM25 i pierwszy encoder", "track": "Start", "when": "Tygodnie 3–4, po pierwszych metrykach. Kurs ML może trwać równolegle.", "tasks": [["baseline", "Porównałem BM25 i gotowy encoder na tym samym korpusie oraz zapytaniach."], ["rankings", "Zapisałem kandydatów, rangi i metryki, w tym kompletność potrzebnych skilli."], ["errors", "Sam przeanalizowałem 5 porażek i ręcznie sprawdziłem MRR oraz nDCG na małym przykładzie."]]}, {"id": "stage6", "title": "Wejście modelu i embeddingi", "track": "Start", "when": "Przy pierwszym encoderze. Audyt wejścia wykonaj przed jego fine-tuningiem.", "tasks": [["contract", "Zapisałem wersję modelu, prefiksy query/document, pooling, normalizację i limit tokenów."], ["body", "Porównałem opis z opisem + body i wskazałem ucięte fragmenty."], ["tokens", "Sam sprawdziłem tokenizację oraz zgodność cosine similarity z ręcznym obliczeniem."]]}, {"id": "stage3", "title": "ML i poprawny eksperyment", "track": "Model", "when": "Splity poznaj przed treningiem. Machine Learning Specialization realizuj równolegle z projektem.", "tasks": [["splits", "Zapisałem wersjonowane train/dev/test; rodziny parafraz pozostają w jednym zbiorze."], ["classifier", "Porównałem prosty klasyfikator trafności query–skill z regułą odniesienia."], ["leakage", "Sam znalazłem przykład wycieku danych i wyjaśniłem, jak zmienia wniosek."]]}, {"id": "stage4", "title": "Pierwszy trening w PyTorch", "track": "Model", "when": "Wcześnie, z gotowego małego przykładu. Teorię pogłębiaj na jego podstawie.", "tasks": [["train", "Uruchomiłem trening i zapisałem dane, seed, konfigurację oraz checkpoint."], ["reload", "Odtworzyłem predykcje z checkpointu w nowym procesie."], ["gradient", "Sam wskazałem gradient i zmianę wag oraz wyjaśniłem train() i eval()."]]}, {"id": "stage7", "title": "Twój dostrojony retriever", "track": "Model", "when": "Pierwszy pilot po sprawdzeniu splitów, wejścia, metryk i podstaw treningu. Nie czekaj na wszystkie kursy.", "tasks": [["finetune", "Wykonałem krótki fine-tuning małego encodera na istniejących etykietowanych parach."], ["comparison", "Porównałem model przed i po treningu na dev przy tej samej ewaluacji i zapisałem koszt."], ["negatives", "Sam sprawdziłem pozytywy, hard negatives i negatywy wewnątrz batcha, chroniąc poprawne alternatywy."]]}, {"id": "stage2", "title": "Matematyka, którą wykorzystujesz", "track": "Model", "when": "Równolegle z encoderem i treningiem. Uzupełniaj pojęcia potrzebne w aktualnym eksperymencie.", "tasks": [["vectors", "Mam notatnik porównujący dot product, normę i cosine na tych samych wektorach."], ["prediction", "Sam przewidziałem wynik pomnożenia wektora przez 10 i sprawdziłem obliczenia."], ["overfit", "Narysowałem stratę train/dev i wyjaśniłem, na czym polega przeuczenie."]]}, {"id": "stage8", "title": "Reranker i abstencja", "track": "Produkt", "when": "Po działającym generatorze kandydatów. Możesz zacząć od gotowego encodera.", "tasks": [["rerank", "Porównałem reranker na zapisanych kandydatach top-5, top-10 i top-20."], ["coverage", "Ustaliłem próg abstencji na dev i sprawdziłem jakość przy różnym coverage."], ["diagnosis", "Sam rozróżniłem brak właściwego kandydata, błędną kolejność i błędną odmowę."]]}, {"id": "stage9", "title": "Skills i działający agent", "track": "Produkt", "when": "Prosta integracja od baseline’u; optymalizacja po zmierzeniu ograniczeń.", "tasks": [["pipeline", "Uruchomiłem dopuszczalność → kandydatów → ranking → wybór zestawu → abstencję."], ["execution", "Porównałem wykonanie zadania bez skilli, z wyborem systemu i z zestawem referencyjnym."], ["latency", "Sam sprawdziłem niedopuszczalną zależność i zmierzyłem cały request: p50/p95, cold/warm."]]}, {"id": "stage10", "title": "Badanie i publikacja", "track": "Badanie", "when": "Dziennik prowadź od początku. Końcowy test wykonaj po zamrożeniu eksperymentu.", "tasks": [["protocol", "Przed testem zapisałem hipotezę, główną metrykę, baseline’y, budżet strojenia i kryterium sukcesu."], ["results", "Wykonałem zamrożony test z analizą niepewności; liczby w raporcie prowadzą do wyników."], ["reproduce", "Sam odtworzyłem kluczowy wynik w nowym środowisku i wyjaśniłem ograniczenia wniosku."]]}]}</script>
+<script>(() => {
+"use strict";
+const DATA = JSON.parse(document.getElementById("tracker-data").textContent);
+const KEY = "guidefold.learning.progress.v1";
+const BACKUP = KEY + ".previous";
+const MAX_NOTES = 10000;
+const STATUSES = {planned:"Do zrobienia",active:"W trakcie",paused:"Pauza",done:"Zaliczony"};
+const byId = Object.fromEntries(DATA.stages.map(s => [s.id,s]));
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const now = () => new Date().toISOString();
+const fmt = n => new Intl.NumberFormat("pl-PL",{maximumFractionDigits:2}).format(n);
+const newState = () => ({app:"guidefold-learning",version:1,updatedAt:null,revision:"",stages:Object.fromEntries(DATA.stages.map(s => [s.id,{status:"planned",checks:Object.fromEntries(s.tasks.map(t=>[t[0],false])),hours:0,notes:"",updatedAt:null,completedAt:null}]))});
+let state = newState(), lastRaw = null, pendingImport = null, storageAvailable = true, conflict = false, corruptRaw = null, toastTimer;
+const isObject = x => !!x && typeof x === "object" && !Array.isArray(x);
+const hasKeys = (x, allowed) => Object.keys(x).every(k => allowed.includes(k));
+const validDate = x => x === null || (typeof x === "string" && x.length < 60 && /^\d{4}-\d\d-\d\dT/.test(x) && Number.isFinite(Date.parse(x)));
+function validate(input) {
+  const bad = msg => {throw new Error(msg);};
+  if (!isObject(input) || input.app !== "guidefold-learning" || input.version !== 1) bad("To nie jest obsługiwana kopia postępu (wersja 1).");
+  if (!hasKeys(input,["app","version","updatedAt","revision","stages","exportedAt"])) bad("Plik zawiera nieznane pola.");
+  if (!validDate(input.updatedAt) || typeof input.revision !== "string" || input.revision.length > 200) bad("Niepoprawne metadane zapisu.");
+  if (input.exportedAt !== undefined && !validDate(input.exportedAt)) bad("Niepoprawna data eksportu.");
+  if (!isObject(input.stages) || Object.keys(input.stages).length !== DATA.stages.length || !hasKeys(input.stages,Object.keys(byId))) bad("Plik musi zawierać wszystkie 10 znanych etapów.");
+  const out = newState(); out.updatedAt=input.updatedAt; out.revision=input.revision;
+  for (const stage of DATA.stages) {
+    const r=input.stages[stage.id], ids=stage.tasks.map(t=>t[0]);
+    if (!isObject(r) || !hasKeys(r,["status","checks","hours","notes","updatedAt","completedAt"])) bad("Niepoprawne dane etapu: "+stage.title);
+    if (typeof r.status !== "string" || !Object.hasOwn(STATUSES,r.status)) bad("Niepoprawny status etapu.");
+    if (typeof r.hours !== "number" || !Number.isFinite(r.hours) || r.hours < 0 || r.hours > 10000) bad("Godziny muszą być liczbą od 0 do 10 000.");
+    if (typeof r.notes !== "string" || r.notes.length > MAX_NOTES) bad("Notatka przekracza limit 10 000 znaków lub ma niepoprawny format.");
+    if (!isObject(r.checks) || Object.keys(r.checks).length !== ids.length || !hasKeys(r.checks,ids) || !ids.every(id=>typeof r.checks[id]==="boolean")) bad("Niepoprawna checklista etapu.");
+    if (!validDate(r.updatedAt) || !validDate(r.completedAt)) bad("Niepoprawna data etapu.");
+    if (r.status==="done" && (!ids.every(id=>r.checks[id]) || !r.completedAt)) bad("Zaliczony etap musi mieć wszystkie sprawdzenia i datę zaliczenia.");
+    if (r.status!=="done" && r.completedAt!==null) bad("Data zaliczenia nie odpowiada statusowi etapu.");
+    out.stages[stage.id]={status:r.status,checks:Object.fromEntries(ids.map(id=>[id,r.checks[id]])),hours:r.hours,notes:r.notes,updatedAt:r.updatedAt,completedAt:r.completedAt};
+  }
+  return out;
+}
+function toast(message) {
+  $("toast").textContent=message; $("toast").hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>$("toast").hidden=true,5500);
+}
+function saveMessage(message,error=false) {
+  $("save-status").textContent=message;
+  $("save-strip").classList.toggle("error",error);
+}
+function showConflict() {
+  conflict=true; $("conflict").hidden=false;
+  $("conflict-message").textContent="W innej karcie zmieniono zapis. Twoje zmiany pozostają na tej stronie, ale automatyczny zapis jest wstrzymany. Wybierz wersję do zachowania lub wyeksportuj bieżącą.";
+  saveMessage("Konflikt wersji — automatyczny zapis wstrzymany.",true);
+}
+function persist(force=false) {
+  if (corruptRaw !== null && !force) {saveMessage("Zachowano uszkodzony zapis. Bieżące zmiany możesz wyeksportować.",true); return false;}
+  if (conflict && !force) {saveMessage("Konflikt wersji — zmiany są tylko na tej stronie.",true);return false;}
+  state.updatedAt=now(); state.revision=Date.now()+"-"+Math.random().toString(36).slice(2);
+  try {
+    const raw=localStorage.getItem(KEY);
+    if (!force && raw!==lastRaw) {showConflict();return false;}
+    const next=JSON.stringify(state); localStorage.setItem(KEY,next); lastRaw=next; storageAvailable=true;
+    conflict=false; $("conflict").hidden=true;
+    saveMessage("Zapisano lokalnie · "+new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}));
+    return true;
+  } catch {
+    storageAvailable=false;
+    saveMessage("Zapis lokalny niedostępny. Zmiany są na tej stronie — wyeksportuj postęp przed zamknięciem.",true);
+    return false;
+  }
+}
+function loadInitial() {
+  try {lastRaw=localStorage.getItem(KEY);}
+  catch {storageAvailable=false;saveMessage("Przeglądarka blokuje zapis. Korzystaj z eksportu postępu.",true);return;}
+  if (lastRaw !== null) {
+    try {state=validate(JSON.parse(lastRaw));saveMessage("Wczytano Twój lokalny postęp.");}
+    catch {corruptRaw=lastRaw; $("corrupt").hidden=false;saveMessage("Niepoprawny zapis zachowano bez zmian.",true);}
+  } else saveMessage("Gotowe. Postęp zapisuje się lokalnie po każdej zmianie.");
+  updateBackupButton();
+}
+function updateBackupButton() {try {$("previous-backup").hidden=!localStorage.getItem(BACKUP);}catch{$("previous-backup").hidden=true;}}
+function renderStages() {
+  $("quick-nav").innerHTML=DATA.stages.map(s=>'<button type="button" data-jump="'+s.id+'"><span class="dot" id="dot-'+s.id+'" aria-hidden="true"></span>'+esc(s.title)+'</button>').join("");
+  $("stages").innerHTML=DATA.stages.map((s,i)=>'<details class="stage" id="'+s.id+'" '+(i===0?"open":"")+'><summary><span class="stage-number" aria-hidden="true">'+String(i+1).padStart(2,"0")+'</span><span class="stage-title"><strong>'+esc(s.title)+'</strong><small>'+esc(s.track)+'</small></span><span class="summary-meta"><span class="chip" id="chip-'+s.id+'">Do zrobienia</span><span class="check-count" id="count-'+s.id+'">0 / '+s.tasks.length+'</span></span><span class="chevron" aria-hidden="true">›</span></summary><div class="stage-body"><p class="when">'+esc(s.when)+'</p><fieldset class="tasks"><legend>Sprawdzenia do zaliczenia etapu</legend>'+s.tasks.map(t=>'<label class="task"><input type="checkbox" data-stage="'+s.id+'" data-check="'+t[0]+'" id="'+s.id+'-'+t[0]+'"><span>'+esc(t[1])+'</span></label>').join("")+'</fieldset><div class="fields"><div class="field"><label for="status-'+s.id+'">Status · '+esc(s.title)+'</label><select id="status-'+s.id+'" data-status="'+s.id+'">'+Object.entries(STATUSES).map(([key,name])=>'<option value="'+key+'">'+name+'</option>').join("")+'</select><small class="hint" id="status-hint-'+s.id+'">Zaliczenie po wszystkich sprawdzeniach.</small></div><div class="field"><label for="hours-'+s.id+'">Przepracowane godziny · '+esc(s.title)+'</label><input id="hours-'+s.id+'" data-hours="'+s.id+'" type="number" min="0" max="10000" step="any" inputmode="decimal" aria-describedby="hours-hint-'+s.id+'"><small id="hours-hint-'+s.id+'" class="hint">Wpisz łączny czas tego etapu, np. 1,5 h. Zakres: 0–10 000.</small></div><div class="field notes-field"><label for="notes-'+s.id+'">Notatki i dowody · '+esc(s.title)+'</label><textarea id="notes-'+s.id+'" data-notes="'+s.id+'" maxlength="10000" aria-describedby="notes-hint-'+s.id+'" placeholder="Co zrobiłem? Czego jeszcze nie rozumiem? Link do notatnika lub wyniku…"></textarea><small class="hint" id="notes-hint-'+s.id+'"><span id="notes-length-'+s.id+'">0</span> / 10 000 znaków · notatki pozostają lokalne</small></div></div><div class="stage-links"><button type="button" data-reading="'+s.id+'">Kursy i zadania tego etapu ↗</button><span class="completed-at" id="completed-'+s.id+'"></span></div></div></details>').join("");
+  document.querySelectorAll("[data-notes]").forEach(node=>node.addEventListener("paste",event=>{
+    const pasted=event.clipboardData?.getData("text") || "";
+    if (node.value.length-(node.selectionEnd-node.selectionStart)+pasted.length>MAX_NOTES) {
+      event.preventDefault(); toast("Tekst nie został wklejony: notatka może mieć do 10 000 znaków.");
+    }
+  }));
+}
+function syncInputs() {
+  for (const s of DATA.stages) {
+    const r=state.stages[s.id];
+    $("status-"+s.id).value=r.status; $("hours-"+s.id).value=String(r.hours); $("notes-"+s.id).value=r.notes;
+    $("hours-"+s.id).setCustomValidity(""); $("hours-"+s.id).removeAttribute("aria-invalid");
+    $("hours-hint-"+s.id).textContent="Łączny czas tego etapu. Zakres: 0–10 000 godzin.";
+    for(const t of s.tasks) $(s.id+"-"+t[0]).checked=r.checks[t[0]];
+  }
+  updateSummary();
+}
+function totals(source=state) {
+  return {done:DATA.stages.filter(s=>source.stages[s.id].status==="done").length,
+    checked:DATA.stages.reduce((sum,s)=>sum+Object.values(source.stages[s.id].checks).filter(Boolean).length,0),
+    hours:DATA.stages.reduce((sum,s)=>sum+source.stages[s.id].hours,0)};
+}
+function updateSummary() {
+  const t=totals(), max=DATA.stages.reduce((sum,s)=>sum+s.tasks.length,0);
+  $("done-count").textContent=t.done+" / "+DATA.stages.length;
+  $("checks-count").textContent=t.checked+" / "+max;
+  $("hours-count").textContent=fmt(t.hours)+" h";
+  $("overall-progress").max=max; $("overall-progress").value=t.checked;
+  $("percent").textContent=Math.round(t.checked/max*100)+"%";
+  for(const s of DATA.stages) {
+    const r=state.stages[s.id], checked=Object.values(r.checks).filter(Boolean).length;
+    $("chip-"+s.id).textContent=STATUSES[r.status]; $("chip-"+s.id).className="chip "+r.status;
+    $("dot-"+s.id).className="dot "+r.status;
+    $("count-"+s.id).textContent=checked+" / "+s.tasks.length;
+    $("status-"+s.id).querySelector('option[value="done"]').disabled=checked!==s.tasks.length;
+    $("status-"+s.id).value=r.status;
+    $("notes-length-"+s.id).textContent=r.notes.length;
+    $("completed-"+s.id).textContent=r.completedAt?"Zaliczono "+new Date(r.completedAt).toLocaleDateString("pl-PL"):"";
+  }
+  const next=DATA.stages.find(s=>state.stages[s.id].status==="active") || DATA.stages.find(s=>state.stages[s.id].status==="planned") || DATA.stages.find(s=>state.stages[s.id].status==="paused");
+  $("continue").disabled=!next; $("continue").dataset.target=next?.id || "";
+  $("next-title").textContent=next?next.title:"Wszystkie etapy zaliczone";
+  $("next-label").textContent=next?"Proponowany następny krok":"Twój zapis postępu";
+  $("continue").textContent=next?"Otwórz etap →":"Gotowe";
+}
+function selectView(view,focus=false) {
+  for(const name of ["tracker","starter","library"]) $("view-"+name).hidden=name!==view;
+  document.querySelectorAll("[data-view]").forEach(b=>{
+    if(b.dataset.view===view)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");
+  });
+  if(focus){$("main").scrollIntoView({block:"start"});}
+}
+function openStage(id) {
+  if(!byId[id])return;selectView("tracker"); const d=$(id); d.open=true;
+  d.scrollIntoView({block:"start",behavior:"auto"});d.querySelector("summary").focus({preventScroll:true});
+}
+function openReading(id) {
+  selectView("library"); const d=$("reading-"+id);
+  if(d){d.open=true;d.scrollIntoView({block:"start"});d.querySelector("summary").focus({preventScroll:true});}
+}
+function changed(id) {state.stages[id].updatedAt=now();updateSummary();persist();}
+$("stages").addEventListener("change",event=>{
+  const x=event.target;
+  if(x.dataset.check) {
+    const id=x.dataset.stage,r=state.stages[id];r.checks[x.dataset.check]=x.checked;
+    if(r.status==="planned" && x.checked)r.status="active";
+    if(r.status==="done" && !x.checked){r.status="active";r.completedAt=null;toast("Etap wrócił do „W trakcie”, bo odznaczono sprawdzenie.");}
+    changed(id);
+  } else if(x.dataset.status) {
+    const id=x.dataset.status,r=state.stages[id];
+    if(x.value==="done" && !Object.values(r.checks).every(Boolean)){x.value=r.status;toast("Najpierw wykonaj wszystkie sprawdzenia etapu.");return;}
+    r.status=x.value;r.completedAt=r.status==="done"?(r.completedAt||now()):null;changed(id);
+  }
+});
+$("stages").addEventListener("input",event=>{
+  const x=event.target;
+  if(x.dataset.hours) {
+    const value=x.valueAsNumber;
+    if(!Number.isFinite(value)||value<0||value>10000) {
+      x.setCustomValidity("Podaj liczbę od 0 do 10 000.");x.setAttribute("aria-invalid","true");
+      $("hours-hint-"+x.dataset.hours).textContent="Nie zapisano tej wartości. Podaj liczbę 0–10 000; poprzedni czas jest zachowany.";
+      saveMessage("Nie zapisano niepoprawnej liczby godzin. Poprzednia wartość pozostaje zachowana.",true);return;
+    }
+    x.setCustomValidity("");x.removeAttribute("aria-invalid");
+    $("hours-hint-"+x.dataset.hours).textContent="Łączny czas tego etapu. Zakres: 0–10 000 godzin.";
+    state.stages[x.dataset.hours].hours=value;changed(x.dataset.hours);
+  } else if(x.dataset.notes) {
+    if(x.value.length>MAX_NOTES){saveMessage("Notatka jest za długa; poprzedni zapis pozostaje zachowany.",true);return;}
+    state.stages[x.dataset.notes].notes=x.value;changed(x.dataset.notes);
+  }
+});
+function download(text,filename) {
+  const blob=new Blob([text],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function exportProgress() {
+  download(JSON.stringify({...state,exportedAt:now()},null,2)+"\n","guidefold-postep-"+new Date().toISOString().slice(0,10)+".json");
+  toast("Wyeksportowano kopię postępu.");
+}
+for(const id of ["export","export-current","export-before-import"]) $(id).addEventListener("click",exportProgress);
+$("import").addEventListener("click",()=>$("import-file").click());
+$("import-file").addEventListener("change",async event=>{
+  const file=event.target.files?.[0];if(!file)return;
+  try{
+    if(file.size>2*1024*1024)throw new Error("Plik jest za duży (maksymalnie 2 MB).");
+    const candidate=validate(JSON.parse(await file.text())); pendingImport=candidate;
+    const t=totals(candidate);
+    $("import-summary").textContent="Kopia: "+t.done+" zaliczonych etapów, "+t.checked+" sprawdzeń, "+fmt(t.hours)+" h. Notatki i pozostałe dane też zostaną wczytane.";
+    $("import-dialog").showModal();
+  }catch(error){pendingImport=null;toast("Nie wczytano pliku. "+(error instanceof SyntaxError?"Niepoprawny JSON.":error.message));}
+  finally{event.target.value="";}
+});
+$("cancel-import").addEventListener("click",()=>{$("import-dialog").close();pendingImport=null;});
+$("import-dialog").addEventListener("cancel",()=>{pendingImport=null;});
+$("confirm-import").addEventListener("click",()=>{
+  if(!pendingImport)return;
+  try{if(localStorage.getItem(KEY)!==lastRaw){$("import-dialog").close();showConflict();return;}}catch{}
+  try{localStorage.setItem(BACKUP,corruptRaw??JSON.stringify(state));}
+  catch{toast("Import zatrzymany: nie można zapisać kopii poprzedniego postępu. Bieżące dane pozostają bez zmian. Wyeksportuj je i sprawdź miejsce lub uprawnienia przeglądarki.");return;}
+  state=pendingImport;pendingImport=null;corruptRaw=null;$("corrupt").hidden=true;
+  persist(true);syncInputs();updateBackupButton();$("import-dialog").close();
+  toast(storageAvailable?"Wczytano i zapisano postęp.":"Wczytano postęp na tej stronie. Zapis lokalny nie działa — zachowaj eksport.");
+});
+$("previous-backup").addEventListener("click",()=>{
+  try {const raw=localStorage.getItem(BACKUP);if(raw)download(raw,"guidefold-postep-przed-importem.json");}
+  catch{toast("Kopia lokalna nie jest dostępna.");}
+});
+$("export-raw").addEventListener("click",()=>{if(corruptRaw!==null)download(corruptRaw,"guidefold-zachowany-zapis.json");});
+$("new-storage").addEventListener("click",()=>{
+  if(!confirm("Zastąpić niepoprawny zapis bieżącym postępem? Najpierw możesz pobrać zachowaną kopię."))return;
+  try{localStorage.setItem(BACKUP,corruptRaw);}catch{}
+  corruptRaw=null;$("corrupt").hidden=true;persist(true);updateBackupButton();
+});
+$("load-latest").addEventListener("click",()=>{
+  try{
+    const raw=localStorage.getItem(KEY),candidate=raw===null?newState():validate(JSON.parse(raw));
+    state=candidate;lastRaw=raw;conflict=false;corruptRaw=null;$("conflict").hidden=true;$("corrupt").hidden=true;syncInputs();saveMessage("Wczytano najnowszy zapis z przeglądarki.");
+  }catch{toast("Najnowszy zapis jest niepoprawny lub niedostępny. Bieżący postęp pozostaje bez zmian.");}
+});
+$("keep-current").addEventListener("click",()=>{
+  if(!confirm("Zastąpić zapis z innej karty postępem widocznym na tej stronie?"))return;
+  try{const raw=localStorage.getItem(KEY);if(raw!==null)localStorage.setItem(BACKUP,raw);}catch{}
+  persist(true);updateBackupButton();
+});
+window.addEventListener("storage",event=>{if(event.key===KEY && event.newValue!==lastRaw)showConflict();});
+document.addEventListener("click",event=>{
+  const b=event.target.closest("button");if(!b)return;
+  if(b.dataset.view)selectView(b.dataset.view,true);
+  else if(b.dataset.jump)openStage(b.dataset.jump);
+  else if(b.dataset.reading)openReading(b.dataset.reading);
+});
+$("continue").addEventListener("click",()=>openStage($("continue").dataset.target));
+$("copy-prompt").addEventListener("click",async()=>{
+  const text=$("learning-prompt").textContent;
+  try{await navigator.clipboard.writeText(text);toast("Skopiowano prompt.");}
+  catch{const range=document.createRange();range.selectNodeContents($("learning-prompt"));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);toast("Zaznaczono prompt. Użyj kopiowania w przeglądarce.");}
+});
+document.querySelectorAll('a[href^="https://"]').forEach(a=>{a.target="_blank";a.rel="noopener noreferrer";});
+loadInitial();renderStages();syncInputs();
+})();
+</script>
+</body>
+</html>

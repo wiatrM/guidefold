@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.1
+# Dense retrieval programme — pre-registered, v2.3
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; **v2.1 adds family F5 (offline enrichment) — still before any result was measured.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -85,7 +85,18 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F2 static** | (a) prebuilt `potion-retrieval-32M` quantised to our table; (b) Model2Vec-proper distillation from **two** teachers (SKILLRET, Qwen3), their weighting, PCA-256, int8; (c) if budget remains, a static student trained on SKILLRET train with 4-source negatives | T300 | ≤ 8 total |
 | **F3 document expansion** | doc2query-T5 pseudo-queries per skill at index time, indexed as a sixth BM25F field; lexical at query time | T300 | ≤ 4 (n queries per doc, field weight) |
 | **F4 small contextual** | MiniLM-class ONNX (~22M) via onnxruntime from Python; measured, not estimated | T500 | ≤ 4 |
+| **F6 offline dense sibling map** *(v2.2)* | use the encoder **offline** to compute, per skill, its confusable set (same-capability neighbours above a cosine threshold); ship it as a small typed graph in the artifact; at query time apply a deterministic integer rule when two confusables both reach the top 4 — demote the one the query matches less on discriminating terms. **No model, no vectors at query time.** | T300 | ≤ 4 (threshold, neighbours per skill, the tie-break rule) |
 | **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
+
+**Why F6 exists (v2.2).** The full-encoder reference on test-B (PR #35) failed the completeness
+gate (`all_required@4` +0.67 pp, CI straddles zero) but **reduced harmful-sibling exposure by
+10.00 pp [−15.67, −4.00]** — the one clean, significant dense win in the programme, and exactly the
+failure mode SkillResolve-Bench isolates (a router finds the right capability family and exposes the
+wrong representative). Every dense arm so far used the encoder as a *candidate source*, which is
+where it is weakest here (coverage 8.76 %). F6 tests the hypothesis that its real value is
+**discrimination between near-identical skills**, a job that can be precomputed: the pairs are a
+property of the corpus, not of the query. If it holds, we get the −10 pp exposure without any
+query-time model — the only shape in which a dense signal can pass the T300 gate at all.
 
 **Why F5 exists (v2.1).** Real skills do not carry our fields. Measured 2026-09-05: SkillRetBench
 has analogues (85 % `trigger_phrases`, 100 % `anti_triggers`, 66 % with `composable_skills`,
@@ -98,6 +109,22 @@ gate is the same too — a derived `requires` graph must raise `all_required@4`,
 
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
+
+## 4a. Multiplicity — the rule that stops "keep trying until one passes" (v2.3, added 2026-09-05)
+
+The programme runs several families, each frozen once and tested once. That is a **multiple
+comparisons** setting, and the honest handling has to be written down *before* it becomes
+convenient. Three rules:
+
+1. **A family's budget is spent when its frozen variant has been run on both test corpora.** Flat
+   BM25F weights are now spent (PR #39): they may not be re-tested alone, whatever a later idea suggests.
+2. **A combination of two families is a new variant only if both were registered before either was
+   tested.** F6 (sibling map) was registered in PR #37 from the R1 result, *before* PR #39's flat-weight
+   test — so "flat weights + F6" is a legitimate single new variant with its own single test run.
+   A combination invented *after* seeing a failure, to rescue it, is not.
+3. **Every test-corpus run is counted in the final report**, so a reader can judge the multiplicity
+   themselves. Running k variants and reporting the best of k without saying k is the failure mode
+   this section exists to prevent.
 
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
@@ -130,6 +157,30 @@ bounds how much *any* dense signal could add to candidates on these corpora.
 ---
 
 ## 7. Results (appended as they land; §1–6 are frozen from v2)
+
+### 2026-09-05 — frozen sparse variant (flat BM25F weights) once on both tests, PR #39 — NOT ADOPTED
+
+The dev diagnosis (PR #36) chose uniform `field.*` weights; this was its single test run.
+
+| | test-A `_root` | test-B `_root` |
+|---|---|---|
+| hit@1 | **+7.72 pp** [6.94, 8.58] | **+5.25 pp** [3.75, 6.83] |
+| nDCG@10 | **+6.44 pp** [6.04, 6.85] | **+4.31 pp** [3.70, 5.00] |
+| `all_required@4` | **+4.99 pp** [4.37, 5.62] | **+2.92 pp** [1.67, 4.25] |
+| HSR@4 (`distractor_rate@4`) | no labels | **+4.67 pp worse** — breaches the ±1.0 pp guardrail ~5× |
+
+It closes **58.2 %** of the gap to test-A's own BM25 baseline and **43.1 %** of test-B's. Every
+criterion passes on test-A; on test-B it passes three and fails the harmful-exposure guardrail,
+isolated entirely to the adversarial `distractor` category (n=300), where flat weights pull in more
+correct skills **and** more labelled distractors at once.
+
+**Not adopted**, because acceptance was pre-registered as a conjunction across both corpora and one
+breach is a no. The measured trade is now on record: **+5 to +8 pp of quality for +4.67 pp of
+harmful exposure.** Whether that trade is worth taking is a product judgement, not a gate — and it
+is precisely the trade family F6 (registered in PR #37, before this run) was designed to remove.
+If F6 reduces exposure on dev, "flat weights + F6" is a legitimate new frozen variant under §4a.2
+with its own single test run.
+
 
 ### 7.1 SKILLRET-test (test-A) — F0/R0 and R1, 2026-09-05
 
@@ -295,6 +346,17 @@ and a candidate-pool cap that never bound). Frozen-config proposal: `field.*` we
 everything else unchanged — a one-line `DEFAULT_WEIGHTS` change, not a structural rewrite; not
 yet validated on test-A/test-B (out of scope for this diagnosis). Full report, tables, and CIs:
 `docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md`.
+
+### 2026-09-05 — lazy artifact load (R4), hook p95 at test-A scale not yet under the T300 gate
+
+Infra fix, not a retrieval-method arm: `cards.jsonl`/`graph.json` were parsed whole on every hook
+invocation, cost scaling with corpus size (p95 639ms at 6,006 skills, both T300/T500 gates
+failed). Made cards/graph lazily mmap-backed (`cards.idx`/`cards.hdr`, `graph.bin`/`graph.idx`;
+`graph.json` dropped), cutting CLI import cost, artifact 14.9MB → 13.3MB. Result: p95 639 → 581ms
+at 6,006 skills — saves the ~46ms this fix targeted, but **T300/T500 still fail**: profiling found
+the larger, pre-existing, untouched cost is eager `terms.bin`/`postings.idx` parsing (~250ms of
+~271ms load time), which scales with vocabulary (89,630 terms) not doc count — a natural "R5"
+candidate. Full breakdown: `docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md`.
 
 ### 2026-09-05 — F3 document expansion (doc2query) on dev, PR #41
 

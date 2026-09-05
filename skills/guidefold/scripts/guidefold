@@ -31,7 +31,12 @@ Design notes
     — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help` and `hook`, don't pay
     for it: `hook`'s whole code path imports zero PyYAML, provable with `python3 -X importtime`).
 """
-import argparse, array, datetime, fnmatch, hashlib, io, json, math, mmap, os, re, signal, shutil, struct, subprocess, sys, tempfile, unicodedata, uuid, zipfile
+import argparse, array, datetime, fnmatch, json, mmap, os, re, signal, struct, subprocess, sys, unicodedata
+# Deliberately NOT imported at module scope, even though the module is small: hashlib, math,
+# shutil, tempfile, uuid, zipfile. None of these are touched by the `hook` code path (E1.5's
+# hard latency budget — DENSE-PROGRAM.md R4), so each is imported locally, right before first
+# use, in the handful of functions that actually need it (same lazy-import pattern already used
+# for PyYAML in load_map/frontmatter). `io` was imported and never used at all; dropped.
 from functools import cmp_to_key
 from pathlib import Path
 
@@ -109,6 +114,7 @@ def parse_urn(u: str):
     return parts[2], parts[3], parts[4]
 
 def zip_skill_dir(skill_dir: Path, zpath: Path):
+    import zipfile
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(skill_dir.rglob("*")):
             if f.is_file() and not any(part in (".git", "__pycache__") for part in f.parts):
@@ -204,6 +210,7 @@ class Registry:
         return rev
 
     def download(self, logical_urn: str, dest: Path, rev: str = None):
+        import shutil, tempfile
         _, node, name = parse_urn(logical_urn)
         rname = self.registry_name(node, name)
         if rev is None:
@@ -223,6 +230,7 @@ class Registry:
 
     # --- writes (CI only)
     def publish(self, node: str, name: str, skill_dir: Path, display: str, desc: str, rev_id: str):
+        import tempfile
         rid, rname = self.resource_id(node, name), self.registry_name(node, name)
         existing = self._gcloud("skills", "describe", rname, check=False)
         if existing is None:
@@ -271,6 +279,7 @@ class LocalRegistry:
         return self._head_rev
 
     def download(self, logical_urn: str, dest: Path, rev: str = None):
+        import shutil
         _, node, name = parse_urn(logical_urn)
         for d, n, fm in self._skills:
             if n == node and d.name == name:
@@ -352,6 +361,7 @@ def evict_lru(tree_root: Path, depth: int, cap: int):
     dirs = _leaf_dirs(tree_root, depth)
     if len(dirs) <= cap:
         return
+    import shutil
     dirs.sort(key=lambda d: d.stat().st_mtime)
     for d in dirs[: len(dirs) - cap]:
         shutil.rmtree(d, ignore_errors=True)
@@ -491,6 +501,10 @@ class Index:
     PPR_ALPHA_NUM, PPR_ALPHA_DEN = 15, 100   # alpha = 0.15 (ROUTER-SPEC)
     PPR_ITERS = 20
     FIELDS = ("name", "description", "digest", "triggers", "body")
+    # Fixed record order inside graph.bin (R4, lazy-graph): every per-card adjacency record packs
+    # these 4 lists in exactly this order, so writer and reader agree without needing a name tag
+    # per list. Matches the literal tuple `_reverse_ppr` used before this constant existed.
+    GRAPH_EDGE_TYPES = ("requires", "refines", "replaces", "similar")
 
     DEFAULT_WEIGHTS = {
         "field.name": 6, "field.description": 4, "field.digest": 3,
@@ -597,6 +611,21 @@ class Index:
             self.graph["refines"].setdefault(u, [])
             self.graph["replaces"].setdefault(u, [])
 
+    def card_header_items(self):
+        """(urn, node, status, has_negative_triggers_bool) for every card, sorted-URN order.
+        Router.policy_filter iterates this uniformly whether `self.cards` is a freshly-built
+        in-memory plain dict (Index.build/from_cards -- one dict-key lookup per field, the same
+        cost policy_filter always paid) or a loaded artifact's _LazyCards (a header-table lookup,
+        zero JSON parsing, R4). Kept on Index rather than duplicated in Router so both card
+        representations are satisfied by one call site."""
+        header_items = getattr(self.cards, "header_items", None)
+        if header_items is not None:
+            yield from header_items()
+            return
+        for u in sorted(self.cards.keys()):
+            c = self.cards[u]
+            yield u, c["node"], c.get("status", "active"), bool(c.get("negative_triggers"))
+
     def _field_text(self, card, field):
         if field == "name":
             return card["name"].replace("-", " ")
@@ -611,6 +640,7 @@ class Index:
         return ""
 
     def _build_bm25(self):
+        import math
         postings = {f: {} for f in self.FIELDS}
         field_len = {f: {} for f in self.FIELDS}
         doc_freq = {}
@@ -679,8 +709,23 @@ class Index:
 #   cards.jsonl     one compact JSON object per doc, one line per doc, in sorted-URN doc-id order
 #                   (that order IS the doc-id map: line N is doc N in postings.bin/vectors.i8).
 #                   No `_body`/`requires`/`refines` — Router never reads those at query time
-#                   (BM25 is already baked into postings.bin; the graph is graph.json).
-#   graph.json      requires/refines/replaces/similar adjacency (Index.graph), unchanged shape.
+#                   (BM25 is already baked into postings.bin; the graph is graph.bin). Never
+#                   parsed in full: cards.idx gives byte offsets into it, one line materialised at
+#                   a time, only for the handful of urns Router ever needs a whole card for (R4).
+#   cards.idx       byte offset+length into cards.jsonl, one per doc: `u32 n_docs` then
+#                   n_docs*(u32 offset, u32 length), doc-id order. Small (8 bytes/doc) — eager.
+#   cards.hdr       (urn, node, status, has_negative_triggers) for every doc, doc-id order:
+#                   `u32 n_docs` then n_docs*(varint urn_len, urn utf-8, varint node_len, node
+#                   utf-8, 1 flags byte [bit0=deprecated, bit1=has negative_triggers]). Answers
+#                   every question Router's policy_filter asks about EVERY card without ever
+#                   opening cards.jsonl (R4). Tens of bytes/doc — eager.
+#   graph.bin       requires/refines/replaces/similar adjacency (Index.graph), one record per
+#                   doc-id: GRAPH_EDGE_TYPES (fixed order) as `varint(count) +
+#                   count*varint(target doc-id)`. Read lazily through graph.idx — closure and
+#                   PPR propagation touch only the docs they actually expand, never the whole
+#                   graph (R4; superseded a `graph.json` sibling that cost 407KB at the
+#                   ADR-0021 2000-skill scale against a budget with ~6% headroom to spare).
+#   graph.idx       the offset+length table for graph.bin, same shape as cards.idx. Eager.
 #   nodes.json      guidefold.yaml's `nodes` map, verbatim — `cwd -> node` at hook time resolves
 #                   from THIS, never the working-tree guidefold.yaml (ROUTER-SPEC).
 #   terms.bin       global per-term IDF (Index.idf): [varint term_len, term utf-8, varint idf]*,
@@ -824,6 +869,146 @@ class _LazyNormsq:
         vec = self._vectors.get(key)
         return sum(x * x for x in vec) if vec is not None else default
 
+class _LazyCards:
+    """dict-like idx.cards, backed by cards.jsonl (mmap'd) + cards.idx (byte offset/length per
+    doc) + cards.hdr (urn/node/status/has-negative-triggers, parsed eagerly in full -- it is tiny,
+    tens of bytes per doc even at 6 000+ skills, nowhere near the cost of json.loads()-ing every
+    line of cards.jsonl). Header data alone answers every question Router's policy_filter asks
+    about EVERY card (status, node, "does it have any negative_triggers at all") without ever
+    opening cards.jsonl; a full card body (name/description/digest/...) is only ever parsed on
+    demand, for the handful of urns Router actually needs a whole card for (a chosen card's
+    requires-closure, the <=4 finally-selected cards). This is R4's whole point: the old
+    `load_index_artifact` json.loads()'d every one of n_docs lines up front; this parses zero
+    lines unless something asks for one."""
+    __slots__ = ("_mm", "_offsets", "_doc_urns", "_urn_to_doc", "_node", "_status", "_has_neg")
+
+    def __init__(self, mm, offsets, doc_urns, node_by_doc, status_by_doc, has_neg_by_doc):
+        self._mm = mm
+        self._offsets = offsets                 # doc_id -> (offset, length) into cards.jsonl
+        self._doc_urns = doc_urns               # doc_id -> urn, sorted-URN order
+        self._urn_to_doc = {u: i for i, u in enumerate(doc_urns)}
+        self._node = node_by_doc                # doc_id -> node string
+        self._status = status_by_doc            # doc_id -> "active" | "deprecated"
+        self._has_neg = has_neg_by_doc           # doc_id -> bool
+
+    def __contains__(self, u):
+        return u in self._urn_to_doc
+
+    def __len__(self):
+        return len(self._doc_urns)
+
+    def __iter__(self):
+        return iter(self._doc_urns)
+
+    def keys(self):
+        return self._urn_to_doc.keys()
+
+    def header_items(self):
+        """(urn, node, status, has_negative_triggers) for every doc, sorted-URN order, zero JSON
+        parsing -- what Router.policy_filter iterates instead of `.items()` (R4)."""
+        node, status, has_neg = self._node, self._status, self._has_neg
+        for i, u in enumerate(self._doc_urns):
+            yield u, node[i], status[i], has_neg[i]
+
+    def _materialize(self, d):
+        off, length = self._offsets[d]
+        raw = bytes(self._mm[off:off + length]) if self._mm is not None else b"{}"
+        row = json.loads(raw)
+        return {
+            "urn": row["urn"], "node": row["node"], "name": row["name"],
+            "description": row["description"], "digest": row.get("digest", ""),
+            "triggers": row.get("triggers", []), "negative_triggers": row.get("negative_triggers", []),
+            # requires/refines are NOT persisted here: graph.bin already carries this adjacency
+            # and Router never reads card["requires"]/["refines"] at query time.
+            "requires": [], "refines": [],
+            "status": row.get("status", "active"), "replaced_by": row.get("replaced_by"),
+            "kind": row.get("kind"), "layer": row.get("layer"), "owner": row.get("owner"),
+            "_body": "",   # never read by Router; BM25 is already baked into postings.bin
+        }
+
+    def get(self, u, default=None):
+        d = self._urn_to_doc.get(u)
+        return self._materialize(d) if d is not None else default
+
+    def __getitem__(self, u):
+        d = self._urn_to_doc.get(u)
+        if d is None:
+            raise KeyError(u)
+        return self._materialize(d)
+
+    def items(self):
+        for i, u in enumerate(self._doc_urns):
+            yield u, self._materialize(i)
+
+    def values(self):
+        for i in range(len(self._doc_urns)):
+            yield self._materialize(i)
+
+class _LazyGraphEdgeType:
+    """dict-like view of one edge type's adjacency (e.g. idx.graph['requires']), backed by the
+    mmap'd graph.bin record every edge type for a doc shares. .get(u, default) decodes only that
+    one doc's record, walking past the OTHER edge types' varint-encoded lists (without ever
+    decoding their targets) to reach the one requested -- so a query that only ever asks about
+    `requires` (the default ppr_mode="closure" path) never pays any cost for refines/replaces/
+    similar, and no doc but the one asked for is ever touched (R4)."""
+    __slots__ = ("_mm", "_offsets", "_doc_urns", "_urn_to_doc", "_et_index", "_n_types")
+
+    def __init__(self, mm, offsets, doc_urns, urn_to_doc, et_index, n_types):
+        self._mm = mm
+        self._offsets = offsets
+        self._doc_urns = doc_urns
+        self._urn_to_doc = urn_to_doc
+        self._et_index = et_index
+        self._n_types = n_types
+
+    def get(self, u, default=None):
+        if default is None:
+            default = []
+        d = self._urn_to_doc.get(u)
+        if d is None or self._mm is None:
+            return default
+        off, length = self._offsets[d]
+        data = self._mm[off:off + length]
+        pos = 0
+        for i in range(self._n_types):
+            count, pos = _varint_decode(data, pos)
+            if i == self._et_index:
+                targets = []
+                for _ in range(count):
+                    tid, pos = _varint_decode(data, pos)
+                    targets.append(self._doc_urns[tid])
+                return targets
+            for _ in range(count):
+                _, pos = _varint_decode(data, pos)
+        return default
+
+class _LazyGraph:
+    """dict-like idx.graph, backed by graph.bin/graph.idx. idx.graph[et] and idx.graph.get(et, {})
+    both return a _LazyGraphEdgeType rather than materialising the whole edge-type mapping, so
+    Router's closure/propagation (_requires_closure, _decayed_closure, _reverse_ppr) touch only
+    the handful of docs they actually expand instead of paging in the whole graph on every hook
+    invocation (R4). graph.bin is checksummed in manifest.json like any other artifact file, so
+    `index --check` still catches tampering/staleness even though nothing on the hook path ever
+    parses it in full."""
+    __slots__ = ("_views",)
+
+    def __init__(self, mm, offsets, doc_urns, urn_to_doc):
+        n_types = len(Index.GRAPH_EDGE_TYPES)
+        self._views = {
+            et: _LazyGraphEdgeType(mm, offsets, doc_urns, urn_to_doc, i, n_types)
+            for i, et in enumerate(Index.GRAPH_EDGE_TYPES)
+        }
+
+    def __getitem__(self, et):
+        return self._views[et]
+
+    def get(self, et, default=None):
+        v = self._views.get(et)
+        return v if v is not None else (default if default is not None else {})
+
+    def keys(self):
+        return self._views.keys()
+
 def _serialize_artifact_files(idx: Index) -> dict:
     """Pure function: an already-built Index -> {filename: bytes} for every artifact file except
     manifest.json (which needs external git-sha/build-time context plus the checksums of exactly
@@ -833,7 +1018,15 @@ def _serialize_artifact_files(idx: Index) -> dict:
     doc_id = {u: i for i, u in enumerate(doc_urns)}
     n_docs = len(doc_urns)
 
-    card_lines = []
+    # cards.jsonl stays exactly as before (byte-for-byte) -- other tooling and `index --check`
+    # still read it, and it's the thing cards.idx's offsets point into. What changes is that
+    # `load_index_artifact` no longer parses it eagerly: cards.idx (below) gives O(1) byte-offset
+    # access to one line, and cards.hdr gives Router the few fields it needs for literally every
+    # card (node, status, "has any negative_triggers") without opening cards.jsonl at all (R4).
+    cards_bytes_parts = []
+    cards_idx = bytearray(struct.pack("<I", n_docs))   # count, then n_docs*(offset u32, length u32)
+    cards_hdr = bytearray(struct.pack("<I", n_docs))   # count, then n_docs*(urn, node, flags)
+    running_offset = 0
     for u in doc_urns:
         c = idx.cards[u]
         row = {
@@ -843,8 +1036,19 @@ def _serialize_artifact_files(idx: Index) -> dict:
             "status": c.get("status", "active"), "replaced_by": c.get("replaced_by"),
             "kind": c.get("kind"), "layer": c.get("layer"), "owner": c.get("owner"),
         }
-        card_lines.append(json.dumps(row, sort_keys=True, separators=(",", ":")))
-    cards_bytes = ("\n".join(card_lines) + ("\n" if card_lines else "")).encode("utf-8")
+        line = json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
+        cards_idx += struct.pack("<II", running_offset, len(line))
+        running_offset += len(line)
+        cards_bytes_parts.append(line)
+
+        node_b = c["node"].encode("utf-8")
+        urn_b = u.encode("utf-8")
+        flags = (1 if c.get("status", "active") == "deprecated" else 0) \
+            | (2 if c.get("negative_triggers") else 0)
+        cards_hdr += _varint_encode(len(urn_b)) + urn_b
+        cards_hdr += _varint_encode(len(node_b)) + node_b
+        cards_hdr += bytes([flags])
+    cards_bytes = b"".join(cards_bytes_parts)
 
     terms_bin = bytearray()
     for term in sorted(idx.idf.keys()):
@@ -905,11 +1109,39 @@ def _serialize_artifact_files(idx: Index) -> dict:
                               f"([-128,127]): {e}") from e
     words_idx = ("\n".join(words_sorted) + ("\n" if words_sorted else "")).encode("utf-8")
 
-    graph_bytes = (json.dumps(idx.graph, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    # graph.bin/graph.idx are the ONLY on-disk graph representation (R4): a `graph.json` sibling
+    # was tried first, kept purely for human/tooling readability, but it cost 407KB at the
+    # ADR-0021 2000-skill/889-real-SKILL.md scale -- against a budget that already had only ~6%
+    # headroom (ADR-0021), that overshot 15MB once cards.hdr/cards.idx/graph.idx were added too.
+    # graph.bin is checksummed in manifest.json exactly like every other file, so `index --check`
+    # still catches tampering/staleness; it is just binary instead of JSON. Per doc-id (same
+    # doc_id numbering as cards.idx/cards.hdr, sorted-URN order), one record packs GRAPH_EDGE_TYPES
+    # (fixed order) as varint(count) + count*varint(target doc-id). Every edge target is
+    # guaranteed to be a key of idx.cards (`_build_graph` filters requires/refines with `if r in
+    # urns` and replaces with `c.get("replaced_by") in urns`), so doc_id[...] never raises
+    # KeyError here. This lets closure/propagation touch only the few docs it expands instead of
+    # paging in the whole graph on every hook invocation.
+    graph_bin_parts = []
+    graph_idx = bytearray(struct.pack("<I", n_docs))
+    running_offset = 0
+    for u in doc_urns:
+        rec = bytearray()
+        for et in Index.GRAPH_EDGE_TYPES:
+            targets = idx.graph.get(et, {}).get(u, [])
+            rec += _varint_encode(len(targets))
+            for t in targets:
+                rec += _varint_encode(doc_id[t])
+        graph_idx += struct.pack("<II", running_offset, len(rec))
+        running_offset += len(rec)
+        graph_bin_parts.append(bytes(rec))
+    graph_bin = b"".join(graph_bin_parts)
+
     nodes_bytes = (json.dumps(idx.nodes, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
     return {
         "cards.jsonl": cards_bytes,
+        "cards.idx": bytes(cards_idx),
+        "cards.hdr": bytes(cards_hdr),
         "terms.bin": bytes(terms_bin),
         "norms.bin": bytes(norms_bin),
         "postings.bin": bytes(postings_bin),
@@ -917,7 +1149,8 @@ def _serialize_artifact_files(idx: Index) -> dict:
         "vectors.i8": bytes(vectors_bin),
         "words.bin": bytes(words_bin),
         "words.idx": words_idx,
-        "graph.json": graph_bytes,
+        "graph.bin": graph_bin,
+        "graph.idx": bytes(graph_idx),
         "nodes.json": nodes_bytes,
     }
 
@@ -927,6 +1160,7 @@ def write_index_artifact(root: Path, cfg: dict, dest: Path, git_sha: str) -> dic
     (deterministic for a real sha), never wall-clock — so the SAME sha always serialises to
     byte-identical files, manifest.json included; only the "worktree" (uncommitted) sha falls
     back to wall-clock, because an uncommitted tree has no stable time to anchor to."""
+    import hashlib
     idx = Index.build(root, cfg, word_vectors=None)
     files = _serialize_artifact_files(idx)
     dest.mkdir(parents=True, exist_ok=True)
@@ -956,37 +1190,63 @@ def write_index_artifact(root: Path, cfg: dict, dest: Path, git_sha: str) -> dic
     return manifest
 
 def load_index_artifact(dest: Path) -> Index:
-    """Read <cache_root>/index/<sha>/ back into a Router-ready Index. Postings and dense vectors
-    are lazily backed by mmap; cards/graph/nodes/idf/field_norm are small enough (a few thousand
-    entries even at 2k skills) to load eagerly in full. Raises on a missing/corrupt artifact —
-    callers (cmd_hook) treat any exception here as "no artifact yet, print nothing"."""
+    """Read <cache_root>/index/<sha>/ back into a Router-ready Index. Postings, dense vectors,
+    cards and graph are all lazily backed by mmap; nodes.json and the small per-doc header tables
+    (cards.hdr, cards.idx, graph.idx) are loaded eagerly in full, and so are idf (terms.bin) and
+    the postings offset table (postings.idx) — those two are NOT small at real-corpus vocabulary
+    sizes (see the R4 caveat below) and remain the dominant load-time cost this function has not
+    yet addressed. Raises on a missing/corrupt artifact — callers (cmd_hook) treat any exception
+    here as "no artifact yet, print nothing".
+
+    R4 (lazy cards/graph): the previous version json.loads()'d every line of cards.jsonl and the
+    whole of graph.json here, unconditionally, on every hook invocation — cost scaling linearly
+    with corpus size (measured ~50ms at 501 skills; ~46ms of it at 6 006 real skills). cards.hdr/
+    cards.idx/graph.idx give Router everything policy_filter and closure/propagation need for O(1)
+    per-card access without ever parsing a card body or the graph JSON, unless something actually
+    asks for one (see _LazyCards/_LazyGraph above). That fix landed exactly as scoped and shaved
+    the ~46ms it targeted — but at 6 006 real skills (89 630 distinct terms across Index.FIELDS)
+    it revealed a LARGER pre-existing, still-eager cost one layer down: parsing terms.bin (~86ms
+    median) and postings.idx (~165ms median) below, whole-file, into `idf`/`offsets` dicts, is
+    ~250ms of this function's ~271ms total — the true dominant cost at this corpus size, scaling
+    with vocabulary rather than doc count, and NOT something this fix touches. See
+    docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md for the full breakdown; a term-keyed
+    on-disk index (the natural next step, informally "R5") would need a different structure than
+    the doc-id offset tables used here, since lookups are by string, not by doc-id."""
     manifest = json.loads((dest / "manifest.json").read_text())
 
-    doc_urns = []
-    cards = {}
-    with (dest / "cards.jsonl").open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            row = json.loads(line)
-            u = row["urn"]
-            doc_urns.append(u)
-            cards[u] = {
-                "urn": u, "node": row["node"], "name": row["name"],
-                "description": row["description"], "digest": row.get("digest", ""),
-                "triggers": row.get("triggers", []), "negative_triggers": row.get("negative_triggers", []),
-                # requires/refines are NOT persisted here: graph.json already carries this
-                # adjacency and Router never reads card["requires"]/["refines"] at query time.
-                "requires": [], "refines": [],
-                "status": row.get("status", "active"), "replaced_by": row.get("replaced_by"),
-                "kind": row.get("kind"), "layer": row.get("layer"), "owner": row.get("owner"),
-                "_body": "",   # never read by Router; BM25 is already baked into postings.bin
-            }
+    hdr_data = (dest / "cards.hdr").read_bytes()
+    (n_docs,) = struct.unpack_from("<I", hdr_data, 0)
+    pos = 4
+    doc_urns, node_by_doc, status_by_doc, has_neg_by_doc = [], [], [], []
+    for _ in range(n_docs):
+        ulen, pos = _varint_decode(hdr_data, pos)
+        u = hdr_data[pos:pos + ulen].decode("utf-8"); pos += ulen
+        nlen, pos = _varint_decode(hdr_data, pos)
+        node = hdr_data[pos:pos + nlen].decode("utf-8"); pos += nlen
+        flags = hdr_data[pos]; pos += 1
+        doc_urns.append(u)
+        node_by_doc.append(node)
+        status_by_doc.append("deprecated" if flags & 1 else "active")
+        has_neg_by_doc.append(bool(flags & 2))
     doc_id = {u: i for i, u in enumerate(doc_urns)}
 
-    idx = Index(cards, json.loads((dest / "nodes.json").read_text()), manifest["weights"])
-    idx.graph = json.loads((dest / "graph.json").read_text())
+    cards_idx_data = (dest / "cards.idx").read_bytes()
+    cards_idx_flat = struct.unpack(f"<{2 * n_docs}I", cards_idx_data[4:4 + 8 * n_docs]) if n_docs else ()
+    card_offsets = [(cards_idx_flat[2 * i], cards_idx_flat[2 * i + 1]) for i in range(n_docs)]
+    idx_cards_fh, idx_cards_mm = _open_mmap(dest / "cards.jsonl")
+
+    idx = Index(
+        _LazyCards(idx_cards_mm, card_offsets, doc_urns, node_by_doc, status_by_doc, has_neg_by_doc),
+        json.loads((dest / "nodes.json").read_text()), manifest["weights"],
+    )
+    idx._cards_fh, idx._cards_mm = idx_cards_fh, idx_cards_mm
+
+    graph_idx_data = (dest / "graph.idx").read_bytes()
+    (n_graph_docs,) = struct.unpack_from("<I", graph_idx_data, 0)
+    graph_idx_flat = struct.unpack(f"<{2 * n_graph_docs}I", graph_idx_data[4:4 + 8 * n_graph_docs]) if n_graph_docs else ()
+    graph_offsets = [(graph_idx_flat[2 * i], graph_idx_flat[2 * i + 1]) for i in range(n_graph_docs)]
+    idx._graph_fh, idx._graph_mm = _open_mmap(dest / "graph.bin")
+    idx.graph = _LazyGraph(idx._graph_mm, graph_offsets, doc_urns, doc_id)
 
     idf = {}
     data = (dest / "terms.bin").read_bytes()
@@ -1047,6 +1307,7 @@ def check_index_artifact(root: Path, cfg: dict, sha: str, dest: Path):
                           manifest does NOT record (someone edited a SKILL.md and forgot to
                           rerun `guidefold index`).
     Returns (ok: bool, problems: list[str])."""
+    import hashlib
     problems = []
     manifest_path = dest / "manifest.json"
     if not manifest_path.exists():
@@ -1118,35 +1379,48 @@ class Router:
                 out.add(n)
         return out
 
-    def _negative_trigger_tokens(self) -> dict:
-        """urn -> [(phrase, frozenset(tokens)), ...], tokenised ONCE per Router.
+    def _negative_trigger_tokens_for(self, u: str) -> list:
+        """[(phrase, frozenset(tokens)), ...] for ONE card, tokenised once and cached per-urn on
+        the Router instance. Only ever called for a urn whose header flag says it carries
+        negative_triggers at all (R4) -- on a corpus where none do (e.g. SKILLRET-test, 6 006
+        skills) this method is never called and zero card bodies are parsed to discover that.
 
-        Profiled on the 501-skill SkillRetBench index (every skill has anti-triggers): re-tokenising
-        each phrase on every query made policy_filter 84 % of the in-process query path — 34 575
-        tokenize() calls for 25 queries. Phrases do not change between queries; tokenise them once."""
+        Profiled on the 501-skill SkillRetBench index (every skill DOES have anti-triggers):
+        re-tokenising each phrase on every query made policy_filter 84% of the in-process query
+        path — 34 575 tokenize() calls for 25 queries. Phrases do not change between queries or
+        between the two policy_filter calls one route() makes, so cache per-urn across both."""
         cache = getattr(self, "_neg_tok_cache", None)
         if cache is None:
             cache = {}
-            for u, c in self.index.cards.items():
-                toks = [(t, frozenset(tokenize(t))) for t in c.get("negative_triggers", [])]
-                cache[u] = [(t, s) for t, s in toks if s]
             self._neg_tok_cache = cache
-        return cache
+        toks = cache.get(u)
+        if toks is None:
+            c = self.index.cards[u]
+            raw = [(t, frozenset(tokenize(t))) for t in c.get("negative_triggers", [])]
+            toks = [(t, s) for t, s in raw if s]
+            cache[u] = toks
+        return toks
 
     def policy_filter(self, node: str, query: str = "", include_deprecated: bool = False):
         visible = self._visible_nodes(node)
         qtoks = set(tokenize(query))
-        neg = self._negative_trigger_tokens()
         kept, drops = [], []
-        for u, c in sorted(self.index.cards.items()):
-            if c["status"] == "deprecated" and not include_deprecated:
+        # Iterates the cheap header (urn, node, status, has_negative_triggers) rather than
+        # `self.index.cards.items()` -- the latter would materialise (json.loads) every single
+        # card's full body just to read `status`/`node`/`negative_triggers`, which is exactly the
+        # eager-parse cost a lazily-loaded artifact exists to avoid (R4). A card's full body is
+        # only ever fetched (via _negative_trigger_tokens_for) when its header flag says it
+        # actually has negative_triggers to check.
+        for u, cnode, status, has_neg in self.index.card_header_items():
+            if status == "deprecated" and not include_deprecated:
                 drops.append((u, "deprecated")); continue
-            if c["node"] not in visible:
+            if cnode not in visible:
                 drops.append((u, "not-visible")); continue
             hit_neg = None
-            for t, ttoks in neg.get(u, ()):
-                if ttoks <= qtoks:
-                    hit_neg = t; break
+            if has_neg:
+                for t, ttoks in self._negative_trigger_tokens_for(u):
+                    if ttoks <= qtoks:
+                        hit_neg = t; break
             if hit_neg is not None:
                 drops.append((u, f"negative-trigger:{hit_neg}")); continue
             kept.append(u)
@@ -1261,16 +1535,19 @@ class Router:
             return {u: 0 for u in nodes}
         scale = idx.IDF_SCALE
         p = {u: (max(0, seed_scaled.get(u, 0)) * scale) // total_seed for u in nodes}
-        edge_types = ("requires", "refines", "replaces", "similar")
         edges = {u: [] for u in nodes}
-        for et in edge_types:
+        # Point-lookup per (edge_type, node) rather than `idx.graph.get(et, {}).items()` -- the
+        # latter demands the WHOLE edge-type mapping in one call, which defeats a lazily-loaded
+        # graph (R4: graph.bin is addressable per card, never parsed in full on the hook path).
+        # `nodes` already ranges over every urn `p` is keyed by, so this visits the same universe
+        # `u not in p` used to filter (dead code: every graph key is always a card urn, ADR-0020).
+        for et in idx.GRAPH_EDGE_TYPES:
             w = idx.weights.get(f"edge.{et}", 0)
             if w <= 0:
                 continue
-            for u, targets in idx.graph.get(et, {}).items():
-                if u not in p:
-                    continue
-                for t in targets:
+            et_graph = idx.graph.get(et, {})
+            for u in nodes:
+                for t in et_graph.get(u, []):
                     if t in p:
                         edges[u].append((t, w))
         out_weight = {u: sum(w for _, w in edges[u]) for u in nodes}
@@ -1482,6 +1759,7 @@ def _shadow_telemetry_path(root: Path) -> Path:
 
 def _write_shadow_record(root: Path, query: str, node: str, scored: list, telemetry_raw: bool = False):
     try:
+        import hashlib, uuid
         record = {
             "type": "shadow_request",
             "request_id": str(uuid.uuid4()),
@@ -1974,6 +2252,7 @@ def _stamp_bootstrap_skill(dest: Path, publisher: str, owner: str):
 
 
 def _copy_skill_dir(dry: bool, root: Path, publisher: str, owner: str):
+    import shutil
     dest = root / ".agents" / "skills" / "guidefold"
     if dest.resolve() == TOOL_SKILL_SRC.resolve():
         print("skipping .agents/skills/guidefold — this is the guidefold tool checkout itself.")
@@ -2121,7 +2400,7 @@ def _check_cli_compiles(root: Path) -> dict:
     if not cli_path.is_file():
         return _doctor_check("cli-installed", "fail", "no .agents/skills/guidefold/scripts/guidefold found",
                               "run `guidefold init` to install the CLI into .agents/skills/guidefold/")
-    import py_compile
+    import py_compile, tempfile
     try:
         with tempfile.TemporaryDirectory() as td:
             py_compile.compile(str(cli_path), cfile=str(Path(td) / "out.pyc"), doraise=True)
@@ -2286,6 +2565,7 @@ def _gcloud_json(args: list, timeout: int = 5):
 
 
 def _check_registry(root: Path, cfg) -> list:
+    import shutil
     if cfg is None:
         return [_doctor_check("registry-backend", "warn", "skipped (guidefold.yaml invalid)", None)]
     backend = (cfg.get("registry") or {}).get("backend", "agent-registry")

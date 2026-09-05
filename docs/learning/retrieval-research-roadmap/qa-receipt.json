@@ -1,0 +1,193 @@
+{
+  "artifact": "sciezka-nauki.html",
+  "delivery": "standalone offline learning tracker",
+  "checkedAt": "2026-09-05T13:03:51.310025+00:00",
+  "curriculum": "Project work with AI from the first day; courses in parallel",
+  "functional": {
+    "schemaVersion": 1,
+    "checkedAt": "2026-09-05T13:00:15.122Z",
+    "target": "sciezka-nauki.html",
+    "mode": "Headless Chromium; file://; fresh non-persistent context per test; external HTTP(S) requests blocked",
+    "runtime": {
+      "node": "v22.14.0",
+      "playwright": "1.62.1",
+      "chromium": "151.0.7922.34"
+    },
+    "inputs": {
+      "sciezka-nauki.html": {
+        "bytes": 86428,
+        "sha256": "394fed0d6a48aa372b03c555f966e2da8475475df60807b52a6c25184ab89d00"
+      },
+      "tracker.js": {
+        "bytes": 18423,
+        "sha256": "411a93bd6e2210c06fc116dced7a9ecedd5b08ac2e176b5ae0f75067fbf6bb22"
+      },
+      "tracker-data.json": {
+        "bytes": 6621,
+        "sha256": "3ff410472126e105a0de2b2464ee8e884ee4dc67ac8423ee8832c01120553d10"
+      },
+      "test-tracker.cjs": {
+        "bytes": 19833,
+        "sha256": "2f5392ee03a247c2a10da31ba8743a0eb661bc430ae44829f59a115491af3a8e"
+      }
+    },
+    "tests": [
+      {
+        "name": "Fresh state and completion gate; removing a check reopens completed stage",
+        "status": "passed",
+        "durationMs": 367,
+        "pageErrors": []
+      },
+      {
+        "name": "Fractional hours survive invalid input without overwriting durable value",
+        "status": "passed",
+        "durationMs": 415,
+        "pageErrors": []
+      },
+      {
+        "name": "Unicode and markup remain literal; checks, status, hours and notes persist after reload",
+        "status": "passed",
+        "durationMs": 336,
+        "pageErrors": []
+      },
+      {
+        "name": "Real JSON download and confirmed import round-trip retain a recoverable previous copy",
+        "status": "passed",
+        "durationMs": 419,
+        "pageErrors": []
+      },
+      {
+        "name": "Import cancellation, Escape and exporting before import do not replace the current state",
+        "status": "passed",
+        "durationMs": 360,
+        "pageErrors": []
+      },
+      {
+        "name": "Malformed, incompatible and oversized imports preserve current state and previous backup",
+        "status": "passed",
+        "durationMs": 781,
+        "pageErrors": []
+      },
+      {
+        "name": "Blocked localStorage still allows editing and export with an explicit warning",
+        "status": "passed",
+        "durationMs": 220,
+        "pageErrors": []
+      },
+      {
+        "name": "Storage write failure preserves previous durable data and exports unsaved changes",
+        "status": "passed",
+        "durationMs": 308,
+        "pageErrors": []
+      },
+      {
+        "name": "Corrupt storage is preserved byte-for-byte and can be downloaded before an explicit reset",
+        "status": "passed",
+        "durationMs": 477,
+        "pageErrors": []
+      },
+      {
+        "name": "Real second-tab storage events prevent overwrite and support both conflict resolutions",
+        "status": "passed",
+        "durationMs": 528,
+        "pageErrors": []
+      },
+      {
+        "name": "Import confirmation refuses to overwrite a newer second-tab update",
+        "status": "passed",
+        "durationMs": 436,
+        "pageErrors": []
+      },
+      {
+        "name": "Completing all stages updates aggregate progress, next action and durable state",
+        "status": "passed",
+        "durationMs": 1935,
+        "pageErrors": []
+      },
+      {
+        "name": "Import backup quota failure preserves current progress and existing backup",
+        "status": "passed",
+        "durationMs": 349,
+        "pageErrors": []
+      }
+    ],
+    "summary": {
+      "total": 13,
+      "passed": 13,
+      "failed": 0
+    }
+  },
+  "layout": {
+    "passed": true,
+    "viewports": [
+      {
+        "width": 1440,
+        "view": "tracker",
+        "overflow": false
+      },
+      {
+        "width": 1440,
+        "view": "starter",
+        "overflow": false
+      },
+      {
+        "width": 1440,
+        "view": "library",
+        "overflow": false
+      },
+      {
+        "width": 768,
+        "view": "tracker",
+        "overflow": false
+      },
+      {
+        "width": 768,
+        "view": "starter",
+        "overflow": false
+      },
+      {
+        "width": 768,
+        "view": "library",
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "view": "tracker",
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "view": "starter",
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "view": "library",
+        "overflow": false
+      },
+      {
+        "width": 320,
+        "view": "tracker",
+        "overflow": false
+      },
+      {
+        "width": 320,
+        "view": "starter",
+        "overflow": false
+      },
+      {
+        "width": 320,
+        "view": "library",
+        "overflow": false
+      }
+    ],
+    "keyboard_summary": true,
+    "keyboard_checkbox": true,
+    "all_fields_labelled": true,
+    "page_errors": [],
+    "external_requests": []
+  },
+  "source_links_preserved": 49,
+  "html_sha256": "394fed0d6a48aa372b03c555f966e2da8475475df60807b52a6c25184ab89d00",
+  "note": "Supersedes the former read-only report and its renderer timeout. The current tracker passed real Playwright browser tests."
+}

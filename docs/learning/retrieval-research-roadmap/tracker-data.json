@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "title": "Ucz się z AI. Rozumiej wyniki.",
+  "verified": "5 września 2026",
+  "stages": [
+    {
+      "id": "stage1",
+      "title": "Python w Twoim projekcie",
+      "track": "Start",
+      "when": "Pierwsze 2 tygodnie. AI Python i skrypt z metrykami; CS50P do uzupełniania luk.",
+      "tasks": [
+        [
+          "jsonl",
+          "Uruchomiłem z AI skrypt: JSONL → sprawdzenie identyfikatorów → CSV z metrykami."
+        ],
+        [
+          "metrics",
+          "Sam policzyłem Hit@1, Recall@k i kompletność zestawu na 3 przypadkach; kod daje ten sam wynik."
+        ],
+        [
+          "debug",
+          "Poprawiłem celowy błąd mianownika bez gotowego rozwiązania i uruchomiłem projekt według README."
+        ]
+      ]
+    },
+    {
+      "id": "stage5",
+      "title": "BM25 i pierwszy encoder",
+      "track": "Start",
+      "when": "Tygodnie 3–4, po pierwszych metrykach. Kurs ML może trwać równolegle.",
+      "tasks": [
+        [
+          "baseline",
+          "Porównałem BM25 i gotowy encoder na tym samym korpusie oraz zapytaniach."
+        ],
+        [
+          "rankings",
+          "Zapisałem kandydatów, rangi i metryki, w tym kompletność potrzebnych skilli."
+        ],
+        [
+          "errors",
+          "Sam przeanalizowałem 5 porażek i ręcznie sprawdziłem MRR oraz nDCG na małym przykładzie."
+        ]
+      ]
+    },
+    {
+      "id": "stage6",
+      "title": "Wejście modelu i embeddingi",
+      "track": "Start",
+      "when": "Przy pierwszym encoderze. Audyt wejścia wykonaj przed jego fine-tuningiem.",
+      "tasks": [
+        [
+          "contract",
+          "Zapisałem wersję modelu, prefiksy query/document, pooling, normalizację i limit tokenów."
+        ],
+        [
+          "body",
+          "Porównałem opis z opisem + body i wskazałem ucięte fragmenty."
+        ],
+        [
+          "tokens",
+          "Sam sprawdziłem tokenizację oraz zgodność cosine similarity z ręcznym obliczeniem."
+        ]
+      ]
+    },
+    {
+      "id": "stage3",
+      "title": "ML i poprawny eksperyment",
+      "track": "Model",
+      "when": "Splity poznaj przed treningiem. Machine Learning Specialization realizuj równolegle z projektem.",
+      "tasks": [
+        [
+          "splits",
+          "Zapisałem wersjonowane train/dev/test; rodziny parafraz pozostają w jednym zbiorze."
+        ],
+        [
+          "classifier",
+          "Porównałem prosty klasyfikator trafności query–skill z regułą odniesienia."
+        ],
+        [
+          "leakage",
+          "Sam znalazłem przykład wycieku danych i wyjaśniłem, jak zmienia wniosek."
+        ]
+      ]
+    },
+    {
+      "id": "stage4",
+      "title": "Pierwszy trening w PyTorch",
+      "track": "Model",
+      "when": "Wcześnie, z gotowego małego przykładu. Teorię pogłębiaj na jego podstawie.",
+      "tasks": [
+        [
+          "train",
+          "Uruchomiłem trening i zapisałem dane, seed, konfigurację oraz checkpoint."
+        ],
+        [
+          "reload",
+          "Odtworzyłem predykcje z checkpointu w nowym procesie."
+        ],
+        [
+          "gradient",
+          "Sam wskazałem gradient i zmianę wag oraz wyjaśniłem train() i eval()."
+        ]
+      ]
+    },
+    {
+      "id": "stage7",
+      "title": "Twój dostrojony retriever",
+      "track": "Model",
+      "when": "Pierwszy pilot po sprawdzeniu splitów, wejścia, metryk i podstaw treningu. Nie czekaj na wszystkie kursy.",
+      "tasks": [
+        [
+          "finetune",
+          "Wykonałem krótki fine-tuning małego encodera na istniejących etykietowanych parach."
+        ],
+        [
+          "comparison",
+          "Porównałem model przed i po treningu na dev przy tej samej ewaluacji i zapisałem koszt."
+        ],
+        [
+          "negatives",
+          "Sam sprawdziłem pozytywy, hard negatives i negatywy wewnątrz batcha, chroniąc poprawne alternatywy."
+        ]
+      ]
+    },
+    {
+      "id": "stage2",
+      "title": "Matematyka, którą wykorzystujesz",
+      "track": "Model",
+      "when": "Równolegle z encoderem i treningiem. Uzupełniaj pojęcia potrzebne w aktualnym eksperymencie.",
+      "tasks": [
+        [
+          "vectors",
+          "Mam notatnik porównujący dot product, normę i cosine na tych samych wektorach."
+        ],
+        [
+          "prediction",
+          "Sam przewidziałem wynik pomnożenia wektora przez 10 i sprawdziłem obliczenia."
+        ],
+        [
+          "overfit",
+          "Narysowałem stratę train/dev i wyjaśniłem, na czym polega przeuczenie."
+        ]
+      ]
+    },
+    {
+      "id": "stage8",
+      "title": "Reranker i abstencja",
+      "track": "Produkt",
+      "when": "Po działającym generatorze kandydatów. Możesz zacząć od gotowego encodera.",
+      "tasks": [
+        [
+          "rerank",
+          "Porównałem reranker na zapisanych kandydatach top-5, top-10 i top-20."
+        ],
+        [
+          "coverage",
+          "Ustaliłem próg abstencji na dev i sprawdziłem jakość przy różnym coverage."
+        ],
+        [
+          "diagnosis",
+          "Sam rozróżniłem brak właściwego kandydata, błędną kolejność i błędną odmowę."
+        ]
+      ]
+    },
+    {
+      "id": "stage9",
+      "title": "Skills i działający agent",
+      "track": "Produkt",
+      "when": "Prosta integracja od baseline’u; optymalizacja po zmierzeniu ograniczeń.",
+      "tasks": [
+        [
+          "pipeline",
+          "Uruchomiłem dopuszczalność → kandydatów → ranking → wybór zestawu → abstencję."
+        ],
+        [
+          "execution",
+          "Porównałem wykonanie zadania bez skilli, z wyborem systemu i z zestawem referencyjnym."
+        ],
+        [
+          "latency",
+          "Sam sprawdziłem niedopuszczalną zależność i zmierzyłem cały request: p50/p95, cold/warm."
+        ]
+      ]
+    },
+    {
+      "id": "stage10",
+      "title": "Badanie i publikacja",
+      "track": "Badanie",
+      "when": "Dziennik prowadź od początku. Końcowy test wykonaj po zamrożeniu eksperymentu.",
+      "tasks": [
+        [
+          "protocol",
+          "Przed testem zapisałem hipotezę, główną metrykę, baseline’y, budżet strojenia i kryterium sukcesu."
+        ],
+        [
+          "results",
+          "Wykonałem zamrożony test z analizą niepewności; liczby w raporcie prowadzą do wyników."
+        ],
+        [
+          "reproduce",
+          "Sam odtworzyłem kluczowy wynik w nowym środowisku i wyjaśniłem ograniczenia wniosku."
+        ]
+      ]
+    }
+  ]
+}

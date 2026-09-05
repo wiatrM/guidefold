@@ -17,20 +17,21 @@ index was built from; the two must not drift.
 | [0006](ADR-0006-deterministic-context-delivery.md) | Deterministic context delivery — materialized scope cards + hooks, not model-decided skill activation | Accepted | 2026-09-04 | amended by ADR-0012 |
 | [0007](ADR-0007-claude-code-on-vertex-single-identity.md) | Claude Code on Vertex AI (Model Garden) is the reference harness; one gcloud identity for model + registry | Accepted | 2026-09-04 | |
 | [0008](ADR-0008-skill-identity-resource-id-not-urn.md) | Hierarchy lives in the registry resource ID; the URN is system-assigned | Accepted | 2026-09-04 | amends deleted ADR-0002 |
-| [0009](ADR-0009-hybrid-retrieval-client-side.md) | The router is Guidefold's index + pipeline; the registry is storage (v2) | Proposed | 2026-09-04 | amended by ADR-0015 |
+| [0009](ADR-0009-hybrid-retrieval-client-side.md) | The router is Guidefold's index + pipeline; the registry is storage (v2) | Proposed | 2026-09-04 | amended by ADR-0015; ADR-0023 proposes an amendment |
 | [0010](ADR-0010-flat-string-metadata.md) | `SKILL.md` metadata is a flat map of scalar strings | Accepted | 2026-09-04 | |
 | 0011 | *(deleted)* | — | — | replaced by ADR-0018 |
 | [0012](ADR-0012-nothing-generated-is-committed.md) | No generated file is committed; L0 cards are delivered at SessionStart | Proposed | 2026-09-04 | amends ADR-0006 |
-| [0013](ADR-0013-knowledge-api-holds-proposals-git-holds-text.md) | A Knowledge API over Cloud SQL holds proposals and evidence; Git keeps skill text; one bot writer | Proposed | 2026-09-04 | amends ADR-0001 |
+| [0013](ADR-0013-knowledge-api-holds-proposals-git-holds-text.md) | A Knowledge API over Cloud SQL holds proposals and evidence; Git keeps skill text; one bot writer | Proposed | 2026-09-04 | amends ADR-0001; ADR-0023 proposes an amendment |
 | [0014](ADR-0014-drift-via-anchors-hashed-by-code-ci.md) | Drift stays in-repo (code diff ∩ references), comment-only; symbol anchors are an optional upgrade | Proposed | 2026-09-04 | |
-| [0015](ADR-0015-self-hosted-skill-tuned-models.md) | Skill-tuned open models, self-hosted, from Phase 1 | Accepted | 2026-09-04 | amends ADR-0009 |
-| [0016](ADR-0016-knowledge-lifecycle-gates-and-layers.md) | Knowledge lifecycle with gates G0–G7 and SkillPyramid layers | Accepted | 2026-09-04 | |
+| [0015](ADR-0015-self-hosted-skill-tuned-models.md) | Skill-tuned open models, self-hosted, from Phase 1 | Accepted | 2026-09-04 | amends ADR-0009; ADR-0023 proposes an amendment |
+| [0016](ADR-0016-knowledge-lifecycle-gates-and-layers.md) | Knowledge lifecycle with gates G0–G7 and SkillPyramid layers | Accepted | 2026-09-04 |; ADR-0023 proposes an amendment |
 | [0017](ADR-0017-owner-review-precedes-serving.md) | Owner review precedes any serving; agents cannot approve | Accepted | 2026-09-04 | |
-| [0018](ADR-0018-skills-stay-in-monorepo-one-postgres-gcs.md) | Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts | Proposed | 2026-09-04 | replaces deleted ADR-0011 |
+| [0018](ADR-0018-skills-stay-in-monorepo-one-postgres-gcs.md) | Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts | Proposed | 2026-09-04 | replaces deleted ADR-0011; ADR-0023 proposes an amendment |
 | [0019](ADR-0019-open-source-apache-2.md) | Publish Guidefold as open source under Apache-2.0; the tool is the distributable unit | Accepted | 2026-09-04 | |
-| [0020](ADR-0020-two-tier-dense-retrieval.md) | Two-tier dense retrieval — a distilled static table in the artifact, neural models in CI only | Accepted | 2026-09-04 | ADR-0021 and ADR-0022 propose amendments |
-| [0021](ADR-0021-index-sharding-and-a-global-word-table.md) | Shard the index by node; the word table is a language artifact, not a corpus artifact | Proposed | 2026-09-05 | amends ADR-0020 |
+| [0020](ADR-0020-two-tier-dense-retrieval.md) | Two-tier dense retrieval — a distilled static table in the artifact, neural models in CI only | Accepted | 2026-09-04 | ADR-0021 and ADR-0022 propose amendments; ADR-0023 proposes an amendment |
+| [0021](ADR-0021-index-sharding-and-a-global-word-table.md) | Shard the index by node; the word table is a language artifact, not a corpus artifact | Proposed | 2026-09-05 | amends ADR-0020; ADR-0023 proposes an amendment |
 | [0022](ADR-0022-admissibility-relevance-and-bundle-completeness.md) | Separate admissibility, relevance, and bundle completeness | Proposed | 2026-09-05 | amends ADR-0020, ADR-0021 |
+| [0023](ADR-0023-search-use-service-and-measured-utility.md) | Central SEARCH/USE service, bounded hooks, and measured skill utility | Proposed | 2026-09-05 | proposes amendments to ADR-0009/0013/0015/0016/0018/0020/0021 |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

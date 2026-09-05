@@ -61,6 +61,30 @@ Measurement infrastructure and product parity precede model selection. Historica
 pre-repair CLI baselines and corrected CLI runs are separate series; each run records its scorer,
 policy, composer, metric version and code SHA.
 
+### E1.1b — immediate service feasibility and latency optimization (2026-09-05)
+
+The product owner requested this experiment before service-dependent E2/E6 implementation,
+and then revised the whole-client latency target to **p95 <400 ms**. Preserve all historical
+300 ms results. The new budget covers process startup and response delivery, not just encoder
+inference or server time; concurrency=1 and four simultaneous fresh clients are separate gates.
+
+Implement and measure a loopback HTTP service with a pinned resident full encoder, live query
+inference, resident 6,006-skill index, exact revision hydration and local operational traces.
+Publish cold process readiness, HTTP/fresh-client p50/p95/p99, all failure denominators,
+deadline/denial/outage/restart behavior and an explicit proceed/change/stop decision in
+[E1.1b service feasibility](E1.1b-service-feasibility-2026-09-05.md).
+
+Optimize the measured hot path before deciding whether a native rewrite is needed. Precomputed
+integer BM25 contributions and resident dense matrices must preserve scores and ranking;
+encoder/runtime changes require paired vector/rank checks. Freeze the same CLI source bytes
+across comparisons because other work may update the shared checkout. Record hardware and
+concurrent load; a local result never establishes WAN/TLS/IAM or actual harness performance.
+
+The spike does not adopt a neural model for quality, execute skill bodies, or turn hydration
+into a usefulness metric. Controlled cache/lease tests are distinct from the shipped local
+fallback, whose integration remains in E2.6. A missed latency/queue gate requires another
+bounded optimization or a narrower supported profile before dependent serving commitments.
+
 ### P0 — fix the ruler *(this PR + one follow-up, ~1 day)*
 
 | work | done when |
