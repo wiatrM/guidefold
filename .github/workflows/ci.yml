@@ -119,6 +119,7 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
           python -m py_compile tools/search_service/gpu.py tools/search_service/gpu_probe.py tools/search_service/gpu_quality.py tools/search_service/gpu_smoke.py
+          python -m py_compile tools/search_service/shadow_integration.py tools/search_service/throughput.py tools/search_service/vector_storage_probe.py
       - name: HTTP contract, real SQL, publication and restart checks
         run: python tools/search_service/smoke.py --recovery --output .guidefold/checks/compose-smoke.json
       - name: Fetch pinned public corpus for the 1000-query parity gate

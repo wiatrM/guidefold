@@ -118,6 +118,9 @@ func eventLink(v any) any {
 	}
 	return s
 }
+
+const eventInsertSQL = `INSERT INTO gf.events(tenant_id,event_id,event_type,schema_version,occurred_at,received_at,search_id,load_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(tenant_id,event_id) DO NOTHING`
+
 func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
 	if s.Tenant == "" {
 		return nil, fmt.Errorf("verified_tenant_required")
@@ -129,6 +132,8 @@ func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
 		return nil, e
 	}
 	defer tx.Rollback(ctx)
+	queries := &pgx.Batch{}
+	validIDs := []any{}
 	for _, value := range batch {
 		event := obj(value)
 		var id any
@@ -139,7 +144,23 @@ func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
 			rejected = append(rejected, M{"event_id": id, "reason": reason, "retryable": false})
 			continue
 		}
-		tag, err := tx.Exec(ctx, `INSERT INTO gf.events(tenant_id,event_id,event_type,schema_version,occurred_at,received_at,search_id,load_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(tenant_id,event_id) DO NOTHING`, s.Tenant, []byte(str(id)), str(event["event_type"]), str(event["schema_version"]), str(event["occurred_at"]), received, eventLink(event["search_id"]), eventLink(event["load_id"]), canonical(event))
+		queries.Queue("guidefold_event_insert_v1", s.Tenant, []byte(str(id)), str(event["event_type"]), str(event["schema_version"]), str(event["occurred_at"]), received, eventLink(event["search_id"]), eventLink(event["load_id"]), canonical(event))
+		validIDs = append(validIDs, id)
+	}
+	if len(validIDs) != 0 {
+		// Prepare is idempotent per pooled connection; reuse the same plan for
+		// every row without changing the pool's other query modes.
+		if _, e = tx.Prepare(ctx, "guidefold_event_insert_v1", eventInsertSQL); e != nil {
+			return nil, e
+		}
+	}
+	// Send the ordered INSERTs in one protocol batch. Read every command result
+	// before commit so duplicates within this batch retain their first-wins ACK,
+	// and any storage error still rolls back all accepted rows.
+	results := tx.SendBatch(ctx, queries)
+	defer results.Close()
+	for _, id := range validIDs {
+		tag, err := results.Exec()
 		if err != nil {
 			return nil, err
 		}
@@ -148,6 +169,9 @@ func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
 		} else {
 			duplicate = append(duplicate, id)
 		}
+	}
+	if e = results.Close(); e != nil {
+		return nil, e
 	}
 	if e = tx.Commit(ctx); e != nil {
 		return nil, e

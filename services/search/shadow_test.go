@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -52,5 +54,46 @@ func TestShadowCannotChangeDeliveredBytesOrWaitForGPU(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSparsePreparationCannotCrossQuerySnapshotOrScope(t *testing.T) {
+	p := &SparsePreparation{Snapshot: "snapshot-a", QueryDigest: hash([]byte("exact query")), Scopes: map[string]PreparedScope{"allowed": {Ranks: []uint32{75}}}}
+	c := &Catalog{ID: "snapshot-a"}
+	if p.verify(c, "exact query", []string{"allowed"}) != nil {
+		t.Fatal("valid preparation rejected")
+	}
+	if p.verify(c, "other query", []string{"allowed"}) == nil {
+		t.Fatal("cross-query reuse accepted")
+	}
+	if p.verify(&Catalog{ID: "other"}, "exact query", []string{"allowed"}) == nil {
+		t.Fatal("cross-snapshot reuse accepted")
+	}
+	if p.verify(c, "exact query", []string{"other"}) == nil {
+		t.Fatal("cross-scope reuse accepted")
+	}
+	if p.Scopes["allowed"].Ranks[0] != 75 {
+		t.Fatal("full channel rank truncated")
+	}
+}
+
+func TestCompactPreparationPreservesFullFusionRanks(t *testing.T) {
+	c := &Catalog{}
+	full := []Candidate{}
+	p := PreparedScope{Ranks: make([]uint32, 70)}
+	for i := 0; i < 70; i++ {
+		u := fmt.Sprintf("skill-%03d", i)
+		c.Order = append(c.Order, u)
+		full = append(full, Candidate{URN: u, BM25Rank: i + 1})
+		p.Ranks[i] = uint32(i + 1)
+	}
+	p.Top = full[:50]
+	dense := []Candidate{{URN: "skill-060", DenseRank: 1}, {URN: "skill-002", DenseRank: 71}}
+	want := fuseCandidates(full, dense)
+	if got := fusePrepared(c, p, dense); !reflect.DeepEqual(got, want) {
+		t.Fatalf("full-rank fusion changed: %v vs %v", got, want)
+	}
+	if full[50].URN != "skill-050" || full[50].BM25Rank != 51 {
+		t.Fatal("preparation mutated its source")
 	}
 }

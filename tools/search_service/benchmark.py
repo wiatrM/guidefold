@@ -108,7 +108,7 @@ def run(args):
             'git_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
             'source_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
                              for p in sorted((ROOT/'services/search').glob('*.go'))},
-            'images':json.loads(subprocess.check_output(['docker','image','inspect','guidefold-search:local',
+            'images':json.loads(subprocess.check_output(['docker','image','inspect',os.environ.get('GUIDEFOLD_IMAGE','guidefold-search:local'),
                                                        'paradedb/paradedb:0.25.6-pg17'],text=True)),
             'production_ready':False,'quality_evaluated':False,'legacy_ranking_parity_claimed':False,'arms':{}}
     # Keep only reproducibility fields; no unrelated host/container metadata or secrets.
