@@ -31,10 +31,15 @@ def test_baseline_output_is_byte_identical_with_and_without_experimental(run_cli
     assert experimental.stderr == plain.stderr
 
 
-def test_without_experimental_no_telemetry_is_written(run_cli, fixture_copy):
+def test_without_experimental_no_shadow_telemetry_is_written(run_cli, fixture_copy):
+    """E1.6 shadow telemetry (`shadow-<date>.jsonl`) is opt-in via --experimental. This is a
+    separate mechanism from the always-on SEARCH/USE contract telemetry
+    (docs/SEARCH-USE-TELEMETRY.md) that `find` now emits regardless of --experimental
+    (search_requested/search_results/card_injected into .guidefold/telemetry/spool/...) -- that
+    spool existing is expected (E6.4) and covered elsewhere, not by this E1.6-specific test."""
     result = run_cli(["find", QUERY], cwd=fixture_copy)
     assert result.returncode == 0, result.stderr
-    assert not (fixture_copy / ".guidefold" / "telemetry").exists()
+    assert not _telemetry_path(fixture_copy).exists()
 
 
 def test_experimental_writes_one_shadow_request_hashed_by_default(run_cli, fixture_copy):

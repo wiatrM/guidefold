@@ -139,7 +139,7 @@ Roles: Dev, Owner (CODEOWNER), Platform and ML. Rows describe target acceptance,
 | E6.4 | As Platform, retain reliable events without slowing use | One Postgres ingest/rollup module; idempotency by tenant+event_id, retry/partial-batch/out-of-order handling, backlog/loss metrics, retention/deletion; no duplicated client/server counting |
 | E6.5 | As Owner, see usage and usability per skill revision | CLI/read-only report from same API: exposure, loads, observed/reported use, feedback reasons/coverage, compatibility/staleness and cross-team reuse; 3 primary KPIs from telemetry contract; no individual leaderboard |
 | E6.6 | As Platform, operate and roll back the service | Client->API->encoder/index/composer/hydration traces, p50/p95/p99, queue/fallback/errors, GPU/index readiness, snapshot age and cost; sustained/burst plus outage/denial/index-swap/spool tests; named operator and spend cap |
-| E6.7 | As Product/ML, establish usefulness before broad adoption | Prospective dev/holdout protocol, 20–40 paired pilot tasks as a feasibility study (minimum 20, aim for 40; expand from the predeclared power/uncertainty requirement for an adoption claim), no-skills/sparse/contender/oracle comparisons, task success/regression/cost/time; hands-on usability sessions in 3 teams; no adoption from cached-query or popularity evidence |
+| E6.7 | As Product/ML, establish usefulness before broad adoption | Prospective dev/holdout protocol, 20–40 paired pilot tasks as a feasibility study (minimum 20, aim for 40; expand from the predeclared power/uncertainty requirement for an adoption claim), no-skills/sparse/contender/oracle comparisons, task success/regression/cost/time; hands-on usability sessions in 3 teams; no adoption from cached-query or popularity evidence — see [E6.7 protocol](pilot/E6.7-PROTOCOL.md) |
 
 ### E7 — Quality flywheel and composition (new epic; E7.3 and E7.5 inside the 8 weeks, the rest after the pilot)
 
@@ -187,6 +187,18 @@ Search quality is the product. This epic is how it improves after release withou
 
 ## 5. Rebaselined delivery plan and gates
 
+**Priority plan — approved by the product owner on 2026-09-05 (evening), executed step by step.** It sits on top
+of the week table below and wins where they differ. Each row names what it unblocks; each item has a
+pre-registered measurement or a hard acceptance criterion, never a vibe.
+
+| Weeks | Do | Unblocks |
+|---|---|---|
+| 1–2 | **Family E — synthetic in-distribution training** over the tenant's own skills (per-skill + composite multi-intent queries + hard negatives; local open generator on the GPU; no labels; leakage check; dev → freeze → once on both tests); **close family D** (query decomposition, dev); **agent-side decomposition** in the bootstrap `SKILL.md` (call `find` once per step of a multi-step task) | a reachable dense gate (`all_required@4`) and recall for k = 2/3, where today 64 % of required skills are outside the top-10 |
+| 2–4 | **Go parity** — **done 2026-09-05 in PR #54**: the Go service compiles the CLI's exact fixed-point BM25F contributions from the exported artifact and proves **0/1 000 mismatches** against the CLI on dev (ordered URNs, integer scores, selections, revisions), enforced by a real-HTTP parity job in CI; ParadeDB is storage/prefilter, never the scorer (ADR-0026 amended to hosting only); p95 21.6 / 29.1 ms at c1/c4. Remaining in this row: `/v1/events:batch` on Postgres (port of `tools/telemetry/ledger.py`), shadow records keyed by `search_id`, T1 runbook | a production-shaped T1 on Go with one truth about the ranking (E2.9, ADR-0024 §1) |
+| 3–6 | **Authoring loop**: F5 trigger/negative-trigger suggestions in `validate` (owner approves in the PR), a per-PR collision report ("this description takes N dev queries from skill X"), E7.5 evaluation in the snapshot build | search quality that improves with every skill PR, not only with every model |
+| 5–8 | **Flywheel on real USE events** (E7.1–E7.2) + **pilot E6.7** (3 teams, 20–40 paired tasks, frozen protocol) | evidence of value for developers, not only better metrics |
+
+
 Eight weeks starts at this planning revision. Completed E0/E1 work is reused. Staffing assumes one engineer owns client/distribution, one API/events, and 0.5 ML owns evaluation/model admission; shared auth/ops support and partner access must be available. If those assumptions fail, narrow pilot/harness scope explicitly or re-estimate instead of silently extending the plan.
 
 | Weeks | Critical work | Reviewable exit |
@@ -233,6 +245,34 @@ Deferred: full automated promotion workflow and probation, induction/consolidati
 | 0002, 0011 | Historical deleted decisions; do not reuse their IDs |
 | [0023 SEARCH/USE and utility](adr/ADR-0023-search-use-service-and-measured-utility.md) | New Proposed amendment: central serving, bounded clients, event semantics and narrower MVP; proposes amendments to 0009/0013/0015/0016/0018/0020/0021; ADR-0024 proposes an amendment |
 | [0024 target architecture](adr/ADR-0024-target-architecture-tiers-flywheel-composer.md) | New Proposed: one contract, three deployment tiers, per-tenant dense admission through a telemetry flywheel, model-based composition, a cost model for 5 000 developers with a measured-vs-assumed table; amends 0009/0020/0021/0022/0023 |
+| [0026 native Go/ParadeDB](adr/ADR-0026-native-search-paradedb-compose.md) | Accepted Go/Postgres/Compose hosting only; default ranking must retain CLI BM25F parity; experimental Tantivy fails HSR admission |
+| [0027 GPU retrieval](adr/ADR-0027-gpu-retrieval-profile.md) | Proposed explicit TEI/pgvector profile; preserves default BM25F parity and separate quality admission |
 | [0025 harness-service context](adr/ADR-0025-harness-service-context-contract.md) | Accepted request contract 1.1: versioning, repository-relative context, explicit feature semantics and schema/runtime/HTTP conformance; narrows the request boundary of 0023/0024 without admitting their production architecture |
 
 Older DESIGN/KNOWLEDGE-DESIGN remain historical target descriptions and current CLI notes where marked. Their local-only hot path, delayed telemetry, load-based probation and old phase schedules must not be read as acceptance criteria for this proposed MVP. No runtime behavior changed in this documentation revision.
+
+### Native T1 deployment (accepted implementation update, 2026-09-05)
+
+The owner selected Go + ParadeDB for the resident SEARCH/USE backend, deployed by
+Docker Compose; see [ADR-0026](adr/ADR-0026-native-search-paradedb-compose.md) and
+[runbook](../services/search/README.md). The resident service is Go; default BM25F uses canonical CLI build statistics and
+integer scoring over Postgres postings. Tantivy remains an explicit experiment. API 1.1 and the unchanged T0 CLI remain the boundaries.
+This replaces the Python spike as the implementation target while preserving its
+reports. Default sparse routing must pass exact CLI parity, including the full retrieval
+stage; shared policy fixtures alone are insufficient. Dense remains a separate admitted/shadow evaluation.
+Kubernetes deployment, production IAM/network/HA and authenticated harness integration
+remain subsequent work. E6.4 now has a Go/Postgres ledger port with the same SQLite
+contract/report tests and replay evidence; [T1 operations](../deploy/t1/README.md)
+records the pending clean-VM acceptance. Local Compose success does not close these gates.
+
+**Completed reference:** [Go/ParadeDB report](reports/bakeoff/GO-PARADEDB-2026-09-05.md):
+800/800 SEARCH requests, HTTP p95 21/28 ms and fresh-client p95 117/138 ms at c1/c4.
+Retrieval quality **is not admitted**: test-B HSR rises from 39.67% to 50.33%, exceeding
+the +1 pp guardrail. The prior admitted sparse profile keeps its status. These numbers describe only
+the experimental Tantivy mode; the corrected default serves the reference BM25F. [GPU serving follow-up](reports/bakeoff/DENSE-SERVING-NEXT-2026-09-05.md)
+is followed by an opt-in [TEI GPU implementation](../services/search/GPU.md) and
+a [bounded DEV protocol](reports/bakeoff/GPU-HYBRID-PROTOCOL-v1.md). Both base and GPU
+deployments return sparse; hybrid runs in bounded shadow joined by search_id. This neither
+reopens spent test budgets nor admits a new default ranker.
+
+Default-router correction and measured parity/latency: [report](reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

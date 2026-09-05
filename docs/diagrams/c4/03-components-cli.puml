@@ -1,0 +1,41 @@
+@startuml c4-components-cli
+!include <C4/C4_Component>
+!pragma layout smetana
+AddElementTag("wip", $bgColor="#fbe3d4", $fontColor="#5a2a00", $borderColor="#ff6a28", $legendText="w budowie")
+title Poziom 3 — komponenty klienta: co dzieje się wewnątrz jednego pliku guidefold
+
+Container_Ext(harness, "Harness agenta", "hook stdin/stdout")
+ContainerDb_Ext(idx, "Artefakt indeksu", "pliki, mmap")
+Container_Ext(api, "Serwis SEARCH/USE", "HTTP/JSON")
+ContainerDb_Ext(spoolf, "Spool telemetrii", "JSONL")
+
+Container_Boundary(cli, "guidefold CLI — Python 3, stdlib + PyYAML, ~3 400 linii") {
+  Component(hook, "Adapter hooka", "SessionStart · UserPromptSubmit", "czyta cwd + prompt, wypisuje karty; osobny watchdog 3 s")
+  Component(cfg, "Konfiguracja", "guidefold.yaml", "root, węzły (dotted path), publisher, search.backend / url")
+  Component(pf, "policy_filter", "admissibility", "zakres × nie-deprecated × bez negative_trigger → zbiór dopuszczalnych; wiąże wszystko niżej (ADR-0022 §1)")
+  Component(be, "Backend wyszukiwania", "local | service", "T0 lokalnie; T1/T2 HTTP z jednym deadlinem i równoległym lokalnym fallbackiem (E2.6)")
+  Component(cand, "candidates", "BM25F ∪ dense (opc.)", "kandydaci z postings.bin; terms i offsety czytane leniwie (R4b)")
+  Component(score, "score", "RRF + zakres + graf", "ranking retrieval; wyłącznie liczby całkowite, remisy (-score, urn)")
+  Component(sel, "select / compose", "≤ 4 karty", "requires closure, abstynencja, cannot_fit; rodzina C mierzona na dev", $tags="wip")
+  Component(load, "Loader indeksu", "mmap + checksums", "postings.idx · cards.idx · graph.bin · manifest; cache po tożsamości (rewizja, snapshot, polityka)")
+  Component(tel, "Telemetria", "spool · flush · report", "search_requested/results · card_injected · skill_load_* · feedback; HMAC zamiast tekstu")
+  Component(cmds, "Komendy", "find · load · doctor · init · index · materialize · telemetry", "doctor mierzy lokalne p95 i rekomenduje tier")
+}
+
+Rel(harness, hook, "prompt, cwd")
+Rel(hook, cfg, "root, węzeł")
+Rel(hook, pf, "prompt + węzeł")
+Rel(pf, be, "zbiór dopuszczalnych")
+Rel(be, cand, "T0")
+Rel(be, api, "T1/T2: /v1/search")
+Rel(cand, load, "postings")
+Rel(load, idx, "mmap")
+Rel(cand, score, "kandydaci")
+Rel(score, sel, "ranking")
+Rel(sel, hook, "≤ 4 karty")
+Rel(hook, tel, "eventy")
+Rel(tel, spoolf, "append")
+Rel(cmds, load, "load: lokalnie")
+Rel(cmds, api, "load: /v1/use")
+SHOW_LEGEND()
+@enduml

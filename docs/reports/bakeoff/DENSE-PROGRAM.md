@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.4
+# Dense retrieval programme — pre-registered, v2.6
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -97,6 +97,8 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F6 offline dense sibling map** *(v2.2)* | use the encoder **offline** to compute, per skill, its confusable set (same-capability neighbours above a cosine threshold); ship it as a small typed graph in the artifact; at query time apply a deterministic integer rule when two confusables both reach the top 4 — demote the one the query matches less on discriminating terms. **No model, no vectors at query time.** | T300 | ≤ 4 (threshold, neighbours per skill, the tie-break rule) |
 | **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
 | **C composition** *(v2.4)* | composer stage behind `select()`'s `compose_mode` key (ADR-0022 §4 / ADR-0024 §4): (a) **deterministic** — score-plateau bundle detection (no `requires` edges needed), coverage-aware fill, `requires` closure, integer-only, `(-score, urn)` ties, in the CLI; (b) **model** — `tools/eval/composer_model.py` (never the CLI), gated by (a)'s detector, replay-cached | T300 (a) / offline eval only (b) | ≤ 6 total: C0 baseline + C-det-1..4 (τ × coverage grid) + C-model-1..2 |
+| **D query decomposition** *(v2.5)* | split a multi-intent query into ≤ 4 clauses **before** candidate generation (evaluated only in `tools/eval/dev_decompose.py`, never the CLI — `select()` itself is untouched): (a) **deterministic** — stdlib clause splitter (sentence boundaries, `;`, coordinating markers), a one-clause query is not decomposed; (b) **model** — local `claude -p --model haiku`, replay-cached by `sha256(query)`. Both: per-clause product `candidates()` + `score()` on the same `Index`, merged by RRF (k = 60) across clauses plus (configurable) the whole-query ranking, composed greedily (best-scored skill of each clause first, then the merged order, to k = 4) with `requires` closure and admissibility exactly as `select()` | T300 | ≤ 6 total: D0 baseline (= C0, whole query, no decomposition) + D-det-1..3 (per-clause depth 10/20 × whether the whole-query ranking joins the RRF) + D-model-1..2 (same merge/compose, model split, depth 10/20, cache shared with D-model-1) |
+| **E synthetic in-distribution training** *(v2.6)* | generate synthetic training queries over the *tenant's own* skill pool at index time — 5 per-skill natural queries + composite 2–3-skill queries (≈30 % of pairs) + 3 same-category hard negatives per positive, all from skill text alone, via a local open LLM (`Qwen/Qwen2.5-7B-Instruct`, no API, no labels) — and fine-tune a sentence embedder on them (`MultipleNegativesRanking`, in-batch negatives), then use it exactly as R1's dense candidate source (`w_dense=1`, unmodified `select()`, no fusion tuning) | T500 (0.6B) / T300–T500 (small CPU-servable base) | ≤ 6: E0 zero-shot reference + E1 (per-skill queries only) + E2 (E1 + composite) + E3 (E2 + hard negatives) + E4 (E3 recipe on a small CPU-servable base) + E5 (one hyper-parameter variant, conditional on E3 clearing the dev gate) |
 
 **Why F6 exists (v2.2).** The full-encoder reference on test-B (PR #35) failed the completeness
 gate (`all_required@4` +0.67 pp, CI straddles zero) but **reduced harmful-sibling exposure by
@@ -134,6 +136,64 @@ model configuration by the pre-registered rule in
 corpus, and — dense caches permitting — re-runs the R1 dense reference (§6) with the frozen
 composer, since a composer that cannot see whether a bundle is needed cannot show what dense
 candidates add to one either.
+
+**Why D exists (v2.5).** On SKILLRET-train dev (1 000 queries, k = 1/2/3 = 328/333/339; E7.3 dev,
+measured 2026-09-05, in `gf-c`) the shipped path C0 has `all_required@4` 0.842 / 0.069 / **0.000**
+and — the binding number — **recall@10 = 0.881 / 0.512 / 0.361** by k. For three-skill queries,
+**64 %** of the required skills are not in the top-10 at all. Composition cannot fix that (C, above,
+only re-orders or fills from what candidate generation already retrieved); candidate generation
+must. Multi-intent queries ("onboard three hires in Rippling and then run the full lint/type/test
+suite on their scripts") split their terms across skills, and BM25 ranks by total match, so the
+secondary skills sink. The literature's answer is decomposition: split the request into atomic
+sub-requests, retrieve per sub-request, merge, and compose one skill per sub-request
+(completeness-oriented tool retrieval, e.g. COLT, Qu et al. 2024; multi-hop/query-decomposition
+retrieval; SkillRouter's FC@K framing). D is evaluated the same way every family is — dev budget,
+freeze, both tests once, §5's gates unchanged — with one family-specific expectation stated up
+front because it is the family's known failure mode: **D is judged on `all_required@4` at k ≥ 2
+and, separately, on not hurting k = 1** (`hit@1` not worse than D0 by more than 1.0 pp overall and
+at k = 1) — decomposing a single-intent query wrongly (splitting a query that was never a bundle)
+is exactly the failure the deterministic splitter's one-clause guard exists to prevent, and the
+model splitter is asked, explicitly, to return a one-task query unchanged rather than force a split.
+D never touches `select()` or the shipped CLI; every arm is evaluated only in
+`tools/eval/dev_decompose.py`, wrapping the product `Index`/`Router` (`candidates()`/`score()`),
+the same discipline `tools/eval/dev_sparse.py` and `tools/eval/dev_expand.py` already use.
+
+**Why E exists (v2.6).** The same `SKILLRET-Embedding-0.6B` encoder gave `all_required@4`
+**+17.96 pp** [16.80, 19.08] on SKILLRET-test — skills from the distribution it was tuned on — and
+**+0.67 pp** [−1.50, +2.83] on SkillRetBench, a disjoint corpus (§7, "full-encoder R1 reference on
+test-B"; §5's overlap caveat above already names this as "the flattered corpus"). SkillRet's own
+queries carry a `generator_model` field (`tools/eval/corpora.py::load_skillret()` docstring) —
+they are synthetic, generated by an LLM over the dataset's own skill pool, which is exactly why R1
+is in-distribution on SKILLRET-test and not on SkillRetBench. Family E reproduces that recipe over
+the *tenant's own* skill pool at index time — no labels, no user traffic — so that a deployment is
+in-distribution from day one, on whatever skills the monorepo actually has, not on SkillRet's. It
+also targets the recall gap Family D names above: **recall@10 = 0.361 at k = 3 on dev** (same
+number, same run) means 64 % of required skills for a three-skill query are outside the top-10
+before ranking or composition ever runs; E's **composite** queries (one natural task whose answer
+is a 2–3-skill set, ≈30 % of training pairs) train the encoder to place co-occurring skills near
+each other in embedding space, which candidate generation can then surface. E is evaluated the same
+way every family is — dev budget, freeze, both tests once, §5's gates unchanged, plus one rule
+specific to this family's premise: a frozen E recipe must clear `all_required@4` ≥ F0 + 2.0 pp
+**and** ≥ E0 (the zero-shot encoder, run once on dev as this family's baseline) + 2.0 pp, both CI
+excluding 0, with `hit@1` not worse than E0 by > 1.0 pp — beating the zero-shot encoder, not only
+sparse, because the entire premise is that generic zero-shot dense already regresses outside its
+training distribution (the +0.67 pp number above). Full detail (data, configurations, measurement):
+`docs/reports/bakeoff/DEV-E-synthetic-training-2026-09-05.md`. Two rules specific to this family,
+because the whole point is to show the gain is not label leakage in a different shape:
+
+1. **No labels, ever.** The generator and the trainer read skill text only (`name`, `description`,
+   `body`/`skill_md`, taxonomy/`requires`/`similar` where present) — never a dev or test query
+   string, never a qrel. `tools/train/synth_queries.py` ships a leakage check that asserts, for
+   every generated training query, that neither the raw string nor a normalised form (lowercased,
+   whitespace-collapsed, punctuation-stripped) of it appears among the dev or test query sets; the
+   check is exercised for real (not mocked) in its own test on a tiny fixture, and is run once as
+   part of every generation before that batch's output is used for training.
+2. **The test-once run generates from each test corpus's own skill pool.** This is not test-label
+   use: the generator never reads SKILLRET-test's or SkillRetBench's *queries* or *qrels*, only
+   their *skills* — exactly the unsupervised document-adaptation step a real deployment performs
+   against its own tenant catalogue, stated plainly as such and not as a second look at the answer
+   key. Evaluation queries for the test-once run remain each corpus's own held-out query set,
+   untouched by generation.
 
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
@@ -454,3 +514,69 @@ because the gate requires all four criteria and one was unmet — but "failed th
 the gate's applicability here, not of the model's quality. Once family C's frozen composer exists,
 §Step 2 of the E7.3 composer work re-runs this exact R1 configuration to check whether the
 confound was the whole story.
+
+### 2026-09-05 — requested Go/ParadeDB service reference, retrieval NOT ADOPTED
+
+The owner explicitly requested a new database-backed native service and measurements.
+[Its report](GO-PARADEDB-2026-09-05.md) records one configuration, zero quality tuning,
+and one run on DEV/test-A/test-B/regression, separately from the spent F1–F6/C families.
+Loopback latency passes: fresh-client p95 117/138 ms at c1/c4. Test-B HSR@4 worsens by
+10.67 pp [5.33, 15.33], exceeding the +1 pp guardrail, so the new retrieval profile is
+not admitted. All test outcomes are retained, and this entry grants no extra family
+or test reruns. The [GPU serving proposal](DENSE-SERVING-NEXT-2026-09-05.md) concerns
+inference engineering and future DEV work; it does not change frozen quality results.
+
+### 2026-09-05 — GPU service integration audit (two fixed DEV treatments)
+
+Cross-session accounting: the Codex service session ran **two prespecified neural
+DEV treatments**, pure SKILLRET dense and equal RRF k=60 BM25F+dense, against the
+unchanged F0. Registered before evaluation in `GPU-HYBRID-PROTOCOL-v1.md`, commit
+`17220fd4498675c6d20bb9a31928dcb45e96a94e`. The batch=1 control was selected on numerical
+repeatability/latency before quality labels were aggregated. No fusion weight was
+fitted. These observations belong in the common ledger; they do not silently grant
+a separate tuning budget to the service session. Any further tuning must use the
+centrally allocated remaining family budget, including other sessions' trials.
+
+The 1000 IDs are **q-train-*** from SKILLRET train. The encoder was trained on that
+partition; exact query/pair overlap cannot be ruled out without training logs.
+Hit@1 88.7% / all_required@4 47.0% (dense) reproduce in-distribution behavior and are
+not new independent quality evidence. Equal hybrid gives 83.9% / 37.5%, counting its
+one HTTP timeout as a miss. F0 is 71.3% / 30.0%. No test-A/test-B query was rerun.
+HSR remains null; historical test-B +0.67 pp with CI crossing zero remains unchanged.
+This does not reopen a spent family or admit a neural default.
+
+Engineering progress is separate: pinned TEI pure dense passed loopback server c4
+p95 130.7 ms and burst-fresh whole-client p95 288.1 ms; hybrid batch=1 passed 124.9 ms
+server c4 and 332.3 ms burst-fresh whole-client. Both had 800/800 successful latency
+requests and 0/600 cross-arm ranked/selected hash differences. The older serialized
+86 ms encoder measurements retain their original scope. Budgets remain 300/400 ms.
+
+[Full audit and all arms](GPU-SERVICE-2026-09-05.md). No more neural quality variants
+are scheduled by this service change; the next integration is authenticated Postgres
+event ingestion, then background shadow joined by search_id. Default responses stay sparse.
+
+### 2026-09-05 — family D (query decomposition) dev run: no arm frozen, gate failed on the hit@1 guard
+
+Six arms (D0 = C0, D-det-1/2/3, D-model-1/2 — pre-registered above, PR #51) on the same
+SKILLRET-train dev split as F0/F3/C0 (10,123 skills, 1,000 queries). Splitting a multi-intent
+query into ≤ 4 clauses (deterministic marker rules, or `claude -p --model haiku`, replay-cached),
+retrieving per clause, and RRF-merging into a synthetic scored list before the real `select()`
+call **does** recover completeness at k = 2/3 (`all_required@4` +7.5 to +10.5 pp) and clears the
+primary bar overall (+1.70 to +2.80 pp, four of five arms with CI excluding 0 and ≥ +2.0 pp) — but
+does so by demoting the single best match on already single-intent queries: `hit@1` falls
+4.00–9.60 pp overall and 6.71–11.28 pp at k = 1, 4×–11× past the pre-registered ±1.0 pp guard, on
+every one of the five arms. **No D-det arm and no D-model arm is frozen** — the guard fails
+categorically, not marginally, so no amount of within-budget tuning was attempted to rescue it, per
+the pre-registered "a gate that fails is a valid result" rule. Cost would have been independently
+disqualifying: ≈610–770 ms extra p95 latency at 6,006 skills for the 2.9–3.7 mean extra
+`candidates()` calls a decomposed query pays, before counting the model splitter's own 6–7 s/call
+when uncached. A genuine bug (bare ASCII periods splitting inside code identifiers/filenames, e.g.
+`Node.js`, `vite.config.ts`) was found and fixed pre-measurement by requiring trailing whitespace
+after ASCII sentence-enders; the resulting ~95–99% decomposition rate on this corpus is a measured
+finding (paragraph-style enumerations triggering the brief's own marker list), not a residual
+splitter bug. This dev-only result is independent evidence for the direction PR #55 (also merged
+2026-09-05) already took at the agent/harness layer — repeated `find()` calls composed by the
+calling agent, rather than decomposition inside `candidates()`/`select()` — since decomposing
+in-ranker recovers exactly the same completeness gap but cannot do so without the k = 1 damage this
+gate exists to catch. Full tables (per-k quality, candidate ceiling @4/10/15/50, paired CIs vs D0,
+cost/latency, freeze-gate detail): `docs/reports/bakeoff/DEV-D-decomposition-2026-09-05.md`.

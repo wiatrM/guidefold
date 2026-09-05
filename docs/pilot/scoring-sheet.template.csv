@@ -1,0 +1,9 @@
+# protocol_sha256=PLACEHOLDER-UNFROZEN
+# This first line is checked by tools/pilot/analyze.py before any row below it is read. It must
+# be exactly `# protocol_sha256=<64 lowercase hex chars>`, the sha of the FROZEN
+# docs/pilot/E6.7-PROTOCOL.md (see its §11 Freeze procedure). While this line still reads
+# `PLACEHOLDER-UNFROZEN`, analyze.py refuses to run — there is no such thing as pilot data
+# against an unfrozen protocol (docs/pilot/E6.7-PROTOCOL.md §6, forbidden moves).
+# One row per (task, condition) run. A task appears at most once per condition — re-running a
+# condition is a forbidden move (§6); analyze.py rejects duplicate (task, condition) rows.
+task,condition,order,developer_pseudonym,outcome,time_seconds,tokens,loads,feedback_verdict,evaluator,notes

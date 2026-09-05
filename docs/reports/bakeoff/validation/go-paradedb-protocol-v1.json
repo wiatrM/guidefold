@@ -1,0 +1,31 @@
+{
+  "variant": "paradedb_bm25_v1",
+  "registered_at": "2026-09-05",
+  "reason": "Explicit user request to implement ParadeDB in Go and measure performance plus skill matching quality.",
+  "scope": "New service-backend reference; independent from spent dense-programme/flat-BM25F variants.",
+  "configurations_tested": 1,
+  "quality_tuning_budget": 0,
+  "test_runs_per_dataset": 1,
+  "retrieval": "ParadeDB 0.25.6 defaults; match OR; name+description+digest+triggers+body; Unicode tokenizer; NUL replaced by space in indexed text only; top 50; deterministic score desc/URN asc; independent index/IDF per tenant/repo/snapshot; metadata fields pdb.literal; URN COLLATE C",
+  "policy": "Go port of shared policy/filter/RRF/scope/closure/select with 144 conformance cases. w_dense=0. No GPU in this reference.",
+  "source_sha256": {
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/main.go": "f3955c236951c614a8788631f65053ab895b99521c261bafa43bd2a52c4aebee",
+    "services/search/routing.go": "f19d9b1aba83d011f83727e6a7997634cec15847a4aeb34344e4cbb3a94798be",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/store.go": "f258df99d180fff50f7dbee004ad0d526349fde0e77384678943d5182b1cbbb1"
+  },
+  "datasets": {
+    "dev": "1000 frozen SKILLRET train queries and train skill pool",
+    "test_a": "4392 SKILLRET test queries, 6006 skills",
+    "test_b": "1250 SkillRetBench queries, 501 skills",
+    "regression": "220 Meridian queries; regression only"
+  },
+  "scope_setting": "_root on labelled public corpora; authored case.node on Meridian; no gold-derived scope",
+  "baseline": "Current unchanged local CLI F0 with same input cards, nodes, weights, queries and scopes; no dense",
+  "metrics": "Existing tools/eval/metrics.py and skillret.evaluate_full. Retrieval order for hit@1/nDCG/recall; selected injection for all_required@4/HSR. Report answered denominators, paired bootstrap 1000 resamples, and separately labelled all-answerable diagnostic.",
+  "test_b_budget": "Keep budget_constrained in full report, exclude only that predeclared impossible-25-skills stratum from completeness comparison.",
+  "latency": "Same 200 frozen DEV texts on 6006 document pool; HTTP c1/c4 and fresh c1/burst fresh c4; all attempts/errors; whole-client p95 <=400, server p95 <=300; loopback only. Fresh clients read their token file inside the timed process.",
+  "acceptance": "Report every outcome. No production sign-off or dense-quality conclusion. No retrieval/policy tuning after test labels are evaluated.",
+  "production_ready": false
+}

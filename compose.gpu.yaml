@@ -1,0 +1,69 @@
+# Opt-in experimental GPU deployment. The base compose.yaml stays sparse/CLI-parity.
+name: guidefold-search-gpu
+services:
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference@sha256:e47e625ced2385d3dbfdee79ba0380204578e0b27ef1a926783f9b3486aaf109
+    gpus: all
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:size=256m,noexec,nosuid"]
+    networks: [backend]
+    volumes:
+      - ${GUIDEFOLD_MODEL_DIR:?run gpu.py prepare}:/model:ro
+    ports: ["127.0.0.1:${GUIDEFOLD_TEI_PORT:-18766}:80"]
+    command:
+      - --model-id
+      - /model
+      - --served-model-name
+      - ${GUIDEFOLD_ENCODER_ID:?run gpu.py prepare}
+      - --dtype
+      - float16
+      - --pooling
+      - last-token
+      - --tokenization-workers
+      - "2"
+      - --max-concurrent-requests
+      - "32"
+      - --max-batch-tokens
+      - "8192"
+      - --max-batch-requests
+      - ${GUIDEFOLD_TEI_BATCH_REQUESTS:-1}
+      - --max-client-batch-size
+      - "16"
+      - --huggingface-hub-cache
+      - /tmp/hf
+      - --hostname
+      - 0.0.0.0
+      - --json-output
+      - --disable-spans
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1/health]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 15s
+  api:
+    environment:
+      GUIDEFOLD_RETRIEVAL_MODE: ${GUIDEFOLD_RETRIEVAL_MODE:-sparse}
+      GUIDEFOLD_SHADOW: ${GUIDEFOLD_SHADOW:-true}
+      GUIDEFOLD_EXPERIMENTAL_OUTPUT: ${GUIDEFOLD_EXPERIMENTAL_OUTPUT:-false}
+      GUIDEFOLD_TEI_URL: http://tei:80
+      GUIDEFOLD_TEI_BATCH_REQUESTS: ${GUIDEFOLD_TEI_BATCH_REQUESTS:-1}
+      GUIDEFOLD_ENCODER_ID: ${GUIDEFOLD_ENCODER_ID:?run gpu.py prepare}
+    depends_on:
+      tei: {condition: service_healthy}
+  publish:
+    environment:
+      GUIDEFOLD_PUBLISH_ACTIVATE: "false"
+  publish-embeddings:
+    extends:
+      file: compose.yaml
+      service: publish
+    command: [publish-embeddings, /input/embeddings.json]
+    environment:
+      GUIDEFOLD_PUBLISH_ACTIVATE: "true"
+      GUIDEFOLD_ENCODER_ID: ${GUIDEFOLD_ENCODER_ID:?run gpu.py prepare}

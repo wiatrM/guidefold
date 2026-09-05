@@ -1,0 +1,17 @@
+[Unit]
+Description=Guidefold T1 sparse SEARCH, USE and event ledger
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/guidefold
+ExecStart=/usr/bin/docker compose -p guidefold-search --env-file /etc/guidefold/t1.env up -d --wait api
+ExecStop=/usr/bin/docker compose -p guidefold-search --env-file /etc/guidefold/t1.env stop
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

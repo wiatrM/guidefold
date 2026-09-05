@@ -1,0 +1,243 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "search_response_schema_and_generated_request_id",
+      "status": 200,
+      "elapsed_ms": 5.39
+    },
+    {
+      "name": "correlation",
+      "status": 200,
+      "elapsed_ms": 3.181
+    },
+    {
+      "name": "search_to_use",
+      "status": 200,
+      "elapsed_ms": 6.627
+    },
+    {
+      "name": "legacy_search",
+      "status": 200,
+      "elapsed_ms": 2.778
+    },
+    {
+      "name": "legacy_use_nullable_search_id",
+      "status": 200,
+      "elapsed_ms": 2.347
+    },
+    {
+      "name": "unauthorized",
+      "status": 401,
+      "elapsed_ms": 1.23
+    },
+    {
+      "name": "duplicate_key",
+      "status": 400,
+      "elapsed_ms": 1.283
+    },
+    {
+      "name": "invalid_unicode",
+      "status": 400,
+      "elapsed_ms": 1.475
+    },
+    {
+      "name": "unknown_field",
+      "status": 400,
+      "elapsed_ms": 1.64
+    },
+    {
+      "name": "body_limit",
+      "status": 413,
+      "elapsed_ms": 1.437
+    },
+    {
+      "name": "float_integer",
+      "status": 400,
+      "elapsed_ms": 1.602
+    },
+    {
+      "name": "wrong_repo",
+      "status": 409,
+      "elapsed_ms": 2.385
+    },
+    {
+      "name": "stale_revision",
+      "status": 409,
+      "elapsed_ms": 1.976
+    },
+    {
+      "name": "path_traversal",
+      "status": 400,
+      "elapsed_ms": 1.434
+    },
+    {
+      "name": "unknown_scope",
+      "status": 422,
+      "elapsed_ms": 2.13
+    },
+    {
+      "name": "stale_skill",
+      "status": 409,
+      "elapsed_ms": 2.356
+    },
+    {
+      "name": "use_budget_atomic",
+      "status": 413,
+      "elapsed_ms": 3.113
+    },
+    {
+      "name": "search_budget_atomic",
+      "status": 200,
+      "elapsed_ms": 3.351
+    },
+    {
+      "name": "loaded_hydrated_no_backfill",
+      "status": 200,
+      "elapsed_ms": 2.902
+    },
+    {
+      "name": "loaded_exposed_still_delivered",
+      "status": 200,
+      "elapsed_ms": 3.203
+    },
+    {
+      "name": "monorepo_scope",
+      "status": 200,
+      "elapsed_ms": 3.341
+    },
+    {
+      "name": "target_paths_override_cwd",
+      "status": 200,
+      "elapsed_ms": 3.667
+    },
+    {
+      "name": "outside_card_lookup",
+      "status": 200,
+      "elapsed_ms": 3.143
+    },
+    {
+      "name": "use_scope_policy",
+      "status": 403,
+      "elapsed_ms": 2.032
+    },
+    {
+      "name": "literal_query_not_sql",
+      "status": 200,
+      "elapsed_ms": 2.773
+    },
+    {
+      "name": "unused_signals_reported",
+      "status": 200,
+      "elapsed_ms": 2.843
+    },
+    {
+      "name": "concurrent_determinism",
+      "passed_requests": 40
+    },
+    {
+      "name": "database_index_readonly_role_idempotent_publish",
+      "passed": true
+    },
+    {
+      "name": "other_repository_does_not_change_bm25",
+      "status": 200,
+      "elapsed_ms": 4.617
+    },
+    {
+      "name": "bad_publication_keeps_head",
+      "status": 200,
+      "elapsed_ms": 3.948
+    },
+    {
+      "name": "snapshot_head_rejects_old_workspace",
+      "status": 409,
+      "elapsed_ms": 7.259
+    },
+    {
+      "name": "exact_nul_body_after_atomic_publication",
+      "status": 200,
+      "elapsed_ms": 3.442
+    },
+    {
+      "name": "changed_skill_rejects_old_revision",
+      "status": 409,
+      "elapsed_ms": 7.084
+    },
+    {
+      "name": "reactivate_previous_snapshot",
+      "status": 200,
+      "elapsed_ms": 9.368
+    },
+    {
+      "name": "database_down_no_inmemory_search_fallback",
+      "status": 504,
+      "elapsed_ms": 1002.359
+    },
+    {
+      "name": "database_down_no_body_cache_fallback",
+      "status": 504,
+      "elapsed_ms": 1002.285
+    },
+    {
+      "name": "database_recovery_same_body",
+      "status": 200,
+      "elapsed_ms": 8.183
+    },
+    {
+      "name": "api_restart_persisted_catalog",
+      "status": 200,
+      "elapsed_ms": 2.729
+    },
+    {
+      "name": "telemetry_allowlist_redaction",
+      "passed": true
+    }
+  ],
+  "health": {
+    "api_schema_versions": [
+      "legacy-unversioned",
+      "1.1"
+    ],
+    "backend": "router_bm25f_v1",
+    "body_cache": false,
+    "database_search_calls": 52,
+    "database_use_calls": 3,
+    "degradation_reason": null,
+    "live_encode_calls": 0,
+    "model_load_calls": 0,
+    "n_skills": 26,
+    "pg_search_version": "0.25.6",
+    "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+    "production_iam": false,
+    "python_runtime": false,
+    "ready": true,
+    "repository": {
+      "repo_id": "meridian",
+      "revision": "ce4485258293aeebe178e63a8a2959018de7f285"
+    },
+    "request_id": "7866568f-cc9a-4294-a210-a51e39143afa",
+    "router_index_revision": "93510e04f7bf0d83e406cc011d7dde4f2f3b8d3ea898786a60c21e68c133c7d8",
+    "runtime": "go",
+    "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42"
+  },
+  "bm25_explain": "Limit  (cost=10.00..10.08 rows=6 width=68)\n  ->  Custom Scan (ParadeDB Base Scan) on search_a438c0e6c14a973da45c5ef94f10760929471b6f6c3e8716  (cost=10.00..10.08 rows=6 width=68)\n        Table: search_a438c0e6c14a973da45c5ef94f10760929471b6f6c3e8716\n        Index: search_a438c0e6c14a973da45c5e_id_search_text_tenant_repo_sn_idx\n        Segment Count: 1\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc, urn asc\n           TopK Limit: 50\n        Tantivy Query: {\"with_index\":{\"query\":{\"match\":{\"field\":\"search_text\",\"value\":\"pytest\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}}",
+  "recovery_exercised": true,
+  "production_ready": false,
+  "source_sha256": {
+    "services/search/bm25f.go": "2f2125afd693d666e3cdcc92ca960ba0d300a9d90b1646b851e466f0da5f5dbd",
+    "services/search/bm25f_test.go": "f0985c86f896411fa82cf675c2b3813c3538006328ada3f6bdf6a20164b0b17a",
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/dense.go": "6aa2bf8b860bd4ecde96fb1a793d783acc0fc595b0e354a33c44cb1cc32aee18",
+    "services/search/dense_test.go": "f5afc5e62851271d619a1e676b48a061cf85067698f17e14365ff49718ec8976",
+    "services/search/main.go": "766d91140e38d9158ff9bb970970b22efbc99ff62ceef535f4acf0066658db7d",
+    "services/search/routing.go": "2ec53ab2837d968268e993f82d51a6391634c17dfa16351459a5b0ebceee5c66",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/shadow.go": "4b7b101769088d6b8ba8ad34948aa01c3aa512fab52a9d14aaf4af38cfeb204a",
+    "services/search/shadow_test.go": "3f5b7dbe98e35851ad1c99ca6a841cfc986e6b00871b3b64a9eff558f2624b78",
+    "services/search/store.go": "8e872922f536b066c3b81735ec465eeb2894a17d5453df03196ab589f28d95b5",
+    "services/search/telemetry.go": "2b1f2c17574f5ebb2804042b432386d9130d557033ddea5e8a95d60f5c8af5c5",
+    "services/search/telemetry_test.go": "21d1a72abb0ae894329433250592f93385ea4a1c9a84835f84077e1968b76821"
+  },
+  "cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e"
+}

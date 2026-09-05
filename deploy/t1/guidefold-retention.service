@@ -1,0 +1,10 @@
+[Unit]
+Description=Expire Guidefold raw telemetry and shadow after 90 days
+Requires=docker.service
+After=docker.service guidefold-t1.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/guidefold
+ExecStart=/usr/bin/docker compose -p guidefold-search --env-file /etc/guidefold/t1.env --profile tools run --rm --no-deps publish telemetry-retain 90
+TimeoutStartSec=180
