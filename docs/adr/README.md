@@ -33,6 +33,7 @@ index was built from; the two must not drift.
 | [0022](ADR-0022-admissibility-relevance-and-bundle-completeness.md) | Separate admissibility, relevance, and bundle completeness | Proposed | 2026-09-05 | amends ADR-0020, ADR-0021; ADR-0024 (Proposed) proposes an amendment |
 | [0023](ADR-0023-search-use-service-and-measured-utility.md) | Central SEARCH/USE service, bounded hooks, and measured skill utility | Proposed | 2026-09-05 | proposes amendments to ADR-0009/0013/0015/0016/0018/0020/0021; ADR-0024 (Proposed) proposes an amendment |
 | [0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) | Target architecture — one contract, three deployment tiers, a telemetry flywheel for dense, and model-based composition | Proposed | 2026-09-05 | proposes amendments to ADR-0009/0020/0021/0022/0023 |
+| [0025](ADR-0025-harness-service-context-contract.md) | One versioned harness-service context contract | Accepted | 2026-09-05 | amends the request boundary of ADR-0023/0024 |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

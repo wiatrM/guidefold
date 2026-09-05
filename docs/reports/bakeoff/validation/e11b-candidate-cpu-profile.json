@@ -1,0 +1,1784 @@
+{
+  "cprofile": {
+    "cumulative_time_top30": [
+      {
+        "calls": 40,
+        "cumulative_ms": 3463.329823,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/candidate_profile.py",
+        "line": 63,
+        "name": "route",
+        "self_ms": 37.63451800000001
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 2887.84718,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1493,
+        "name": "candidates",
+        "self_ms": 57.879310000000004
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 1403.765438,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/sparse_cache.py",
+        "line": 90,
+        "name": "score",
+        "self_ms": 901.1303690000001
+      },
+      {
+        "calls": 80,
+        "cumulative_ms": 721.1943200000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1404,
+        "name": "policy_filter",
+        "self_ms": 128.670176
+      },
+      {
+        "calls": 5278402,
+        "cumulative_ms": 715.369884,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'get' of 'dict' objects>",
+        "self_ms": 715.369884
+      },
+      {
+        "calls": 480560,
+        "cumulative_ms": 517.8759040000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 614,
+        "name": "card_header_items",
+        "self_ms": 310.147957
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 512.860557,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/native_rank.py",
+        "line": 129,
+        "name": "rank",
+        "self_ms": 304.927382
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 431.327057,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/server.py",
+        "line": 92,
+        "name": "dense_scores",
+        "self_ms": 386.13450000000006
+      },
+      {
+        "calls": 200,
+        "cumulative_ms": 226.72958100000002,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.sorted>",
+        "self_ms": 179.775927
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 168.05276200000003,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1613,
+        "name": "score",
+        "self_ms": 7.141065
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 153.50533800000002,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1567,
+        "name": "_decayed_closure",
+        "self_ms": 82.343885
+      },
+      {
+        "calls": 480480,
+        "cumulative_ms": 71.97945600000001,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'append' of 'array.array' objects>",
+        "self_ms": 71.97945600000001
+      },
+      {
+        "calls": 488776,
+        "cumulative_ms": 62.189205,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'append' of 'list' objects>",
+        "self_ms": 62.189205
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 57.959511000000006,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.all>",
+        "self_ms": 15.35194
+      },
+      {
+        "calls": 240165,
+        "cumulative_ms": 46.95365400000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1500,
+        "name": "<lambda>",
+        "self_ms": 46.95365400000001
+      },
+      {
+        "calls": 240280,
+        "cumulative_ms": 42.60757100000001,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/native_rank.py",
+        "line": 137,
+        "name": "<genexpr>",
+        "self_ms": 30.219231000000004
+      },
+      {
+        "calls": 240240,
+        "cumulative_ms": 38.622407,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.max>",
+        "self_ms": 38.622407
+      },
+      {
+        "calls": 480480,
+        "cumulative_ms": 33.991836000000006,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.isinstance>",
+        "self_ms": 33.991836000000006
+      },
+      {
+        "calls": 244548,
+        "cumulative_ms": 21.537785,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.len>",
+        "self_ms": 21.537785
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 19.387604000000003,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 475,
+        "name": "tokenize",
+        "self_ms": 0.319499
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 16.067918,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 471,
+        "name": "_fold_accents",
+        "self_ms": 0.503298
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 15.34252,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'join' of 'str' objects>",
+        "self_ms": 4.71538
+      },
+      {
+        "calls": 55639,
+        "cumulative_ms": 10.62714,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 473,
+        "name": "<genexpr>",
+        "self_ms": 7.150359
+      },
+      {
+        "calls": 3988,
+        "cumulative_ms": 4.302479000000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1515,
+        "name": "_hops",
+        "self_ms": 1.6698930000000003
+      },
+      {
+        "calls": 55485,
+        "cumulative_ms": 3.4767810000000003,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method unicodedata.combining>",
+        "self_ms": 3.4767810000000003
+      },
+      {
+        "calls": 80,
+        "cumulative_ms": 2.2218839999999997,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'sort' of 'list' objects>",
+        "self_ms": 1.1374950000000001
+      },
+      {
+        "calls": 4068,
+        "cumulative_ms": 2.154386,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 85,
+        "name": "ancestors",
+        "self_ms": 1.8143880000000001
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 1.9398890000000002,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'findall' of 're.Pattern' objects>",
+        "self_ms": 1.9398890000000002
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 1.88809,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1668,
+        "name": "select",
+        "self_ms": 1.057693
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 1.3160960000000002,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.any>",
+        "self_ms": 0.20980000000000001
+      }
+    ],
+    "note": "Profiler adds overhead; use uninstrumented latency above for timing",
+    "self_time_top30": [
+      {
+        "calls": 40,
+        "cumulative_ms": 1403.765438,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/sparse_cache.py",
+        "line": 90,
+        "name": "score",
+        "self_ms": 901.1303690000001
+      },
+      {
+        "calls": 5278402,
+        "cumulative_ms": 715.369884,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'get' of 'dict' objects>",
+        "self_ms": 715.369884
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 431.327057,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/server.py",
+        "line": 92,
+        "name": "dense_scores",
+        "self_ms": 386.13450000000006
+      },
+      {
+        "calls": 480560,
+        "cumulative_ms": 517.8759040000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 614,
+        "name": "card_header_items",
+        "self_ms": 310.147957
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 512.860557,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/native_rank.py",
+        "line": 129,
+        "name": "rank",
+        "self_ms": 304.927382
+      },
+      {
+        "calls": 200,
+        "cumulative_ms": 226.72958100000002,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.sorted>",
+        "self_ms": 179.775927
+      },
+      {
+        "calls": 80,
+        "cumulative_ms": 721.1943200000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1404,
+        "name": "policy_filter",
+        "self_ms": 128.670176
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 153.50533800000002,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1567,
+        "name": "_decayed_closure",
+        "self_ms": 82.343885
+      },
+      {
+        "calls": 480480,
+        "cumulative_ms": 71.97945600000001,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'append' of 'array.array' objects>",
+        "self_ms": 71.97945600000001
+      },
+      {
+        "calls": 488776,
+        "cumulative_ms": 62.189205,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'append' of 'list' objects>",
+        "self_ms": 62.189205
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 2887.84718,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1493,
+        "name": "candidates",
+        "self_ms": 57.879310000000004
+      },
+      {
+        "calls": 240165,
+        "cumulative_ms": 46.95365400000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1500,
+        "name": "<lambda>",
+        "self_ms": 46.95365400000001
+      },
+      {
+        "calls": 240240,
+        "cumulative_ms": 38.622407,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.max>",
+        "self_ms": 38.622407
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 3463.329823,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/candidate_profile.py",
+        "line": 63,
+        "name": "route",
+        "self_ms": 37.63451800000001
+      },
+      {
+        "calls": 480480,
+        "cumulative_ms": 33.991836000000006,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.isinstance>",
+        "self_ms": 33.991836000000006
+      },
+      {
+        "calls": 240280,
+        "cumulative_ms": 42.60757100000001,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/native_rank.py",
+        "line": 137,
+        "name": "<genexpr>",
+        "self_ms": 30.219231000000004
+      },
+      {
+        "calls": 244548,
+        "cumulative_ms": 21.537785,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.len>",
+        "self_ms": 21.537785
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 57.959511000000006,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method builtins.all>",
+        "self_ms": 15.35194
+      },
+      {
+        "calls": 55639,
+        "cumulative_ms": 10.62714,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 473,
+        "name": "<genexpr>",
+        "self_ms": 7.150359
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 168.05276200000003,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1613,
+        "name": "score",
+        "self_ms": 7.141065
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 15.34252,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'join' of 'str' objects>",
+        "self_ms": 4.71538
+      },
+      {
+        "calls": 55485,
+        "cumulative_ms": 3.4767810000000003,
+        "file": "~",
+        "line": 0,
+        "name": "<built-in method unicodedata.combining>",
+        "self_ms": 3.4767810000000003
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 1.9398890000000002,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'findall' of 're.Pattern' objects>",
+        "self_ms": 1.9398890000000002
+      },
+      {
+        "calls": 4068,
+        "cumulative_ms": 2.154386,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 85,
+        "name": "ancestors",
+        "self_ms": 1.8143880000000001
+      },
+      {
+        "calls": 3988,
+        "cumulative_ms": 4.302479000000001,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1515,
+        "name": "_hops",
+        "self_ms": 1.6698930000000003
+      },
+      {
+        "calls": 80,
+        "cumulative_ms": 2.2218839999999997,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'sort' of 'list' objects>",
+        "self_ms": 1.1374950000000001
+      },
+      {
+        "calls": 40,
+        "cumulative_ms": 1.88809,
+        "file": "/home/mike/projects/guidefold/.guidefold/serve-spike/frozen-cli.py",
+        "line": 1668,
+        "name": "select",
+        "self_ms": 1.057693
+      },
+      {
+        "calls": 154,
+        "cumulative_ms": 0.9866980000000001,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'translate' of 'str' objects>",
+        "self_ms": 0.9866980000000001
+      },
+      {
+        "calls": 2458,
+        "cumulative_ms": 1.1062960000000002,
+        "file": "/home/mike/projects/guidefold/tools/serve_spike/sparse_cache.py",
+        "line": 103,
+        "name": "<genexpr>",
+        "self_ms": 0.9671960000000001
+      },
+      {
+        "calls": 4148,
+        "cumulative_ms": 0.7815980000000001,
+        "file": "~",
+        "line": 0,
+        "name": "<method 'count' of 'str' objects>",
+        "self_ms": 0.7815980000000001
+      }
+    ]
+  },
+  "created_unix": 1788616840.4327233,
+  "decomposition_rows": [
+    {
+      "bm25_items": 6002,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-017617",
+      "stages_ms": {
+        "bm25_cached_accumulation": 7.283565995749086,
+        "bm25_rank_dict": 0.4623909990186803,
+        "bm25_sort": 2.219659996626433,
+        "candidate_cards": 0.08279900066554546,
+        "dense_dot_and_python_dict": 7.594360002258327,
+        "dense_rank_dict": 0.46269199810922146,
+        "native_rank_including_python_marshalling": 4.398719000164419,
+        "policy_inside_candidates": 2.988045998790767,
+        "union_top50_and_sort": 0.020099003450013697,
+        "visible_set": 0.14939699758542702
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-007487",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.566124994307756,
+        "bm25_rank_dict": 0.47829099639784545,
+        "bm25_sort": 2.172060005250387,
+        "candidate_cards": 0.070499001594726,
+        "dense_dot_and_python_dict": 7.8986549997352995,
+        "dense_rank_dict": 0.47719100257381797,
+        "native_rank_including_python_marshalling": 4.700113997387234,
+        "policy_inside_candidates": 2.967346001241822,
+        "union_top50_and_sort": 0.021599000319838524,
+        "visible_set": 0.22879600146552548
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-053007",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.69852200068999,
+        "bm25_rank_dict": 0.4351920069893822,
+        "bm25_sort": 2.0121630004723556,
+        "candidate_cards": 0.0652980015729554,
+        "dense_dot_and_python_dict": 8.01825199596351,
+        "dense_rank_dict": 0.4868910036748275,
+        "native_rank_including_python_marshalling": 4.498516995226964,
+        "policy_inside_candidates": 3.0080450014793314,
+        "union_top50_and_sort": 0.019599996448960155,
+        "visible_set": 0.14249800005927682
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-036226",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.763147995632607,
+        "bm25_rank_dict": 0.45189200318418443,
+        "bm25_sort": 2.288358002260793,
+        "candidate_cards": 0.06829800258856267,
+        "dense_dot_and_python_dict": 7.423164002830163,
+        "dense_rank_dict": 0.47599100071238354,
+        "native_rank_including_python_marshalling": 4.611014999682084,
+        "policy_inside_candidates": 3.199441001925152,
+        "union_top50_and_sort": 0.020000006770715117,
+        "visible_set": 0.1478970007156022
+      }
+    },
+    {
+      "bm25_items": 6003,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-049664",
+      "stages_ms": {
+        "bm25_cached_accumulation": 19.103650003671646,
+        "bm25_rank_dict": 0.45589199726236984,
+        "bm25_sort": 2.1717599956900813,
+        "candidate_cards": 0.07709900091867894,
+        "dense_dot_and_python_dict": 11.357590999978129,
+        "dense_rank_dict": 0.4769909937749617,
+        "native_rank_including_python_marshalling": 4.737912997370586,
+        "policy_inside_candidates": 4.734012996777892,
+        "union_top50_and_sort": 0.023198997951112688,
+        "visible_set": 0.2074959993478842
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-036648",
+      "stages_ms": {
+        "bm25_cached_accumulation": 8.553842999390326,
+        "bm25_rank_dict": 0.47549100418109447,
+        "bm25_sort": 2.104161001625471,
+        "candidate_cards": 0.0804980008979328,
+        "dense_dot_and_python_dict": 7.795455996529199,
+        "dense_rank_dict": 0.5004910053685308,
+        "native_rank_including_python_marshalling": 4.596815997501835,
+        "policy_inside_candidates": 3.2167409954126924,
+        "union_top50_and_sort": 0.022899999748915434,
+        "visible_set": 0.17639600264374167
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-059069",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.570125002937857,
+        "bm25_rank_dict": 0.4359919985290617,
+        "bm25_sort": 2.079261998005677,
+        "candidate_cards": 0.06809900514781475,
+        "dense_dot_and_python_dict": 7.5846609979635105,
+        "dense_rank_dict": 0.5601890006801113,
+        "native_rank_including_python_marshalling": 5.101905997435097,
+        "policy_inside_candidates": 3.1158429992501624,
+        "union_top50_and_sort": 0.020699997548945248,
+        "visible_set": 0.149096995301079
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-010229",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.442490002082195,
+        "bm25_rank_dict": 0.47879100020509213,
+        "bm25_sort": 2.4011550049181096,
+        "candidate_cards": 0.0769990001572296,
+        "dense_dot_and_python_dict": 8.18894999974873,
+        "dense_rank_dict": 0.4828910023206845,
+        "native_rank_including_python_marshalling": 5.224904001806863,
+        "policy_inside_candidates": 3.067843004828319,
+        "union_top50_and_sort": 0.021599000319838524,
+        "visible_set": 0.14809699496254325
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-030224",
+      "stages_ms": {
+        "bm25_cached_accumulation": 14.752628994756378,
+        "bm25_rank_dict": 0.4740920048789121,
+        "bm25_sort": 2.149261003069114,
+        "candidate_cards": 0.07649900362594053,
+        "dense_dot_and_python_dict": 8.297648004372604,
+        "dense_rank_dict": 0.47459099732805043,
+        "native_rank_including_python_marshalling": 4.709613000159152,
+        "policy_inside_candidates": 3.3339380024699494,
+        "union_top50_and_sort": 0.02219899761257693,
+        "visible_set": 0.14889700105413795
+      }
+    },
+    {
+      "bm25_items": 6002,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-028734",
+      "stages_ms": {
+        "bm25_cached_accumulation": 7.597460993565619,
+        "bm25_rank_dict": 0.4738909992738627,
+        "bm25_sort": 2.3555570005555637,
+        "candidate_cards": 0.08479799726046622,
+        "dense_dot_and_python_dict": 9.719323003082536,
+        "dense_rank_dict": 0.5470899995998479,
+        "native_rank_including_python_marshalling": 5.0952069941558875,
+        "policy_inside_candidates": 3.4166380064561963,
+        "union_top50_and_sort": 0.028700000257231295,
+        "visible_set": 0.17119699623435736
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-048344",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.556225995765999,
+        "bm25_rank_dict": 0.4396920048748143,
+        "bm25_sort": 2.050962997600436,
+        "candidate_cards": 0.0651989976176992,
+        "dense_dot_and_python_dict": 7.960554998135194,
+        "dense_rank_dict": 0.4791910032508895,
+        "native_rank_including_python_marshalling": 4.5556170007330365,
+        "policy_inside_candidates": 3.7419319996843114,
+        "union_top50_and_sort": 0.02050000330200419,
+        "visible_set": 0.20599600247805938
+      }
+    },
+    {
+      "bm25_items": 5999,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-029489",
+      "stages_ms": {
+        "bm25_cached_accumulation": 7.363265998719726,
+        "bm25_rank_dict": 0.4297929990570992,
+        "bm25_sort": 2.0455630001379177,
+        "candidate_cards": 0.06619900523219258,
+        "dense_dot_and_python_dict": 7.487163995392621,
+        "dense_rank_dict": 0.453791995823849,
+        "native_rank_including_python_marshalling": 4.348220994870644,
+        "policy_inside_candidates": 3.0941430013626814,
+        "union_top50_and_sort": 0.019799001165665686,
+        "visible_set": 0.14549700426869094
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-004137",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.28045800619293,
+        "bm25_rank_dict": 0.42659199971240014,
+        "bm25_sort": 1.9867640003212728,
+        "candidate_cards": 0.06259899964788929,
+        "dense_dot_and_python_dict": 7.190369004092645,
+        "dense_rank_dict": 0.46559100155718625,
+        "native_rank_including_python_marshalling": 4.474918001506012,
+        "policy_inside_candidates": 2.899546998378355,
+        "union_top50_and_sort": 0.02010000025620684,
+        "visible_set": 0.14169699716148898
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-040106",
+      "stages_ms": {
+        "bm25_cached_accumulation": 16.744295004173182,
+        "bm25_rank_dict": 0.49719100206857547,
+        "bm25_sort": 2.0820629943045788,
+        "candidate_cards": 0.06529900565510616,
+        "dense_dot_and_python_dict": 7.8155580049497075,
+        "dense_rank_dict": 0.4651909985113889,
+        "native_rank_including_python_marshalling": 4.499818001931999,
+        "policy_inside_candidates": 3.196541998477187,
+        "union_top50_and_sort": 0.018999999156221747,
+        "visible_set": 0.15909699868643656
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-008972",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.272495001321658,
+        "bm25_rank_dict": 0.4359920058050193,
+        "bm25_sort": 2.031862997682765,
+        "candidate_cards": 0.06619899795623496,
+        "dense_dot_and_python_dict": 7.331766995775979,
+        "dense_rank_dict": 0.47299099969677627,
+        "native_rank_including_python_marshalling": 4.487318001338281,
+        "policy_inside_candidates": 3.284239995991811,
+        "union_top50_and_sort": 0.019899998733308166,
+        "visible_set": 0.14809699496254325
+      }
+    },
+    {
+      "bm25_items": 6003,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-057584",
+      "stages_ms": {
+        "bm25_cached_accumulation": 8.633943005406763,
+        "bm25_rank_dict": 0.4314920006436296,
+        "bm25_sort": 2.0154629964963533,
+        "candidate_cards": 0.060598998970817775,
+        "dense_dot_and_python_dict": 8.927337003115099,
+        "dense_rank_dict": 0.4778910006280057,
+        "native_rank_including_python_marshalling": 4.388920002384111,
+        "policy_inside_candidates": 3.135343002213631,
+        "union_top50_and_sort": 0.019099999917671084,
+        "visible_set": 0.1450970012228936
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-006745",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.082697994424962,
+        "bm25_rank_dict": 0.4373920019133948,
+        "bm25_sort": 2.0303630008129403,
+        "candidate_cards": 0.062298997363541275,
+        "dense_dot_and_python_dict": 7.353765999141615,
+        "dense_rank_dict": 0.4701910002040677,
+        "native_rank_including_python_marshalling": 4.442719000508077,
+        "policy_inside_candidates": 2.936147000582423,
+        "union_top50_and_sort": 0.01909900311147794,
+        "visible_set": 0.14249800005927682
+      }
+    },
+    {
+      "bm25_items": 6001,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-003069",
+      "stages_ms": {
+        "bm25_cached_accumulation": 7.811458002834115,
+        "bm25_rank_dict": 0.44169100146973506,
+        "bm25_sort": 2.2738589977961965,
+        "candidate_cards": 0.06849900091765448,
+        "dense_dot_and_python_dict": 7.983755000168458,
+        "dense_rank_dict": 0.47839200124144554,
+        "native_rank_including_python_marshalling": 4.490619001444429,
+        "policy_inside_candidates": 3.0497450061375275,
+        "union_top50_and_sort": 0.03170000127283856,
+        "visible_set": 0.17559700063429773
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-019309",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.286394998023752,
+        "bm25_rank_dict": 0.4635919976863079,
+        "bm25_sort": 2.1605610018013977,
+        "candidate_cards": 0.06899800064275041,
+        "dense_dot_and_python_dict": 7.92575599916745,
+        "dense_rank_dict": 0.47429100231966004,
+        "native_rank_including_python_marshalling": 4.480217998207081,
+        "policy_inside_candidates": 3.1040440007927828,
+        "union_top50_and_sort": 0.019699997210409492,
+        "visible_set": 0.15379799879156053
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-050914",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.013762996706646,
+        "bm25_rank_dict": 0.46009200013941154,
+        "bm25_sort": 2.044063003268093,
+        "candidate_cards": 0.07179900421760976,
+        "dense_dot_and_python_dict": 7.352066000748891,
+        "dense_rank_dict": 0.46219099749578163,
+        "native_rank_including_python_marshalling": 4.490618004638236,
+        "policy_inside_candidates": 2.9998449972481467,
+        "union_top50_and_sort": 0.019400002202019095,
+        "visible_set": 0.14459700469160452
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-011104",
+      "stages_ms": {
+        "bm25_cached_accumulation": 12.869064994447399,
+        "bm25_rank_dict": 0.4747910061269067,
+        "bm25_sort": 2.3202570009743795,
+        "candidate_cards": 0.06899900472490117,
+        "dense_dot_and_python_dict": 7.268267996551003,
+        "dense_rank_dict": 0.4899909981759265,
+        "native_rank_including_python_marshalling": 4.849311997531913,
+        "policy_inside_candidates": 3.1564419987262227,
+        "union_top50_and_sort": 0.020200001017656177,
+        "visible_set": 0.14999700215412304
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-014487",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.63835200027097,
+        "bm25_rank_dict": 0.451292005891446,
+        "bm25_sort": 2.0504619969869964,
+        "candidate_cards": 0.06599799962714314,
+        "dense_dot_and_python_dict": 7.6879599946551025,
+        "dense_rank_dict": 0.4644919972633943,
+        "native_rank_including_python_marshalling": 4.393019997223746,
+        "policy_inside_candidates": 3.057544003240764,
+        "union_top50_and_sort": 0.01979999797185883,
+        "visible_set": 0.16919700283324346
+      }
+    },
+    {
+      "bm25_items": 6003,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-012418",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.216295999474823,
+        "bm25_rank_dict": 0.4605920039466582,
+        "bm25_sort": 2.0678630025940947,
+        "candidate_cards": 0.05979900015518069,
+        "dense_dot_and_python_dict": 7.5174630037508905,
+        "dense_rank_dict": 0.4578910011332482,
+        "native_rank_including_python_marshalling": 4.390220005006995,
+        "policy_inside_candidates": 3.3153399999719113,
+        "union_top50_and_sort": 0.019499995687510818,
+        "visible_set": 0.1631969935260713
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-027336",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.027198997908272,
+        "bm25_rank_dict": 0.44129200250608847,
+        "bm25_sort": 2.381357000558637,
+        "candidate_cards": 0.12439699639799073,
+        "dense_dot_and_python_dict": 9.837920995778404,
+        "dense_rank_dict": 1.1805780013673939,
+        "native_rank_including_python_marshalling": 6.414883995603304,
+        "policy_inside_candidates": 2.9892450038460083,
+        "union_top50_and_sort": 0.03279999509686604,
+        "visible_set": 0.1442970024072565
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-004461",
+      "stages_ms": {
+        "bm25_cached_accumulation": 12.535271998785902,
+        "bm25_rank_dict": 0.44299199362285435,
+        "bm25_sort": 2.1358610028983094,
+        "candidate_cards": 0.07179899694165215,
+        "dense_dot_and_python_dict": 7.8851569996913895,
+        "dense_rank_dict": 0.46489200030919164,
+        "native_rank_including_python_marshalling": 4.505117998633068,
+        "policy_inside_candidates": 3.057444002479315,
+        "union_top50_and_sort": 0.01969900040421635,
+        "visible_set": 0.1481970029999502
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-053949",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.778186999436002,
+        "bm25_rank_dict": 0.4715920003945939,
+        "bm25_sort": 2.1959610021440312,
+        "candidate_cards": 0.07199899846455082,
+        "dense_dot_and_python_dict": 8.059054001932964,
+        "dense_rank_dict": 0.5112910002935678,
+        "native_rank_including_python_marshalling": 4.693214999861084,
+        "policy_inside_candidates": 3.024844998435583,
+        "union_top50_and_sort": 0.02099999983329326,
+        "visible_set": 0.145396996231284
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-012994",
+      "stages_ms": {
+        "bm25_cached_accumulation": 20.199436003167648,
+        "bm25_rank_dict": 0.4647979949368164,
+        "bm25_sort": 2.335787001356948,
+        "candidate_cards": 0.06800000119255856,
+        "dense_dot_and_python_dict": 7.808964001014829,
+        "dense_rank_dict": 0.4595970021910034,
+        "native_rank_including_python_marshalling": 4.554075996566098,
+        "policy_inside_candidates": 3.6004349967697635,
+        "union_top50_and_sort": 0.021100000594742596,
+        "visible_set": 0.22049600374884903
+      }
+    },
+    {
+      "bm25_items": 6001,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-005184",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.069451996765565,
+        "bm25_rank_dict": 0.43919699965044856,
+        "bm25_sort": 2.0207889974699356,
+        "candidate_cards": 0.0929990055738017,
+        "dense_dot_and_python_dict": 8.798353002930526,
+        "dense_rank_dict": 0.6663960011792369,
+        "native_rank_including_python_marshalling": 5.108473000291269,
+        "policy_inside_candidates": 2.8720849950332195,
+        "union_top50_and_sort": 0.02269999822601676,
+        "visible_set": 0.15369900211226195
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-022503",
+      "stages_ms": {
+        "bm25_cached_accumulation": 9.25905099575175,
+        "bm25_rank_dict": 0.50639700202737,
+        "bm25_sort": 2.11158899764996,
+        "candidate_cards": 0.07109999569365755,
+        "dense_dot_and_python_dict": 8.663754000735935,
+        "dense_rank_dict": 0.4792969994014129,
+        "native_rank_including_python_marshalling": 4.602874992997386,
+        "policy_inside_candidates": 3.3360820016241632,
+        "union_top50_and_sort": 0.020799998310394585,
+        "visible_set": 0.14980000560171902
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-022099",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.620427002024371,
+        "bm25_rank_dict": 0.4489980055950582,
+        "bm25_sort": 2.236587999504991,
+        "candidate_cards": 0.07560000085504726,
+        "dense_dot_and_python_dict": 7.5682599999709055,
+        "dense_rank_dict": 0.5050979962106794,
+        "native_rank_including_python_marshalling": 4.91507299739169,
+        "policy_inside_candidates": 3.5459810023894534,
+        "union_top50_and_sort": 0.02179999864893034,
+        "visible_set": 0.150498999573756
+      }
+    },
+    {
+      "bm25_items": 6006,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-046341",
+      "stages_ms": {
+        "bm25_cached_accumulation": 12.229234998812899,
+        "bm25_rank_dict": 0.44129799789516255,
+        "bm25_sort": 2.1748879953520373,
+        "candidate_cards": 0.06819999543949962,
+        "dense_dot_and_python_dict": 7.423560004099272,
+        "dense_rank_dict": 0.48839699593372643,
+        "native_rank_including_python_marshalling": 4.438976000528783,
+        "policy_inside_candidates": 3.056183995795436,
+        "union_top50_and_sort": 0.019899998733308166,
+        "visible_set": 0.1460999992559664
+      }
+    },
+    {
+      "bm25_items": 6003,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-051832",
+      "stages_ms": {
+        "bm25_cached_accumulation": 10.370445001171902,
+        "bm25_rank_dict": 0.4545979973045178,
+        "bm25_sort": 2.082687999063637,
+        "candidate_cards": 0.07169899618020281,
+        "dense_dot_and_python_dict": 7.418660999974236,
+        "dense_rank_dict": 0.4879970001638867,
+        "native_rank_including_python_marshalling": 4.681374994106591,
+        "policy_inside_candidates": 2.93858400254976,
+        "union_top50_and_sort": 0.021100000594742596,
+        "visible_set": 0.14549900515703484
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-043304",
+      "stages_ms": {
+        "bm25_cached_accumulation": 15.651216002879664,
+        "bm25_rank_dict": 0.4434970032889396,
+        "bm25_sort": 2.057789002719801,
+        "candidate_cards": 0.059300000430084765,
+        "dense_dot_and_python_dict": 7.110961996659171,
+        "dense_rank_dict": 0.4717979973065667,
+        "native_rank_including_python_marshalling": 4.29987700044876,
+        "policy_inside_candidates": 3.1042830014484935,
+        "union_top50_and_sort": 0.01930000144056976,
+        "visible_set": 0.1737990023684688
+      }
+    },
+    {
+      "bm25_items": 6004,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-050377",
+      "stages_ms": {
+        "bm25_cached_accumulation": 11.650637999991886,
+        "bm25_rank_dict": 0.44619700202019885,
+        "bm25_sort": 2.308488001290243,
+        "candidate_cards": 0.06520000169984996,
+        "dense_dot_and_python_dict": 7.274561001395341,
+        "dense_rank_dict": 0.4587980001815595,
+        "native_rank_including_python_marshalling": 4.466176003916189,
+        "policy_inside_candidates": 2.9360850021475926,
+        "union_top50_and_sort": 0.019500002963468432,
+        "visible_set": 0.1557990035507828
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-006064",
+      "stages_ms": {
+        "bm25_cached_accumulation": 12.867031997302547,
+        "bm25_rank_dict": 0.4489979983191006,
+        "bm25_sort": 2.2870879984111525,
+        "candidate_cards": 0.07580000237794593,
+        "dense_dot_and_python_dict": 7.230362003610935,
+        "dense_rank_dict": 0.5241969993221574,
+        "native_rank_including_python_marshalling": 4.72257499495754,
+        "policy_inside_candidates": 2.959985002235044,
+        "union_top50_and_sort": 0.022100000933278352,
+        "visible_set": 0.14399999781744555
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-011151",
+      "stages_ms": {
+        "bm25_cached_accumulation": 10.454543997184373,
+        "bm25_rank_dict": 0.4540980007732287,
+        "bm25_sort": 2.096388998324983,
+        "candidate_cards": 0.060200000007171184,
+        "dense_dot_and_python_dict": 7.201462001830805,
+        "dense_rank_dict": 0.454997003544122,
+        "native_rank_including_python_marshalling": 4.396976997668389,
+        "policy_inside_candidates": 2.9131839983165264,
+        "union_top50_and_sort": 0.018799997633323073,
+        "visible_set": 0.14109900075709447
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-016841",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.433528998575639,
+        "bm25_rank_dict": 0.4491970030358061,
+        "bm25_sort": 2.250988000014331,
+        "candidate_cards": 0.06859999848529696,
+        "dense_dot_and_python_dict": 7.578059994557407,
+        "dense_rank_dict": 0.4634969955077395,
+        "native_rank_including_python_marshalling": 4.503276002651546,
+        "policy_inside_candidates": 3.303983001387678,
+        "union_top50_and_sort": 0.02010000025620684,
+        "visible_set": 0.15419899864355102
+      }
+    },
+    {
+      "bm25_items": 6005,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-000252",
+      "stages_ms": {
+        "bm25_cached_accumulation": 13.163229996280279,
+        "bm25_rank_dict": 0.46159799967426807,
+        "bm25_sort": 2.043189000687562,
+        "candidate_cards": 0.06329899770207703,
+        "dense_dot_and_python_dict": 7.420560003083665,
+        "dense_rank_dict": 0.46729700261494145,
+        "native_rank_including_python_marshalling": 4.464275996724609,
+        "policy_inside_candidates": 3.010583997820504,
+        "union_top50_and_sort": 0.02010000025620684,
+        "visible_set": 0.14509899483527988
+      }
+    },
+    {
+      "bm25_items": 6001,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-042320",
+      "stages_ms": {
+        "bm25_cached_accumulation": 8.897552994312719,
+        "bm25_rank_dict": 0.4399980025482364,
+        "bm25_sort": 2.1625890003633685,
+        "candidate_cards": 0.06510000093840063,
+        "dense_dot_and_python_dict": 8.234355998865794,
+        "dense_rank_dict": 0.46609799755970016,
+        "native_rank_including_python_marshalling": 4.386875996715389,
+        "policy_inside_candidates": 3.22888299706392,
+        "union_top50_and_sort": 0.020298997696954757,
+        "visible_set": 0.15249900025082752
+      }
+    },
+    {
+      "bm25_items": 6002,
+      "dense_items": 6006,
+      "parity_with_actual_candidates": true,
+      "query_id": "q-train-026271",
+      "stages_ms": {
+        "bm25_cached_accumulation": 12.009736004984006,
+        "bm25_rank_dict": 0.4419979959493503,
+        "bm25_sort": 2.0192890006001107,
+        "candidate_cards": 0.06630000279983506,
+        "dense_dot_and_python_dict": 7.512659998610616,
+        "dense_rank_dict": 0.5392980019678362,
+        "native_rank_including_python_marshalling": 4.662475002987776,
+        "policy_inside_candidates": 3.0878840043442324,
+        "union_top50_and_sort": 0.02010000025620684,
+        "visible_set": 0.14689900126541033
+      }
+    }
+  ],
+  "decomposition_summary_ms": {
+    "bm25_cached_accumulation": {
+      "mean": 11.682911274147045,
+      "p50": 11.286394998023752,
+      "p95": 16.744295004173182
+    },
+    "bm25_rank_dict": {
+      "mean": 0.45422130096994806,
+      "p50": 0.4491970030358061,
+      "p95": 0.47879100020509213
+    },
+    "bm25_sort": {
+      "mean": 2.150370524941536,
+      "p50": 2.11158899764996,
+      "p95": 2.3555570005555637
+    },
+    "candidate_cards": {
+      "mean": 0.0710740754584549,
+      "p50": 0.06829800258856267,
+      "p95": 0.08479799726046622
+    },
+    "dense_dot_and_python_dict": {
+      "mean": 7.917662775071221,
+      "p50": 7.594360002258327,
+      "p95": 9.719323003082536
+    },
+    "dense_rank_dict": {
+      "mean": 0.5036654249124695,
+      "p50": 0.47599100071238354,
+      "p95": 0.5601890006801113
+    },
+    "native_rank_including_python_marshalling": {
+      "mean": 4.644570874006604,
+      "p50": 4.503276002651546,
+      "p95": 5.108473000291269
+    },
+    "policy_inside_candidates": {
+      "mean": 3.1746126003781683,
+      "p50": 3.0878840043442324,
+      "p95": 3.6004349967697635
+    },
+    "union_top50_and_sort": {
+      "mean": 0.021239774832793046,
+      "p50": 0.02010000025620684,
+      "p95": 0.028700000257231295
+    },
+    "visible_set": {
+      "mean": 0.15828767518542008,
+      "p50": 0.149096995301079,
+      "p95": 0.2074959993478842
+    }
+  },
+  "document_matrix_sha256": "844fd839f386e040547007405667d3a5828dfc187a85727c62396c111d34d9d8",
+  "frozen_cli_sha256": "e508929f33efefe6517aec146406571919c78b1385465b1ea0a4aceee6eab5ac",
+  "initialization_ms": 12920.380145995296,
+  "optimizations": {
+    "dense": {
+      "dtype": "int64",
+      "integer_dot_parity": true,
+      "per_query_document_matrix_copy": false,
+      "resident_bytes": 49201152,
+      "startup_ms": 19.402814999921247
+    },
+    "native": {
+      "abi_version": 1,
+      "absolute_dot_max": 1099511627776,
+      "build_identity_sha256": "9c80a3122aa0245d81ba137ca33206f1afb1db5201e32b078c93aa79976bb344",
+      "build_reused": true,
+      "compiler_flags": [
+        "-std=c++17",
+        "-O3",
+        "-fPIC",
+        "-shared",
+        "-Wall",
+        "-Wextra",
+        "-Werror"
+      ],
+      "compiler_path": "/usr/bin/x86_64-linux-gnu-g++-13",
+      "compiler_sha256": "1353e9bdd29a7295c7226bf6c63abccce056d8cac31f112e5cdbecc3f28c2769",
+      "compiler_version": "x86_64-linux-gnu-g++-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "empty_calls": 0,
+      "fallback_calls": 0,
+      "fallback_reasons": {
+        "native_status": 0,
+        "numeric_bounds": 0,
+        "too_many_items": 0,
+        "unsupported_keys": 0,
+        "unsupported_values": 0
+      },
+      "kind": "exact_int128_native_dense_rank",
+      "library_path": "/home/mike/projects/guidefold/.guidefold/serve-spike/native/dense_rank_9c80a3122aa0245d81ba.so",
+      "library_sha256": "d05a48e2295c9baefa8d7ce1ead46bec5b9e43d13cf20401d7fc11b4f0265053",
+      "load_ms": 0.32979800016619265,
+      "machine": "x86_64",
+      "max_items": 1000000,
+      "native_calls": 162,
+      "norm_max": 1099511627776,
+      "norm_min_exclusive": 0,
+      "platform": "linux",
+      "prepare_ms": 4.160082004091237,
+      "request_time_compilation": false,
+      "source_sha256": "4180e34bdbb9462c0d1f0b2a4bef0226941148fa7fa731167c6255421b2940b7"
+    },
+    "sparse": {
+      "active": true,
+      "admission_order": "corpus IDF ascending, stop retaining at budget; all terms counted",
+      "cached_term_doc_pairs": 2078230,
+      "cached_terms": 89630,
+      "estimated_cache_bytes": 130404592,
+      "fully_cached": true,
+      "kind": "precomputed_exact_bm25_term_scores",
+      "lazy_warmup": false,
+      "max_bytes": 268435456,
+      "memory_estimate_scope": "retained cache dicts and score objects; excludes shared index strings, fixed wrapper and transient build work; not RSS",
+      "posting_coverage": 1.0,
+      "query_cache": false,
+      "startup_ms": 2382.7631439999095,
+      "term_coverage": 1.0,
+      "total_term_doc_pairs": 2078230,
+      "total_terms": 89630,
+      "uncacheable_term_keys": 0
+    }
+  },
+  "query_vector_sha256": "127f1bf12af6b7915f74978f15752e8dad7b8458922caf9f97bdda564423d940",
+  "query_vector_source": "cached DOCUMENT matrix row 0; no query_vectors file read",
+  "schema_version": "e11b-cpu-candidate-profile-v1",
+  "scope": "CPU only; fixed document row stands in for query embedding; no quality or end-to-end SLO claim",
+  "source_sha256": {
+    "tools/serve_spike/candidate_profile.py": "4ff004212c414084dc4fa42092bef8efb7751ae206a6a66ea30a0696e5ba491c",
+    "tools/serve_spike/native_rank.py": "7dc395c3206724c11fa0c8fe71acbb013c3c7fbdc062be90a32c7bfe21996b78",
+    "tools/serve_spike/server.py": "66cb745babf12883df936ccb985ef97711f8d04d8934e7270492e7e3876bc425",
+    "tools/serve_spike/sparse_cache.py": "31ac39e65a6b2de45b3c7d3b5aaa1fd9fe03b181f1520bde140dc1ca792fa2c6"
+  },
+  "uninstrumented_rows": [
+    {
+      "query_id": "q-train-017617",
+      "stages_ms": {
+        "candidates": 25.707086999318562,
+        "outer_policy": 3.5449839997454546,
+        "score": 1.502892999269534,
+        "select": 0.2616989950183779
+      }
+    },
+    {
+      "query_id": "q-train-007487",
+      "stages_ms": {
+        "candidates": 27.999876998364925,
+        "outer_policy": 3.125885996269062,
+        "score": 1.544492995890323,
+        "select": 0.24519900034647435
+      }
+    },
+    {
+      "query_id": "q-train-053007",
+      "stages_ms": {
+        "candidates": 29.112475996953435,
+        "outer_policy": 3.0306859989650548,
+        "score": 1.5312929972424172,
+        "select": 0.24119899899233133
+      }
+    },
+    {
+      "query_id": "q-train-036226",
+      "stages_ms": {
+        "candidates": 48.34079500142252,
+        "outer_policy": 3.0043869992368855,
+        "score": 1.6478929974255152,
+        "select": 0.2515989981475286
+      }
+    },
+    {
+      "query_id": "q-train-049664",
+      "stages_ms": {
+        "candidates": 32.028964000346605,
+        "outer_policy": 3.385085001355037,
+        "score": 1.5231940051307902,
+        "select": 0.2906989975599572
+      }
+    },
+    {
+      "query_id": "q-train-036648",
+      "stages_ms": {
+        "candidates": 32.86276099970564,
+        "outer_policy": 3.342485004395712,
+        "score": 2.8984870004933327,
+        "select": 0.3361990020493977
+      }
+    },
+    {
+      "query_id": "q-train-059069",
+      "stages_ms": {
+        "candidates": 42.57261200109497,
+        "outer_policy": 4.951357004756574,
+        "score": 1.6422699991380796,
+        "select": 0.24749600561335683
+      }
+    },
+    {
+      "query_id": "q-train-010229",
+      "stages_ms": {
+        "candidates": 32.4663990031695,
+        "outer_policy": 3.191041003447026,
+        "score": 1.5373710048152134,
+        "select": 0.2433949994156137
+      }
+    },
+    {
+      "query_id": "q-train-030224",
+      "stages_ms": {
+        "candidates": 34.91045300324913,
+        "outer_policy": 3.497335004794877,
+        "score": 1.5530710006714799,
+        "select": 0.24659500195411965
+      }
+    },
+    {
+      "query_id": "q-train-028734",
+      "stages_ms": {
+        "candidates": 30.489634998957627,
+        "outer_policy": 3.239139994548168,
+        "score": 2.7756489944295026,
+        "select": 0.24919499992392957
+      }
+    },
+    {
+      "query_id": "q-train-048344",
+      "stages_ms": {
+        "candidates": 28.676868001639377,
+        "outer_policy": 3.2279400038532913,
+        "score": 1.6112699959194288,
+        "select": 0.24939500144682825
+      }
+    },
+    {
+      "query_id": "q-train-029489",
+      "stages_ms": {
+        "candidates": 28.475572005845606,
+        "outer_policy": 3.063243995711673,
+        "score": 1.5351719994214363,
+        "select": 0.2448960003675893
+      }
+    },
+    {
+      "query_id": "q-train-004137",
+      "stages_ms": {
+        "candidates": 34.46946100302739,
+        "outer_policy": 3.2852389995241538,
+        "score": 1.5750710008433089,
+        "select": 0.24819599639158696
+      }
+    },
+    {
+      "query_id": "q-train-040106",
+      "stages_ms": {
+        "candidates": 37.06991299986839,
+        "outer_policy": 3.3540369986440055,
+        "score": 1.6977680061245337,
+        "select": 0.26779499603435397
+      }
+    },
+    {
+      "query_id": "q-train-008972",
+      "stages_ms": {
+        "candidates": 32.29100199678214,
+        "outer_policy": 3.539434001140762,
+        "score": 1.5921710000839084,
+        "select": 0.24389499594690278
+      }
+    },
+    {
+      "query_id": "q-train-057584",
+      "stages_ms": {
+        "candidates": 28.61436999955913,
+        "outer_policy": 3.0980429946794175,
+        "score": 1.5933699978631921,
+        "select": 0.24749599833739921
+      }
+    },
+    {
+      "query_id": "q-train-006745",
+      "stages_ms": {
+        "candidates": 30.406637000851333,
+        "outer_policy": 3.0618439996032976,
+        "score": 1.5781710026203655,
+        "select": 0.2591960001154803
+      }
+    },
+    {
+      "query_id": "q-train-003069",
+      "stages_ms": {
+        "candidates": 28.09267999691656,
+        "outer_policy": 3.4805360046448186,
+        "score": 1.7050679962267168,
+        "select": 0.2653949995874427
+      }
+    },
+    {
+      "query_id": "q-train-019309",
+      "stages_ms": {
+        "candidates": 31.646713003283367,
+        "outer_policy": 3.181440995831508,
+        "score": 1.5388709944090806,
+        "select": 0.24419599503744394
+      }
+    },
+    {
+      "query_id": "q-train-050914",
+      "stages_ms": {
+        "candidates": 45.099365001078695,
+        "outer_policy": 3.1272419946617447,
+        "score": 1.5820710032130592,
+        "select": 0.26659499417291954
+      }
+    },
+    {
+      "query_id": "q-train-011104",
+      "stages_ms": {
+        "candidates": 36.32472699973732,
+        "outer_policy": 3.4973349975189194,
+        "score": 1.585870995768346,
+        "select": 0.26739500026451424
+      }
+    },
+    {
+      "query_id": "q-train-014487",
+      "stages_ms": {
+        "candidates": 33.11358599603409,
+        "outer_policy": 3.416437000851147,
+        "score": 1.5459709975402802,
+        "select": 0.2653949995874427
+      }
+    },
+    {
+      "query_id": "q-train-012418",
+      "stages_ms": {
+        "candidates": 30.092843000602443,
+        "outer_policy": 3.5580339972511865,
+        "score": 1.6453689968329854,
+        "select": 0.24719499924685806
+      }
+    },
+    {
+      "query_id": "q-train-027336",
+      "stages_ms": {
+        "candidates": 29.344957001740113,
+        "outer_policy": 3.109743003733456,
+        "score": 1.561071003379766,
+        "select": 0.2434959969832562
+      }
+    },
+    {
+      "query_id": "q-train-004461",
+      "stages_ms": {
+        "candidates": 30.983425000158604,
+        "outer_policy": 3.0113439934211783,
+        "score": 1.5371720000985079,
+        "select": 0.24529499933123589
+      }
+    },
+    {
+      "query_id": "q-train-053949",
+      "stages_ms": {
+        "candidates": 29.63375099352561,
+        "outer_policy": 3.0848429960315116,
+        "score": 1.559571006509941,
+        "select": 0.26269500085618347
+      }
+    },
+    {
+      "query_id": "q-train-012994",
+      "stages_ms": {
+        "candidates": 34.374763003143016,
+        "outer_policy": 3.2226399998762645,
+        "score": 1.5774710045661777,
+        "select": 0.2880949978134595
+      }
+    },
+    {
+      "query_id": "q-train-005184",
+      "stages_ms": {
+        "candidates": 32.08500499749789,
+        "outer_policy": 3.2720389936002903,
+        "score": 1.6035700027714483,
+        "select": 0.25079499755520374
+      }
+    },
+    {
+      "query_id": "q-train-022503",
+      "stages_ms": {
+        "candidates": 28.600773999642115,
+        "outer_policy": 3.086643002461642,
+        "score": 1.5616710006725043,
+        "select": 0.24379499518545344
+      }
+    },
+    {
+      "query_id": "q-train-022099",
+      "stages_ms": {
+        "candidates": 35.13215499697253,
+        "outer_policy": 3.403538001293782,
+        "score": 2.0166629983577877,
+        "select": 0.24719600332900882
+      }
+    },
+    {
+      "query_id": "q-train-046341",
+      "stages_ms": {
+        "candidates": 31.556221001665108,
+        "outer_policy": 3.557634001481347,
+        "score": 1.5468719939235598,
+        "select": 0.24389499594690278
+      }
+    },
+    {
+      "query_id": "q-train-051832",
+      "stages_ms": {
+        "candidates": 30.582138999307062,
+        "outer_policy": 2.9792450004606508,
+        "score": 1.5087729989318177,
+        "select": 0.2765950048342347
+      }
+    },
+    {
+      "query_id": "q-train-043304",
+      "stages_ms": {
+        "candidates": 35.90044000156922,
+        "outer_policy": 3.0599439996876754,
+        "score": 1.5423720033140853,
+        "select": 0.2551950019551441
+      }
+    },
+    {
+      "query_id": "q-train-050377",
+      "stages_ms": {
+        "candidates": 29.739753998001106,
+        "outer_policy": 3.110142999503296,
+        "score": 1.5365720028057694,
+        "select": 0.2403960024821572
+      }
+    },
+    {
+      "query_id": "q-train-006064",
+      "stages_ms": {
+        "candidates": 30.501640001602937,
+        "outer_policy": 3.0850429975544102,
+        "score": 1.6274709996650927,
+        "select": 0.24319599469890818
+      }
+    },
+    {
+      "query_id": "q-train-011151",
+      "stages_ms": {
+        "candidates": 28.85367000271799,
+        "outer_policy": 2.959145997010637,
+        "score": 1.5605709995725192,
+        "select": 0.24469599884469062
+      }
+    },
+    {
+      "query_id": "q-train-016841",
+      "stages_ms": {
+        "candidates": 31.417122998391278,
+        "outer_policy": 3.2126410005730577,
+        "score": 1.5536719947704114,
+        "select": 0.24369599850615487
+      }
+    },
+    {
+      "query_id": "q-train-000252",
+      "stages_ms": {
+        "candidates": 32.62930100027006,
+        "outer_policy": 2.9762449994450435,
+        "score": 1.5706720005255193,
+        "select": 0.42859200038947165
+      }
+    },
+    {
+      "query_id": "q-train-042320",
+      "stages_ms": {
+        "candidates": 26.647011000022758,
+        "outer_policy": 3.523135994328186,
+        "score": 1.5906699991319329,
+        "select": 0.2426959981676191
+      }
+    },
+    {
+      "query_id": "q-train-026271",
+      "stages_ms": {
+        "candidates": 32.559401995968074,
+        "outer_policy": 3.1383419991470873,
+        "score": 1.5494709950871766,
+        "select": 0.24389600002905354
+      }
+    }
+  ],
+  "uninstrumented_summary_ms": {
+    "candidates": {
+      "mean": 32.285158175000106,
+      "p50": 31.417122998391278,
+      "p95": 42.57261200109497
+    },
+    "outer_policy": {
+      "mean": 3.2748875242759823,
+      "p50": 3.191041003447026,
+      "p95": 3.557634001481347
+    },
+    "score": {
+      "mean": 1.6486783246364212,
+      "p50": 1.5616710006725043,
+      "p95": 2.0166629983577877
+    },
+    "select": {
+      "mean": 0.25936337406164967,
+      "p50": 0.24749599833739921,
+      "p95": 0.2906989975599572
+    }
+  },
+  "workload": {
+    "dataset": "SKILLRET frozen DEV subset of train",
+    "distinct_query_texts": 40,
+    "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+    "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+    "labels_used_for_selection_or_quality": false,
+    "quality_claim": "none; labelled public DEV texts are used solely as a latency workload",
+    "retrieval_pool_may_differ_from_dev": true,
+    "sample_query_ids": [
+      "q-train-017617",
+      "q-train-007487",
+      "q-train-053007",
+      "q-train-036226",
+      "q-train-049664",
+      "q-train-036648",
+      "q-train-059069",
+      "q-train-010229",
+      "q-train-030224",
+      "q-train-028734",
+      "q-train-048344",
+      "q-train-029489",
+      "q-train-004137",
+      "q-train-040106",
+      "q-train-008972",
+      "q-train-057584",
+      "q-train-006745",
+      "q-train-003069",
+      "q-train-019309",
+      "q-train-050914",
+      "q-train-011104",
+      "q-train-014487",
+      "q-train-012418",
+      "q-train-027336",
+      "q-train-004461",
+      "q-train-053949",
+      "q-train-012994",
+      "q-train-005184",
+      "q-train-022503",
+      "q-train-022099",
+      "q-train-046341",
+      "q-train-051832",
+      "q-train-043304",
+      "q-train-050377",
+      "q-train-006064",
+      "q-train-011151",
+      "q-train-016841",
+      "q-train-000252",
+      "q-train-042320",
+      "q-train-026271"
+    ],
+    "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+    "sample_size": 40,
+    "sample_text_sha256": "fa29932be69af045e9a382fcd94cbaaa68a8a13f32d9a73008d23a622b2e0044",
+    "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c"
+  }
+}

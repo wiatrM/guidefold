@@ -1,0 +1,919 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:guidefold:harness-service:1.1",
+  "title": "Guidefold harness-service API 1.1",
+  "description": "Local spike contract. Unknown request fields fail; clients tolerate additive response fields. Operational semantics are in HARNESS-SERVICE-CONTRACT.md.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/search_request"
+    },
+    {
+      "$ref": "#/$defs/use_request"
+    }
+  ],
+  "$defs": {
+    "search_request": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "query_source": {
+          "enum": [
+            "user",
+            "agent",
+            "adapter"
+          ]
+        },
+        "harness": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "adapter_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "repo_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^(?:\\.|(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+)*)$"
+            },
+            "target_paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "pattern": "^(?:\\.|(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+)*)$"
+                  },
+                  "source": {
+                    "enum": [
+                      "user_explicit",
+                      "edited",
+                      "inferred"
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "source"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 32
+            }
+          },
+          "required": [
+            "repo_id"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "cwd"
+              ]
+            },
+            {
+              "required": [
+                "target_paths"
+              ],
+              "properties": {
+                "target_paths": {
+                  "minItems": 1
+                }
+              }
+            }
+          ]
+        },
+        "intent": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "enum": [
+                "implement",
+                "debug",
+                "review",
+                "test",
+                "migrate",
+                "deploy",
+                "document",
+                "explore"
+              ]
+            },
+            "goal": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "\\S"
+            },
+            "source": {
+              "enum": [
+                "user",
+                "agent",
+                "adapter"
+              ]
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        "stack": {
+          "type": "object",
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 16
+            },
+            "technologies": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 16
+            },
+            "source": {
+              "enum": [
+                "manifest",
+                "user",
+                "inferred"
+              ]
+            },
+            "manifest_revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          },
+          "maxItems": 16
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          },
+          "maxItems": 16
+        },
+        "loaded_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "\\S"
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "\\S"
+              },
+              "state": {
+                "enum": [
+                  "hydrated",
+                  "exposed",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "skill_id",
+              "revision",
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "max_cards": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 262144
+            },
+            "remaining_skill_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65536
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "\\S"
+        },
+        "node": {
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "hook",
+            "interactive"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "query"
+      ],
+      "additionalProperties": false,
+      "not": {
+        "required": [
+          "workspace",
+          "node"
+        ]
+      }
+    },
+    "use_request": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "query_source": {
+          "enum": [
+            "user",
+            "agent",
+            "adapter"
+          ]
+        },
+        "harness": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "adapter_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "repo_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^(?:\\.|(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+)*)$"
+            },
+            "target_paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "pattern": "^(?:\\.|(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\:\\x00-\\x1f]+)*)$"
+                  },
+                  "source": {
+                    "enum": [
+                      "user_explicit",
+                      "edited",
+                      "inferred"
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "source"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 32
+            }
+          },
+          "required": [
+            "repo_id"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "cwd"
+              ]
+            },
+            {
+              "required": [
+                "target_paths"
+              ],
+              "properties": {
+                "target_paths": {
+                  "minItems": 1
+                }
+              }
+            }
+          ]
+        },
+        "intent": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "enum": [
+                "implement",
+                "debug",
+                "review",
+                "test",
+                "migrate",
+                "deploy",
+                "document",
+                "explore"
+              ]
+            },
+            "goal": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "\\S"
+            },
+            "source": {
+              "enum": [
+                "user",
+                "agent",
+                "adapter"
+              ]
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        "stack": {
+          "type": "object",
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 16
+            },
+            "technologies": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 16
+            },
+            "source": {
+              "enum": [
+                "manifest",
+                "user",
+                "inferred"
+              ]
+            },
+            "manifest_revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          },
+          "maxItems": 16
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
+          },
+          "maxItems": 16
+        },
+        "loaded_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "\\S"
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "\\S"
+              },
+              "state": {
+                "enum": [
+                  "hydrated",
+                  "exposed",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "skill_id",
+              "revision",
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "max_cards": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 262144
+            },
+            "remaining_skill_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65536
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "skill_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S"
+        },
+        "search_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "schema_version",
+        "skill_id",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "search_response": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "request_id",
+        "search_id",
+        "cards",
+        "ranked",
+        "context",
+        "card_context",
+        "composition"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "context": {
+          "type": "object",
+          "required": [
+            "resolved_scopes",
+            "scope_source",
+            "scope_map_revision",
+            "used_fields",
+            "unused_fields",
+            "warnings",
+            "scope_is_authorization"
+          ],
+          "properties": {
+            "resolved_scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 4,
+              "minItems": 1
+            },
+            "scope_source": {
+              "enum": [
+                "cwd",
+                "target_paths",
+                "node"
+              ]
+            },
+            "scope_is_authorization": {
+              "const": false
+            },
+            "unused_fields": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "maxItems": 16
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64
+            }
+          }
+        },
+        "snapshot": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "\\S"
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "skill_id",
+              "urn",
+              "revision",
+              "name",
+              "description"
+            ],
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "urn": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+          "maxItems": 4
+        },
+        "ranked": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "skill_id",
+              "urn",
+              "revision",
+              "name",
+              "description"
+            ],
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "urn": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+          "maxItems": 10
+        },
+        "card_context": {
+          "type": "string"
+        },
+        "composition": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "not_evaluated"
+            },
+            "incomplete": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    },
+    "use_response": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "request_id",
+        "skill_id",
+        "revision",
+        "body",
+        "checksum",
+        "context",
+        "execution_observed",
+        "search_id_verified"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "context": {
+          "type": "object",
+          "required": [
+            "resolved_scopes",
+            "scope_source",
+            "scope_map_revision",
+            "used_fields",
+            "unused_fields",
+            "warnings",
+            "scope_is_authorization"
+          ],
+          "properties": {
+            "resolved_scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "\\S"
+              },
+              "maxItems": 4,
+              "minItems": 1
+            },
+            "scope_source": {
+              "enum": [
+                "cwd",
+                "target_paths",
+                "node"
+              ]
+            },
+            "scope_is_authorization": {
+              "const": false
+            },
+            "unused_fields": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "maxItems": 16
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64
+            }
+          }
+        },
+        "snapshot": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "\\S"
+        },
+        "skill_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S"
+        },
+        "body": {
+          "type": "string"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "execution_observed": {
+          "const": false
+        },
+        "search_id_verified": {
+          "const": false
+        }
+      }
+    },
+    "error_response": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "\\S"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}$"
+        }
+      }
+    }
+  }
+}

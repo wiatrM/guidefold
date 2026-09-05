@@ -515,3 +515,81 @@ def test_fresh_client_burst_starts_four_workers_without_timing_assertions(monkey
     assert result["summary"]["attempted"] == result["summary"]["succeeded"] == 4
     assert [row["query_id"] for row in result["rows"]] == ["0", "1", "2", "3"]
     assert all(row["http_roundtrip_ms"] == 10 for row in result["rows"])
+
+
+def test_post_server_header_includes_sync_log_and_json_serialization(service, monkeypatch):
+    import http.client
+    from types import SimpleNamespace
+
+    engine = FakeEngine()
+    server = service.make_server(engine, token="fixture-token-123456789", port=0)
+    clock = {"now": 1000.0}
+    entered_log, release_log = threading.Event(), threading.Event()
+    completed = {}
+    original_dumps = json.dumps
+
+    def serialize(data, **kwargs):
+        body = original_dumps(data, **kwargs)
+        if isinstance(data, dict) and "search_id" in data:
+            clock["now"] += 0.025
+        return body
+
+    def blocking_emit(record):
+        completed["logged_total_ms"] = record["total_ms"]
+        entered_log.set()
+        assert release_log.wait(3), "test did not release synchronous telemetry"
+
+    monkeypatch.setattr(service, "time", SimpleNamespace(monotonic=lambda: clock["now"], time=time.time))
+    monkeypatch.setattr(service, "json", SimpleNamespace(dumps=serialize, loads=json.loads))
+    server.emit = blocking_emit
+
+    def post():
+        connection = http.client.HTTPConnection(*server.server_address, timeout=3)
+        try:
+            connection.request("POST", "/v1/search", body=original_dumps(search_payload()),
+                headers={"Authorization": "Bearer fixture-token-123456789", "Content-Type": "application/json"})
+            response = connection.getresponse()
+            completed.update(status=response.status, headers=dict(response.getheaders()),
+                             body=json.loads(response.read()))
+        except BaseException as exc:
+            completed["error"] = exc
+        finally:
+            connection.close()
+
+    with running_server(server):
+        request = threading.Thread(target=post, daemon=True)
+        request.start()
+        try:
+            assert entered_log.wait(3), "request did not reach synchronous telemetry"
+            assert "headers" not in completed
+            clock["now"] += 0.125
+        finally:
+            release_log.set()
+            request.join(3)
+        assert not request.is_alive()
+        assert "error" not in completed
+        assert completed["status"] == 200
+        assert float(completed["headers"]["X-Guidefold-Server-Ms"]) == pytest.approx(150.0)
+        assert completed["logged_total_ms"] == 0.0
+        assert "server_ms" not in completed["body"]
+
+
+def test_server_timing_header_is_post_only_and_present_on_denial(service):
+    import http.client
+
+    engine = FakeEngine()
+    server = service.make_server(engine, token="fixture-token-123456789", port=0)
+    with running_server(server):
+        for method, path, expected_status in (("GET", "/health/ready", 200),
+                                               ("POST", "/v1/search", 401)):
+            connection = http.client.HTTPConnection(*server.server_address, timeout=3)
+            try:
+                connection.request(method, path, body=b"{}" if method == "POST" else None)
+                response = connection.getresponse()
+                assert response.status == expected_status
+                value = response.getheader("X-Guidefold-Server-Ms")
+                assert value is None if method == "GET" else float(value) >= 0
+                response.read()
+            finally:
+                connection.close()
+    assert engine.calls == []
