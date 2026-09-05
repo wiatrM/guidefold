@@ -139,8 +139,12 @@ only in a dedicated `guidefold-graph-*` Compose project because it installs a te
 test-repository-scoped failure trigger. See the
 [lifecycle report](reports/bakeoff/GRAPH-LIFECYCLE-E2E-2026-09-05.md).
 
-Graph runtime tolerance is not catalog admission validation. The publisher currently accepts
-cyclic and dangling dependency metadata; bounded traversal ignores unknown targets and avoids
-revisiting a node. The CLI catalog validator separately rejects cycles/invalid references.
-Do not treat successful publication or graph parity as a full graph lint or a complete-bundle
-guarantee. This test extension does not change that admission policy.
+Graph publication now rejects missing targets, malformed edge values, cycles in requires,
+refines and replacement chains, missing replacements for deprecated cards, and refines targets
+at deeper scopes. Validation runs before a transaction or head change, including reactivation.
+See [ADR-0028](adr/ADR-0028-graph-publication-validation.md) for the precise admission rules.
+
+Historical snapshots are not retroactively rewritten or rejected by the reader. Runtime
+traversal remains bounded, while the publication E2E now requires malformed imports to fail
+without changing the active graph. Graph admission is not the full catalog linter or a guarantee
+that the delivery budget fits every dependency. HTTP contract 1.1 and scoring stay unchanged.
