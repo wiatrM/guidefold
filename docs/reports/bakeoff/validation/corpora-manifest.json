@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "cache_root": "~/.cache/guidefold/corpora",
+  "created": "2026-09-05",
+  "note": "Real labelled skill corpora used for every quality claim from 2026-09-05 (see docs/RESEARCH.md, ADR-0022). Data is NOT committed (117 MB, third-party); revisions and hashes are, so the version under test is pinned, not floating.",
+  "corpora": {
+    "skillret": {
+      "hf_repo": "ThakiCloud/SKILLRET",
+      "repo_type": "dataset",
+      "license": "apache-2.0",
+      "revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+      "last_modified": "2026-07-29T21:01:37Z",
+      "paper": "arXiv 2605.05726 (SkillRet v3)",
+      "files": {
+        "data/skills/test.jsonl": {
+          "sha256": "1960453e422e4ba01977197580934ca3c02b2ac302dfa9c0d074707d961b7c81",
+          "bytes": 117606037,
+          "rows": 6006
+        },
+        "data/queries/test.jsonl": {
+          "sha256": "4d07a35f40e597f8468c6dab480c95a1f9b40ecbde80274081ba2e7c643d0f6d",
+          "bytes": 6053507,
+          "rows": 4392
+        },
+        "data/qrels/test.jsonl": {
+          "sha256": "edbfae0b8109de460d54e27e6235b1b47316f34956744db0571ad1b4ddb860af",
+          "bytes": 661204,
+          "rows": 7187
+        },
+        "data/taxonomy.json": {
+          "sha256": "8fb8e8e8eeb22b8781615d455350a1d9d03e7fe10ca26940993fc37b0cdacf48",
+          "bytes": 5372,
+          "rows": null
+        }
+      }
+    },
+    "skillretbench": {
+      "hf_repo": "thaki-AI/SkillRetBench",
+      "repo_type": "dataset",
+      "license": "apache-2.0",
+      "revision": "4bdbf59b832a5324cb82277e20159f6a9a0153c8",
+      "last_modified": "2026-03-22T12:24:18Z",
+      "paper": "SEFO / SkillRetBench dataset card",
+      "files": {
+        "skill_corpus.json": {
+          "sha256": "0e1bff678b6c16f248f928ade3dff7b4fb66a9b772457eab84185289d60e1f9a",
+          "bytes": 4802474,
+          "rows": null
+        },
+        "skillretbench_queries.json": {
+          "sha256": "e8f28d42a0c059083bbb3e54982b30a33abd9f49242f16642a0031d79a1ce29f",
+          "bytes": 1577865,
+          "rows": null
+        },
+        "baseline_results.json": {
+          "sha256": "7134ca6c27903c58b495fc46cc38230ec8a3ecd93327421eb0f952c3c3467170",
+          "bytes": 8528,
+          "rows": null
+        }
+      }
+    }
+  }
+}
