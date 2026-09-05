@@ -6,6 +6,11 @@ serves hook queries from a GPU endpoint; it serves CI and `find --experimental` 
 **Builds on:** [ADR-0009](ADR-0009-hybrid-retrieval-client-side.md) (hybrid retrieval, client side),
 [ADR-0003](ADR-0003-bootstrap-skill-cli-not-mcp.md) (CLI, not MCP).
 
+> **Literature check:** [`docs/RESEARCH.md`](../RESEARCH.md) places this decision against BEIR,
+> DPR, SkillRet and SkillRouter. Short version: the `w_dense = 0` outcome **agrees** with the
+> on-task literature — SkillRet's own leaderboard puts BM25 above a 118M dense encoder on skill
+> retrieval — and the one paper pointing the other way (DPR) measures an in-domain QA regime.
+
 ## Context
 
 Three requirements collide.
