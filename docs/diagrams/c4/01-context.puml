@@ -1,0 +1,26 @@
+@startuml c4-context
+!include <C4/C4_Context>
+!pragma layout smetana
+title Poziom 1 — kontekst: kto i po co używa Guidefold
+
+Person(dev, "Developer", "Pracuje z agentem AI (Claude Code, Copilot, Codex, Gemini). Chce, żeby agent znał zasady tej części monorepo, w której właśnie pracuje.")
+Person(owner, "Właściciel skilla", "Pisze i utrzymuje SKILL.md obok kodu swojego zespołu; przegląda zmiany w PR.")
+Person(po, "Właściciel produktu / Platform", "Decyduje o tierze wdrożenia, czyta raport użycia per skill i wyniki pilota.")
+
+System(gf, "Guidefold", "Dla zadania i miejsca w repo wybiera właściwe skille, dostarcza je agentowi w budżecie ≤ 4 kart i 300 ms, i mierzy, czy zostały użyte i czy pomogły.")
+
+System_Ext(git, "Monorepo + CI (GitHub)", "Źródło prawdy: SKILL.md żyją w git; CI waliduje i publikuje.")
+System_Ext(harness, "Harness agenta", "Claude Code / Copilot CLI / Codex / Gemini CLI — środowisko, w którym pracuje agent i działa hook.")
+System_Ext(models, "Modele", "LLM agenta (w harnessie); encoder do dense — wyłącznie offline w CI i w cieniu, nigdy u developera.")
+System_Ext(reg, "Google Cloud Agent Registry", "Opcjonalne lustro skilli dla innych konsumentów; nigdy na ścieżce zapytania.")
+
+Rel(owner, git, "PR ze SKILL.md, review CODEOWNERS")
+Rel(git, gf, "walidacja → indeks → snapshot", "CI")
+Rel(dev, harness, "pisze prompt")
+Rel(harness, gf, "hook: prompt + lokalizacja; load skilla", "CLI / HTTP")
+Rel_Back(harness, gf, "≤ 4 karty do kontekstu; treść skilla")
+Rel(harness, models, "rozumowanie agenta")
+Rel(gf, reg, "publikuje (opcjonalnie)")
+Rel(gf, po, "raport użycia per skill; bramki jakości; wynik pilota")
+SHOW_LEGEND()
+@enduml

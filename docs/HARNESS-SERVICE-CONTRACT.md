@@ -1,12 +1,12 @@
 # Harness-service contract 1.1
 
-**Status:** implemented for the local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped.
+**Status:** implemented by the Go/ParadeDB Compose service and the historical local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped.
 
 Machine-readable requests and success/error envelopes: [JSON Schema](../tools/serve_spike/contracts/harness-service-v1.1.schema.json). A complete request is in [search-example.json](../tools/serve_spike/contracts/search-example.json). The normative behavioral tests are [test_service_context.py](../tests/test_service_context.py). Both schema and service validation must accept valid requests and reject invalid ones in CI.
 
 ## Versioning and ownership
 
-- New contextual requests require `schema_version: "1.1"`. Valid unversioned legacy requests keep their query/node/score/selection behavior. Explicit `"1.0"` is not a wire version.
+- New contextual requests require `schema_version: "1.1"`. Valid unversioned legacy requests keep their request and response semantics within a backend. Retrieval changes are identified by `backend` and retrieval revision; this does not promise identical ranks or scores between Python BM25F and ParadeDB. Explicit `"1.0"` is not a wire version.
 - Unknown versions, unknown fields at every request object level, duplicate JSON keys, invalid types and limits fail with HTTP400. Unknown request fields are never silently ignored. Clients tolerate additive response fields.
 - An incompatible field meaning requires a new negotiated schema version. New versions are published with schemas, examples, runtime validation and conformance tests in the same PR. Readiness advertises supported versions. A client must not retry an unsupported version by silently dropping workspace context.
 - The adapter owns observed repository-relative paths, request IDs, declared capabilities and actual context delivery. The agent supplies a task query and labels inferred information. The server owns the loaded repository identity, versioned scope map, routing policy, returned revisions and explicit feature status.
@@ -14,11 +14,11 @@ Machine-readable requests and success/error envelopes: [JSON Schema](../tools/se
 
 ## Requests and implemented effects
 
-The endpoints remain `GET /health/ready`, `POST /v1/search` and `POST /v1/use`. POST requires the configured local bearer token. The server is bound to loopback and does not implement tenant IAM. Each body is limited to 16,384 bytes; SEARCH query is a nonblank UTF-8 string of at most 4,096 characters. Deadline is an integer from 1 to 5,000 ms, default 1,000. Both profiles currently select at most four cards and return at most ten diagnostic ranked candidates.
+The endpoints remain `GET /health/ready`, `POST /v1/search` and `POST /v1/use`. POST requires the configured local bearer token. Compose publishes the Go API on loopback (the container listens internally on port 8080). Tenant/repository identity is operator-configured; production tenant IAM is not implemented. Each body is limited to 16,384 bytes; SEARCH query is a nonblank UTF-8 string of at most 4,096 characters. Deadline is an integer from 1 to 5,000 ms, default 1,000. Both profiles currently select at most four cards and return at most ten diagnostic ranked candidates.
 
 | Field | Required / effect in 1.1 |
 |---|---|
-| `query` | SEARCH required. Passed unchanged to the shared Router and, for hybrid, the encoder. No hidden LLM rewrite, metadata concatenation or translation. |
+| `query` | SEARCH required. Passed unchanged to the configured retrieval backend: ParadeDB in Go, shared Router/encoder in the historical hybrid experiment. No hidden LLM rewrite, metadata concatenation or translation. |
 | `query_source` | Optional `user`, `agent`, `adapter`; diagnostic provenance, not a score multiplier. |
 | `workspace.repo_id` | Required within workspace; must exactly match the server-configured repository snapshot. A client cannot select another repository by claiming its ID. |
 | `workspace.revision` | Optional exact commit ID. If supplied, must match the loaded snapshot; no silent switch to current. Absence produces `repository_revision_not_supplied` and returns the actual revision. |
@@ -88,3 +88,23 @@ From the repository root in Linux, with `GF_PY` pointing at the existing Python 
 Create the local token as described in the [service README](../tools/serve_spike/README.md). The snapshot builder supports a monorepo fixture nested inside this tool repository. It serves full SKILL.md bodies, not auxiliary asset download endpoints. Do not commit generated snapshots or tokens.
 
 Every adapter release must pass schema validation, normalization examples and real HTTP SEARCH→USE tests against a pinned service version. Test observed path changes, explicit targets, multi-scope ordering, unknown/ambiguous paths, stale snapshots/revisions, capabilities unavailable to observe, loaded-state distinctions, budgets, retries and redacted logs. The fixture demonstrates contract behavior only. Retrieval gains require separate real task/context evaluation; SKILLRET latency queries do not contain real repository paths.
+
+## Go/ParadeDB implementation
+
+[ADR-0026](adr/ADR-0026-native-search-paradedb-compose.md) selects the native service.
+It reads the active snapshot and candidate/body data from Postgres. Metadata alone
+is cached. A separate BM25 index per immutable tenant/repo/snapshot keeps document
+frequencies isolated. A client path never chooses a SQL table or server file.
+
+`GET /health/live` is process liveness; readiness requires a compatible published
+snapshot and a reachable database. Requests are bounded to eight simultaneous
+operations; excess admission returns 429. Deadlines cover validation, pool waits and
+SQL work; 504 means the deadline expired. Database errors return 503. Context policy,
+budgets, checksums and exact revision checks retain the semantics above.
+
+Native conformance: [Go tests](../services/search/routing_test.go),
+[Compose integration tests](../tools/search_service/smoke.py) and the
+[deployment runbook](../services/search/README.md). These use the existing normative
+JSON Schema, including generated request IDs and safe additive response fields.
+The native retrieval revision is distinct; performance and matching quality are
+measured separately from policy compatibility. Dense is explicitly disabled.

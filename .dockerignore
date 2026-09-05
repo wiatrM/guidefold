@@ -1,0 +1,12 @@
+**
+!services/
+!services/search/
+!services/search/**
+!tools/
+!tools/serve_spike/
+!tools/serve_spike/contracts/
+!tools/serve_spike/contracts/harness-service-v1.1.schema.json
+!skills/
+!skills/guidefold/
+!skills/guidefold/scripts/
+!skills/guidefold/scripts/guidefold
