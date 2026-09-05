@@ -97,9 +97,17 @@ is cached. A separate BM25 index per immutable tenant/repo/snapshot keeps docume
 frequencies isolated. A client path never chooses a SQL table or server file.
 
 `GET /health/live` is process liveness; readiness requires a compatible published
-snapshot and a reachable database. Requests are bounded to eight simultaneous
-operations; excess admission returns 429. Deadlines cover validation, pool waits and
-SQL work; 504 means the deadline expired. Database errors return 503. Context policy,
+snapshot and a reachable database. Eight shared SEARCH/USE slots and two separate
+telemetry slots cover body upload, parsing, validation and backend work. Authentication
+precedes admission; excess admission returns 429 (`overloaded` or
+`telemetry_overloaded`) before reading the body, with `Retry-After: 1`. HTTP/1 overload
+responses close the connection so an unread slow body cannot delay the reply; retry
+on a new connection with the same correlation/event IDs. An early rejection cannot
+echo IDs from an unread body, and overload takes precedence over body/schema errors.
+Health probes do not reserve these slots. The HTTP server's read timeout bounds slow
+uploads; the payload's deadline can only be parsed after upload. Once parsed, that
+deadline is measured from handler entry and covers validation, pool waits and SQL work;
+504 means it expired. Database errors return 503. Context policy,
 budgets, checksums and exact revision checks retain the semantics above.
 
 Native conformance: [Go tests](../services/search/routing_test.go),
