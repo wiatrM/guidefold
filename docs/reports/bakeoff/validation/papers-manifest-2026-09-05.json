@@ -1,0 +1,655 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-09-05",
+  "created_at_utc": "2026-09-05T08:25:09.068572+00:00",
+  "scope_note": "The original research-reference inventory comprised 12 files for 9 source groups, including fetch.sh and two full-text copies. At manifest creation the cache has 16 files for 11 source groups: GoS and SkillResolve were added, as were duplicate named v5/v3 copies of existing SkillRouter/SkillRet full texts. This manifest inventories every current file rather than silently preserving the old count.",
+  "cache_root": "/home/mike/.cache/guidefold/papers",
+  "summary": {
+    "original_file_scope": 12,
+    "original_source_groups": 9,
+    "current_entries": 16,
+    "current_source_groups": 11,
+    "publication_source_groups": 10,
+    "software_source_groups": 1,
+    "support_scripts": 1,
+    "unique_file_contents": 14,
+    "actual_type_counts": {
+      "abs": 5,
+      "pdf": 1,
+      "script": 1,
+      "full": 7,
+      "error": 2
+    }
+  },
+  "source_groups": {
+    "beir": {
+      "title": "BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models",
+      "publication_type": "conference_paper",
+      "identifier": "arXiv:2104.08663",
+      "version": "v4",
+      "version_date": "2021-10-21",
+      "canonical_url": "https://arxiv.org/abs/2104.08663v4",
+      "full_text_url": "https://arxiv.org/html/2104.08663v4",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_text_methods_results_limitations_and_relevant_appendices_read",
+        "sections": [
+          "1-7",
+          "Appendix B",
+          "Appendix C",
+          "Appendix G",
+          "Appendix H"
+        ],
+        "note": "Original cached HTML is only the abstract page. Full versioned HTML was read online and saved under /tmp, outside the repository."
+      },
+      "scope": "original",
+      "local_files": [
+        "beir-2104.08663.html"
+      ],
+      "local_primary_full_text_available": false
+    },
+    "bm25": {
+      "title": "The Probabilistic Relevance Framework: BM25 and Beyond",
+      "publication_type": "journal_review",
+      "identifier": "doi:10.1561/1500000019",
+      "version": "2009 published review",
+      "version_date": null,
+      "canonical_url": "https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf",
+      "full_text_url": "https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "identity_and_file_integrity_checked",
+        "sections": [
+          "title page",
+          "table of contents"
+        ],
+        "note": "59-page real PDF. Title-page authors are Stephen Robertson and Hugo Zaragoza. Embedded PDF /Author metadata is unrelated and was not used for bibliographic attribution. Broader team review is documented separately."
+      },
+      "scope": "original",
+      "local_files": [
+        "bm25-robertson2009.pdf"
+      ],
+      "local_primary_full_text_available": true
+    },
+    "dpr": {
+      "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+      "publication_type": "conference_paper",
+      "identifier": "arXiv:2004.04906",
+      "version": "v3",
+      "version_date": "2020-09-30",
+      "canonical_url": "https://arxiv.org/abs/2004.04906v3",
+      "full_text_url": "https://arxiv.org/html/2004.04906v3",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_text_methods_results_and_relevant_appendices_read",
+        "sections": [
+          "1-6",
+          "Appendix A",
+          "Appendix B",
+          "Appendix C",
+          "Appendix D"
+        ],
+        "note": "Original cached HTML is only the abstract page. Full versioned HTML was read online and saved under /tmp, outside the repository."
+      },
+      "scope": "original",
+      "local_files": [
+        "dpr-2004.04906.html"
+      ],
+      "local_primary_full_text_available": false
+    },
+    "monobert": {
+      "title": "Passage Re-ranking with BERT",
+      "publication_type": "research_preprint",
+      "identifier": "arXiv:1901.04085",
+      "version": "v5",
+      "version_date": "2020-04-14",
+      "canonical_url": "https://arxiv.org/abs/1901.04085v5",
+      "full_text_url": "https://arxiv.org/html/1901.04085v5",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_main_text_read",
+        "sections": [
+          "1-4"
+        ],
+        "note": "Initial submission was in 2019; local abstract and reviewed full text correspond to v5 from 2020."
+      },
+      "scope": "original",
+      "local_files": [
+        "monobert-1901.04085.html"
+      ],
+      "local_primary_full_text_available": false
+    },
+    "skillrouter": {
+      "title": "SkillRouter: Skill Routing for LLM Agents at Scale",
+      "publication_type": "research_preprint",
+      "identifier": "arXiv:2603.22455",
+      "version": "v5",
+      "version_date": "2026-07-20",
+      "canonical_url": "https://arxiv.org/abs/2603.22455v5",
+      "full_text_url": "https://arxiv.org/html/2603.22455v5",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "identity_version_and_full_text_availability_checked",
+        "sections": [],
+        "note": "Detailed scientific analysis belongs to the coordinating agent and its dedicated literature review, rather than this inventory writer. Two cached full-text files are byte-identical v5."
+      },
+      "scope": "original",
+      "local_files": [
+        "full-2603.22455.html",
+        "skillrouter-2603.22455.html",
+        "skillrouter-v5.html"
+      ],
+      "local_primary_full_text_available": true
+    },
+    "skillret": {
+      "title": "SkillRet: A Large-Scale Benchmark for Skill Retrieval in LLM Agents",
+      "publication_type": "research_preprint",
+      "identifier": "arXiv:2605.05726",
+      "version": "v3",
+      "version_date": "2026-09-01",
+      "canonical_url": "https://arxiv.org/abs/2605.05726v3",
+      "full_text_url": "https://arxiv.org/html/2605.05726v3",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "identity_version_and_full_text_availability_checked",
+        "sections": [],
+        "note": "Detailed scientific analysis belongs to the coordinating agent and its dedicated literature review, rather than this inventory writer. Two cached full-text files are byte-identical v3."
+      },
+      "scope": "original",
+      "local_files": [
+        "full-2605.05726.html",
+        "skillret-2605.05726.html",
+        "skillret-v3.html"
+      ],
+      "local_primary_full_text_available": true
+    },
+    "sif": {
+      "title": "A Simple but Tough-to-Beat Baseline for Sentence Embeddings",
+      "publication_type": "conference_paper",
+      "identifier": "OpenReview:SyK00v5xx",
+      "version": null,
+      "version_date": null,
+      "canonical_url": "https://openreview.net/forum?id=SyK00v5xx",
+      "full_text_url": "https://openreview.net/pdf?id=SyK00v5xx",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_text_unavailable",
+        "sections": [],
+        "note": "The local HTML is an OpenReview browser-verification page, not an abstract or paper. No full-text review or specific paper-version verification is claimed. The PDF URL is a follow-up locator, not a verified successful download."
+      },
+      "scope": "original",
+      "local_files": [
+        "sif-arora2017.html"
+      ],
+      "local_primary_full_text_available": false
+    },
+    "rrf": {
+      "title": "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods",
+      "publication_type": "conference_paper",
+      "identifier": "Cormack et al., SIGIR 2009",
+      "version": null,
+      "version_date": null,
+      "canonical_url": "https://plg.uwaterloo.ca/~gvcormack/cormacksigir09-rrf.pdf",
+      "full_text_url": null,
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "local_download_is_404_error",
+        "sections": [],
+        "note": "The 279-byte file has a .pdf suffix but contains an HTML 404 response. It is not scientific evidence. No full-text review is claimed by this inventory writer."
+      },
+      "scope": "original",
+      "local_files": [
+        "rrf-cormack2009.pdf"
+      ],
+      "local_primary_full_text_available": false
+    },
+    "model2vec": {
+      "title": "Model2Vec: Fast State-of-the-Art Static Embeddings",
+      "publication_type": "software_repository",
+      "identifier": "github:MinishLab/model2vec",
+      "version": "94cbc1b1ee36cec0f462a0b142a041e1af488203",
+      "version_date": null,
+      "canonical_url": "https://github.com/MinishLab/model2vec/tree/94cbc1b1ee36cec0f462a0b142a041e1af488203",
+      "full_text_url": "https://github.com/MinishLab/model2vec/blob/94cbc1b1ee36cec0f462a0b142a041e1af488203/README.md",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_readme_results_and_distillation_docs_read",
+        "sections": [
+          "README",
+          "results/README.md",
+          "official distillation documentation"
+        ],
+        "note": "The commit was identified from currentOid embedded in the local HTML. This is software documentation and authors benchmark results, not a peer-reviewed paper. Current official distillation docs were a separate unpinned snapshot."
+      },
+      "scope": "original",
+      "local_files": [
+        "model2vec.html"
+      ],
+      "local_primary_full_text_available": true
+    },
+    "gos": {
+      "title": "Graph-of-Skills: Dependency-Aware Structural Retrieval for Massive Agent Skills",
+      "publication_type": "research_preprint",
+      "identifier": "arXiv:2604.05333",
+      "version": "v3",
+      "version_date": "2026-05-27",
+      "canonical_url": "https://arxiv.org/abs/2604.05333v3",
+      "full_text_url": "https://arxiv.org/html/2604.05333v3",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_main_text_and_all_appendices_read",
+        "sections": [
+          "1-6",
+          "Limitations",
+          "Appendices A-F"
+        ],
+        "note": "Main results are averages over two runs; joint lexical-plus-rerank removal does not isolate a neural cross-encoder effect. Graph quality, static graph maintenance, and execution failures remain limitations."
+      },
+      "scope": "supplemental",
+      "local_files": [
+        "gos-2604.05333v3.html"
+      ],
+      "local_primary_full_text_available": true
+    },
+    "skillresolve": {
+      "title": "SkillResolve-Bench: Measuring and Resolving Same-Capability Ambiguity in Agent Skill Retrieval",
+      "publication_type": "research_preprint",
+      "identifier": "arXiv:2606.10388",
+      "version": "v1",
+      "version_date": "2026-06-09",
+      "canonical_url": "https://arxiv.org/abs/2606.10388v1",
+      "full_text_url": "https://arxiv.org/html/2606.10388v1",
+      "review_coverage": {
+        "by": "metrics_review",
+        "status": "full_main_text_and_all_appendices_read",
+        "sections": [
+          "1-6",
+          "Appendices A-C"
+        ],
+        "note": "Main comparison uses a controlled released family relation and a learned utility scorer versus zero-shot relevance baselines. HSR measures pre-execution exposure in a fixed pool, not a general execution-safety guarantee. Contract-feature ablation confidence intervals cross zero."
+      },
+      "scope": "supplemental",
+      "local_files": [
+        "skillresolve-2606.10388v1.html"
+      ],
+      "local_primary_full_text_available": true
+    }
+  },
+  "entries": [
+    {
+      "filename": "beir-2104.08663.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/beir-2104.08663.html",
+      "bytes": 44553,
+      "sha256": "ac20a9340bbf8531f35ed876a785ef0f3edd1e76fc658c4bc487c00f56a44487",
+      "source_group": "beir",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "[2104.08663] BEIR: A Heterogenous Benchmark for Zero-shot Evaluation of Information Retrieval Models",
+      "actual_type": "abs",
+      "content_role": "arxiv_abstract_page",
+      "full_text_available": false,
+      "verified_version": "v4",
+      "identity_evidence": "this version, v4",
+      "source_url": "https://arxiv.org/abs/2104.08663",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "bm25-robertson2009.pdf",
+      "local_path": "/home/mike/.cache/guidefold/papers/bm25-robertson2009.pdf",
+      "bytes": 423997,
+      "sha256": "11a9ef825dfd3fe50c8621273d02ea26b6f502b60379db9519d6c5c10de4fd25",
+      "source_group": "bm25",
+      "in_original_12_file_scope": true,
+      "actual_type": "pdf",
+      "actual_media_type": "application/pdf",
+      "page_count": 59,
+      "source_url": "https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf",
+      "source_url_provenance": "read_from_fetch_script",
+      "verified_version": "2009 published review",
+      "identity_evidence": "PDF magic, parseable 59 pages, title page and DOI",
+      "duplicate_of": null
+    },
+    {
+      "filename": "dpr-2004.04906.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/dpr-2004.04906.html",
+      "bytes": 41975,
+      "sha256": "769c22fd7b352a6d61add95a3116af5d85f4e1f540f9d52a6faa392999ed5aab",
+      "source_group": "dpr",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "[2004.04906] Dense Passage Retrieval for Open-Domain Question Answering",
+      "actual_type": "abs",
+      "content_role": "arxiv_abstract_page",
+      "full_text_available": false,
+      "verified_version": "v3",
+      "identity_evidence": "this version, v3",
+      "source_url": "https://arxiv.org/abs/2004.04906",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "fetch.sh",
+      "local_path": "/home/mike/.cache/guidefold/papers/fetch.sh",
+      "bytes": 1053,
+      "sha256": "e7bcf698a40f0726ae380b05fa514ddeaf7fae4b8f17837facd1e82280841874",
+      "source_group": null,
+      "in_original_12_file_scope": true,
+      "actual_type": "script",
+      "actual_media_type": "text/x-shellscript",
+      "source_url": null,
+      "review_status": "read_and_hashed_only_never_executed",
+      "note": "Support artifact, not an additional publication. The script checks only nonempty response bodies; its presence does not establish successful scientific-source retrieval.",
+      "duplicate_of": null
+    },
+    {
+      "filename": "full-2603.22455.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/full-2603.22455.html",
+      "bytes": 467905,
+      "sha256": "f986fe1aa9c58e538f1334f319b853b2515deca1844205fdbf65270f8b41aede",
+      "source_group": "skillrouter",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "SkillRouter: Skill Routing for LLM Agents at Scale",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v5",
+      "identity_evidence": "arXiv:2603.22455v5",
+      "source_url": "https://arxiv.org/html/2603.22455v5",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": "skillrouter-v5.html"
+    },
+    {
+      "filename": "full-2605.05726.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/full-2605.05726.html",
+      "bytes": 475686,
+      "sha256": "cae1bb21a447891b55dde983049f38234590e7f327cdac3d434e150684aa0949",
+      "source_group": "skillret",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "SkillRet: A Large-Scale Benchmark for Skill Retrieval in LLM Agents",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v3",
+      "identity_evidence": "arXiv:2605.05726v3",
+      "source_url": "https://arxiv.org/html/2605.05726v3",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": "skillret-v3.html"
+    },
+    {
+      "filename": "gos-2604.05333v3.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/gos-2604.05333v3.html",
+      "bytes": 430988,
+      "sha256": "9291960623d53b48d4fd76bebb930c91a50253ac41c641ca47d4285991957970",
+      "source_group": "gos",
+      "in_original_12_file_scope": false,
+      "actual_media_type": "text/html",
+      "html_title": "Graph-of-Skills: Dependency-Aware Structural Retrieval for Massive Agent Skills",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v3",
+      "identity_evidence": "arXiv:2604.05333v3",
+      "source_url": "https://arxiv.org/html/2604.05333v3",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": null
+    },
+    {
+      "filename": "model2vec.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/model2vec.html",
+      "bytes": 349534,
+      "sha256": "6bdf301a61281710f43f7f4dcf6dbae3a8f44579f1036021addf538a7533625e",
+      "source_group": "model2vec",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "GitHub - MinishLab/model2vec: Fast State-of-the-Art Static Embeddings · GitHub",
+      "actual_type": "full",
+      "content_role": "repository_readme_html",
+      "full_text_available": true,
+      "verified_version": "94cbc1b1ee36cec0f462a0b142a041e1af488203",
+      "identity_evidence": "GitHub title plus embedded currentOid",
+      "source_url": "https://github.com/MinishLab/model2vec",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "monobert-1901.04085.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/monobert-1901.04085.html",
+      "bytes": 40657,
+      "sha256": "69d0628dfa9fe889ff88d3594bd9d2831207c9e9f452226ad3db643aa131dd04",
+      "source_group": "monobert",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "[1901.04085] Passage Re-ranking with BERT",
+      "actual_type": "abs",
+      "content_role": "arxiv_abstract_page",
+      "full_text_available": false,
+      "verified_version": "v5",
+      "identity_evidence": "this version, v5",
+      "source_url": "https://arxiv.org/abs/1901.04085",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "rrf-cormack2009.pdf",
+      "local_path": "/home/mike/.cache/guidefold/papers/rrf-cormack2009.pdf",
+      "bytes": 279,
+      "sha256": "bf98386d4f7d739fa5894bab94ebab7916638815148012b7d271d55d8410429f",
+      "source_group": "rrf",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "404 Not Found",
+      "actual_type": "error",
+      "error_kind": "html_404_not_found",
+      "full_text_available": false,
+      "verified_version": null,
+      "source_url": "https://plg.uwaterloo.ca/~gvcormack/cormacksigir09-rrf.pdf",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "sif-arora2017.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/sif-arora2017.html",
+      "bytes": 4785,
+      "sha256": "00d108a2c17213e0b1a2268b6f0be832673ed1865ef1c7a840315708eb6f482c",
+      "source_group": "sif",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "Verifying your browser | OpenReview",
+      "actual_type": "error",
+      "error_kind": "browser_verification_challenge",
+      "full_text_available": false,
+      "verified_version": null,
+      "source_url": "https://openreview.net/forum?id=SyK00v5xx",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "skillresolve-2606.10388v1.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/skillresolve-2606.10388v1.html",
+      "bytes": 303373,
+      "sha256": "9c85ca10b71e5b1887724d49736f6142ee3bf1d919bf32040cc779b8d232bcdc",
+      "source_group": "skillresolve",
+      "in_original_12_file_scope": false,
+      "actual_media_type": "text/html",
+      "html_title": "SkillResolve-Bench: Measuring and Resolving Same-Capability Ambiguity in Agent Skill Retrieval",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v1",
+      "identity_evidence": "arXiv:2606.10388v1",
+      "source_url": "https://arxiv.org/html/2606.10388v1",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": null
+    },
+    {
+      "filename": "skillret-2605.05726.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/skillret-2605.05726.html",
+      "bytes": 43842,
+      "sha256": "3f6bad9d1748fb84f34a58a7ff1deff86caac15197d9555c96511733428d36a6",
+      "source_group": "skillret",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "[2605.05726] SkillRet: A Large-Scale Benchmark for Skill Retrieval in LLM Agents",
+      "actual_type": "abs",
+      "content_role": "arxiv_abstract_page",
+      "full_text_available": false,
+      "verified_version": "v3",
+      "identity_evidence": "this version, v3",
+      "source_url": "https://arxiv.org/abs/2605.05726",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "skillret-v3.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/skillret-v3.html",
+      "bytes": 475686,
+      "sha256": "cae1bb21a447891b55dde983049f38234590e7f327cdac3d434e150684aa0949",
+      "source_group": "skillret",
+      "in_original_12_file_scope": false,
+      "actual_media_type": "text/html",
+      "html_title": "SkillRet: A Large-Scale Benchmark for Skill Retrieval in LLM Agents",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v3",
+      "identity_evidence": "arXiv:2605.05726v3",
+      "source_url": "https://arxiv.org/html/2605.05726v3",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": "full-2605.05726.html"
+    },
+    {
+      "filename": "skillrouter-2603.22455.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/skillrouter-2603.22455.html",
+      "bytes": 45184,
+      "sha256": "dbdc3899c64a4f86011b0a8d0a8648a4799b577d18b82ce0ca06e952327b9010",
+      "source_group": "skillrouter",
+      "in_original_12_file_scope": true,
+      "actual_media_type": "text/html",
+      "html_title": "[2603.22455] SkillRouter: Skill Routing for LLM Agents at Scale",
+      "actual_type": "abs",
+      "content_role": "arxiv_abstract_page",
+      "full_text_available": false,
+      "verified_version": "v5",
+      "identity_evidence": "this version, v5",
+      "source_url": "https://arxiv.org/abs/2603.22455",
+      "source_url_provenance": "read_from_fetch_script",
+      "duplicate_of": null
+    },
+    {
+      "filename": "skillrouter-v5.html",
+      "local_path": "/home/mike/.cache/guidefold/papers/skillrouter-v5.html",
+      "bytes": 467905,
+      "sha256": "f986fe1aa9c58e538f1334f319b853b2515deca1844205fdbf65270f8b41aede",
+      "source_group": "skillrouter",
+      "in_original_12_file_scope": false,
+      "actual_media_type": "text/html",
+      "html_title": "SkillRouter: Skill Routing for LLM Agents at Scale",
+      "actual_type": "full",
+      "content_role": "full_research_article_html",
+      "full_text_available": true,
+      "verified_version": "v5",
+      "identity_evidence": "arXiv:2603.22455v5",
+      "source_url": "https://arxiv.org/html/2603.22455v5",
+      "source_url_provenance": "versioned_primary_url_identified_from_article",
+      "duplicate_of": "full-2603.22455.html"
+    }
+  ],
+  "duplicate_content_groups": [
+    {
+      "sha256": "f986fe1aa9c58e538f1334f319b853b2515deca1844205fdbf65270f8b41aede",
+      "filenames": [
+        "full-2603.22455.html",
+        "skillrouter-v5.html"
+      ]
+    },
+    {
+      "sha256": "cae1bb21a447891b55dde983049f38234590e7f327cdac3d434e150684aa0949",
+      "filenames": [
+        "full-2605.05726.html",
+        "skillret-v3.html"
+      ]
+    }
+  ],
+  "full_text_supplements_outside_repository": [
+    {
+      "name": "beir-v4-full.html",
+      "url": "https://arxiv.org/html/2104.08663v4",
+      "final_url": "https://arxiv.org/html/2104.08663v4",
+      "bytes": 422569,
+      "sha256": "653cd2f17db544ea086e8cdc90828f234f35d6fc307559dbf011aa5a6536ce1b",
+      "content_type": "text/html; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/beir-v4-full.html"
+    },
+    {
+      "name": "dpr-v3-full.html",
+      "url": "https://arxiv.org/html/2004.04906v3",
+      "final_url": "https://arxiv.org/html/2004.04906v3",
+      "bytes": 219116,
+      "sha256": "e7c566cbd48fcbbe1b0e35868a9f5bd4823b0bfe3ffaf19d4e744ac5f5f6ad98",
+      "content_type": "text/html; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/dpr-v3-full.html"
+    },
+    {
+      "name": "monobert-v5-full.html",
+      "url": "https://arxiv.org/html/1901.04085v5",
+      "final_url": "https://arxiv.org/html/1901.04085v5",
+      "bytes": 62813,
+      "sha256": "7dfbbb337a71af24e9c15e455a43cd976aab6f4dc350114fddcabd0d56d4b5aa",
+      "content_type": "text/html; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/monobert-v5-full.html"
+    },
+    {
+      "name": "model2vec-pinned-readme.md",
+      "url": "https://raw.githubusercontent.com/MinishLab/model2vec/94cbc1b1ee36cec0f462a0b142a041e1af488203/README.md",
+      "final_url": "https://raw.githubusercontent.com/MinishLab/model2vec/94cbc1b1ee36cec0f462a0b142a041e1af488203/README.md",
+      "bytes": 13035,
+      "sha256": "d76b9e0f49f0b0edf60a3378a235cfb1e3250cfd975b4f3580bdb2fef69a4752",
+      "content_type": "text/plain; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/model2vec-pinned-readme.md"
+    },
+    {
+      "name": "model2vec-pinned-results.md",
+      "url": "https://raw.githubusercontent.com/MinishLab/model2vec/94cbc1b1ee36cec0f462a0b142a041e1af488203/results/README.md",
+      "final_url": "https://raw.githubusercontent.com/MinishLab/model2vec/94cbc1b1ee36cec0f462a0b142a041e1af488203/results/README.md",
+      "bytes": 16300,
+      "sha256": "a367b009a780d9ff6df9efae2b6775f997d00ad5366547983887af39fa9bd576",
+      "content_type": "text/plain; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/model2vec-pinned-results.md"
+    },
+    {
+      "name": "model2vec-current-distillation.html",
+      "url": "https://minish.ai/packages/model2vec/distillation/",
+      "final_url": "https://minish.ai/packages/model2vec/distillation/",
+      "bytes": 52949,
+      "sha256": "405e6f6e9e1f31bc27e80d75181201bd733f5689f6d4cfb148f62643bcb1d8c6",
+      "content_type": "text/html; charset=utf-8",
+      "storage": "outside_repository_in_tmp",
+      "local_path": "/tmp/guidefold-peer-reviewed-sources/model2vec-current-distillation.html"
+    }
+  ],
+  "limitations": [
+    "SIF full text was unavailable to this inventory writer; the cached HTML is a browser-verification challenge. No verified full-text or version claim is made.",
+    "The local RRF .pdf is a 279-byte HTML 404 page, not a PDF.",
+    "BEIR, DPR and monoBERT local cache files are abstract pages; full-text review used versioned primary supplements stored in /tmp.",
+    "Model2Vec is software documentation and author-reported benchmarks, not a peer-reviewed research paper.",
+    "Publication publication_type classifies the referenced work; unavailable local files do not become evidence merely because a work is identified.",
+    "Review coverage is recorded for this inventory writer only. Root and other agents may have additional review coverage documented in the accompanying report.",
+    "No full publication was copied into the repository. fetch.sh was read and hashed as metadata and never executed."
+  ],
+  "version_checks": {
+    "skillrouter_expected": "v5",
+    "skillrouter_verified": "v5",
+    "skillrouter_mismatch": false,
+    "skillret_expected": "v3",
+    "skillret_verified": "v3",
+    "skillret_mismatch": false
+  }
+}
