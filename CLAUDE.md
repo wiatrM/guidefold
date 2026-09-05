@@ -47,6 +47,20 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 - New decision → new `docs/adr/ADR-000N-<slug>.md` (same format as existing ones).
 - Keep `docs/DESIGN.md` and `docs/CONVENTIONS.md` in sync with the CLI's behaviour.
 
+## Evaluation corpora (rule since 2026-09-05)
+
+- **Routing-quality claims are measured only on real, labelled corpora**, run through the product
+  path (`policy_filter → candidates → score → select(admissible=…)`). The 26-skill Meridian fixture
+  and its 220-query golden set are the CI **dev/regression** suite, not evidence for model or
+  configuration choices — gains on it reversed on a held-out half (PR #19).
+- Corpora are pinned by HuggingFace revision and per-file SHA-256 in
+  `docs/reports/bakeoff/validation/corpora-manifest.json`; fetch and verify with
+  `python3 tools/eval/corpora.py fetch` (needs `huggingface_hub`, e.g. `~/.cache/guidefold/gpu-venv`).
+  Data lives under `~/.cache/guidefold/corpora/` and is never committed.
+- `tests/test_corpora.py` skips the corpus checks where the cache is absent (CI). A skip is
+  "not measured here", not a pass.
+- Local unlabelled corpora under `experiment/` (gitignored) are for scale/size/latency only.
+
 ## Naming
 
 - Node: dotted path from `guidefold.yaml` (`atlas.identity.turnstile`); root is `_root`.

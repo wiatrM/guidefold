@@ -75,3 +75,15 @@ the bootstrap skill, the CLI, the templates) and a **consumer monorepo** (where 
 `guidefold.yaml`, real `.agents/skills/**` and a real CI workflow would live after copying
 `skills/guidefold/` and `templates/` in). `examples/monorepo/` plays the part of the consumer
 monorepo for development and tests; nothing under it is a real organisation's data.
+
+## Real evaluation corpora
+
+Quality numbers come from real labelled skill corpora (SkillRetBench, SkillRet), pinned by revision
+and SHA-256 in `docs/reports/bakeoff/validation/corpora-manifest.json`:
+
+```
+~/.cache/guidefold/gpu-venv/bin/python tools/eval/corpora.py fetch    # ~130 MB, once
+python3 tools/eval/corpora.py verify                                  # stdlib; must print OK
+```
+
+The 26-skill fixture and its golden set are the dev/regression suite only. See `CLAUDE.md`.
