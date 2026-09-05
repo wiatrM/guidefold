@@ -70,7 +70,7 @@ def fetch(name: str) -> pathlib.Path:
     spec = manifest()["corpora"][name]
     return pathlib.Path(snapshot_download(
         spec["hf_repo"], repo_type=spec["repo_type"], revision=spec["revision"],
-        allow_patterns=list(spec["files"]) + ["README.md"], local_dir=str(corpus_dir(name))))
+        allow_patterns=list(spec["files"]) + list(spec.get("dev_files", [])) + ["README.md"], local_dir=str(corpus_dir(name))))
 
 
 # ----------------------------------------------------------------------------- loaders
@@ -108,6 +108,22 @@ def load_skillretbench() -> dict:
     return {"corpus": json.loads((d / "skill_corpus.json").read_text()),
             "queries": json.loads((d / "skillretbench_queries.json").read_text()),
             "baselines": json.loads((d / "baseline_results.json").read_text())}
+
+
+DEV_SPLIT = REPO_ROOT / "docs" / "reports" / "bakeoff" / "validation" / "skillret-dev-split.json"
+
+
+def load_skillret_dev() -> dict:
+    """The frozen dev split (DENSE-PROGRAM.md v2 §3): 1 000 SKILLRET *train* queries, stratified by
+    k and major, with the train skill pool as the retrieval pool. This is where every configuration
+    and fusion choice is made. It is disjoint from both test corpora by the dataset's construction.
+    Requires data/{queries,qrels,skills}/train.jsonl in the cache (fetch pulls them)."""
+    spec = json.loads(DEV_SPLIT.read_text()); ids = set(spec["query_ids"])
+    d = corpus_dir("skillret") / "data"
+    return {"spec": spec,
+            "queries": [q for q in _jsonl(d / "queries" / "train.jsonl") if q["id"] in ids],
+            "qrels": [r for r in _jsonl(d / "qrels" / "train.jsonl") if r.get("query_id") in ids],
+            "skills": list(_jsonl(d / "skills" / "train.jsonl"))}
 
 
 # ----------------------------------------------------------------------------- cli
