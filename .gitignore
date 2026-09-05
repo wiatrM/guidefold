@@ -51,3 +51,7 @@ tools/bakeoff/.bakeoff-cache/
 tools/bakeoff/build/**/words.bin
 tools/bakeoff/build/**/vectors.i8
 tools/bakeoff/build/**/teacher.f16
+
+# local experiment corpora — real skills used for scale measurement, never committed
+# (103 MB at 2111 skills; the repo ships a measured *profile*, not the corpus — see ADR-0021)
+experiment/

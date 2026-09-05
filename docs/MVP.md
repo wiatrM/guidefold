@@ -134,6 +134,15 @@ Routing: Hit@1, Recall@8, nDCG@10, Completeness@K, abstention precision, hook p5
 
 ## 7. Deferred to the platform phase (after M5)
 
+**Post-bake-off follow-up (open):** [ADR-0022](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md)
+remains Proposed. The first three repairs landed in `c08c58c`; this does not complete its target
+architecture. Next: benchmark/CLI parity and per-query evidence; shared eligibility plus complete
+AND/OR bundles and transitive `requires`; a frozen pilot holdout and calibrated abstention; then
+optional contextual models and execution/cost evaluation. See the
+[closure plan](reports/bakeoff/E1-closure-plan.md) and
+[research architecture review](reports/bakeoff/E1.3-architecture-after-research.md). These repairs
+and validation steps precede the platform work below; they are not marked complete by this plan.
+
 Field-aware score tensor + fusion MLP (needs hundreds of labelled judgements); composer roles and generative ordering (≥ 5k ordered bundles); `knowledge_unit` compiled from traces with redacted opt-in corpus; fine-tuning embedder/reranker (≥ 2k / ≥ 5k pairs); full G0–G7 and 16 kinds; HA GPU endpoint and laptop daemon; Codex and Gemini CLI adapters; Vertex AI Skill Registry dual-publish; BigQuery export; ARD façade; Backstage export; RL/self-play never before a stable reward, replay holdout and kill switch.
 
 ## 8. ADR cleanup applied with this document
@@ -148,3 +157,6 @@ Field-aware score tensor + fusion MLP (needs hundreds of labelled judgements); c
 | 0015 models, 0016 lifecycle + SkillPyramid, 0017 owner review | **Accepted** | approved by you on 2026-09-04 |
 | 0009 v2 retrieval, 0012 nothing generated, 0013 Knowledge API (revised: single Postgres), 0014 drift (revised: in-repo) | Proposed | await your decision with this MVP |
 | 0018 skills stay in the monorepo; one Postgres; GCS artifacts; Plan B GCS-native | **new, Proposed** | replaces 0011 |
+| [0020 two-tier dense retrieval](adr/ADR-0020-two-tier-dense-retrieval.md) | **Accepted** | static student and neural teacher remain separate; dense admission requires evidence |
+| [0021 index sharding and global word table](adr/ADR-0021-index-sharding-and-a-global-word-table.md) | Proposed | scale and cache identity require measurement |
+| [0022 admissibility, relevance and bundle completeness](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md) | Proposed | first repairs implemented in `c08c58c`; remaining work tracked in §7 and the closure plan |

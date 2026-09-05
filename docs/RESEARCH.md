@@ -1,175 +1,104 @@
 # What the literature says, and what we measured
 
-**Status:** Living document · 2026-09-05, **revised the same day after peer review**
-**Companion to:** [ADR-0020](adr/ADR-0020-two-tier-dense-retrieval.md), [ADR-0021](adr/ADR-0021-index-sharding-and-a-global-word-table.md),
-[`E1.3-embedder-selection.md`](reports/bakeoff/E1.3-embedder-selection.md),
-[`E1.3-peer-review-2026-09-05.md`](reports/bakeoff/E1.3-peer-review-2026-09-05.md),
-[`E1-closure-plan.md`](reports/bakeoff/E1-closure-plan.md)
+**Status:** Living synthesis, reviewed 2026-09-05 against main `c08c58c`.
+**Companions:** [full source and architecture review](reports/bakeoff/E1.3-architecture-after-research.md), [source manifest](reports/bakeoff/validation/papers-manifest-2026-09-05.json), [ADR-0022](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md), [first peer review](reports/bakeoff/E1.3-peer-review-2026-09-05.md), [E1 closure plan](reports/bakeoff/E1-closure-plan.md).
 
-E1.3 concluded the dense channel does not earn its place and E1.6 that the reranker does not either.
-A negative result is only trustworthy once placed against what the field knows. This document does
-that placement, per decision. **The first version of this document cherry-picked one table and
-over-explained one result; both are corrected below and marked.**
+The current choice is a local sparse router with dense disabled and experimental reranking in shadow mode. The evidence supports that configuration as a working baseline while measurement and bundle selection improve. It does not establish that semantic retrieval cannot help, or that domain fine-tuning is its only credible route back.
 
-Papers are cached under `~/.cache/guidefold/papers/` and deliberately **not committed** — they are
-third-party copyrighted works and this repository is Apache-2.0.
+The original bake-off, later diagnostic experiments, and current CLI are different measured objects. Every comparison below names which one it describes. Full third-party publications remain outside the repository; the manifest records versions, content hashes, incomplete downloads and duplicate files.
 
----
+## 1. All cached sources, with explicit coverage
 
-## 1. Five papers on our task
+The current cache contains **16 files representing 11 sources**: 10 publications and Model2Vec software documentation. An earlier snapshot had 12 files and 9 sources. Named SkillRouter/SkillRet full copies duplicate the existing full-text files. `fetch.sh` is a download script, not scientific evidence, and was inspected without execution.
 
-| paper | what it is | the one number that matters here |
+| Source | Verified version/material | Applicable lesson and limit |
 |---|---|---|
-| **SkillRet v3** (arXiv 2605.05726) | 16 129 skills; eval on 6 006 skills / 4 392 queries, disjoint pools | fine-tuned SkillRet-0.6B **81.12** NDCG@10 vs BM25 **51.69** |
-| **SkillRouter v5** (arXiv 2603.22455) | ~80K-skill routing benchmark, 75 core queries + 256 supplementary, 4-agent downstream eval | hiding the body costs **37–44 pp** Hit@1 |
-| **Graph of Skills v3** (arXiv 2604.05333) | dependency-aware bundle retrieval: hybrid seeding → reverse-aware PPR → budgeted hydration | +25.55 % reward, −56.72 % tokens; ablation: 34.4 full, 29.3 without graph propagation |
-| **SkillResolve-Bench** (arXiv 2606.10388) | 661 helpful/risky sibling pairs; the risky sibling shares the capability but points at a stale resource or missing precondition | defines **HSR@K** — harmful sibling rate |
-| **BEIR** (arXiv 2104.08663) | zero-shot IR across 18 datasets | *"BM25 is a robust baseline"*; rerankers best *"at high computational costs"* |
+| [Robertson–Zaragoza BM25/BM25F](https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf) | 2009 full PDF | Field weights, normalization and saturation interact. Both aggregated-field and per-field variants are described; benchmark/runtime parity must be explicit. |
+| [DPR](https://arxiv.org/html/2004.04906v3) | v3; local abstract supplemented with full text | Contextual retrieval can complement lexical matching; hybrid gains are task-dependent. A static student is a different model. |
+| [BEIR](https://arxiv.org/html/2104.08663v4) | v4; abstract supplemented with full text | Strong BM25 baseline, strong reranking results, and demonstrated annotation bias. It does not resolve our status/scope/composition policy. |
+| [monoBERT](https://arxiv.org/html/1901.04085v5) | v5; abstract supplemented with full text | Reranking improves ordering of an existing candidate pool. It is not dependency selection, abstention or a hook latency guarantee. |
+| [RRF](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) | 2009 full author PDF | Rank fusion is not calibrated confidence. The cached 279-byte file is a 404 page caused by the wrong author-path spelling. |
+| [SIF author explanation](https://www.offconvex.org/2018/06/17/textembeddings/) and [code](https://github.com/PrincetonML/SIF) | Final paper unavailable through OpenReview challenge | Weighted averaging and sentence-level component removal are supported by author materials. We do not claim to have read the inaccessible final PDF. |
+| [Model2Vec](https://minish.ai/packages/model2vec/distillation/) | Local GitHub snapshot `94cbc1b1ee36cec0f462a0b142a041e1af488203`, official results/docs | Better teachers need not produce better students. Vocabulary, pooling, PCA and quantization need separate evaluation; this is software documentation, not another peer-reviewed paper. |
+| [SkillRouter](https://arxiv.org/html/2603.22455v5) | v5 full text | Body access, false-negative filtering and complete skill sets matter. Body removal is not a BM25 field-weight experiment. |
+| [SkillRet](https://arxiv.org/html/2605.05726v3) | v3 full text | Correct functional alternatives and train/eval overlap before judging a retriever. Evaluate execution separately from ranking. |
+| [Graph of Skills](https://arxiv.org/html/2604.05333v3) | v3 full text | Evaluate dependency bundles under a budget. Joint lexical/reranking ablation does not isolate a neural cross-encoder; propagation is not automatically beneficial at every scale. |
+| [SkillResolve-Bench](https://arxiv.org/html/2606.10388v1) | v1 full text | Report harmful sibling exposure alongside helpful retrieval. Representative selection assumes valid alternative groups, not mere similarity. |
 
-### 1.1 SkillRet — the full table, not the convenient half
+## 2. Skill routing evidence and its boundaries
 
-**Correction.** The first version of this document quoted only the two encoders that BM25 beats.
-The same table continues:
+### SkillRet: contextual encoders, not our static student
 
-| type | model | params | NDCG@10 |
-|---|---|---|---|
-| sparse | BM25 | — | 51.69 |
-| off-the-shelf | e5-small-v2 | 118M | 44.66 |
-| off-the-shelf | e5-large-v2 | 335M | 53.41 |
-| off-the-shelf | Qwen3-Embedding-0.6B | 0.6B | 61.94 |
-| **skill-tuned** | **SkillRouter** | 1.2B | **73.54** |
-| **skill-tuned** | **SkillRet-0.6B** | 0.6B | **81.12** |
+The corrected v3 benchmark has 16,129 skills overall, including 6,006 evaluation skills and 4,392 evaluation queries. Its NDCG@10 table includes:
 
-The honest reading is two-sided. BM25 beats *off-the-shelf small* encoders and stays within 10
-points of an off-the-shelf 0.6B one — that part supports our `w_dense = 0`. But a **0.6B model
-fine-tuned on skill data beats BM25 by 30 points**, and beats the same-size off-the-shelf model by
-19. The lever is task-specific training, not parameter count. We measured `SKILLRET-Embedding-0.6B`
-as the best teacher on our fixture (hit@1 0.8678, within 0.6 pp of BM25) — consistent with this
-table, and a reason the dense channel is *disabled*, not *dead*.
+| Model | Parameters | NDCG@10 |
+|---|---:|---:|
+| BM25 | — | 51.69 |
+| e5-small-v2 | about 33M | 44.66 |
+| e5-large-v2 | 335M | 53.41 |
+| Qwen3-Embedding-0.6B | 0.6B | 61.94 |
+| SkillRouter encoder | 0.6B | 73.54 |
+| SkillRet encoder | 0.6B | 81.12 |
 
-**The number that should temper everyone's enthusiasm:** on Terminal-Bench, SkillRet's +30 NDCG@10
-over BM25 moved agent success from **65.5 % to 65.8 %** and cost from $0.86 to $0.78. A large
-retrieval gain bought a tiny execution gain. Ranking metrics are a proxy, and a leaky one.
+The source table's 118M entry for e5-small-v2 is inconsistent with the checkpoint; the 73.54 SkillRouter row is its encoder, not the 1.2B retrieve-and-rerank pipeline. A small encoder losing to BM25 does not establish that small encoders generally lose.
 
-### 1.2 SkillRouter — body access, with the caveats the review added
+The paper's separate Terminal-Bench experiment compares **no retrieval with SkillRet retrieval**, yielding 65.5% versus 65.8% success and mean cost $0.86 versus $0.78. It does **not** measure the downstream effect of the roughly 30-point NDCG advantage over BM25. The practical implication is to evaluate success and cost together; reduced cost at demonstrated success non-inferiority can also be valuable. [SkillRet v3](https://arxiv.org/html/2605.05726v3).
 
-37–44 pp is correct for v5 (37.3 / 38.7 / 44.0 in their three settings). It measures **whether the
-router can see the body at all**, not what BM25F weight the body should carry. Their "all-field"
-input is *budgeted*: body capped at 2 500 chars for the encoder and 2 000 for the reranker. And a
-better Hit@1 did not mean better completeness: their compact model's multi-skill FC@10 is **35.3 %**
-against 38.2 % for a larger baseline.
+### SkillRouter: information access and set semantics
 
-### 1.3 Graph of Skills — the paper our E1.5 pipeline already resembles
+The reported 37–44 pp loss after hiding the body is correct for v5. The core benchmark has 75 expert-verified queries; a supplementary benchmark adds 256 generated queries. Inputs are budgeted: encoder body 2,500 characters, reranker body 2,000. Better Hit@1 is not necessarily better full completeness: the compact system's multi-skill FC@10 is 35.3%, versus 38.2% for a larger baseline.
 
-GoS is, almost verbatim, the E1.5 design: lexical + semantic seeding, **reverse-aware Personalized
-PageRank** over typed edges (dependency, workflow, semantic, alternative), then a budgeted bundle.
-Their motivation is ours too: *"semantic proximity does not imply executable sufficiency … the top
-semantic match is a high-level solver, while the actual solution also requires a lower-level
-parser … that is semantically weak but functionally necessary."*
+Use body-aware input and measure truncation. Do not infer a BM25 weight from this ablation. Multi-skill annotations include complementary, substitute and mixed cases: AND between task requirements, OR only between verified substitutes. The four-source hard-negative recipe is a **training** method, not the paper's independent evaluation construction. [SkillRouter v5](https://arxiv.org/html/2603.22455v5).
 
-At 1 000 skills with GPT-5.2 Codex their ablation gives reward 34.4 with the full method, **29.3
-without graph propagation**, 26.7 without lexical retrieval and reranking together. Two caveats the
-review is right to raise: two repetitions, no significance test; and the last ablation removes two
-components at once, so it does not isolate the reranker. **At our 26-skill scale, reverse PPR and a
-decayed `requires` closure produced byte-identical rankings** on tune, holdout and the full set
-(config sweep, PR #19) — so we ship the closure as default, and GoS is the evidence that propagation
-starts to matter as the graph grows, not that it matters now.
+### GoS and SkillResolve: two different set operations
 
-### 1.4 SkillResolve-Bench — the metric our `stale_adversarial` stratum was missing
+GoS motivates including necessary companions even when their standalone semantic relevance is low. Our old 26-skill sweep found equivalent PPR and closure rankings; this supports the simpler measured configuration at that snapshot. Neither it nor the paper proves the outcome at pilot scale. The paper's two-run averages, joint component ablations and weaker result at 200 skills limit generalization. [GoS v3](https://arxiv.org/html/2604.05333v3).
 
-Their failure mode is exactly ours: *"a router can find the right capability family yet expose the
-wrong same-capability representative"* — a sibling that leads to *"a stale resource, missing
-precondition, or wrong procedure"*. They report helpful ranking **together with** HSR@K, the top-K
-exposure of the risky sibling. Our `distractor_rate@4` is a coarse cousin; HSR@K on
-(helpful, risky-sibling) pairs is the sharper instrument, and our deprecated `legacy-session-auth`
-paired with `postgres-auth` is one such pair already in the fixture.
+SkillResolve addresses choosing the helpful member of a confusing family. In its representative-selection ablation, helpful recall changes little while harmful exposure rises substantially. Its main comparison uses a released family relation and a trained utility scorer; several baselines are zero-shot. HSR measures pre-execution exposure, not a safety guarantee. Use this selection operator for **verified substitutes**; applying one-per-family to complementary dependencies would undermine bundle completeness. A `similar` edge alone does not establish substitutability. [SkillResolve v1](https://arxiv.org/html/2606.10388v1).
 
----
+## 3. What our experiments establish
 
-## 2. Decision by decision
+### Historical B1/B5: a local negative result with measurement limits
 
-### 2.1 Dense channel — `w_dense = 0`, and the gate that could not be passed
+The original unfiltered-corpus bake-off measured B1 Hit@1 0.8736 and B5 (BM25 plus static student via RRF) 0.8276, including a 16.67 pp sibling regression. Those are real reproduced/recorded results for those arms. B1 used a weighted-field pseudo-document; it was not the CLI's per-field scorer.
 
-**Measured:** BM25 hit@1 0.8736; BM25 + static student via RRF 0.8276, with a 16.67 pp hit@1
-regression on `sibling_ambiguity`.
+B1 Recall@8 was 0.9799, making a +3 pp gate impossible. That gate has been retired. Historical completeness@4 counted grade-3 primary skills only: multi-skill 63/66 = 95.45%. Counting every required grade >= 2 gives 49/66 = 74.24%. These values describe **historical B1**, not the newly repaired CLI. Keep both definitions and their denominators. [Audit data](reports/bakeoff/validation/e13-review-data.json).
 
-**Two things the peer review established about the *gate*, both correct:**
-- It was **unreachable**. B1's Recall@8 is 0.9799; "+3 pp over the better BM25 arm" would require
-  1.0099. Failing an impossible threshold is not evidence against the method.
-- The dense arms ran on the **full 26-skill corpus with no policy filter**, while B0 and the shipped
-  Router see 8–18 filtered candidates. The arms were not the product.
+### Reranker: eligibility explains part of the regression
 
-**Does the literature disagree with `w_dense = 0`?** No — with the correction that it also does not
-*support* the stronger claim the first draft made. BEIR and SkillRet's off-the-shelf rows say a
-static or untuned dense channel should not be expected to beat BM25 here. SkillRet's tuned rows say
-a *tuned* one might. The decision stands as *disabled pending a fair test*, per the closure plan.
+In a new diagnostic experiment on 22 stale cases, including 20 answerable, B6 promoted deprecated to rank 1 in 10/22 cases versus B5's 4/22. Applying the same deprecated filter to the scored top-20 lists, without refilling candidates:
 
-### 2.2 Reranker — shadow only; and the regression was mostly ours
-
-**Correction.** The first draft attributed E1.6's mixed quality to "an untuned reranker
-off-distribution". The peer review measured something more specific: on the 22 `stale_adversarial`
-cases, **B6 promoted the deprecated skill to rank 1 in 10/22 versus B5's 4/22** — because the
-reranker's candidate list was never policy-filtered. Applying the same deprecated filter to both:
-
-| variant | Hit@1 (20 answerable) | nDCG@10 |
-|---|---|---|
+| Variant | Hit@1, answerable | nDCG@10 |
+|---|---:|---:|
 | B5 | 15/20 | 0.8200 |
-| B6 as shipped | 10/20 | 0.7419 |
+| B6 default input | 10/20 | 0.7419 |
 | B5, deprecated filtered | 16/20 | 0.8453 |
 | B6, deprecated filtered | 15/20 | 0.8490 |
-| B6, filtered, full body | 16/20 | **0.8803** |
+| B6, filtered, full body | 16/20 | 0.8803 |
 
-The −25 pp collapse becomes −5 pp with a fair filter, and disappears with the full body. The
-checkpoint *is* skill-tuned; "off-distribution" remains a hypothesis, while the filter leak is a
-measurement. **Cost is unchanged by any of this:** warm median **314 ms / p95 342 ms** for scoring
-alone, over the whole 300 ms hook budget. Shadow mode stands — on cost, and now for a better reason.
+The measured gap shrinks from 25 pp to 5 pp after filtering. Full body plus filtering equalizes hit counts in this small subset; it does not establish generalization. Full body alone did not recover top-1 quality. The checkpoint was already skill-tuned; adaptation to our domain remains a hypothesis.
 
-### 2.3 Abstention — a design fact, restated more carefully
+Default warm scoring median/p95 was 314/342 ms. Full-body median was 595 ms with a long, unstable tail. The default median alone exceeds the whole-hook 300 ms median target. Do not claim unchanged cost across input policies. [Per-case results and timings](reports/bakeoff/validation/e13-reranker-review-data.json).
 
-The router never abstains, so 46 cases (44 `no_applicable` + 2 stale) measure nothing. The review
-is right that the *narrow range* of RRF scores is not itself the obstacle — any range can be
-thresholded. The obstacle is that RRF **discards the original score magnitudes by design**: in a
-single list the top-1 always scores exactly 1/61, carrying no information about whether it was a
-good match. The config sweep tried a rank-1/rank-2 margin: measurable on tune (precision 0.545),
-**collapsed on holdout (0.222)**. Not adopted. A real abstention decision needs raw lexical/dense
-features and its own calibration on a dev split — a separate component, not a threshold.
+### Body weights and abstention
 
-### 2.4 Field weights — the hypothesis was wrong, and two independent sweeps agree
+The historical B1 body sweep at weights 0/1/2/3/6 gave Hit@1 78.16/87.36/85.63/82.76/80.46%. Body access helped, while simply increasing its weight did not. Body accounted for about 66.9% of weighted token mass in this B1 representation, not 66.9% of score. Neither this sweep nor PR #19's reused fixture independently validates weights for the corrected CLI.
 
-The first draft argued, from SkillRouter's 37–44 pp, that `field.body = 2` (lowest of five) was
-inverted. **Two independent measurements say no:**
-- Peer-review sweep on B1: body weight 0 → 1 → 2 → 3 → 6 gives Hit@1 78.16 → **87.36** → 85.63 →
-  82.76 → 80.46 %. Removing the body costs 9.2 pp (not 37–44); adding weight *hurts*.
-- Config sweep (PR #19): all-equal weights won on tune (+2.86 pp) and **reversed completely on
-  holdout**, with the tune gain and holdout loss coming from unrelated strata — a textbook
-  overfit. Defaults kept.
+The 46 should-abstain cases remain measurable even when ranking metrics are undefined: false injection, false abstention and coverage have their own denominators. RRF rank scores are not probabilities. A narrow score range alone does not prevent a threshold, but a single-list top-1 always has the same value. Preserve raw lexical/semantic evidence and calibrate a separate decision rule on dev; a repeatedly inspected test is not a fresh holdout.
 
-SkillRouter measured *access* to the body; our body already has full access at weight 2 and sits at
-66.9 % of weighted token mass. The literature supplied a hypothesis; the split rejected it. That is
-the process working.
+## 4. Current implementation and next decisions
 
----
+Main `c08c58c` includes the BM25 fixed-point, zero-weight dense and dependency admissibility repairs. The preceding `c2cc812` already repaired cosine, added `all_required@4` and retired the impossible gate. A [portable CPU audit](../tools/eval/audit_router_contract.py) and [fingerprinted results](reports/bakeoff/validation/router-contract-review-2026-09-05.json) distinguish those revisions.
 
-## 3. Where we are ahead of, or orthogonal to, the literature
+The BM25 unit defect affected the CLI, **not** the historical float B1 calculation. Route/find now pass an admissible set into selection; direct legacy `select(..., admissible=None)` remains a compatibility path. Skipping an excluded prerequisite does not yet produce an explicit unresolved requirement or guarantee a complete task bundle.
 
-- **Determinism.** No retrieval paper we found treats bit-reproducible ranking as a requirement.
-  Ours does (ADR-0020), and the peer review found the one place we broke it — `dot/normsq` where
-  cosine needs `dot²/normsq` — before it mattered.
-- **A 300 ms fresh-process budget.** The literature optimises warm throughput. GoS's 25.55 % reward
-  gain is measured with no such constraint.
-- **Hierarchy as a ranking feature.** Scope proximity is a signal public benchmarks do not have.
-  SkillRet's taxonomy is used for distractor sampling, not ranking.
+[ADR-0022](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md) records the proposed separation of admissibility, relevance, composition and sufficiency. The implementation order is:
 
----
+1. Verify repaired arithmetic and policy against independent references, and measure a new runtime baseline.
+2. Run evaluation through the production stages with full per-query provenance and matched budgets.
+3. Implement dependency-aware, budget-aware composition with explicit unresolved outcomes and verified AND/OR semantics.
+4. Build independent pilot data and calibrate abstention using useful and harmful outcomes.
+5. Evaluate additional contextual candidates, reranking and static students as separate hypotheses; admit them for measured product value.
+6. Compare no-skill, selected, oracle and wrong-sibling task execution, including cost. If even oracle guidance does not help, investigate content and how the agent uses it before training another retriever.
 
-## 4. What the literature asks us to adopt — condensed
-
-| from | adopt | status |
-|---|---|---|
-| SkillRouter | **FC@K** — full-bundle completeness | added as `all_required@4` |
-| SkillResolve | **HSR@K** — harmful sibling exposure on (helpful, risky) pairs | closure plan, P1 |
-| SkillRouter | four-source hard negatives (semantic, lexical, taxonomy, random) | closure plan, P1 |
-| SkillRet | functional-duplicate audit, corrected qrels, disjoint pools | closure plan, P2 |
-| SkillRet | **execution-level eval** — retrieval gains must show up in task success | closure plan, P2 |
-| GoS | bundle evaluation, PPR vs closure at matched card budget | done at 26 skills; re-test at pilot scale |
-| BEIR / SkillRet | fine-tune before judging dense | closure plan, gated |
+Sharding and PPR require measured justification. A corpus-derived vocabulary makes a word table corpus-dependent; model revision alone is not its identity. Record content, tokenizer, instructions, truncation, pooling, projection, weighting, quantization and compiler identity. The fast hook remains local and within the single-file stdlib-plus-PyYAML constraint.

@@ -5,39 +5,43 @@
 **Amends:** [ADR-0020](ADR-0020-two-tier-dense-retrieval.md) (fixed-point contract, `w_dense` semantics),
 [ADR-0021](ADR-0021-index-sharding-and-a-global-word-table.md) (word-table identity, §Consequences)
 **Evidence:** [`E1.3-peer-review-2026-09-05.md`](../reports/bakeoff/E1.3-peer-review-2026-09-05.md),
-[`E1-closure-plan.md`](../reports/bakeoff/E1-closure-plan.md)
+[`E1-closure-plan.md`](../reports/bakeoff/E1-closure-plan.md),
+[`E1.3-architecture-after-research.md`](../reports/bakeoff/E1.3-architecture-after-research.md)
 
 ## Context
 
 The E1 router mixes three decisions into one pass: *may this skill be shown at all* (status,
 scope, negative triggers), *how relevant is it* (BM25, dense, fusion), and *is the returned set
 sufficient* (dependencies, budget). The peer review showed that the mixing is where the errors
-hid. Three of them were latent in code and are repaired in the same change as this ADR:
+hid. The following three code defects were repaired in merge `c08c58c` (2026-09-05).
+The broader pipeline below remains Proposed; the repairs do not complete the composer or evaluator:
 
 1. **BM25 had a fixed-point units error.** `k1` was scaled by 2²⁰; the weighted term frequency it
    was added to was not. Measured on equal-length documents with a term repeated 1 / 10 / 100
    times: integer scores **1 / 24 / 249** — near-linear, where BM25 saturates at 1 : 1.96 : 2.17 —
-   and truncation to zero for low-TF matches. Every BM25 number reported before this ADR was
-   computed with that formula. Rankings still looked sane because the rarest matching term
-   dominates either way; they were not BM25.
+   and truncation to zero for low-TF matches. This affected the shipped CLI BM25F and its
+   historical baselines. Bake-off B1 used a separate floating-point pseudo-document BM25, so
+   its scores were not computed with this defective formula. Both definitions need explicit
+   provenance; the corrected CLI is the reference for future product comparisons.
 2. **`requires` expansion re-admitted rejected skills.** Dependency closure checked only
    `status == deprecated`; a dependency outside the caller's scope or hit by a negative trigger
    was pulled straight into the injected cards.
 3. **`w_dense = 0` did not switch anything off.** The weight was never read. The dense channel ran,
    and cast its RRF vote, whenever a word table existed. It was "off" only because the table was
-   empty — and the bake-off arms that *did* have a table were therefore not measuring the
-   configuration the manifest described.
+   empty. The repair makes the manifest gate effective in the shipped Router. Offline bake-off
+   arms used their own dense implementation and must be identified separately.
 
 The review also found the bake-off arms ran on the unfiltered corpus while the product sees
-filtered candidates, that `completeness@4` ignored required companions (65 % of multi-skill
-bundles are incomplete on the shipped path once they are counted), and that the reranker's
-regression was mostly a deprecated skill leaking into its candidates. All of these are the same
-failure: **a decision made in one stage was not honoured in another.**
+filtered candidates, that historical `completeness@4` ignored required companions, and that the
+reranker's stale-stratum regression was largely explained by deprecated candidates. For historical
+unfiltered B1, counting all required skills changes multi-skill completeness from 63/66 (95.45 %)
+to 49/66 (74.24 %); this is not the corrected CLI baseline. Policy, retrieval, composition and
+metric semantics must be consistent across stages.
 
 ## Decision
 
-The pipeline has five stages with one responsibility each, and a decision made in a stage binds
-every later stage and every evaluation harness.
+**Proposed target.** The pipeline has five stages with one responsibility each, and a decision
+made in a stage binds every later stage and every evaluation harness.
 
 ```
 query + node + index sha
@@ -52,31 +56,40 @@ query + node + index sha
   ▼
 [4] COMPOSITION     requires closure ⊆ A · budget k · cycle-safe  → a bundle, or "cannot fit"
   ▼
-[5] SUFFICIENCY     abstain? · all required present?             → cards, or silence + reason
+[5] SUFFICIENCY     abstain? · known requirements resolved?      → cards, or silence + reason
 ```
 
 **1. Admissibility is decided once and applies everywhere.** `policy_filter` produces the set
 `A`. Candidates come from `A`. Dependency expansion may only add members of `A`; a dependency
 outside `A` is an *unresolved requirement*, surfaced as such, never silently injected. The
 benchmark, the CLI, the shadow reranker and any future dense channel all consume the same `A`
-for the same `(query, node, sha)`. *Repaired in this change:* `select()` takes `admissible`, and
-`route()` passes the filter's output.
+for the same `(query, node, sha)`. *Implemented in `c08c58c`:* `route()` and `find` pass
+`admissible` into `select()`, which skips excluded dependencies. The filter is currently recomputed
+with the same inputs. Direct legacy calls with `admissible=None` retain only the deprecated check.
+Returning an explicit unresolved-requirement result, rejecting incomplete bundles atomically and
+requiring the policy contract in every evaluation adapter remain follow-up work.
 
 **2. BM25F stays the fast-hook core, on one fixed-point scale.** `idf`, `k1`, the length
 normaliser and the weighted TF all live on `S = 2²⁰`; the per-term quotient lands on `S`. A
 reference test asserts the integer scores reproduce the float formula's shape (saturating, not
 linear) and absolute value within 1 %. The benchmark harness must call the CLI's BM25, not its
-own; "identical rankings 220/220" is the acceptance test.
+own. Acceptance requires matching candidate sets, scores and rankings on all 220 regression
+cases, plus artifact/in-memory parity; ranking agreement alone does not establish formula parity.
 
 **3. A channel weight of zero disables the channel.** `w_dense = 0` means no vector arithmetic,
-no dense rank, no RRF vote. *Repaired in this change.* Dense re-enters only by first proving it
+no dense rank, no RRF vote. *Implemented in `c08c58c`.* Dense re-enters only by first proving it
 adds **admissible required skills that BM25 missed** (coverage), and only then by re-ordering.
 
 **4. Composition is its own component.** It resolves several independent requirements, full
 `requires` closure, shared prerequisites and cycles inside a card/token budget, and it says so
 when the complete bundle **cannot fit** rather than returning a truncated set labelled complete.
-`similar` is an alternative; `refines` needs an explicit semantics before it drives composition.
-Its metric is `all_required@k`, not `hit@1`.
+Requirements form AND groups, with OR choices only among verified functional substitutes within
+a group. A `similar` edge establishes similarity, not substitutability; `refines` also needs
+explicit semantics before it drives composition. SkillRouter v5 Appendix A distinguishes
+pipeline, substitute and mixed multi-skill tasks. Evaluation uses `all_required@k` against the
+labelled requirements. Runtime can check declared dependencies and recognised task requirements;
+it cannot observe the evaluator's oracle gold set. The current depth-2, greedy selection is not
+yet this full composer.
 
 **5. Sufficiency, including abstention, is evaluated on its own axis.** Wrong injection on an
 unanswerable query, wrong silence on an answerable one, harmful-sibling exposure (HSR@k) and
@@ -91,31 +104,37 @@ the *distillation identity*, not by the teacher alone, and a corpus-derived voca
 corpus-dependent after all. Its "language artifact" status holds only for a vocabulary fixed
 independently of the corpus.
 
-**7. Sharding follows measurement.** ADR-0021's shard design must state how cross-shard
-`requires` resolve and whether IDF is per-shard or global before it is implemented. Neither PPR,
-sharding nor vocabulary growth is adopted without a named quality or resource limit it relieves.
+**7. Sharding follows measurement.** ADR-0021's shard design must resolve cross-shard
+`requires` and preserve comparable BM25F scores across shards before implementation. Use shared
+corpus IDF and length statistics as the reference; per-shard statistics need an explicit, tested
+score-comparability contract. Neither PPR, sharding nor vocabulary growth is adopted without a
+named quality or resource limit it relieves.
 
 ## Consequences
 
-**Immediately.** BM25 scores change for every query: the golden baseline is regenerated
-*deliberately* in the same change, and the diff is reported, not hidden. `all_required@4` on the
-shipped path is the new headline completeness number (0.65 on multi-skill). Nothing about latency
-or determinism changes — the fix is integer arithmetic on integer arithmetic.
+**Immediately.** The BM25F repair changes score semantics and can change rankings. The golden
+baseline was regenerated in the repair; old measurements retain their original revision and
+metric names. Report the corrected baseline's `all_required@4` with its SHA and numerator/denominator.
+Integer arithmetic is retained, but latency and reproducibility claims require their own checks;
+pre-repair timings do not establish post-repair performance.
 
-**For the next bake-off.** Every arm runs `[1]→[4]` from the shipped `Router` at the shipped
-budget. Acceptance per the closure plan: non-inferior `all_required@4`, non-worsening HSR@4,
-warm p95 inside the hook budget, on a frozen pilot set.
+**For the next bake-off.** Every arm shares the shipped policy, sparse scorer and composer
+contracts at the shipped budget; optional neural adapters live outside the stdlib CLI. Acceptance
+per the closure plan: predeclared non-inferiority on `all_required@4`, non-worsening HSR@4, a
+measured benefit that justifies added cost, and whole-hook warm p95 inside the hook budget, on a
+frozen pilot set. Downstream utility includes success and cost, not retrieval metrics alone.
 
-**What this costs.** One more parameter on `select()`; one extra `policy_filter` pass in `route()`
-(a dictionary scan — microseconds); a reference test that pins BM25 to its formula, which will fail
-loudly if anyone changes `IDF_SCALE` without updating every term. That is the point.
+**What this costs.** One more parameter on `select()`, a repeated policy-filter scan in the
+current `route()`, and reference tests that pin BM25F to its formula. Measure their end-to-end cost
+on the target machine. Shared policy evaluation and explicit incomplete-bundle handling remain
+implementation work.
 
 ## Order of work
 
 | # | work | done when |
 |---|---|---|
-| 1 | fixed-point BM25, `w_dense` gate, admissible closure | **this change**; reference tests green; baseline regenerated with the diff in the PR |
-| 2 | one admissibility policy across benchmark and CLI; explicit denominators; per-query rankings recorded | benchmark B1 = CLI ranking 220/220; every table names its n |
+| 1 | fixed-point BM25, `w_dense` gate, skip inadmissible dependencies | **implemented in `c08c58c`**; reference tests and probes passed; baseline regenerated; full composer remains item 3 |
+| 2 | one admissibility policy across benchmark and CLI; explicit denominators; per-query rankings recorded | candidate sets, scores and rankings match on 220/220 cases; every table names its n |
 | 3 | composer: multi-requirement, closure, cycles, "cannot fit" | tests for each; `all_required@4` reported per stratum |
 | 4 | frozen pilot test set; abstention as a calibrated component | split by task family; criteria written before the run |
 | 5 | fair semantic experiment on the fixed ruler | sparse · +contextual dense (coverage first) · +reranker · students, same `A`, same budget |
