@@ -132,6 +132,7 @@ class Encoder:
         self._backend = "sentence-transformers" if hf_id in _SENTENCE_TRANSFORMERS_MODELS else "transformers"
         self._model = None
         self._tokenizer = None
+        self.device = None
 
     # -- lazy model load: an Encoder can be constructed (e.g. to check the cache) without paying
     #    the torch import + weight-load cost until encode() actually needs the network on a miss.
