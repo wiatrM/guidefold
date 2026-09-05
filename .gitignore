@@ -47,6 +47,7 @@ private/
 tools/bakeoff/.bakeoff-cache/
 tools/eval/.skillret-cache/
 tools/eval/.skillretbench-r1-cache/
+tools/eval/.composer-model-cache/
 tools/expand/.bakeoff-cache/
 !tools/bakeoff/build/
 !tools/bakeoff/build/**/
