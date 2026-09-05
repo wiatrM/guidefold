@@ -124,6 +124,8 @@ jobs:
           python -m py_compile tools/search_service/shadow_integration.py tools/search_service/throughput.py tools/search_service/vector_storage_probe.py
       - name: HTTP contract, real SQL, publication and restart checks
         run: python tools/search_service/smoke.py --recovery --output .guidefold/checks/compose-smoke.json
+      - name: Slow-upload admission, overload isolation and cancellation recovery
+        run: python tools/search_service/http_admission.py --output .guidefold/checks/http-admission.json
       - name: Meridian graph, scope, selection budget and USE parity
         run: python tools/search_service/graph_parity.py --output .guidefold/checks/graph-parity.json
       - name: Graph publication, traversal, isolation, atomic update and rollback E2E
@@ -142,6 +144,7 @@ jobs:
             .guidefold/checks/router-parity.json
             .guidefold/checks/graph-parity.json
             .guidefold/checks/graph-lifecycle.json
+            .guidefold/checks/http-admission.json
       - name: Stop this CI stack
         if: always()
         run: docker compose down

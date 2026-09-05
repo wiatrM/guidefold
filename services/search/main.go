@@ -468,6 +468,22 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send()
 		return
 	}
+	// Bound uploads and JSON parsing as well as backend work. Authenticate first;
+	// telemetry retains its own capacity so one pool cannot exhaust the other.
+	slots, overloadCode := a.Slots, "overloaded"
+	if endpoint == "events:batch" {
+		slots, overloadCode = a.EventSlots, "telemetry_overloaded"
+	}
+	select {
+	case slots <- struct{}{}:
+		defer func() { <-slots }()
+	default:
+		// Do not let HTTP/1 drain an unread slow/large request before the reply.
+		w.Header().Set("Connection", "close")
+		w.Header().Set("Retry-After", "1")
+		respondError(fail(429, overloadCode))
+		return
+	}
 	bodyLimit := int64(16384)
 	if endpoint == "events:batch" {
 		bodyLimit = 2 * 1024 * 1024
@@ -501,13 +517,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respondError(fail(413, "batch_too_large"))
 			return
 		}
-		select {
-		case a.EventSlots <- struct{}{}:
-			defer func() { <-a.EventSlots }()
-		default:
-			respondError(fail(429, "telemetry_overloaded"))
-			return
-		}
+
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		result, e = a.Store.ingestEvents(ctx, batch)
@@ -525,13 +535,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload = p
 	ctx, cancel := context.WithDeadline(r.Context(), start.Add(time.Duration(integer(p, "deadline_ms", 1000))*time.Millisecond))
 	defer cancel()
-	select {
-	case a.Slots <- struct{}{}:
-		defer func() { <-a.Slots }()
-	default:
-		respondError(fail(429, "overloaded"))
-		return
-	}
+
 	var shadowJob *ShadowJob
 	if endpoint == "search" {
 		if a.Store.Shadow != nil {
