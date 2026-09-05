@@ -122,6 +122,8 @@ jobs:
           python -m py_compile tools/search_service/shadow_integration.py tools/search_service/throughput.py tools/search_service/vector_storage_probe.py
       - name: HTTP contract, real SQL, publication and restart checks
         run: python tools/search_service/smoke.py --recovery --output .guidefold/checks/compose-smoke.json
+      - name: Meridian graph, scope, selection budget and USE parity
+        run: python tools/search_service/graph_parity.py --output .guidefold/checks/graph-parity.json
       - name: Fetch pinned public corpus for the 1000-query parity gate
         run: python -c "from tools.eval.corpora import fetch; fetch('skillret')"
       - name: Full default SEARCH parity against the unchanged CLI (1000 DEV queries)
@@ -134,6 +136,7 @@ jobs:
           path: |
             .guidefold/checks/compose-smoke.json
             .guidefold/checks/router-parity.json
+            .guidefold/checks/graph-parity.json
       - name: Stop this CI stack
         if: always()
         run: docker compose down

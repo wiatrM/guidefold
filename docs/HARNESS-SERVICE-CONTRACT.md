@@ -108,3 +108,26 @@ Native conformance: [Go tests](../services/search/routing_test.go),
 JSON Schema, including generated request IDs and safe additive response fields.
 The native retrieval revision is distinct; performance and matching quality are
 measured separately from policy compatibility. Dense is explicitly disabled.
+
+## Graph parity and adapter budgets (E2.6 integration)
+
+The default Go router already implements scope distance, graph propagation and depth-two
+`requires` closure. Its graph comes from snapshot card metadata; it is not inferred at request
+time. The default `closure` scorer propagates along `requires`; the supported `pagerank` mode
+also uses `refines` and replacement edges. USE hydrates one exact requested revision; the
+adapter loads the dependency cards selected by SEARCH. A four-card cap can truncate closure;
+`composition.status: not_evaluated` is not a promise of dependency completeness.
+
+[The Meridian HTTP parity gate](../tools/search_service/graph_parity.py) runs both graph modes,
+explicit node and workspace-path requests, and selection limits 0/1/3/4 against the frozen CLI
+reference in `compose-service`. It also verifies USE bodies/checksums and required rejections.
+This supplements the flat SKILLRET DEV gate; it does not evaluate retrieval quality.
+
+An adapter must send `budget.max_cards` when its local selection cap differs from the API
+default of four. `profile: hook` alone does not change that cap. PR #61 currently omits the
+budget while using local k=3 for hook and default k=8 for find. The
+[measured reproduction](reports/bakeoff/MERIDIAN-GRAPH-PARITY-2026-09-05.md) distinguishes this
+integration defect from scorer parity. Limits above four and `include_deprecated` have no
+matching request semantics in contract 1.1: preserve the requested local behavior via explicit
+fallback, or introduce a negotiated contract version before remote execution. Do not silently
+clamp k or suppress the parity counter.
