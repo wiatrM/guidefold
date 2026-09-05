@@ -131,9 +131,64 @@ bounds how much *any* dense signal could add to candidates on these corpora.
 
 ## 7. Results (appended as they land; §1–6 are frozen from v2)
 
-*(F0 and R1 running on both test corpora; dev split not yet carved)*
+### 7.1 SKILLRET-test (test-A) — F0/R0 and R1, 2026-09-05
 
-**F5 offline enrichment** — extractor built (`tools/enrich/derive.py` + `apply.py`); the numbers
+Full report: `docs/reports/bakeoff/SKILLRET-test-2026-09-05.md`. Code: `tools/eval/skillret.py`.
+Raw per-query evidence (gzip JSONL) and summary JSON: `docs/reports/bakeoff/validation/
+skillret-{r0,r1,latency}*`. Corpus: 6,006 skills / 4,392 queries / 7,187 qrels
+(`ThakiCloud/SKILLRET`, revision `a050ad23`). No dev split carved here — test-only, per §3;
+the programme's SKILLRET-train dev split (frozen separately) is untouched by this run.
+
+**Coverage first (§6's framing)**: gold skills BM25F's top-50 misses that the encoder's top-50
+adds — **root 39.6%** (2,849/7,187), **major 22.8%** (1,638/7,187). This is the number that bounds
+how much any dense signal could add to this product path on this corpus; it is reported before
+quality metrics on purpose.
+
+**Quality (retrieval order for hit@1/nDCG@10, injection order for all_required@4)**:
+
+| arm | setting | hit@1 | nDCG@10 (paper-style) | all_required@4 |
+|---|---|---|---|---|
+| F0/R0 (`w_dense=0`) | root | 0.3825 | 0.3999 | 0.2700 |
+| F0/R0 (`w_dense=0`) | major | 0.3663 | 0.3957 | 0.2862 |
+| R1 (`w_dense=1`, reference) | root | 0.6004 | 0.6324 | 0.4497 |
+| R1 (`w_dense=1`, reference) | major | 0.5685 | 0.5873 | 0.4185 |
+
+Paper's published BM25 nDCG@10 = 51.69; our paper-style (binary-relevance) F0 nDCG@10 is
+39.99 (root) / 39.57 (major) — not apples-to-apples (different BM25 configuration/field
+construction; see the full report §1).
+
+**Paired bootstrap vs F0/R0** (1,000 resamples, 95% CI), overall: `all_required@4` root
++17.96pp [16.80, 19.08], major +13.23pp [12.23, 14.23]; `hit@1` root +21.79pp [20.56, 23.11],
+major +20.22pp [19.15, 21.43]. Per-k, every stratum's CI excludes 0 in the improving direction;
+one stratum (major/k3, `all_required@4` +0.92pp [0.18, 1.83]) is statistically significant but
+below the gate's +2.0pp minimum-benefit bar — see the full report §3 for the complete per-k table
+and gate-by-gate detail.
+
+**Gate status (evidence only — R1 is the unfused §6 reference, not a frozen fusion variant; no
+adoption decision is made here)**: bundle completeness clears at every k for root, clears overall
+and at k1/k2 for major (k3/major is significant but under +2.0pp); harmful exposure is N/A on
+test-A (`distractor_rate@4` is `NaN` — no distractor labels in SKILLRET-test); primary quality
+clears trivially (both hit@1 and nDCG@10 improve, they do not regress); cost was **not** evaluated
+for R1 (§6: latency ignored for the reference run) because **F0 itself already fails both the
+300ms and 500ms tiers** at 6,006 skills (see below) — any dense arm can only add cost on top of
+that. **Adoption is decided only after a dev-tuned frozen variant is run once here**, and only
+jointly with test-B (SkillRetBench, run separately).
+
+**Latency (R4 evidence, the headline cost figure)**: whole-hook, fresh subprocess, 6,006-card
+on-disk artifact, 200 warm queries, Intel Core i7-10700K WSL2 machine. Cold start 584.8ms; warm
+p50 561.5ms; warm p95 638.9ms. **Both the 300ms and 500ms tiers fail** — for the shipped F0
+baseline alone, with `w_dense=0` and no dense channel in play at all. Contrast: the same whole-hook
+measurement at 26 skills (§1) was p50/p95 65.7/71.8ms; isolated bare-subprocess overhead is
+~14-45ms, ruling out process startup as the explanation. This is a genuine architectural-scaling
+finding at 6,006 skills, not a harness bug.
+
+**Overlap caveat** (per §3): `SKILLRET-Embedding-0.6B` was trained on SkillRet train;
+SKILLRET-test is a disjoint pool from the same construction — the "flattered corpus" this
+programme names in advance. Test-B is the check against an unrelated corpus.
+
+### 7.2 F5 offline enrichment
+
+Extractor built (`tools/enrich/derive.py` + `apply.py`); the numbers
 below are the sanity check against authored fields specified in the family's plan, **not** the F5
 quality gate (`all_required@4` on dev/test, still pending). On SkillRetBench, deriving from
 `full_text` alone (pretending authored `trigger_phrases`/`anti_triggers`/`composable_skills` don't

@@ -45,6 +45,7 @@ private/
 # that tree and its small words.json manifest (the one build output that IS meant to be
 # committed -- see tools/bakeoff/README.md), then re-exclude just the binaries inside it.
 tools/bakeoff/.bakeoff-cache/
+tools/eval/.skillret-cache/
 !tools/bakeoff/build/
 !tools/bakeoff/build/**/
 !tools/bakeoff/build/**/words.json
