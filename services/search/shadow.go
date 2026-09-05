@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +27,58 @@ CREATE INDEX IF NOT EXISTS search_shadow_created ON gf.search_shadow(created_at)
 INSERT INTO gf.schema_version VALUES (8) ON CONFLICT DO NOTHING;
 `
 
+// Per-request immutable work reused only by this request's shadow. No query cache.
+type PreparedScope struct {
+	Allowed []bool
+	Drops   int
+	Top     []Candidate
+	Ranks   []uint32 // Dense document ordinal -> full BM25 rank; zero means absent.
+}
+
+func prepareScope(c *Catalog, allowed map[string]bool, drops int) PreparedScope {
+	p := PreparedScope{Allowed: make([]bool, len(c.Order)), Drops: drops, Ranks: make([]uint32, len(c.Order))}
+	for i, u := range c.Order {
+		p.Allowed[i] = allowed[u]
+	}
+	return p
+}
+func (p PreparedScope) allowed(c *Catalog) map[string]bool {
+	out := make(map[string]bool, len(c.Order))
+	for i, yes := range p.Allowed {
+		if yes {
+			out[c.Order[i]] = true
+		}
+	}
+	return out
+}
+func fusePrepared(c *Catalog, p PreparedScope, dense []Candidate) []Candidate {
+	sparse := append([]Candidate(nil), p.Top...)
+	for _, row := range dense {
+		doc := sort.SearchStrings(c.Order, row.URN)
+		if doc < len(c.Order) && c.Order[doc] == row.URN && p.Ranks[doc] > 50 {
+			sparse = append(sparse, Candidate{URN: row.URN, BM25Rank: int(p.Ranks[doc])})
+		}
+	}
+	return fuseCandidates(sparse, dense)
+}
+
+type SparsePreparation struct {
+	Snapshot, QueryDigest string
+	Scopes                map[string]PreparedScope
+}
+
+func (p *SparsePreparation) verify(c *Catalog, query string, scopes []string) error {
+	if p.Snapshot != c.ID || p.QueryDigest != hash([]byte(query)) {
+		return fmt.Errorf("shadow_preparation_mismatch")
+	}
+	for _, node := range scopes {
+		if _, ok := p.Scopes[node]; !ok {
+			return fmt.Errorf("shadow_preparation_scope_mismatch")
+		}
+	}
+	return nil
+}
+
 type ShadowJob struct {
 	SearchID               string
 	Catalog                *Catalog
@@ -32,6 +86,7 @@ type ShadowJob struct {
 	SparseRanked, Selected []M
 	SparseTimings          M
 	Enqueued               time.Time
+	Preparation            *SparsePreparation
 }
 type ShadowWorker struct {
 	Store                                 *Store
@@ -51,7 +106,11 @@ func newShadowWorker(ctx context.Context, s *Store) (*ShadowWorker, error) {
 	// Shadow is off the response path. Its independent encode budget accommodates
 	// cold scheduling without relaxing the experimental inline 250 ms deadline.
 	d.EncodeTimeout = time.Second
-	worker := &ShadowWorker{Store: s, Dense: d, Queue: make(chan ShadowJob, 32), Context: ctx}
+	capacity, e := strconv.Atoi(env("GUIDEFOLD_SHADOW_QUEUE_CAPACITY", "128"))
+	if e != nil || capacity < 1 || capacity > 256 {
+		return nil, fmt.Errorf("invalid_shadow_queue_capacity")
+	}
+	worker := &ShadowWorker{Store: s, Dense: d, Queue: make(chan ShadowJob, capacity), Context: ctx}
 	worker.Process = worker.process
 	worker.start(4)
 	return worker, nil
@@ -131,7 +190,7 @@ func (w *ShadowWorker) process(job ShadowJob) {
 		e = w.Dense.verifyCatalog(ctx, s, &clone)
 	}
 	if e == nil {
-		response, e = s.searchCatalog(ctx, &clone, job.Payload, M{"catalog": float64(0)}, capture)
+		response, e = s.searchCatalog(ctx, &clone, job.Payload, M{"catalog": float64(0)}, capture, job.Preparation)
 	}
 	status := "ok"
 	var reason any
@@ -150,7 +209,8 @@ func (w *ShadowWorker) process(job ShadowJob) {
 		hybridTimings = obj(response["stages_ms"])
 	}
 	timings := M{"queue_ms": float64(started.Sub(job.Enqueued).Microseconds()) / 1000,
-		"compute_ms": elapsed(started), "sparse": job.SparseTimings, "hybrid": hybridTimings}
+		"compute_ms": elapsed(started), "sparse": job.SparseTimings, "hybrid": hybridTimings,
+		"reused_sparse_preparation": job.Preparation != nil, "encoder_batch_requests": w.Dense.BatchRequests}
 	persist, persistCancel := context.WithTimeout(w.Context, time.Second)
 	defer persistCancel()
 	tx, err := s.Pool.BeginTx(persist, pgx.TxOptions{AccessMode: pgx.ReadWrite})
