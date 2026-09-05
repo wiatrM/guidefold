@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.4
+# Dense retrieval programme — pre-registered, v2.5
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -97,6 +97,7 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F6 offline dense sibling map** *(v2.2)* | use the encoder **offline** to compute, per skill, its confusable set (same-capability neighbours above a cosine threshold); ship it as a small typed graph in the artifact; at query time apply a deterministic integer rule when two confusables both reach the top 4 — demote the one the query matches less on discriminating terms. **No model, no vectors at query time.** | T300 | ≤ 4 (threshold, neighbours per skill, the tie-break rule) |
 | **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
 | **C composition** *(v2.4)* | composer stage behind `select()`'s `compose_mode` key (ADR-0022 §4 / ADR-0024 §4): (a) **deterministic** — score-plateau bundle detection (no `requires` edges needed), coverage-aware fill, `requires` closure, integer-only, `(-score, urn)` ties, in the CLI; (b) **model** — `tools/eval/composer_model.py` (never the CLI), gated by (a)'s detector, replay-cached | T300 (a) / offline eval only (b) | ≤ 6 total: C0 baseline + C-det-1..4 (τ × coverage grid) + C-model-1..2 |
+| **D query decomposition** *(v2.5)* | split a multi-intent query into ≤ 4 clauses **before** candidate generation (evaluated only in `tools/eval/dev_decompose.py`, never the CLI — `select()` itself is untouched): (a) **deterministic** — stdlib clause splitter (sentence boundaries, `;`, coordinating markers), a one-clause query is not decomposed; (b) **model** — local `claude -p --model haiku`, replay-cached by `sha256(query)`. Both: per-clause product `candidates()` + `score()` on the same `Index`, merged by RRF (k = 60) across clauses plus (configurable) the whole-query ranking, composed greedily (best-scored skill of each clause first, then the merged order, to k = 4) with `requires` closure and admissibility exactly as `select()` | T300 | ≤ 6 total: D0 baseline (= C0, whole query, no decomposition) + D-det-1..3 (per-clause depth 10/20 × whether the whole-query ranking joins the RRF) + D-model-1..2 (same merge/compose, model split, depth 10/20, cache shared with D-model-1) |
 
 **Why F6 exists (v2.2).** The full-encoder reference on test-B (PR #35) failed the completeness
 gate (`all_required@4` +0.67 pp, CI straddles zero) but **reduced harmful-sibling exposure by
@@ -134,6 +135,27 @@ model configuration by the pre-registered rule in
 corpus, and — dense caches permitting — re-runs the R1 dense reference (§6) with the frozen
 composer, since a composer that cannot see whether a bundle is needed cannot show what dense
 candidates add to one either.
+
+**Why D exists (v2.5).** On SKILLRET-train dev (1 000 queries, k = 1/2/3 = 328/333/339; E7.3 dev,
+measured 2026-09-05, in `gf-c`) the shipped path C0 has `all_required@4` 0.842 / 0.069 / **0.000**
+and — the binding number — **recall@10 = 0.881 / 0.512 / 0.361** by k. For three-skill queries,
+**64 %** of the required skills are not in the top-10 at all. Composition cannot fix that (C, above,
+only re-orders or fills from what candidate generation already retrieved); candidate generation
+must. Multi-intent queries ("onboard three hires in Rippling and then run the full lint/type/test
+suite on their scripts") split their terms across skills, and BM25 ranks by total match, so the
+secondary skills sink. The literature's answer is decomposition: split the request into atomic
+sub-requests, retrieve per sub-request, merge, and compose one skill per sub-request
+(completeness-oriented tool retrieval, e.g. COLT, Qu et al. 2024; multi-hop/query-decomposition
+retrieval; SkillRouter's FC@K framing). D is evaluated the same way every family is — dev budget,
+freeze, both tests once, §5's gates unchanged — with one family-specific expectation stated up
+front because it is the family's known failure mode: **D is judged on `all_required@4` at k ≥ 2
+and, separately, on not hurting k = 1** (`hit@1` not worse than D0 by more than 1.0 pp overall and
+at k = 1) — decomposing a single-intent query wrongly (splitting a query that was never a bundle)
+is exactly the failure the deterministic splitter's one-clause guard exists to prevent, and the
+model splitter is asked, explicitly, to return a one-task query unchanged rather than force a split.
+D never touches `select()` or the shipped CLI; every arm is evaluated only in
+`tools/eval/dev_decompose.py`, wrapping the product `Index`/`Router` (`candidates()`/`score()`),
+the same discipline `tools/eval/dev_sparse.py` and `tools/eval/dev_expand.py` already use.
 
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
