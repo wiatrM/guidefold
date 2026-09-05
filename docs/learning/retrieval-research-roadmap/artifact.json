@@ -1,0 +1,790 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Od podstaw Pythona do własnych badań nad retrievalem",
+    "description": "Osobista ścieżka nauki dla Guidefolda: darmowe i płatne kursy, trening retrievera, reranker oraz odtwarzalne badanie.",
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Od podstaw Pythona do własnych badań nad retrievalem\n\n**Twoja ścieżka dla Guidefolda, SkillRet, SkillRouter i SkillNet.** Znasz trochę Pythona, zaczynasz ML, masz 15+ godzin tygodniowo i elastyczny budżet. Plan bazowy to **44 tygodnie / 660 godzin**, czyli około 10 miesięcy. Zostaw dodatkowe 4–8 tygodni na trudniejsze ćwiczenia.\n\nCelem jest samodzielnie wytrenować mały retriever i reranker, sprawdzić ich przydatność w produkcie oraz napisać odtwarzalny raport badawczy. To plan kompetencji i praktyki, a nie obietnica publikacji ani przewagi nad istniejącymi modelami.\n\n**Rekomendacja:** darmowy Python → podstawy matematyki i ML → jeden porządny kurs ML → PyTorch → wyszukiwanie informacji → trening modeli → własne badanie. Kursy Anthropic dodajemy przy integracji agentów.\n\nKursy i warunki dostępu sprawdzone **5 września 2026 r.** Opisy są po polsku; większość materiałów źródłowych jest po angielsku."
+      },
+      {
+        "id": "start",
+        "type": "markdown",
+        "body": "## Zacznij od tego, a zakupy odłóż do etapu ML\n\n1. Otwórz [CS50P](https://cs50.harvard.edu/python/) i przerób lekcję o funkcjach oraz zmiennych. Jeśli tempo jest zbyt szybkie, zacznij od [AI Python for Beginners](https://www.deeplearning.ai/courses/ai-python-for-beginners) — wydawca podaje 10 h 20 min materiału.\n2. Utwórz katalog własnych ćwiczeń z README i notatnikiem. Zapisz pierwszy cel: „Wczytam wyniki wyszukiwania i sam obliczę, ile zapytań ma poprawny wynik na pierwszym miejscu”.\n3. Przez pierwsze cztery tygodnie pracuj głównie na CPU. Dostęp do GPU sprawdzisz, gdy będziesz umiał uruchomić i ocenić trening.\n4. Do kursów używaj AI jak korepetytora: proś o wyjaśnienie błędu, a potem odtwórz rozwiązanie samodzielnie.\n\n**Przejście do kolejnego etapu zależy od wykonania zadania końcowego.** Jeśli nie potrafisz objaśnić własnego kodu lub wyniku, dołóż ćwiczenia zamiast przyspieszać filmy."
+      },
+      {
+        "id": "scope",
+        "type": "markdown",
+        "body": "## Co właściwie będziesz umiał trenować\n\n**Retriever / bi-encoder** koduje zapytanie i skill do wektorów; służy do szybkiego wyszukania kandydatów. **Reranker / cross-encoder** analizuje zapytanie razem z kandydatem i poprawia kolejność krótkiej listy. **Fine-tuning** aktualizuje wagi istniejącego modelu na Twoich przykładach.\n\nW tej ścieżce najpierw dostrajasz mały dostępny model, a później odtwarzasz wybrany element podejścia [SkillRet](https://arxiv.org/html/2605.05726v3) lub [SkillRouter](https://arxiv.org/html/2603.22455v5). Trenowanie modelu językowego od zera to dalsza specjalizacja; nie jest warunkiem prowadzenia dobrych badań nad routingiem.\n\n[SkillNet](https://arxiv.org/abs/2603.04448v3) jest osobną infrastrukturą tworzenia, oceniania i łączenia skilli. [Oficjalne repozytorium](https://github.com/zjunlp/SkillNet) nadaje się do studiowania organizacji biblioteki i ewaluacji agentów. Nie traktuj nazwy SkillNet jako nazwy jednego checkpointu, który wystarczy „wytrenować”.\n\n**Trzy oddzielne pytania Guidefolda:** czy skill wolno użyć w danym kontekście, czy odpowiada na zadanie, czy wybrany zestaw jest kompletny. Wynik podobieństwa nie rozstrzyga wszystkich trzech."
+      },
+      {
+        "id": "schedule",
+        "type": "markdown",
+        "body": "## Harmonogram: najwięcej czasu na fundament i samodzielny trening\n\nWykres pokazuje **nasz plan nakładu pracy**, nie statystykę organizatorów kursów. Każdy tydzień oznacza 15 godzin łącznie: naukę, laboratoria, własny kod i analizę błędów. Najdłuższy etap ML uwzględnia około 95 godzin specjalizacji oraz ćwiczenia przenoszące wiedzę na Twój problem.\n\nKolejność etapów jest celowa. Dodatkowe kursy wymienione jako rozszerzenia nie mieszczą się automatycznie w 660 godzinach. Dokładne przedziały tygodni i rezultat każdego etapu znajdziesz pod wykresem."
+      },
+      {
+        "id": "plan_chart_block",
+        "type": "chart",
+        "chartId": "hours_chart"
+      },
+      {
+        "id": "plan_table_context",
+        "type": "markdown",
+        "body": "### Etapy i ich rezultaty\n\nTabela służy do sprawdzenia, czym zajmować się w danym tygodniu i co ma powstać na koniec etapu. To plan bazowy; przechodź dalej po wykonaniu zadania, a nie po samym upływie czasu."
+      },
+      {
+        "id": "plan_table_block",
+        "type": "table",
+        "tableId": "plan_table"
+      },
+      {
+        "id": "stage1",
+        "type": "markdown",
+        "body": "## Etap 1 · Python, który potrafisz kontrolować\n**Tygodnie 1–4 · 60 godzin · wymagania: brak wiedzy ML**\n\n**Materiał główny:** [CS50P — bezpłatny kurs Harvardu](https://cs50.harvard.edu/python/). Priorytet: moduły 0–6, czyli funkcje, warunki, pętle, wyjątki, biblioteki, testy i pliki. Regular expressions oraz programowanie obiektowe dołóż wtedy, gdy pojawi się potrzeba w kodzie. To wybór materiału, nie obietnica ukończenia całego CS50P w cztery tygodnie. Łagodniejszy start: [AI Python for Beginners](https://www.deeplearning.ai/courses/ai-python-for-beginners).\n\n**Zrób po kolei:**\n\n1. Wczytaj JSON i JSONL; zamień rekordy na słowniki i listy.\n2. Sprawdź brakujące identyfikatory, powtórzenia oraz puste odpowiedzi.\n3. Dla małego ręcznie opisanego przykładu policz Hit@1 i Recall@k.\n4. Zapisz wynik do CSV i przygotuj instrukcję uruchomienia.\n5. Dodaj test, który wykrywa błędny mianownik albo duplikat dokumentu.\n\n**Gotowe, gdy:** umiesz odtworzyć obliczenia na papierze i wyjaśnić każdą linię skryptu. Sztuczne przykłady służą tu nauce; nie są dowodem jakości Guidefolda."
+      },
+      {
+        "id": "stage2",
+        "type": "markdown",
+        "body": "## Etap 2 · Matematyka i intuicja uczenia\n**Tygodnie 5–8 · 60 godzin · wymagania: etap 1**\n\n**Darmowy rdzeń:** [prework NumPy/pandas](https://developers.google.com/machine-learning/crash-course/prereqs-and-prework) i [Google Machine Learning Crash Course](https://developers.google.com/machine-learning/crash-course), którego organizator podaje około 15 godzin. Kurs wprowadza stratę, gradient descent, klasyfikację, generalizację i embeddingi.\n\n**Płatne lub darmowe wideo do uzupełniania luk:** [Mathematics for Machine Learning and Data Science](https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science). Wybierz wektory, macierze, pochodną, średnią, wariancję i prawdopodobieństwo. Pełna specjalizacja ma około 94 godzin; nie dokładamy jej całej do tego etapu.\n\n**Zrób po kolei:**\n\n1. Oblicz iloczyn skalarny, normę i cosine similarity dwóch wektorów.\n2. Pokaż przykład, w którym zmiana norm wpływa na dot product, ale nie na cosine.\n3. Narysuj prostą funkcję straty i wykonaj kilka kroków gradient descent.\n4. Zbuduj mały przykład przeuczenia: błąd treningowy maleje, błąd na odłożonych danych rośnie.\n\n**Gotowe, gdy:** potrafisz powiedzieć, co optymalizuje model i dlaczego dobry wynik treningowy nie wystarcza. Formalne dowody możesz pogłębiać później."
+      },
+      {
+        "id": "stage3",
+        "type": "markdown",
+        "body": "## Etap 3 · Jeden solidny kurs ML\n**Tygodnie 9–17 · 135 godzin · wymagania: Python i szkolna algebra**\n\n**Materiał główny:** [Machine Learning Specialization — Stanford / DeepLearning.AI](https://www.coursera.org/specializations/machine-learning-introduction). Przejdź wszystkie trzy kursy i ćwiczenia. Aktualne części na Courserze sumują się do około 95 godzin; nagłówki i FAQ pokazują też inne szacunki. Plan rezerwuje dodatkowo około 40 godzin na Twoje eksperymenty.\n\nW tej fazie najważniejsze są funkcje straty, train/dev/test, bias/variance, regularyzacja, klasyfikacja i porównywanie baseline’ów. Drzewa, clustering i systemy rekomendacyjne pomogą rozumieć alternatywy dla deep learningu.\n\n**Projekt:** wytrenuj prosty klasyfikator przewidujący, czy para zapytanie–skill jest trafna, korzystając początkowo z cech tekstowych i metadanych. Oddziel trening od strojenia progu i od testu. Porównaj wynik z prostą regułą.\n\n**Gotowe, gdy:** wybierasz hiperparametry na dev, potrafisz rozpoznać leakage i umiesz odróżnić poprawę straty od poprawy produktu. Gdy oglądasz wielokrotnie test podczas strojenia, ten zbiór przestaje pełnić rolę niezależnego testu."
+      },
+      {
+        "id": "stage4",
+        "type": "markdown",
+        "body": "## Etap 4 · Sieci neuronowe i PyTorch\n**Tygodnie 18–21 · 60 godzin · wymagania: etap 3**\n\n**Praktyka bezpłatna:** [PyTorch — Learn the Basics](https://docs.pytorch.org/tutorials/beginner/basics/intro.html): tensors → Dataset/DataLoader → model → autograd → optimization → save/load.\n\n**Teoria w wybranym abonamencie:** z [Deep Learning Specialization](https://www.coursera.org/specializations/deep-learning) wybierz „Neural Networks and Deep Learning” oraz „Structuring Machine Learning Projects”. Cała pięciokursowa specjalizacja jest rozszerzeniem, a nie dodatkowym obowiązkiem w tych czterech tygodniach.\n\n**Projekt:** napisz pętlę treningową małej sieci. Rejestruj learning rate, batch size, seed i stratę; zapisuj checkpoint. W nowym procesie wczytaj model i porównaj predykcje. Następnie wykonaj mały kontrolowany sweep jednego parametru.\n\n**Gotowe, gdy:** umiesz wskazać, gdzie powstaje gradient, kiedy wagi się zmieniają, czym różnią się tryby train/eval i dlaczego checkpoint bez konfiguracji danych nie odtwarza eksperymentu."
+      },
+      {
+        "id": "stage5",
+        "type": "markdown",
+        "body": "## Etap 5 · Retrieval, BM25 i uczciwa ewaluacja\n**Tygodnie 22–25 · 60 godzin · wymagania: etapy 1–4**\n\n**Kurs prowadzący:** [Retrieval Augmented Generation — DeepLearning.AI](https://www.coursera.org/learn/retrieval-augmented-generation-rag), około 30–31 godzin. Zakres obejmuje wyszukiwanie leksykalne i semantyczne, RRF, reranking oraz ocenę jakości i kosztu.\n\n**Darmowa ścieżka i pogłębienie:** [Introduction to Information Retrieval — Stanford](https://nlp.stanford.edu/IR-book/), rozdziały 1–2, 6, 8 i 11. To podręcznik, nie kurs wideo. Przeczytaj też [BEIR](https://arxiv.org/html/2104.08663v4) jako ćwiczenie w pytaniu: „Na jakich danych porównano modele i jak powstały etykiety?”.\n\n**Projekt:** uruchom BM25 i jeden gotowy encoder na tym samym korpusie. Zapisz kandydatów, score, rangi oraz uzasadnienie etykiety. Porównaj Recall@k, MRR i nDCG; sprawdź implementacje ręcznie na kilku przypadkach. Gdy dwa skille są potrzebne razem, trafienie jednego nie oznacza kompletności.\n\n**Gotowe, gdy:** rozróżniasz generowanie kandydatów, ranking oraz dobór końcowego zestawu. Potrafisz wykazać, gdzie pipeline zgubił właściwą odpowiedź. Eksperyment z samym body nie ustala automatycznie optymalnej wagi body w BM25F."
+      },
+      {
+        "id": "stage6",
+        "type": "markdown",
+        "body": "## Etap 6 · Zrozum wejście i reprezentację modelu\n**Tygodnie 26–28 · 45 godzin · wymagania: PyTorch i retrieval**\n\n**Materiał główny:** [Hugging Face LLM Course](https://huggingface.co/learn/llm-course/chapter1/1), wybrane części rozdziałów 1–3, 5–6 i 10: architektury, tokenizacja, datasets, fine-tuning i jakość danych.\n\n**Krótkie wprowadzenia:** [Embedding Models: from Architecture to Implementation](https://www.deeplearning.ai/courses/embedding-models-from-architecture-to-implementation) — około 50 minut; [Attention Mechanism](https://www.skills.google/course_templates/537) i [Transformer Models and BERT Model](https://www.skills.google/course_templates/538) od Google — każde około 30–45 minut według niespójnych pól na stronach. Te mini-kursy dają orientację, nie zastępują treningu.\n\n**Projekt:** sprawdź template query/document, wymagane prefiksy, pooling, normalizację i długości tokenów. Porównaj opis skilla z opisem + body przy jednakowym budżecie wejścia. Zapisz, które fragmenty ucięto i czy zniknęły informacje rozstrzygające.\n\n**Gotowe, gdy:** umiesz odróżnić statyczne wektory słów od kontekstowych reprezentacji i wykryć porównanie dwóch modeli, które dostały różną informację.\n\n**Alternatywa do pogłębienia:** bezpłatne [Google DeepMind — AI Research Foundations](https://www.skills.google/paths/3135). Ścieżka ma osiem aktywności i wymaga biegłego Pythona; Google potwierdza [bezpłatny dostęp na całym świecie](https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/). Realizuj ją po podstawach, wybierając odpowiednie moduły zamiast części materiału HF, albo dodaj czas poza planem."
+      },
+      {
+        "id": "stage7",
+        "type": "markdown",
+        "body": "## Etap 7 · Wytrenuj własny retriever\n**Tygodnie 29–33 · 75 godzin · wymagania: etapy 1–6**\n\n**Praktyka główna, bezpłatna:** [SentenceTransformers — Training Overview](https://sbert.net/docs/sentence_transformer/training_overview.html), [dobór funkcji straty](https://sbert.net/docs/sentence_transformer/loss_overview.html) i [przykład treningu na MS MARCO](https://sbert.net/examples/sentence_transformer/training/ms_marco/README.html). To dokumentacja i kod, które teraz powinieneś już umieć przerobić samodzielnie.\n\n**Tydzień po tygodniu:**\n\n1. **29:** wybierz mały dostępny checkpoint, przypnij wersję, sprawdź licencję i baseline. Opisz kontrakt par pozytywnych oraz zbiorów poprawnych odpowiedzi.\n2. **30:** uruchom krótki fine-tuning z MultipleNegativesRankingLoss. Porównaj model przed i po treningu na dev.\n3. **31:** dołóż [hard-negative mining](https://sbert.net/docs/package_reference/util/hard_negatives.html). Przejrzyj wydobyte negatywy; poprawne alternatywy i uzupełniające skille nie mogą przypadkiem stać się negatywami.\n4. **32:** wykonaj ablacje: bez treningu, trening bez hard negatives, trening z nimi. Zmieniaj jeden czynnik naraz; zachowaj te same splity i budżet strojenia.\n5. **33:** powtórz wybrane konfiguracje, przeanalizuj porażki i zapisz model card.\n\n**Dodatkowa lekcja:** [Google DeepMind — 05 Fine-Tune Your Model](https://www.skills.google/course_templates/1556) trwa około 8 godzin i obejmuje full fine-tuning oraz LoRA. Wymaga wcześniejszego przygotowania ze ścieżki DeepMind lub równoważnej wiedzy. LoRA modelu językowego nie jest automatycznie treningiem dobrego retrievera; funkcję celu dobierasz do wyszukiwania.\n\n**Gotowe, gdy:** masz checkpoint, dane z pochodzeniem, konfigurację i powtarzalny wynik. Brak poprawy jest poprawnym rezultatem, jeśli potrafisz ograniczyć i uzasadnić wniosek."
+      },
+      {
+        "id": "stage8",
+        "type": "markdown",
+        "body": "## Etap 8 · Reranker i decyzja o użyciu wyniku\n**Tygodnie 34–36 · 45 godzin · wymagania: działający bi-encoder**\n\n**Materiały bezpłatne:** [SentenceTransformers — trening rerankerów](https://sbert.net/examples/cross_encoder/training/rerankers/README.html) i [CrossEncoder losses](https://sbert.net/docs/package_reference/cross_encoder/losses.html). Porównaj prosty trening pointwise z porównywaniem dwóch kandydatów przez RankNetLoss. Para tekstów query/document nie oznacza jeszcze pairwise learning-to-rank.\n\n**Projekt:** wytrenuj mały cross-encoder. Porównaj top-5, top-10 i top-20 na tym samym zapisanym zbiorze kandydatów; osobno mierz kompletność kandydatów, jakość kolejności i latencję. Reranker nie odzyska dokumentu, który nie trafił do kandydatów.\n\nNastępnie zbuduj na dev osobną regułę abstencji: kiedy lepiej nie zwrócić skilla. Oceń jakość przy różnych poziomach coverage, czyli odsetka obsłużonych zapytań. RRF scala rangi; jego score nie jest prawdopodobieństwem poprawności. Nie wystarczy dowolnie nazwać go confidence.\n\n**Gotowe, gdy:** umiesz wykazać, czy poprawa rankingu rekompensuje koszt i czy system potrafi odmówić w przypadkach bez dobrej odpowiedzi. Test zawiera takie przypadki, a próg pozostaje ustalony przed końcowym pomiarem."
+      },
+      {
+        "id": "stage9",
+        "type": "markdown",
+        "body": "## Etap 9 · Skills, agenci i działający produkt\n**Tygodnie 37–39 · 45 godzin · wymagania: umiejętność oceny modelu**\n\n**Anthropic / dawny Skilljar:** korzystaj z [Claude Academy i oficjalnego FAQ migracji](https://academy.claude.com/help/faq). Kursy są bezpłatne; odznaka ukończenia nie jest egzaminem zawodowym.\n\n- [Introduction to agent skills](https://academy.claude.com/courses/introduction-to-agent-skills): około 1 godziny, 6 lekcji o SKILL.md, metadanych, opisie i progressive disclosure.\n- [Building with the Claude API](https://academy.claude.com/courses/building-with-the-claude-api): około 9 godzin, 67 lekcji, ewaluacje, retrieval i integracja narzędzi. Potrzebne Python, JSON i klucz API; własne wywołania mogą kosztować.\n\n**Projekt:** połącz politykę dopuszczalności, kandydatów, scoring, wybór zestawu i abstencję. Dodaj zależności AND i zweryfikowane alternatywy OR. Badaj wariant bez skilli, z wybranym zestawem oraz z poprawnym zestawem referencyjnym.\n\nZmierz cały request, batch=1, p50/p95, cold/warm, na docelowym sprzęcie. Dopiero potem rozważ cache, krótszy input, kwantyzację, mniejszy model albo destylację. Oceniaj po każdej zmianie tę samą jakość; nowy runtime sam w sobie nie dowodzi poprawy.\n\n**Gotowe, gdy:** umiesz wskazać, czy ograniczeniem jest dopuszczalność, wyszukiwanie, dobór zestawu, wykonanie czy koszt. Nauka integracji API nie zastępuje aktualizacji wag modelu."
+      },
+      {
+        "id": "stage10",
+        "type": "markdown",
+        "body": "## Etap 10 · Pierwsze badanie i tekst naukowy\n**Tygodnie 40–44 · 75 godzin · wymagania: działające eksperymenty z poprzednich etapów**\n\n**Materiały:** [SciPy — bootstrap](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html) oraz [NeurIPS Paper Checklist](https://neurips.cc/public/guides/PaperChecklist). Pierwszy jest dokumentacją narzędzia statystycznego, drugi standardem raportowania; żaden nie jest kompletnym kursem metodologii.\n\n**40 · Pytanie:** wybierz jedną hipotezę, np. „Czy hard negatives rozróżniające rodzeństwo skilli poprawiają jakość routingu bez pogorszenia kompletności zestawu?”. Zrób przegląd najbliższych prac i opisz, co dokładnie dodajesz.\n\n**41 · Protokół:** ustal główną metrykę, ograniczenia kosztu, baseline’y, splity, zakres strojenia i kryterium sukcesu. Protokół zapisujesz przed końcowym testem. Wcześniejsze oglądanie danych ujawniasz; nie nazywasz go rejestracją sprzed eksperymentu.\n\n**42 · Pomiar:** zamroź konfigurację, uruchom test i analizę niepewności. Bootstrap powinien porównywać systemy na tych samych jednostkach; przy rodzinach parafraz losujesz grupy, a nie pojedyncze zależne zapytania.\n\n**43 · Tekst:** abstract → problem i related work → dane i metody → wyniki → ablacje → ograniczenia. Każda liczba w tabeli prowadzi do zapisanego wyniku. Oddziel wynik rankingu od powodzenia zadania agenta.\n\n**44 · Recenzja i reprodukcja:** uruchom całość z nowego środowiska, poproś drugą osobę o odtworzenie i krytykę, sprawdź twierdzenia checklistą. Przygotuj model card, dataset card i krótki raport. Wybór konferencji lub warsztatu wymaga później sprawdzenia aktualnych terminów i zasad.\n\n**Gotowe, gdy:** inna osoba potrafi powtórzyć kluczowy wynik i wskazać, do jakiej populacji odnosi się Twój wniosek. Dalsza publikacja zależy także od nowości, skali dowodów i recenzji."
+      },
+      {
+        "id": "budget",
+        "type": "markdown",
+        "body": "## Co wybrać za darmo, a za co warto zapłacić\n\n**Moja rekomendacja przy elastycznym budżecie:** zapłać za ćwiczenia i uporządkowany rdzeń ML, korzystaj z bezpłatnych materiałów do PyTorch i retrieval. Nie kupuj kilku podobnych specjalizacji jednocześnie.\n\n| Wariant | Co dostajesz | Jak go zastosować |\n|---|---|---|\n| **0 USD za materiały** | CS50P, Google MLCC, PyTorch, HF, podręcznik IR, dokumentacja ST, Claude Academy, DeepMind Research Foundations | Pełna merytoryczna ścieżka jest możliwa; zamień płatne laboratoria na własne projekty z planu. Na DLAI bezpłatne są materiały wideo, a zakres ćwiczeń zależy od poziomu dostępu. |\n| **Polecany: DLAI Pro miesięcznie** | Pełny dostęp do dostępnych na tej platformie kursów, laboratoriów, quizów i certyfikatów | Publiczne FAQ podaje **30 USD/mies.**; roczny wariant odpowiada **25 USD/mies.**, płatne rocznie. Kupuj na miesiące aktywnej pracy nad MLS, matematyką lub DLS/RAG. |\n| **Coursera, konkretny kurs** | Wygodna alternatywa platformy; sprawdź abonament wskazany przy zapisie | Dobra, jeśli wolisz Courserę. Cena indywidualna w koszyku nie została sprawdzona. |\n| **Google Skills Pro — opcjonalnie** | Laboratoria Google Cloud poza ofertą darmową | Publicznie **29 USD/mies.**; Starter daje **35 darmowych credits/mies.** Bezpłatny program DeepMind nie wymaga kupowania Pro. |\n\nŹródła dostępu i cen: [DLAI Free/Pro](https://info.deeplearning.ai/knowledge-base/what-do-i-get-with-the-deeplearning.ai-pro-membership-that-i-dont-get-for-free), [DLAI MLS — FAQ cenowe](https://www.deeplearning.ai/specializations/machine-learning), [Google Skills subscriptions](https://www.skills.google/subscriptions), [bezpłatny DeepMind](https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/).\n\n**Nie kupowałbym Coursera Plus specjalnie do tej listy.** Publiczny cennik to 59 USD/mies. lub 399 USD/rok, ale aktualne FAQ DLAI mówi, że ich kursy nie są dostępne w Plus. [Cennik Plus](https://www.coursera.org/courseraplus) · [wyjaśnienie DLAI](https://info.deeplearning.ai/knowledge-base/whats-the-difference-between-taking-deeplearning.ai-courses-on-learn.deeplearning.ai-vs-coursera).\n\nNa Courserze bezpłatny Preview zastąpił audit dla większości kursów: zwykle obejmuje pierwszy moduł. [Oficjalne zasady Preview](https://blog.coursera.org/introducing-courseras-new-course-preview-experience/). Trial nie jest bezterminowym darmowym dostępem. DLAI opisuje automatyczne naliczenie opłaty po 7 dniach; certyfikat wymaga płatności. [Zasady trialu](https://info.deeplearning.ai/knowledge-base/are-professional-certificates-included-in-the-deeplearning.ai-pro-membership-0).\n\n**Przykład budżetu, nie oferta:** sześć miesięcznych opłat po 30 USD = 180 USD za kursy, przed ewentualnymi podatkami. Wywołania API i obliczenia rozliczasz osobno. Nie potwierdzałem ceny dla polskiego konta ani przeliczenia na PLN; [podatki zależą od adresu](https://info.deeplearning.ai/knowledge-base/are-taxes-included-in-my-pro-membership-payment)."
+      },
+      {
+        "id": "week",
+        "type": "markdown",
+        "body": "## Pierwszy tydzień: konkretny plan na 15 godzin\n\n| Dzień | Czas | Zadanie i namacalny wynik |\n|---|---:|---|\n| Poniedziałek | 2 h | CS50P: funkcje i zmienne. Napisz program, który przyjmuje ścieżkę pliku. |\n| Wtorek | 2 h | Listy, słowniki i pętle. Ręcznie utwórz kilka rekordów zapytań i wyników. |\n| Środa | 2 h | Wczytaj JSON, wypisz identyfikatory, obsłuż brakujący plik. |\n| Czwartek | 2 h | Policz poprawne pierwsze wyniki i sprawdź mianownik na papierze. |\n| Piątek | 2 h | Przećwicz pustą listę, powtórzenia i kilka poprawnych odpowiedzi. |\n| Sobota | 4 h | Połącz skrypt, zapis CSV i krótkie testy. Napisz README z jedną komendą. |\n| Niedziela | 1 h | Odtwórz najważniejszą funkcję bez podpowiedzi i zapisz trzy rzeczy do wyjaśnienia. |\n\nOd kolejnego tygodnia utrzymuj orientacyjnie **6 godzin materiałów, 7 godzin kodu i laboratoriów, 2 godziny notatek oraz przeglądu błędów**. Oficjalne czasy kursów często obejmują laboratoria; nie dodawaj ich drugi raz do budżetu.\n\nJeśli masz więcej niż 15 godzin, dodatkowy czas przeznacz najpierw na samodzielne zadania, matematykę i czytanie błędów. Tempo oceniaj po bramkach etapów."
+      },
+      {
+        "id": "mapping",
+        "type": "markdown",
+        "body": "## Jak ta nauka rozwiązuje problemy, które już widzieliśmy\n\nPoniższe wnioski są wskazówkami do nowych eksperymentów. Ten plan nie wykonuje ponownie bake-offu ani nie zatwierdza aktualnej konfiguracji produkcyjnej.\n\n| Problem z rozmowy | Co trzeba rozumieć | Ćwiczenie i moment |\n|---|---|---|\n| „w_dense = 0, więc dense nie pomaga” | Wynik dotyczy konkretnego modelu, wejścia, korpusu, splitu i fusion. Statyczny student i kontekstowy encoder nie są tą samą interwencją. | Etapy 5–7: porównaj BM25, encoder bazowy i dostrojony, przy zgodnych warunkach. |\n| „Body poprawia wynik, więc zwiększmy jego wagę” | Usunięcie informacji i zmiana wagi pola to różne eksperymenty; ważna jest długość i obcinanie tekstu. | Etapy 5–6: oddziel ablacje dostępu do body, reprezentacji i wag. |\n| Dobry Hit@1, zły zestaw | Trafienie jednego dokumentu nie mierzy AND/OR, zależności ani dopuszczalności. | Etapy 5 i 9: własny evaluator zestawów i pełny pipeline. |\n| Reranker pomaga części zapytań i szkodzi innym | Rozkład danych, hard negatives, strata i kandydaci mogą zmieniać wynik. | Etapy 7–8: zapis kandydatów, analiza podgrup i kontrolowane ablacje. |\n| Próg RRF nie działa | Suma składników opartych na rangach nie jest skalibrowanym prawdopodobieństwem. | Etap 8: osobna kalibracja/reguła na dev i wykres risk–coverage. |\n| Dobra średnia, niejasny sens dla produktu | Niepewność, zależność próbek, koszt oraz powodzenie zadania to osobne osie. | Etapy 9–10: pomiar wykonania, sparowane porównania i przedziały ufności. |\n\nW [InformationRetrievalEvaluator SentenceTransformers](https://sbert.net/docs/package_reference/sentence_transformer/evaluation.html) trafność jest zbiorem poprawnych dokumentów. Nie dostajesz automatycznie stopniowanych ocen 0–3 ani semantyki kompletności AND/OR. Dla tych celów waliduj własny evaluator."
+      },
+      {
+        "id": "protocol",
+        "type": "markdown",
+        "body": "## Protokół projektu badawczego, który warto zachować\n\n**Dane.** Zacznij od istniejącego rzeczywistego, etykietowanego korpusu i przypnij jego wersję. Demo Meridian jest dobre do testów regresji i nauki. Wnioski o jakości routingu sprawdzaj na rzeczywistych danych przez tę samą ścieżkę produktu.\n\n**Splity.** Grupuj parafrazy i bliskie duplikaty przed podziałem; wybierz podział według rodzin zadań, repozytorium lub czasu zgodnie z twierdzeniem, które chcesz obronić. Nie ma jednego splitu gwarantującego wszystkie rodzaje generalizacji. Hard-negative mining nie może zaglądać do niezależnego testu.\n\n**Baseline’y.** Minimum: BM25, gotowy encoder, ten sam encoder po fine-tuningu. Potem dodawaj hard negatives, fusion i reranker jako osobne interwencje. Każdy wariant dostaje jawny budżet strojenia. Przy większym korpusie warto sprawdzić, czy zmienia się wniosek.\n\n**Metryki.** Przed końcowym testem wybierz jedną główną metrykę zgodną z pytaniem badawczym. Dodatkowo raportuj recall kandydatów, jakość rankingu, kompletność zestawu, niedopuszczalne wybory, ekspozycję szkodliwego rodzeństwa, abstencję i latencję. Definicję HSR weź z przypiętego kontraktu projektu. Przy każdej metryce podaj populację i mianownik.\n\n**Niepewność.** Pokaż sparowaną różnicę względem baseline’u z przedziałem ufności oraz zmienność treningu między seedami. To dwa różne źródła niepewności. Tysiące resampli nie tworzą nowych niezależnych zapytań. Dla twierdzenia „nie gorzej” ustal wcześniej dopuszczalny margines i oceniaj przedział różnicy; brak istotności nie dowodzi równoważności.\n\n**Odtwarzalność.** Zachowaj wersje danych i modeli, konfiguracje, seedy, komendy, środowisko, koszty, surowe wyniki per query i regułę wyboru checkpointu. Liczbę prób dobierz do zmienności i kosztu, zamiast uznawać arbitralnie trzy uruchomienia za wystarczające.\n\n**Wykonanie.** Porównaj brak skilli, wybór systemu i zestaw referencyjny. Jeśli ranking rośnie, ale sukces agenta nie, opisz oba wyniki. To może być ciekawy rezultat badawczy; najpierw trzeba wykluczyć błąd eksperymentu.\n\nPunkty o bootstrapie i raportowaniu oprzyj na [dokumentacji SciPy](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html) i [checkliście NeurIPS](https://neurips.cc/public/guides/PaperChecklist). Dobór konkretnego testu statystycznego do Twoich zależności danych będzie osobnym krokiem metodologicznym."
+      },
+      {
+        "id": "reading",
+        "type": "markdown",
+        "body": "## Jak czytać SkillRet, SkillRouter i SkillNet\n\nCzytaj prace dopiero równolegle z odpowiednim etapem, nie czekając na zrozumienie każdego wzoru. Dla każdej zapisz jedną stronę odpowiedzi:\n\n1. Jakie dokładnie zadanie rozwiązuje praca i co jest jednostką oceny?\n2. Co dostaje model na wejściu? Czy baseline ma tę samą informację?\n3. Skąd pochodzą pozytywy, negatywy i niezależny test?\n4. Który eksperyment izoluje główną zmianę?\n5. Jaki najmniejszy element umiem odtworzyć?\n6. Czego wynik nie pozwala stwierdzić o Guidefoldzie?\n\n**Kolejność:** [BEIR](https://arxiv.org/html/2104.08663v4) w etapie 5; [SkillRouter](https://arxiv.org/html/2603.22455v5) i [SkillRet](https://arxiv.org/html/2605.05726v3) w etapach 6–8; [SkillNet](https://arxiv.org/abs/2603.04448v3) wraz z [kodem autorów](https://github.com/zjunlp/SkillNet) w etapie 9.\n\nPierwszym celem reprodukcji może być odtworzenie sposobu reprezentacji wejścia albo filtrowania false negatives. Nie musisz na początku odtwarzać pełnego kosztownego systemu. W raporcie precyzyjnie nazwij, co rzeczywiście zreprodukowałeś."
+      },
+      {
+        "id": "optional",
+        "type": "markdown",
+        "body": "## Rozszerzenia po rdzeniu — wybierz według pytania badawczego\n\n| Kierunek | Materiał | Kiedy warto |\n|---|---|---|\n| Więcej matematyki | Pełne [Mathematics for ML and Data Science](https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science) | Gdy nie umiesz uzasadnić funkcji straty lub interpretować niepewności. Uzupełnienie pełnej specjalizacji wymaga czasu poza wybranymi modułami z planu. |\n| Głębsze NLP | [NLP Specialization](https://www.coursera.org/specializations/natural-language-processing) | Po ML, macierzach, pochodnych i praktyce PyTorch; około trzech miesięcy po 10 h według strony kursu. |\n| Cykl życia LLM / PEFT | [Generative AI with Large Language Models](https://www.coursera.org/learn/generative-ai-with-llms) | Po ML; około 20 h według organizatora. Dobry kontekst do fine-tuningu modeli generatywnych. |\n| Zaawansowane NLP akademickie | [Stanford CS224N](https://web.stanford.edu/class/cs224n/) | Publiczne materiały i kompletne nagrania z 2024; nagrania edycji 2026 wymagają zapisu. Zajęcia są znacznie trudniejsze niż mini-kursy. |\n| Mały model językowy od podstaw | [Stanford CS336](https://cs336.stanford.edu/) | Po solidnym PyTorch, matematyce i podstawach systemów GPU. Dane, tokenizacja, transformery, trening i ewaluacja. To kolejny projekt, nie skrót do pierwszego retrievera. |\n\nPełne DLS, NLP i CS336 nie są wymagane równocześnie. Gdy znasz już podstawy, największą wartość daje konkretny problem badawczy, próba jego rozwiązania i krytyka wyników."
+      },
+      {
+        "id": "limits",
+        "type": "markdown",
+        "body": "## Jak korzystać z planu i kiedy go zmienić\n\n**Czas:** 44 tygodnie to autorski szacunek dla 15 godzin pracy tygodniowo. Wideo, dokumentacja, samodzielne zadania i debugging mają różne tempo. Po etapach 1, 3 i 7 zrób przegląd: co potrafisz wykonać bez prowadzenia krok po kroku, czego jeszcze nie rozumiesz, czy pytanie badawcze nadal ma sens.\n\n**Sprzęt:** pierwsze etapy można wykonywać na CPU. Przy treningu zacznij od małego modelu i krótkiego pilota, sprawdzając VRAM, długość sekwencji i batch size. Jeżeli nadal masz dostęp do używanego wcześniej RTX 4090, wykorzystaj go przed zakupem kolejnego sprzętu; zgodność konkretnego treningu z pamięcią trzeba zmierzyć. Dostęp do darmowego GPU w chmurze nie jest założeniem tego planu.\n\n**Źródła:** użyto stron organizatorów kursów, oficjalnej dokumentacji i prac autorów. Sprawdzono ofertę oraz deklarowany zakres, nie ukończono wszystkich płatnych laboratoriów. Ceny w USD i zasady dostępu mogą się zmieniać; cena dla Twojego konta wymaga sprawdzenia przy zakupie. Odznaki i certyfikaty są dodatkiem, nie kryterium gotowości do badań.\n\n**Najbliższy rezultat:** po pierwszym miesiącu własny skrypt do wyników; po podstawach ML uczciwy baseline; po treningu checkpoint z reprodukcją; na końcu raport, który daje się obronić przed krytycznym recenzentem. Zaczynasz dziś od pierwszego tygodnia, nie od zakupu całej listy."
+      }
+    ],
+    "charts": [
+      {
+        "id": "hours_chart",
+        "title": "Planowany czas według etapu",
+        "description": "Godziny nauki i ćwiczeń; autorski plan przy 15 h tygodniowo.",
+        "showDescription": true,
+        "type": "horizontalBar",
+        "intent": "comparison",
+        "dataset": "stage_hours",
+        "sourceId": "plan_source",
+        "layout": "full",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "stage",
+            "type": "nominal",
+            "label": "Etap"
+          },
+          "y": {
+            "field": "hours",
+            "type": "quantitative",
+            "label": "Godziny",
+            "unit": "h"
+          }
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "plan_table",
+        "title": "Harmonogram etapów",
+        "dataset": "stage_hours",
+        "sourceId": "plan_source",
+        "density": "spacious",
+        "defaultSort": {
+          "field": "stage_order",
+          "direction": "asc"
+        },
+        "columns": [
+          {
+            "field": "stage_order",
+            "label": "Nr",
+            "format": "number"
+          },
+          {
+            "field": "stage",
+            "label": "Etap",
+            "type": "text"
+          },
+          {
+            "field": "weeks_range",
+            "label": "Tygodnie",
+            "type": "text"
+          },
+          {
+            "field": "hours",
+            "label": "Godziny",
+            "format": "number"
+          },
+          {
+            "field": "outcome",
+            "label": "Rezultat",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "plan_source",
+        "label": "Autorski harmonogram: 44 tygodnie przy 15 godzinach tygodniowo",
+        "query": {
+          "engine": "sqlite",
+          "language": "sql",
+          "sql": "SELECT stage_order, stage, weeks_range, weeks, weeks * 15 AS hours, outcome FROM learning_plan ORDER BY stage_order",
+          "description": "Plan nauki przygotowany na podstawie poziomu użytkownika i 15+ h tygodniowo. Godziny obejmują kursy, ćwiczenia i projekt; nie są danymi empirycznymi ani obietnicą organizatorów.",
+          "tables_used": [
+            "learning_plan"
+          ],
+          "filters": [
+            "10 etapów głównych; rozszerzenia fakultatywne poza budżetem 660 h"
+          ],
+          "metric_definitions": [
+            "hours = weeks × 15; planowany czas całego etapu w godzinach.",
+            "weeks_range = kolejny przedział tygodni w planie, bez przerw i dodatkowego bufora."
+          ]
+        }
+      },
+      {
+        "id": "cs50p",
+        "label": "Harvard — CS50P",
+        "href": "https://cs50.harvard.edu/python/"
+      },
+      {
+        "id": "aipython",
+        "label": "DeepLearning.AI — AI Python for Beginners",
+        "href": "https://www.deeplearning.ai/courses/ai-python-for-beginners"
+      },
+      {
+        "id": "mlcc",
+        "label": "Google — Machine Learning Crash Course",
+        "href": "https://developers.google.com/machine-learning/crash-course"
+      },
+      {
+        "id": "mlpre",
+        "label": "Google MLCC — wymagania i prework",
+        "href": "https://developers.google.com/machine-learning/crash-course/prereqs-and-prework"
+      },
+      {
+        "id": "mls",
+        "label": "Stanford / DeepLearning.AI — Machine Learning Specialization",
+        "href": "https://www.coursera.org/specializations/machine-learning-introduction"
+      },
+      {
+        "id": "mlsd",
+        "label": "DeepLearning.AI — Machine Learning Specialization",
+        "href": "https://www.deeplearning.ai/specializations/machine-learning"
+      },
+      {
+        "id": "math",
+        "label": "DeepLearning.AI — Mathematics for Machine Learning and Data Science",
+        "href": "https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science"
+      },
+      {
+        "id": "dls",
+        "label": "DeepLearning.AI — Deep Learning Specialization",
+        "href": "https://www.coursera.org/specializations/deep-learning"
+      },
+      {
+        "id": "torch",
+        "label": "PyTorch — Learn the Basics",
+        "href": "https://docs.pytorch.org/tutorials/beginner/basics/intro.html"
+      },
+      {
+        "id": "ir",
+        "label": "Stanford — Introduction to Information Retrieval",
+        "href": "https://nlp.stanford.edu/IR-book/"
+      },
+      {
+        "id": "rag",
+        "label": "DeepLearning.AI — Retrieval Augmented Generation",
+        "href": "https://www.coursera.org/learn/retrieval-augmented-generation-rag"
+      },
+      {
+        "id": "emb",
+        "label": "DeepLearning.AI — Embedding Models: from Architecture to Implementation",
+        "href": "https://www.deeplearning.ai/courses/embedding-models-from-architecture-to-implementation"
+      },
+      {
+        "id": "hf",
+        "label": "Hugging Face — LLM Course",
+        "href": "https://huggingface.co/learn/llm-course/chapter1/1"
+      },
+      {
+        "id": "attention",
+        "label": "Google Skills — Attention Mechanism",
+        "href": "https://www.skills.google/course_templates/537"
+      },
+      {
+        "id": "bert",
+        "label": "Google Skills — Transformer Models and BERT Model",
+        "href": "https://www.skills.google/course_templates/538"
+      },
+      {
+        "id": "research",
+        "label": "Google DeepMind — AI Research Foundations",
+        "href": "https://www.skills.google/paths/3135"
+      },
+      {
+        "id": "ft",
+        "label": "Google DeepMind — 05 Fine-Tune Your Model",
+        "href": "https://www.skills.google/course_templates/1556"
+      },
+      {
+        "id": "researchfree",
+        "label": "Google — bezpłatność AI Research Foundations",
+        "href": "https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/"
+      },
+      {
+        "id": "st",
+        "label": "SentenceTransformers — Training Overview",
+        "href": "https://sbert.net/docs/sentence_transformer/training_overview.html"
+      },
+      {
+        "id": "stloss",
+        "label": "SentenceTransformers — Loss Overview",
+        "href": "https://sbert.net/docs/sentence_transformer/loss_overview.html"
+      },
+      {
+        "id": "mining",
+        "label": "SentenceTransformers — hard negatives",
+        "href": "https://sbert.net/docs/package_reference/util/hard_negatives.html"
+      },
+      {
+        "id": "msmarco",
+        "label": "SentenceTransformers — MS MARCO training example",
+        "href": "https://sbert.net/examples/sentence_transformer/training/ms_marco/README.html"
+      },
+      {
+        "id": "rerank",
+        "label": "SentenceTransformers — training rerankers",
+        "href": "https://sbert.net/examples/cross_encoder/training/rerankers/README.html"
+      },
+      {
+        "id": "celoss",
+        "label": "SentenceTransformers — CrossEncoder losses",
+        "href": "https://sbert.net/docs/package_reference/cross_encoder/losses.html"
+      },
+      {
+        "id": "steval",
+        "label": "SentenceTransformers — evaluation",
+        "href": "https://sbert.net/docs/package_reference/sentence_transformer/evaluation.html"
+      },
+      {
+        "id": "api",
+        "label": "Claude Academy — Building with the Claude API",
+        "href": "https://academy.claude.com/courses/building-with-the-claude-api"
+      },
+      {
+        "id": "skills",
+        "label": "Claude Academy — Introduction to agent skills",
+        "href": "https://academy.claude.com/courses/introduction-to-agent-skills"
+      },
+      {
+        "id": "academy",
+        "label": "Claude Academy — FAQ / migracja ze Skilljar",
+        "href": "https://academy.claude.com/help/faq"
+      },
+      {
+        "id": "bootstrap",
+        "label": "SciPy — bootstrap",
+        "href": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html"
+      },
+      {
+        "id": "checklist",
+        "label": "NeurIPS — Paper Checklist",
+        "href": "https://neurips.cc/public/guides/PaperChecklist"
+      },
+      {
+        "id": "skillnet",
+        "label": "SkillNet: Create, Evaluate, and Connect AI Skills, v3",
+        "href": "https://arxiv.org/abs/2603.04448v3"
+      },
+      {
+        "id": "skillnetrepo",
+        "label": "SkillNet — oficjalne repozytorium",
+        "href": "https://github.com/zjunlp/SkillNet"
+      },
+      {
+        "id": "skillrouter",
+        "label": "SkillRouter, v5",
+        "href": "https://arxiv.org/html/2603.22455v5"
+      },
+      {
+        "id": "skillret",
+        "label": "SkillRet, v3",
+        "href": "https://arxiv.org/html/2605.05726v3"
+      },
+      {
+        "id": "beir",
+        "label": "BEIR, v4",
+        "href": "https://arxiv.org/html/2104.08663v4"
+      },
+      {
+        "id": "freepro",
+        "label": "DeepLearning.AI — Free / Pro",
+        "href": "https://info.deeplearning.ai/knowledge-base/what-do-i-get-with-the-deeplearning.ai-pro-membership-that-i-dont-get-for-free"
+      },
+      {
+        "id": "dlprice",
+        "label": "DeepLearning.AI — platforma a Coursera",
+        "href": "https://info.deeplearning.ai/knowledge-base/whats-the-difference-between-taking-deeplearning.ai-courses-on-learn.deeplearning.ai-vs-coursera"
+      },
+      {
+        "id": "preview",
+        "label": "Coursera — nowy bezpłatny Preview",
+        "href": "https://blog.coursera.org/introducing-courseras-new-course-preview-experience/"
+      },
+      {
+        "id": "plus",
+        "label": "Coursera Plus — cennik",
+        "href": "https://www.coursera.org/courseraplus"
+      },
+      {
+        "id": "gprice",
+        "label": "Google Skills — cennik",
+        "href": "https://www.skills.google/subscriptions"
+      },
+      {
+        "id": "nlp",
+        "label": "DeepLearning.AI — Natural Language Processing Specialization",
+        "href": "https://www.coursera.org/specializations/natural-language-processing"
+      },
+      {
+        "id": "gllm",
+        "label": "DeepLearning.AI / AWS — Generative AI with Large Language Models",
+        "href": "https://www.coursera.org/learn/generative-ai-with-llms"
+      },
+      {
+        "id": "cs224n",
+        "label": "Stanford — CS224N",
+        "href": "https://web.stanford.edu/class/cs224n/"
+      },
+      {
+        "id": "cs336",
+        "label": "Stanford — CS336",
+        "href": "https://cs336.stanford.edu/"
+      },
+      {
+        "id": "trial",
+        "label": "DeepLearning.AI — trial i certyfikaty",
+        "href": "https://info.deeplearning.ai/knowledge-base/are-professional-certificates-included-in-the-deeplearning.ai-pro-membership-0"
+      },
+      {
+        "id": "tax",
+        "label": "DeepLearning.AI — podatki",
+        "href": "https://info.deeplearning.ai/knowledge-base/are-taxes-included-in-my-pro-membership-payment"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "status": "ready",
+    "datasets": {
+      "stage_hours": [
+        {
+          "stage_order": 1,
+          "stage": "01 Python",
+          "weeks_range": "1–4",
+          "weeks": 4,
+          "hours": 60,
+          "outcome": "Skrypt JSONL → metryki"
+        },
+        {
+          "stage_order": 2,
+          "stage": "02 Matematyka i ML",
+          "weeks_range": "5–8",
+          "weeks": 4,
+          "hours": 60,
+          "outcome": "Notatnik o podobieństwie i błędzie"
+        },
+        {
+          "stage_order": 3,
+          "stage": "03 Machine Learning",
+          "weeks_range": "9–17",
+          "weeks": 9,
+          "hours": 135,
+          "outcome": "Eksperyment train/dev/test"
+        },
+        {
+          "stage_order": 4,
+          "stage": "04 Sieci i PyTorch",
+          "weeks_range": "18–21",
+          "weeks": 4,
+          "hours": 60,
+          "outcome": "Trening i checkpoint"
+        },
+        {
+          "stage_order": 5,
+          "stage": "05 IR i RAG",
+          "weeks_range": "22–25",
+          "weeks": 4,
+          "hours": 60,
+          "outcome": "Baseline BM25 i ewaluator"
+        },
+        {
+          "stage_order": 6,
+          "stage": "06 Transformery",
+          "weeks_range": "26–28",
+          "weeks": 3,
+          "hours": 45,
+          "outcome": "Audyt wejścia modelu"
+        },
+        {
+          "stage_order": 7,
+          "stage": "07 Własny retriever",
+          "weeks_range": "29–33",
+          "weeks": 5,
+          "hours": 75,
+          "outcome": "Dostrojony bi-encoder"
+        },
+        {
+          "stage_order": 8,
+          "stage": "08 Reranker",
+          "weeks_range": "34–36",
+          "weeks": 3,
+          "hours": 45,
+          "outcome": "Cross-encoder i bramka jakości"
+        },
+        {
+          "stage_order": 9,
+          "stage": "09 Agent i koszt",
+          "weeks_range": "37–39",
+          "weeks": 3,
+          "hours": 45,
+          "outcome": "Pipeline z abstencją i budżetem"
+        },
+        {
+          "stage_order": 10,
+          "stage": "10 Badanie i artykuł",
+          "weeks_range": "40–44",
+          "weeks": 5,
+          "hours": 75,
+          "outcome": "Reprodukcja, ablacje, tekst"
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "plan_source",
+      "label": "Autorski harmonogram: 44 tygodnie przy 15 godzinach tygodniowo",
+      "query": {
+        "engine": "sqlite",
+        "language": "sql",
+        "sql": "SELECT stage_order, stage, weeks_range, weeks, weeks * 15 AS hours, outcome FROM learning_plan ORDER BY stage_order",
+        "description": "Plan nauki przygotowany na podstawie poziomu użytkownika i 15+ h tygodniowo. Godziny obejmują kursy, ćwiczenia i projekt; nie są danymi empirycznymi ani obietnicą organizatorów.",
+        "tables_used": [
+          "learning_plan"
+        ],
+        "filters": [
+          "10 etapów głównych; rozszerzenia fakultatywne poza budżetem 660 h"
+        ],
+        "metric_definitions": [
+          "hours = weeks × 15; planowany czas całego etapu w godzinach.",
+          "weeks_range = kolejny przedział tygodni w planie, bez przerw i dodatkowego bufora."
+        ]
+      }
+    },
+    {
+      "id": "cs50p",
+      "label": "Harvard — CS50P",
+      "href": "https://cs50.harvard.edu/python/"
+    },
+    {
+      "id": "aipython",
+      "label": "DeepLearning.AI — AI Python for Beginners",
+      "href": "https://www.deeplearning.ai/courses/ai-python-for-beginners"
+    },
+    {
+      "id": "mlcc",
+      "label": "Google — Machine Learning Crash Course",
+      "href": "https://developers.google.com/machine-learning/crash-course"
+    },
+    {
+      "id": "mlpre",
+      "label": "Google MLCC — wymagania i prework",
+      "href": "https://developers.google.com/machine-learning/crash-course/prereqs-and-prework"
+    },
+    {
+      "id": "mls",
+      "label": "Stanford / DeepLearning.AI — Machine Learning Specialization",
+      "href": "https://www.coursera.org/specializations/machine-learning-introduction"
+    },
+    {
+      "id": "mlsd",
+      "label": "DeepLearning.AI — Machine Learning Specialization",
+      "href": "https://www.deeplearning.ai/specializations/machine-learning"
+    },
+    {
+      "id": "math",
+      "label": "DeepLearning.AI — Mathematics for Machine Learning and Data Science",
+      "href": "https://www.coursera.org/specializations/mathematics-for-machine-learning-and-data-science"
+    },
+    {
+      "id": "dls",
+      "label": "DeepLearning.AI — Deep Learning Specialization",
+      "href": "https://www.coursera.org/specializations/deep-learning"
+    },
+    {
+      "id": "torch",
+      "label": "PyTorch — Learn the Basics",
+      "href": "https://docs.pytorch.org/tutorials/beginner/basics/intro.html"
+    },
+    {
+      "id": "ir",
+      "label": "Stanford — Introduction to Information Retrieval",
+      "href": "https://nlp.stanford.edu/IR-book/"
+    },
+    {
+      "id": "rag",
+      "label": "DeepLearning.AI — Retrieval Augmented Generation",
+      "href": "https://www.coursera.org/learn/retrieval-augmented-generation-rag"
+    },
+    {
+      "id": "emb",
+      "label": "DeepLearning.AI — Embedding Models: from Architecture to Implementation",
+      "href": "https://www.deeplearning.ai/courses/embedding-models-from-architecture-to-implementation"
+    },
+    {
+      "id": "hf",
+      "label": "Hugging Face — LLM Course",
+      "href": "https://huggingface.co/learn/llm-course/chapter1/1"
+    },
+    {
+      "id": "attention",
+      "label": "Google Skills — Attention Mechanism",
+      "href": "https://www.skills.google/course_templates/537"
+    },
+    {
+      "id": "bert",
+      "label": "Google Skills — Transformer Models and BERT Model",
+      "href": "https://www.skills.google/course_templates/538"
+    },
+    {
+      "id": "research",
+      "label": "Google DeepMind — AI Research Foundations",
+      "href": "https://www.skills.google/paths/3135"
+    },
+    {
+      "id": "ft",
+      "label": "Google DeepMind — 05 Fine-Tune Your Model",
+      "href": "https://www.skills.google/course_templates/1556"
+    },
+    {
+      "id": "researchfree",
+      "label": "Google — bezpłatność AI Research Foundations",
+      "href": "https://blog.google/company-news/inside-google/around-the-globe/google-africa/ai-research-foundations/"
+    },
+    {
+      "id": "st",
+      "label": "SentenceTransformers — Training Overview",
+      "href": "https://sbert.net/docs/sentence_transformer/training_overview.html"
+    },
+    {
+      "id": "stloss",
+      "label": "SentenceTransformers — Loss Overview",
+      "href": "https://sbert.net/docs/sentence_transformer/loss_overview.html"
+    },
+    {
+      "id": "mining",
+      "label": "SentenceTransformers — hard negatives",
+      "href": "https://sbert.net/docs/package_reference/util/hard_negatives.html"
+    },
+    {
+      "id": "msmarco",
+      "label": "SentenceTransformers — MS MARCO training example",
+      "href": "https://sbert.net/examples/sentence_transformer/training/ms_marco/README.html"
+    },
+    {
+      "id": "rerank",
+      "label": "SentenceTransformers — training rerankers",
+      "href": "https://sbert.net/examples/cross_encoder/training/rerankers/README.html"
+    },
+    {
+      "id": "celoss",
+      "label": "SentenceTransformers — CrossEncoder losses",
+      "href": "https://sbert.net/docs/package_reference/cross_encoder/losses.html"
+    },
+    {
+      "id": "steval",
+      "label": "SentenceTransformers — evaluation",
+      "href": "https://sbert.net/docs/package_reference/sentence_transformer/evaluation.html"
+    },
+    {
+      "id": "api",
+      "label": "Claude Academy — Building with the Claude API",
+      "href": "https://academy.claude.com/courses/building-with-the-claude-api"
+    },
+    {
+      "id": "skills",
+      "label": "Claude Academy — Introduction to agent skills",
+      "href": "https://academy.claude.com/courses/introduction-to-agent-skills"
+    },
+    {
+      "id": "academy",
+      "label": "Claude Academy — FAQ / migracja ze Skilljar",
+      "href": "https://academy.claude.com/help/faq"
+    },
+    {
+      "id": "bootstrap",
+      "label": "SciPy — bootstrap",
+      "href": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html"
+    },
+    {
+      "id": "checklist",
+      "label": "NeurIPS — Paper Checklist",
+      "href": "https://neurips.cc/public/guides/PaperChecklist"
+    },
+    {
+      "id": "skillnet",
+      "label": "SkillNet: Create, Evaluate, and Connect AI Skills, v3",
+      "href": "https://arxiv.org/abs/2603.04448v3"
+    },
+    {
+      "id": "skillnetrepo",
+      "label": "SkillNet — oficjalne repozytorium",
+      "href": "https://github.com/zjunlp/SkillNet"
+    },
+    {
+      "id": "skillrouter",
+      "label": "SkillRouter, v5",
+      "href": "https://arxiv.org/html/2603.22455v5"
+    },
+    {
+      "id": "skillret",
+      "label": "SkillRet, v3",
+      "href": "https://arxiv.org/html/2605.05726v3"
+    },
+    {
+      "id": "beir",
+      "label": "BEIR, v4",
+      "href": "https://arxiv.org/html/2104.08663v4"
+    },
+    {
+      "id": "freepro",
+      "label": "DeepLearning.AI — Free / Pro",
+      "href": "https://info.deeplearning.ai/knowledge-base/what-do-i-get-with-the-deeplearning.ai-pro-membership-that-i-dont-get-for-free"
+    },
+    {
+      "id": "dlprice",
+      "label": "DeepLearning.AI — platforma a Coursera",
+      "href": "https://info.deeplearning.ai/knowledge-base/whats-the-difference-between-taking-deeplearning.ai-courses-on-learn.deeplearning.ai-vs-coursera"
+    },
+    {
+      "id": "preview",
+      "label": "Coursera — nowy bezpłatny Preview",
+      "href": "https://blog.coursera.org/introducing-courseras-new-course-preview-experience/"
+    },
+    {
+      "id": "plus",
+      "label": "Coursera Plus — cennik",
+      "href": "https://www.coursera.org/courseraplus"
+    },
+    {
+      "id": "gprice",
+      "label": "Google Skills — cennik",
+      "href": "https://www.skills.google/subscriptions"
+    },
+    {
+      "id": "nlp",
+      "label": "DeepLearning.AI — Natural Language Processing Specialization",
+      "href": "https://www.coursera.org/specializations/natural-language-processing"
+    },
+    {
+      "id": "gllm",
+      "label": "DeepLearning.AI / AWS — Generative AI with Large Language Models",
+      "href": "https://www.coursera.org/learn/generative-ai-with-llms"
+    },
+    {
+      "id": "cs224n",
+      "label": "Stanford — CS224N",
+      "href": "https://web.stanford.edu/class/cs224n/"
+    },
+    {
+      "id": "cs336",
+      "label": "Stanford — CS336",
+      "href": "https://cs336.stanford.edu/"
+    },
+    {
+      "id": "trial",
+      "label": "DeepLearning.AI — trial i certyfikaty",
+      "href": "https://info.deeplearning.ai/knowledge-base/are-professional-certificates-included-in-the-deeplearning.ai-pro-membership-0"
+    },
+    {
+      "id": "tax",
+      "label": "DeepLearning.AI — podatki",
+      "href": "https://info.deeplearning.ai/knowledge-base/are-taxes-included-in-my-pro-membership-payment"
+    }
+  ]
+}
