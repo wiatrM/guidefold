@@ -1,0 +1,38 @@
+{
+  "n": 100,
+  "cold_start_ms": 200.10972500313073,
+  "p50_ms": 206.67017600499094,
+  "p95_ms": 261.67429400084075,
+  "mean_ms": 207.50810063989775,
+  "min_ms": 144.09689099557,
+  "max_ms": 313.27362100273604,
+  "machine": {
+    "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+    "glibc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.8) 2.39",
+    "platform": "WSL2",
+    "python": "3.12.3"
+  },
+  "n_skills": 4000,
+  "n_terms": 70811,
+  "artifact_bytes_total": 8783576,
+  "artifact_files": {
+    "cards.jsonl": 2774371,
+    "cards.idx": 32004,
+    "cards.hdr": 500576,
+    "terms.bin": 1232193,
+    "norms.bin": 80000,
+    "postings.bin": 3365188,
+    "postings.idx": 746204,
+    "vectors.i8": 0,
+    "words.bin": 0,
+    "words.idx": 0,
+    "graph.bin": 16000,
+    "graph.idx": 32004,
+    "nodes.json": 3086,
+    "manifest.json": 1950
+  },
+  "gate_t300_ms": 300,
+  "gate_t500_ms": 500,
+  "pass_t300": true,
+  "pass_t500": true
+}

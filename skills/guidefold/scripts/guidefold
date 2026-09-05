@@ -699,9 +699,13 @@ class Index:
 #   1. little-endian is declared explicitly everywhere multi-byte integers are packed (`struct`,
 #      never `array.fromfile`/raw `array.array('I', ...)`, both of which are native-order).
 #   2. postings.bin (and vectors.i8/words.bin) are read lazily through an mmap: only the byte
-#      range a query's own terms/urns resolve to is ever paged in. The *offset* tables that make
-#      that possible (postings.idx, words.idx, terms.bin) are small enough to load eagerly in
-#      full — a few thousand entries even at 2k skills — and Index.build already proves that.
+#      range a query's own terms/urns resolve to is ever paged in. words.idx is small enough
+#      (one row per distinct *word*, capped by the distilled table, not by corpus size) to load
+#      eagerly in full. terms.bin/postings.idx are NOT small at real-corpus vocabulary sizes
+#      (89,630 distinct terms at 6,006 real skills) — R4's cards/graph fix left them the dominant
+#      remaining load-time cost (~250ms of ~271ms), so they get the same lazy mmap+binary-search
+#      treatment postings.bin already had, rather than a whole-file parse into a Python dict; see
+#      their entries below and `_LazyTerms`/`_LazyPostingsIndex`/`_LazyFieldPostings`.
 #
 # Files (all under <cache_root>/index/<sha>/, see index_cache_dir):
 #   manifest.json   git_sha, build_time, weights, counts, quant_scale, teacher (null this PR),
@@ -728,15 +732,34 @@ class Index:
 #   graph.idx       the offset+length table for graph.bin, same shape as cards.idx. Eager.
 #   nodes.json      guidefold.yaml's `nodes` map, verbatim — `cwd -> node` at hook time resolves
 #                   from THIS, never the working-tree guidefold.yaml (ROUTER-SPEC).
-#   terms.bin       global per-term IDF (Index.idf): [varint term_len, term utf-8, varint idf]*,
-#                   sorted by term. Eagerly parsed into a dict at load time.
+#   terms.bin       global per-term IDF (Index.idf), sorted by term, binary-searched on the mmap
+#                   (R4 cont'd/"R5" — see the caveat this superseded, below): `u32 n_terms`, then
+#                   (n_terms+1) fixed-width directory records `<II` (string_offset, idf) — record
+#                   i's term occupies string_blob[dir[i].offset : dir[i+1].offset), so the last,
+#                   idf-less record is a length sentinel, not a real term — followed by the
+#                   string blob (sorted term bytes, back to back, no separators). No Python dict
+#                   is ever built from this file; `_LazyTerms.lookup(term)` binary-searches the
+#                   directory directly against the mmap, string-comparing only the O(log V)
+#                   candidate terms the search actually visits, and returns (term_id, idf) — the
+#                   term_id (that term's rank in this same sorted order) is what postings.idx
+#                   below is keyed by, so one string search resolves both idf and postings offset.
 #   norms.bin       per-(field, doc) BM25 length-normalisation (Index.field_norm): FIELDS blocks
-#                   of n_docs little-endian uint32s each, doc order = cards.jsonl order. Eager.
+#                   of n_docs little-endian uint32s each, doc order = cards.jsonl order. Eager —
+#                   scales with doc count (tens of KB even at 6 006 skills), not vocabulary; see
+#                   the R4/R5 caveat below for why that distinction is what matters here.
 #   postings.bin    delta-varint doc-id postings, one contiguous block per (field, term):
 #                   [varint(doc_id delta), varint(tf)]* — mmap'd, sliced lazily per query term.
-#   postings.idx    the offset+length table for postings.bin: [varint field_index, varint
-#                   term_len, term utf-8, varint offset, varint length]*, sorted by (field, term).
-#                   Eagerly parsed into a {(field, term): (offset, length)} dict.
+#   postings.idx    the (field, term_id) -> (offset, length) lookup for postings.bin, binary-
+#                   searched on the mmap exactly like terms.bin (R5): `u32 n_entries`, then
+#                   (n_entries+1) fixed-width records `<II` (combined_key, offset), sorted
+#                   ascending by `combined_key = field_index * n_terms + term_id`. Since every
+#                   term_id is < n_terms, that key is strictly monotonic across field boundaries
+#                   too (field 1's smallest key already exceeds field 0's largest), so ALL fields
+#                   share one flat sorted array and one binary search — no per-field dict, no
+#                   term bytes stored here at all (a term string is only ever compared once, in
+#                   terms.bin). The final record is a length sentinel (offset = len(postings.bin),
+#                   an unmatchable key) so a hit's length is next_record.offset - hit.offset with
+#                   no special-casing the last real entry.
 #   vectors.i8      tier-1 dense skill vectors (Index.skill_vectors): n_docs rows of `dims` int8
 #                   bytes, doc order = cards.jsonl order. Empty iff dims == 0.
 #   words.bin       tier-1 dense word table (Index.word_vectors): one row of `dims` int8 bytes
@@ -798,22 +821,137 @@ def _open_mmap(path: Path):
     mm = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
     return fh, mm
 
-class _LazyFieldPostings:
-    """dict-like idx.postings[field], backed by postings.bin (mmap'd) + the eagerly-loaded
-    postings.idx offset table. Router only ever calls `.get(term)` — never iterates — so that's
-    the entire interface this needs to satisfy."""
-    __slots__ = ("_mm", "_offsets", "_field", "_doc_urns")
+def _find_terms_directory(mm, base: int, n_terms: int, term_bytes: bytes):
+    """Binary search terms.bin's directory for `term_bytes` (already UTF-8 encoded). Directory
+    layout at `mm[base:]`: (n_terms + 1) fixed-width `<II` records (string_offset, idf); record
+    i's term spans string_blob[dir[i].offset : dir[i+1].offset), where the string blob starts
+    right after the directory, at `base + (n_terms + 1) * 8` — so record n_terms (idf-less) is a
+    pure length sentinel, never a real term, which is why the search space below is
+    `[0, n_terms - 1]`. Returns (term_id, idf) or None. term_id is that term's rank in this same
+    sorted order — the shared key `postings.idx` is keyed by (R4 cont'd/"R5"), so a caller that
+    already has a term_id never needs to repeat this string search."""
+    if n_terms == 0:
+        return None
+    blob_base = base + (n_terms + 1) * 8
+    lo, hi = 0, n_terms - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        off, idf = struct.unpack_from("<II", mm, base + mid * 8)
+        (next_off,) = struct.unpack_from("<I", mm, base + (mid + 1) * 8)
+        cand = bytes(mm[blob_base + off:blob_base + next_off])
+        if cand == term_bytes:
+            return mid, idf
+        if cand < term_bytes:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return None
 
-    def __init__(self, mm, offsets: dict, field: str, doc_urns: list):
+class _LazyTerms:
+    """dict-like idx.idf, backed by terms.bin (mmap'd): a sorted directory of (string_offset,
+    idf) records plus a concatenated string blob (see `_find_terms_directory`), binary-searched
+    per lookup rather than parsed into a Python dict up front (R4 cont'd/"R5" — terms.bin was
+    ~86ms of load_index_artifact's ~271ms at 6,006 real skills / 89,630 distinct terms; a query
+    touches ~10-20 terms, so O(log V) per term beats O(V) once regardless of the query).
+
+    `lookup(term)` is the shared primitive — it returns (term_id, idf) so `_LazyFieldPostings`
+    can resolve a term's postings.idx row (keyed by the SAME sorted-term order) without a second
+    string search. `.get(term, default)` (idx.idf's public dict-like contract, what Router's
+    `_bm25_scores` calls) is just `lookup(term)[1]` when found. `__eq__` against a plain dict
+    exists only so the round-trip test (`loaded.idf == mem_idx.idf`) can assert equivalence
+    without this class ever materialising a dict itself on the hook's query path."""
+    __slots__ = ("_mm", "_base", "_n_terms")
+
+    def __init__(self, mm, base: int, n_terms: int):
         self._mm = mm
-        self._offsets = offsets
-        self._field = field
+        self._base = base
+        self._n_terms = n_terms
+
+    def lookup(self, term: str):
+        if self._mm is None or self._n_terms == 0:
+            return None
+        return _find_terms_directory(self._mm, self._base, self._n_terms, term.encode("utf-8"))
+
+    def get(self, term, default=None):
+        found = self.lookup(term)
+        return found[1] if found is not None else default
+
+    def __len__(self):
+        return self._n_terms
+
+    def __eq__(self, other):
+        try:
+            other_items = dict(other)
+        except (TypeError, ValueError):
+            return NotImplemented
+        if len(other_items) != self._n_terms:
+            return False
+        for term, val in other_items.items():
+            found = self.lookup(term)
+            if found is None or found[1] != val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        result = self.__eq__(other)
+        return NotImplemented if result is NotImplemented else not result
+
+class _LazyPostingsIndex:
+    """The (field_index, term_id) -> (offset, length) lookup for postings.bin, backed by
+    postings.idx (mmap'd): entries sorted by one combined key `field_index * n_terms + term_id`
+    (R4 cont'd/"R5"). Every term_id is < n_terms, so that key is strictly monotonic across field
+    boundaries too — field f+1's smallest key already exceeds field f's largest — meaning one
+    flat sorted array and one binary search serve every field; no per-field dict, and no term
+    bytes stored here at all (a term string is compared exactly once, in `_LazyTerms`). The final
+    directory record is a length sentinel (an unmatchable key, offset = len(postings.bin)), so a
+    hit's length is `next_record.offset - hit.offset` with no special-casing the last real entry."""
+    __slots__ = ("_mm", "_base", "_n_entries", "_n_terms")
+
+    def __init__(self, mm, base: int, n_entries: int, n_terms: int):
+        self._mm = mm
+        self._base = base
+        self._n_entries = n_entries
+        self._n_terms = n_terms
+
+    def find(self, field_index: int, term_id: int):
+        if self._mm is None or self._n_entries == 0:
+            return None
+        key = field_index * self._n_terms + term_id
+        lo, hi = 0, self._n_entries - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            k, off = struct.unpack_from("<II", self._mm, self._base + mid * 8)
+            if k == key:
+                (next_off,) = struct.unpack_from("<I", self._mm, self._base + (mid + 1) * 8 + 4)
+                return off, next_off - off
+            if k < key:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return None
+
+class _LazyFieldPostings:
+    """dict-like idx.postings[field], backed by postings.bin (mmap'd) plus a shared `_LazyTerms`
+    (term -> term_id, idf) and `_LazyPostingsIndex` ((field_index, term_id) -> (offset, length)) —
+    neither ever parsed into a Python dict in full (R4 cont'd/"R5"). Router only ever calls
+    `.get(term)` — never iterates — so that's the entire interface this needs to satisfy."""
+    __slots__ = ("_mm", "_terms", "_pidx", "_field_index", "_doc_urns")
+
+    def __init__(self, mm, terms: "_LazyTerms", pidx: "_LazyPostingsIndex", field_index: int, doc_urns: list):
+        self._mm = mm
+        self._terms = terms
+        self._pidx = pidx
+        self._field_index = field_index
         self._doc_urns = doc_urns
 
     def get(self, term, default=None):
         if self._mm is None:
             return default
-        entry = self._offsets.get((self._field, term))
+        found = self._terms.lookup(term)
+        if found is None:
+            return default
+        term_id, _idf = found
+        entry = self._pidx.find(self._field_index, term_id)
         if entry is None:
             return default
         off, length = entry
@@ -1050,12 +1188,25 @@ def _serialize_artifact_files(idx: Index) -> dict:
         cards_hdr += bytes([flags])
     cards_bytes = b"".join(cards_bytes_parts)
 
-    terms_bin = bytearray()
-    for term in sorted(idx.idf.keys()):
-        term_b = term.encode("utf-8")
-        terms_bin += _varint_encode(len(term_b))
-        terms_bin += term_b
-        terms_bin += _varint_encode(idx.idf[term])
+    # terms.bin (R4 cont'd/"R5"): sorted term directory + string blob, binary-searched on the
+    # mmap by `_LazyTerms` rather than parsed whole into a dict at load time (see the file-table
+    # comment above `_varint_encode` for the exact byte layout). `term_rank` assigns every term
+    # its position in this same sorted order — its term_id — which postings.idx below reuses as
+    # its own sort/search key, so a query's one string search resolves both idf and posting
+    # offset without encoding or comparing the term a second time.
+    sorted_terms = sorted(idx.idf.keys())
+    n_terms = len(sorted_terms)
+    term_rank = {t: i for i, t in enumerate(sorted_terms)}
+    terms_dir = bytearray()
+    terms_blob = bytearray()
+    running = 0
+    for t in sorted_terms:
+        term_b = t.encode("utf-8")
+        terms_dir += struct.pack("<II", running, idx.idf[t])
+        terms_blob += term_b
+        running += len(term_b)
+    terms_dir += struct.pack("<II", running, 0)   # sentinel: string-blob length; idf field unused
+    terms_bin = struct.pack("<I", n_terms) + bytes(terms_dir) + bytes(terms_blob)
 
     norms_bin = bytearray()
     for field in Index.FIELDS:
@@ -1063,8 +1214,13 @@ def _serialize_artifact_files(idx: Index) -> dict:
         vals = [fn.get(u, 0) for u in doc_urns]
         norms_bin += struct.pack(f"<{n_docs}I", *vals)
 
+    # postings.idx (R4 cont'd/"R5"): one flat array, sorted ascending by combined_key =
+    # field_index * n_terms + term_id (see _LazyPostingsIndex for why one array safely serves
+    # every field). `postings_entries` is already built in that exact order — fi is the outer
+    # loop, sorted(idx.postings[field]) the inner one, and term_rank preserves string sort order
+    # by construction — so no separate sort step is needed before writing the directory.
     postings_bin = bytearray()
-    idx_records = []   # (field_index, term, offset, length)
+    postings_entries = []   # (combined_key, offset), offset order == write order == sort order
     offset = 0
     for fi, field in enumerate(Index.FIELDS):
         for term in sorted(idx.postings[field].keys()):
@@ -1075,17 +1231,18 @@ def _serialize_artifact_files(idx: Index) -> dict:
                 block += _varint_encode(d - prev)
                 block += _varint_encode(tf)
                 prev = d
-            idx_records.append((fi, term, offset, len(block)))
+            postings_entries.append((fi * n_terms + term_rank[term], offset))
             postings_bin += block
             offset += len(block)
-    postings_idx = bytearray()
-    for fi, term, off, length in idx_records:
-        term_b = term.encode("utf-8")
-        postings_idx += _varint_encode(fi)
-        postings_idx += _varint_encode(len(term_b))
-        postings_idx += term_b
-        postings_idx += _varint_encode(off)
-        postings_idx += _varint_encode(length)
+    n_entries = len(postings_entries)
+    postings_idx_dir = bytearray()
+    for key, off in postings_entries:
+        postings_idx_dir += struct.pack("<II", key, off)
+    # length sentinel: key exceeds every real key (max real key is len(FIELDS)*n_terms - 1), so
+    # it can never match a lookup; offset = len(postings_bin), giving the last real entry's
+    # length as next_record.offset - hit.offset with no special case.
+    postings_idx_dir += struct.pack("<II", len(Index.FIELDS) * n_terms, offset)
+    postings_idx = struct.pack("<I", n_entries) + bytes(postings_idx_dir)
 
     dims = _dense_dims(idx)
     vectors_bin = bytearray()
@@ -1191,12 +1348,11 @@ def write_index_artifact(root: Path, cfg: dict, dest: Path, git_sha: str) -> dic
 
 def load_index_artifact(dest: Path) -> Index:
     """Read <cache_root>/index/<sha>/ back into a Router-ready Index. Postings, dense vectors,
-    cards and graph are all lazily backed by mmap; nodes.json and the small per-doc header tables
-    (cards.hdr, cards.idx, graph.idx) are loaded eagerly in full, and so are idf (terms.bin) and
-    the postings offset table (postings.idx) — those two are NOT small at real-corpus vocabulary
-    sizes (see the R4 caveat below) and remain the dominant load-time cost this function has not
-    yet addressed. Raises on a missing/corrupt artifact — callers (cmd_hook) treat any exception
-    here as "no artifact yet, print nothing".
+    cards, graph, idf (terms.bin) and the postings offset table (postings.idx) are all lazily
+    backed by mmap; only nodes.json and the small per-doc header tables (cards.hdr, cards.idx,
+    graph.idx, norms.bin — all O(doc count), never O(vocabulary)) are loaded eagerly in full.
+    Raises on a missing/corrupt artifact — callers (cmd_hook) treat any exception here as "no
+    artifact yet, print nothing".
 
     R4 (lazy cards/graph): the previous version json.loads()'d every line of cards.jsonl and the
     whole of graph.json here, unconditionally, on every hook invocation — cost scaling linearly
@@ -1206,12 +1362,18 @@ def load_index_artifact(dest: Path) -> Index:
     asks for one (see _LazyCards/_LazyGraph above). That fix landed exactly as scoped and shaved
     the ~46ms it targeted — but at 6 006 real skills (89 630 distinct terms across Index.FIELDS)
     it revealed a LARGER pre-existing, still-eager cost one layer down: parsing terms.bin (~86ms
-    median) and postings.idx (~165ms median) below, whole-file, into `idf`/`offsets` dicts, is
-    ~250ms of this function's ~271ms total — the true dominant cost at this corpus size, scaling
-    with vocabulary rather than doc count, and NOT something this fix touches. See
-    docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md for the full breakdown; a term-keyed
-    on-disk index (the natural next step, informally "R5") would need a different structure than
-    the doc-id offset tables used here, since lookups are by string, not by doc-id."""
+    median) and postings.idx (~165ms median), whole-file, into `idf`/`offsets` dicts, was ~250ms
+    of this function's ~271ms total — the true dominant cost at that corpus size, scaling with
+    vocabulary rather than doc count.
+
+    R4 cont'd / "R5" (this fix): terms.bin and postings.idx are now mmap'd and binary-searched
+    (`_LazyTerms`, `_LazyPostingsIndex`) exactly like postings.bin already was — see the file-table
+    comment above `_varint_encode` for the on-disk layout and `_find_terms_directory` for the
+    search itself. Neither file is parsed into a Python dict here at all any more; load cost for
+    both drops from O(vocabulary) to O(1) (open the mmap, read one `u32` header), and per-query
+    cost becomes O(log vocabulary) per query term instead of amortised-already-paid. See
+    docs/reports/bakeoff/R4-latency-lazy-load-2026-09-05.md for the R4 breakdown this fix
+    addresses, and docs/reports/bakeoff/R4-latency-terms-postings-2026-09-05.md for this one's."""
     manifest = json.loads((dest / "manifest.json").read_text())
 
     hdr_data = (dest / "cards.hdr").read_bytes()
@@ -1248,15 +1410,14 @@ def load_index_artifact(dest: Path) -> Index:
     idx._graph_fh, idx._graph_mm = _open_mmap(dest / "graph.bin")
     idx.graph = _LazyGraph(idx._graph_mm, graph_offsets, doc_urns, doc_id)
 
-    idf = {}
-    data = (dest / "terms.bin").read_bytes()
-    pos, n = 0, len(data)
-    while pos < n:
-        tlen, pos = _varint_decode(data, pos)
-        term = data[pos:pos + tlen].decode("utf-8"); pos += tlen
-        val, pos = _varint_decode(data, pos)
-        idf[term] = val
-    idx.idf = idf
+    # terms.bin (R4 cont'd/"R5"): mmap + one 4-byte header read, never a whole-file parse. Every
+    # term is left on disk, binary-searched by `_LazyTerms.lookup` only when a query actually
+    # asks for it — see the file-table comment above `_varint_encode` for the exact layout.
+    idx._terms_fh, idx._terms_mm = _open_mmap(dest / "terms.bin")
+    n_terms = 0
+    if idx._terms_mm is not None:
+        (n_terms,) = struct.unpack_from("<I", idx._terms_mm, 0)
+    idx.idf = _LazyTerms(idx._terms_mm, 4, n_terms)
 
     field_norm = {f: {} for f in Index.FIELDS}
     norms_data = (dest / "norms.bin").read_bytes()
@@ -1268,19 +1429,17 @@ def load_index_artifact(dest: Path) -> Index:
             field_norm[field] = dict(zip(doc_urns, vals))
     idx.field_norm = field_norm
 
+    # postings.idx (R4 cont'd/"R5"): same treatment — mmap + one 4-byte header read, then
+    # `_LazyPostingsIndex.find` binary-searches the (field_index, term_id)-keyed directory
+    # directly on the mmap, keyed by the SAME term_id space `idx.idf` (_LazyTerms) assigns.
     idx._postings_fh, idx._postings_mm = _open_mmap(dest / "postings.bin")
-    offsets = {}
-    pidx = (dest / "postings.idx").read_bytes()
-    pos, n = 0, len(pidx)
-    while pos < n:
-        fi, pos = _varint_decode(pidx, pos)
-        tlen, pos = _varint_decode(pidx, pos)
-        term = pidx[pos:pos + tlen].decode("utf-8"); pos += tlen
-        off, pos = _varint_decode(pidx, pos)
-        length, pos = _varint_decode(pidx, pos)
-        offsets[(Index.FIELDS[fi], term)] = (off, length)
-    idx.postings = {field: _LazyFieldPostings(idx._postings_mm, offsets, field, doc_urns)
-                    for field in Index.FIELDS}
+    idx._postings_idx_fh, idx._postings_idx_mm = _open_mmap(dest / "postings.idx")
+    n_entries = 0
+    if idx._postings_idx_mm is not None:
+        (n_entries,) = struct.unpack_from("<I", idx._postings_idx_mm, 0)
+    pidx = _LazyPostingsIndex(idx._postings_idx_mm, 4, n_entries, n_terms)
+    idx.postings = {field: _LazyFieldPostings(idx._postings_mm, idx.idf, pidx, fi, doc_urns)
+                    for fi, field in enumerate(Index.FIELDS)}
 
     dims = int(manifest.get("student_dims", 0))
     idx._words_fh, idx._words_mm = _open_mmap(dest / "words.bin")

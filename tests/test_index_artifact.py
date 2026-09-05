@@ -373,6 +373,39 @@ def test_check_index_artifact_detects_a_tampered_cards_idx(gf, fixture_copy):
     assert any("tampered or truncated" in p for p in problems)
 
 
+def test_check_index_artifact_detects_a_tampered_terms_bin(gf, fixture_copy):
+    """R4 cont'd ("R5"): terms.bin moved from an eagerly-parsed dict to a binary-searched mmap
+    directory (fixed-width (string_offset, idf) records + a string blob) so `guidefold hook` no
+    longer has to materialise a Python dict for every one of the corpus's distinct terms just to
+    answer ~10-20 IDF lookups per query. That format change must not weaken tamper detection:
+    corrupting the on-disk bytes has to be caught by `index --check` exactly like any other file,
+    even though nothing ever holds the whole file as a Python object any more."""
+    cfg = gf.load_map(fixture_copy)
+    sha = gf._git_head_short(fixture_copy)
+    dest = fixture_copy / ".cache-index"
+    gf.write_index_artifact(fixture_copy, cfg, dest, sha)
+    (dest / "terms.bin").write_bytes(b"\xff\xff\xff\xff not a real terms directory")
+    ok, problems = gf.check_index_artifact(fixture_copy, cfg, sha, dest)
+    assert not ok
+    assert any("tampered or truncated" in p for p in problems)
+
+
+def test_check_index_artifact_detects_a_tampered_postings_idx(gf, fixture_copy):
+    """R4 cont'd ("R5"): postings.idx moved from an eagerly-materialised
+    {(field, term): (offset, length)} dict to a flat mmap'd array of (combined_key, offset)
+    records -- sorted by combined_key = field_index * n_terms + term_id -- binary-searched
+    directly against the mmap. Corrupting the on-disk bytes must still be caught by
+    `index --check`, matching the tamper coverage every other artifact file already has."""
+    cfg = gf.load_map(fixture_copy)
+    sha = gf._git_head_short(fixture_copy)
+    dest = fixture_copy / ".cache-index"
+    gf.write_index_artifact(fixture_copy, cfg, dest, sha)
+    (dest / "postings.idx").write_bytes(b"\xff\xff\xff\xff not a real postings offset table")
+    ok, problems = gf.check_index_artifact(fixture_copy, cfg, sha, dest)
+    assert not ok
+    assert any("tampered or truncated" in p for p in problems)
+
+
 def test_index_check_subprocess_fails_stale_then_passes_after_rebuild(run_cli, fixture_copy):
     built = run_cli(["index"], cwd=fixture_copy)
     assert built.returncode == 0, built.stderr
