@@ -1,0 +1,68 @@
+{
+  "deterministic": null,
+  "model": null,
+  "deterministic_rows": [
+    {
+      "arm": "C-det-1",
+      "qualifies": false,
+      "delta_all_required4": -0.032,
+      "ci_low": -0.051,
+      "ci_high": -0.014,
+      "delta_hit1_injected": -0.06,
+      "cannot_fit_rate": 0.936,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=-0.0510); Δhit1_injected too negative (-0.0600 < -0.01)"
+    },
+    {
+      "arm": "C-det-2",
+      "qualifies": false,
+      "delta_all_required4": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "delta_hit1_injected": 0.0,
+      "cannot_fit_rate": 1.0,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=0.0000)"
+    },
+    {
+      "arm": "C-det-3",
+      "qualifies": false,
+      "delta_all_required4": -0.032,
+      "ci_low": -0.051,
+      "ci_high": -0.014,
+      "delta_hit1_injected": -0.06,
+      "cannot_fit_rate": 0.976,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=-0.0510); Δhit1_injected too negative (-0.0600 < -0.01)"
+    },
+    {
+      "arm": "C-det-4",
+      "qualifies": false,
+      "delta_all_required4": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "delta_hit1_injected": 0.0,
+      "cannot_fit_rate": 1.0,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=0.0000)"
+    }
+  ],
+  "model_rows": [
+    {
+      "arm": "C-model-1",
+      "qualifies": false,
+      "delta_all_required4": 0.02666666666666667,
+      "ci_low": -0.013333333333333334,
+      "ci_high": 0.06666666666666667,
+      "delta_hit1_injected": -0.03333333333333333,
+      "cannot_fit_rate": 0.13333333333333333,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=-0.0133); Δhit1_injected too negative (-0.0333 < -0.01)"
+    },
+    {
+      "arm": "C-model-2",
+      "qualifies": false,
+      "delta_all_required4": 0.04,
+      "ci_low": 0.0,
+      "ci_high": 0.08,
+      "delta_hit1_injected": 0.0,
+      "cannot_fit_rate": 0.07333333333333333,
+      "reason": "CI on Δall_required4 does not exclude 0 (ci_low=0.0000)"
+    }
+  ]
+}

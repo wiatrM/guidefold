@@ -223,6 +223,11 @@ def test_compose_cache_hit_never_calls_model(monkeypatch, tmp_path):
     assert out1["selected"] == out2["selected"]
     assert out2["cached"] is True
     assert out2["latency_s"] == 0.0
+    # regression: a cache hit must carry the same shape as a fresh call, including
+    # "cost_usd" -- a prior bug omitted this key on the cache-hit path entirely (KeyError
+    # in any caller that reads result["cost_usd"] unconditionally, as the dev harness does).
+    assert "cost_usd" in out2
+    assert out2["cost_usd"] == out1["cost_usd"] == 0.0015
 
 
 def test_compose_without_cache_never_persists_and_never_reuses(monkeypatch):
@@ -242,6 +247,31 @@ def test_compose_model_call_failure_yields_empty_cannot_fit_true(monkeypatch):
     assert out["selected"] == []
     assert out["cannot_fit"] is True
     assert out["error"] is not None
+
+
+def test_compose_call_failure_is_never_cached_and_is_retried(monkeypatch, tmp_path):
+    # Regression: a transient infra failure (timeout, non-zero exit, missing binary) must never
+    # be written to the replay cache -- it says nothing stable about this query/candidate pair,
+    # and permanently caching it would poison every later run hit by one load spike or flaky
+    # call. A cache-miss retry after a failure must call the model again, and a later success
+    # must then be the one that gets cached.
+    calls = []
+    def failing_then_ok(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(cmd="claude", timeout=30)
+        return _fake_proc(_wrapper({"selected": ["u:invoice"], "cannot_fit": False}))
+    monkeypatch.setattr(subprocess, "run", failing_then_ok)
+    cache = cm.ReplayCache(tmp_path / "cache.jsonl")
+
+    out1 = cm.compose("q1", "pay an invoice", _candidates(), cache=cache)
+    assert out1["error"] is not None
+    assert len(cache) == 0  # failure must not be persisted
+
+    out2 = cm.compose("q1", "pay an invoice", _candidates(), cache=cache)
+    assert len(calls) == 2  # retried, not served from a poisoned cache entry
+    assert out2["error"] is None
+    assert len(cache) == 1  # the genuine success is the one that gets cached
 
 
 def test_compose_reruns_model_when_candidate_set_changes_even_with_same_query_id(monkeypatch, tmp_path):

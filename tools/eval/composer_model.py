@@ -39,7 +39,10 @@ CACHE_FILE = CACHE_DIR / "cache.jsonl"
 
 DEFAULT_MODEL = "haiku"
 DEFAULT_K = 4
-DEFAULT_TIMEOUT_S = 30
+DEFAULT_TIMEOUT_S = 60  # measured 2026-09-05: this shared dev box runs other agents/processes
+# concurrently; a single isolated call is ~3-7s, but under real observed contention ~65% of
+# calls missed a 30s budget. 60s is a generous margin, not a tuned-to-pass number -- it bounds
+# wall-clock cost per call, nothing about selection quality.
 
 SYSTEM_PROMPT = (
     "You select which of a short list of software skill/tool cards are needed to fully answer a "
@@ -77,7 +80,7 @@ def call_model(prompt: str, model: str = DEFAULT_MODEL, timeout: int = DEFAULT_T
     try:
         proc = subprocess.run(
             ["claude", "-p", prompt, "--model", model, "--output-format", "json", *CLAUDE_FLAGS],
-            capture_output=True, text=True, timeout=timeout, check=False,
+            capture_output=True, text=True, timeout=timeout, check=False, stdin=subprocess.DEVNULL,
         )
     except subprocess.TimeoutExpired:
         return {"ok": False, "raw": "", "error": f"timeout after {timeout}s",
@@ -193,6 +196,7 @@ def compose(query_id: str, query: str, candidates: list[dict], k: int = DEFAULT_
             out = dict(hit["result"])
             out["cached"] = True
             out["latency_s"] = 0.0
+            out["cost_usd"] = hit.get("cost_usd")
             return out
 
     prompt = build_prompt(query, candidates, k=k)
@@ -203,7 +207,12 @@ def compose(query_id: str, query: str, candidates: list[dict], k: int = DEFAULT_
         result = parse_selection(called["raw"], candidate_urns, k=k)
 
     out = {**result, "cached": False, "latency_s": called["latency_s"], "cost_usd": called["cost_usd"]}
-    if cache is not None:
+    # Only a genuine model response is cached. A transient infra failure (timeout, CLI not
+    # found, non-zero exit) is never persisted: it says nothing stable about this
+    # (query_id, candidate-set) pair, and permanently caching it would silently poison every
+    # later run under a load spike or a flaky call -- the whole point of the replay cache is to
+    # avoid re-paying for an ANSWER, not to remember that we once failed to get one.
+    if cache is not None and called["ok"]:
         cache.put(key, {"key": key, "query_id": query_id, "model": model, "result": {
             "selected": result["selected"], "cannot_fit": result["cannot_fit"], "error": result["error"],
         }, "cost_usd": called["cost_usd"], "ts": time.time()})
