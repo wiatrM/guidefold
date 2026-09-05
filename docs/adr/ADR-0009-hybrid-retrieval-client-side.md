@@ -1,6 +1,6 @@
 # ADR-0009 (v2): The router is Guidefold's index + pipeline; the registry is storage
 
-**Status:** Proposed · 2026-09-04 · v2 replaces v1 of the same day (v1 assumed a small, hierarchy-only library) · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
+**Status:** Proposed · 2026-09-04 · v2 replaces v1 of the same day (v1 assumed a small, hierarchy-only library) · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged. · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: client-side hybrid becomes tier T0 only
 amended by ADR-0015 (Accepted: model choice for the dense/rerank legs)
 
 ## Context
