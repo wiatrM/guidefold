@@ -34,6 +34,43 @@ Rules:
 - `owner` must match a GitHub team present in `CODEOWNERS` for the same path.
 - Adding a node is a PR reviewed by the parent node's owner.
 
+### 1a. Search backend config — `search:` block (E2.6/E2.9)
+
+Optional, alongside `registry:`. Selects what `find`/`hook`/`load` talk to for SEARCH/USE
+(ADR-0023 §3, ADR-0024's deployment tiers — the same client file and wire contract at T0 and T1):
+
+```yaml
+search:
+  backend: local              # local | service. Default local.
+  url: https://search.internal.acme.example   # required when backend: service
+  deadline_ms: 300            # 1..5000, one monotonic deadline for the whole call.
+                               # Default 300 for `hook`, 1000 for interactive `find`/`load`.
+  token_file: /etc/acme/guidefold-search-token   # bearer token file
+```
+
+- Env overrides win over the yaml block: `GUIDEFOLD_SEARCH_BACKEND`, `GUIDEFOLD_SEARCH_URL`,
+  `GUIDEFOLD_SEARCH_DEADLINE_MS`, `GUIDEFOLD_SEARCH_TOKEN_FILE`. The bearer token itself is read
+  from `GUIDEFOLD_TOKEN` (env, checked first) or `token_file` — **never** written into
+  `guidefold.yaml` directly, never logged, never spooled.
+- `hook` reads this config from the environment **only** — it never parses `guidefold.yaml`/
+  imports PyYAML (E1.5's hard constraint is unaffected by this feature). `find`/`load` read the
+  yaml block too, layered under the same env overrides.
+- Anything invalid — unknown `backend` value, `service` with no `url`, no token resolvable for a
+  `service` backend, `deadline_ms` outside 1..5000 — degrades silently to `backend: local` and
+  reports `degradation_reason: config` in telemetry; it never crashes `find`/`hook`/`load`.
+- With `backend: service`, SEARCH races one POST `/v1/search` (contract 1.1,
+  `docs/HARNESS-SERVICE-CONTRACT.md`) in a background thread against the local sparse fallback,
+  under the single deadline above. The remote answer replaces the local one only if it validates
+  and arrives before the deadline; otherwise the socket is abandoned (closed, never joined) and
+  the local answer stands — `backend: local` opens no socket at all. `find --backend
+  {local,service}` overrides the configured backend for one invocation (distinct from the
+  top-level `--backend {local,agent-registry}`, which selects the skill **registry**, a different
+  axis entirely). `load <urn>@<revision>` uses `/v1/use` when `backend: service`; the non-service
+  path is unchanged and still accepts a bare `<urn>`.
+- `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
+  guideline (recommends `service` above it), configured service reachability + advertised contract
+  versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
+
 ## 2. Skill location
 
 - Canonical location: `<node-path>/.agents/skills/<skill-name>/SKILL.md`
@@ -174,7 +211,7 @@ separate, non-conflated mechanisms share that one parent directory:
 
 | Path | Written by | What |
 |------|------------|------|
-| `spool/<tenant\|local>/<environment>/events-<UTC date>.jsonl` | `find`, `hook`, `load` | E6.4/E2.7 SEARCH/USE contract events (`docs/SEARCH-USE-TELEMETRY.md`): `search_requested`, `search_results`, `card_injected`, `skill_load_requested`, `skill_load_completed`, `telemetry_health`. Append-only, bounded (10 MB / 7 days, oldest-first drop, counted in `telemetry_health.dropped`). No raw prompt text; an optional tenant-scoped keyed HMAC of the query only, rotated monthly. |
+| `spool/<tenant\|local>/<environment>/events-<UTC date>.jsonl` | `find`, `hook`, `load` | E6.4/E2.7 SEARCH/USE contract events (`docs/SEARCH-USE-TELEMETRY.md`): `search_requested`, `search_results`, `card_injected`, `skill_load_requested`, `skill_load_completed`, `telemetry_health`, `telemetry_health.parity_mismatch` (E2.9: emitted only when a `backend: service` call's local and remote selections both finish inside the deadline and disagree — payload is the two 16-hex-char SHA-256 selected-set hashes and `search_id` only, never the query text or a card body). `search_results` also carries `backend` (`online_sparse`/`local_sparse`/`none`) and `fallback_reason` (the E2.6 degradation reason, e.g. `timeout`/`connection`/`http_5xx`/`auth`/`invalid_response`/`config`, or `null`). Append-only, bounded (10 MB / 7 days, oldest-first drop, counted in `telemetry_health.dropped`). No raw prompt text, no bearer token; an optional tenant-scoped keyed HMAC of the query only, rotated monthly. |
 | `spool/<tenant>/<environment>/.health.json` | same | Running counters (`produced`/`acknowledged`/`dropped`/`window_start`) behind `guidefold telemetry status`. |
 | `hmac-key-<YYYY-MM>.bin` | same | This host's monthly HMAC key for query grouping. Never leaves the host; never a plain/unkeyed hash. |
 | `ledger.sqlite3` | `guidefold telemetry flush` (client) / `tools/telemetry/ingest_server.py` (reference server) | The reference E6.4 event ledger (`tools/telemetry/ledger.py`), keyed `(tenant_id, event_id)`. Not part of the shipped skill ZIP. |
