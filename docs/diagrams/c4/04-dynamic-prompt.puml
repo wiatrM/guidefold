@@ -1,0 +1,31 @@
+@startuml c4-dynamic-prompt
+!include <C4/C4_Dynamic>
+!pragma layout smetana
+AddElementTag("planned", $bgColor="#f1f1f1", $fontColor="#555555", $borderColor="#9a9a9a", $borderStyle=DashedLine(), $legendText="zaplanowane")
+title Dynamika — jeden prompt developera, tier T1 (w T0 krok 4 idzie do lokalnego indeksu zamiast do serwisu)
+
+Person(dev, "Developer")
+Container(harness, "Harness", "Claude Code")
+Container_Boundary(clib, "guidefold CLI") {
+  Component(hook, "Adapter hooka", "")
+  Component(router, "Router", "policy_filter → candidates → score → select")
+  ContainerDb(spool, "Spool telemetrii", "JSONL")
+}
+Container(api, "Serwis SEARCH/USE", "T1, sparse-only")
+Container(ingest, "Ingest eventów", "/v1/events:batch", "", $tags="planned")
+
+Rel(dev, harness, "prompt")
+Rel(harness, hook, "UserPromptSubmit (cwd, prompt)")
+Rel(hook, router, "policy_filter → zbiór dopuszczalnych (zakres, deprecated, negative_triggers)")
+Rel(router, api, "POST /v1/search — profile=hook, deadline; równolegle lokalny fallback", "HTTP")
+Rel_Back(router, api, "ranked · selected · search_id · backend — p95 54 ms (c1), 128 ms (c4)")
+Rel(router, hook, "select: ≤ 4 karty, requires closure, cannot_fit")
+Rel(hook, spool, "search_requested · search_results · card_injected (bez tekstu)")
+Rel_Back(harness, hook, "≤ 4 karty (digesty) do kontekstu")
+Rel(harness, hook, "guidefold load urn@rev — gdy agent chce pełny skill")
+Rel(hook, api, "POST /v1/use — rewizja, checksum")
+Rel_Back(hook, api, "treść skilla + manifest")
+Rel(hook, spool, "skill_load_requested · skill_load_completed")
+Rel(spool, ingest, "guidefold telemetry flush — poza hookiem, batch, idempotentnie", "HTTP", $tags="planned")
+SHOW_LEGEND()
+@enduml

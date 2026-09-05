@@ -1,0 +1,57 @@
+@startuml c4-containers
+!include <C4/C4_Container>
+!pragma layout smetana
+AddElementTag("wip", $bgColor="#fbe3d4", $fontColor="#5a2a00", $borderColor="#ff6a28", $legendText="w budowie (gałąź, agent)")
+AddElementTag("planned", $bgColor="#f1f1f1", $fontColor="#555555", $borderColor="#9a9a9a", $borderStyle=DashedLine(), $legendText="zaplanowane (ADR-0024 / E7 / T2)")
+AddRelTag("planned", $lineStyle=DashedLine(), $textColor="#777777", $lineColor="#9a9a9a")
+title Poziom 2 — kontenery: z czego składa się Guidefold i co jest naprawdę zbudowane
+
+Person(dev, "Developer")
+Person(owner, "Właściciel skilla")
+System_Ext(harness, "Harness agenta", "Claude Code i inne")
+
+System_Boundary(mono, "Monorepo konsumenta (git = źródło prawdy)") {
+  Container(skills, "SKILL.md + guidefold.yaml", "markdown, YAML", "Skille obok kodu; węzły (dotted path), publisher, search.backend")
+  Container(ci, "Pipeline CI", "GitHub Actions (templates/ci.yml)", "validate → index (tylko zmienione) → snapshot z sha256")
+  Container(cards, "Karty L0 — AGENTS.md", "generowane przez materialize", "≤ 80 linii digestu per węzeł; nigdy ręcznie")
+}
+System_Boundary(client, "Klient — ten sam plik w T0, T1 i T2") {
+  Container(cli, "guidefold CLI", "Python 3, jeden plik, stdlib + PyYAML", "hook · find · load · doctor · init · telemetry. Router: policy_filter → candidates → score → select")
+  ContainerDb(idx, "Artefakt indeksu", "pliki binarne, mmap", "postings.bin · cards · graph · vectors.i8 (opc.) · manifest")
+  ContainerDb(spool, "Spool telemetrii", "JSONL, lokalny, ograniczony", "eventy bez tekstu promptu (HMAC); flush poza hookiem")
+}
+System_Boundary(svc, "Serwis SEARCH/USE — tier T1 dziś, T2 docelowo") {
+  Container(api, "API SEARCH/USE", "Python (spike), HTTP/JSON, ADR-0025", "/v1/search sparse-only ze snapshotem w RAM i cache BM25 · /v1/use: dokładna rewizja + checksum")
+  Container(shadow, "Worker encodera — shadow", "GPU, encoder 0.6B", "hybryda liczona równolegle i tylko logowana; batching pod c4", $tags="wip")
+  Container(ingest, "Ingest eventów", "/v1/events:batch", "ledger na Postgres; idempotencja (tenant, event_id); port z tools/telemetry", $tags="planned")
+  ContainerDb(pg, "Postgres", "ledger · rollups · rewizje", "", $tags="planned")
+  ContainerDb(store, "Object storage / CDN", "ciała skilli, snapshoty", "", $tags="planned")
+}
+System_Boundary(lab, "Warsztat pomiarowy (w repo narzędzia)") {
+  Container(eval, "tools/eval", "Python", "DENSE-PROGRAM v2.5: bramki, paired bootstrap, korpusy przypięte sha256, rodziny C i D")
+  Container(ledger, "tools/telemetry", "Python, sqlite", "ledger referencyjny + raport użycia per skill")
+  Container(pilot, "tools/pilot", "Python", "protokół E6.7 + analyze.py")
+  Container(fly, "Flywheel E7", "GPU, co tydzień, per tenant", "pary (zapytanie ↔ USE) → fine-tune encodera → bramki → dopuszczenie", $tags="planned")
+}
+
+Rel(owner, skills, "PR + review")
+Rel(skills, ci, "merge uruchamia build")
+Rel(ci, idx, "buduje artefakt")
+Rel(ci, cards, "materialize")
+Rel(ci, store, "publikuje snapshot", $tags="planned")
+Rel(store, api, "preload → atomic swap", $tags="planned")
+Rel(dev, harness, "prompt")
+Rel(harness, cli, "hook · find · load", "stdin/stdout")
+Rel(cli, idx, "candidates + score", "mmap — tier T0")
+Rel(cli, api, "POST /v1/search · /v1/use", "HTTP/JSON — tier T1/T2")
+Rel(cli, spool, "eventy")
+Rel(spool, ingest, "guidefold telemetry flush", "HTTP batch", $tags="planned")
+Rel(ingest, pg, "zapis", $tags="planned")
+Rel(api, shadow, "to samo zapytanie w cieniu")
+Rel(pg, fly, "pary + twarde negatywy", $tags="planned")
+Rel(fly, shadow, "nowy model → shadow → bramki", $tags="planned")
+Rel(spool, ledger, "ingest referencyjny (dev, testy)")
+Rel(eval, cli, "ścieżka produktu na korpusach")
+Rel(ledger, pilot, "dane pilota")
+SHOW_LEGEND()
+@enduml
