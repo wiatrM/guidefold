@@ -1,6 +1,7 @@
 # ADR-0023: Central SEARCH/USE service, bounded hooks, and measured skill utility
 
 **Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: deployment tiers; sparse-only is the admitted profile until dense earns admission per tenant · request boundary amended by [ADR-0025](ADR-0025-harness-service-context-contract.md) (Accepted); architecture status unchanged
+**T1 implementation amended by:** [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (Go/ParadeDB/Compose); retrieval and production admission remain separate.
 **Implemented request contract:** [Harness-service 1.1](../HARNESS-SERVICE-CONTRACT.md); repository/path resolution and delivery limits are covered by schema/runtime/HTTP tests. Broader production and telemetry guarantees below remain proposed.
 **Proposes amendments to:** ADR-0009 (serving location), ADR-0013 and ADR-0018 (online service dependency), ADR-0015 and ADR-0020 (resident contextual models), ADR-0021 (local artifact budget), ADR-0016 (usage is not probation success).
 **Preserves:** Git as source of truth, owner approval, one Postgres, GCS artifacts, single-file stdlib + PyYAML client, and ADR-0022's eligibility/composition requirements.

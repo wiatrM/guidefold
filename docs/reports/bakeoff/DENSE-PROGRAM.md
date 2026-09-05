@@ -454,3 +454,14 @@ because the gate requires all four criteria and one was unmet — but "failed th
 the gate's applicability here, not of the model's quality. Once family C's frozen composer exists,
 §Step 2 of the E7.3 composer work re-runs this exact R1 configuration to check whether the
 confound was the whole story.
+
+### 2026-09-05 — requested Go/ParadeDB service reference, retrieval NOT ADOPTED
+
+The owner explicitly requested a new database-backed native service and measurements.
+[Its report](GO-PARADEDB-2026-09-05.md) records one configuration, zero quality tuning,
+and one run on DEV/test-A/test-B/regression, separately from the spent F1–F6/C families.
+Loopback latency passes: fresh-client p95 117/138 ms at c1/c4. Test-B HSR@4 worsens by
+10.67 pp [5.33, 15.33], exceeding the +1 pp guardrail, so the new retrieval profile is
+not admitted. All test outcomes are retained, and this entry grants no extra family
+or test reruns. The [GPU serving proposal](DENSE-SERVING-NEXT-2026-09-05.md) concerns
+inference engineering and future DEV work; it does not change frozen quality results.

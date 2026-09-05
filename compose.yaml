@@ -1,0 +1,98 @@
+name: guidefold-search
+
+x-app: &app
+  image: guidefold-search:local
+  build:
+    context: .
+    dockerfile: services/search/Dockerfile
+  networks: [backend]
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:size=32m,noexec,nosuid
+  environment: &environment
+    PGHOST: db
+    PGPORT: "5432"
+    PGDATABASE: guidefold
+    PGUSER: guidefold_api
+    PGSSLMODE: disable
+    PG_PASSWORD_FILE: /run/secrets/app_password
+    GUIDEFOLD_TENANT: ${GUIDEFOLD_TENANT:-local}
+    GUIDEFOLD_REPO: ${GUIDEFOLD_REPO:-meridian}
+    GUIDEFOLD_TOKEN_FILE: /run/secrets/api_token
+    GUIDEFOLD_CONTRACT: /app/contract.json
+    GUIDEFOLD_POLICY_SOURCE: /app/policy-source
+
+services:
+  db:
+    image: paradedb/paradedb:0.25.6-pg17@sha256:044b8cc5b40159714e88e3f546fc74de11cf215c030190cc82c6627015d728ea
+    environment:
+      POSTGRES_DB: guidefold
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [backend]
+    restart: unless-stopped
+    shm_size: 256mb
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d guidefold"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 30s
+
+  migrate:
+    <<: *app
+    command: [migrate]
+    environment:
+      <<: *environment
+      PGUSER: postgres
+      PG_PASSWORD_FILE: /run/secrets/postgres_password
+      APP_PASSWORD_FILE: /run/secrets/app_password
+    secrets: [postgres_password, app_password]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+
+  publish:
+    <<: *app
+    profiles: [tools]
+    command: [publish, /input/snapshot.json]
+    environment:
+      <<: *environment
+      PGUSER: postgres
+      PG_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [./.guidefold/compose:/input:ro]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
+
+  api:
+    <<: *app
+    secrets: [app_password, api_token]
+    ports: ["127.0.0.1:${GUIDEFOLD_PORT:-8765}:8080"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, /app/guidefold-search, healthcheck]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 15s
+
+networks:
+  backend:
+volumes:
+  pgdata:
+secrets:
+  postgres_password:
+    file: ./.guidefold/compose/secrets/postgres_password
+  app_password:
+    file: ./.guidefold/compose/secrets/app_password
+  api_token:
+    file: ./.guidefold/compose/secrets/api_token
