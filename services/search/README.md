@@ -127,6 +127,28 @@ The quality runner uses existing converters/metrics and records per-query result
 `regression`). Test corpora are run once per frozen variant, never used for tuning;
 completed reports cannot be overwritten. It restores the Meridian API afterwards.
 
+## Request admission and recovery
+
+The per-process limit covers authenticated body uploads and JSON parsing as well as
+backend work: eight shared SEARCH/USE slots, and two independent telemetry slots.
+An exhausted pool returns 429 before reading the body, with `Retry-After: 1` and an
+HTTP/1 connection close. Retry on a new connection; preserve request/event IDs.
+Malformed input and disconnected uploads release their slots. Authentication and
+health probes run before admission. The existing six-second HTTP read timeout limits
+slow uploads; this is not a bound on total connections or process memory. The JSON
+`deadline_ms` is read after upload but measured from handler entry.
+
+Run the slow-upload E2E **only on a dedicated test stack**: it deliberately fills both
+pools, checks SEARCH/USE and ledger isolation, closes unfinished uploads, and verifies
+recovery over three repetitions. It uses real HTTP/1 sockets with and without
+`Expect: 100-continue`. `compose-service` runs this automatically:
+
+```sh
+python3 tools/search_service/http_admission.py --url http://127.0.0.1:8765
+```
+
+Evidence and before/after reproduction: [HTTP admission report](../../docs/reports/bakeoff/HTTP-ADMISSION-2026-09-06.md).
+
 ## Kubernetes follow-up
 
 Reuse the immutable API image as a Deployment and Service, with the same live/ready

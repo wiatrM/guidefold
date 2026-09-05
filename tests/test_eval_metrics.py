@@ -217,3 +217,59 @@ def test_all_required_ignores_grade_1():
 def test_evaluate_reports_both_completeness_series():
     m = M.evaluate([([A], case([(A, 3), (B, 2)]))])
     assert m["completeness@4"] == 1.0 and m["all_required@4"] == 0.0
+
+
+# ------------------------------------------------------------------ paired_delta_ci (authoring loop)
+def test_paired_delta_ci_empty_is_all_nan():
+    out = M.paired_delta_ci([])
+    assert out["n"] == 0
+    for key in ("mean_base", "mean_head", "mean_delta", "ci_lo", "ci_hi"):
+        assert math.isnan(out[key])
+
+
+def test_paired_delta_ci_single_pair_collapses_ci_to_the_point_estimate():
+    """n=1 has no defined standard error (denominator n-1 == 0); the CI must collapse to the
+    delta itself rather than raise or return NaN -- "one query flipped" is still a fact worth
+    reporting even without a confidence interval."""
+    out = M.paired_delta_ci([(1.0, 0.0)])
+    assert out["n"] == 1
+    assert out["mean_base"] == 1.0 and out["mean_head"] == 0.0
+    assert out["mean_delta"] == -1.0
+    assert out["ci_lo"] == out["ci_hi"] == -1.0
+
+
+def test_paired_delta_ci_zero_delta_when_base_equals_head():
+    out = M.paired_delta_ci([(1.0, 1.0), (0.0, 0.0), (1.0, 1.0)])
+    assert out["n"] == 3
+    assert out["mean_delta"] == 0.0
+    assert out["ci_lo"] == 0.0 and out["ci_hi"] == 0.0
+
+
+def test_paired_delta_ci_pairing_affects_ci_width_not_the_point_estimate():
+    """`mean_delta` is mean(head) - mean(base) regardless of how base/head values are paired up
+    (it's linear), so pairing cannot change the point estimate -- but it changes the *within-pair*
+    variance, which is exactly what a paired test is for. Same base multiset, same head multiset,
+    same mean_delta; a consistent per-pair improvement gives a zero-width CI, an inconsistent one
+    (same marginals, per-pair deltas that partly cancel) gives a much wider CI."""
+    consistent = M.paired_delta_ci([(0.0, 1.0), (1.0, 2.0), (2.0, 3.0)])     # every pair: +1
+    shuffled = M.paired_delta_ci([(0.0, 2.0), (1.0, 3.0), (2.0, 1.0)])       # same base/head sets, re-paired
+    assert consistent["mean_base"] == shuffled["mean_base"] == 1.0
+    assert consistent["mean_head"] == shuffled["mean_head"] == 2.0
+    assert consistent["mean_delta"] == shuffled["mean_delta"] == 1.0
+    assert consistent["ci_lo"] == consistent["ci_hi"] == 1.0   # zero variance: every pair agrees
+    assert shuffled["ci_hi"] - shuffled["ci_lo"] > 0            # per-pair deltas [2, 2, -1] disagree
+
+
+def test_paired_delta_ci_narrows_as_n_grows_for_the_same_consistent_signal():
+    # a perfectly consistent per-pair delta has zero variance regardless of n (both would collapse
+    # to a zero-width CI), so mix in one dissenting case to give a nonzero SEM that can shrink.
+    small = M.paired_delta_ci([(0.0, 1.0), (0.0, 0.0)])
+    large = M.paired_delta_ci([(0.0, 1.0), (0.0, 0.0)] * 100)
+    assert small["mean_delta"] == large["mean_delta"] == pytest.approx(0.5)
+    assert (large["ci_hi"] - large["ci_lo"]) < (small["ci_hi"] - small["ci_lo"])
+
+
+def test_paired_delta_ci_default_z_is_95_percent():
+    out = M.paired_delta_ci([(0.0, 1.0), (0.0, 0.0), (1.0, 1.0), (0.0, 0.0)])
+    out_explicit = M.paired_delta_ci([(0.0, 1.0), (0.0, 0.0), (1.0, 1.0), (0.0, 0.0)], z=1.96)
+    assert out == out_explicit
