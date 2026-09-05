@@ -135,13 +135,28 @@ def main():
                     flush=True,
                 )
     assert all(
-        r["status"] == 200
-        and r["snapshot"] == health["snapshot"]
+        r["status"] in (200, 503, 504) for r in done.values()
+    ), "Unexpected HTTP failure retained"
+    assert all(
+        r["snapshot"] == health["snapshot"]
         and r["model"] == health["encoder_id"]
         and r["live_encode_calls"] == 1
         and r["backend"] == health["backend"]
         for r in done.values()
-    ), "HTTP/identity error retained; arm incomplete"
+        if r["status"] == 200
+    ), "Response identity mismatch"
+    assert all(
+        not r["ranked"] and not r["selected"]
+        for r in done.values()
+        if r["status"] != 200
+    )
+    # Keep failed attempts as empty rankings: the existing full-denominator
+    # diagnostic counts them as misses. Never retry them or erase the original rows.
+    errors = [
+        {"query_id": r["query_id"], "status": r["status"], "error": r["error"]}
+        for r in done.values()
+        if r["status"] != 200
+    ]
     baseline_file = out / "f0.json.gz"
     baseline_identity = {
         "cli_sha256": cli_sha,
@@ -180,7 +195,10 @@ def main():
         args.mode: aggregate(b_ret, b_inj),
         "comparison": comparison,
         "http_attempts": len(done),
-        "http_errors": 0,
+        "http_errors": len(errors),
+        "http_failures": errors,
+        "http_all_succeeded": not errors,
+        "failed_attempts_count_as_misses_in_full_denominator": True,
         "latency_note": "Quality run timings are diagnostic; use the separate latency benchmark.",
     }
     report.write_text(json.dumps(clean(result), indent=2, allow_nan=False) + "\n")

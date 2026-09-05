@@ -111,6 +111,13 @@ jobs:
       - run: pip install pyyaml numpy huggingface_hub "jsonschema>=4.23,<5"
       - name: Build, publish and deploy Go with real ParadeDB
         run: python tools/search_service/dev.py deploy
+      - name: Validate opt-in GPU Compose and operator syntax (no GPU on this runner)
+        env:
+          GUIDEFOLD_ENCODER_ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          GUIDEFOLD_MODEL_DIR: /tmp/guidefold-model
+        run: |
+          docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
+          python -m py_compile tools/search_service/gpu.py tools/search_service/gpu_probe.py tools/search_service/gpu_quality.py tools/search_service/gpu_smoke.py
       - name: HTTP contract, real SQL, publication and restart checks
         run: python tools/search_service/smoke.py --recovery --output .guidefold/checks/compose-smoke.json
       - name: Fetch pinned public corpus for the 1000-query parity gate

@@ -72,3 +72,9 @@ batch=16 remains an explicit throughput experiment. Offline document preparation
 may use batches of eight under a worker limit of 16. The document vectors are
 then immutable and shared by both measured dense/hybrid quality arms. Readiness
 verifies the configured worker batch limit as well as model identity.
+
+Reporting clarification after HTTP capture, before quality aggregation: retain
+failed attempts as empty results in the all-answerable denominator and report
+HTTP errors separately. The first hybrid capture had 999/1000 HTTP 200 and one
+504; no failed query is retried. The original runner stopped before aggregation
+on that failure. Fixing aggregation must not delete or replace the captured rows.
