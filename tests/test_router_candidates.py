@@ -71,3 +71,18 @@ def test_dense_rank_is_true_cosine_not_dot_over_normsq(gf):
 def test_dense_rank_keeps_sign_and_zero_norms_safe(gf):
     ranked = gf._dense_rank({"neg": (-5, 4), "pos": (1, 100), "zero": (0, 7)})
     assert ranked == ["pos", "zero", "neg"]         # cos: 0.1 > 0 > -2.5
+
+
+def test_w_dense_zero_disables_the_dense_channel_entirely(gf):
+    """`w_dense` was never read; the channel ran whenever a word table existed. With w_dense = 0
+    there must be no dense rank at all — otherwise the RRF vote is cast by a channel the manifest
+    says is off (peer review, 2026-09-05)."""
+    from _router_helpers import make_card
+    cards = {"u:x": make_card("u:x", "_root", name="x", description="alpha beta", digest="", triggers=[], body="alpha")}
+    table = {"alpha": (5, 0, 0), "beta": (0, 5, 0)}
+    idx = gf.Index.from_cards(cards, {"_root": {"paths": ["**"], "owner": "p"}}, word_vectors=table)
+    r = gf.Router(idx)
+    idx.weights["w_dense"] = 0
+    assert all(c["dense_rank"] is None for c in r.candidates("alpha", "_root"))
+    idx.weights["w_dense"] = 1
+    assert any(c["dense_rank"] is not None for c in r.candidates("alpha", "_root"))

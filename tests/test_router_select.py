@@ -153,3 +153,22 @@ def test_magnitude_mode_is_still_the_default(gf):
     scored = [_scored("u:weak", "_root", 50)]
     assert router.select(scored, abstain_threshold=51) == []
     assert router.select(scored, abstain_threshold=50) != []
+
+
+def test_requires_closure_cannot_readmit_a_skill_the_policy_filter_rejected(gf):
+    """ADR-0022: admissibility is decided once and applies to dependency expansion too.
+    A skill visible from the caller's node `requires` a skill that is NOT visible (other subtree).
+    The dependency must not be pulled into the injected cards — it is an unresolved requirement."""
+    from _router_helpers import make_card
+    nodes = {"_root": {"paths": ["**"], "owner": "p"},
+             "a": {"paths": ["a/**"], "owner": "a"}, "b": {"paths": ["b/**"], "owner": "b"}}
+    cards = {
+        "u:a:top": make_card("u:a:top", "a", name="top", description="deploy the widget service",
+                             digest="", triggers=[], body="deploy widget", requires=["u:b:hidden"]),
+        "u:b:hidden": make_card("u:b:hidden", "b", name="hidden", description="widget secrets",
+                                digest="", triggers=[], body="secrets"),
+    }
+    idx = gf.Index.from_cards(cards, nodes, word_vectors=None)
+    out = [c["urn"] for c in gf.Router(idx).route("deploy the widget service", "a", k=4)]
+    assert "u:a:top" in out
+    assert "u:b:hidden" not in out, "requires re-admitted a skill outside the caller's scope"

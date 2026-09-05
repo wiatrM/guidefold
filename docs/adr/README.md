@@ -29,6 +29,7 @@ index was built from; the two must not drift.
 | [0018](ADR-0018-skills-stay-in-monorepo-one-postgres-gcs.md) | Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts | Proposed | 2026-09-04 | replaces deleted ADR-0011 |
 | [0019](ADR-0019-open-source-apache-2.md) | Publish Guidefold as open source under Apache-2.0; the tool is the distributable unit | Accepted | 2026-09-04 | |
 | [0021](ADR-0021-index-sharding-and-a-global-word-table.md) | Shard the index by node; the word table is a language artifact, not a corpus artifact | Proposed | 2026-09-05 | amends ADR-0020 |
+| [0022](ADR-0022-admissibility-relevance-and-bundle-completeness.md) | Separate admissibility, relevance, and bundle completeness; fixed-point BM25 contract | Proposed | 2026-09-05 | amends ADR-0020, ADR-0021 |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §7 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.
