@@ -4,6 +4,7 @@ The CLI (`skills/guidefold/scripts/guidefold`) is a single extension-less script
 loaded as a module named "guidefold" via importlib rather than a normal package import.
 """
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -109,9 +110,16 @@ def fake_gcloud(gf, monkeypatch):
 
 
 @pytest.fixture
-def run_cli():
-    """Run the CLI as a real subprocess (end-to-end smoke tests)."""
+def run_cli(tmp_path):
+    """Run the CLI as a real subprocess (end-to-end smoke tests).
+
+    Defaults $GUIDEFOLD_CACHE to a per-test tmp dir so `index`/`hook` (E1.4/E1.5's real on-disk
+    artifact) and `load`/`prewarm` (E1.7's skill cache) never touch the developer's actual
+    ~/.cache/guidefold as a side effect of running the test suite. Pass env=... to override."""
     def _run(args, cwd, **kw):
+        env = kw.pop("env", None)
+        if env is None:
+            env = {**os.environ, "GUIDEFOLD_CACHE": str(tmp_path / ".cache-guidefold")}
         return subprocess.run([sys.executable, str(CLI_PATH), *args], cwd=str(cwd),
-                               capture_output=True, text=True, **kw)
+                               capture_output=True, text=True, env=env, **kw)
     return _run

@@ -8,9 +8,12 @@ Subcommands
   validate                  CI: enforce CONVENTIONS.md on all skills
   drift --base <ref>        CI: code diff ∩ metadata.references → report
   publish --changed         CI: zip + CreateSkill/CreateSkillRevision for changed skills
-  index                     CI: regenerate the hierarchy-index skill
+  index [--check]           CI: regenerate the hierarchy-index skill + build/verify the binary
+                             retrieval artifact at <cache_root>/index/<sha>/ (E1.4)
   materialize [--check]     CI: generate L0 scope cards (AGENTS.md per node, applyTo instructions, CLAUDE.md/GEMINI.md)
-  hook                      harness hook (Claude Code / Codex): read JSON on stdin, print top-3 cards for the prompt
+  hook                      harness hook (Claude Code / Codex): read JSON on stdin, print <=4 cards
+                             for the prompt from the pre-built index artifact only — never
+                             guidefold.yaml, never PyYAML, hard watchdog (E1.5)
   prewarm                   Copilot sessionStart: download the node chain's skills into <cache_root>/skills
   init                      bootstrap a consumer monorepo in one command: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore entries
   doctor [--json]           diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness — prints a fix for every failure
@@ -19,13 +22,16 @@ Design notes
   * All registry access goes through the `registry` section so it can be swapped for MCP
     or an ARD endpoint later without touching SKILL.md (ADR-0003).
   * Uses `gcloud` for auth and for search (Preview API), REST for payload upload/download.
-  * Ranking (find/hook) never touches the registry: Router 0.1 (ROUTER-SPEC.md) builds an
-    in-memory Index by scanning the local tree via `all_skills()`. Registry/LocalRegistry are
-    storage + transport only (`publish`/`download`/`search_scope`) — no ranking lives there.
+  * Ranking (find) builds an in-memory Index by scanning the local tree via `all_skills()`.
+    `hook` instead loads the immutable on-disk artifact `guidefold index` already built for the
+    current sha (E1.4) — same Router, same ranking code, different Index source; see
+    "Index artifact (E1.4)" below for the file layout. Registry/LocalRegistry are storage +
+    transport only (`publish`/`download`/`search_scope`) — no ranking lives there.
   * Intentionally dependency-light: stdlib + PyYAML (imported lazily — see load_map/frontmatter
-    — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help`, don't pay for it).
+    — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help` and `hook`, don't pay
+    for it: `hook`'s whole code path imports zero PyYAML, provable with `python3 -X importtime`).
 """
-import argparse, datetime, fnmatch, io, json, math, os, re, shutil, subprocess, sys, tempfile, unicodedata, zipfile
+import argparse, array, datetime, fnmatch, hashlib, io, json, math, mmap, os, re, signal, shutil, struct, subprocess, sys, tempfile, unicodedata, zipfile
 from functools import cmp_to_key
 from pathlib import Path
 
@@ -279,6 +285,18 @@ def registry_for(cfg, root: Path):
 def _git_head_short(root: Path) -> str:
     out = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, cwd=root)
     return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else "worktree"
+
+def _commit_time(root: Path, sha: str) -> str:
+    """ISO-8601 commit timestamp for `sha`, or None for the "worktree" (uncommitted) fallback.
+    E1.4 reproducibility ("same git sha in -> byte-identical artifact out") needs manifest.json's
+    build_time to be a function of the sha, not of wall-clock — a real commit has a stable time
+    to anchor to; an uncommitted tree does not, so that one case falls back to wall-clock and
+    accepts that manifest.json alone won't be byte-identical across two such builds."""
+    if sha == "worktree":
+        return None
+    out = subprocess.run(["git", "show", "-s", "--format=%cI", sha], capture_output=True, text=True, cwd=root)
+    t = out.stdout.strip()
+    return t if out.returncode == 0 and t else None
 
 # ------------------------------------------------------------------- cache (E1.7)
 # Layout: <cache_root>/skills/<urn>/<rev>/ and <cache_root>/index/<sha>/ — both trees immutable
@@ -617,6 +635,420 @@ class Index:
                         vec[i] += wv[i]
             self.skill_vectors[u] = tuple(vec)
             self.skill_normsq[u] = sum(x * x for x in vec)
+
+# ------------------------------------------------------------- Index artifact (E1.4)
+# On-disk form of an Index, keyed by git sha, written once by `guidefold index` and read many
+# times by `guidefold hook` (E1.5). ROUTER-SPEC "Determinism by construction" + the BRIEF's
+# measured probe (JSON-eager postings: 193ms at 2k skills against a 300ms budget; binary lazy
+# postings: 0.3ms) drive two hard rules for every file here:
+#   1. little-endian is declared explicitly everywhere multi-byte integers are packed (`struct`,
+#      never `array.fromfile`/raw `array.array('I', ...)`, both of which are native-order).
+#   2. postings.bin (and vectors.i8/words.bin) are read lazily through an mmap: only the byte
+#      range a query's own terms/urns resolve to is ever paged in. The *offset* tables that make
+#      that possible (postings.idx, words.idx, terms.bin) are small enough to load eagerly in
+#      full — a few thousand entries even at 2k skills — and Index.build already proves that.
+#
+# Files (all under <cache_root>/index/<sha>/, see index_cache_dir):
+#   manifest.json   git_sha, build_time, weights, counts, quant_scale, teacher (null this PR),
+#                   and a sha256 checksum of every other file below (index --check's contract).
+#   cards.jsonl     one compact JSON object per doc, one line per doc, in sorted-URN doc-id order
+#                   (that order IS the doc-id map: line N is doc N in postings.bin/vectors.i8).
+#                   No `_body`/`requires`/`refines` — Router never reads those at query time
+#                   (BM25 is already baked into postings.bin; the graph is graph.json).
+#   graph.json      requires/refines/replaces/similar adjacency (Index.graph), unchanged shape.
+#   nodes.json      guidefold.yaml's `nodes` map, verbatim — `cwd -> node` at hook time resolves
+#                   from THIS, never the working-tree guidefold.yaml (ROUTER-SPEC).
+#   terms.bin       global per-term IDF (Index.idf): [varint term_len, term utf-8, varint idf]*,
+#                   sorted by term. Eagerly parsed into a dict at load time.
+#   norms.bin       per-(field, doc) BM25 length-normalisation (Index.field_norm): FIELDS blocks
+#                   of n_docs little-endian uint32s each, doc order = cards.jsonl order. Eager.
+#   postings.bin    delta-varint doc-id postings, one contiguous block per (field, term):
+#                   [varint(doc_id delta), varint(tf)]* — mmap'd, sliced lazily per query term.
+#   postings.idx    the offset+length table for postings.bin: [varint field_index, varint
+#                   term_len, term utf-8, varint offset, varint length]*, sorted by (field, term).
+#                   Eagerly parsed into a {(field, term): (offset, length)} dict.
+#   vectors.i8      tier-1 dense skill vectors (Index.skill_vectors): n_docs rows of `dims` int8
+#                   bytes, doc order = cards.jsonl order. Empty iff dims == 0.
+#   words.bin       tier-1 dense word table (Index.word_vectors): one row of `dims` int8 bytes
+#                   per distinct word, row order = sorted(word). Empty iff dims == 0 — no
+#                   distilled table ships with E1.4 (w_dense stays 0; see ADR-0020). The format
+#                   and its lazy-load path are exercised by a synthetic hand-built table in
+#                   tests/test_index_artifact.py, never by invented vectors.
+#   words.idx       the vocabulary list backing words.bin's row order: one word per line, UTF-8.
+#                   words.bin/vectors.i8 need this the same way postings.bin needs postings.idx —
+#                   a string->row lookup is unavoidably eager (same as any embedding table).
+#
+# postings.idx/words.idx/terms.bin are additions beyond the file list sketched in ROUTER-SPEC's
+# aspirational design: that list didn't say where per-term IDF or per-field length norms would
+# live on disk, and "postings.bin ... with a separate offset+length table" only named the BM25
+# side of it. These three files are the minimal, symmetric answer for the dense side and for
+# IDF/norms; nothing here changes Router's read contract (idx.idf / idx.field_norm / idx.postings
+# / idx.word_vectors / idx.skill_vectors / idx.skill_normsq are still exactly the attributes
+# Router reads — only their storage moved from "always in memory" to "lazily faulted in").
+
+def _varint_encode(n: int) -> bytes:
+    """Unsigned LEB128. Doc-id deltas and term frequencies are never negative, so no zig-zag/
+    sign handling is needed anywhere in this artifact."""
+    out = bytearray()
+    while True:
+        b = n & 0x7F
+        n >>= 7
+        if n:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
+def _varint_decode(buf, pos: int):
+    """One varint starting at buf[pos] (buf: bytes/bytearray/memoryview/an mmap slice, all of
+    which support integer indexing). Returns (value, next_pos)."""
+    result = 0
+    shift = 0
+    while True:
+        b = buf[pos]
+        pos += 1
+        result |= (b & 0x7F) << shift
+        if not (b & 0x80):
+            return result, pos
+        shift += 7
+
+def _dense_dims(idx: Index) -> int:
+    return len(next(iter(idx.word_vectors.values()))) if idx.word_vectors else 0
+
+def _open_mmap(path: Path):
+    """(file_obj, mmap_obj) for `path`, or (None, None) for a zero-byte file — mmap.mmap refuses
+    to map an empty file, and vectors.i8/words.bin are legitimately empty whenever dims == 0
+    (no distilled table shipped). Callers MUST keep both return values alive for the life of any
+    memoryview/slice taken from the mmap (stash them as instance attributes) — letting the file
+    object get garbage-collected closes the fd out from under the mmap (`OSError: [Errno 9] Bad
+    file descriptor`)."""
+    if path.stat().st_size == 0:
+        return None, None
+    fh = path.open("rb")
+    mm = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
+    return fh, mm
+
+class _LazyFieldPostings:
+    """dict-like idx.postings[field], backed by postings.bin (mmap'd) + the eagerly-loaded
+    postings.idx offset table. Router only ever calls `.get(term)` — never iterates — so that's
+    the entire interface this needs to satisfy."""
+    __slots__ = ("_mm", "_offsets", "_field", "_doc_urns")
+
+    def __init__(self, mm, offsets: dict, field: str, doc_urns: list):
+        self._mm = mm
+        self._offsets = offsets
+        self._field = field
+        self._doc_urns = doc_urns
+
+    def get(self, term, default=None):
+        if self._mm is None:
+            return default
+        entry = self._offsets.get((self._field, term))
+        if entry is None:
+            return default
+        off, length = entry
+        block = self._mm[off:off + length]
+        out = {}
+        pos, d = 0, 0
+        while pos < length:
+            delta, pos = _varint_decode(block, pos)
+            tf, pos = _varint_decode(block, pos)
+            d += delta
+            out[self._doc_urns[d]] = tf
+        return out
+
+class _LazyVectors:
+    """dict-like idx.word_vectors / idx.skill_vectors, backed by a mmap'd int8 matrix (words.bin
+    or vectors.i8) plus an eagerly-loaded key->row-index table. Satisfies the exact interface
+    Router's _dense_scores uses: `.get(key)`, truthiness/`len()`, and `.values()` (used only to
+    peek at one vector's length to learn `dims` — implemented as a generator so that peek never
+    materializes the rest of the table)."""
+    __slots__ = ("_mm", "_row_by_key", "_dims")
+
+    def __init__(self, mm, row_by_key: dict, dims: int):
+        self._mm = mm
+        self._row_by_key = row_by_key
+        self._dims = dims
+
+    def get(self, key, default=None):
+        if self._mm is None:
+            return default
+        row = self._row_by_key.get(key)
+        if row is None:
+            return default
+        off = row * self._dims
+        return tuple(array.array('b', self._mm[off:off + self._dims]))
+
+    def values(self):
+        for k in self._row_by_key:
+            yield self.get(k)
+
+    def __len__(self):
+        return len(self._row_by_key) if self._mm is not None else 0
+
+class _LazyNormsq:
+    """dict-like idx.skill_normsq: |d|^2 computed on demand from a _LazyVectors instance rather
+    than persisted separately — cheap (one candidate pool's worth of dot products, never all
+    n_docs), and it can never drift out of sync with the vector it was computed from."""
+    __slots__ = ("_vectors",)
+
+    def __init__(self, vectors: "_LazyVectors"):
+        self._vectors = vectors
+
+    def get(self, key, default=0):
+        vec = self._vectors.get(key)
+        return sum(x * x for x in vec) if vec is not None else default
+
+def _serialize_artifact_files(idx: Index) -> dict:
+    """Pure function: an already-built Index -> {filename: bytes} for every artifact file except
+    manifest.json (which needs external git-sha/build-time context plus the checksums of exactly
+    these bytes). Shared by write_index_artifact (writes to disk) and check_index_artifact
+    (rebuilds in memory only, to diff against what's on disk without touching it)."""
+    doc_urns = sorted(idx.cards.keys())
+    doc_id = {u: i for i, u in enumerate(doc_urns)}
+    n_docs = len(doc_urns)
+
+    card_lines = []
+    for u in doc_urns:
+        c = idx.cards[u]
+        row = {
+            "urn": u, "node": c["node"], "name": c["name"],
+            "description": c["description"], "digest": c.get("digest", ""),
+            "triggers": c.get("triggers", []), "negative_triggers": c.get("negative_triggers", []),
+            "status": c.get("status", "active"), "replaced_by": c.get("replaced_by"),
+            "kind": c.get("kind"), "layer": c.get("layer"), "owner": c.get("owner"),
+        }
+        card_lines.append(json.dumps(row, sort_keys=True, separators=(",", ":")))
+    cards_bytes = ("\n".join(card_lines) + ("\n" if card_lines else "")).encode("utf-8")
+
+    terms_bin = bytearray()
+    for term in sorted(idx.idf.keys()):
+        term_b = term.encode("utf-8")
+        terms_bin += _varint_encode(len(term_b))
+        terms_bin += term_b
+        terms_bin += _varint_encode(idx.idf[term])
+
+    norms_bin = bytearray()
+    for field in Index.FIELDS:
+        fn = idx.field_norm.get(field, {})
+        vals = [fn.get(u, 0) for u in doc_urns]
+        norms_bin += struct.pack(f"<{n_docs}I", *vals)
+
+    postings_bin = bytearray()
+    idx_records = []   # (field_index, term, offset, length)
+    offset = 0
+    for fi, field in enumerate(Index.FIELDS):
+        for term in sorted(idx.postings[field].keys()):
+            plist = sorted((doc_id[u], tf) for u, tf in idx.postings[field][term].items())
+            block = bytearray()
+            prev = 0
+            for d, tf in plist:
+                block += _varint_encode(d - prev)
+                block += _varint_encode(tf)
+                prev = d
+            idx_records.append((fi, term, offset, len(block)))
+            postings_bin += block
+            offset += len(block)
+    postings_idx = bytearray()
+    for fi, term, off, length in idx_records:
+        term_b = term.encode("utf-8")
+        postings_idx += _varint_encode(fi)
+        postings_idx += _varint_encode(len(term_b))
+        postings_idx += term_b
+        postings_idx += _varint_encode(off)
+        postings_idx += _varint_encode(length)
+
+    dims = _dense_dims(idx)
+    vectors_bin = bytearray()
+    for u in doc_urns:
+        vec = idx.skill_vectors.get(u) or ((0,) * dims)
+        if len(vec) != dims:
+            raise ValueError(f"skill vector for {u} has {len(vec)} dims, expected {dims}")
+        try:
+            vectors_bin += array.array('b', vec).tobytes()
+        except OverflowError as e:
+            raise ValueError(f"skill vector for {u} has a component outside int8 range "
+                              f"([-128,127]) — the distiller must L2-normalise before "
+                              f"quantising (ADR-0020): {e}") from e
+    words_sorted = sorted(idx.word_vectors.keys())
+    words_bin = bytearray()
+    for w in words_sorted:
+        try:
+            words_bin += array.array('b', idx.word_vectors[w]).tobytes()
+        except OverflowError as e:
+            raise ValueError(f"word vector for {w!r} has a component outside int8 range "
+                              f"([-128,127]): {e}") from e
+    words_idx = ("\n".join(words_sorted) + ("\n" if words_sorted else "")).encode("utf-8")
+
+    graph_bytes = (json.dumps(idx.graph, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    nodes_bytes = (json.dumps(idx.nodes, sort_keys=True, indent=2) + "\n").encode("utf-8")
+
+    return {
+        "cards.jsonl": cards_bytes,
+        "terms.bin": bytes(terms_bin),
+        "norms.bin": bytes(norms_bin),
+        "postings.bin": bytes(postings_bin),
+        "postings.idx": bytes(postings_idx),
+        "vectors.i8": bytes(vectors_bin),
+        "words.bin": bytes(words_bin),
+        "words.idx": words_idx,
+        "graph.json": graph_bytes,
+        "nodes.json": nodes_bytes,
+    }
+
+def write_index_artifact(root: Path, cfg: dict, dest: Path, git_sha: str) -> dict:
+    """Build an Index from the current tree and persist it to `dest` (index_cache_dir(git_sha)).
+    Returns the manifest dict. Reproducibility: build_time is the target commit's own timestamp
+    (deterministic for a real sha), never wall-clock — so the SAME sha always serialises to
+    byte-identical files, manifest.json included; only the "worktree" (uncommitted) sha falls
+    back to wall-clock, because an uncommitted tree has no stable time to anchor to."""
+    idx = Index.build(root, cfg, word_vectors=None)
+    files = _serialize_artifact_files(idx)
+    dest.mkdir(parents=True, exist_ok=True)
+    checksums = {}
+    for name, data in files.items():
+        (dest / name).write_bytes(data)
+        checksums[name] = hashlib.sha256(data).hexdigest()
+    # Distinct global vocabulary size — exactly what terms.bin holds (idx.idf, one row per term).
+    # NOT sum(len(idx.postings[f]) for f in FIELDS): that would double-count any term that
+    # appears in more than one field (e.g. "auth" in both description and body), overstating
+    # vocabulary size relative to what's actually persisted.
+    n_terms = len(idx.idf)
+    build_time = _commit_time(root, git_sha) or datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    manifest = {
+        "format_version": 1,
+        "git_sha": git_sha,
+        "build_time": build_time,
+        "builder": "guidefold index",
+        "teacher": {"id": None, "hf_commit_sha": None, "license": None},   # tier-2, not this PR (ADR-0020)
+        "student_dims": _dense_dims(idx),
+        "quant_scale": 127,
+        "weights": idx.weights,
+        "counts": {"cards": len(idx.cards), "terms": n_terms, "words": len(idx.word_vectors)},
+        "checksums": checksums,
+    }
+    (dest / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+    return manifest
+
+def load_index_artifact(dest: Path) -> Index:
+    """Read <cache_root>/index/<sha>/ back into a Router-ready Index. Postings and dense vectors
+    are lazily backed by mmap; cards/graph/nodes/idf/field_norm are small enough (a few thousand
+    entries even at 2k skills) to load eagerly in full. Raises on a missing/corrupt artifact —
+    callers (cmd_hook) treat any exception here as "no artifact yet, print nothing"."""
+    manifest = json.loads((dest / "manifest.json").read_text())
+
+    doc_urns = []
+    cards = {}
+    with (dest / "cards.jsonl").open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            u = row["urn"]
+            doc_urns.append(u)
+            cards[u] = {
+                "urn": u, "node": row["node"], "name": row["name"],
+                "description": row["description"], "digest": row.get("digest", ""),
+                "triggers": row.get("triggers", []), "negative_triggers": row.get("negative_triggers", []),
+                # requires/refines are NOT persisted here: graph.json already carries this
+                # adjacency and Router never reads card["requires"]/["refines"] at query time.
+                "requires": [], "refines": [],
+                "status": row.get("status", "active"), "replaced_by": row.get("replaced_by"),
+                "kind": row.get("kind"), "layer": row.get("layer"), "owner": row.get("owner"),
+                "_body": "",   # never read by Router; BM25 is already baked into postings.bin
+            }
+    doc_id = {u: i for i, u in enumerate(doc_urns)}
+
+    idx = Index(cards, json.loads((dest / "nodes.json").read_text()), manifest["weights"])
+    idx.graph = json.loads((dest / "graph.json").read_text())
+
+    idf = {}
+    data = (dest / "terms.bin").read_bytes()
+    pos, n = 0, len(data)
+    while pos < n:
+        tlen, pos = _varint_decode(data, pos)
+        term = data[pos:pos + tlen].decode("utf-8"); pos += tlen
+        val, pos = _varint_decode(data, pos)
+        idf[term] = val
+    idx.idf = idf
+
+    field_norm = {f: {} for f in Index.FIELDS}
+    norms_data = (dest / "norms.bin").read_bytes()
+    per_field = len(doc_urns) * 4
+    for i, field in enumerate(Index.FIELDS):
+        chunk = norms_data[i * per_field:(i + 1) * per_field]
+        if chunk:
+            vals = struct.unpack(f"<{len(doc_urns)}I", chunk)
+            field_norm[field] = dict(zip(doc_urns, vals))
+    idx.field_norm = field_norm
+
+    idx._postings_fh, idx._postings_mm = _open_mmap(dest / "postings.bin")
+    offsets = {}
+    pidx = (dest / "postings.idx").read_bytes()
+    pos, n = 0, len(pidx)
+    while pos < n:
+        fi, pos = _varint_decode(pidx, pos)
+        tlen, pos = _varint_decode(pidx, pos)
+        term = pidx[pos:pos + tlen].decode("utf-8"); pos += tlen
+        off, pos = _varint_decode(pidx, pos)
+        length, pos = _varint_decode(pidx, pos)
+        offsets[(Index.FIELDS[fi], term)] = (off, length)
+    idx.postings = {field: _LazyFieldPostings(idx._postings_mm, offsets, field, doc_urns)
+                    for field in Index.FIELDS}
+
+    dims = int(manifest.get("student_dims", 0))
+    idx._words_fh, idx._words_mm = _open_mmap(dest / "words.bin")
+    idx._vectors_fh, idx._vectors_mm = _open_mmap(dest / "vectors.i8")
+    if dims > 0 and idx._words_mm is not None:
+        words_list = (dest / "words.idx").read_text(encoding="utf-8").splitlines()
+        idx.word_vectors = _LazyVectors(idx._words_mm, {w: i for i, w in enumerate(words_list)}, dims)
+    else:
+        idx.word_vectors = {}
+    if dims > 0 and idx._vectors_mm is not None:
+        idx.skill_vectors = _LazyVectors(idx._vectors_mm, doc_id, dims)
+        idx.skill_normsq = _LazyNormsq(idx.skill_vectors)
+    else:
+        idx.skill_vectors, idx.skill_normsq = {}, {}
+    return idx
+
+def check_index_artifact(root: Path, cfg: dict, sha: str, dest: Path):
+    """Rebuild from the current tree (in memory only) and diff against the manifest checksums
+    recorded at `dest` — "a check that cannot fail is not a check" (BRIEF). Two distinct
+    failure modes, both reported:
+      self-consistency — a file on disk doesn't match what manifest.json says it should hash to
+                          (truncated/tampered artifact).
+      staleness        — the current tree, rebuilt fresh, hashes to something the on-disk
+                          manifest does NOT record (someone edited a SKILL.md and forgot to
+                          rerun `guidefold index`).
+    Returns (ok: bool, problems: list[str])."""
+    problems = []
+    manifest_path = dest / "manifest.json"
+    if not manifest_path.exists():
+        return False, [f"no index artifact at {dest} for sha={sha} — run `guidefold index` first"]
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except Exception as e:
+        return False, [f"manifest.json at {dest} is not valid JSON: {e}"]
+    recorded = manifest.get("checksums", {})
+    for name, want in recorded.items():
+        p = dest / name
+        if not p.is_file():
+            problems.append(f"{name} is missing from {dest}")
+            continue
+        got = hashlib.sha256(p.read_bytes()).hexdigest()
+        if got != want:
+            problems.append(f"{name} on disk does not match its manifest checksum (tampered or truncated)")
+    fresh = _serialize_artifact_files(Index.build(root, cfg))
+    for name, data in fresh.items():
+        got = hashlib.sha256(data).hexdigest()
+        want = recorded.get(name)
+        if want is None:
+            problems.append(f"{name} has no recorded checksum in manifest.json")
+        elif got != want:
+            problems.append(f"{name} is stale: current tree hashes to {got[:12]}, artifact "
+                             f"recorded {want[:12]} — rerun `guidefold index`")
+    return (len(problems) == 0), problems
 
 # ------------------------------------------------------------------- Router
 def _dense_rank(scores: dict) -> list:
@@ -1008,6 +1440,18 @@ def cmd_publish(a, root, cfg):
     print(f"guidefold publish: {n} skills, revision {rev_id}")
 
 def cmd_index(a, root, cfg):
+    sha = _git_head_short(root)
+    dest = index_cache_dir(sha)
+
+    if getattr(a, "check", False):
+        ok, problems = check_index_artifact(root, cfg, sha, dest)
+        for p in problems:
+            print("STALE", p)
+        if not ok:
+            sys.exit(1)
+        print(f"guidefold index --check: artifact at {dest} matches sha={sha}")
+        return
+
     pub = cfg["publisher"]
     lines = ["---", "name: hierarchy-index", f'description: "[{pub}] Generated map of all hierarchy nodes, owners and skills. Load once per session when unsure where you are."',
              "metadata:", "  scope: _index", f"  owner: {cfg['nodes']['_root'].get('owner')}", '  generated: "true"', "  status: active", "---", f"# {pub} skill hierarchy", ""]
@@ -1023,6 +1467,14 @@ def cmd_index(a, root, cfg):
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines))
     print(out)
+
+    # E1.4: build (or rebuild) the immutable binary retrieval artifact for this sha.
+    manifest = write_index_artifact(root, cfg, dest, sha)
+    evict_lru(cache_root() / "index", depth=1,
+              cap=_cache_cap(cfg, "max_index_shas", DEFAULT_INDEX_CACHE_CAP))
+    c = manifest["counts"]
+    print(f"guidefold index: wrote artifact for sha={sha} to {dest} "
+          f"(cards={c['cards']} terms={c['terms']} words={c['words']})")
 
 
 # ---------------------------------------------------------- L0: scope cards
@@ -1090,32 +1542,92 @@ def cmd_materialize(a, root, cfg):
         print("STALE generated files (run guidefold materialize):\n  " + "\n  ".join(stale)); sys.exit(1)
 
 # ------------------------------------------------- L1: hooks (Claude/Codex)
-def cmd_hook(a, root, cfg):
-    """Claude Code UserPromptSubmit/SessionStart and Codex hooks pass JSON on stdin.
-    We print plain text; the harness adds stdout to the model context (exit 0)."""
+HOOK_WATCHDOG_SECONDS_DEFAULT = 3.0   # ROUTER-SPEC "Watchdog": hard deadline, 300ms warm budget
+
+class _HookTimeout(Exception):
+    pass
+
+def _install_watchdog(seconds: float):
+    """SIGALRM-based hard deadline: raises _HookTimeout if `seconds` elapse before `cancel()` is
+    called. POSIX only — on a platform without SIGALRM (e.g. native Windows Python with no WSL)
+    the hook simply runs without a hard deadline rather than crashing on `signal.SIGALRM`
+    AttributeError; it is still bounded in practice by the 300ms warm-path budget. Returns a
+    zero-arg `cancel` to call from a `finally` block (idempotent: safe even if never armed)."""
+    if not hasattr(signal, "SIGALRM") or seconds <= 0:
+        return lambda: None
+    def _handler(signum, frame):
+        raise _HookTimeout()
+    previous = signal.signal(signal.SIGALRM, _handler)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    def cancel():
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+    return cancel
+
+def _emit_timeout_marker(root: Path, sha: str):
+    """Best-effort telemetry (docs/DESIGN.md "9 telemetry", a minimal slice of it): one JSONL
+    line per watchdog timeout under .guidefold/telemetry/ (gitignored, generated — ADR-0012).
+    Never allowed to raise: a broken telemetry write must not turn a timeout into a crash."""
     try:
-        payload = json.load(sys.stdin)
+        tdir = root / ".guidefold" / "telemetry"
+        tdir.mkdir(parents=True, exist_ok=True)
+        rec = {"event": "hook_timeout", "sha": sha,
+               "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+        with (tdir / "hook.jsonl").open("a") as f:
+            f.write(json.dumps(rec, sort_keys=True) + "\n")
     except Exception:
-        payload = {}
-    cwd = Path(payload.get("cwd") or Path.cwd())
-    node = node_for(cfg, rel(root, cwd))
-    prompt = payload.get("prompt") or payload.get("user_prompt") or ""
-    if not prompt:                                # SessionStart: just announce scope
-        print(f"[guidefold] scope={node} owner={node_meta(cfg, node).get('owner')} chain={'→'.join(ancestors(node))}")
-        return
-    if len(prompt) < 12:                          # skip trivial prompts ("yes", "continue")
-        return
+        pass
+
+def cmd_hook(a, root):
+    """Claude Code UserPromptSubmit/SessionStart and Codex hooks pass JSON on stdin. We print
+    plain text; the harness adds stdout to the model context (exit 0).
+
+    E1.5: reads ONLY the pre-built index artifact at <cache_root>/index/<sha>/ — never
+    guidefold.yaml, never the skill tree, never PyYAML. `cwd -> node` resolves from the
+    artifact's own nodes.json (ROUTER-SPEC "Determinism by construction": an uncommitted
+    working-tree edit must never silently reroute a running session).
+
+    Contract: on ANY failure — no artifact yet for this sha, a corrupt artifact, unreadable
+    stdin, a watchdog timeout — print nothing and return normally (exit 0). Injecting late or
+    injecting from stale state is worse than injecting nothing."""
+    sha = _git_head_short(root)
+    seconds = float(os.environ.get("GUIDEFOLD_HOOK_TIMEOUT_S", HOOK_WATCHDOG_SECONDS_DEFAULT))
+    cancel = _install_watchdog(seconds)
     try:
-        idx = Index.build(root, cfg)
+        try:
+            payload = json.load(sys.stdin)
+        except _HookTimeout:
+            raise
+        except Exception:
+            payload = {}
+        cwd = Path(payload.get("cwd") or Path.cwd())
+        prompt = payload.get("prompt") or payload.get("user_prompt") or ""
+        idx = load_index_artifact(index_cache_dir(sha))
+        try:
+            relpath = rel(root, cwd)
+        except ValueError:
+            relpath = ""
+        node = node_for({"nodes": idx.nodes}, relpath)
+        if not prompt:                            # SessionStart: just announce scope
+            owner = idx.nodes.get(node, {}).get("owner")
+            print(f"[guidefold] scope={node} owner={owner} chain={'→'.join(ancestors(node))}")
+            return
+        if len(prompt) < 12:                      # skip trivial prompts ("yes", "continue")
+            return
         top = Router(idx).route(prompt, node, k=3)
+        if not top:
+            return
+        print(f"[guidefold] Relevant organizational guidance for scope {node}:")
+        for c in top:
+            print(f"- {c['urn']} — {c['description'][:140]}")
+        print("Load with: .agents/skills/guidefold/scripts/guidefold load <urn>  (follow metadata.requires).")
+    except _HookTimeout:
+        _emit_timeout_marker(root, sha)
+        return                                    # print nothing — injecting late is worse
     except Exception:
         return                                    # ranking must never break the harness
-    if not top:
-        return
-    print(f"[guidefold] Relevant organizational guidance for scope {node}:")
-    for c in top:
-        print(f"- {c['urn']} — {c['description'][:140]}")
-    print("Load with: .agents/skills/guidefold/scripts/guidefold load <urn>  (follow metadata.requires).")
+    finally:
+        cancel()
 
 def cmd_prewarm(a, root, cfg):
     """Copilot sessionStart: output is ignored, side effects are not."""
@@ -1721,7 +2233,7 @@ def main():
     sub.add_parser("validate")
     dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")
     pu = sub.add_parser("publish"); pu.add_argument("--changed", action="store_true"); pu.add_argument("--base", default="HEAD~1"); pu.add_argument("--revision"); pu.add_argument("--only", help="publish only skills whose logical URN contains this substring")
-    sub.add_parser("index")
+    ix = sub.add_parser("index"); ix.add_argument("--check", action="store_true", help="verify the on-disk artifact matches this sha and the current tree; no writes")
     m = sub.add_parser("materialize"); m.add_argument("--check", action="store_true")
     sub.add_parser("hook")
     sub.add_parser("prewarm")
@@ -1740,7 +2252,14 @@ def main():
     if a.cmd == "doctor":
         cmd_doctor(a)
         return
-    root = repo_root(); cfg = load_map(root)
+    root = repo_root()
+    if a.cmd == "hook":
+        # E1.5: the hook path must import zero PyYAML (provable via `python3 -X importtime`) and
+        # must never resolve cwd -> node from the working-tree guidefold.yaml — both of which
+        # `load_map` would do. cmd_hook reads only the pre-built artifact's own nodes.json.
+        cmd_hook(a, root)
+        return
+    cfg = load_map(root)
     cfg.setdefault("registry", {})
     if a.backend:
         cfg["registry"]["backend"] = a.backend
