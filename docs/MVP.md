@@ -198,6 +198,8 @@ pre-registered measurement or a hard acceptance criterion, never a vibe.
 | 3–6 | **Authoring loop**: F5 trigger/negative-trigger suggestions in `validate` (owner approves in the PR), a per-PR collision report ("this description takes N dev queries from skill X"), E7.5 evaluation in the snapshot build | search quality that improves with every skill PR, not only with every model |
 | 5–8 | **Flywheel on real USE events** (E7.1–E7.2) + **pilot E6.7** (3 teams, 20–40 paired tasks, frozen protocol) | evidence of value for developers, not only better metrics |
 
+> Authoring loop, part 1 (per-PR skill collision report + trigger suggestions, informational CI job) shipped in [PR #65](https://github.com/wiatrM/guidefold/pull/65); F5-in-`validate` and E7.5's gate remain pending.
+
 
 Eight weeks starts at this planning revision. Completed E0/E1 work is reused. Staffing assumes one engineer owns client/distribution, one API/events, and 0.5 ML owns evaluation/model admission; shared auth/ops support and partner access must be available. If those assumptions fail, narrow pilot/harness scope explicitly or re-estimate instead of silently extending the plan.
 

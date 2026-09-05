@@ -173,3 +173,71 @@ jobs:
       - name: Stop isolated telemetry stack
         if: always()
         run: docker compose -p guidefold-ledger-contract down
+
+  # Authoring loop, part 1 (docs/MVP.md §5 "3-6 authoring loop"): a per-PR skill collision report +
+  # trigger suggestions, posted as one sticky comment. This job INFORMS — it never gates the build
+  # (that is E7.5's separate, later gate) — so it always exits 0 by construction: the two tools
+  # never compute a pass/fail threshold, only a report. `continue-on-error: true` on the reporting
+  # steps is a second, belt-and-braces guarantee of the same "never red because of this job" contract.
+  skill-authoring-report:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # base and head SHAs must both be reachable for `git archive`
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Check whether this PR touches a fixture SKILL.md
+        id: gate
+        run: |
+          if git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" \
+               -- 'examples/monorepo/**/SKILL.md' | grep -q .; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collision report (product Index/Router, base vs head, golden queries)
+        if: steps.gate.outputs.relevant == 'true'
+        continue-on-error: true
+        run: |
+          python3 tools/authoring/collision_report.py \
+            --root examples/monorepo \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.sha }}" \
+            --queries tests/golden/*.yaml \
+            --md collision-report.md --json collision-report.json
+
+      - name: Trigger/negative-trigger suggestions (F5, deterministic)
+        if: steps.gate.outputs.relevant == 'true'
+        continue-on-error: true
+        run: |
+          python3 tools/authoring/suggest_triggers.py \
+            --root examples/monorepo \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.sha }}" \
+            --md suggest-triggers.md --json suggest-triggers.json
+
+      - name: Post or update the one sticky PR comment
+        if: steps.gate.outputs.relevant == 'true'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            cat collision-report.md 2>/dev/null || echo "_collision report step failed — see job log_"
+            echo
+            cat suggest-triggers.md 2>/dev/null || echo "_suggestion step failed — see job log_"
+          } > authoring-report.md
+          python3 tools/authoring/sticky_comment.py \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --body-file authoring-report.md

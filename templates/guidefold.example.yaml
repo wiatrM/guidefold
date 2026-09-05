@@ -3,6 +3,15 @@ registry:
   backend: agent-registry     # local | agent-registry
   project: acme-agent-registry
   location: global
+eval:
+  # Optional. A golden-format YAML file (tests/golden/README.md's schema: a top-level `cases`
+  # list, each with `query`/`node` and, for graded cases, `relevant`/`distractors`) that the
+  # `skill-authoring-report` CI job (templates/ci.yml) runs every PR's changed SKILL.md through,
+  # via the *same* Index/Router the product uses. Omit this key (or leave it unset) and the job
+  # falls back to exposure-only mode: it builds its own query set from the changed skills' own
+  # `triggers` phrases and says "unlabelled: exposure changes only" in its PR comment — you get
+  # collision/exposure signal with zero authoring effort, just no Δhit@1/Δall_required@k/CI.
+  queries: eval/authoring_queries.yaml
 # search:                     # optional (E2.6/E2.9) -- SEARCH/USE client backend for `find`/`hook`/`load`.
 #   backend: local            # local | service. Default local; a bad/incomplete block below always
 #                              # falls back to local with degradation_reason=config, never crashes.
