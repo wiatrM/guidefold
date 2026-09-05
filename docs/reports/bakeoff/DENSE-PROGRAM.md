@@ -242,7 +242,7 @@ negative triggers, 91.1 % `similar`, 4.5 % `requires`. A semantic-reversal bug (
 read as a trigger for X) was found and fixed; a corpus-wide frequency guard drops boilerplate
 negative phrases. Family evaluation (`all_required@4` on dev, then tests) pending.
 
-### 2026-09-05 — full-encoder R1 reference on test-B (SkillRetBench), PR #34
+### 2026-09-05 — full-encoder R1 reference on test-B (SkillRetBench), PR #35
 
 Resolves the "(pending)" note in the PR #30 entry above: **the full `SKILLRET-Embedding-0.6B`
 encoder** (same pinned revision as the test-A reference, not the distilled static student) run
