@@ -222,12 +222,13 @@ def test_arms_differ_by_exactly_one_parameter_from_b1():
     cards, nodes = _tiny_cards_and_nodes()
     word_vectors = {"one": (1, 2, 3), "two": (2, 3, 4), "three": (3, 4, 5)}
     arms = SRB.build_arms(cli, cards, nodes, word_vectors=word_vectors)
-    assert set(arms) == {"B1", "B1-scope", "B1-closure", "B3b+B5"}
+    assert set(arms) == {"B1", "B1-scope", "B1-closure", "B3b+B5", "B1-flat"}
 
     b1_w = arms["B1"].index.weights
     scope_w = arms["B1-scope"].index.weights
     closure_w = arms["B1-closure"].index.weights
     dense_w = arms["B3b+B5"].index.weights
+    flat_w = arms["B1-flat"].index.weights
 
     def _diff_keys(a, b):
         return {k for k in a if a.get(k) != b.get(k)}
@@ -246,6 +247,13 @@ def test_arms_differ_by_exactly_one_parameter_from_b1():
     # The word table itself is identical (same object/content) across every arm, including B1 —
     # it is inert under w_dense=0, which is what makes the B3b+B5 diff exactly one parameter.
     assert arms["B1"].index.word_vectors == arms["B3b+B5"].index.word_vectors == word_vectors
+
+    # B1-flat (the frozen sparse variant, PR #36) changes exactly the five field.* weights, all
+    # to 1 — everything else (w_scope, w_ppr, abstain_threshold, k1/b, ...) stays at B1's default.
+    assert _diff_keys(b1_w, flat_w) == set(SRB.FLAT_FIELD_WEIGHTS)
+    for key, val in SRB.FLAT_FIELD_WEIGHTS.items():
+        assert flat_w[key] == val == 1
+        assert b1_w[key] != 1  # shipped defaults are not already flat
 
 
 def test_dense_arm_is_a_pure_gate_any_positive_w_dense_behaves_the_same():

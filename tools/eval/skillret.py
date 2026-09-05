@@ -78,6 +78,15 @@ GPU_VENV_PYTHON = "/home/mike/.cache/guidefold/gpu-venv/bin/python"
 K_CARDS = 4
 EVAL_K = 10
 BOOTSTRAP_RESAMPLES = 1000
+
+# Frozen sparse variant (docs/reports/bakeoff/DEV-sparse-diagnosis-2026-09-05.md, PR #36):
+# uniform `field.*` weights recover 99.5% of the dev-corpus gap to plain BM25 (P-flat, +3.72 pp
+# nDCG@10 [+3.16, +4.34] vs shipped). This is the ONE frozen candidate this test run touches --
+# see DENSE-PROGRAM.md v2.1 SS3's "touched once" rule.
+FLAT_FIELD_WEIGHTS = {
+    "field.name": 1, "field.description": 1, "field.digest": 1,
+    "field.triggers": 1, "field.body": 1,
+}
 CANDIDATE_TOP_N = 50  # must match Router.candidates()'s own `top_n` default (guidefold CLI)
 
 _ID_SLUG_RE = re.compile(r"[^a-z0-9]+")
@@ -193,8 +202,14 @@ DenseCandidateRouter = dense_ref.DenseCandidateRouter
 make_dense_router_class = dense_ref.make_dense_router_class
 
 
-def build_r0_index(cli, cards, nodes):
-    return cli.Index.from_cards(cards, nodes, weights={"w_dense": 0}, word_vectors=None)
+def build_r0_index(cli, cards, nodes, weights_arm: str = "shipped"):
+    """weights_arm="shipped" (default) is exactly the pre-existing call (byte-identical, no
+    behaviour change for any existing caller). weights_arm="flat" additionally overrides the five
+    `field.*` weights to 1 (FLAT_FIELD_WEIGHTS) -- the frozen sparse variant from PR #36 -- leaving
+    every other weight (w_scope, w_ppr, abstain_threshold, ppr_mode, k1/b, ...) at its shipped
+    default, same merge order as the shipped arm."""
+    extra = dict(FLAT_FIELD_WEIGHTS) if weights_arm == "flat" else {}
+    return cli.Index.from_cards(cards, nodes, weights={"w_dense": 0, **extra}, word_vectors=None)
 
 
 def build_r1_index_and_router(cli, cards, nodes, row_of, skill_mat, query_vec_of):
@@ -546,14 +561,30 @@ def cmd_r0(args):
     if args.sample:
         cases = cases[: args.sample]
 
+    weights_arm = getattr(args, "weights_arm", "shipped")
+    suffix = "" if weights_arm == "shipped" else f"-{weights_arm}"
+
     t0 = time.time()
-    idx = build_r0_index(cli, cards, nodes)
+    idx = build_r0_index(cli, cards, nodes, weights_arm=weights_arm)
     build_s = time.time() - t0
     router = cli.Router(idx)
 
+    # Non-shipped arms (currently only "flat", DENSE-PROGRAM.md v2.1 §3-5) get a paired
+    # bootstrap vs the CURRENT shipped F0 baseline, read from the committed shipped summary --
+    # never re-derived by re-running the shipped arm through this same invocation.
+    baseline_summary = None
+    if weights_arm != "shipped":
+        baseline_path = VALIDATION_DIR / "skillret-r0-summary.json"
+        if baseline_path.exists():
+            baseline_summary = json.loads(baseline_path.read_text())
+        else:
+            print("skillret r0: WARNING no shipped r0 summary found — "
+                  "bootstrap deltas vs F0 omitted", file=sys.stderr)
+
     summary = {"header": {"revision": CORPUS_REVISION, "n_skills": len(cards),
                            "n_queries_run": len(cases), "index_build_s": build_s,
-                           "w_dense": idx.weights.get("w_dense", 0)},
+                           "w_dense": idx.weights.get("w_dense", 0),
+                           "weights_arm": weights_arm},
                "settings": {}}
     for setting in ("root", "major"):
         node_for = node_for_setting(setting, major_of_qid)
@@ -566,17 +597,40 @@ def cmd_r0(args):
         per_query = {
             "all_required@4": per_query_metric(injection_results, metrics.all_required_at_k, K_CARDS),
             "hit@1": per_query_metric(retrieval_results, lambda r, c, k: metrics.hit_at_1(r, c), 1),
+            "ndcg@10": per_query_metric(retrieval_results, metrics.ndcg_at_k, 10),
+            "recall@10": per_query_metric(retrieval_results, metrics.recall_at_k, 10),
         }
-        summary["settings"][setting] = {
+        setting_summary = {
             "overall": overall, "by_k": by_k, "elapsed_s": elapsed,
             "n_queries": len(cases), "per_query": per_query,
         }
-        _write_jsonl_gz(VALIDATION_DIR / f"skillret-r0-{setting}.jsonl.gz", records)
-        print(f"r0/{setting}: {elapsed:.1f}s ({elapsed/len(cases)*1000:.1f} ms/query), "
-              f"n={len(cases)}, all_required@4={overall.get('all_required@4'):.4f}, "
-              f"hit@1={overall.get('hit@1'):.4f}, coverage={overall.get('coverage'):.4f}")
 
-    out_path = VALIDATION_DIR / "skillret-r0-summary.json"
+        if baseline_summary is not None:
+            base_pq = baseline_summary["settings"][setting]["per_query"]
+            bootstrap = {}
+            for metric_name in ("hit@1", "ndcg@10", "recall@10", "all_required@4"):
+                base_vals = base_pq.get(metric_name)
+                if base_vals is None:
+                    continue  # older shipped summary predates this metric's per-query capture
+                bootstrap[metric_name] = {"overall": paired_bootstrap_ci(
+                    base_vals, per_query[metric_name])}
+                qids_by_k = {}
+                for c in cases:
+                    qids_by_k.setdefault(c["category"], set()).add(c["qid"])
+                for kcat, qids in sorted(qids_by_k.items()):
+                    a_k = {q: v for q, v in base_vals.items() if q in qids}
+                    b_k = {q: v for q, v in per_query[metric_name].items() if q in qids}
+                    bootstrap[metric_name][kcat] = paired_bootstrap_ci(a_k, b_k)
+            setting_summary["bootstrap_vs_shipped"] = bootstrap
+
+        summary["settings"][setting] = setting_summary
+        _write_jsonl_gz(VALIDATION_DIR / f"skillret-r0{suffix}-{setting}.jsonl.gz", records)
+        print(f"r0{suffix}/{setting}: {elapsed:.1f}s ({elapsed/len(cases)*1000:.1f} ms/query), "
+              f"n={len(cases)}, all_required@4={overall.get('all_required@4'):.4f}, "
+              f"hit@1={overall.get('hit@1'):.4f}, ndcg@10={overall.get('ndcg@10'):.4f}, "
+              f"coverage={overall.get('coverage'):.4f}")
+
+    out_path = VALIDATION_DIR / f"skillret-r0{suffix}-summary.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
     print(f"wrote {out_path}")
@@ -589,11 +643,12 @@ def cmd_r1(args):
         cases = cases[: args.sample]
     meta, row_of, skill_mat, query_vec_of = load_dense_cache()
 
-    r0_summary_path = VALIDATION_DIR / "skillret-r0-summary.json"
+    r0_summary_path = args.baseline
     r0_summary = json.loads(r0_summary_path.read_text()) if r0_summary_path.exists() else None
     if r0_summary is None:
-        print("skillret r1: WARNING no r0 summary found — paired bootstrap deltas will be omitted",
-              file=sys.stderr)
+        print(f"skillret r1: WARNING no r0 summary found at {r0_summary_path} — "
+              "paired bootstrap deltas will be omitted", file=sys.stderr)
+    out_suffix = args.out_suffix
 
     t0 = time.time()
     idx, router = build_r1_index_and_router(cli, cards, nodes, row_of, skill_mat, query_vec_of)
@@ -631,11 +686,14 @@ def cmd_r1(args):
         r1_per_query = {
             "all_required@4": per_query_metric(injection_results, metrics.all_required_at_k, K_CARDS),
             "hit@1": per_query_metric(retrieval_results, lambda r, c, k: metrics.hit_at_1(r, c), 1),
+            "ndcg@10": per_query_metric(retrieval_results, metrics.ndcg_at_k, 10),
         }
         bootstrap = {}
         if r0_summary is not None:
             r0_pq = r0_summary["settings"][setting]["per_query"]
-            for metric_name in ("all_required@4", "hit@1"):
+            for metric_name in ("all_required@4", "hit@1", "ndcg@10"):
+                if metric_name not in r0_pq:
+                    continue  # older baseline summary predates this metric's per-query capture
                 bootstrap[metric_name] = {"overall": paired_bootstrap_ci(
                     r0_pq[metric_name], r1_per_query[metric_name])}
                 # per-k: restrict both maps to qids of that k-stratum
@@ -650,17 +708,17 @@ def cmd_r1(args):
         summary["settings"][setting] = {
             "overall": overall, "by_k": by_k, "elapsed_s": elapsed, "n_queries": len(cases),
             "coverage_by_k": cov_by_k, "coverage_overall": cov_overall,
-            "bootstrap_vs_r0": bootstrap,
+            "bootstrap_vs_r0": bootstrap, "baseline_path": str(r0_summary_path),
         }
-        _write_jsonl_gz(VALIDATION_DIR / f"skillret-r1-{setting}.jsonl.gz", records)
+        _write_jsonl_gz(VALIDATION_DIR / f"skillret-r1{out_suffix}-{setting}.jsonl.gz", records)
         added = cov_overall["added_by_dense"]
         gold_n = cov_overall["gold_n"] or 1
-        print(f"r1/{setting}: {elapsed:.1f}s ({elapsed/len(cases)*1000:.1f} ms/query), "
+        print(f"r1{out_suffix}/{setting}: {elapsed:.1f}s ({elapsed/len(cases)*1000:.1f} ms/query), "
               f"n={len(cases)}, all_required@4={overall.get('all_required@4'):.4f}, "
               f"hit@1={overall.get('hit@1'):.4f}, coverage(bundle)={overall.get('coverage'):.4f}, "
               f"dense-added-gold={added}/{gold_n} ({100*added/gold_n:.2f}%)")
 
-    out_path = VALIDATION_DIR / "skillret-r1-summary.json"
+    out_path = VALIDATION_DIR / f"skillret-r1{out_suffix}-summary.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
     print(f"wrote {out_path}")
@@ -803,10 +861,22 @@ def main(argv=None):
 
     p_r0 = sub.add_parser("r0")
     p_r0.add_argument("--sample", type=int, default=0, help="only run the first N cases (dev)")
+    p_r0.add_argument("--weights-arm", choices=("shipped", "flat"), default="shipped",
+                       help="'flat' overrides the five field.* weights to 1 (frozen sparse "
+                            "variant, PR #36) and adds a paired bootstrap vs the committed "
+                            "shipped r0 summary")
     p_r0.set_defaults(fn=cmd_r0)
 
     p_r1 = sub.add_parser("r1")
     p_r1.add_argument("--sample", type=int, default=0, help="only run the first N cases (dev)")
+    p_r1.add_argument("--baseline", type=Path, default=VALIDATION_DIR / "skillret-r0-summary.json",
+                       help="which r0 summary json to treat as F0 for the bootstrap vs F0 "
+                            "(point this at skillret-r0-flat-summary.json to measure R1 over "
+                            "the frozen flat-weights base instead of shipped)")
+    p_r1.add_argument("--out-suffix", default="",
+                       help="appended to skillret-r1<suffix>-{summary.json,root/major.jsonl.gz} "
+                            "so a rerun against a non-shipped --baseline does not clobber the "
+                            "canonical shipped-baseline R1 files (e.g. '-over-flat')")
     p_r1.set_defaults(fn=cmd_r1)
 
     p_lat = sub.add_parser("latency")
