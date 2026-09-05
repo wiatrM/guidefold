@@ -1,89 +1,124 @@
-# Dense retrieval programme — pre-registered
+# Dense retrieval programme — pre-registered, v2
 
-**Status:** Pre-registered 2026-09-05, **before any result below was measured.** Results are appended
-under §6 as they land; the hypotheses, gates and stop rules above §6 are frozen.
+**Status:** Pre-registered 2026-09-05 (v1, PR #26); **amended to v2 the same day after methodological
+review, before any result was measured.** The v1 text is in git history. Results are appended under
+§7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
-**Governs:** ADR-0020 (gate wording), ADR-0022 (product path), `CLAUDE.md` § Evaluation corpora.
+**Governs:** ADR-0020 (gate wording), ADR-0022 (product path, cache identity), `CLAUDE.md` § Evaluation corpora.
+
+## 0. What v2 changed, and why (the reviewer's five points, all accepted)
+
+| # | v1 said | v2 says | why |
+|---|---|---|---|
+| 1 | R1 (one skill-tuned encoder) is a **ceiling**; if it fails, "no served dense can" — programme ends | R1 is a **strong reference point**. Every method *family* gets its own bounded budget; none is gated on another family's result | one checkpoint bounds nothing else; Model2Vec's own docs note teacher order ≠ student order; doc2query is lexical and independent of embedding quality |
+| 2 | fusion tuned only at R3, after families were already kept/dropped on **test** results; "retain ≥ 50 % of R1's gain" | **all selection on a dev split carved from SKILLRET *train***; fusion tuned per family on dev; freeze; **test corpora touched once per frozen variant**; pre-specified minimum benefit + tolerated regression + paired CI replace the 50 % rule | using test results to choose what to run next makes them selection sets; 50 % of a noisy gain is arbitrary |
+| 3 | "Python is not the bottleneck; a rewrite buys nothing" and "0.6B = 0.5–1 s, MiniLM = 20–50 ms" as facts | **two latency tiers, 300 ms and 500 ms, both measured**; small contextual encoders tried via **onnxruntime from Python first**; the 0.6B and MiniLM timings are estimates to be **measured**, not quoted | the 65 ms sparse hook does not show that +200 ms buys nothing under a different architecture |
+| 4 | "word table keyed by teacher version, downloaded once" | word table keyed by the **full distillation identity** (teacher revision + vocabulary + weighting + projection + quantisation) per ADR-0022 §6; download limit may be relaxed deliberately, but memory, cold start and update cost are still measured | v1 regressed a correction already accepted in ADR-0022 |
+| 5 | "+30 nDCG → +0.3 % Terminal-Bench success" and "static averaging caused the sibling regression" | SkillRet's execution result compares **no retrieval vs SkillRet**, not BM25 vs SkillRet — no NDCG-to-success attribution is possible; the static-averaging explanation of the sibling regression is a **hypothesis** | both were already corrected in RESEARCH.md; v1 reintroduced them |
+
+Rules that survive from v1 unchanged: product path only; coverage before re-ordering; both test
+corpora must agree; per-query rankings for every run; latency is the whole hook in a fresh process;
+the SKILLRET overlap caveat; the report says "none of the studied variants earned deployment" if that
+is the answer.
 
 ---
 
-## 1. The constraint that shapes every option
+## 1. The constraint, stated as a variable rather than a wall
 
-The hook is a **fresh Python process, stdlib + PyYAML, ≤ 300 ms warm.** No torch, no numpy, no
-resident model. Whatever "dense" means at query time, it must be integer arithmetic over a table
-that ships inside a ≤ 15 MB artifact (ADR-0021). Everything neural therefore runs **offline** — at
-index build — and the research question is:
+The hook is a fresh process, currently stdlib + PyYAML, currently ≤ 300 ms warm. Measured: whole
+hook p50 65.7 / p95 71.8 ms at 26 skills; BM25 + a static table is 37 ms of query work at 2 000
+skills. That is the cost of the *current* architecture — it says nothing about what a different one
+could buy for more time. So the programme carries **two tiers**:
 
-> Which offline-computed signal, served through integer arithmetic at query time, adds the most to
-> BM25F + `requires` closure on real labelled skill data?
+- **T300** — the existing budget; integer arithmetic over a shipped table; stdlib only.
+- **T500** — 500 ms; a small contextual encoder allowed via onnxruntime **from Python** (no rewrite
+  is a precondition of this experiment); stdlib-only and bit-reproducibility are then open ADR
+  questions, decided on the measured trade, not assumed either way.
 
-## 1a. Why the budget is 300 ms and Python, and what a rewrite would and would not buy
+Every latency figure is warm p50/p95 for the whole hook, fresh process, on the **6 006-skill**
+index, machine stated, cold start reported separately. Batch time ÷ n is not latency. "Zero
+query-time cost" (document expansion) is a hypothesis to measure: a larger index can cost time and
+memory.
 
-Measured, fresh process, this machine: whole hook **p50 65.7 ms / p95 71.8 ms** at 26 skills, of
-which ~40 ms is interpreter start-up; BM25 + static dense at **2 000 skills is 37 ms** of query
-work. The static path has 4–5× headroom — Python is not the bottleneck for anything on rungs R0–R2d.
-
-A 0.6B encoder is ~60 GFLOP per query: **0.5–1 s on a laptop CPU in any language** (torch is
-already C++). A rewrite does not make the ceiling servable. What a compiled runtime *would* unlock
-is a ~22M-parameter contextual encoder (~2 GFLOP, 20–50 ms CPU) — rung R2e — at the cost of the
-stdlib-only constraint and bit-reproducibility. That trade is decided by R1's evidence, not up front.
-
-Artifact economics under ADR-0021: teacher weights (1.2 GB) never reach the user; the word table
-(8–15 MB) is keyed by teacher version, downloaded once, cached for months; postings shards (~3 MB)
-are what change per merge. Table size is therefore not a constraint; **shard** size is.
+Artifact economics (ADR-0021/0022): teacher weights never reach the user. The word table's identity
+is the full distillation identity; it is cached until any element of that identity changes. Shard
+size, memory and cold start are measured for every survivor; the download limit is a deliberate
+choice, not a law.
 
 ## 2. What the literature says we should expect (read before, not after)
 
-| source | expectation | implication for the ladder |
+| source | expectation | how the programme uses it |
 |---|---|---|
-| **SkillRet v3**, leaderboard | untuned 0.6B encoder +10 nDCG over BM25; **skill-tuned** 0.6B **+30** | the ceiling is high *if* the encoder is task-tuned — test the tuned teacher first |
-| **SkillRet v3**, Terminal-Bench | +30 nDCG → +0.3 % task success | retrieval gain is a proxy; do not over-claim |
-| **BEIR** | dense weak out-of-domain; BM25 robust; late-interaction/rerank best zero-shot at high cost | a *static* student is further out-of-domain than any encoder; expect a large distillation loss |
-| **SkillRouter v5** | body signal 37–44 pp; hard negatives from 4 sources essential; "fine-tuning > scale" | any trained student uses 4-source negatives; body must be in the encoder's input |
-| **Graph of Skills** | dependency bundle > top-1; propagation +5 reward at 1 000 skills | judge on `all_required@4`, and keep closure in every arm |
-| **SkillResolve** | same-capability risky siblings are the failure mode | HSR@4 is a gate, not a footnote |
-| **SIF / model2vec** | mean-pooled static vectors lose compositionality; model2vec weighting is `a/(a+p)` not `log(1+rank)`; **potion-retrieval** static models exist, trained for retrieval | test a prebuilt retrieval-trained static model before training our own |
-| **doc2query / document expansion** (ADR-0009 "B1+") | neural at index time, sparse at query time; strong zero-shot in BEIR-class results | the only option with **zero** query-time cost; must be on the ladder |
-| **RRF** (Cormack) | rank fusion designed for TREC pools of thousands; discards magnitudes | on 8–18-candidate pools use **score-level** fusion with weights fixed on a *train* split |
+| **SkillRet v3**, leaderboard | untuned 0.6B +10 nDCG over BM25; skill-tuned 0.6B +30 | the encoder family is worth a real budget; the reference run R1 shows what a tuned encoder does *on our path* |
+| **SkillRet v3**, Terminal-Bench | retrieval (vs *none*) preserved success and cut cost 10 % | retrieval quality is a proxy for execution; no NDCG→success attribution; execution eval stays a separate P2 |
+| **BEIR** | dense weak out-of-domain; BM25 robust; rerank/late-interaction best zero-shot at high cost | expect static students to lose a lot; expect small contextual encoders to be the T500 candidates |
+| **SkillRouter v5** | body signal 37–44 pp; 4-source hard negatives essential; fine-tuning > scale | body in every encoder input; any trained student uses 4-source negatives |
+| **Graph of Skills** | dependency bundle > top-1 | judge on `all_required@4`; closure stays in every arm |
+| **SkillResolve** | risky same-capability siblings are the failure mode | HSR@4 is a gate where labels exist (SkillRetBench) |
+| **Model2Vec** | teacher order ≠ student order; weighting `a/(a+p)`; potion-retrieval exists | static family tests a prebuilt retrieval-trained model *and* distillation from more than one teacher |
+| **doc2query** | index-time expansion, lexical search | its own family; independent of any embedding result |
+| **RRF** (Cormack) | rank fusion for large pools; discards magnitudes | fusion is tuned per family on dev; score-level fusion is the default candidate |
 
-## 3. The ladder — each rung has a stop test
+## 3. Splits — the rule that makes everything else honest
 
-Run in order. A rung is not started until the previous one's stop test is passed.
-
-| rung | what | stop test (if it fails, the programme ends here) |
+| split | source | used for |
 |---|---|---|
-| **R0** | B1 (shipped: BM25F + filter + closure, `w_dense=0`) on SkillRetBench and SKILLRET-test, product path, 4 cards | — (baseline; must exist) |
-| **R1 — ceiling** | the **full skill-tuned encoder** (`SKILLRET-Embedding-0.6B`, GPU) as the dense candidate source, fused with BM25F, same product path, **latency ignored** | if the ceiling does not beat R0 on `all_required@4` with HSR@4 non-worsening on **both** corpora, **no served dense can** — stop, report the ceiling |
-| **R2 — served candidates** *(only if R1 passes)*, each an offline signal + integer query time | | |
-| R2a | model2vec-proper distillation of the R1 teacher (their weighting, PCA-256, int8) | keep any R2 variant only if it retains ≥ 50 % of the R1 gain on `all_required@4` |
-| R2b | prebuilt **potion-retrieval** static model, quantised to our table format | " |
-| R2c | **document expansion**: teacher generates pseudo-queries per skill offline; BM25F indexes them as a sixth field; query time unchanged | " (this rung has zero query-time cost; it is the one most likely to survive the budget) |
-| R2d | **trained static student** on SKILLRET *train* (63 259 pairs; 4-source hard negatives; contrastive) | " — heaviest; run only if R2a–c all fail the 50 % test |
-| R2e | **small contextual encoder** (~22M params, MiniLM-class, ONNX) in a compiled runtime — the only rung that needs a language change | " — **and** an ADR: it breaks stdlib-only and bit-determinism (float), so it is a product decision, taken only if R1 shows a ceiling that no static rung retains |
-| **R3 — fusion** | replace RRF with score-level convex fusion; weight chosen **only on SKILLRET train**; report on both test corpora | adopt only if it survives both test corpora |
-| **R4 — gates** | for every survivor: `all_required@4` ≥ R0, HSR@4 ≤ R0, warm p95 ≤ 300 ms on the **6 006-skill** index (fresh process), artifact ≤ 15 MB | a variant that fails any gate on either corpus is **not adopted**, whatever its average |
+| **dev** | a stratified subset of SKILLRET **train** (queries + their own skill pool; disjoint from test by construction), frozen once, id list committed | *every* choice: which configuration, which fusion, which weights, whether a family continues |
+| **test-A** | SKILLRET-test, 6 006 skills / 4 392 queries, pinned `a050ad23` | final gates only, once per frozen variant; flattered for the SKILLRET-tuned encoder (same distribution) |
+| **test-B** | SkillRetBench, 501 skills / 1 250 queries, pinned `4bdbf59b` | final gates only, once per frozen variant; carries HSR@4 and the outdated/redundant labels |
+| regression | Meridian fixture, 220 queries | CI only; never evidence |
 
-## 4. Rules that cannot be relaxed after seeing results
+A result on test-A or test-B never decides what to run next. If a family needs more tries, it uses
+its dev budget.
 
-1. **Product path only.** `policy_filter → candidates → score → select(admissible=…)`, 4 cards. No arm bypasses the filter. A dense arm's contribution is measured first as **coverage** — gold skills it adds to the candidate pool that BM25F missed — and only then as re-ordering.
-2. **Tune on SKILLRET train, never on either test set.** SkillRetBench has no train split: it is test-only for every decision.
-3. **Two corpora, both must agree.** A win on one and a loss on the other is a "no".
-4. **Per-query rankings written for every run** (JSONL, committed) — paired comparison, not averages.
-5. **Latency is the whole hook, fresh process, on the 6 006-skill index**, warm p50/p95, machine stated. Batch time ÷ n is not latency.
-6. **Overlap caveat.** `SKILLRET-Embedding-0.6B` was trained on SkillRet train; SKILLRET-test is a disjoint pool from the same distribution, SkillRetBench is a different dataset. Report both; the SkillRetBench number is the less flattered one.
-7. **The report says "does not earn it" if that is the answer.** A ceiling that beats BM25 but cannot be served inside 300 ms is a real, publishable finding; it is not a licence to ship the ceiling.
+## 4. Method families and budgets
 
-## 5. What "best skill-retrieval model on the market" would have to mean
+Each family gets a **bounded budget of dev configurations**. Within it, coverage is measured first
+(gold skills added to the candidate pool that BM25F's top-50 missed), then fusion is tuned on dev,
+then the best-on-dev configuration is frozen and run once on each test corpus.
 
-Not the highest nDCG on a leaderboard — SkillRet-8B already owns that at a cost we cannot serve.
-It means: **the highest `all_required@4` at the lowest HSR@4 that a developer's machine can compute
-in 300 ms with no model installed.** If R2c (expansion) or a static student reaches within a few
-points of the R1 ceiling at zero query-time cost, that is a stronger product than any encoder that
-needs a GPU. If nothing does, the honest product is BM25F + closure, and this document says why.
+| family | what | tier | dev budget |
+|---|---|---|---|
+| **F0 sparse** | BM25F + filter + closure, `w_dense = 0` — the shipped product | T300 | reference; 0 |
+| **F1 encoder hybrid** | `SKILLRET-Embedding-0.6B` (and one generic, `Qwen3-Embedding-0.6B`) as dense candidate source, fused with BM25F; latency **not** a gate here — this is the reference for what a tuned encoder does on our path | — | ≤ 4 (fusion, k, w) |
+| **F2 static** | (a) prebuilt `potion-retrieval-32M` quantised to our table; (b) Model2Vec-proper distillation from **two** teachers (SKILLRET, Qwen3), their weighting, PCA-256, int8; (c) if budget remains, a static student trained on SKILLRET train with 4-source negatives | T300 | ≤ 8 total |
+| **F3 document expansion** | doc2query-T5 pseudo-queries per skill at index time, indexed as a sixth BM25F field; lexical at query time | T300 | ≤ 4 (n queries per doc, field weight) |
+| **F4 small contextual** | MiniLM-class ONNX (~22M) via onnxruntime from Python; measured, not estimated | T500 | ≤ 4 |
+
+Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
+inform how much *effort* is spent, never whether another family is *allowed* to run.
+
+## 5. Gates — fixed now, with minimum benefit and tolerated regression
+
+A frozen variant is **adopted** only if, on **both** test-A and test-B:
+
+| gate | rule |
+|---|---|
+| bundle completeness | `all_required@4` ≥ F0 + **2.0 pp**, paired bootstrap over queries (1 000 resamples) 95 % CI excluding 0 |
+| harmful exposure | `distractor_rate@4` (test-A: NaN, no labels) and **HSR@4** (test-B) not worse than F0 by more than **1.0 pp** |
+| primary quality | `hit@1` and `nDCG@10` not worse than F0 by more than 1.0 pp (a bundle win must not cost the headline) |
+| cost | warm p95 ≤ its tier (300 or 500 ms), whole hook, 6 006-skill index; artifact per ADR-0021 budget; cold start and memory reported |
+
+A variant that clears every gate on one corpus and fails one on the other is **not adopted** —
+reported as "corpus-dependent". A variant that clears all gates only at T500 is reported as a T500
+candidate for the ADR that would open that tier; it is not shipped by this programme.
+
+**Termination.** When every family has spent its dev budget and every frozen variant has been
+tested once: if none clears the gates on both corpora, the programme ends with the sentence
+*"none of the studied variants earned deployment"*, plus the best dev result per family and the
+gate each failed, so the next attempt starts from evidence.
+
+## 6. Reference run R1 — what it is and is not
+
+R1 (already running on both test corpora, unfused config chosen from tooling defaults, latency
+ignored) is kept as a **reference**: it shows what a tuned encoder does through the product path
+before any dev tuning. Its numbers are reported. They gate nothing. Its coverage figure — gold
+skills BM25F missed that the encoder finds — is the most useful number it produces, because it
+bounds how much *any* dense signal could add to candidates on these corpora.
 
 ---
 
-## 6. Results (appended as they land; §1–5 above are frozen)
+## 7. Results (appended as they land; §1–6 are frozen from v2)
 
-*(none yet — R0 running on SkillRetBench)*
+*(none yet — F0 and R1 running on both test corpora; dev split not yet carved)*
