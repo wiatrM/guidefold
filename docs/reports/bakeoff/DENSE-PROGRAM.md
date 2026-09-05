@@ -580,3 +580,40 @@ calling agent, rather than decomposition inside `candidates()`/`select()` — si
 in-ranker recovers exactly the same completeness gap but cannot do so without the k = 1 damage this
 gate exists to catch. Full tables (per-k quality, candidate ceiling @4/10/15/50, paired CIs vs D0,
 cost/latency, freeze-gate detail): `docs/reports/bakeoff/DEV-D-decomposition-2026-09-05.md`.
+
+### 2026-09-05 — family C (composition) dev run: no arm frozen in either family
+
+Six arms (C0 + C-det-1..4, pre-registered grid over score-plateau τ ∈ {15,30} × coverage-aware
+fill on/off; C-model-1/2, `claude -p --model haiku` gated/ungated, pre-registered on a 150-query
+k-stratified subsample — PR #47) on the same SKILLRET-train dev split as F0/F3/C0/D0. The
+score-plateau bundle detector fires on **100 % of dev queries at every τ**, but only changes
+anything when coverage-aware fill is on: with it off, the fallback is provably byte-identical to
+C0 on all 1,000 queries (`C-det-2`/`C-det-4`); with it on, `all_required@4` **regresses** −3.2 pp
+overall, −12.5 pp at k = 1 (`C-det-1`/`C-det-3`), because covering unique query terms outranks
+the single best-scored answer once that answer's terms are already "covered." Both model arms'
+`all_required@4` point estimates are positive (+2.7 to +4.0 pp overall, +10.0 pp at k = 2) but
+neither's CI excludes zero on the low side. `C-model-1`'s CI is negative on the low side
+(ci_low=−0.0133) and its guard also fails — a clear non-qualifier. `C-model-2`'s CI is
+`[0.0, +8.0]` pp — low edge exactly 0.0, entirely non-negative — which is **inconclusive, not
+negative**: the pre-registered rule requires `ci_low > 0` strictly, so it does not qualify, but
+the 150-query pre-registered subsample lacks the power to say whether the true effect is above or
+below zero. Resolving that needs the full 1,000-query dev run (≈850 more queries beyond the
+150-query subsample, ≈$16 at this run's own measured per-call rate) — not run here (would be a
+result-driven scope expansion), recorded as an open follow-up in
+`docs/reports/bakeoff/DEV-C-composer-2026-09-05.md` ("Open follow-up"). **No arm qualifies in
+either family** — the deterministic family has no config that both changes the ranking and helps,
+and the model family's best result is inconclusive at the boundary rather than clearing it; the
+mechanical freeze decision is unaffected either way: **nothing frozen**. Test-once (both corpora)
+and the R1 dense re-run this family exists to unblock
+(§7, "requested Go/ParadeDB service" entry above, and the R1/test-B entry's own note) are both
+skipped, per the pre-registered "freeze, then test" order — nothing froze, and R1's dense caches
+are independently confirmed absent from `~/.cache/guidefold/` regardless. A live model-arm
+infrastructure failure (65.3 % of calls failing, 97 % of those a fast `exit 1` with empty stderr
+rather than the expected timeout) was root-caused as transient shared-machine load rather than a
+composer_model.py defect (manual/sequential calls succeeded once load eased) and resolved by
+retrying the same pre-registered scope, not by expanding it — 1,000-query expansion of the model
+arms was considered and rejected as a result-driven, post-hoc scope change of exactly the kind
+this project's dev/test corpus discipline exists to prevent (see PR #19). Full tables (per-k
+quality, bundle-detector firing/identical-to-C0 rates, candidate ceiling @4/10/15/50, paired CIs
+vs C0, freeze-gate detail, model-arm reliability investigation and $2.88 total cost):
+`docs/reports/bakeoff/DEV-C-composer-2026-09-05.md`.

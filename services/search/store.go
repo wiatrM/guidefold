@@ -337,7 +337,7 @@ func publish(ctx context.Context, s *Store, path string) error {
 	}
 	// Bound the integer-only policy arithmetic. Unsupported operator configurations fail publication.
 	for k, v := range weights {
-		if k == "ppr_mode" || k == "abstain_mode" {
+		if k == "ppr_mode" || k == "abstain_mode" || k == "compose_mode" || k == "compose_coverage" {
 			continue
 		}
 		n, ok := v.(json.Number)
@@ -353,6 +353,23 @@ func publish(ctx context.Context, s *Store, path string) error {
 	}
 	if m := text(weights, "abstain_mode", "magnitude"); m != "magnitude" && m != "margin" {
 		return fmt.Errorf("unsupported_abstain_mode")
+	}
+	// compose_mode/compose_tau_pct/compose_coverage (ADR-0022 §4 / ADR-0024 §4): the composer
+	// stage is not yet implemented in this service (DENSE-PROGRAM.md §4, family C, dev run
+	// 2026-09-05 — no configuration froze), so this only validates shape/value for storage and
+	// tier parity; it deliberately does not run composition. compose_tau_pct is a plain bounded
+	// integer weight and needs no special case above. Under the shipped default
+	// (compose_mode="off"), this service's behaviour (no composition) already matches the CLI's,
+	// so ADR-0024 tier parity holds; a value of "on" is accepted for forward-storage but has no
+	// runtime effect here yet — same shape as ppr_mode/abstain_mode before their own Go
+	// implementation landed.
+	if m := text(weights, "compose_mode", "off"); m != "off" && m != "on" {
+		return fmt.Errorf("unsupported_compose_mode")
+	}
+	if v, present := weights["compose_coverage"]; present {
+		if _, ok := v.(bool); !ok {
+			return fmt.Errorf("unsupported_compose_coverage")
+		}
 	}
 	id := "repository:" + str(envelope["sha256"])
 	check := &Catalog{Nodes: nodes, Cards: map[string]M{}}
