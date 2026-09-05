@@ -1,6 +1,6 @@
 # ADR-0021: Shard the index by node; ship the word table as a language artifact, not a corpus artifact
 
-**Status:** Proposed · 2026-09-05
+**Status:** Proposed · 2026-09-05 · **numbers revised 2026-09-05 against a real 2 111-skill corpus**
 **Amends:** [ADR-0020](ADR-0020-two-tier-dense-retrieval.md) — corrects its vocabulary-headroom
 estimate and its gate wording.
 **Informs:** MVP story E2.3, which already names `index/<shard>/<sha>/` but does not say how to shard.
@@ -35,6 +35,44 @@ Extrapolating on those measured per-skill constants, with an int8 word table at 
 | 10 000 | 100 982 | 24.3 s | 24.83 MB | 29.22 MB | 54.05 MB | **344 %** |
 | 30 000 | 185 376 | 72.8 s | 74.50 MB | 56.62 MB | 131.12 MB | **834 %** |
 
+### Revision: measured directly at 2 111 skills
+
+The table above extrapolates from an 889-skill corpus. A second, larger real corpus (2 111
+`SKILL.md` files, 103 MB, held locally and gitignored) made the 2 000-skill row measurable rather
+than projected. **The projection was optimistic, in the same direction as the synthetic one it
+replaced.**
+
+| at ~2 000 skills | synthetic (original) | projected from 889 | **measured at 2 111** |
+|---|---|---|---|
+| distinct terms | 41 473 | 41 473 | **56 059** (+35 %) |
+| tokens per skill | 120 | 852 | **1 127** |
+| sparse artifact | 3.47 MB | 4.97 MB | **5.40 MB** |
+| + 34k-word table | 83.5 % | 91.8 % | **96.5 %** |
+| + full vocabulary | 93.5 % | 104 % | **133.5 %** |
+
+Heaps' law refitted on this corpus gives **V = 1475.8 · n^0.475**, against 620.2 · n^0.553 from the
+889-skill one. **The two real corpora disagree on both parameters.** That is itself a finding: a
+Heaps fit is a property of the corpus, not of the domain, so any single-corpus extrapolation is
+indicative and should be re-measured whenever a bigger corpus becomes available. Both fits agree on
+the shape of the conclusion; they disagree on where the walls are.
+
+Re-projecting on the measured constants (1 127 tokens/skill, 2 681 B sparse/skill):
+
+| skills | terms | sparse | **with the 34k cap** | full vocabulary |
+|---|---|---|---|---|
+| 2 111 *(measured)* | 56 059 | 5.40 MB | **96 %** | 134 % |
+| 10 000 | 117 384 | 25.57 MB | **244 %** | 384 % |
+| 30 000 | 197 839 | 76.71 MB | **617 %** | 892 % |
+
+**This changes one conclusion materially.** The original table implied the vocabulary cap was the
+main lever. It is not: at 30 000 skills the **sparse side alone is 76.71 MB**, five times the whole
+budget, before a single word vector is added. Capping the vocabulary buys headroom only up to about
+2 000 skills. Past that, sharding is not an optimisation — it is the only thing that works, and the
+word table's exemption from sharding (below) is what keeps the per-shard budget reachable.
+
+Build time, by contrast, projected accurately: 4.4 s measured for index build plus serialisation at
+2 111 skills against 4.9 s projected for 2 000. It remains a non-issue.
+
 ### What that says
 
 **Build time is a non-issue.** 73 seconds at 30 000 skills, growing linearly because it is
@@ -50,6 +88,34 @@ The synthetic estimate was optimistic because its documents were 120 tokens wher
 and its term distribution was uniform where real text is Zipfian.
 
 **A single artifact cannot serve 30 000 skills.** 131 MB is not something a hook downloads.
+
+### Script coverage, measured on the same corpus
+
+The 2 111-skill corpus is not monolingual, so the shipped tokenizer's behaviour on it is worth
+stating rather than discovering later.
+
+| | files | share | what the tokenizer sees |
+|---|---|---|---|
+| pure ASCII | 2 014 | 95.4 % | everything |
+| Latin with diacritics (pt, es) | 23 | 1.1 % | **everything** — NFKD folding maps `Você` → `voce` |
+| CJK-heavy (zh, ja) | 74 | 3.5 % | **English fragments only** |
+
+Latin-script languages need no special handling: the accent-folding step already added to
+`tokenize()` preserves them as real, indexable words. **CJK does not survive.** One measured
+example: `sexual-health-analyzer` has 7 276 alphabetic characters and produces **676 tokens**, all
+of them the embedded English and numeric fragments (`when`, `to`, `use`, `iief`, `std`). Roughly 90 %
+of that document is invisible to the index.
+
+Those documents are therefore **degraded, not broken** — they rank on their English fragments. That
+is an acceptable MVP position, but it must be a stated one: `[a-z0-9]+` after ASCII folding is a
+deliberate choice made for determinism (stdlib `re` has no `\p{L}`, and `str.lower()` shifts with
+the Unicode database between Python releases — ADR-0020), and the price is non-Latin scripts.
+Supporting them means either a shipped Unicode category table or a different tokenizer contract,
+and neither is in E1 scope.
+
+Note also what this does **not** explain: non-ASCII files contribute only 3 458 of the corpus's
+56 059 terms (6.2 %). The 35 % vocabulary underestimate above is genuine corpus heterogeneity —
+2 020 top-level directories from many independent authors — not language mixing.
 
 ## Decision
 

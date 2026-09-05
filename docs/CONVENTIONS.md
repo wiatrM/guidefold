@@ -151,3 +151,18 @@ Hand-written per node: only `guidefold.yaml` entry, skills, and an optional `<no
 - `.claude/settings.json` — `SessionStart` and `UserPromptSubmit` → `.agents/skills/guidefold/scripts/guidefold hook`
 - `.github/hooks/guidefold.json` — `sessionStart` → `guidefold prewarm` (fills the cache root — `$GUIDEFOLD_CACHE` if set, else `~/.cache/guidefold` — for the current node chain; output ignored by Copilot by design)
 - `.codex/hooks.json` (repo-local) — template in `skills/guidefold/hooks/codex.hooks.json`. `guidefold init` installs it at `<project>/.codex/hooks.json`, not the home-directory `~/.codex/hooks.json` this doc previously pointed at: `init` only ever writes inside the target repo, and the template's own hook command (`.agents/skills/guidefold/scripts/guidefold hook`) is repo-relative, so it only resolves when the harness's cwd is the repo root — guaranteed for a repo-local hook file, not for one shared across every repo on the machine. `docs/ASSESSMENT.md` §5's Day-1 checklist item 5 tracks verifying repo-local hooks against issue #17532; `~/.codex/hooks.json` remains a documented fallback if that Codex build doesn't fire them.
+
+### Script coverage (MVP)
+
+`tokenize()` normalises NFKD, strips combining marks, lowercases ASCII, and splits on `[a-z0-9]+`.
+Consequences, measured on a 2 111-skill real corpus (ADR-0021):
+
+- **Latin scripts with diacritics are fully supported.** `Você` → `voce`, `Zürich` → `zurich`.
+- **Non-Latin scripts (CJK, Cyrillic, Greek, Arabic) are not indexed.** A CJK skill is retrievable
+  only through whatever English and numeric fragments it contains — measured at ~10 % of one such
+  document's content. Such skills are degraded, not broken.
+
+This is a deliberate trade for determinism (ADR-0020): stdlib `re` has no `\p{L}` classes and
+`str.lower()` shifts with the Unicode database across Python releases. Supporting non-Latin scripts
+requires either a shipped Unicode category table or a different tokenizer contract; both are out of
+MVP scope. Author skills in English unless and until that changes.
