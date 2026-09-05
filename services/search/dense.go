@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -42,6 +43,7 @@ INSERT INTO gf.schema_version VALUES (6) ON CONFLICT DO NOTHING;
 // lives in the Go process. The deployment supplies a content-addressed encoder ID.
 type DenseClient struct {
 	URL, ID, Mode string
+	BatchRequests int
 	HTTP          *http.Client
 	Calls         atomic.Uint64
 	Searches      atomic.Uint64
@@ -64,10 +66,14 @@ func newDenseClient() (*DenseClient, error) {
 	if len(id) != 64 || strings.Trim(id, "0123456789abcdef") != "" {
 		return nil, fmt.Errorf("invalid_encoder_id")
 	}
+	batch, e := strconv.Atoi(env("GUIDEFOLD_TEI_BATCH_REQUESTS", "1"))
+	if e != nil || batch < 1 || batch > 16 {
+		return nil, fmt.Errorf("invalid_tei_batch_requests")
+	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.MaxIdleConnsPerHost = 16
 	transport.MaxConnsPerHost = 16
-	return &DenseClient{URL: strings.TrimRight(raw, "/"), ID: id, Mode: mode,
+	return &DenseClient{URL: strings.TrimRight(raw, "/"), ID: id, Mode: mode, BatchRequests: batch,
 		HTTP: &http.Client{Transport: transport, Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 func (d *DenseClient) request(ctx context.Context, path string, payload any) ([]byte, error) {
@@ -109,16 +115,17 @@ func (d *DenseClient) ready(ctx context.Context) error {
 		return e
 	}
 	var info struct {
-		ServedModelName string `json:"served_model_name"`
-		ModelDtype      string `json:"model_dtype"`
-		MaxInputLength  int    `json:"max_input_length"`
-		ModelType       struct {
+		ServedModelName  string `json:"served_model_name"`
+		ModelDtype       string `json:"model_dtype"`
+		MaxInputLength   int    `json:"max_input_length"`
+		MaxBatchRequests int    `json:"max_batch_requests"`
+		ModelType        struct {
 			Embedding struct {
 				Pooling string `json:"pooling"`
 			} `json:"embedding"`
 		} `json:"model_type"`
 	}
-	if json.Unmarshal(raw, &info) != nil || info.ServedModelName != d.ID || info.ModelDtype != "float16" || info.MaxInputLength != 8192 || info.ModelType.Embedding.Pooling != "last_token" {
+	if json.Unmarshal(raw, &info) != nil || info.ServedModelName != d.ID || info.ModelDtype != "float16" || info.MaxInputLength != 8192 || info.MaxBatchRequests != d.BatchRequests || info.ModelType.Embedding.Pooling != "last_token" {
 		return fail(503, "dense_worker_identity_mismatch")
 	}
 	_, e = d.request(ctx, "/health", nil)
@@ -253,6 +260,20 @@ func fuseCandidates(sparse, dense []Candidate) []Candidate {
 	return out
 }
 
+// GPU publication stages cards/index first; only a complete embedding set may
+// activate the new head. Both ordinary and idempotent reactivation are atomic.
+func activateSnapshot(ctx context.Context, tx pgx.Tx, s *Store, id string) error {
+	mode := env("GUIDEFOLD_PUBLISH_ACTIVATE", "true")
+	if mode == "false" {
+		return nil
+	}
+	if mode != "true" {
+		return fmt.Errorf("invalid_publish_activation")
+	}
+	_, e := tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, s.Tenant, s.Repo, id)
+	return e
+}
+
 func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 	st, e := os.Stat(path)
 	if e != nil {
@@ -276,6 +297,9 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 	}
 	manifest := obj(data["encoder"])
 	encoderID := hash(canonical(manifest))
+	if expected := env("GUIDEFOLD_ENCODER_ID", encoderID); expected != encoderID {
+		return fmt.Errorf("embedding_deployment_identity_mismatch")
+	}
 	if !validEncoderManifest(manifest) || str(data["repo_id"]) != s.Repo {
 		return fmt.Errorf("embedding_identity_mismatch")
 	}
@@ -344,6 +368,12 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 		if oldSHA != str(envelope["sha256"]) {
 			return fmt.Errorf("immutable_embedding_set_conflict")
 		}
+		if e = activateSnapshot(ctx, tx, s, id); e != nil {
+			return e
+		}
+		if e = tx.Commit(ctx); e != nil {
+			return e
+		}
 		fmt.Println(`{"event":"embeddings_already_published"}`)
 		return nil
 	}
@@ -362,6 +392,9 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 		return e
 	}
 	if _, e = tx.Exec(ctx, `INSERT INTO gf.embeddings SELECT tenant,repo,snapshot_id,encoder_id,urn,skill_revision,embedding::vector FROM embedding_import`); e != nil {
+		return e
+	}
+	if e = activateSnapshot(ctx, tx, s, id); e != nil {
 		return e
 	}
 	if e = tx.Commit(ctx); e != nil {

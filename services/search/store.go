@@ -412,7 +412,7 @@ func publish(ctx context.Context, s *Store, path string) error {
 	if e = ensureRouterIndex(ctx, tx, s, id, str(envelope["router_index_sha256"]), terms, len(cards)); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, s.Tenant, s.Repo, id); e != nil {
+	if e = activateSnapshot(ctx, tx, s, id); e != nil {
 		return e
 	}
 	if e = tx.Commit(ctx); e != nil {

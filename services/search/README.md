@@ -1,12 +1,14 @@
 # Native SEARCH/USE: Go + ParadeDB
 
-The running API, migrations and publisher are one static Go executable. BM25 runs
-in ParadeDB's Rust/Tantivy index. The API image contains no Python interpreter.
-Python is used only by existing repository tooling, operator preparation and tests.
+The running API, migrations and publisher are one static Go executable. Default
+SEARCH uses the reference CLI's integer BM25F with Postgres postings. The API image
+contains no Python interpreter; Python is operator and evaluation tooling only.
 
-**Measured status:** loopback latency passes (fresh-client p95 117/138 ms at c1/c4),
-but retrieval admission fails test-B HSR (+10.67 pp). This is a local evaluation
-backend, not the admitted production profile. See the [full report](../../docs/reports/bakeoff/GO-PARADEDB-2026-09-05.md).
+**Measured default:** 0/1000 HTTP/CLI parity mismatches; whole-client p95 116/136 ms
+at c1/c4. See the [default report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).
+The old Tantivy scorer is an explicit, unadmitted reproduction mode.
+An opt-in [GPU profile](GPU.md) adds pinned TEI encoding and exact pgvector fusion;
+it keeps separate quality admission and does not change default ranking.
 
 ## Run with Docker Compose
 
@@ -85,9 +87,9 @@ ranker for reproduction only. Its historical latency numbers do not describe the
 corrected default, and its test-B harmful-skill exposure failed admission. There is
 no automatic fallback to it. The CLI remains unchanged.
 
-Dense is explicitly disabled in this Go backend. The installed pgvector extension and
-nullable vector column are preparation, not an embedding or GPU service. A separately
-versioned encoder/index and measured fusion are required before enabling dense.
+Dense stays disabled in the default deployment. The separate [GPU runbook](GPU.md)
+provides the model/index publication lifecycle, Compose overlay and validation for
+explicit hybrid/dense serving. USE and the harness context contract remain shared.
 
 ## Verify and measure
 

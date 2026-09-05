@@ -36,6 +36,8 @@ index was built from; the two must not drift.
 | [0025](ADR-0025-harness-service-context-contract.md) | One versioned harness-service context contract | Accepted | 2026-09-05 | amends the request boundary of ADR-0023/0024 |
 | [0026](ADR-0026-native-search-paradedb-compose.md) | Go/Postgres hosting and Docker Compose for SEARCH/USE | Accepted | 2026-09-05 | hosting only; preserves ADR-0024 default Router parity and amends the T1 implementation mapping |
 
+| [0027](ADR-0027-gpu-retrieval-profile.md) | Explicit GPU retrieval profile with a pinned TEI worker | Proposed | 2026-09-05 | preserves ADR-0024 default parity; extends ADR-0026 hosting with opt-in GPU |
+
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.
 

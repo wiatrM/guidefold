@@ -215,6 +215,7 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	}
 	if s.Dense != nil {
 		result["model"] = s.Dense.ID
+		result["encoder_batch_requests"] = s.Dense.BatchRequests
 		result["encoder_process"] = true
 		result["live_encode_calls"] = 1
 		result["retrieval"] = M{"engine": "Guidefold BM25F + pgvector exact cosine + TEI GPU", "revision": s.backendName(), "index_revision": c.RouterIndexSHA, "encoder_id": s.Dense.ID, "dense": s.Dense.Mode, "fusion": "rrf-k60-top50-union-full-channel-ranks", "exact_legacy_ranking_parity": false, "quality_admitted": false}
@@ -395,6 +396,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
 		if a.Store.Dense != nil {
 			result["encoder_id"] = a.Store.Dense.ID
+			result["encoder_batch_requests"] = a.Store.Dense.BatchRequests
 			result["retrieval_mode"] = a.Store.Dense.Mode
 			result["live_encode_calls"] = a.Store.Dense.Calls.Load()
 			result["database_dense_calls"] = a.Store.Dense.Searches.Load()

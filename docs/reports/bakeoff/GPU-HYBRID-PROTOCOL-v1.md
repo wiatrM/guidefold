@@ -56,3 +56,19 @@ The GPU profile remains explicit and `quality_admitted:false` until then.
 Sources: [model card](https://huggingface.co/ThakiCloud/SKILLRET-Embedding-0.6B),
 [official formatter](https://github.com/ThakiCloud/SKILLRET/blob/main/skillret/eval.py),
 [TEI](https://huggingface.co/docs/text-embeddings-inference/en/index).
+## Numerical control registered before DEV quality evaluation
+
+The first 800-request latency run passed both budgets but changed 3/600 selected
+card sequences across batching arms (and 67/600 ranked hashes, which also include
+integer scores). No new quality labels have been evaluated. Test batch limit 1 as
+an engineering control with the same model, prompt and fixed document vectors.
+If both latency gates pass and all 600 cross-arm hashes match, offer this profile
+for repeatability and retain the batch-16 measurements/profile for throughput.
+This is a numerical/performance choice, not a quality-tuned model/fusion variant.
+
+Control outcome before DEV quality: batch=1 passed all four latency gates and
+all 600 paired ranked/selected hashes. It is the opt-in GPU overlay default;
+batch=16 remains an explicit throughput experiment. Offline document preparation
+may use batches of eight under a worker limit of 16. The document vectors are
+then immutable and shared by both measured dense/hybrid quality arms. Readiness
+verifies the configured worker batch limit as well as model identity.
