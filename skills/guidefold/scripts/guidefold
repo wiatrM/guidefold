@@ -1592,8 +1592,15 @@ def cmd_hook(a, root):
     injecting from stale state is worse than injecting nothing."""
     sha = _git_head_short(root)
     seconds = float(os.environ.get("GUIDEFOLD_HOOK_TIMEOUT_S", HOOK_WATCHDOG_SECONDS_DEFAULT))
-    cancel = _install_watchdog(seconds)
+    # Arm the watchdog *inside* the try. With a deadline that has effectively already passed,
+    # setitimer delivers SIGALRM synchronously inside _install_watchdog itself; if the arming
+    # sits outside the try, _HookTimeout escapes cmd_hook and main(), and the hook exits 1 with
+    # a traceback instead of exiting 0 silently. Observed on CPython 3.10 in CI while 3.11/3.12
+    # happened to win the race — which is exactly why the contract is enforced by a test rather
+    # than by timing luck.
+    cancel = lambda: None
     try:
+        cancel = _install_watchdog(seconds)
         try:
             payload = json.load(sys.stdin)
         except _HookTimeout:

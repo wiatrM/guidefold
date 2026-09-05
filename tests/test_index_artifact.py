@@ -245,7 +245,10 @@ def test_commit_time_returns_a_parseable_iso8601_timestamp_for_a_real_sha(gf, fi
     sha = gf._git_head_short(fixture_root)
     t = gf._commit_time(fixture_root, sha)
     assert t is not None
-    datetime.fromisoformat(t)  # raises ValueError if not a valid ISO-8601 timestamp
+    # `git show -s --format=%cI` yields a trailing "Z" for UTC. datetime.fromisoformat only
+    # learned to accept "Z" in CPython 3.11, and the CLI must work on 3.10 (see ci.yml matrix),
+    # so normalise before parsing rather than narrowing what the manifest is allowed to contain.
+    datetime.fromisoformat(t.replace("Z", "+00:00"))  # raises ValueError if not valid ISO-8601
 
 
 # ------------------------------------------------------------------ index --check
