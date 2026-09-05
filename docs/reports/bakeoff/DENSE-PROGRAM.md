@@ -241,3 +241,35 @@ Derived from `full_text` alone on test-B, agreement vs authored fields: edges P/
 negative triggers, 91.1 % `similar`, 4.5 % `requires`. A semantic-reversal bug ("do not use for X"
 read as a trigger for X) was found and fixed; a corpus-wide frequency guard drops boilerplate
 negative phrases. Family evaluation (`all_required@4` on dev, then tests) pending.
+
+### 2026-09-05 — full-encoder R1 reference on test-B (SkillRetBench), PR #35
+
+Resolves the "(pending)" note in the PR #30 entry above: **the full `SKILLRET-Embedding-0.6B`
+encoder** (same pinned revision as the test-A reference, not the distilled static student) run
+through the product path on test-B, both `node_scoped` and fair `_root`, tooling defaults,
+`w_dense=1`, no tuning. Gates nothing (v2.1 §6).
+
+- **Fair `_root` setting:** `hit@1` **+8.33 pp** [+5.75,+11.25], `nDCG@10` +8.05 pp — both clear
+  improvements, roughly a third of test-A's `hit@1` gain (+21.79 pp). `all_required@4` **+0.67 pp
+  [−1.50,+2.83]** — CI straddles zero, fails the +2 pp/CI-excludes-0 gate rule outright, in sharp
+  contrast to test-A's +17.96 pp [+16.80,+19.08]. HSR@4 (distractor exposure) **−10.00 pp
+  [−15.67,−4.00]** — a significant reduction, the strongest unambiguous win in this run; the one
+  regression is `distractor`@`_root` `hit@1` (−7.33 pp, outside tolerance).
+- **Candidate coverage** (BM25F top-50 misses the dense candidates recover): **8.76 %** at `_root`,
+  11.50 % at `node_scoped` — both far below test-A's **39.6 %**, and close to (a little above) the
+  distilled student's 7.64 % from PR #30. Read together with the quality deltas above, this
+  separates two previously-conflated effects: the full encoder generalises to an unrelated corpus
+  *modestly* (hit@1/nDCG@10/HSR@4 all improve; `all_required@4` does not), while PR #30's
+  distillation *separately and additionally* destroyed quality (every gate failed there, vs several
+  passing here) — the cross-corpus generalisation gap (test-A → test-B) is the larger of the two
+  effects and is not a distillation artifact.
+- Full tables (all 5 settings × 2 node settings × all-queries/Latin-only), the IR-aligned
+  comparison against the dataset's own BM25 (`_root`, where R1 now beats it on recall@10/MRR),
+  the new full paired-bootstrap CI on HSR@4/`distractor_rate@4` (`hsr_bootstrap_report`, extending
+  `dense_vs_b1_gate_report`'s point-estimate-only HSR row), and the overlap caveat (6/501 skill
+  names, 1.2 %, exact-match with SkillRet's 6 006 — quoted from PR #30):
+  `docs/reports/bakeoff/SkillRetBench-R1-encoder-2026-09-05.md`.
+- Code: the encoder-backed `DenseCandidateRouter`/quantisation/cache machinery was factored out of
+  `tools/eval/skillret.py` into a corpus-agnostic `tools/eval/dense_ref.py`; both `skillret.py`
+  (test-A) and the new `tools/eval/skillretbench_r1.py` (test-B) now call it, rather than each
+  reimplementing it.

@@ -374,6 +374,12 @@ def run_case(router, case: dict, node_key: str, k: int = EVAL_K) -> dict:
     visibility and the (unconditional) requires-closure walk inside select(), per ADR-0022."""
     node = case[node_key]
     query = case["query"]
+    # Additive, backward-compatible: a no-op for the plain (word-table) Router arms already in
+    # this module. Lets a tools/eval/dense_ref.py `DenseCandidateRouter` (keyed by qid, since its
+    # `_dense_scores(query, visible)` signature carries only query text) be driven through this
+    # same run_case/run_arm without duplicating either — see tools/eval/skillretbench_r1.py.
+    if hasattr(router, "_current_qid"):
+        router._current_qid = case["id"]
     admissible, drops = router.policy_filter(node, query)
     admissible_set = set(admissible)
     cands = router.candidates(query, node)

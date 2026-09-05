@@ -62,6 +62,7 @@ for _p in (str(EVAL_DIR), str(TESTS_DIR)):
         sys.path.insert(0, _p)
 
 import corpora  # tools/eval/corpora.py — stdlib only
+import dense_ref  # tools/eval/dense_ref.py — encoder-backed dense Router, shared w/ skillretbench_r1
 import metrics  # tools/eval/metrics.py — stdlib only
 from _router_helpers import make_card  # tests/_router_helpers.py — the card shape
 
@@ -183,42 +184,13 @@ def node_settings(cli, cases: list, skills_by_id: dict, major_slug_of: dict) -> 
 
 
 # --------------------------------------------------------------------------- dense candidate router
-class DenseCandidateRouter:
-    """Mixin applied over the loaded CLI's Router class (see `make_dense_router_class`).
-    Overrides only `_dense_scores`; `candidates`/`score`/`select`/`route`/`policy_filter` are the
-    unmodified base class (ADR-0022: no arm bypasses the filter).
-
-    The base `_dense_scores` sums per-word vectors from `idx.word_vectors` (a global word table) —
-    incompatible with precomputed per-document encoder embeddings, so it is replaced wholesale.
-    `idx.skill_vectors` is left empty; encoder vectors live in `self.skill_mat` (int8) instead,
-    keyed by `self.row_of[urn]`. Query vectors are also int8 and are selected by qid via
-    `self._current_qid`, set by the caller immediately before `candidates()`/`route()` — the base
-    `_dense_scores(query, visible)` signature carries query *text*, not an id, so this is the
-    narrowest way to key the precomputed table without touching the base class.
-    """
-
-    def _dense_scores(self, query, visible):
-        idx = self.index
-        qvec = self.query_vec_of.get(self._current_qid)
-        if qvec is None:
-            return {}
-        import numpy as np
-        urns_visible = [u for u in visible if u in self.row_of]
-        if not urns_visible:
-            return {}
-        rows = np.asarray([self.row_of[u] for u in urns_visible], dtype=np.int64)
-        sub = self.skill_mat[rows].astype(np.int64)
-        dots = sub @ qvec
-        out = {}
-        for u, d in zip(urns_visible, dots.tolist()):
-            # Plain Python ints (arbitrary precision): _dense_rank's sign*dot*dot*normsq
-            # comparison overflows numpy int64 at these magnitudes (dims=1024, int8 range).
-            out[u] = (int(d), int(idx.skill_normsq.get(u, 0)))
-        return out
-
-
-def make_dense_router_class(cli):
-    return type("SkillretDenseRouter", (DenseCandidateRouter, cli.Router), {})
+# The encoder-backed dense Router (mixin overriding only `_dense_scores`) is corpus-agnostic and
+# now lives in tools/eval/dense_ref.py, shared verbatim with tools/eval/skillretbench_r1.py (the
+# test-B/SkillRetBench R1-encoder runner) — see DENSE-PROGRAM.md v2.1 §6. These names are kept as
+# thin aliases/wrappers so this module's existing public API (and tests/test_skillret_eval.py,
+# which calls `skillret.build_r1_index_and_router` directly) is unchanged.
+DenseCandidateRouter = dense_ref.DenseCandidateRouter
+make_dense_router_class = dense_ref.make_dense_router_class
 
 
 def build_r0_index(cli, cards, nodes):
@@ -226,21 +198,8 @@ def build_r0_index(cli, cards, nodes):
 
 
 def build_r1_index_and_router(cli, cards, nodes, row_of, skill_mat, query_vec_of):
-    import numpy as np
-    idx = cli.Index.from_cards(cards, nodes, weights={"w_dense": 1}, word_vectors=None)
-    normsq = (skill_mat.astype(np.int64) ** 2).sum(axis=1)
-    missing = [u for u in cards if u not in row_of]
-    if missing:
-        raise SystemExit(f"skillret r1: {len(missing)} cards have no cached embedding "
-                          f"(encode cache stale?) e.g. {missing[:3]}")
-    idx.skill_normsq = {u: int(normsq[row_of[u]]) for u in cards}
-    router_cls = make_dense_router_class(cli)
-    router = router_cls(idx)
-    router.row_of = row_of
-    router.skill_mat = skill_mat
-    router.query_vec_of = query_vec_of
-    router._current_qid = None
-    return idx, router
+    return dense_ref.build_dense_index_and_router(
+        cli, cards, nodes, row_of, skill_mat, query_vec_of, weights={"w_dense": 1})
 
 
 # --------------------------------------------------------------------------- per-query run (single process body)
@@ -530,51 +489,22 @@ def cmd_encode(args):
     enc_skills = bakeoff_encode.Encoder(MODEL_HF_ID, MODEL_REV, batch_size=args.skill_batch_size)
     enc_queries = bakeoff_encode.Encoder(MODEL_HF_ID, MODEL_REV)
 
-    def encode_chunked(enc, texts, is_query, chunk_size, label):
-        """Chunks the call to Encoder.encode() itself (not just batch_size): encode() caches to
-        disk only after the WHOLE list it was given returns successfully, so one call over all
-        6 006 skills would lose every result to a single OOM anywhere in the middle. Chunking
-        means a crash only costs its own chunk, and a rerun of `encode` resumes for free (already-
-        cached texts are a cache hit inside Encoder.encode)."""
-        out = [None] * len(texts)
-        for start in range(0, len(texts), chunk_size):
-            chunk = texts[start:start + chunk_size]
-            ct0 = time.time()
-            vecs = enc.encode(chunk, is_query=is_query)
-            dt = time.time() - ct0
-            for i in range(len(chunk)):
-                out[start + i] = vecs[i]
-            print(f"  {label}: {start + len(chunk)}/{len(texts)} "
-                  f"({dt:.1f}s this chunk, {dt / max(len(chunk), 1) * 1000:.1f} ms/item)", flush=True)
-        return np.stack(out, axis=0).astype(np.float32)
-
+    # encode_chunked/quantize/quant_cosine now live in tools/eval/dense_ref.py, shared verbatim
+    # with tools/eval/skillretbench_r1.py's own `encode` subcommand (test-B) — see DENSE-PROGRAM.md
+    # v2.1 §6. Behaviour here is byte-for-byte the same as before the extraction.
     t0 = time.time()
-    skill_vecs = encode_chunked(enc_skills, skill_texts, False, args.skill_chunk_size, "skills")
+    skill_vecs = dense_ref.encode_chunked(
+        enc_skills, skill_texts, False, args.skill_chunk_size, "skills")
     t1 = time.time()
-    query_vecs = encode_chunked(enc_queries, query_texts, True, 500, "queries")
+    query_vecs = dense_ref.encode_chunked(enc_queries, query_texts, True, 500, "queries")
     t2 = time.time()
 
-    def quantize(mat):
-        return np.clip(np.round(mat * 127.0), -127, 127).astype(np.int8)
+    skill_q = dense_ref.quantize(skill_vecs)
+    query_q = dense_ref.quantize(query_vecs)
 
-    skill_q = quantize(skill_vecs)
-    query_q = quantize(query_vecs)
+    skill_cos = dense_ref.quant_cosine(skill_vecs, skill_q)
+    query_cos = dense_ref.quant_cosine(query_vecs, query_q)
 
-    def quant_cosine(orig, q):
-        deq = q.astype(np.float32) / 127.0
-        num = (orig * deq).sum(axis=1)
-        den = np.linalg.norm(orig, axis=1) * np.linalg.norm(deq, axis=1)
-        den = np.where(den == 0, 1.0, den)
-        return num / den
-
-    skill_cos = quant_cosine(skill_vecs, skill_q)
-    query_cos = quant_cosine(query_vecs, query_q)
-
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    np.save(CACHE_DIR / "skill_vectors.i8.npy", skill_q)
-    np.save(CACHE_DIR / "query_vectors.i8.npy", query_q)
-    (CACHE_DIR / "skill_order.json").write_text(json.dumps(skill_order))
-    (CACHE_DIR / "query_order.json").write_text(json.dumps(query_order))
     max_seq_len = getattr(getattr(enc_skills, "_model", None), "max_seq_length", None)
     meta = {
         "hf_id": MODEL_HF_ID, "revision": MODEL_REV, "dims": int(skill_vecs.shape[1]),
@@ -588,23 +518,18 @@ def cmd_encode(args):
         "quant_error_queries": {"mean_cosine": float(query_cos.mean()),
                                  "min_cosine": float(query_cos.min())},
     }
-    (CACHE_DIR / "meta.json").write_text(json.dumps(meta, indent=2))
+    dense_ref.write_dense_cache(CACHE_DIR, skill_order, query_order, skill_q, query_q, meta)
     print(json.dumps(meta, indent=2))
 
 
 def load_dense_cache():
-    import numpy as np
-    if not (CACHE_DIR / "meta.json").exists():
+    """skillret.py's own convenience wrapper bound to its module-level CACHE_DIR; the shared,
+    cache-dir-parameterized implementation is dense_ref.load_dense_cache."""
+    try:
+        return dense_ref.load_dense_cache(CACHE_DIR)
+    except SystemExit:
         raise SystemExit(f"skillret: no encode cache at {CACHE_DIR} — run `skillret.py encode` "
                           f"under {GPU_VENV_PYTHON} first")
-    meta = json.loads((CACHE_DIR / "meta.json").read_text())
-    skill_order = json.loads((CACHE_DIR / "skill_order.json").read_text())
-    query_order = json.loads((CACHE_DIR / "query_order.json").read_text())
-    skill_mat = np.load(CACHE_DIR / "skill_vectors.i8.npy")
-    query_mat = np.load(CACHE_DIR / "query_vectors.i8.npy")
-    row_of = {u: i for i, u in enumerate(skill_order)}
-    query_vec_of = {qid: query_mat[i].astype(np.int64) for i, qid in enumerate(query_order)}
-    return meta, row_of, skill_mat, query_vec_of
 
 
 # --------------------------------------------------------------------------- cmd: r0 / r1
