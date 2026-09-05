@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2
+# Dense retrieval programme — pre-registered, v2.1
 
-**Status:** Pre-registered 2026-09-05 (v1, PR #26); **amended to v2 the same day after methodological
-review, before any result was measured.** The v1 text is in git history. Results are appended under
+**Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
+review; **v2.1 adds family F5 (offline enrichment) — still before any result was measured.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -85,6 +85,16 @@ then the best-on-dev configuration is frozen and run once on each test corpus.
 | **F2 static** | (a) prebuilt `potion-retrieval-32M` quantised to our table; (b) Model2Vec-proper distillation from **two** teachers (SKILLRET, Qwen3), their weighting, PCA-256, int8; (c) if budget remains, a static student trained on SKILLRET train with 4-source negatives | T300 | ≤ 8 total |
 | **F3 document expansion** | doc2query-T5 pseudo-queries per skill at index time, indexed as a sixth BM25F field; lexical at query time | T300 | ≤ 4 (n queries per doc, field weight) |
 | **F4 small contextual** | MiniLM-class ONNX (~22M) via onnxruntime from Python; measured, not estimated | T500 | ≤ 4 |
+| **F5 offline enrichment** *(v2.1)* | derive the fields real skills lack — `triggers` from "when to use" sections, `negative_triggers` from "do not use", `requires`/`similar` edges from body mentions of other skills — at index time (GoS "parser-first normalisation"; SkillRetBench's own `trigger_phrases`); the runtime is unchanged sparse | T300 | ≤ 4 (which sections; edge threshold; whether an LLM pass is allowed) |
+
+**Why F5 exists (v2.1).** Real skills do not carry our fields. Measured 2026-09-05: SkillRetBench
+has analogues (85 % `trigger_phrases`, 100 % `anti_triggers`, 66 % with `composable_skills`,
+1 241 edges); SKILLRET-test has none (name, description, body, taxonomy only); of 2 037 real local
+skills, 4 have any of our fields — yet **93 % mention another skill by name in the body (9 274
+candidate edges), 84 % have a "when to use" section, 25 % a "do not use" section.** The fields are
+derivable. F5 tests whether deriving them recovers what authored fields give, on corpora that have
+none. Its evaluation is the same as every family's: dev budget, freeze, both tests once. Its
+gate is the same too — a derived `requires` graph must raise `all_required@4`, not merely exist.
 
 Families are independent: F3 runs regardless of F1/F2; F4 runs regardless of F2. F1's result may
 inform how much *effort* is spent, never whether another family is *allowed* to run.
