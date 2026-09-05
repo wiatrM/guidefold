@@ -63,6 +63,7 @@ type Store struct {
 	Tenant, Repo, PolicySHA, Version string
 	LexicalEngine                    string
 	Dense                            *DenseClient
+	Shadow                           *ShadowWorker
 	mu                               sync.Mutex
 	cached                           *Catalog
 	Searches, Uses                   atomic.Uint64
@@ -255,7 +256,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(78350001)`); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, migration+routerMigration+denseMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, migration+routerMigration+denseMigration+telemetryMigration+shadowMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	password, e := secret(env("APP_PASSWORD_FILE", "/run/secrets/app_password"))
@@ -270,7 +271,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `ALTER ROLE guidefold_api PASSWORD `+escaped); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `GRANT CONNECT ON DATABASE guidefold TO guidefold_api; GRANT USAGE ON SCHEMA gf TO guidefold_api; GRANT SELECT ON ALL TABLES IN SCHEMA gf TO guidefold_api; ALTER ROLE guidefold_api SET default_transaction_read_only=on;`, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, `GRANT CONNECT ON DATABASE guidefold TO guidefold_api; GRANT USAGE ON SCHEMA gf TO guidefold_api; GRANT SELECT ON ALL TABLES IN SCHEMA gf TO guidefold_api; GRANT INSERT ON gf.events,gf.search_shadow TO guidefold_api; ALTER ROLE guidefold_api SET default_transaction_read_only=on;`, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	// Upgrade already published snapshots as well as empty, first-time installs.

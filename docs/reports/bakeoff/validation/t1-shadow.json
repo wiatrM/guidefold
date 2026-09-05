@@ -1,0 +1,127 @@
+{
+  "passed": true,
+  "http_attempts_shadow_on": 12,
+  "concurrency": 4,
+  "full_stable_payload_parity_passed": true,
+  "excluded_volatile_fields": [
+    "request_id",
+    "search_id",
+    "stages_ms"
+  ],
+  "byte_exact_delivery_unit_test": "TestShadowCannotChangeDeliveredBytesOrWaitForGPU",
+  "byte_exact_across_independent_http_requests_claimed": false,
+  "search_results_and_load_join_passed": true,
+  "joined_event_counts": {
+    "search_results": 1,
+    "skill_load_completed": 1,
+    "skill_load_requested": 1
+  },
+  "client_emitter_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+  "client_file_modified": false,
+  "gpu_outage_keeps_sparse_ready_and_identical_stable_payload": true,
+  "worker_recovery_passed": true,
+  "snapshot_pinned": true,
+  "rows": [
+    {
+      "search_id": "b72cdd00-76ca-4884-98d3-cb6f42601e0e",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 6.66123900009552,
+      "stable_response_sha256": "ab31e50e7d399833b262e40affdd57714ad2434f2bc56032e442359a443d6b04",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "722f58a0-06af-4310-a19d-bc6977978e69",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 5.504590000782628,
+      "stable_response_sha256": "118d37bd4b94f850d25cb53ebc6e2f6576b93ef4ea1c8003841162d38da19d8d",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "107c9f7d-9d6e-4052-ac67-63a189473d2b",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 15.762964998430107,
+      "stable_response_sha256": "8bedaaf06f3a4965ba778fb227fac8653cfe89a481ba08fb5436bc41dfb8fa5f",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "93f0028e-ff17-40ec-b471-e4aa2e0ca5e3",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 13.094877998810261,
+      "stable_response_sha256": "ab31e50e7d399833b262e40affdd57714ad2434f2bc56032e442359a443d6b04",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "ec8ae552-517a-4d4e-ba58-6c90df0167a2",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 6.528129997604992,
+      "stable_response_sha256": "118d37bd4b94f850d25cb53ebc6e2f6576b93ef4ea1c8003841162d38da19d8d",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "e19f48be-baa1-491d-ad4e-6d14fb836225",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 4.19025599694578,
+      "stable_response_sha256": "8bedaaf06f3a4965ba778fb227fac8653cfe89a481ba08fb5436bc41dfb8fa5f",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "21335a64-81ea-4eba-9fc4-b1d256fb72c7",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 9.576081996783614,
+      "stable_response_sha256": "ab31e50e7d399833b262e40affdd57714ad2434f2bc56032e442359a443d6b04",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "9cdea0f8-b5f6-4408-ae34-baebf22afff4",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 7.195979000243824,
+      "stable_response_sha256": "118d37bd4b94f850d25cb53ebc6e2f6576b93ef4ea1c8003841162d38da19d8d",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "e00bbe9d-c84a-4511-baf9-1ee956275d20",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 4.7337249998236075,
+      "stable_response_sha256": "8bedaaf06f3a4965ba778fb227fac8653cfe89a481ba08fb5436bc41dfb8fa5f",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "63216dcd-027d-4350-a8c4-c9d8a3baac45",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 5.8787369998754,
+      "stable_response_sha256": "ab31e50e7d399833b262e40affdd57714ad2434f2bc56032e442359a443d6b04",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "4778cf95-76fb-4207-bafc-4459af649645",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 6.21175899868831,
+      "stable_response_sha256": "118d37bd4b94f850d25cb53ebc6e2f6576b93ef4ea1c8003841162d38da19d8d",
+      "shadow_status": "ok"
+    },
+    {
+      "search_id": "bcda30a8-bdaf-4ee2-a8fe-3ecf8944ee25",
+      "snapshot": "repository:4e030107c4a4e9e6c99d45401f5f174119cdd892599861d718cbafb2bae15e42",
+      "elapsed_ms": 4.560793000564445,
+      "stable_response_sha256": "8bedaaf06f3a4965ba778fb227fac8653cfe89a481ba08fb5436bc41dfb8fa5f",
+      "shadow_status": "ok"
+    }
+  ],
+  "production_ready": false,
+  "source_sha256": {
+    "services/search/bm25f.go": "2f2125afd693d666e3cdcc92ca960ba0d300a9d90b1646b851e466f0da5f5dbd",
+    "services/search/bm25f_test.go": "f0985c86f896411fa82cf675c2b3813c3538006328ada3f6bdf6a20164b0b17a",
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/dense.go": "6aa2bf8b860bd4ecde96fb1a793d783acc0fc595b0e354a33c44cb1cc32aee18",
+    "services/search/dense_test.go": "f5afc5e62851271d619a1e676b48a061cf85067698f17e14365ff49718ec8976",
+    "services/search/main.go": "766d91140e38d9158ff9bb970970b22efbc99ff62ceef535f4acf0066658db7d",
+    "services/search/routing.go": "2ec53ab2837d968268e993f82d51a6391634c17dfa16351459a5b0ebceee5c66",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/shadow.go": "4b7b101769088d6b8ba8ad34948aa01c3aa512fab52a9d14aaf4af38cfeb204a",
+    "services/search/shadow_test.go": "3f5b7dbe98e35851ad1c99ca6a841cfc986e6b00871b3b64a9eff558f2624b78",
+    "services/search/store.go": "8e872922f536b066c3b81735ec465eeb2894a17d5453df03196ab589f28d95b5",
+    "services/search/telemetry.go": "2b1f2c17574f5ebb2804042b432386d9130d557033ddea5e8a95d60f5c8af5c5",
+    "services/search/telemetry_test.go": "21d1a72abb0ae894329433250592f93385ea4a1c9a84835f84077e1968b76821"
+  },
+  "cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e"
+}

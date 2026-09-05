@@ -4,6 +4,7 @@ rollups reconcile with raw counts and duplicate replay leaves counts unchanged. 
 absent feedback and unknown outcomes never become successful use."
 """
 import datetime
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -18,9 +19,13 @@ SKILL = "urn:skill:acme:widget"
 REV = "rev1"
 
 
-@pytest.fixture
-def gf_conn(tmp_path):
-    conn = ledger.connect(tmp_path / "ledger.sqlite3")
+@pytest.fixture(params=("sqlite", "postgres") if os.environ.get("GUIDEFOLD_TEST_POSTGRES_LEDGER") == "1" else ("sqlite",))
+def gf_conn(tmp_path, request):
+    if request.param == "postgres":
+        from tools.search_service.telemetry_backend import contract_connection
+        conn = contract_connection()
+    else:
+        conn = ledger.connect(tmp_path / "ledger.sqlite3")
     yield conn
     conn.close()
 

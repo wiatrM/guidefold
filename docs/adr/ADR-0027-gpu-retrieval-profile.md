@@ -47,11 +47,21 @@ Readiness verifies both model identity and configured batch limit. TEI's queue,
 concurrency, token budget, Go slots, HTTP connections and encoder deadlines are bounded.
 Bulk document indexing must not share an online SLO measurement window.
 
-The default `compose.yaml` remains sparse BM25F and requires no GPU. GPU profile
-responses expose model, retrieval mode, batch limit and `quality_admitted:false`.
-API 1.1, scope/path interpretation, loaded-skill handling, budgets and exact USE
-hydration remain shared. A worker outage fails SEARCH explicitly; it does not change
-the ranker silently. USE can still read the database. No harness or CLI code changes.
+Both base Compose and the GPU overlay return sparse BM25F. The overlay enables
+bounded asynchronous shadow: deliver the sparse response first, then enqueue its
+pinned snapshot, top 20 ranks, delivered selection and search_id. Four workers compute
+the hybrid with the same policy/select and persist comparison ranks, timings and
+model identity in `gf.search_shadow`. Query/path text is transient. GPU failure becomes
+a shadow error; sparse SEARCH and USE remain available. The queue is observational,
+not durable: overflow, shutdown and DB failure can lose records and must enter coverage
+reporting. No new shadow fields are added to the frozen SEARCH response.
+
+API 1.1, scope/path interpretation, loaded skills, budgets and exact USE hydration stay
+shared; backend/degradation_reason are always present. Direct hybrid/dense responses
+require both shadow disabled and GUIDEFOLD_EXPERIMENTAL_OUTPUT=true. Their model and
+quality_admitted:false diagnostics belong only to the explicitly registered experiment.
+No harness or CLI code changes. The shadow compute deadline does not change the inline
+experimental deadline or the 300/400 ms release budgets.
 
 ## Validation and admission
 
@@ -67,7 +77,9 @@ harness evaluation are necessary before any default-profile or production admiss
 The GPU deployment has a separate dependency and failure mode, model storage and
 index-publication lifecycle. The Go API remains model-free; no Python runs on its
 request path. This release establishes a reproducible Compose implementation, not
-HA, Kubernetes, durable telemetry, IAM or production scale. Kubernetes work should
+HA, Kubernetes, IAM or production scale. The accompanying Postgres event ingest ports
+the existing SQLite ledger contract and reuses its report logic; this does not complete
+the pending authenticated client adapter or a clean-VM/target-network acceptance test. Kubernetes work should
 separate GPU serving and indexing capacity and retain these identities and gates.
 
 [Runbook](../../services/search/GPU.md). Primary references:

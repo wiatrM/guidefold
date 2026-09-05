@@ -1,8 +1,10 @@
 # GPU SEARCH: Go + Postgres + TEI
 
 This is an explicit experimental profile. Default Compose stays on exact CLI BM25F.
-The GPU profile serves hybrid or dense results with `quality_admitted:false`; DEV
-results cannot establish HSR or independent transfer. See [ADR-0027](../../docs/adr/ADR-0027-gpu-retrieval-profile.md)
+The GPU overlay also returns exact sparse results; it runs hybrid retrieval in
+background shadow and stores the comparison in Postgres. Direct neural responses
+require an explicit research-only override. DEV results cannot establish HSR or
+independent transfer. See [ADR-0027](../../docs/adr/ADR-0027-gpu-retrieval-profile.md)
 and the [registered protocol](../../docs/reports/bakeoff/GPU-HYBRID-PROTOCOL-v1.md).
 
 ## Deploy a local fixture
@@ -49,7 +51,8 @@ API/worker deployment configured with that identity.
 
 Online default: FP16, last-token pooling, normalized vectors, 8192-token maximum,
 two tokenizer workers, 32 TEI concurrent requests, eight API slots, one request per
-forward. The API runs one encode alongside BM25F, then exact pgvector cosine search
+forward. After delivering the sparse response, one of four background workers runs an encode
+alongside BM25F, then exact pgvector cosine search
 and equal RRF k=60 over the top-50 union, retaining full channel ranks. The same
 scope/negative/status policy applies before retrieval; existing closure/select and
 SEARCH/USE schemas apply afterwards. No query embedding cache is used.
@@ -58,30 +61,59 @@ SEARCH/USE schemas apply afterwards. No query embedding cache is used.
 throughput experiment. It produced small cross-batch FP16 ranking changes; its first
 run changed 3/600 selections. Restore `GUIDEFOLD_TEI_BATCH_REQUESTS=1` for the
 repeatability profile. Set this value on every relevant Compose invocation, or save
-it in the generated local env file. API readiness rejects a mismatched worker limit.
+it in the generated local env file. Shadow records an error for a mismatched worker limit; primary readiness remains sparse.
 Document preparation can use batches of eight with the worker at 16, but do not mix
 bulk indexing with online traffic/SLO measurement. The published vectors are fixed.
 
-`GUIDEFOLD_RETRIEVAL_MODE=dense dc up -d --wait api` starts the prespecified ablation;
-`hybrid` restores fusion. Neither setting changes the sparse default deployment.
-Query truncation is disabled in the API; document preparation truncates to the
-manifest's 8192 tokens. The encoder deadline is 250 ms within the request deadline.
-GPU/queue failure returns a 503/504 without returning another ranker's results.
-Health checks expose readiness and model/batch identity; USE needs the DB, not the GPU.
+Shadow has a 32-job bounded queue, four workers, a one-second encode timeout and a
+two-second compute deadline. It pins the snapshot observed by the sparse request.
+`gf.search_shadow` retains the top 20 sparse/hybrid ranks, delivered sparse selection,
+hybrid selection, timings, encoder identity and `search_id`; no query or path text.
+Queue overflow and persistence failure log the search ID. GPU failure records an
+error, never inserts neural cards into SEARCH, and leaves sparse readiness available.
+Shutdown or queue overflow can lose shadow jobs; this observational queue is not a
+durable event spool. Compare records with client search events to report coverage.
+
+Inspect one comparison through the operator command:
+
+```sh
+dc exec -T api /app/guidefold-search shadow-export SEARCH_ID
+```
+
+It includes event counts joined by authenticated tenant and `search_id`.
+[The T1 runbook](../../deploy/t1/README.md) covers event export, reports and retention.
+Query truncation is disabled; document preparation truncates to 8192 tokens.
+
+Only to reproduce an already registered direct-output experiment, set all three:
+
+```sh
+GUIDEFOLD_SHADOW=false GUIDEFOLD_EXPERIMENTAL_OUTPUT=true GUIDEFOLD_RETRIEVAL_MODE=dense dc up -d --wait api
+# Restore the supported response path:
+GUIDEFOLD_SHADOW=true GUIDEFOLD_EXPERIMENTAL_OUTPUT=false GUIDEFOLD_RETRIEVAL_MODE=sparse dc up -d --wait api
+```
+
+`hybrid` is the other recorded treatment. Inline experiments keep their 250 ms encode
+timeout and explicit 503/504 failure; their historical latency is not a measurement
+of shadow throughput. No new quality trial or weight tuning is authorized by these
+commands. Coordinate every additional configuration in DENSE-PROGRAM section 7.
 
 ## Reproduce validation
 
 ```sh
 python3 tools/search_service/gpu_probe.py --source /path/to/pinned/checkpoint
-python3 tools/search_service/gpu_smoke.py --bundle .guidefold/compose/embeddings.json
+python3 tools/search_service/shadow_integration.py
+# gpu_smoke.py is the historical direct-output experiment, requiring the overrides above.
 ```
 
 The numerical probe additionally needs the pinned checkpoint's PyTorch /
 SentenceTransformers environment, NumPy and the cached public corpus. It compares
 40 DEV queries, 32 documents and four synthetic inputs against PyTorch FP16.
-The smoke test stops/starts only this project's TEI worker, validates API schemas,
-checks no silent fallback, exact USE checksums, recovery and rejected publication.
-It restores the worker even if the outage assertions fail.
+The shadow integration test needs the 26-card fixture bundle at
+`.guidefold/compose/fixture-embeddings.json` (use `gpu.py encode --output .guidefold/compose/fixture-embeddings.json`), verifies
+sparse response equivalence, exact USE checksums, client-event joins and GPU outage
+recovery. It stops/starts only this project's TEI worker. Fresh UUIDs/timings are
+excluded from comparisons across separate HTTP requests; a Go unit test verifies
+byte-exact delivery of a fixed response before enqueue. Neither is a quality test.
 
 For the established 200-query / 6006-document latency workload, first use
 `benchmark.py prepare`, stage `benchmark-snapshot.json` with repo

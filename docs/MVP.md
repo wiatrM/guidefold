@@ -260,8 +260,10 @@ integer scoring over Postgres postings. Tantivy remains an explicit experiment. 
 This replaces the Python spike as the implementation target while preserving its
 reports. Default sparse routing must pass exact CLI parity, including the full retrieval
 stage; shared policy fixtures alone are insufficient. Dense remains a separate admitted/shadow evaluation.
-Kubernetes deployment, production IAM/network/HA and durable E6.4 SEARCH/USE telemetry
-are subsequent work, not implied by local Compose success.
+Kubernetes deployment, production IAM/network/HA and authenticated harness integration
+remain subsequent work. E6.4 now has a Go/Postgres ledger port with the same SQLite
+contract/report tests and replay evidence; [T1 operations](../deploy/t1/README.md)
+records the pending clean-VM acceptance. Local Compose success does not close these gates.
 
 **Completed reference:** [Go/ParadeDB report](reports/bakeoff/GO-PARADEDB-2026-09-05.md):
 800/800 SEARCH requests, HTTP p95 21/28 ms and fresh-client p95 117/138 ms at c1/c4.
@@ -269,7 +271,8 @@ Retrieval quality **is not admitted**: test-B HSR rises from 39.67% to 50.33%, e
 the +1 pp guardrail. The prior admitted sparse profile keeps its status. These numbers describe only
 the experimental Tantivy mode; the corrected default serves the reference BM25F. [GPU serving follow-up](reports/bakeoff/DENSE-SERVING-NEXT-2026-09-05.md)
 is followed by an opt-in [TEI GPU implementation](../services/search/GPU.md) and
-a [bounded DEV protocol](reports/bakeoff/GPU-HYBRID-PROTOCOL-v1.md). This neither
+a [bounded DEV protocol](reports/bakeoff/GPU-HYBRID-PROTOCOL-v1.md). Both base and GPU
+deployments return sparse; hybrid runs in bounded shadow joined by search_id. This neither
 reopens spent test budgets nor admits a new default ranker.
 
 Default-router correction and measured parity/latency: [report](reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

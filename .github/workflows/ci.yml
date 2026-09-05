@@ -92,7 +92,8 @@ jobs:
         run: |
           python tools/search_service/contract_fixtures.py
           python tools/search_service/bm25f_fixtures.py
-          git diff --exit-code -- services/search/testdata/policy.json services/search/testdata/bm25f.json
+          python tools/search_service/telemetry_fixtures.py
+          git diff --exit-code -- services/search/testdata/policy.json services/search/testdata/bm25f.json services/search/testdata/telemetry.json services/search/telemetry-schema.json
       - name: Go race tests and vet
         working-directory: services/search
         run: |
@@ -135,3 +136,28 @@ jobs:
       - name: Stop this CI stack
         if: always()
         run: docker compose down
+
+  telemetry-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml pytest
+      - name: Prepare fixture and build the Go ledger service
+        run: |
+          python tools/search_service/dev.py prepare
+          docker compose build api
+      - name: Same SQLite and Postgres contracts, real CLI spool replay and report parity
+        run: python tools/search_service/telemetry_integration.py
+      - name: Upload ledger evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-postgres
+          path: .guidefold/checks/telemetry-postgres.json
+      - name: Stop isolated telemetry stack
+        if: always()
+        run: docker compose -p guidefold-ledger-contract down

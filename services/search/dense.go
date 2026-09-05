@@ -44,13 +44,16 @@ INSERT INTO gf.schema_version VALUES (6) ON CONFLICT DO NOTHING;
 type DenseClient struct {
 	URL, ID, Mode string
 	BatchRequests int
+	EncodeTimeout time.Duration
 	HTTP          *http.Client
 	Calls         atomic.Uint64
 	Searches      atomic.Uint64
 }
 
 func newDenseClient() (*DenseClient, error) {
-	mode := env("GUIDEFOLD_RETRIEVAL_MODE", "sparse")
+	return newDenseClientMode(env("GUIDEFOLD_RETRIEVAL_MODE", "sparse"))
+}
+func newDenseClientMode(mode string) (*DenseClient, error) {
 	if mode == "sparse" {
 		return nil, nil
 	}
@@ -73,7 +76,7 @@ func newDenseClient() (*DenseClient, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.MaxIdleConnsPerHost = 16
 	transport.MaxConnsPerHost = 16
-	return &DenseClient{URL: strings.TrimRight(raw, "/"), ID: id, Mode: mode, BatchRequests: batch,
+	return &DenseClient{URL: strings.TrimRight(raw, "/"), ID: id, Mode: mode, BatchRequests: batch, EncodeTimeout: 250 * time.Millisecond,
 		HTTP: &http.Client{Transport: transport, Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 func (d *DenseClient) request(ctx context.Context, path string, payload any) ([]byte, error) {
