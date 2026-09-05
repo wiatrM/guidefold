@@ -1,5 +1,15 @@
 # E1.1b: resident SEARCH / USE feasibility spike
 
+> **Provenance note (2026-09-05).** These files first reached `main` inside commit `314f3ec`
+> ("Dense programme v2.3: a multiplicity rule…", PR #40), whose message describes only the dense
+> programme and does not mention this work at all. That was an accident, not a decision: the dense
+> programme's TL ran `git add -A` in the **shared** main checkout while a concurrent session was
+> writing this service spike into the same working tree, and swept 21 files / ~65 800 lines of it
+> into an unrelated documentation commit. Nothing here was reviewed as part of PR #40 and its
+> commit message should not be read as describing it. The work itself is this spike's own; see
+> `docs/adr/ADR-0023-search-use-service-and-measured-utility.md`. Git history cannot be rewritten
+> after a squash-merge, so this note is the correction.
+
 This tool validates a local HTTP boundary around the existing retrieval pipeline.
 It keeps the index and full SKILLRET encoder resident, encodes every SEARCH query
 live, and records request timings and revision-pinned USE hydration. It does not
