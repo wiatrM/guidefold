@@ -45,6 +45,14 @@ from pathlib import Path
 # nothing parses this beyond string equality today.
 CLI_VERSION = "0.1.0"
 
+# E6.4/E2.7 SEARCH/USE telemetry (docs/SEARCH-USE-TELEMETRY.md Sec4): versions stamped into every
+# client event so a later analysis pass can tell which ranking/policy code produced it. Bump by
+# hand alongside the corresponding behaviour change; also used as `adapter_version` (== CLI_VERSION,
+# there is only one adapter here). Kept next to CLI_VERSION -- same role, same bump discipline.
+ROUTER_VERSION = "router-0.1"      # Router class behaviour (candidates/score/select)
+POLICY_VERSION = "adr0022-v1"      # ADR-0022 admissibility/relevance/bundle-completeness policy
+TELEMETRY_SCHEMA_VERSION = "1.0"   # must match tools/telemetry/ledger.py SCHEMA_VERSIONS
+
 # ---------------------------------------------------------------- repo helpers
 def repo_root() -> Path:
     """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel as fallback."""
@@ -1876,21 +1884,55 @@ def cmd_where(a, root, cfg):
                       "ancestors": ancestors(node)}, indent=2))
 
 def cmd_find(a, root, cfg):
+    import time
     idx = Index.build(root, cfg)
     router = Router(idx)
     scope = a.scope or node_for(cfg, rel(root, Path.cwd()))
+    search_id = _new_id()
+    index_snapshot = _git_head_short(root)   # E6.4: the client has no per-skill revision from the
+    # in-memory Index/Router (only Registry.download resolves one, and that would mean a network
+    # call per candidate on every `find` -- not acceptable here either). The whole-snapshot git sha
+    # stands in for every card's "exact revision" in this event, exactly as LocalRegistry.
+    # default_revision() already does for the real load path below.
+    deadline_ms = 1000   # docs/SEARCH-USE-TELEMETRY.md Sec7: interactive online SEARCH client p95 target
+    _emit_telemetry(root, "search_requested", {
+        "search_id": search_id, "profile": "interactive", "scope": scope, "deadline_ms": deadline_ms,
+        "query_hmac": _query_hmac(a.task, root), "router_version": ROUTER_VERSION,
+        "policy_version": POLICY_VERSION, "index_snapshot": index_snapshot, "backend": "local_sparse",
+    })
+    t0 = time.perf_counter()
     # Inlined router.route()'s three steps (candidates -> score -> select) instead of calling it,
     # so `scored` (the retrieval-order ranking, pre-select) is available for the shadow record
     # below without ranking the query twice. The printed output is exactly what route() would
     # have returned -- same three calls, same arguments -- so it is unaffected by --experimental.
     cands = router.candidates(a.task, scope, include_deprecated=a.include_deprecated)
+    t_cands = time.perf_counter()
     scored = router.score(cands, a.task, scope)
+    t_score = time.perf_counter()
     admissible, _ = router.policy_filter(scope, a.task, a.include_deprecated)   # ADR-0022: same A as route()
     selected = router.select(scored, k=a.limit, admissible=set(admissible))
+    t_select = time.perf_counter()
     for c in selected:
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
     if getattr(a, "experimental", False):
         _write_shadow_record(root, a.task, scope, scored, telemetry_raw=getattr(a, "telemetry_raw", False))
+    _emit_telemetry(root, "search_results", {
+        "search_id": search_id, "status": "ok" if selected else "abstained", "fallback_reason": None,
+        "results": [{"urn": c["urn"], "revision": index_snapshot, "score": c["score"], "rank": i}
+                    for i, c in enumerate(selected, start=1)],
+        "timings": {"candidates_ms": round((t_cands - t0) * 1000, 3),
+                    "score_ms": round((t_score - t_cands) * 1000, 3),
+                    "select_ms": round((t_select - t_score) * 1000, 3),
+                    "total_ms": round((t_select - t0) * 1000, 3)},
+    })
+    for position, c in enumerate(selected, start=1):
+        _emit_telemetry(root, "card_injected", {
+            "exposure_id": _new_id(), "search_id": search_id, "skill_id": c["urn"],
+            "revision": index_snapshot, "position": position, "surface": "interactive",
+            "delivery_evidence": "printed_stdout", "scope": scope,   # extra, non-required field:
+            # scope is already known here (same value as search_requested's), so
+            # tools/telemetry/report.py's distinct_scopes rollup has something real to read.
+        })
 
 # ---------------------------------------------------------- E1.6 shadow telemetry
 # `find --experimental` never changes the printed answer (see cmd_find above): it only writes a
@@ -1942,14 +1984,289 @@ def _write_shadow_record(root: Path, query: str, node: str, scored: list, teleme
     except Exception:
         pass  # telemetry must never fail or block `find` (see comment above)
 
+# ---------------------------------------------------------- E6.4/E2.7 SEARCH/USE telemetry
+# docs/SEARCH-USE-TELEMETRY.md is normative (Sec3 event vocabulary, Sec4 IDs/grain, Sec5 data
+# boundaries). This block emits the client-observable event vocabulary -- search_requested,
+# search_results, card_injected, skill_load_requested, skill_load_completed, telemetry_health --
+# from `find`, `hook` and `load` into a bounded local JSONL spool; `guidefold telemetry flush`
+# uploads it later, and never from the hook path itself (no network call happens anywhere in this
+# block). This is a separate, contract-shaped pipeline from the E1.6 shadow writer just above --
+# that one is for offline reranker scoring; this one is for the SEARCH/USE ledger (tools/telemetry
+# /ledger.py) and per-skill usage reports (tools/telemetry/report.py). Do not conflate them.
+#
+# Same rule as the shadow writer: a telemetry bug must never break or slow the command it
+# instruments, so every public entry point here writes inside one try/except and a failure is
+# silent by design.
+#
+# No raw prompt text is ever spooled here (Sec5 "Raw prompts ... are not saved by default, ...
+# including ... telemetry spools"; the non-negotiable for this work is the same: prompt text stays
+# out of the spool by default). The existing --telemetry-raw opt-in only ever affects the E1.6
+# shadow file above -- it is deliberately NOT wired into this spool, because docs/SEARCH-USE-
+# TELEMETRY.md's search_requested schema has no raw-query field at all, only an "optional query
+# HMAC" (Sec3/Sec4); adding a raw-text field here would both contradict the contract's schema and
+# widen what "stays out of the spool by default" actually means. Instead this spool always tries a
+# tenant-scoped keyed HMAC of the query text for grouping repeated queries without storing them --
+# never a plain hash (Sec5 explicitly deprecates "plain prompt hashes" as not applying here).
+
+TELEMETRY_PRODUCER = "guidefold-cli"
+TELEMETRY_SPOOL_MAX_BYTES = 10 * 1024 * 1024   # Sec5 proposed default
+TELEMETRY_SPOOL_MAX_AGE_DAYS = 7                # Sec5 proposed default
+TELEMETRY_FLUSH_BATCH_MAX = 500                 # events per POST /v1/events:batch
+# This adapter cannot observe harness receipt or invocation (no such API from any supported
+# harness today) -- only that it printed/wrote something. Recorded so a later analysis pass never
+# mistakes "we emitted a card" for "the harness rendered it" or "the agent invoked the skill"
+# (Sec3: exposure is not confirmed attention; only supported adapters emit skill_use_observed).
+TELEMETRY_CAPABILITY_FLAGS = ["observation:none", "delivery_evidence:printed_stdout"]
+
+def _telemetry_disabled() -> bool:
+    return os.environ.get("GUIDEFOLD_TELEMETRY_DISABLE", "").strip() not in ("", "0")
+
+def _telemetry_environment() -> str:
+    env = os.environ.get("GUIDEFOLD_TELEMETRY_ENVIRONMENT", "dev")
+    return env if env in ("dev", "eval", "pilot") else "dev"
+
+def _telemetry_tenant() -> str:
+    return os.environ.get("GUIDEFOLD_TELEMETRY_TENANT") or "local"
+
+def _telemetry_ids_from_env() -> dict:
+    """session_id/task_id/correlation_id "where available" (Sec4): this bare CLI has no session/
+    task concept of its own, so these come only from a caller-supplied environment (a harness
+    wrapper, CI job, or a future service adapter) -- or, for `hook`, from the harness's own stdin
+    payload (see cmd_hook, which overrides session_id from there when present). Absent means
+    genuinely unknown, never fabricated."""
+    return {
+        "session_id": os.environ.get("GUIDEFOLD_SESSION_ID") or None,
+        "task_id": os.environ.get("GUIDEFOLD_TASK_ID") or None,
+        "correlation_id": os.environ.get("GUIDEFOLD_CORRELATION_ID") or None,
+    }
+
+def _new_id() -> str:
+    import uuid
+    return str(uuid.uuid4())
+
+_TELEMETRY_SEQUENCE = [0]   # per-process client sequence (Sec4) -- a same-process ordering hint
+                            # only, not a durable global counter; the ledger orders by occurred_at.
+
+def _next_sequence() -> int:
+    _TELEMETRY_SEQUENCE[0] += 1
+    return _TELEMETRY_SEQUENCE[0]
+
+def _telemetry_spool_dir(root: Path, tenant: str, env: str) -> Path:
+    return root / ".guidefold" / "telemetry" / "spool" / tenant / env
+
+def _telemetry_spool_path(root: Path, tenant: str, env: str) -> Path:
+    date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    return _telemetry_spool_dir(root, tenant, env) / f"events-{date}.jsonl"
+
+def _telemetry_hmac_key(root: Path) -> bytes:
+    """Tenant-scoped keyed HMAC key (Sec5: "a tenant-scoped keyed HMAC, never an unkeyed prompt
+    hash"; "rotate monthly"). Lives under .guidefold/telemetry/ (gitignored, generated) and never
+    leaves this host -- it exists only so the *same* query hashes to the *same* value within one
+    month, for grouping, without the plaintext ever being stored."""
+    import secrets
+    month = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m")
+    key_path = root / ".guidefold" / "telemetry" / f"hmac-key-{month}.bin"
+    if key_path.exists():
+        return key_path.read_bytes()
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    key = secrets.token_bytes(32)
+    key_path.write_bytes(key)
+    return key
+
+def _query_hmac(query: str, root: Path):
+    """Returns None (never raises) if a stable monthly key can't be read/created -- query grouping
+    then just degrades to "ungrouped" for this event rather than blocking it."""
+    try:
+        import hashlib, hmac
+        key = _telemetry_hmac_key(root)
+        return hmac.new(key, query.encode("utf-8"), hashlib.sha256).hexdigest()
+    except Exception:
+        return None
+
+def _health_path(env_dir: Path) -> Path:
+    return env_dir / ".health.json"
+
+def _read_health(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"produced": 0, "acknowledged": 0, "dropped": 0}
+
+def _write_health(path: Path, health: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(health, sort_keys=True), encoding="utf-8")
+
+def _oldest_queued_age_s(env_dir: Path):
+    """Age in seconds of the oldest event line still sitting in this partition's spool, or None if
+    the spool is empty right now -- a genuine "unknown", not a stand-in for zero."""
+    oldest_ts = None
+    for f in sorted(env_dir.glob("events-*.jsonl")):
+        for l in f.read_text(encoding="utf-8").splitlines():
+            if not l.strip():
+                continue
+            try:
+                oldest_ts = json.loads(l).get("occurred_at")
+            except Exception:
+                oldest_ts = None
+            break
+        if oldest_ts:
+            break
+    if not oldest_ts:
+        return None
+    try:
+        parsed = datetime.datetime.strptime(oldest_ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+    return (datetime.datetime.now(datetime.timezone.utc) - parsed).total_seconds()
+
+def _telemetry_health_event(env_dir: Path, env: str, health: dict, window_start: str) -> dict:
+    oldest_age_s = _oldest_queued_age_s(env_dir)
+    return {
+        "schema_version": TELEMETRY_SCHEMA_VERSION, "event_id": _new_id(),
+        "event_type": "telemetry_health", "occurred_at": _utc_now_iso(),
+        "sequence": _next_sequence(), "producer": TELEMETRY_PRODUCER,
+        "adapter_version": CLI_VERSION, "environment": env,
+        "session_id": None, "task_id": None, "correlation_id": None,
+        "produced": health.get("produced", 0), "acknowledged": health.get("acknowledged", 0),
+        "dropped": health.get("dropped", 0), "oldest_queued_age_s": oldest_age_s,
+        "capability_flags": list(TELEMETRY_CAPABILITY_FLAGS),
+        "window": {"start": window_start, "end": _utc_now_iso()},
+    }
+
+def _prune_and_append(root: Path, tenant: str, env: str, record: dict):
+    """Append-only JSONL write, bounded by TELEMETRY_SPOOL_MAX_AGE_DAYS (whole stale files dropped)
+    and then TELEMETRY_SPOOL_MAX_BYTES (oldest lines of the oldest remaining file dropped) -- both
+    counted into the partition's persisted `dropped` counter (Sec5 "Eviction/drop reasons
+    increment health counters"; events are never silently lost without a visible counter). When a
+    drop actually happens, one telemetry_health event is appended too, straight after -- written
+    directly (not through this same function) to avoid re-entering the bound check on ourselves."""
+    env_dir = _telemetry_spool_dir(root, tenant, env)
+    env_dir.mkdir(parents=True, exist_ok=True)
+    health_path = _health_path(env_dir)
+    health = _read_health(health_path)
+    if health.get("produced", 0) == 0:
+        health["window_start"] = record["occurred_at"]
+    health["produced"] = health.get("produced", 0) + 1
+    dropped_before = health.get("dropped", 0)
+
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=TELEMETRY_SPOOL_MAX_AGE_DAYS)
+    for f in sorted(env_dir.glob("events-*.jsonl")):
+        date_part = f.stem[len("events-"):]
+        try:
+            file_date = datetime.datetime.strptime(date_part, "%Y-%m-%d").replace(tzinfo=datetime.timezone.utc)
+        except ValueError:
+            continue
+        if file_date < cutoff:
+            lines = [l for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+            health["dropped"] = health.get("dropped", 0) + len(lines)
+            f.unlink()
+
+    path = _telemetry_spool_path(root, tenant, env)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+    files = sorted(env_dir.glob("events-*.jsonl"))
+    total_bytes = sum(f.stat().st_size for f in files)
+    i = 0
+    while total_bytes > TELEMETRY_SPOOL_MAX_BYTES and i < len(files):
+        f = files[i]
+        lines = [l for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+        if not lines:
+            i += 1
+            continue
+        dropped_here = min(len(lines), max(1, len(lines) // 2))
+        remaining = lines[dropped_here:]
+        health["dropped"] = health.get("dropped", 0) + dropped_here
+        before_size = f.stat().st_size
+        if remaining:
+            f.write_text("\n".join(remaining) + "\n", encoding="utf-8")
+        else:
+            f.unlink()
+        after_size = f.stat().st_size if f.exists() else 0
+        total_bytes -= (before_size - after_size)
+        if not remaining:
+            i += 1
+
+    _write_health(health_path, health)
+    if health.get("dropped", 0) > dropped_before:
+        window_start = health.get("window_start") or record["occurred_at"]
+        health_event = _telemetry_health_event(env_dir, env, health, window_start)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(health_event, sort_keys=True) + "\n")
+
+def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None):
+    """Append one event to the bounded local spool. Never raises. `ids`, if given, overrides the
+    environment-derived session/task/correlation IDs (e.g. cmd_hook passing session_id read from
+    its own stdin payload)."""
+    if _telemetry_disabled():
+        return
+    try:
+        tenant = _telemetry_tenant()
+        env = _telemetry_environment()
+        resolved_ids = dict(_telemetry_ids_from_env())
+        if ids:
+            resolved_ids.update({k: v for k, v in ids.items() if v is not None})
+        record = {
+            "schema_version": TELEMETRY_SCHEMA_VERSION, "event_id": _new_id(),
+            "event_type": event_type, "occurred_at": _utc_now_iso(),
+            "sequence": _next_sequence(), "producer": TELEMETRY_PRODUCER,
+            "adapter_version": CLI_VERSION, "environment": env,
+            "session_id": resolved_ids.get("session_id"), "task_id": resolved_ids.get("task_id"),
+            "correlation_id": resolved_ids.get("correlation_id"),
+        }
+        record.update(fields)
+        _prune_and_append(root, tenant, env, record)
+    except Exception:
+        pass  # telemetry must never fail or block the command it instruments (see block docstring)
+
 def cmd_load(a, root, cfg):
+    # E6.4: skill_load_requested/skill_load_completed bracket the exact same operations this
+    # function already performed -- default_revision() then a cache-hit check or download() -- the
+    # SystemExit paths below are the same sys.exit(...) calls those two already raise; they are
+    # caught only long enough to emit a failed-load event, then re-raised unchanged so the user-
+    # visible exit code/message are untouched.
+    import time
     reg = registry_for(cfg, root)
-    rev = reg.default_revision(a.urn)
+    load_id = _new_id()
+    t0 = time.perf_counter()
+    try:
+        rev = reg.default_revision(a.urn)
+    except SystemExit:
+        _emit_telemetry(root, "skill_load_requested", {
+            "load_id": load_id, "skill_id": a.urn, "revision": None, "source": "explicit",
+            "use_id": None, "search_id": None,
+        })
+        _emit_telemetry(root, "skill_load_completed", {
+            "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+            "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+            "closure_status": "incomplete", "skill_id": a.urn, "revision": None,
+        })
+        raise
+    _emit_telemetry(root, "skill_load_requested", {
+        "load_id": load_id, "skill_id": a.urn, "revision": rev, "source": "explicit",
+        "use_id": None, "search_id": None,
+    })
     dest = skill_cache_dir(a.urn, rev)
-    if (dest / "SKILL.md").exists():
-        os.utime(dest, None)   # cache hit: bump mtime so LRU eviction reflects last use
-    else:
-        reg.download(a.urn, dest, rev=rev)
+    cache_hit = (dest / "SKILL.md").exists()
+    try:
+        if cache_hit:
+            os.utime(dest, None)   # cache hit: bump mtime so LRU eviction reflects last use
+        else:
+            reg.download(a.urn, dest, rev=rev)
+    except SystemExit:
+        _emit_telemetry(root, "skill_load_completed", {
+            "load_id": load_id, "status": "error",
+            "cache_source": "cache" if cache_hit else "download", "bytes": 0,
+            "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+            "closure_status": "incomplete", "skill_id": a.urn, "revision": rev,
+        })
+        raise
+    bytes_loaded = sum(f.stat().st_size for f in dest.rglob("*") if f.is_file())
+    _emit_telemetry(root, "skill_load_completed", {
+        "load_id": load_id, "status": "ok", "cache_source": "cache" if cache_hit else "download",
+        "bytes": bytes_loaded, "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+        "closure_status": "complete", "skill_id": a.urn, "revision": rev,
+    })
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
     print(dest / "SKILL.md")
 
@@ -2230,6 +2547,9 @@ def cmd_hook(a, root):
             payload = {}
         cwd = Path(payload.get("cwd") or Path.cwd())
         prompt = payload.get("prompt") or payload.get("user_prompt") or ""
+        session_id = payload.get("session_id") or None   # E6.4: Claude Code's own hook payload
+        # field, "where available" (Sec4) -- Codex/Copilot payloads observed so far don't carry
+        # one, so this stays None there, not fabricated.
         idx = load_index_artifact(index_cache_dir(sha))
         try:
             relpath = rel(root, cwd)
@@ -2242,13 +2562,41 @@ def cmd_hook(a, root):
             return
         if len(prompt) < 12:                      # skip trivial prompts ("yes", "continue")
             return
+        # E6.4: no SEARCH is attempted above this line (SessionStart/trivial-prompt returns above
+        # never reach the Router at all -- correctly, no search_requested for either). A ranking
+        # exception from Router.route() itself is still caught only by the outer except Exception
+        # below (unchanged), so this invocation's search_results is simply never written for that
+        # rare case -- consistent with Sec5 "lost events reduce reported coverage" being expected
+        # and reported as missing, never fabricated as a status.
+        import time
+        search_id = _new_id()
+        _emit_telemetry(root, "search_requested", {
+            "search_id": search_id, "profile": "hook", "scope": node, "deadline_ms": int(seconds * 1000),
+            "query_hmac": _query_hmac(prompt, root), "router_version": ROUTER_VERSION,
+            "policy_version": POLICY_VERSION, "index_snapshot": sha, "backend": "local_sparse",
+        }, ids={"session_id": session_id})
+        t0 = time.perf_counter()
         top = Router(idx).route(prompt, node, k=3)
+        elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
+        _emit_telemetry(root, "search_results", {
+            "search_id": search_id, "status": "ok" if top else "abstained", "fallback_reason": None,
+            "results": [{"urn": c["urn"], "revision": sha, "score": c["score"], "rank": i}
+                        for i, c in enumerate(top, start=1)],
+            "timings": {"total_ms": elapsed_ms},
+        }, ids={"session_id": session_id})
         if not top:
             return
         print(f"[guidefold] Relevant organizational guidance for scope {node}:")
         for c in top:
             print(f"- {c['urn']} — {c['description'][:140]}")
         print("Load with: .agents/skills/guidefold/scripts/guidefold load <urn>  (follow metadata.requires).")
+        for position, c in enumerate(top, start=1):
+            _emit_telemetry(root, "card_injected", {
+                "exposure_id": _new_id(), "search_id": search_id, "skill_id": c["urn"],
+                "revision": sha, "position": position, "surface": "hook",
+                "delivery_evidence": "printed_stdout", "scope": node,   # see cmd_find's card_injected
+                # for why: non-required, but lets report.py's distinct_scopes rollup mean something.
+            }, ids={"session_id": session_id})
     except _HookTimeout:
         _emit_timeout_marker(root, sha)
         return                                    # print nothing — injecting late is worse
@@ -2272,6 +2620,135 @@ def cmd_prewarm(a, root, cfg):
         except SystemExit:
             pass
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
+
+# ------------------------------------------------------------ E6.4/E2.7 telemetry commands
+def cmd_telemetry(a, root, cfg):
+    if a.telemetry_cmd == "status":
+        cmd_telemetry_status(a, root)
+    elif a.telemetry_cmd == "flush":
+        cmd_telemetry_flush(a, root)
+    elif a.telemetry_cmd == "report":
+        cmd_telemetry_report(a, root, cfg)
+    else:
+        sys.exit("guidefold telemetry: choose a subcommand: status | flush | report")
+
+def _telemetry_partitions(root: Path) -> list:
+    """[(tenant, environment, env_dir), ...] for every partition actually present on disk."""
+    spool_root = root / ".guidefold" / "telemetry" / "spool"
+    out = []
+    if not spool_root.is_dir():
+        return out
+    for tenant_dir in sorted(p for p in spool_root.iterdir() if p.is_dir()):
+        for env_dir in sorted(p for p in tenant_dir.iterdir() if p.is_dir()):
+            out.append((tenant_dir.name, env_dir.name, env_dir))
+    return out
+
+def cmd_telemetry_status(a, root):
+    """Counts, oldest queued age, and partitions -- a read-only inspection of the local spool.
+    Never writes anything (no event is emitted just for looking at spool health)."""
+    rows = []
+    for tenant, env, env_dir in _telemetry_partitions(root):
+        health = _read_health(_health_path(env_dir))
+        queued = 0
+        for f in sorted(env_dir.glob("events-*.jsonl")):
+            queued += sum(1 for l in f.read_text(encoding="utf-8").splitlines() if l.strip())
+        rows.append({
+            "tenant": tenant, "environment": env, "queued": queued,
+            "produced": health.get("produced", 0), "acknowledged": health.get("acknowledged", 0),
+            "dropped": health.get("dropped", 0),
+            "oldest_queued_age_s": _oldest_queued_age_s(env_dir),
+        })
+    if getattr(a, "json", False):
+        print(json.dumps({"partitions": rows}, indent=2))
+        return
+    if not rows:
+        print("guidefold telemetry status: spool is empty")
+        return
+    for r in rows:
+        print(f"{r['tenant']}/{r['environment']}: queued={r['queued']} produced={r['produced']} "
+              f"acknowledged={r['acknowledged']} dropped={r['dropped']} "
+              f"oldest_queued_age_s={r['oldest_queued_age_s']}")
+
+def cmd_telemetry_flush(a, root):
+    """POST queued events to `--url`/v1/events:batch in batches of at most
+    TELEMETRY_FLUSH_BATCH_MAX, one tenant/environment partition at a time -- the tenant identifies
+    itself via the X-Guidefold-Tenant header (tools/telemetry/ingest_server.py's docstring: that
+    header is a demo convenience, not authentication; a real service must authenticate the tenant
+    itself, docs/SEARCH-USE-TELEMETRY.md Sec4/Sec5). Only events the server did NOT resolve
+    (neither accepted, duplicate, nor rejected) stay queued for a future flush; rejected
+    (bad-schema) events are logged and dropped too, since resending an invalid event never becomes
+    valid. Never invoked from `hook` -- no call to this function exists there -- and it makes a
+    network call only when a human or CI explicitly runs it."""
+    import urllib.request, urllib.error
+    totals = {"sent": 0, "accepted": 0, "duplicate": 0, "rejected": 0}
+    for tenant, env, env_dir in _telemetry_partitions(root):
+        health_path = _health_path(env_dir)
+        health = _read_health(health_path)
+        for f in sorted(env_dir.glob("events-*.jsonl")):
+            parsed = []
+            for line in f.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    parsed.append((line, json.loads(line)))
+                except Exception:
+                    continue   # corrupt line: can't be usefully retried, drop silently
+            resolved_ids, newly_acked = set(), 0
+            for i in range(0, len(parsed), TELEMETRY_FLUSH_BATCH_MAX):
+                batch = [ev for _, ev in parsed[i:i + TELEMETRY_FLUSH_BATCH_MAX]]
+                if not batch:
+                    continue
+                body = json.dumps({"events": batch}).encode("utf-8")
+                req = urllib.request.Request(
+                    a.url.rstrip("/") + "/v1/events:batch", data=body, method="POST",
+                    headers={"Content-Type": "application/json", "X-Guidefold-Tenant": tenant})
+                try:
+                    resp = urllib.request.urlopen(req, timeout=10)
+                    result = json.loads(resp.read().decode("utf-8"))
+                except Exception as e:
+                    print(f"guidefold telemetry flush: {tenant}/{env}/{f.name}: batch failed: {e}")
+                    continue   # leave these events queued; retry on the next flush
+                totals["sent"] += len(batch)
+                for eid in result.get("accepted", []):
+                    resolved_ids.add(eid); totals["accepted"] += 1; newly_acked += 1
+                for eid in result.get("duplicate", []):
+                    resolved_ids.add(eid); totals["duplicate"] += 1; newly_acked += 1
+                for r in result.get("rejected", []):
+                    eid = r.get("event_id")
+                    if eid:
+                        resolved_ids.add(eid)
+                    totals["rejected"] += 1
+                    print(f"guidefold telemetry flush: rejected {eid}: {r.get('reason')}")
+            if resolved_ids:
+                kept = [line for line, ev in parsed if ev.get("event_id") not in resolved_ids]
+                if kept:
+                    f.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                else:
+                    f.unlink()
+                health["acknowledged"] = health.get("acknowledged", 0) + newly_acked
+        _write_health(health_path, health)
+    print(f"guidefold telemetry flush: sent={totals['sent']} accepted={totals['accepted']} "
+          f"duplicate={totals['duplicate']} rejected={totals['rejected']}")
+
+def cmd_telemetry_report(a, root, cfg):
+    """Wraps tools/telemetry/report.py (stdlib-only) if this is a guidefold tool checkout, not
+    just a shipped skill install -- report.py is not part of the skill ZIP (see TOOL_REPO_ROOT
+    below), so a consumer monorepo without that checkout gets a clear message instead of a
+    traceback."""
+    report_script = TOOL_REPO_ROOT / "tools" / "telemetry" / "report.py"
+    if not report_script.is_file():
+        sys.exit("guidefold telemetry report: tools/telemetry/report.py not found (only available "
+                  "from a guidefold tool checkout, not a shipped skill install)")
+    db = a.db or str(root / ".guidefold" / "telemetry" / "ledger.sqlite3")
+    cmd = [sys.executable, str(report_script), "--db", db, "--format", a.format]
+    if a.tenant:
+        cmd += ["--tenant", a.tenant]
+    if a.roster_file:
+        cmd += ["--roster-file", a.roster_file]
+    out = subprocess.run(cmd, capture_output=True, text=True)
+    if out.returncode != 0:
+        sys.exit(f"guidefold telemetry report: {out.stderr.strip() or 'report.py failed'}")
+    sys.stdout.write(out.stdout)
 
 # ------------------------------------------------------------ init / doctor
 # E0.4: `guidefold init` bootstraps a *consumer* monorepo (guidefold.yaml skeleton,
@@ -2881,6 +3358,17 @@ def main():
     i.add_argument("--dry-run", action="store_true", help="print what would be done; write nothing")
     doc = sub.add_parser("doctor", help="diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness")
     doc.add_argument("--json", action="store_true")
+    tel = sub.add_parser("telemetry", help="local SEARCH/USE telemetry (E6.4/E2.7): spool status, upload, per-skill report")
+    telsub = tel.add_subparsers(dest="telemetry_cmd")
+    st = telsub.add_parser("status", help="counts, oldest queued age, partitions -- read-only")
+    st.add_argument("--json", action="store_true")
+    fl = telsub.add_parser("flush", help="POST queued events to --url /v1/events:batch (never called from hook)")
+    fl.add_argument("--url", required=True)
+    rp = telsub.add_parser("report", help="per-skill usage report (wraps tools/telemetry/report.py if present)")
+    rp.add_argument("--db", help="ledger sqlite path (default: .guidefold/telemetry/ledger.sqlite3)")
+    rp.add_argument("--tenant")
+    rp.add_argument("--roster-file")
+    rp.add_argument("--format", choices=("markdown", "json"), default="markdown")
     a = p.parse_args()
     # init/doctor must work on a repo with no guidefold.yaml yet, so they bypass the
     # repo_root()/load_map() setup below (which requires one) — see _target_root().

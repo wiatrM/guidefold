@@ -166,3 +166,24 @@ This is a deliberate trade for determinism (ADR-0020): stdlib `re` has no `\p{L}
 `str.lower()` shifts with the Unicode database across Python releases. Supporting non-Latin scripts
 requires either a shipped Unicode category table or a different tokenizer contract; both are out of
 MVP scope. Author skills in English unless and until that changes.
+
+## 11. Telemetry files
+
+All telemetry lives under `.guidefold/telemetry/` (gitignored, generated — ADR-0012). Three
+separate, non-conflated mechanisms share that one parent directory:
+
+| Path | Written by | What |
+|------|------------|------|
+| `spool/<tenant\|local>/<environment>/events-<UTC date>.jsonl` | `find`, `hook`, `load` | E6.4/E2.7 SEARCH/USE contract events (`docs/SEARCH-USE-TELEMETRY.md`): `search_requested`, `search_results`, `card_injected`, `skill_load_requested`, `skill_load_completed`, `telemetry_health`. Append-only, bounded (10 MB / 7 days, oldest-first drop, counted in `telemetry_health.dropped`). No raw prompt text; an optional tenant-scoped keyed HMAC of the query only, rotated monthly. |
+| `spool/<tenant>/<environment>/.health.json` | same | Running counters (`produced`/`acknowledged`/`dropped`/`window_start`) behind `guidefold telemetry status`. |
+| `hmac-key-<YYYY-MM>.bin` | same | This host's monthly HMAC key for query grouping. Never leaves the host; never a plain/unkeyed hash. |
+| `ledger.sqlite3` | `guidefold telemetry flush` (client) / `tools/telemetry/ingest_server.py` (reference server) | The reference E6.4 event ledger (`tools/telemetry/ledger.py`), keyed `(tenant_id, event_id)`. Not part of the shipped skill ZIP. |
+| `shadow-<UTC date>.jsonl` | `find --experimental` (E1.6) | Retrieval-order shadow record for offline reranker scoring (`tools/bakeoff/`). Query stored as a SHA-256 hash unless `--telemetry-raw`. Unrelated to the spool above — `--telemetry-raw` affects only this file. |
+| `hook.jsonl` | `hook`'s watchdog | One line per hook timeout (legacy, pre-E6.4). |
+
+`guidefold telemetry status` (add `--json`) inspects the spool read-only. `guidefold telemetry
+flush --url <base>` POSTs queued events to `<base>/v1/events:batch` in batches of ≤500, applies
+only the server's `accepted`/`duplicate` acknowledgements (never `rejected`) to drain the spool,
+and is never called from the hook path — no command reachable from `hook` makes a network call.
+`guidefold telemetry report` wraps `tools/telemetry/report.py` (per-skill/per-revision usage from
+the ledger) when running from a guidefold tool checkout.
