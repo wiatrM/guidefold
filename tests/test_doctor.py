@@ -5,6 +5,7 @@ directly (precise, matches the existing unit-test style in test_repo_helpers.py)
 of full gf.cmd_doctor(...) runs for the end-to-end exit-code/--json contract."""
 import json
 import shutil
+import time
 
 import pytest
 
@@ -146,3 +147,122 @@ def test_doctor_local_backend_reports_ok_with_skill_count(gf, tmp_path, monkeypa
     assert checks[0]["name"] == "registry-backend"
     assert checks[0]["status"] == "ok"
     assert "1 skill(s)" in checks[0]["detail"]
+
+
+# ------------------------------------------------------------- E2.6 Deliverable 5: search checks
+
+def test_doctor_search_checks_are_ok_when_backend_is_local(gf, tmp_path, monkeypatch):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root)
+    monkeypatch.delenv("GUIDEFOLD_SEARCH_URL", raising=False)
+    cfg = gf.load_map(root)
+    assert gf._check_search_service(root, cfg)["status"] == "ok"
+    assert gf._check_search_token(cfg)["status"] == "ok"
+    p95 = gf._check_search_latency(root, cfg)
+    assert p95["status"] == "ok"
+    assert "T0" in p95["detail"]
+
+
+def test_doctor_search_latency_recommends_service_over_the_r4b_threshold(gf, tmp_path, monkeypatch):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root)
+    cfg = gf.load_map(root)
+    # Simulate a corpus slow enough to cross the R4b 300ms guideline without needing an actually
+    # huge fixture -- _local_selected is the only thing _measure_local_search_p95 times.
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (time.sleep(0.31), ([], []))[1])
+    c = gf._check_search_latency(root, cfg)
+    assert c["status"] == "warn"
+    assert "service" in c["fix"]
+
+
+def test_doctor_search_service_reachable_reports_contract_version(gf, tmp_path, monkeypatch):
+    import http.server
+    import json as _json
+    import socket as _socket
+    import threading
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = _json.dumps({"ready": True, "snapshot": "sha256:abc",
+                                "repository": {"repo_id": "acme", "revision": "deadbeef"},
+                                "api_schema_versions": ["legacy-unversioned", "1.1"]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), H)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        root = tmp_path / "acme"
+        root.mkdir()
+        _init(gf, monkeypatch, root)
+        monkeypatch.setenv("GUIDEFOLD_SEARCH_URL", f"http://127.0.0.1:{port}")
+        monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+        cfg = gf.load_map(root)
+        c = gf._check_search_service(root, cfg)
+        assert c["status"] == "ok"
+        assert "1.1" in c["detail"]
+        assert "revision=deadbeef" in c["detail"]
+        assert "snapshot age" in c["detail"]  # documented gap, never invented
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(3)
+
+
+def test_doctor_search_service_unreachable_reports_fail(gf, tmp_path, monkeypatch):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root)
+    monkeypatch.setenv("GUIDEFOLD_SEARCH_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+    cfg = gf.load_map(root)
+    c = gf._check_search_service(root, cfg)
+    assert c["status"] == "fail"
+
+
+def test_doctor_search_token_missing_reports_fail(gf, tmp_path, monkeypatch):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root)
+    monkeypatch.setenv("GUIDEFOLD_SEARCH_URL", "http://127.0.0.1:1")
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    cfg = gf.load_map(root)
+    c = gf._check_search_token(cfg)
+    assert c["status"] == "fail"
+    assert "GUIDEFOLD_TOKEN" in c["fix"]
+
+
+def test_doctor_telemetry_spool_empty_reports_ok(gf, tmp_path):
+    root = tmp_path / "acme"
+    root.mkdir()
+    c = gf._check_telemetry_spool(root)
+    assert c["status"] == "ok"
+    assert "empty" in c["detail"]
+
+
+def test_doctor_full_run_includes_search_checks(gf, tmp_path, monkeypatch, capsys):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root)
+    monkeypatch.delenv("GUIDEFOLD_SEARCH_URL", raising=False)
+    code = _doctor(gf, monkeypatch, root)
+    out = capsys.readouterr().out
+    assert code == 0, out
+    assert "search-local-p95" in out
+    assert "search-service" in out
+    assert "search-token" in out
+    assert "telemetry-spool" in out

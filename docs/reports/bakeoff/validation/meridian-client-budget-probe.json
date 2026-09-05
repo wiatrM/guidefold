@@ -1,0 +1,68 @@
+{
+  "cli_sha256": "c2a5f7d2a02455e758118b67c921ac23562dccb49b4d458f1e34ed4e78888987",
+  "case_id": "simple-001",
+  "real_cli_adapter": true,
+  "results": [
+    {
+      "k": 3,
+      "profile": "hook",
+      "backend": "online_sparse",
+      "parity_mismatch": true,
+      "local": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production"
+      ],
+      "remote": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process"
+      ],
+      "explicit_budget_status": 200,
+      "explicit_budget_matches_local": true
+    },
+    {
+      "k": 4,
+      "profile": "interactive",
+      "backend": "online_sparse",
+      "parity_mismatch": false,
+      "local": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process"
+      ],
+      "remote": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process"
+      ],
+      "explicit_budget_status": 200,
+      "explicit_budget_matches_local": true
+    },
+    {
+      "k": 8,
+      "profile": "interactive",
+      "backend": "online_sparse",
+      "parity_mismatch": true,
+      "local": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ],
+      "remote": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process"
+      ]
+    }
+  ]
+}

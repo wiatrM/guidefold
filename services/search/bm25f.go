@@ -192,7 +192,7 @@ func accumulatePostings(scores map[int]int64, packed []byte, nQuery int64, nDocs
 func (s *Store) routerSearch(ctx context.Context, c *Catalog, query string, allowed map[string]bool) ([]Candidate, error) {
 	return s.routerCandidates(ctx, c, query, allowed, 50)
 }
-func (s *Store) routerCandidates(ctx context.Context, c *Catalog, query string, allowed map[string]bool, limit int) ([]Candidate, error) {
+func (s *Store) routerCandidates(ctx context.Context, c *Catalog, query string, allowed map[string]bool, limit int, rankCapture ...[]uint32) ([]Candidate, error) {
 	frequencies := map[string]int64{}
 	for _, t := range tokens(query) {
 		frequencies[t]++
@@ -231,6 +231,14 @@ func (s *Store) routerCandidates(ctx context.Context, c *Catalog, query string, 
 		}
 		return a < b
 	})
+	if len(rankCapture) != 0 {
+		if len(rankCapture[0]) != len(c.Order) {
+			return nil, fmt.Errorf("invalid_rank_capture_dimensions")
+		}
+		for rank, doc := range docs {
+			rankCapture[0][doc] = uint32(rank + 1)
+		}
+	}
 	if limit > 0 && len(docs) > limit {
 		docs = docs[:limit]
 	}

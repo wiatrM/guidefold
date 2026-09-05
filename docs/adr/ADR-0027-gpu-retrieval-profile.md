@@ -51,7 +51,12 @@ Both base Compose and the GPU overlay return sparse BM25F. The overlay enables
 bounded asynchronous shadow: deliver the sparse response first, then enqueue its
 pinned snapshot, top 20 ranks, delivered selection and search_id. Four workers compute
 the hybrid with the same policy/select and persist comparison ranks, timings and
-model identity in `gf.search_shadow`. Query/path text is transient. GPU failure becomes
+model identity in `gf.search_shadow`. Shadow reuses request-local sparse ranks and
+admissibility masks bound to the query, snapshot and scopes, preserving full channel
+ranks for fusion. Compact storage permits a 128-job default queue (configurable
+1–256); the four workers and deadlines stay unchanged. This bounds memory and
+absorbs bursts, without promising coverage under sustained overload. Query/path text
+is transient. GPU failure becomes
 a shadow error; sparse SEARCH and USE remain available. The queue is observational,
 not durable: overflow, shutdown and DB failure can lose records and must enter coverage
 reporting. No new shadow fields are added to the frozen SEARCH response.
@@ -78,7 +83,11 @@ The GPU deployment has a separate dependency and failure mode, model storage and
 index-publication lifecycle. The Go API remains model-free; no Python runs on its
 request path. This release establishes a reproducible Compose implementation, not
 HA, Kubernetes, IAM or production scale. The accompanying Postgres event ingest ports
-the existing SQLite ledger contract and reuses its report logic; this does not complete
+the existing SQLite ledger contract and reuses its report logic. Event INSERTs use
+a prepared statement and one ordered protocol batch inside the existing transaction;
+per-event command results distinguish accepted/duplicate IDs, and no ACK is delivered
+until commit. In-batch duplicates retain the first payload, and storage failure
+rolls back the complete batch; this does not complete
 the pending authenticated client adapter or a clean-VM/target-network acceptance test. Kubernetes work should
 separate GPU serving and indexing capacity and retain these identities and gates.
 

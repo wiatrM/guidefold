@@ -12,6 +12,17 @@ eval:
   # `triggers` phrases and says "unlabelled: exposure changes only" in its PR comment — you get
   # collision/exposure signal with zero authoring effort, just no Δhit@1/Δall_required@k/CI.
   queries: eval/authoring_queries.yaml
+# search:                     # optional (E2.6/E2.9) -- SEARCH/USE client backend for `find`/`hook`/`load`.
+#   backend: local            # local | service. Default local; a bad/incomplete block below always
+#                              # falls back to local with degradation_reason=config, never crashes.
+#   url: https://search.internal.acme.example   # required when backend: service
+#   deadline_ms: 300          # 1..5000, one monotonic deadline for the whole call (ADR-0023 Sec3);
+#                              # default is 300 for `hook`, 1000 for interactive `find`/`load`.
+#   token_file: /etc/acme/guidefold-search-token   # bearer token file; GUIDEFOLD_TOKEN env wins if set.
+#                              # Overrides: GUIDEFOLD_SEARCH_BACKEND, GUIDEFOLD_SEARCH_URL,
+#                              # GUIDEFOLD_SEARCH_DEADLINE_MS, GUIDEFOLD_SEARCH_TOKEN_FILE, GUIDEFOLD_TOKEN.
+#                              # The token is never logged or spooled. `hook` reads this block from
+#                              # the environment ONLY (never guidefold.yaml/PyYAML -- E1.5).
 nodes:
   _root:
     paths: ["**"]

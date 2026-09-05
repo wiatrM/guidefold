@@ -383,6 +383,9 @@ func publish(ctx context.Context, s *Store, path string) error {
 		}
 		check.Cards[u] = card
 	}
+	if e = validateGraph(check.Cards); e != nil {
+		return e
+	}
 	if e = check.prepare(); e != nil {
 		return e
 	}

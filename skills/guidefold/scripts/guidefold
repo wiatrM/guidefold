@@ -2006,6 +2006,319 @@ class Router:
         return self.select(scored, k=k, admissible=set(admissible), query=query)
 
 # ------------------------------------------------------------------------- commands
+# ------------------------------------------------------- E2.6/E2.9 search.backend: service
+# The client (this file) is the SAME at every deployment tier (ADR-0024 T0/T1/T2): by default it
+# ranks in-process against the local artifact ("local"); when `search.backend: service` is
+# configured it also races a POST /v1/search against the Go/ParadeDB service (contract 1.1,
+# docs/HARNESS-SERVICE-CONTRACT.md) with one monotonic absolute deadline, and always keeps the
+# local sparse computation as the answer of record if the remote does not win the race in time
+# (ADR-0023 Sec3). Nothing here changes Router.candidates/score/select/policy_filter -- this layer
+# only decides *which already-produced ordered list* becomes the answer, never how either list is
+# produced or ranked.
+#
+# stdlib only (http.client/urllib.parse/socket/threading), imported lazily inside the functions
+# that need them -- same discipline as hashlib/uuid/zipfile elsewhere in this file. `cmd_hook`
+# must open ZERO sockets on the (default) `backend: local` path (E1.5-adjacent non-negotiable,
+# test-asserted in tests/test_service_backend.py).
+
+DEFAULT_SEARCH_DEADLINE_HOOK_MS = 300          # ADR-0023 Sec3 hook budget
+DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS = 1000  # docs/SEARCH-USE-TELEMETRY.md Sec7 interactive p95 target
+
+def _search_config_from_env() -> dict:
+    """Env overrides (GUIDEFOLD_SEARCH_*): the ONLY config source `cmd_hook` may use -- it never
+    reads guidefold.yaml/PyYAML (E1.5). Returns only keys actually set, so a caller that also has
+    a parsed `cfg["search"]` block can layer this on top (env always wins)."""
+    out = {}
+    if os.environ.get("GUIDEFOLD_SEARCH_BACKEND", "").strip():
+        out["backend"] = os.environ["GUIDEFOLD_SEARCH_BACKEND"].strip()
+    if os.environ.get("GUIDEFOLD_SEARCH_URL", "").strip():
+        out["url"] = os.environ["GUIDEFOLD_SEARCH_URL"].strip()
+    if os.environ.get("GUIDEFOLD_SEARCH_DEADLINE_MS", "").strip():
+        try:
+            out["deadline_ms"] = int(os.environ["GUIDEFOLD_SEARCH_DEADLINE_MS"])
+        except ValueError:
+            pass
+    if os.environ.get("GUIDEFOLD_SEARCH_TOKEN_FILE", "").strip():
+        out["token_file"] = os.environ["GUIDEFOLD_SEARCH_TOKEN_FILE"].strip()
+    return out
+
+def resolve_search_config(cfg: dict = None, profile: str = "interactive") -> dict:
+    """Merge guidefold.yaml's `search:` block (if any -- `cfg` is None from cmd_hook) with env
+    overrides (env wins), validate, and fall back to backend=local on anything wrong. A bad
+    config never crashes `find`/`hook`; it degrades silently to local with `config_error=True`,
+    which callers turn into telemetry `degradation_reason="config"` (Deliverable 1: "a bad
+    config falls back to local with a visible degradation_reason=config").
+
+    Returns {"backend": "local"|"service", "url": str|None, "deadline_ms": int,
+             "token": str|None, "config_error": bool}. The bearer token comes from
+    GUIDEFOLD_TOKEN or a token file -- never from guidefold.yaml directly, never logged."""
+    search_block = (cfg or {}).get("search")
+    raw = dict(search_block) if isinstance(search_block, dict) else {}
+    raw.update(_search_config_from_env())
+    default_deadline = (DEFAULT_SEARCH_DEADLINE_HOOK_MS if profile == "hook"
+                        else DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS)
+    backend = raw.get("backend", "local")
+    config_error = False
+    if backend not in ("local", "service"):
+        backend, config_error = "local", True
+    url = raw.get("url")
+    if backend == "service" and (not isinstance(url, str) or not url.strip()):
+        backend, config_error = "local", True
+    deadline_ms = raw.get("deadline_ms", default_deadline)
+    try:
+        deadline_ms = int(deadline_ms)
+        if not (1 <= deadline_ms <= 5000):    # contract 1.1: deadline_ms is 1..5000
+            raise ValueError
+    except (TypeError, ValueError):
+        deadline_ms, config_error = default_deadline, True
+    token = os.environ.get("GUIDEFOLD_TOKEN") or None
+    token_file = raw.get("token_file")
+    if not token and token_file:
+        try:
+            token = Path(token_file).expanduser().read_text(encoding="utf-8").strip() or None
+        except Exception:
+            config_error = True   # configured but unreadable: a real config problem, not silence
+    if backend == "service" and not token:
+        # A service backend that can never authenticate can never succeed (contract: POST
+        # requires the bearer token) -- fail fast into local rather than paying for a request
+        # that is guaranteed to 401 every time.
+        backend, config_error = "local", True
+    return {"backend": backend, "url": url, "deadline_ms": deadline_ms,
+            "token": token, "config_error": config_error}
+
+
+def _parse_search_url(url: str):
+    import urllib.parse
+    p = urllib.parse.urlsplit(url)
+    if p.scheme not in ("http", "https") or not p.hostname:
+        raise ValueError(f"unusable search.url: {url!r}")
+    port = p.port or (443 if p.scheme == "https" else 80)
+    return p.scheme, p.hostname, port, p.path.rstrip("/")
+
+
+class _RemoteSearchResult:
+    """Mailbox shared between the background request thread and the caller. Single writer (the
+    worker thread), single reader-after-`done` (the caller) -- no lock needed. `conn` is set as
+    soon as the connection object exists so the caller can force-close it from outside the thread
+    to abandon a hung request on deadline (ADR-0023 Sec3: closed, never joined)."""
+    def __init__(self):
+        import threading
+        self.done = threading.Event()
+        self.status = None
+        self.body = None
+        self.error = None   # "timeout"/"connection"/"invalid_response" -- set on transport failure
+        self.conn = None
+
+
+def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
+    """Runs in a daemon thread. POSTs one contract-1.1 JSON body and stores the outcome on
+    `result`. `timeout_s` bounds socket connect/read. Never raises out of the thread; never
+    returns anything (the caller only ever reads `result`, and only up to its own deadline)."""
+    import http.client
+    try:
+        conn_cls = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
+        conn = conn_cls(host, port, timeout=max(timeout_s, 0.001))
+        result.conn = conn
+        body = json.dumps(payload).encode("utf-8")
+        conn.request("POST", path or "/", body=body, headers={
+            "Content-Type": "application/json", "Content-Length": str(len(body)),
+            "Authorization": "Bearer " + token,
+        })
+        resp = conn.getresponse()
+        raw = resp.read()
+        result.status = resp.status
+        try:
+            result.body = json.loads(raw)
+        except Exception:
+            result.body = None
+            result.error = "invalid_response"
+        try:
+            conn.close()
+        except Exception:
+            pass
+    except TimeoutError:
+        result.error = "timeout"
+    except Exception:
+        # Any other transport-layer failure (refused, reset, DNS, TLS, or the socket being
+        # force-closed out from under this thread by _abandon_remote below) is reported the same
+        # way: the service was not reachable in time, so the client falls back to local.
+        result.error = result.error or "connection"
+    finally:
+        result.done.set()
+
+
+def _abandon_remote(result: "_RemoteSearchResult"):
+    """Force-close the background request's socket (never join the thread -- ADR-0023 Sec3). Best
+    effort, never raises: shutdown() first so a thread blocked in recv() wakes up promptly on
+    POSIX instead of waiting for the OS's own timeout, then close()."""
+    try:
+        conn = result.conn
+        sock = getattr(conn, "sock", None) if conn is not None else None
+        if sock is not None:
+            import socket as _socket
+            try:
+                sock.shutdown(_socket.SHUT_RDWR)
+            except OSError:
+                pass
+        if conn is not None:
+            conn.close()
+    except Exception:
+        pass
+
+
+def _cards_from_service_response(body):
+    """Structural validation with stdlib only (Deliverable 3): `schema_version=='1.1'`, a
+    non-empty `search_id`, and a `cards` list whose items each carry non-empty `urn`/`revision`/
+    `description` strings (contract 1.1 JSON Schema's own required fields for a card). Anything
+    else -> (None, "invalid_response"). On success, returns cards reshaped into this CLI's own
+    local card shape (urn/description/revision/node/score) so callers can print/telemeter both
+    sources identically; `node` is parsed from the URN (best-effort, never required); `score` is
+    a synthetic descending rank -- the service is the product router of record here (contract
+    doc: "the client uses the service's ordered selection as-is"), so order is everything and
+    this number is cosmetic display parity with the local card shape, never compared numerically
+    against a local score."""
+    if not isinstance(body, dict) or body.get("schema_version") != "1.1":
+        return None, "invalid_response"
+    search_id = body.get("search_id")
+    cards = body.get("cards")
+    if not isinstance(search_id, str) or not search_id or not isinstance(cards, list):
+        return None, "invalid_response"
+    out = []
+    n = len(cards)
+    for i, c in enumerate(cards):
+        if not isinstance(c, dict):
+            return None, "invalid_response"
+        u, rev, desc = c.get("urn"), c.get("revision"), c.get("description")
+        if not (isinstance(u, str) and u and isinstance(rev, str) and rev and isinstance(desc, str)):
+            return None, "invalid_response"
+        node = None
+        parts = u.split(":")
+        if len(parts) == 5 and parts[:2] == ["urn", "skill"]:
+            node = parts[3]
+        out.append({"urn": u, "description": desc, "revision": rev, "node": node, "score": n - i})
+    return out, None
+
+
+def _classify_remote(result: "_RemoteSearchResult"):
+    """-> (cards_or_None, degradation_reason_or_None, raw_body_or_None). Maps the failure classes
+    required by Deliverable 2 (`timeout`/`connection`/`http_4xx`/`http_5xx`/`invalid_response`/
+    `auth`) onto whatever the background thread observed."""
+    if result.error:
+        return None, result.error, result.body
+    status, body = result.status, result.body
+    if status is None or body is None:
+        return None, "invalid_response", body
+    if status == 200:
+        cards, err = _cards_from_service_response(body)
+        return (cards, None, body) if cards is not None else (None, err, body)
+    if status in (401, 403):
+        return None, "auth", body
+    if 400 <= status < 500:
+        return None, "http_4xx", body
+    return None, "http_5xx", body
+
+
+def _local_selected(router: "Router", query: str, node: str, k: int, include_deprecated: bool = False):
+    """The exact three public Router calls route() itself makes (candidates -> score ->
+    policy_filter -> select), just returning `scored` alongside `selected` so callers can build
+    telemetry without ranking twice. Touches nothing inside Router (E2.6 constraint: no change to
+    ranking or select()); `query=query` is threaded through exactly as route() does (E7.3 composer,
+    PR #59 -- select()'s compose_mode stage needs the raw query for its coverage-fill signal, and
+    this keeps the local path behaviourally identical to route() regardless of compose_mode)."""
+    cands = router.candidates(query, node, include_deprecated=include_deprecated)
+    scored = router.score(cands, query, node)
+    admissible, _ = router.policy_filter(node, query, include_deprecated)
+    selected = router.select(scored, k=k, admissible=set(admissible), query=query)
+    return selected, scored
+
+
+def _selected_set_hash(selected: list) -> str:
+    """E2.9 parity counter: a stable hash of the ordered URN list only -- never the query text,
+    never card bodies (non-negotiable: no prompt/token text in the spool)."""
+    import hashlib
+    key = "|".join(c["urn"] for c in selected)
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+
+
+def search_with_backend(root: Path, router: "Router", query: str, node: str, *, profile: str,
+                         k: int, search_id: str, include_deprecated: bool = False,
+                         search_cfg: dict = None):
+    """The one place `find`/`hook` ask "what should I show for this query" once `search.backend`
+    can be `service`. Always computes the local sparse answer (it is the fallback, and the only
+    answer when `backend: local`); when `backend: service`, races a POST /v1/search in a daemon
+    thread against ONE monotonic absolute deadline while the local computation runs on this same
+    (calling) thread -- the local computation is genuinely concurrent with the network wait
+    because the socket read releases the GIL, not because it runs on its own thread, so no
+    Router code needs to run off the main thread. `deadline_ms` therefore covers the whole call;
+    only the *remaining* budget after the (measured) local computation is left to wait for the
+    remote. The remote result replaces the local one only if it validates and arrives before the
+    deadline; otherwise the socket is abandoned (never joined) and the local result stands
+    (ADR-0023 Sec3). `backend: local` opens no socket at all: the whole service branch below is
+    skipped and `http.client`/`threading` for a connection are never imported.
+
+    Returns {"selected": list, "backend": "online_sparse"|"local_sparse"|"none",
+    "degradation_reason": str|None, "local_selected": list, "local_scored": list,
+    "remote_body": dict|None, "parity_mismatch": bool}. Emits `telemetry_health.parity_mismatch`
+    itself (Deliverable 4) when both sides finished in time and disagree -- silent on agreement."""
+    import time
+    if search_cfg is None:
+        search_cfg = resolve_search_config(None, profile=profile)
+    degradation_reason = "config" if search_cfg.get("config_error") else None
+    remote_thread = None
+    remote_result = None
+    if search_cfg["backend"] == "service":
+        import threading
+        remote_result = _RemoteSearchResult()
+        try:
+            scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
+            payload = {"schema_version": "1.1", "query": query, "node": node, "profile": profile,
+                       "deadline_ms": search_cfg["deadline_ms"], "request_id": search_id}
+            timeout_s = search_cfg["deadline_ms"] / 1000.0
+            remote_thread = threading.Thread(
+                target=_remote_call,
+                args=(scheme, host, port, prefix + "/v1/search", search_cfg["token"], payload,
+                      timeout_s, remote_result),
+                daemon=True)
+            remote_thread.start()
+        except Exception:
+            degradation_reason, remote_thread = "config", None
+    t0 = time.monotonic()
+    deadline_at = t0 + search_cfg["deadline_ms"] / 1000.0
+    local_failed = False
+    try:
+        local_selected, local_scored = _local_selected(router, query, node, k, include_deprecated)
+    except Exception:
+        local_selected, local_scored, local_failed = [], [], True
+    backend_used = "none" if local_failed else "local_sparse"
+    final_selected = local_selected
+    remote_body = None
+    parity_mismatch = False
+    if remote_thread is not None:
+        remaining = deadline_at - time.monotonic()
+        if remaining > 0 and remote_result.done.wait(remaining):
+            cards, reason, body = _classify_remote(remote_result)
+            remote_body = body
+            if cards is not None:
+                backend_used, degradation_reason = "online_sparse", None
+                final_selected = cards
+                if not local_failed:
+                    parity_mismatch = _selected_set_hash(local_selected) != _selected_set_hash(cards)
+                    if parity_mismatch:
+                        _emit_telemetry(root, "telemetry_health.parity_mismatch", {
+                            "search_id": search_id, "local_hash": _selected_set_hash(local_selected),
+                            "remote_hash": _selected_set_hash(cards),
+                        })
+            else:
+                degradation_reason = reason
+        else:
+            degradation_reason = degradation_reason or "timeout"
+            _abandon_remote(remote_result)
+        # remote_result / remote_thread are never consulted again past this point, and the
+        # thread is never joined -- a late reply after this is simply ignored (ADR-0023 Sec3).
+    return {"selected": final_selected, "backend": backend_used, "degradation_reason": degradation_reason,
+            "local_selected": local_selected, "local_scored": local_scored,
+            "remote_body": remote_body, "parity_mismatch": parity_mismatch}
+
 def cmd_where(a, root, cfg):
     node = node_for(cfg, rel(root, Path.cwd()))
     print(json.dumps({"node": node, "owner": cfg["nodes"][node].get("owner"),
@@ -2021,42 +2334,45 @@ def cmd_find(a, root, cfg):
     # in-memory Index/Router (only Registry.download resolves one, and that would mean a network
     # call per candidate on every `find` -- not acceptable here either). The whole-snapshot git sha
     # stands in for every card's "exact revision" in this event, exactly as LocalRegistry.
-    # default_revision() already does for the real load path below.
-    deadline_ms = 1000   # docs/SEARCH-USE-TELEMETRY.md Sec7: interactive online SEARCH client p95 target
+    # default_revision() already does for the real load path below -- except for cards that come
+    # back from `search.backend: service`, which carry their own exact per-card revision (E2.6).
+    search_cfg = resolve_search_config(cfg, profile="interactive")
+    forced = getattr(a, "search_backend", None)
+    if forced:
+        search_cfg = dict(search_cfg, backend=forced, config_error=False)
+        if forced == "service" and not search_cfg.get("url"):
+            # explicitly asked for the service backend but nothing is configured to reach --
+            # this really is a config problem, not ordinary local operation.
+            search_cfg["backend"], search_cfg["config_error"] = "local", True
+    deadline_ms = search_cfg["deadline_ms"]
     _emit_telemetry(root, "search_requested", {
         "search_id": search_id, "profile": "interactive", "scope": scope, "deadline_ms": deadline_ms,
         "query_hmac": _query_hmac(a.task, root), "router_version": ROUTER_VERSION,
-        "policy_version": POLICY_VERSION, "index_snapshot": index_snapshot, "backend": "local_sparse",
+        "policy_version": POLICY_VERSION, "index_snapshot": index_snapshot,
+        "backend": "online_sparse" if search_cfg["backend"] == "service" else "local_sparse",   # attempted, not outcome
     })
     t0 = time.perf_counter()
-    # Inlined router.route()'s three steps (candidates -> score -> select) instead of calling it,
-    # so `scored` (the retrieval-order ranking, pre-select) is available for the shadow record
-    # below without ranking the query twice. The printed output is exactly what route() would
-    # have returned -- same three calls, same arguments -- so it is unaffected by --experimental.
-    cands = router.candidates(a.task, scope, include_deprecated=a.include_deprecated)
-    t_cands = time.perf_counter()
-    scored = router.score(cands, a.task, scope)
-    t_score = time.perf_counter()
-    admissible, _ = router.policy_filter(scope, a.task, a.include_deprecated)   # ADR-0022: same A as route()
-    selected = router.select(scored, k=a.limit, admissible=set(admissible), query=a.task)
+    result = search_with_backend(root, router, a.task, scope, profile="interactive", k=a.limit,
+                                  search_id=search_id, include_deprecated=a.include_deprecated,
+                                  search_cfg=search_cfg)
     t_select = time.perf_counter()
+    selected = result["selected"]
     for c in selected:
-        print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
+        print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c.get('node')})")
     if getattr(a, "experimental", False):
-        _write_shadow_record(root, a.task, scope, scored, telemetry_raw=getattr(a, "telemetry_raw", False))
+        _write_shadow_record(root, a.task, scope, result["local_scored"],
+                              telemetry_raw=getattr(a, "telemetry_raw", False))
     _emit_telemetry(root, "search_results", {
-        "search_id": search_id, "status": "ok" if selected else "abstained", "fallback_reason": None,
-        "results": [{"urn": c["urn"], "revision": index_snapshot, "score": c["score"], "rank": i}
-                    for i, c in enumerate(selected, start=1)],
-        "timings": {"candidates_ms": round((t_cands - t0) * 1000, 3),
-                    "score_ms": round((t_score - t_cands) * 1000, 3),
-                    "select_ms": round((t_select - t_score) * 1000, 3),
-                    "total_ms": round((t_select - t0) * 1000, 3)},
+        "search_id": search_id, "status": "ok" if selected else "abstained",
+        "fallback_reason": result["degradation_reason"], "backend": result["backend"],
+        "results": [{"urn": c["urn"], "revision": c.get("revision") or index_snapshot,
+                     "score": c["score"], "rank": i} for i, c in enumerate(selected, start=1)],
+        "timings": {"total_ms": round((t_select - t0) * 1000, 3)},
     })
     for position, c in enumerate(selected, start=1):
         _emit_telemetry(root, "card_injected", {
             "exposure_id": _new_id(), "search_id": search_id, "skill_id": c["urn"],
-            "revision": index_snapshot, "position": position, "surface": "interactive",
+            "revision": c.get("revision") or index_snapshot, "position": position, "surface": "interactive",
             "delivery_evidence": "printed_stdout", "scope": scope,   # extra, non-required field:
             # scope is already known here (same value as search_requested's), so
             # tools/telemetry/report.py's distinct_scopes rollup has something real to read.
@@ -2347,6 +2663,45 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     except Exception:
         pass  # telemetry must never fail or block the command it instruments (see block docstring)
 
+def _use_via_service(search_cfg: dict, skill_id: str, revision: str):
+    """Blocking POST /v1/use (contract 1.1) -- no local race/fallback exists for USE (unlike
+    SEARCH, ADR-0023 Sec3): an exact urn@revision either hydrates from the configured service or
+    it doesn't; there is no local equivalent of "this server's revision" to fall back to. Returns
+    (body_dict_or_None, degradation_reason_or_None) using the same failure vocabulary as SEARCH."""
+    import threading
+    result = _RemoteSearchResult()
+    try:
+        scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
+    except Exception:
+        return None, "config"
+    payload = {"schema_version": "1.1", "skill_id": skill_id, "revision": revision,
+               "deadline_ms": search_cfg["deadline_ms"], "request_id": _new_id()}
+    timeout_s = search_cfg["deadline_ms"] / 1000.0
+    t = threading.Thread(target=_remote_call,
+                          args=(scheme, host, port, prefix + "/v1/use", search_cfg["token"],
+                                payload, timeout_s, result),
+                          daemon=True)
+    t.start()
+    if not result.done.wait(timeout_s + 0.5):   # small grace beyond the socket's own timeout
+        _abandon_remote(result)
+        return None, "timeout"
+    if result.error:
+        return None, result.error
+    status, body = result.status, result.body
+    if status is None or body is None:
+        return None, "invalid_response"
+    if status == 200:
+        if not (isinstance(body, dict) and body.get("schema_version") == "1.1"
+                and isinstance(body.get("body"), str) and isinstance(body.get("checksum"), str)
+                and body.get("skill_id") == skill_id and body.get("revision") == revision):
+            return None, "invalid_response"
+        return body, None
+    if status in (401, 403):
+        return None, "auth"
+    if 400 <= status < 500:
+        return None, "http_4xx"
+    return None, "http_5xx"
+
 def cmd_load(a, root, cfg):
     # E6.4: skill_load_requested/skill_load_completed bracket the exact same operations this
     # function already performed -- default_revision() then a cache-hit check or download() -- the
@@ -2354,9 +2709,53 @@ def cmd_load(a, root, cfg):
     # caught only long enough to emit a failed-load event, then re-raised unchanged so the user-
     # visible exit code/message are untouched.
     import time
-    reg = registry_for(cfg, root)
     load_id = _new_id()
     t0 = time.perf_counter()
+    search_cfg = resolve_search_config(cfg, profile="interactive")
+    if search_cfg["backend"] == "service":
+        # E2.6 Deliverable 6: load via /v1/use needs an EXACT urn@revision -- there is no default-
+        # revision concept on the service side equivalent to Registry.default_revision() (that is
+        # a gcloud Agent Registry revision id, a different revisioning system entirely). The
+        # revision normally comes from a card a prior `find --backend service` printed.
+        urn_part, sep, revision_part = a.urn.partition("@")
+        if not sep or not revision_part:
+            sys.exit(f"guidefold: search.backend: service requires an exact revision -- "
+                      f"pass `load {a.urn}@<revision>` (see a prior `find`'s printed revision)")
+        _emit_telemetry(root, "skill_load_requested", {
+            "load_id": load_id, "skill_id": urn_part, "revision": revision_part, "source": "service",
+            "use_id": None, "search_id": None,
+        })
+        body, reason = _use_via_service(search_cfg, urn_part, revision_part)
+        if body is None:
+            _emit_telemetry(root, "skill_load_completed", {
+                "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+                "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part,
+            })
+            sys.exit(f"guidefold: service USE failed ({reason}) for {a.urn}")
+        import hashlib
+        checksum_ok = hashlib.sha256(body["body"].encode("utf-8")).hexdigest() == body.get("checksum")
+        if not checksum_ok:
+            _emit_telemetry(root, "skill_load_completed", {
+                "load_id": load_id, "status": "error", "cache_source": "service", "bytes": 0,
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+                "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part,
+            })
+            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use")
+        dest = skill_cache_dir(urn_part, revision_part)
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "SKILL.md").write_text(body["body"], encoding="utf-8")
+        bytes_loaded = len(body["body"].encode("utf-8"))
+        _emit_telemetry(root, "skill_load_completed", {
+            "load_id": load_id, "status": "ok", "cache_source": "service", "bytes": bytes_loaded,
+            "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+            "closure_status": "complete", "skill_id": urn_part, "revision": revision_part,
+        })
+        evict_lru(cache_root() / "skills", depth=2,
+                  cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
+        print(dest / "SKILL.md")
+        return
+    reg = registry_for(cfg, root)
     try:
         rev = reg.default_revision(a.urn)
     except SystemExit:
@@ -2696,20 +3095,32 @@ def cmd_hook(a, root):
         # below (unchanged), so this invocation's search_results is simply never written for that
         # rare case -- consistent with Sec5 "lost events reduce reported coverage" being expected
         # and reported as missing, never fabricated as a status.
+        #
+        # E2.6: search.backend config here comes ONLY from the environment (GUIDEFOLD_SEARCH_*) --
+        # never from guidefold.yaml/PyYAML (E1.5's hard constraint, unaffected by this feature).
+        # `seconds`/the SIGALRM watchdog above is a separate, portable crash deadline (ADR-0023
+        # Sec3: "not the normal timeout or SLO"); the SEARCH deadline reported below and used for
+        # the service race is search_cfg["deadline_ms"], never the watchdog value.
         import time
         search_id = _new_id()
+        search_cfg = resolve_search_config(None, profile="hook")
         _emit_telemetry(root, "search_requested", {
-            "search_id": search_id, "profile": "hook", "scope": node, "deadline_ms": int(seconds * 1000),
+            "search_id": search_id, "profile": "hook", "scope": node,
+            "deadline_ms": search_cfg["deadline_ms"],
             "query_hmac": _query_hmac(prompt, root), "router_version": ROUTER_VERSION,
-            "policy_version": POLICY_VERSION, "index_snapshot": sha, "backend": "local_sparse",
+            "policy_version": POLICY_VERSION, "index_snapshot": sha,
+            "backend": "online_sparse" if search_cfg["backend"] == "service" else "local_sparse",
         }, ids={"session_id": session_id})
         t0 = time.perf_counter()
-        top = Router(idx).route(prompt, node, k=3)
+        result = search_with_backend(root, Router(idx), prompt, node, profile="hook", k=3,
+                                      search_id=search_id, search_cfg=search_cfg)
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
+        top = result["selected"]
         _emit_telemetry(root, "search_results", {
-            "search_id": search_id, "status": "ok" if top else "abstained", "fallback_reason": None,
-            "results": [{"urn": c["urn"], "revision": sha, "score": c["score"], "rank": i}
-                        for i, c in enumerate(top, start=1)],
+            "search_id": search_id, "status": "ok" if top else "abstained",
+            "fallback_reason": result["degradation_reason"], "backend": result["backend"],
+            "results": [{"urn": c["urn"], "revision": c.get("revision") or sha,
+                        "score": c["score"], "rank": i} for i, c in enumerate(top, start=1)],
             "timings": {"total_ms": elapsed_ms},
         }, ids={"session_id": session_id})
         if not top:
@@ -2721,7 +3132,7 @@ def cmd_hook(a, root):
         for position, c in enumerate(top, start=1):
             _emit_telemetry(root, "card_injected", {
                 "exposure_id": _new_id(), "search_id": search_id, "skill_id": c["urn"],
-                "revision": sha, "position": position, "surface": "hook",
+                "revision": c.get("revision") or sha, "position": position, "surface": "hook",
                 "delivery_evidence": "printed_stdout", "scope": node,   # see cmd_find's card_injected
                 # for why: non-required, but lets report.py's distinct_scopes rollup mean something.
             }, ids={"session_id": session_id})
@@ -3428,6 +3839,147 @@ def _check_index_freshness(root: Path) -> dict:
     return _doctor_check("index-freshness", "ok", "index artifact is at least as new as HEAD")
 
 
+def _measure_local_search_p95(root: Path, cfg, n: int = 20) -> float:
+    """E2.6 Deliverable 5: measured local warm p95 over `n` `find`-shaped calls against this
+    repo's own Index/Router -- the same `_local_selected` helper `search_with_backend` uses, so
+    this number means exactly what the R4b curve was measured against. One untimed warm-up call
+    is excluded (first-call JIT/caching cost is not what the R4b threshold characterizes); the
+    remaining `n` are timed and the 95th percentile (nearest-rank) is returned in milliseconds."""
+    import time
+    idx = Index.build(root, cfg)
+    router = Router(idx)
+    query = "how do I follow this repository's conventions for a common task"
+    _local_selected(router, query, "_root", 5)   # warm-up, untimed
+    samples = []
+    for _ in range(n):
+        t0 = time.perf_counter()
+        _local_selected(router, query, "_root", 5)
+        samples.append((time.perf_counter() - t0) * 1000.0)
+    samples.sort()
+    rank = min(len(samples) - 1, int(round(0.95 * (len(samples) - 1))))
+    return samples[rank]
+
+
+def _check_search_latency(root: Path, cfg) -> dict:
+    """R4b's <300ms guideline decides the doctor's tier recommendation -- no interpolation, just
+    the fixed threshold from docs/reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md."""
+    try:
+        p95 = _measure_local_search_p95(root, cfg, n=20)
+    except Exception as e:
+        return _doctor_check("search-local-p95", "warn", f"could not measure local search latency: {e}", None)
+    if p95 < 300:
+        return _doctor_check("search-local-p95", "ok",
+                              f"local warm p95={p95:.1f}ms (n=20) -- T0 (search.backend: local) is fine per R4b")
+    return _doctor_check("search-local-p95", "warn",
+                          f"local warm p95={p95:.1f}ms (n=20) exceeds the R4b 300ms guideline",
+                          "consider search.backend: service (T1) -- see "
+                          "docs/reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md")
+
+
+def _doctor_http_get(scheme: str, host: str, port: int, path: str, token: str, timeout_s: float = 2.0):
+    """Blocking GET with stdlib http.client only -- doctor is a synchronous diagnostic command,
+    not the deadline-raced client path, so no threading/abandon dance is needed here. Returns
+    (status_or_None, json_body_or_None, error_name_or_None)."""
+    import http.client
+    conn_cls = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
+    conn = conn_cls(host, port, timeout=timeout_s)
+    try:
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        conn.request("GET", path or "/", headers=headers)
+        resp = conn.getresponse()
+        raw = resp.read()
+        status = resp.status
+        try:
+            body = json.loads(raw)
+        except Exception:
+            body = None
+        return status, body, None
+    except Exception as e:
+        return None, None, type(e).__name__
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _check_search_service(root: Path, cfg) -> dict:
+    """Service reachability + contract version, via GET /health/ready (never /v1/search --
+    doctor must not spend a search against the service just to check it is up). Snapshot AGE is
+    not reported: contract 1.1's /health/ready has a `snapshot` content digest and a repository
+    `revision`, but no build timestamp field, so an "age" number here would be invented wire data
+    -- the brief's own non-negotiable forbids that. This gap is called out in the PR description
+    for the service owner instead."""
+    search_cfg = resolve_search_config(cfg, profile="interactive")
+    if not search_cfg.get("url"):
+        return _doctor_check("search-service", "ok",
+                              "no search.url configured -- search.backend: local, nothing to reach", None)
+    try:
+        scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
+    except Exception as e:
+        return _doctor_check("search-service", "fail", f"unusable search.url: {e}",
+                              "fix search.url in guidefold.yaml or GUIDEFOLD_SEARCH_URL")
+    status, body, err = _doctor_http_get(scheme, host, port, prefix + "/health/ready", search_cfg.get("token"))
+    if err is not None or status is None:
+        return _doctor_check("search-service", "fail", f"{search_cfg['url']} unreachable ({err or 'no response'})",
+                              "check the URL/network -- find/hook still fall back to local within deadline_ms")
+    if status != 200 or not isinstance(body, dict):
+        return _doctor_check("search-service", "fail", f"{search_cfg['url']}/health/ready returned HTTP {status}",
+                              "the service is reachable but not ready -- check its own logs")
+    versions = body.get("api_schema_versions") or []
+    version_ok = "1.1" in versions
+    bits = ["reachable", f"contract 1.1 {'supported' if version_ok else 'NOT ADVERTISED'}"]
+    if body.get("snapshot"):
+        bits.append(f"snapshot={body['snapshot']}")
+    revision = (body.get("repository") or {}).get("revision")
+    if revision:
+        bits.append(f"revision={revision}")
+    bits.append("snapshot age: not in the 1.1 wire contract (no build timestamp field) -- unmeasurable "
+                "without a service-owner change, not reported here")
+    return _doctor_check("search-service", "ok" if version_ok else "warn", ", ".join(bits),
+                          None if version_ok else "the service's /health/ready does not list '1.1' in api_schema_versions")
+
+
+def _check_search_token(cfg) -> dict:
+    """Token PRESENCE only -- the value itself is never read into a doctor check's `detail`/`fix`
+    string (never logged, per the brief's non-negotiable)."""
+    search_cfg = resolve_search_config(cfg, profile="interactive")
+    if not search_cfg.get("url"):
+        return _doctor_check("search-token", "ok", "no search.url configured -- a token is not needed", None)
+    if search_cfg.get("token"):
+        return _doctor_check("search-token", "ok", "a bearer token is configured (GUIDEFOLD_TOKEN or token_file)", None)
+    return _doctor_check("search-token", "fail",
+                          "search.url is configured but no bearer token was found -- every request will 401",
+                          "set GUIDEFOLD_TOKEN, or search.token_file in guidefold.yaml, to a file holding the token")
+
+
+def _check_telemetry_spool(root: Path) -> dict:
+    """Read-only spool health summary across every tenant/environment partition -- reuses the
+    exact helpers `guidefold telemetry status` itself uses, so the two never disagree."""
+    rows = []
+    for tenant, env, env_dir in _telemetry_partitions(root):
+        health = _read_health(_health_path(env_dir))
+        queued = 0
+        for f in sorted(env_dir.glob("events-*.jsonl")):
+            queued += sum(1 for l in f.read_text(encoding="utf-8").splitlines() if l.strip())
+        rows.append({"tenant": tenant, "environment": env, "queued": queued,
+                      "dropped": health.get("dropped", 0),
+                      "oldest_queued_age_s": _oldest_queued_age_s(env_dir)})
+    if not rows:
+        return _doctor_check("telemetry-spool", "ok", "spool is empty", None)
+    total_queued = sum(r["queued"] for r in rows)
+    total_dropped = sum(r["dropped"] for r in rows)
+    oldest = max((r["oldest_queued_age_s"] for r in rows if r["oldest_queued_age_s"] is not None), default=None)
+    detail = f"{len(rows)} partition(s), {total_queued} event(s) queued, {total_dropped} dropped"
+    if oldest is not None:
+        detail += f", oldest queued age={oldest}s"
+    if total_dropped:
+        return _doctor_check("telemetry-spool", "warn", detail, "run `guidefold telemetry flush --url <events endpoint>`")
+    return _doctor_check("telemetry-spool", "ok", detail, None)
+
+
 def cmd_doctor(a):
     root = _target_root()
     checks = [_check_python(), _check_cli_compiles(root)]
@@ -3440,6 +3992,11 @@ def cmd_doctor(a):
     checks.append(_check_github_action(root))
     checks.extend(_check_registry(root, cfg))
     checks.append(_check_index_freshness(root))
+    if cfg is not None:
+        checks.append(_check_search_latency(root, cfg))
+        checks.append(_check_search_service(root, cfg))
+        checks.append(_check_search_token(cfg))
+    checks.append(_check_telemetry_spool(root))
     ok = not any(c["status"] == "fail" for c in checks)
     if a.json:
         print(json.dumps({"root": str(root), "ok": ok, "checks": checks}, indent=2))
@@ -3464,6 +4021,12 @@ def main():
     sub.add_parser("where")
     f = sub.add_parser("find"); f.add_argument("task"); f.add_argument("--scope"); f.add_argument("--limit", type=int, default=8)
     f.add_argument("--include-deprecated", action="store_true", help="don't apply the policy filter's deprecated-skill drop")
+    f.add_argument("--backend", choices=["local", "service"], dest="search_backend",
+                   help="override search.backend for this invocation only (independent of the "
+                        "top-level registry --backend above); `service` still needs "
+                        "search.url/token configured via guidefold.yaml or GUIDEFOLD_SEARCH_*/"
+                        "GUIDEFOLD_TOKEN env vars, or it is treated as a config error and falls "
+                        "back to local (E2.6)")
     f.add_argument("--experimental", action="store_true",
                    help="E1.6 shadow mode: write a top-20 retrieval-order telemetry record to "
                         ".guidefold/telemetry/shadow-<date>.jsonl for offline reranker scoring "
