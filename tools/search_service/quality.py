@@ -20,6 +20,7 @@ import time
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 sys.path.insert(0,str(ROOT/'tools/eval'))
+from tools.search_service.index import with_router_index
 from tools.search_service.smoke import request
 from tools.serve_spike.server import load_cli_snapshot
 from tools.serve_spike.repository import canonical
@@ -131,6 +132,7 @@ def main():
           'cli_sha256':sha,'nodes':nodes,'cards':cards,'weights':index.weights,
           'source':'pinned_quality_reference','assets_included':False}
     bundle={'snapshot':data,'sha256':hashlib.sha256(canonical(data)).hexdigest()}
+    bundle=with_router_index(cli,bundle,index)
     snapshot_file=ROOT/'.guidefold/compose/quality-snapshot.json'
     snapshot_file.write_bytes(canonical(bundle)+b'\n')
     identity={'variant':'paradedb_bm25_v1','dataset':args.dataset,'scope':'case.node for regression; _root otherwise',
@@ -144,7 +146,7 @@ def main():
         assert json.loads(identity_file.read_text())==identity, 'Frozen identity changed; cannot resume'
     else:
         identity_file.write_text(json.dumps(identity,indent=2)+'\n')
-    env=dict(os.environ,GUIDEFOLD_REPO=repo)
+    env=dict(os.environ,GUIDEFOLD_REPO=repo,GUIDEFOLD_LEXICAL_ENGINE='paradedb-experimental')
     compose(env,'--profile','tools','run','--rm','publish','publish','/input/quality-snapshot.json')
     compose(env,'up','-d','--wait','api')
     url='http://127.0.0.1:'+os.environ.get('GUIDEFOLD_PORT','8765')

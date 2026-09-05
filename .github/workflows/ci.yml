@@ -91,7 +91,8 @@ jobs:
       - name: Regenerate policy conformance cases from the unchanged CLI
         run: |
           python tools/search_service/contract_fixtures.py
-          git diff --exit-code -- services/search/testdata/policy.json
+          python tools/search_service/bm25f_fixtures.py
+          git diff --exit-code -- services/search/testdata/policy.json services/search/testdata/bm25f.json
       - name: Go race tests and vet
         working-directory: services/search
         run: |
@@ -101,23 +102,29 @@ jobs:
 
   compose-service:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pyyaml "jsonschema>=4.23,<5"
+      - run: pip install pyyaml numpy huggingface_hub "jsonschema>=4.23,<5"
       - name: Build, publish and deploy Go with real ParadeDB
         run: python tools/search_service/dev.py deploy
       - name: HTTP contract, real SQL, publication and restart checks
         run: python tools/search_service/smoke.py --recovery --output .guidefold/checks/compose-smoke.json
+      - name: Fetch pinned public corpus for the 1000-query parity gate
+        run: python -c "from tools.eval.corpora import fetch; fetch('skillret')"
+      - name: Full default SEARCH parity against the unchanged CLI (1000 DEV queries)
+        run: python tools/search_service/parity.py --output .guidefold/checks/router-parity.json
       - name: Upload integration evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: compose-smoke
-          path: .guidefold/checks/compose-smoke.json
+          path: |
+            .guidefold/checks/compose-smoke.json
+            .guidefold/checks/router-parity.json
       - name: Stop this CI stack
         if: always()
         run: docker compose down

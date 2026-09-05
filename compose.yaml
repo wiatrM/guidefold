@@ -23,6 +23,7 @@ x-app: &app
     GUIDEFOLD_TOKEN_FILE: /run/secrets/api_token
     GUIDEFOLD_CONTRACT: /app/contract.json
     GUIDEFOLD_POLICY_SOURCE: /app/policy-source
+    GUIDEFOLD_LEXICAL_ENGINE: ${GUIDEFOLD_LEXICAL_ENGINE:-router}
 
 services:
   db:
