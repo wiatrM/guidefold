@@ -35,6 +35,7 @@ phase) can iterate them uniformly.
 from __future__ import annotations
 
 import math
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -45,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import distill  # noqa: E402
 from corpus import SkillRecord, cli, load_corpus  # noqa: E402
-from encode import Encoder  # noqa: E402
+from encode import DEVICE, DTYPE, Encoder, _local_model_path  # noqa: E402
 from tokenizer import tokenize  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "examples" / "monorepo"
@@ -310,6 +311,7 @@ class Reranker:
         self._model = None
         self._token_yes = None
         self._token_no = None
+        self.device = None
 
     def _ensure_loaded(self):
         if self._model is not None:
@@ -317,31 +319,79 @@ class Reranker:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        self._tokenizer = AutoTokenizer.from_pretrained(self.hf_id, revision=self.revision, padding_side="left")
-        self._model = AutoModelForCausalLM.from_pretrained(self.hf_id, revision=self.revision, dtype=torch.float32)
-        self._model.eval().to("cpu")
+        # This class only runs inside tools/bakeoff (tier 2, offline, never shipped in the CLI --
+        # see ADR-0020), so unlike anything on the hook path it is free to use whatever compute
+        # is fastest for the machine it happens to run on. Same DEVICE/DTYPE globals encode.py's
+        # Encoder uses (computed once at import time from torch.cuda.is_available()), so a
+        # bake-off run never mixes a GPU embedder with a CPU reranker or vice versa. A CUDA GPU,
+        # when present, cuts the ~100s/query (batched, CPU) cost measured on this box by roughly
+        # two orders of magnitude; CPU remains the fallback for a dev box or CI runner with no GPU.
+        # Offline bake-off numbers were never meant to be bit-identical across machines (BLAS/cuBLAS
+        # reductions differ by device), so this tradeoff is safe here in a way it would not be on a
+        # runtime path that promises identical output.
+        self.device = DEVICE
+        if self.device == "cpu":
+            torch.set_num_threads(max(1, os.cpu_count() or 1))
+        # _local_model_path (encode.py) prefers a local machine mirror over HuggingFace, so a box
+        # that already has the weights (e.g. the GCS-mirrored ~/.cache/guidefold/models/) never
+        # re-downloads a 0.6B model's worth of weights. A local path is an exact snapshot dir
+        # already named by its commit SHA, so `revision` is only meaningful for the HF fallback.
+        local = _local_model_path(self.hf_id, self.revision)
+        model_path = str(local) if local is not None else self.hf_id
+        rev_kw = {} if local is not None else {"revision": self.revision}
+        self._tokenizer = AutoTokenizer.from_pretrained(model_path, padding_side="left", **rev_kw)
+        if self._tokenizer.pad_token_id is None:
+            # Qwen2-family tokenizers (this model's base) ship no pad token; batching (score_batch)
+            # needs one to left-pad short sequences up to the batch's longest. eos is the standard
+            # stand-in -- it is never attended to meaningfully once masked by attention_mask.
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+        self._model = AutoModelForCausalLM.from_pretrained(model_path, dtype=DTYPE, **rev_kw)
+        self._model.eval().to(self.device)
         self._token_yes = self._tokenizer.convert_tokens_to_ids("yes")
         self._token_no = self._tokenizer.convert_tokens_to_ids("no")
 
-    def score(self, query: str, record: SkillRecord, desc_max: int = 500, body_max: int = 2000,
-              max_length: int = 4096) -> float:
+    def score_batch(self, query: str, records: list, desc_max: int = 500, body_max: int = 2000,
+                     max_length: int = 4096) -> list:
+        """Score every (query, record) pair in ONE forward pass -- the E1.6 non-negotiable: the
+        model's own README's recipe is written for a batch of one, and run that way it costs
+        ~8s/pair (~10h for the 220-query golden set at top-20). Batching relies on the same
+        left-padding invariant `encode.py`'s `_last_token_pool` documents: with `padding_side="left"`
+        (set once in `_ensure_loaded`), every row's last position is its own last *real* token
+        regardless of how much pad sits to its left, so `logits[:, -1, :]` reads the right token
+        for every row of the batch at once -- no manual pooling by attention_mask needed.
+        """
         import torch
 
         self._ensure_loaded()
-        doc_text = f"{record.name} | {record.description[:desc_max]} | {record.body[:body_max]}"
-        prompt = f"<Instruct>: {self._INSTRUCTION}\n\n<Query>: {query}\n\n<Document>: {doc_text}"
+        if not records:
+            return []
         prefix_tokens = self._tokenizer.encode(self._SYSTEM_PREFIX, add_special_tokens=False)
         suffix_tokens = self._tokenizer.encode(self._ASSISTANT_SUFFIX, add_special_tokens=False)
-        body_tokens = self._tokenizer(
-            prompt, padding=False, truncation=True,
-            max_length=max_length - len(prefix_tokens) - len(suffix_tokens),
-            return_attention_mask=False,
-        )["input_ids"]
-        input_ids = torch.tensor([prefix_tokens + body_tokens + suffix_tokens])
-        attention_mask = torch.ones_like(input_ids)
+        budget = max_length - len(prefix_tokens) - len(suffix_tokens)
+        sequences = []
+        for record in records:
+            doc_text = f"{record.name} | {record.description[:desc_max]} | {record.body[:body_max]}"
+            prompt = f"<Instruct>: {self._INSTRUCTION}\n\n<Query>: {query}\n\n<Document>: {doc_text}"
+            body_tokens = self._tokenizer(
+                prompt, padding=False, truncation=True, max_length=budget, return_attention_mask=False,
+            )["input_ids"]
+            sequences.append(prefix_tokens + body_tokens + suffix_tokens)
+        # tokenizer.pad() left-pads (padding_side="left" was set at load time) every sequence up to
+        # the longest one in THIS batch -- one forward pass, not one per candidate.
+        padded = self._tokenizer.pad({"input_ids": sequences}, padding=True, return_tensors="pt")
+        input_ids = padded["input_ids"].to(self.device)
+        attention_mask = padded["attention_mask"].to(self.device)
         with torch.no_grad():
             logits = self._model(input_ids=input_ids, attention_mask=attention_mask).logits[:, -1, :]
-        return (logits[:, self._token_yes] - logits[:, self._token_no]).item()
+        diff = logits[:, self._token_yes] - logits[:, self._token_no]
+        return diff.float().cpu().tolist()
+
+    def score(self, query: str, record: SkillRecord, desc_max: int = 500, body_max: int = 2000,
+              max_length: int = 4096) -> float:
+        """Single-pair convenience wrapper -- delegates to `score_batch` (batch of one) so there is
+        exactly one place that builds the prompt and reads the yes/no logit difference."""
+        return self.score_batch(query, [record], desc_max=desc_max, body_max=body_max,
+                                 max_length=max_length)[0]
 
 
 _RERANKER: Reranker = None
@@ -354,11 +404,16 @@ def _reranker() -> Reranker:
     return _RERANKER
 
 
-def arm_b6(query: str, corpus: list, limit: int = 4) -> list:
+def arm_b6(query: str, corpus: list, limit: int = DEFAULT_LIMIT) -> list:
+    """B5's top-20 (RRF of BM25 + static dense), reranked by the cross-encoder in ONE batched
+    forward pass (E1.6) rather than 20 sequential ones -- see `Reranker.score_batch`."""
     candidates = arm_b5(query, corpus, limit=20)
     by_urn = {r.urn: r for r in corpus}
+    urns = [u for u in candidates if u in by_urn]
+    records = [by_urn[u] for u in urns]
     reranker = _reranker()
-    scored = [(reranker.score(query, by_urn[u]), u) for u in candidates if u in by_urn]
+    scores = reranker.score_batch(query, records)
+    scored = list(zip(scores, urns))
     scored.sort(key=lambda x: (-x[0], x[1]))
     return [u for _, u in scored[:limit]]
 

@@ -31,9 +31,14 @@ Design notes
     — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help` and `hook`, don't pay
     for it: `hook`'s whole code path imports zero PyYAML, provable with `python3 -X importtime`).
 """
-import argparse, array, datetime, fnmatch, hashlib, io, json, math, mmap, os, re, signal, shutil, struct, subprocess, sys, tempfile, unicodedata, zipfile
+import argparse, array, datetime, fnmatch, hashlib, io, json, math, mmap, os, re, signal, shutil, struct, subprocess, sys, tempfile, unicodedata, uuid, zipfile
 from functools import cmp_to_key
 from pathlib import Path
+
+# CLI version stamped into shadow telemetry (E1.6) so a later analysis pass can tell which
+# ranking code produced a given shadow record. Bump by hand on a user-visible behaviour change;
+# nothing parses this beyond string equality today.
+CLI_VERSION = "0.1.0"
 
 # ---------------------------------------------------------------- repo helpers
 def repo_root() -> Path:
@@ -1318,8 +1323,66 @@ def cmd_find(a, root, cfg):
     idx = Index.build(root, cfg)
     router = Router(idx)
     scope = a.scope or node_for(cfg, rel(root, Path.cwd()))
-    for c in router.route(a.task, scope, k=a.limit, include_deprecated=a.include_deprecated):
+    # Inlined router.route()'s three steps (candidates -> score -> select) instead of calling it,
+    # so `scored` (the retrieval-order ranking, pre-select) is available for the shadow record
+    # below without ranking the query twice. The printed output is exactly what route() would
+    # have returned -- same three calls, same arguments -- so it is unaffected by --experimental.
+    cands = router.candidates(a.task, scope, include_deprecated=a.include_deprecated)
+    scored = router.score(cands, a.task, scope)
+    selected = router.select(scored, k=a.limit)
+    for c in selected:
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c['node']})")
+    if getattr(a, "experimental", False):
+        _write_shadow_record(root, a.task, scope, scored, telemetry_raw=getattr(a, "telemetry_raw", False))
+
+# ---------------------------------------------------------- E1.6 shadow telemetry
+# `find --experimental` never changes the printed answer (see cmd_find above): it only writes a
+# record of what a reranker *would* see, so tools/bakeoff/rerank_shadow.py can score it offline
+# (tier 2, torch allowed) and tools/bakeoff/arms.py's B6 bake-off row can be compared against real
+# traffic later. Writing this record must never fail or slow down `find` in a way the user can
+# see, so every line below this comment runs inside one try/except in _write_shadow_record, and a
+# failure here is silent by design (ADR-0020: the shipped CLI stays stdlib-only and this whole
+# path is stdlib -- json/hashlib/uuid/datetime -- so there is nothing here that *should* fail, but
+# "should" is not a guarantee, and a telemetry bug must never become an outage for `find`).
+#
+# The query is stored as a SHA-256 hash, not the raw text, by default: prompts routed through
+# `find --experimental` can contain proprietary detail (customer names, incident specifics,
+# unreleased feature names), and a telemetry file that quietly accumulates that detail on disk is
+# exactly the kind of thing that is never noticed until someone greps it by accident. Pass
+# --telemetry-raw to opt into keeping the raw query text as well (needed if you actually want
+# tools/bakeoff/rerank_shadow.py to score this record later -- see that file's docstring: a
+# reranker needs the real query string, a hash cannot be un-hashed).
+def _utc_now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def _shadow_telemetry_path(root: Path) -> Path:
+    date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    return root / ".guidefold" / "telemetry" / f"shadow-{date}.jsonl"
+
+def _write_shadow_record(root: Path, query: str, node: str, scored: list, telemetry_raw: bool = False):
+    try:
+        record = {
+            "type": "shadow_request",
+            "request_id": str(uuid.uuid4()),
+            "ts": _utc_now_iso(),
+            "cli_version": CLI_VERSION,
+            "index_sha": _git_head_short(root),
+            "node": node,
+            "query_sha256": hashlib.sha256(query.encode("utf-8")).hexdigest(),
+            # retrieval order (Router.score, score desc / urn tie-break) -- NOT injection order
+            # (Router.select reorders general -> specific for the agent to read; see
+            # docs/reports/golden/README.md, "The Router has two orderings"). A reranker judges
+            # relevance, so it must see the same order the ranking metrics are read from.
+            "top20": [{"urn": c["urn"], "score": c["score"]} for c in scored[:20]],
+        }
+        if telemetry_raw:
+            record["query"] = query
+        path = _shadow_telemetry_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, sort_keys=True) + "\n")
+    except Exception:
+        pass  # telemetry must never fail or block `find` (see comment above)
 
 def cmd_load(a, root, cfg):
     reg = registry_for(cfg, root)
@@ -2236,6 +2299,14 @@ def main():
     sub.add_parser("where")
     f = sub.add_parser("find"); f.add_argument("task"); f.add_argument("--scope"); f.add_argument("--limit", type=int, default=8)
     f.add_argument("--include-deprecated", action="store_true", help="don't apply the policy filter's deprecated-skill drop")
+    f.add_argument("--experimental", action="store_true",
+                   help="E1.6 shadow mode: write a top-20 retrieval-order telemetry record to "
+                        ".guidefold/telemetry/shadow-<date>.jsonl for offline reranker scoring "
+                        "(tools/bakeoff/rerank_shadow.py). Never changes the printed result.")
+    f.add_argument("--telemetry-raw", action="store_true",
+                   help="with --experimental, store the raw query text in the shadow record "
+                        "instead of only its SHA-256 hash (default: hash only -- prompts can "
+                        "carry proprietary detail)")
     l = sub.add_parser("load"); l.add_argument("urn")
     sub.add_parser("validate")
     dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")

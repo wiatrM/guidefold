@@ -49,13 +49,21 @@ regenerate with `distill.py` rather than mixing builds. The committed `words.jso
 python3 -m venv .venv
 .venv/bin/pip install -r tools/bakeoff/requirements.txt \
   --extra-index-url https://download.pytorch.org/whl/cpu
+# On a box with a CUDA GPU, install the matching torch build instead (e.g.
+# --index-url https://download.pytorch.org/whl/cu128) -- Encoder/Reranker pick up
+# torch.cuda.is_available() automatically, no other change needed.
 
 export HF_HOME=/path/to/pre-downloaded/hf/cache   # models below must already be there
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1    # this harness never re-downloads anything
+# Alternatively, mirror each model to GUIDEFOLD_MODELS_ROOT/<org>__<name>/<revision>/ (default
+# ~/.cache/guidefold/models) -- _local_model_path() in encode.py prefers that flat layout over
+# HF_HOME's own hub cache when both are set, so a machine that already has the weights (e.g. via
+# the GCS mirror URIs in the table above) never touches HuggingFace at all.
 
 .venv/bin/python -m pytest tools/bakeoff/tests/ -v
 .venv/bin/python tools/bakeoff/distill.py            # writes tools/bakeoff/build/<teacher>/...
 .venv/bin/python tools/bakeoff/arms.py "some query"   # top-5 URNs + wall-clock, every arm
+.venv/bin/python tools/bakeoff/report_b6.py --full    # B6 vs B5 over the full 220-query golden set
 ```
 
 ## Pinned models
@@ -214,6 +222,10 @@ caches warm** (i.e. the steady-state a CI pipeline would see on a rerun):
 | B5 | 0.000s |
 | B6 | 159.5s |
 
+**B6's number above predates E1.6's batching + GPU support and is now stale for the current code
+-- see "E1.6: batched B6, GPU-verified, full golden set" below for the current, much lower number
+and the real 220-query metrics it produces.**
+
 **Cold (first-ever, cache-empty) dense-encoding cost for the 26-skill corpus** — this is the real
 cost a CI pipeline pays once per corpus change, per teacher, and it is *not* small:
 
@@ -245,11 +257,131 @@ is a CI-time evaluation step here, not something the shipped hook runs per query
 the sample query (`tests/test_arms.py::test_every_arm_returns_valid_deduplicated_urns`); the
 concern above is retrieval *quality* and *CI wall-clock*, not correctness or crashes.
 
-**Not yet done, needed before phase 2 (flagged on coordinator review, tracked here, out of scope
-for this PR):** both B6's ~8s/pair reranking and the two slowest dense teachers' cold-encoding cost
-are shaped like unbatched, one-at-a-time forward passes rather than a genuine model-capacity limit.
-At 159.5s for one query's top-20 rerank, the full 220-query golden set (phase 2) would cost
-~10 hours on B6 alone; at ~10s/doc for the slowest teachers, encoding 220 queries per teacher would
-cost ~35 minutes each. Batching B6's 20 pairs into one forward pass, and batching the dense
-teachers' per-query/per-doc calls, should bring both down to low minutes — this needs doing before
-phase 2 starts, not as part of this tokenizer/Zipf/normalisation fix.
+**Historical note (superseded below):** this section originally flagged B6's ~8s/pair reranking and
+the two slowest dense teachers' cold-encoding cost as unbatched, one-at-a-time forward passes, and
+guessed that batching alone would bring both "down to low minutes." E1.6 batched B6 and measured
+that guess directly: it was only half right (see next section).
+
+## E1.6: batched B6, GPU-verified, full golden set
+
+`Reranker.score_batch()` (and `Encoder`, for the same reason) now score every candidate of a query
+in **one forward pass** instead of one `AutoModelForCausalLM`/`AutoModel` call per candidate, and
+both classes are device-aware: CUDA when `torch.cuda.is_available()` (fp16), CPU otherwise (fp32,
+unchanged) -- the same module-level `DEVICE`/`DTYPE` globals in `encode.py` that E1.3 phase 2's GPU
+pass (#14) landed, so `Reranker` and `Encoder` never disagree about which device a run is on. Model
+weights load from a local machine mirror when present (`_local_model_path()` in `encode.py`, default
+`~/.cache/guidefold/models/<org>__<name>/<revision>/`, override with `GUIDEFOLD_MODELS_ROOT`) so a
+machine that already has the weights never re-downloads them from HuggingFace;
+`HF_HUB_OFFLINE=1`/`TRANSFORMERS_OFFLINE=1` are set unconditionally by `encode.py` so a cache miss
+fails loudly instead of silently hitting the network.
+
+**Batching alone, on CPU, was a modest win, not the hoped-for one:** measured separately (not
+re-verified in this PR — the CPU-only venv used for that run no longer exists), batching B6's 20
+candidates into one CPU forward pass brought the unbatched 159.5s/query down to roughly 100s/query
+— about a 35% improvement. That confirms the original guess was wrong on CPU: the cost is
+FLOPs/compute-bound (a 0.6B-parameter forward pass over 20 sequences is still a lot of arithmetic
+on 16 threads), not per-Python-call-dispatch overhead, so batching without more compute underneath
+it was never going to reach "low minutes."
+
+**What actually got there was a GPU, not batching.** This dev machine has a passed-through RTX
+4090 (see the `wsl-gpu-compute` skill). Running `tools/bakeoff/report_b6.py --full` — the entire
+220-query golden set, all 5 strata, no sampling — end to end:
+
+```
+golden set: 220 cases total across 5 strata
+running the FULL set (--full)
+  multi_skill          66/66
+  no_applicable        44/44
+  sibling_ambiguity    66/66
+  simple               22/22
+  stale_adversarial    22/22
+total cases this run: 220
+
+B5  (RRF of B1 BM25 + B4 static dense -- retrieval order)
+stratum                  n     hit@1  recall@8  ndcg@10  completeness@4  distractor_rate@4
+multi_skill             66    0.9242    0.9798   0.8890          0.9848             0.0000
+no_applicable           44         —         —        —               —             0.4318
+sibling_ambiguity       66    0.7424    1.0000   0.8844          0.9545             0.4545
+simple                  22    0.8636    1.0000   0.9204          0.9545                  —
+stale_adversarial       22    0.7500    1.0000   0.8200          0.8500             0.7727
+OVERALL                220    0.8276    0.9923   0.8833          0.9540             0.4962
+
+B6  (B5's top-20 reranked by SkillRouter-Reranker-0.6B, batched -- retrieval order)
+stratum                  n     hit@1  recall@8  ndcg@10  completeness@4  distractor_rate@4
+multi_skill             66    0.8939    0.9697   0.8612          0.9545             1.0000
+no_applicable           44         —         —        —               —             0.3864
+sibling_ambiguity       66    0.8636    0.9848   0.9357          0.9848             0.4697
+simple                  22    0.8182    1.0000   0.9119          1.0000                  —
+stale_adversarial       22    0.5000    1.0000   0.7419          0.9000             0.5909
+OVERALL                220    0.8276    0.9828   0.8821          0.9655             0.4662
+
+rank-1 changed (B6 vs B5): 98/220 (44.5%)
+Spearman rank correlation, B6 vs B5 order: mean 0.3813 over 220 queries (min -0.4241, max 0.8421)
+batched reranker time per query: mean 0.48s (min 0.31s, max 8.09s), total 106.0s over 220 queries
+wall-clock for this run (B5 + B6 + bookkeeping, 220 queries): 109.6s
+```
+
+(`abstention_precision` is omitted above for width; both arms print `—` for it on this fixture —
+no case here has the router abstaining when it should not, so precision's denominator is 0.)
+The full, unabridged run (including `abstention_precision`'s column) is committed verbatim at
+`docs/reports/bakeoff/52ea203.md`.
+
+B5's own numbers moved slightly from the run quoted in an earlier draft of this section (e.g.
+`sibling_ambiguity` hit@1 0.7727 → 0.7424) purely because `encode.py`'s upstream GPU batching
+(E1.3 phase 2, #14 — length-sorted batches, default batch size 64 on CUDA) changed the reduction
+order of the *same* floating-point embeddings B4/B5 depend on. This is not a bug and not new
+information — it is a live demonstration of the determinism note below: B5 and B6 are both
+GPU-float paths, and neither is bit-reproducible across a batching change, let alone across
+machines. Nothing about the shipped CLI's own numbers is affected.
+
+**Timing**: 109.6s wall-clock for the *entire* 220-query golden set, batched top-20 reranking
+included — roughly three orders of magnitude below the 159.5s **per query** the unbatched CPU
+number above implied for the same workload (which would have cost ~10 hours over 220 queries).
+The 8.09s max is the one cold-start query in the run (model load + first CUDA kernel
+compilation/autotune); every subsequent query measured ~0.3-0.4s, matching an isolated warm-model
+measurement taken separately.
+
+**Does the reranker earn its cost? On this golden set, no — not as configured, and it could not
+have gone in the hook path even if the quality had come out ahead.** ADR-0020's own budget for the
+shipped CLI is 300 ms end to end (measured at ~210 ms including interpreter start-up); B6's batched
+reranker measured 0.48s **mean** per query (min 0.31s, max 8.09s for the one cold-start query) —
+already above the *entire* hook budget on the mean case alone, on a GPU this class of dev machine
+happens to have, with no allowance yet for the CPU-only reality of a typical hook invocation. This
+is the latency finding that justifies E1.6 measuring the reranker in shadow mode rather than
+wiring it in directly: it is disqualified on cost before quality is even considered.
+
+Quality-wise, the overall numbers hide a more interesting split than they show: B6 ties B5 on
+hit@1 in aggregate this run (0.8276 both) but is worse on ndcg@10 (0.8821 vs 0.8833) and recall@8
+(0.9828 vs 0.9923); per stratum the reranker is not uniformly bad — `sibling_ambiguity` clearly
+**improves** (hit@1 0.7424 → 0.8636), while `stale_adversarial` **collapses** (hit@1 0.75 → 0.50, a
+25-point drop). Averaging those two together into one "B6 vs B5" number erases the fact that this
+reranker seems to help exactly the kind of case it is named for (disambiguating between sibling
+skills) while actively hurting a stratum built to catch stale/wrong answers — a real, actionable
+signal a single overall row would have hidden.
+
+`multi_skill`'s distractor_rate@4 — lower is better, 0.0 is the target — goes from **0.0 to 1.0**,
+which looks like a bug (NaN silently coerced, say) at a glance. It is not: checked against
+`tests/golden/multi_skill.yaml`, only **one of the stratum's 66 cases** (`multi-004`, "moving the
+geo indexing code into a shared library, what do I need to update") has a `distractors` entry at
+all — `metrics.distractor_rate` returns NaN (excluded from the mean, not coerced to anything) for
+every case without one, per its own docstring. So this 0.0→1.0 swing is a real, single-case flip,
+not a stratum-wide effect: B5 kept `atlas.geo:geospatial-indexing` (a same-topic, wrong-node
+distractor — the query says "geo indexing" but the case is scoped to `shared`/`libs` and the real
+answer is about move/versioning mechanics, not H3 index design) out of the top 4, and B6's reranker,
+which sees only text and has no node-scoping, pulled it in. Real, but an n=1 result for this
+metric on this stratum — not "every multi-skill query now has a distractor," which is what this
+line would otherwise misleadingly suggest.
+
+Rank-1 changes 44.5% of the time and the mean Spearman correlation between the two orders is only
+0.38 — the reranker is not making small corrections to B5's order, it is substantially reshuffling
+it, and on net (latency disqualification aside) that reshuffling helps one stratum and hurts
+another more. This is exactly the measurement E1.6 asked for ("measure the reranker before it
+touches the hook"): the answer, today, is don't wire it in yet — on cost grounds alone, and the
+quality picture is genuinely mixed rather than uniformly bad.
+
+**Determinism note, do not conflate these numbers with the CLI's guarantee**: GPU floating-point
+reductions are not bit-reproducible across batch sizes or hardware (cuBLAS/cuDNN kernel selection
+varies), so nothing in this section is part of `find`/`hook`'s determinism claim — that guarantee
+lives entirely in the integer-only, torch-free CLI path (`Index`/`Router`, ADR-0020). B6 is offline
+evidence about whether the reranker is worth productionising, produced by a tier-2, GPU-optional
+tool that never ships.
