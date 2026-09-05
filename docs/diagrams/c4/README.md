@@ -1,7 +1,7 @@
 # C4 diagrams
 
 Sources: `*.puml` (C4-PlantUML from the PlantUML stdlib). Rendered SVGs in `svg/`; the page `index.html`
-inlines them and adds the business/architect narrative (state as of 2026-09-05, main 7392a0f).
+inlines them and adds the business/architect narrative (state as of 2026-09-05, main 191532e).
 
 Re-render (no Graphviz needed — the Smetana layout engine is built in):
 

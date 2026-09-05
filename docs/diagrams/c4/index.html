@@ -61,7 +61,7 @@
 </style></head><body>
 
 <div class="wrap">
-  <div class="eyebrow">Guidefold · model C4 · stan na 2026-09-05, <span class="mono">main 7392a0f</span></div>
+  <div class="eyebrow">Guidefold · model C4 · stan na 2026-09-05, <span class="mono">main 191532e</span></div>
   <h1>Jak Guidefold dostarcza agentowi właściwe skille — od ogółu do szczegółu</h1>
   <p class="lede">Cztery poziomy C4 — <strong>kontekst</strong>, <strong>kontenery</strong>, <strong>komponenty</strong>, <strong>dynamika i wdrożenie</strong> — w dwóch przejściach. Część I mówi językiem biznesu: co to robi, co jest zbudowane, ile kosztuje i skąd wiemy, że działa. Część II mówi językiem architekta: kontrakty, niezmienniki, ścieżka zapytania krok po kroku i decyzje z numerami ADR.</p>
   <div class="legend">
@@ -157,7 +157,7 @@
       <li><strong>Największa luka to zapytania wielointencyjne</strong> („zrób A i potem B”): dla trzech skilli naraz 64 % potrzebnych skilli nie trafia nawet do pierwszej dziesiątki kandydatów. Właśnie to mierzą rodziny C (składanie paczki) i D (dekompozycja zapytania).</li>
       <li><strong>Telemetria działa</strong>: każdy prompt i każde załadowanie skilla zostawia ślad bez treści promptu; raport pokazuje trzy stany skilla — nigdy nie pokazany / pokazany, nie użyty / użyty.</li>
       <li><strong>Serwis jest prototypem, nie produkcją.</strong> Sam raport mówi „production_ready: false”; do produkcji brakuje ingestu na Postgresie, sieci/TLS/IAM, runbooka.</li>
-      <li><strong>Jedna decyzja czeka na właściciela:</strong> PR #50 (serwis w Go z ParadeDB) jest 3× szybszy, ale liczy inny ranking i pokazuje agentowi o 10 pp więcej szkodliwych skilli. Prędkość nie jest naszym problemem; jakość jest.</li>
+      <li><strong>Decyzja właściciela z 2026-09-05:</strong> PR #50 (serwis w Go z ParadeDB) został zmergowany jako <em>wybór implementacji</em> (ADR-0026) — jest 3× szybszy (p95 21 / 28 ms), ale liczy inny ranking i na teście B pokazał agentowi o 10,7 pp więcej szkodliwych skilli. Do serwowania rankingu <strong>nie jest dopuszczony</strong>, dopóki nie liczy tego samego BM25F co klient (parytet 0 rozbieżności). Prędkość nie była naszym problemem; jakość jest.</li>
     </ul>
   </section>
 
@@ -265,7 +265,7 @@
         <tr><td>0023</td><td>Centralny serwis SEARCH/USE, ograniczone hooki, mierzona użyteczność, kontrakt eventów</td><td>Serwis, spool, ingest</td><td><span class="pill plan">Proposed</span></td></tr>
         <tr><td>0024</td><td>Architektura docelowa: jeden kontrakt, trzy tiery, flywheel per tenant, kompozytor-model, model kosztów</td><td>Cały widok wdrożeniowy</td><td><span class="pill plan">Proposed</span></td></tr>
         <tr><td>0025</td><td>Kontrakt kontekstu harness ↔ serwis (1.1)</td><td>Krok 4 dynamiki</td><td><span class="pill done">Accepted</span></td></tr>
-        <tr><td>0026 (PR #50)</td><td>Serwis w Go + ParadeDB — jako wybór implementacji, nie dopuszczenie</td><td>alternatywny kontener API</td><td><span class="pill fail">otwarte — HSR +10,67 pp, CI czerwone</span></td></tr>
+        <tr><td>0026 (PR #50)</td><td>Serwis w Go + ParadeDB — wybór implementacji hostingu (publikacja atomowa, tenanci, USE z checksumami), <strong>nie</strong> dopuszczenie rankingu</td><td>alternatywny kontener API (services/search)</td><td><span class="pill done">zmergowany 2026-09-05</span> <span class="pill fail">ranking niedopuszczony: HSR@4 +10,67 pp</span></td></tr>
       </tbody>
     </table>
     </div>
@@ -277,7 +277,7 @@
     <ul>
       <li><strong>Recall wiąże kompozycję.</strong> Jeśli rodzina D (dekompozycja) nie podniesie recall@10 dla k=3 wyraźnie ponad 0,36, żaden kompozytor nie przejdzie bramki — i wtedy jedyną drogą do kompletności paczek jest dense uczony na zapytaniach wielointencyjnych (flywheel), co przesuwa T2 wyżej w priorytetach.</li>
       <li><strong>86 ms za jeden encode</strong> to albo błąd serwowania (wtedy T2 tanieje), albo podłoga sprzętowa (wtedy T2 potrzebuje więcej GPU niż policzono).</li>
-      <li><strong>Drugi ranking w serwisie.</strong> PR #50 pokazuje pokusę: 3× szybciej kosztem innego scorera. Reguła „bit-identyczny między tierami” jest tym, co chroni przed dwiema prawdami o tym samym zapytaniu.</li>
+      <li><strong>Drugi ranking w serwisie.</strong> Zmergowany #50 daje 3× szybszy hosting, ale scorer Tantivy ≠ nasz BM25F; na teście B HSR@4 +10,67 pp [5,33, 15,33]. Reguła „bit-identyczny między tierami” (E2.9) jest tym, co chroni przed dwiema prawdami o tym samym zapytaniu: serwis Go może wejść na ścieżkę rankingu tylko z portem całkowitoliczbowego BM25F i testem parytetu = 0.</li>
       <li><strong>Wolumen opt-in.</strong> Flywheel karmi się zredagowanym korpusem za zgodą; tenant z małym ruchem zostaje przy sparse-only na stałe — i plan mówi to wprost.</li>
       <li><strong>Placeholdery pilota.</strong> Zespoły, daty, kontender, ewaluatorzy, przydział, skala H3, próg p, proces zgody — osiem decyzji właściciela, bez których pilot nie może wystartować (<code>docs/pilot/E6.7-PROTOCOL.md §10</code>).</li>
     </ul>
