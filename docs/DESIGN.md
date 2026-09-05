@@ -1,5 +1,7 @@
 # Guidefold — Design Doc v0.3
 
+> **Proposed MVP revision (2026-09-05):** [MVP.md](MVP.md) and [ADR-0023](adr/ADR-0023-search-use-service-and-measured-utility.md) propose central SEARCH/USE, bounded local fallback and usage/usability measurement. Their scope and [event contract](SEARCH-USE-TELEMETRY.md) replace this document's older local-only serving, delayed telemetry, load-based probation and phase schedule for the proposed MVP. This is a plan amendment, not a claim that the service is implemented; sections explicitly describing shipped CLI behavior remain historical implementation notes.
+
 **Status:** Draft v0.3 · 2026-09-04 · supersedes v0.2 (kept in `docs/archive/DESIGN-v0.2.md`) · **§7, §10, §11 and §13 are superseded by `docs/KNOWLEDGE-DESIGN.md`** (skills leave the code monorepo; nothing generated is committed; Knowledge API holds proposals/evidence; SkillPyramid-style induction with gates G0–G7).
 **Owner:** Platform / Developer Productivity
 **One-liner:** Git-native skill CI plus an evidence-based skill router for a large organization: thousands of Agent Skills of every category and level of generality, organized general → specific, validated and drift-checked in CI, distributed through Google Cloud Agent Registry, and injected into any coding harness by a deterministic, cached, hybrid-retrieval pipeline. Knowledge flows upward: CI agents lift the generic parts of specific skills into parent scopes.

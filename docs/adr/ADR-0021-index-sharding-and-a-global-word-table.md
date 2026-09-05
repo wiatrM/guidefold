@@ -1,6 +1,6 @@
 # ADR-0021: Shard the index by node; ship the word table as a language artifact, not a corpus artifact
 
-**Status:** Proposed · 2026-09-05 · **numbers revised 2026-09-05 against a real 2 111-skill corpus**
+**Status:** Proposed · 2026-09-05 · **numbers revised 2026-09-05 against a real 2 111-skill corpus** · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
 **Amends:** [ADR-0020](ADR-0020-two-tier-dense-retrieval.md) — corrects its vocabulary-headroom
 estimate and its gate wording.
 **Informs:** MVP story E2.3, which already names `index/<shard>/<sha>/` but does not say how to shard.
