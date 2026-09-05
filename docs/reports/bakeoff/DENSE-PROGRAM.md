@@ -526,6 +526,35 @@ not admitted. All test outcomes are retained, and this entry grants no extra fam
 or test reruns. The [GPU serving proposal](DENSE-SERVING-NEXT-2026-09-05.md) concerns
 inference engineering and future DEV work; it does not change frozen quality results.
 
+### 2026-09-05 — GPU service integration audit (two fixed DEV treatments)
+
+Cross-session accounting: the Codex service session ran **two prespecified neural
+DEV treatments**, pure SKILLRET dense and equal RRF k=60 BM25F+dense, against the
+unchanged F0. Registered before evaluation in `GPU-HYBRID-PROTOCOL-v1.md`, commit
+`17220fd4498675c6d20bb9a31928dcb45e96a94e`. The batch=1 control was selected on numerical
+repeatability/latency before quality labels were aggregated. No fusion weight was
+fitted. These observations belong in the common ledger; they do not silently grant
+a separate tuning budget to the service session. Any further tuning must use the
+centrally allocated remaining family budget, including other sessions' trials.
+
+The 1000 IDs are **q-train-*** from SKILLRET train. The encoder was trained on that
+partition; exact query/pair overlap cannot be ruled out without training logs.
+Hit@1 88.7% / all_required@4 47.0% (dense) reproduce in-distribution behavior and are
+not new independent quality evidence. Equal hybrid gives 83.9% / 37.5%, counting its
+one HTTP timeout as a miss. F0 is 71.3% / 30.0%. No test-A/test-B query was rerun.
+HSR remains null; historical test-B +0.67 pp with CI crossing zero remains unchanged.
+This does not reopen a spent family or admit a neural default.
+
+Engineering progress is separate: pinned TEI pure dense passed loopback server c4
+p95 130.7 ms and burst-fresh whole-client p95 288.1 ms; hybrid batch=1 passed 124.9 ms
+server c4 and 332.3 ms burst-fresh whole-client. Both had 800/800 successful latency
+requests and 0/600 cross-arm ranked/selected hash differences. The older serialized
+86 ms encoder measurements retain their original scope. Budgets remain 300/400 ms.
+
+[Full audit and all arms](GPU-SERVICE-2026-09-05.md). No more neural quality variants
+are scheduled by this service change; the next integration is authenticated Postgres
+event ingestion, then background shadow joined by search_id. Default responses stay sparse.
+
 ### 2026-09-05 — family D (query decomposition) dev run: no arm frozen, gate failed on the hit@1 guard
 
 Six arms (D0 = C0, D-det-1/2/3, D-model-1/2 — pre-registered above, PR #51) on the same

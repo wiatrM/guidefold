@@ -246,6 +246,7 @@ Deferred: full automated promotion workflow and probation, induction/consolidati
 | [0023 SEARCH/USE and utility](adr/ADR-0023-search-use-service-and-measured-utility.md) | New Proposed amendment: central serving, bounded clients, event semantics and narrower MVP; proposes amendments to 0009/0013/0015/0016/0018/0020/0021; ADR-0024 proposes an amendment |
 | [0024 target architecture](adr/ADR-0024-target-architecture-tiers-flywheel-composer.md) | New Proposed: one contract, three deployment tiers, per-tenant dense admission through a telemetry flywheel, model-based composition, a cost model for 5 000 developers with a measured-vs-assumed table; amends 0009/0020/0021/0022/0023 |
 | [0026 native Go/ParadeDB](adr/ADR-0026-native-search-paradedb-compose.md) | Accepted Go/Postgres/Compose hosting only; default ranking must retain CLI BM25F parity; experimental Tantivy fails HSR admission |
+| [0027 GPU retrieval](adr/ADR-0027-gpu-retrieval-profile.md) | Proposed explicit TEI/pgvector profile; preserves default BM25F parity and separate quality admission |
 | [0025 harness-service context](adr/ADR-0025-harness-service-context-contract.md) | Accepted request contract 1.1: versioning, repository-relative context, explicit feature semantics and schema/runtime/HTTP conformance; narrows the request boundary of 0023/0024 without admitting their production architecture |
 
 Older DESIGN/KNOWLEDGE-DESIGN remain historical target descriptions and current CLI notes where marked. Their local-only hot path, delayed telemetry, load-based probation and old phase schedules must not be read as acceptance criteria for this proposed MVP. No runtime behavior changed in this documentation revision.
@@ -259,14 +260,19 @@ integer scoring over Postgres postings. Tantivy remains an explicit experiment. 
 This replaces the Python spike as the implementation target while preserving its
 reports. Default sparse routing must pass exact CLI parity, including the full retrieval
 stage; shared policy fixtures alone are insufficient. Dense remains a separate admitted/shadow evaluation.
-Kubernetes deployment, production IAM/network/HA and durable E6.4 SEARCH/USE telemetry
-are subsequent work, not implied by local Compose success.
+Kubernetes deployment, production IAM/network/HA and authenticated harness integration
+remain subsequent work. E6.4 now has a Go/Postgres ledger port with the same SQLite
+contract/report tests and replay evidence; [T1 operations](../deploy/t1/README.md)
+records the pending clean-VM acceptance. Local Compose success does not close these gates.
 
 **Completed reference:** [Go/ParadeDB report](reports/bakeoff/GO-PARADEDB-2026-09-05.md):
 800/800 SEARCH requests, HTTP p95 21/28 ms and fresh-client p95 117/138 ms at c1/c4.
 Retrieval quality **is not admitted**: test-B HSR rises from 39.67% to 50.33%, exceeding
 the +1 pp guardrail. The prior admitted sparse profile keeps its status. These numbers describe only
 the experimental Tantivy mode; the corrected default serves the reference BM25F. [GPU serving follow-up](reports/bakeoff/DENSE-SERVING-NEXT-2026-09-05.md)
-is a proposal with no new test-budget authorization or active GPU implementation.
+is followed by an opt-in [TEI GPU implementation](../services/search/GPU.md) and
+a [bounded DEV protocol](reports/bakeoff/GPU-HYBRID-PROTOCOL-v1.md). Both base and GPU
+deployments return sparse; hybrid runs in bounded shadow joined by search_id. This neither
+reopens spent test budgets nor admits a new default ranker.
 
 Default-router correction and measured parity/latency: [report](reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

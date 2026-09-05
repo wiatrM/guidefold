@@ -1,0 +1,610 @@
+{
+  "schema_version": 1,
+  "workload": {
+    "dataset": "SKILLRET frozen DEV subset of train",
+    "sample_size": 200,
+    "distinct_query_texts": 200,
+    "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+    "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+    "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+    "sample_query_ids": [
+      "q-train-017617",
+      "q-train-007487",
+      "q-train-053007",
+      "q-train-036226",
+      "q-train-049664",
+      "q-train-036648",
+      "q-train-059069",
+      "q-train-010229",
+      "q-train-030224",
+      "q-train-028734",
+      "q-train-048344",
+      "q-train-029489",
+      "q-train-004137",
+      "q-train-040106",
+      "q-train-008972",
+      "q-train-057584",
+      "q-train-006745",
+      "q-train-003069",
+      "q-train-019309",
+      "q-train-050914",
+      "q-train-011104",
+      "q-train-014487",
+      "q-train-012418",
+      "q-train-027336",
+      "q-train-004461",
+      "q-train-053949",
+      "q-train-012994",
+      "q-train-005184",
+      "q-train-022503",
+      "q-train-022099",
+      "q-train-046341",
+      "q-train-051832",
+      "q-train-043304",
+      "q-train-050377",
+      "q-train-006064",
+      "q-train-011151",
+      "q-train-016841",
+      "q-train-000252",
+      "q-train-042320",
+      "q-train-026271",
+      "q-train-050707",
+      "q-train-003216",
+      "q-train-056628",
+      "q-train-063213",
+      "q-train-035085",
+      "q-train-060798",
+      "q-train-026265",
+      "q-train-038242",
+      "q-train-042719",
+      "q-train-016937",
+      "q-train-062175",
+      "q-train-047641",
+      "q-train-060749",
+      "q-train-043984",
+      "q-train-024980",
+      "q-train-023187",
+      "q-train-024386",
+      "q-train-047629",
+      "q-train-047178",
+      "q-train-008433",
+      "q-train-025617",
+      "q-train-001019",
+      "q-train-039850",
+      "q-train-052650",
+      "q-train-004854",
+      "q-train-048991",
+      "q-train-036910",
+      "q-train-015841",
+      "q-train-001907",
+      "q-train-027586",
+      "q-train-046841",
+      "q-train-009990",
+      "q-train-015179",
+      "q-train-032843",
+      "q-train-022867",
+      "q-train-057585",
+      "q-train-032663",
+      "q-train-049178",
+      "q-train-032117",
+      "q-train-013616",
+      "q-train-019005",
+      "q-train-040521",
+      "q-train-035858",
+      "q-train-018254",
+      "q-train-062995",
+      "q-train-042570",
+      "q-train-012355",
+      "q-train-052476",
+      "q-train-050873",
+      "q-train-019568",
+      "q-train-036545",
+      "q-train-034699",
+      "q-train-011288",
+      "q-train-044048",
+      "q-train-011624",
+      "q-train-002921",
+      "q-train-019598",
+      "q-train-045026",
+      "q-train-000761",
+      "q-train-028079",
+      "q-train-056981",
+      "q-train-050552",
+      "q-train-012354",
+      "q-train-022875",
+      "q-train-010889",
+      "q-train-004075",
+      "q-train-026673",
+      "q-train-027970",
+      "q-train-061491",
+      "q-train-023860",
+      "q-train-052228",
+      "q-train-032502",
+      "q-train-000668",
+      "q-train-023745",
+      "q-train-005166",
+      "q-train-030031",
+      "q-train-003360",
+      "q-train-060438",
+      "q-train-030092",
+      "q-train-062661",
+      "q-train-035674",
+      "q-train-038844",
+      "q-train-003055",
+      "q-train-051903",
+      "q-train-052770",
+      "q-train-040483",
+      "q-train-047679",
+      "q-train-032583",
+      "q-train-050340",
+      "q-train-020022",
+      "q-train-044660",
+      "q-train-028578",
+      "q-train-023738",
+      "q-train-012091",
+      "q-train-060981",
+      "q-train-017261",
+      "q-train-034459",
+      "q-train-003577",
+      "q-train-003924",
+      "q-train-041123",
+      "q-train-003451",
+      "q-train-050162",
+      "q-train-058650",
+      "q-train-030713",
+      "q-train-006671",
+      "q-train-012445",
+      "q-train-019164",
+      "q-train-034950",
+      "q-train-047465",
+      "q-train-062602",
+      "q-train-060678",
+      "q-train-056157",
+      "q-train-018138",
+      "q-train-038194",
+      "q-train-050767",
+      "q-train-047229",
+      "q-train-014031",
+      "q-train-049068",
+      "q-train-050513",
+      "q-train-030150",
+      "q-train-006402",
+      "q-train-034217",
+      "q-train-012386",
+      "q-train-048248",
+      "q-train-014140",
+      "q-train-052528",
+      "q-train-060300",
+      "q-train-030628",
+      "q-train-061546",
+      "q-train-009968",
+      "q-train-059844",
+      "q-train-033178",
+      "q-train-004347",
+      "q-train-049700",
+      "q-train-035926",
+      "q-train-045990",
+      "q-train-015846",
+      "q-train-003298",
+      "q-train-035074",
+      "q-train-059667",
+      "q-train-026794",
+      "q-train-028796",
+      "q-train-057117",
+      "q-train-053897",
+      "q-train-043684",
+      "q-train-040861",
+      "q-train-011818",
+      "q-train-013425",
+      "q-train-009273",
+      "q-train-021821",
+      "q-train-047896",
+      "q-train-062461",
+      "q-train-014196",
+      "q-train-031273",
+      "q-train-012808",
+      "q-train-018554",
+      "q-train-056688",
+      "q-train-029903",
+      "q-train-014635",
+      "q-train-036179"
+    ],
+    "sample_text_sha256": "852da7e8fe2a880f91508bb91cfd1c26e56ea1f7e81456c483644b9569105143",
+    "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+    "labels_used_for_selection_or_quality": false,
+    "retrieval_pool_may_differ_from_dev": true,
+    "quality_claim": "none; labelled public DEV texts are used solely as a latency workload"
+  },
+  "health_before": {
+    "api_schema_versions": [
+      "legacy-unversioned",
+      "1.1"
+    ],
+    "backend": "skillret_tei_dense_v1",
+    "body_cache": false,
+    "database_dense_calls": 0,
+    "database_search_calls": 0,
+    "database_use_calls": 0,
+    "encoder_batch_requests": 1,
+    "encoder_id": "d9c94fd282392d544f376ce2e90760f4252c4747ff480391e66631357ffdd23f",
+    "live_encode_calls": 0,
+    "model_load_calls": null,
+    "n_skills": 6006,
+    "pg_search_version": "0.25.6",
+    "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+    "production_iam": false,
+    "python_runtime": false,
+    "quality_admitted": false,
+    "ready": true,
+    "repository": {
+      "repo_id": "skillret-service-bench",
+      "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+    },
+    "request_id": "4afe27aa-88b7-4035-a979-244eff8bd9ba",
+    "retrieval_mode": "dense",
+    "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+    "runtime": "go",
+    "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+  },
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+    "cpu_count": 16,
+    "transport": "WSL2 to Docker Desktop loopback; HTTP, new TCP connection per request",
+    "resources_isolated": false
+  },
+  "git_head": "e0a8833a75cb72f79838cada4ac68a1cab39c814",
+  "source_sha256": {
+    "services/search/bm25f.go": "2f2125afd693d666e3cdcc92ca960ba0d300a9d90b1646b851e466f0da5f5dbd",
+    "services/search/bm25f_test.go": "f0985c86f896411fa82cf675c2b3813c3538006328ada3f6bdf6a20164b0b17a",
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/dense.go": "096d8741d4a04f1d5da836e9c2748bc08e8888bb7b27cebd6f82fa779b4cb420",
+    "services/search/dense_test.go": "f5afc5e62851271d619a1e676b48a061cf85067698f17e14365ff49718ec8976",
+    "services/search/main.go": "df8c3d3cfc61a486c3ad6bc540d2b240c18aea137c05ba9710c637fe1172af15",
+    "services/search/routing.go": "2ec53ab2837d968268e993f82d51a6391634c17dfa16351459a5b0ebceee5c66",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/store.go": "44a8d799e1726b8f822c2cc71b93a9c9179704600f6d870a504d8d69c607e5de"
+  },
+  "images": [
+    {
+      "id": "sha256:d984dbde3ed7cb89b823adbce0074357786f9267e2fb106aaa93f1868c354d97",
+      "digests": [
+        "guidefold-search@sha256:d984dbde3ed7cb89b823adbce0074357786f9267e2fb106aaa93f1868c354d97"
+      ],
+      "size_bytes": 5255525
+    },
+    {
+      "id": "sha256:044b8cc5b40159714e88e3f546fc74de11cf215c030190cc82c6627015d728ea",
+      "digests": [
+        "paradedb/paradedb@sha256:044b8cc5b40159714e88e3f546fc74de11cf215c030190cc82c6627015d728ea"
+      ],
+      "size_bytes": 365585715
+    }
+  ],
+  "production_ready": false,
+  "quality_evaluated": false,
+  "legacy_ranking_parity_claimed": false,
+  "arms": {
+    "http_c1": {
+      "concurrency": 1,
+      "fresh_process": false,
+      "burst": false,
+      "wall_seconds": 14.422690893996332,
+      "summary": {
+        "attempted": 200,
+        "ok": 200,
+        "errors": 0,
+        "client_ms": {
+          "p50": 72.692,
+          "p95": 87.626,
+          "p99": 102.868
+        },
+        "server_ms": {
+          "p50": 70.432,
+          "p95": 85.203,
+          "p99": 95.443
+        },
+        "over_400_ms": 0,
+        "over_300_ms": 0,
+        "stages_ms": {
+          "candidates": {
+            "p50": 0,
+            "p95": 0.001,
+            "p99": 0.001
+          },
+          "catalog": {
+            "p50": 0.545,
+            "p95": 0.821,
+            "p99": 1.127
+          },
+          "dense_database": {
+            "p50": 31.198,
+            "p95": 44.938,
+            "p99": 54.97
+          },
+          "encode_http": {
+            "p50": 33.797,
+            "p95": 46.433,
+            "p99": 49.264
+          },
+          "encoder_wait_after_sparse": {
+            "p50": 26.395,
+            "p95": 40.252,
+            "p99": 43.164
+          },
+          "policy": {
+            "p50": 6.923,
+            "p95": 15.941,
+            "p99": 20.785
+          },
+          "score": {
+            "p50": 1.917,
+            "p95": 3.983,
+            "p99": 7.089
+          },
+          "select": {
+            "p50": 0.013,
+            "p95": 0.027,
+            "p99": 0.066
+          }
+        }
+      }
+    },
+    "http_c4": {
+      "concurrency": 4,
+      "fresh_process": false,
+      "burst": false,
+      "wall_seconds": 3.9086351790028857,
+      "summary": {
+        "attempted": 200,
+        "ok": 200,
+        "errors": 0,
+        "client_ms": {
+          "p50": 73.318,
+          "p95": 132.878,
+          "p99": 147.062
+        },
+        "server_ms": {
+          "p50": 70.736,
+          "p95": 130.654,
+          "p99": 144.839
+        },
+        "over_400_ms": 0,
+        "over_300_ms": 0,
+        "stages_ms": {
+          "candidates": {
+            "p50": 0,
+            "p95": 0.001,
+            "p99": 0.001
+          },
+          "catalog": {
+            "p50": 0.51,
+            "p95": 1.28,
+            "p99": 7.931
+          },
+          "dense_database": {
+            "p50": 38.232,
+            "p95": 49.988,
+            "p99": 63.424
+          },
+          "encode_http": {
+            "p50": 25.61,
+            "p95": 91.881,
+            "p99": 99.934
+          },
+          "encoder_wait_after_sparse": {
+            "p50": 19.016,
+            "p95": 83.794,
+            "p99": 92.245
+          },
+          "policy": {
+            "p50": 7.13,
+            "p95": 14.163,
+            "p99": 21.203
+          },
+          "score": {
+            "p50": 2.249,
+            "p95": 6.205,
+            "p99": 9.32
+          },
+          "select": {
+            "p50": 0.016,
+            "p95": 0.026,
+            "p99": 0.038
+          }
+        }
+      }
+    },
+    "fresh_c1": {
+      "concurrency": 1,
+      "fresh_process": true,
+      "burst": false,
+      "wall_seconds": 32.58738728699973,
+      "summary": {
+        "attempted": 200,
+        "ok": 200,
+        "errors": 0,
+        "client_ms": {
+          "p50": 157.605,
+          "p95": 205.139,
+          "p99": 213.633
+        },
+        "server_ms": {
+          "p50": 66.466,
+          "p95": 110.976,
+          "p99": 118.609
+        },
+        "over_400_ms": 0,
+        "over_300_ms": 0,
+        "stages_ms": {
+          "candidates": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "catalog": {
+            "p50": 0.437,
+            "p95": 0.637,
+            "p99": 0.713
+          },
+          "dense_database": {
+            "p50": 24.102,
+            "p95": 32.575,
+            "p99": 36.686
+          },
+          "encode_http": {
+            "p50": 38.812,
+            "p95": 83.184,
+            "p99": 88.758
+          },
+          "encoder_wait_after_sparse": {
+            "p50": 32.607,
+            "p95": 78.584,
+            "p99": 85.156
+          },
+          "policy": {
+            "p50": 3.925,
+            "p95": 10.401,
+            "p99": 15.04
+          },
+          "score": {
+            "p50": 1.499,
+            "p95": 2.913,
+            "p99": 3.72
+          },
+          "select": {
+            "p50": 0.01,
+            "p95": 0.019,
+            "p99": 0.026
+          }
+        }
+      }
+    },
+    "burst_fresh_c4": {
+      "concurrency": 4,
+      "fresh_process": true,
+      "burst": true,
+      "wall_seconds": 12.13449606699578,
+      "summary": {
+        "attempted": 200,
+        "ok": 200,
+        "errors": 0,
+        "client_ms": {
+          "p50": 190.573,
+          "p95": 288.145,
+          "p99": 313.017
+        },
+        "server_ms": {
+          "p50": 88.023,
+          "p95": 170.319,
+          "p99": 179.162
+        },
+        "over_400_ms": 0,
+        "over_300_ms": 6,
+        "stages_ms": {
+          "candidates": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.001
+          },
+          "catalog": {
+            "p50": 0.452,
+            "p95": 0.735,
+            "p99": 0.989
+          },
+          "dense_database": {
+            "p50": 27.037,
+            "p95": 40.22,
+            "p99": 49.97
+          },
+          "encode_http": {
+            "p50": 57.005,
+            "p95": 136.248,
+            "p99": 147.073
+          },
+          "encoder_wait_after_sparse": {
+            "p50": 51.256,
+            "p95": 130.147,
+            "p99": 143.737
+          },
+          "policy": {
+            "p50": 4.892,
+            "p95": 12.195,
+            "p99": 17.138
+          },
+          "score": {
+            "p50": 1.619,
+            "p95": 3.233,
+            "p99": 5.614
+          },
+          "select": {
+            "p50": 0.011,
+            "p95": 0.024,
+            "p99": 0.033
+          }
+        }
+      }
+    }
+  },
+  "determinism": {
+    "paired_responses": 600,
+    "passed": true
+  },
+  "gates": {
+    "http_c1": {
+      "client_400_passed": true,
+      "server_300_passed": true
+    },
+    "http_c4": {
+      "client_400_passed": true,
+      "server_300_passed": true
+    },
+    "fresh_c1": {
+      "client_400_passed": true,
+      "server_300_passed": true
+    },
+    "burst_fresh_c4": {
+      "client_400_passed": true,
+      "server_300_passed": true
+    }
+  },
+  "health_after": {
+    "api_schema_versions": [
+      "legacy-unversioned",
+      "1.1"
+    ],
+    "backend": "skillret_tei_dense_v1",
+    "body_cache": false,
+    "database_dense_calls": 810,
+    "database_search_calls": 0,
+    "database_use_calls": 0,
+    "encoder_batch_requests": 1,
+    "encoder_id": "d9c94fd282392d544f376ce2e90760f4252c4747ff480391e66631357ffdd23f",
+    "live_encode_calls": 810,
+    "model_load_calls": null,
+    "n_skills": 6006,
+    "pg_search_version": "0.25.6",
+    "policy_revision": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+    "production_iam": false,
+    "python_runtime": false,
+    "quality_admitted": false,
+    "ready": true,
+    "repository": {
+      "repo_id": "skillret-service-bench",
+      "revision": "a050ad233a504a43135bafe8cdf45574052b5729"
+    },
+    "request_id": "cf3c9f5f-370f-4f5a-9c2f-4af2c97618e8",
+    "retrieval_mode": "dense",
+    "router_index_revision": "326c92f3563cec9cc75e71db3452c4c7132093bec5eb8254c2e15841796d9325",
+    "runtime": "go",
+    "snapshot": "repository:cc7c0727976ff36be9404ef9896bc024fa96248c5d2d95a9677b050f304d870f"
+  },
+  "capture_sha256": "86b94a47ac8a3d37071c501291d706a4307b5b92a16277e195e316b0eac98c9e",
+  "responses_artifact": {
+    "path": "gpu-dense-batch1-latency-rows.jsonl.gz",
+    "sha256": "43d9f7511afdb889512f1285aa15ae827935c8939bc43b5c18da2fe3a1bc8cdd",
+    "rows": 800
+  },
+  "tei_max_batch_requests": 1,
+  "document_embeddings_bundle_sha256": "173d8d055f98d154d1b61befd01728d6930734fc902c012e46cd146a780b3206"
+}

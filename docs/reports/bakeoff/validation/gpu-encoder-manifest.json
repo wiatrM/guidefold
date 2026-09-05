@@ -1,0 +1,24 @@
+{
+  "adapter_version": 1,
+  "dimensions": 1024,
+  "document_format": "name | description | skill_md-stripped-v1",
+  "dtype": "float16",
+  "files_sha256": {
+    "1_Pooling/config.json": "9eac3093e5396b8c06b6b9be44b7d6b09ba5c01a6bc20e710c27307f9338aca2",
+    "config.json": "51d9179de64de8b15e39756c740a67cd07df5bdf95b65f5b12c3dfbe950e6b91",
+    "config_sentence_transformers.json": "c30120bb09147a10415b9fc04a7d5bd92f5241de617d910e50d6bf2da80b54aa",
+    "modules.json": "f5deec06176bc7ba5f23803d80ae24e8e02fae41bb61afc486e04000c0040cb0",
+    "sentence_bert_config.json": "f34f0a72769fce4f41908b1cc6ac5befe97fcdc5135d9eb23831b6ff96fafcc9",
+    "tokenizer.json": "db74fda9dc5dbe348cb79bda440c969b3ac982a78358d8d884f64ce92098b104",
+    "tokenizer_config.json": "c12b828b810325daa0a1877bfd27c1484c5fd7e0c95a1ddbc99fe8097c7fcbc0"
+  },
+  "format": "guidefold-encoder-v1",
+  "max_length": 8192,
+  "model_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+  "normalize": true,
+  "pooling": "last_token",
+  "query_prompt": "Instruct: Given a skill search query, retrieve relevant skills that match the query\nQuery: ",
+  "revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+  "tei_image": "ghcr.io/huggingface/text-embeddings-inference@sha256:e47e625ced2385d3dbfdee79ba0380204578e0b27ef1a926783f9b3486aaf109",
+  "weights_sha256": "f73118cac018ffa7ebb5a1ffbdf82034490dfb7f2559558f1e79277f1e8de172"
+}
