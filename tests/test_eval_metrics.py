@@ -198,3 +198,22 @@ def test_format_table_renders_every_stratum_and_overall():
     txt = M.format_table(M.evaluate(results), M.by_category(results))
     assert "simple" in txt and "OVERALL" in txt and "hit@1" in txt
     assert len(txt.splitlines()) == 4          # header, rule, one stratum, overall
+
+
+# ------------------------------------------------------------------ all_required@k (peer review P1)
+def test_all_required_counts_grade_2_companions():
+    """The gap the peer review measured: primary present, required companion missing.
+    completeness@4 says 1.0 (primary is there); all_required@4 must say 0.0."""
+    c = case([(A, 3), (B, 2)])
+    assert M.completeness_at_k([A, C, D], c, 4) == 1.0
+    assert M.all_required_at_k([A, C, D], c, 4) == 0.0
+    assert M.all_required_at_k([A, B], c, 4) == 1.0
+
+
+def test_all_required_ignores_grade_1():
+    assert M.all_required_at_k([A], case([(A, 3), (B, 1)]), 4) == 1.0
+
+
+def test_evaluate_reports_both_completeness_series():
+    m = M.evaluate([([A], case([(A, 3), (B, 2)]))])
+    assert m["completeness@4"] == 1.0 and m["all_required@4"] == 0.0

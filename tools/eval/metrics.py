@@ -93,16 +93,33 @@ def ndcg_at_k(ranked: Sequence[str], case: Mapping, k: int = 10) -> float:
 
 
 def completeness_at_k(ranked: Sequence[str], case: Mapping, k: int = 4) -> float:
-    """1.0 only when *every* must-have (grade 3) skill of the case is inside the top k.
+    """1.0 only when every grade-3 skill of the case is inside the top k.
 
-    This is the multi-skill metric. Recall@8 rewards partial credit; Completeness@K asks the
-    question a developer actually cares about — did the injection contain the whole answer, or
-    did it contain half of it? Default k=4 because that is the hook's card cap (E1.5).
+    **Read this before quoting it.** On the current golden set every answerable case has exactly
+    one grade-3 skill, so this metric collapses to "is the primary skill in the top k". It does
+    NOT check the grade-2 companions the golden README defines as *required* (e.g. a `requires`
+    dependency). The E1.3 peer review measured the gap: B1 multi_skill reads 95.45 % here but
+    74.24 % once companions are required. Kept, unchanged, as the historical series; the metric
+    that answers "did the agent receive the whole answer" is `all_required_at_k` below.
     """
     must = {u for u, g in graded(case).items() if g >= MUST_BE_FIRST}
     if not must:
         return float("nan")
     return 1.0 if must <= set(ranked[:k]) else 0.0
+
+
+def all_required_at_k(ranked: Sequence[str], case: Mapping, k: int = 4) -> float:
+    """1.0 only when EVERY required skill (grade >= 2) is inside the top k.
+
+    Grade 2 is "a required companion" per tests/golden/README.md, so this is the completeness
+    the product actually promises: the whole instruction bundle, not just its headline. This is
+    the metric SkillRouter calls FC@K and Graph-of-Skills evaluates bundles on. Expect it to be
+    materially lower than `completeness_at_k`; that difference is the product gap, not noise.
+    """
+    required = {u for u, g in graded(case).items() if g >= MUST_BE_IN_TOP_K}
+    if not required:
+        return float("nan")
+    return 1.0 if required <= set(ranked[:k]) else 0.0
 
 
 def distractor_rate(ranked: Sequence[str], case: Mapping, k: int = 4) -> float:
@@ -162,6 +179,7 @@ def evaluate(results: Sequence[tuple[Sequence[str], Mapping]], k_cards: int = 4)
         "recall@8": _mean(recall_at_k(r, c, 8) for r, c in answered),
         "ndcg@10": _mean(ndcg_at_k(r, c, 10) for r, c in answered),
         f"completeness@{k_cards}": _mean(completeness_at_k(r, c, k_cards) for r, c in answered),
+        f"all_required@{k_cards}": _mean(all_required_at_k(r, c, k_cards) for r, c in answered),
         f"distractor_rate@{k_cards}": _mean(distractor_rate(r, c, k_cards) for r, c in results if r),
         "abstention_precision": tp / (tp + fp) if (tp + fp) else float("nan"),
         "abstention_recall": tp / (tp + fn) if (tp + fn) else float("nan"),
@@ -181,7 +199,7 @@ def by_category(results: Sequence[tuple[Sequence[str], Mapping]], k_cards: int =
 
 def format_table(overall: Mapping, per_cat: Mapping[str, Mapping]) -> str:
     """Fixed-width table for the committed per-run results file (E1.2 acceptance)."""
-    cols = ["n", "hit@1", "recall@8", "ndcg@10", "completeness@4",
+    cols = ["n", "hit@1", "recall@8", "ndcg@10", "completeness@4", "all_required@4",
             "distractor_rate@4", "abstention_precision"]
     head = f"{'stratum':<20}" + "".join(f"{c:>22}" for c in cols)
     lines = [head, "-" * len(head)]

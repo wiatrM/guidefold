@@ -77,6 +77,18 @@ no-applicable strata**. Otherwise the artifact ships `w_dense = 0` and the repor
 > by 16.67 pp and nDCG@10 by 7.40 pp there. A gate phrased against a saturated metric cannot fail,
 > so the clause now names the metrics that still discriminate at this corpus size.
 
+> **Gate retired, 2026-09-05 (peer review, P1).** Both forms of the Recall@8 gate above were
+> unreachable: B1's Recall@8 is 0.9799, so "+3 pp over the better BM25 arm" required 1.0099. A
+> gate that cannot be passed is not evidence when it fails. The replacement, written *before* the
+> next run and recorded in [`E1-closure-plan.md`](../reports/bakeoff/E1-closure-plan.md) §3:
+> the dense channel is enabled only if, on **policy-filtered candidates at the shipped 4-card
+> budget**, it is non-inferior on `all_required@4` and non-worsening on HSR@4, with warm p95
+> inside the hook budget — measured on the frozen pilot set, not the dev fixture.
+>
+> Also fixed the same day: `_dense_rank` compared `dot/normsq`, not cosine — the sqrt-free
+> comparison this ADR prescribes is `(a·q)²·|b|² ⋛ (b·q)²·|a|²` with sign, and the spec had
+> written it wrongly. Latent while `w_dense = 0`; a blocker for ever turning it on.
+
 **Outcome, E1.3 (2026-09-05):** the gate **failed** — +1.24 pp Recall@8 against the 3 pp bar, plus
 the regression above. The artifact ships `w_dense = 0`. The distilled table is still built and
 shipped, because it costs nothing at query time and may earn its weight on a larger corpus. Of the

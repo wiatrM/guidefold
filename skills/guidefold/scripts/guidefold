@@ -1077,13 +1077,24 @@ def check_index_artifact(root: Path, cfg: dict, sha: str, dest: Path):
 
 # ------------------------------------------------------------------- Router
 def _dense_rank(scores: dict) -> list:
-    """scores: urn -> (dot, normsq). Rank by dot/normsq descending — cosine-like, sqrt-free
-    (ROUTER-SPEC "Determinism by construction": store |d|^2 as an integer, never |d|, and
-    compare candidates only by cross-multiplication, never division). Ties broken on (-dot, urn)."""
+    """scores: urn -> (dot, normsq). Rank by cosine = dot/sqrt(normsq), descending, in integers.
+
+    Cosine is compared without any sqrt by comparing squared cosines with the sign kept separate:
+        sign(dot_a)*dot_a^2 * normsq_b  vs  sign(dot_b)*dot_b^2 * normsq_a
+    A previous version compared dot_a*normsq_b vs dot_b*normsq_a, i.e. dot/normsq — which is
+    NOT cosine and inverts orderings (counterexample: A=(dot 3, normsq 9) cos 1.00 vs
+    B=(dot 1, normsq 2) cos 0.71; dot/normsq ranked B first). Caught in the E1.3 peer review;
+    the wrong form came verbatim from ROUTER-SPEC, so the spec was the bug, not the port.
+    The query norm is a common factor across candidates and never enters the comparison.
+    Ties broken on (-dot, urn). Pure integer arithmetic throughout (ADR-0020)."""
+    def key(u):
+        dot, nsq = scores[u]
+        return (dot, nsq)
     def cmp(a, b):
         da, na = scores[a]
         db, nb = scores[b]
-        lhs, rhs = da * nb, db * na
+        sa = (da > 0) - (da < 0); sb = (db > 0) - (db < 0)
+        lhs, rhs = sa * da * da * nb, sb * db * db * na
         if lhs != rhs:
             return -1 if lhs > rhs else 1
         if da != db:

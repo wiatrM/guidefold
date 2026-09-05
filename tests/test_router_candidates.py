@@ -57,3 +57,17 @@ def test_candidates_returns_urns_sorted(gf):
     router = gf.Router(idx)
     cands = router.candidates("same text", "_root")
     assert [c["urn"] for c in cands] == ["u:aaa", "u:zzz"]
+
+
+def test_dense_rank_is_true_cosine_not_dot_over_normsq(gf):
+    """Peer-review counterexample. A=(dot 3, normsq 9) has cosine 3/3 = 1.00;
+    B=(dot 1, normsq 2) has cosine 1/1.414 = 0.71. Cosine ranks A first. The old
+    dot/normsq form gave A 0.33 and B 0.50 and ranked B first — an inverted ranking
+    that would silently corrupt the dense channel the day w_dense > 0."""
+    ranked = gf._dense_rank({"A": (3, 9), "B": (1, 2)})
+    assert ranked == ["A", "B"]
+
+
+def test_dense_rank_keeps_sign_and_zero_norms_safe(gf):
+    ranked = gf._dense_rank({"neg": (-5, 4), "pos": (1, 100), "zero": (0, 7)})
+    assert ranked == ["pos", "zero", "neg"]         # cos: 0.1 > 0 > -2.5
