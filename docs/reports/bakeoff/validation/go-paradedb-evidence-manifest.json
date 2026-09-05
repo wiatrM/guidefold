@@ -1,0 +1,86 @@
+{
+  "created_at": "2026-09-05",
+  "files": {
+    "go-paradedb-admission.json": {
+      "bytes": 1679,
+      "sha256": "b58874b0190442b68c18d0e8e05ede2c33b2e82643959d2e406bbf2f6f08f00b"
+    },
+    "go-paradedb-dense-prompt-audit.json": {
+      "bytes": 3221,
+      "sha256": "7b6d925e466af502f3d5d67bee35df70cdc2aa32115b1d2ffc46590ca16c7318"
+    },
+    "go-paradedb-latency.json": {
+      "bytes": 593360,
+      "sha256": "d76d5f6d9d111f4e0bd0581e15f9761c4f55c672a935dcc496780a9cc5599552"
+    },
+    "go-paradedb-protocol-v1.json": {
+      "bytes": 2681,
+      "sha256": "9c148fe53c1213fab64d1d76ec3b79a3d99129bca319fb5766496a8178375793"
+    },
+    "go-paradedb-quality-dev-ranks.jsonl.gz": {
+      "bytes": 776910,
+      "sha256": "85ae8c9b222c0831238f0d0adcb9ecb98691957e5c6101a40a5802b3f3f68d9b"
+    },
+    "go-paradedb-quality-dev.json": {
+      "bytes": 9695,
+      "sha256": "5fda0098267c29623a61e42ea44e16e661b8c3a8629fa110329fd84651e54f8c"
+    },
+    "go-paradedb-quality-regression-ranks.jsonl.gz": {
+      "bytes": 30797,
+      "sha256": "0c11f810573483cf68d747d7af71a2b4bcf9583909cebe6dc5b8d417b58027cb"
+    },
+    "go-paradedb-quality-regression.json": {
+      "bytes": 12448,
+      "sha256": "a086088b14f32c23fc243edf0cc28a397b2c0cead579d3253e5c51b9442f91ea"
+    },
+    "go-paradedb-quality-test_a-ranks.jsonl.gz": {
+      "bytes": 2996561,
+      "sha256": "4d0b08c804244d3a716d25d113e4b7fc0c4a3f11906a0bf62c2ba3c32deb1529"
+    },
+    "go-paradedb-quality-test_a.json": {
+      "bytes": 10281,
+      "sha256": "a679f45619a5ee1c5d1225094953cbdb6fedf9b9aba6fdc9c53965a006281d9f"
+    },
+    "go-paradedb-quality-test_b-ranks.jsonl.gz": {
+      "bytes": 514065,
+      "sha256": "729c83b1c1dccd2f8c528ae3be7f9b11de9d10779873a6e4a3e045beb3bffa45"
+    },
+    "go-paradedb-quality-test_b.json": {
+      "bytes": 23234,
+      "sha256": "5d8e12a897b473b1c800fdf7440429c1a9addc01ec09ee2477e00e3b656288f4"
+    },
+    "go-paradedb-smoke.json": {
+      "sha256": "219a78af04eeb23a58ceb09abc97e4aad13beedb974ff3793b07ba4d266eb952",
+      "bytes": 13020
+    }
+  },
+  "format": "go-paradedb-evidence-v1",
+  "new_service_calls": 0,
+  "recomputed_from_saved_rankings": true,
+  "operator_source_sha256": {
+    "tools/search_service/benchmark.py": "15465bebe8abfe937c26ad7296480ed53d5ef145fd8cb1b5ed11a4d23bd7174c",
+    "tools/search_service/contract_fixtures.py": "4bbeaad75ee249cb1b89ee5a0b181cbad7ff021fda7e7ec31301b1f78906369a",
+    "tools/search_service/dev.py": "404027f72738a755a03c7f95cb7937c35ae27c0ba7760978905b7de9097e53a8",
+    "tools/search_service/quality.py": "22dc75575f7ff0caf7bb2a6b6843ddf5c3b3ffac4f2e3a04d13e3f8a7d1bf7c1",
+    "tools/search_service/smoke.py": "255a63a3bf46371291cb977bbdf3f70f750044ba974ebee9d022ca3dae85c9d4"
+  },
+  "compose_sha256": "991022934378970fd4b000ff96da0f502a51775993ec41dbcf7e7675d883018c",
+  "post_benchmark_main_compatibility": {
+    "main_pr": 49,
+    "main_commit": "9f1a8f4",
+    "measured_cli_sha256": "75f8884e56b4551cbf9c0e922d068f74b50cff5d2f96d2e7c278957fc6dfcacd",
+    "current_cli_sha256": "8a0795d31c993a9d1cd76015a413856e1b3d3b826ea326a8f19e57feabe02c4e",
+    "all_144_policy_cases_identical_excluding_source_hash": true,
+    "changed_existing_cli_definitions": [
+      "cmd_find",
+      "cmd_load",
+      "cmd_hook",
+      "main"
+    ],
+    "Index_and_Router_AST_identical": true,
+    "other_existing_cli_definitions_AST_identical": true,
+    "go_runtime_source_unchanged": true,
+    "quality_corpora_rerun": false,
+    "note": "Merged main telemetry changes client command wrappers. Updated conformance fixture source identity only; original measurement identities remain frozen."
+  }
+}

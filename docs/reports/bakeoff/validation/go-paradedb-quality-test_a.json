@@ -1,0 +1,307 @@
+{
+  "variant": "paradedb_bm25_v1",
+  "dataset": "test_a",
+  "scope": "case.node for regression; _root otherwise",
+  "snapshot_sha256": "0eaafe19503105c7acbfd06784bd96564493498c3dbd73343c6bbc9d7e354ef7",
+  "cli_sha256": "75f8884e56b4551cbf9c0e922d068f74b50cff5d2f96d2e7c278957fc6dfcacd",
+  "go_source_sha256": {
+    "services/search/contract.go": "8ec83e14cbf6594c3477b99c713e878b9b0977493388098a377a6c4259d2064f",
+    "services/search/main.go": "f3955c236951c614a8788631f65053ab895b99521c261bafa43bd2a52c4aebee",
+    "services/search/routing.go": "f19d9b1aba83d011f83727e6a7997634cec15847a4aeb34344e4cbb3a94798be",
+    "services/search/routing_test.go": "65bc9c2ba99d30e11bf7493d317f5533a41b62a7ddc360bd2714948c662b598d",
+    "services/search/store.go": "f258df99d180fff50f7dbee004ad0d526349fde0e77384678943d5182b1cbbb1"
+  },
+  "corpus_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+  "cases_sha256": "ba45a9526280f1c51b5416bd0b3fa512fb8c3c4b7c6cb05dc89e5b57b46d9ea0",
+  "conversion": {
+    "input_queries": 4392,
+    "cases": 4392,
+    "documents": 6006
+  },
+  "n_queries": 4392,
+  "n_skills": 6006,
+  "configuration": "ParadeDB 0.25.6 defaults; name+description+digest+triggers+body concatenation; NUL=>space only in search projection; top50 score desc/URN bytewise asc; isolated IDF per snapshot; score/closure/select shared-policy port",
+  "tuning_on_test": false,
+  "test_variant_run_number": 1,
+  "production_ready": false,
+  "f0": {
+    "official": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "hit@1": 0.3825136612021858,
+      "recall@8": 0.4524134790528233,
+      "ndcg@10": 0.3849729814826081,
+      "completeness@4": 0.39207650273224043,
+      "all_required@4": 0.27003642987249543,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0,
+      "n_answered_injection": 4392,
+      "recall@10": 0.4699833029751062,
+      "paper_ndcg@10": 0.3999546557665372,
+      "paper_recall@10": 0.4699833029751062,
+      "paper_completeness@10": 0.3333333333333333
+    },
+    "by_category": {
+      "k1": {
+        "n": 2143,
+        "n_answerable": 2143,
+        "hit@1": 0.3583761082594494,
+        "recall@8": 0.5636957536164255,
+        "ndcg@10": 0.464474603156392,
+        "completeness@4": 0.5002333177788147,
+        "all_required@4": 0.5002333177788147,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 2143,
+        "recall@10": 0.5828278114792347,
+        "paper_ndcg@10": 0.464474603156392,
+        "paper_recall@10": 0.5828278114792347,
+        "paper_completeness@10": 0.5828278114792347
+      },
+      "k2": {
+        "n": 1703,
+        "n_answerable": 1703,
+        "hit@1": 0.41103934233705225,
+        "recall@8": 0.3734586024662361,
+        "ndcg@10": 0.33012543490413043,
+        "completeness@4": 0.31650029359953025,
+        "all_required@4": 0.06694069289489137,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 1703,
+        "recall@10": 0.3896065766294774,
+        "paper_ndcg@10": 0.3584518987927671,
+        "paper_recall@10": 0.3896065766294774,
+        "paper_completeness@10": 0.12213740458015267
+      },
+      "k3": {
+        "n": 546,
+        "n_answerable": 546,
+        "hit@1": 0.3882783882783883,
+        "recall@8": 0.2619047619047619,
+        "ndcg@10": 0.2440085063474954,
+        "completeness@4": 0.2032967032967033,
+        "all_required@4": 0.0,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 546,
+        "recall@10": 0.27777777777777773,
+        "paper_ndcg@10": 0.2761688460043977,
+        "paper_recall@10": 0.27777777777777773,
+        "paper_completeness@10": 0.01282051282051282
+      }
+    },
+    "retrieval_denominators": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "n_answered": 4392,
+      "hit@1": 0.3825136612021858,
+      "recall@8": 0.4524134790528233,
+      "ndcg@10": 0.3849729814826081,
+      "completeness@4": 0.39207650273224043,
+      "all_required@4": 0.27003642987249543,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0
+    },
+    "injection_denominators": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "n_answered": 4392,
+      "hit@1": 0.3825136612021858,
+      "recall@8": 0.39348057073466913,
+      "ndcg@10": 0.35713323728668894,
+      "completeness@4": 0.39207650273224043,
+      "all_required@4": 0.27003642987249543,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0
+    }
+  },
+  "paradedb": {
+    "official": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "hit@1": 0.46789617486338797,
+      "recall@8": 0.520529751062538,
+      "ndcg@10": 0.4536623796765285,
+      "completeness@4": 0.4581056466302368,
+      "all_required@4": 0.3237704918032787,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0,
+      "n_answered_injection": 4392,
+      "recall@10": 0.5408697632058288,
+      "paper_ndcg@10": 0.4730437818705974,
+      "paper_recall@10": 0.5408697632058288,
+      "paper_completeness@10": 0.39435336976320584
+    },
+    "by_category": {
+      "k1": {
+        "n": 2143,
+        "n_answerable": 2143,
+        "hit@1": 0.42743817078861407,
+        "recall@8": 0.6350909939337378,
+        "ndcg@10": 0.5369432646031987,
+        "completeness@4": 0.5720951936537564,
+        "all_required@4": 0.5720951936537564,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 2143,
+        "recall@10": 0.6556229584694354,
+        "paper_ndcg@10": 0.5369432646031986,
+        "paper_recall@10": 0.6556229584694354,
+        "paper_completeness@10": 0.6556229584694354
+      },
+      "k2": {
+        "n": 1703,
+        "n_answerable": 1703,
+        "hit@1": 0.5073399882560188,
+        "recall@8": 0.43951849677040516,
+        "ndcg@10": 0.3949202145407746,
+        "completeness@4": 0.37815619495008806,
+        "all_required@4": 0.11391661773341162,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 1703,
+        "recall@10": 0.4606576629477393,
+        "paper_ndcg@10": 0.43196374030946094,
+        "paper_recall@10": 0.4606576629477393,
+        "paper_completeness@10": 0.183206106870229
+      },
+      "k3": {
+        "n": 546,
+        "n_answerable": 546,
+        "hit@1": 0.5036630036630036,
+        "recall@8": 0.3235653235653235,
+        "ndcg@10": 0.3100121430983867,
+        "completeness@4": 0.2600732600732601,
+        "all_required@4": 0.003663003663003663,
+        "distractor_rate@4": null,
+        "abstention_precision": null,
+        "abstention_recall": null,
+        "coverage": 1.0,
+        "n_answered_injection": 546,
+        "recall@10": 0.34065934065934067,
+        "paper_ndcg@10": 0.3503747695677602,
+        "paper_recall@10": 0.34065934065934067,
+        "paper_completeness@10": 0.027472527472527472
+      }
+    },
+    "retrieval_denominators": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "n_answered": 4392,
+      "hit@1": 0.46789617486338797,
+      "recall@8": 0.520529751062538,
+      "ndcg@10": 0.4536623796765285,
+      "completeness@4": 0.4581056466302368,
+      "all_required@4": 0.3237704918032787,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0
+    },
+    "injection_denominators": {
+      "n": 4392,
+      "n_answerable": 4392,
+      "n_answered": 4392,
+      "hit@1": 0.46789617486338797,
+      "recall@8": 0.462431693989071,
+      "ndcg@10": 0.4250164508726814,
+      "completeness@4": 0.4581056466302368,
+      "all_required@4": 0.3237704918032787,
+      "distractor_rate@4": null,
+      "abstention_precision": null,
+      "abstention_recall": null,
+      "coverage": 1.0
+    }
+  },
+  "comparison": {
+    "official_common_answered_paired_ci": {
+      "hit@1": {
+        "n": 4392,
+        "mean_delta": 0.08538251366120218,
+        "ci_low": 0.07604735883424409,
+        "ci_high": 0.0947176684881603,
+        "n_resamples": 1000
+      },
+      "ndcg@10": {
+        "n": 4392,
+        "mean_delta": 0.06868939819392043,
+        "ci_low": 0.0640928713820967,
+        "ci_high": 0.07329622481958795,
+        "n_resamples": 1000
+      },
+      "all_required@4": {
+        "n": 4392,
+        "mean_delta": 0.05373406193078324,
+        "ci_low": 0.046903460837887066,
+        "ci_high": 0.060792349726775954,
+        "n_resamples": 1000
+      },
+      "HSR@4": {
+        "n": 0,
+        "mean_delta": null,
+        "ci_low": null,
+        "ci_high": null
+      }
+    },
+    "all_answerable_diagnostic": {
+      "hit@1": {
+        "f0": 0.3825136612021858,
+        "paradedb": 0.46789617486338797,
+        "n": 4392,
+        "mean_delta": 0.08538251366120218,
+        "ci_low": 0.07604735883424409,
+        "ci_high": 0.0947176684881603,
+        "n_resamples": 1000
+      },
+      "ndcg@10": {
+        "f0": 0.3849729814826081,
+        "paradedb": 0.4536623796765285,
+        "n": 4392,
+        "mean_delta": 0.06868939819392043,
+        "ci_low": 0.0640928713820967,
+        "ci_high": 0.07329622481958795,
+        "n_resamples": 1000
+      },
+      "all_required@4": {
+        "f0": 0.27003642987249543,
+        "paradedb": 0.3237704918032787,
+        "n": 4392,
+        "mean_delta": 0.05373406193078324,
+        "ci_low": 0.046903460837887066,
+        "ci_high": 0.060792349726775954,
+        "n_resamples": 1000
+      },
+      "HSR@4": {
+        "f0": null,
+        "paradedb": null,
+        "n": 0,
+        "mean_delta": null,
+        "ci_low": null,
+        "ci_high": null
+      }
+    }
+  },
+  "http_attempts": 4392,
+  "http_errors": 0,
+  "labels_sent_to_service": false,
+  "latency_note": "Quality run timings are diagnostic only; dedicated latency benchmark is separate."
+}
