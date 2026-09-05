@@ -32,7 +32,13 @@
           "bytes": 5372,
           "rows": null
         }
-      }
+      },
+      "dev_files": [
+        "data/queries/train.jsonl",
+        "data/qrels/train.jsonl",
+        "data/skills/train.jsonl"
+      ],
+      "dev_split": "docs/reports/bakeoff/validation/skillret-dev-split.json"
     },
     "skillretbench": {
       "hf_repo": "thaki-AI/SkillRetBench",

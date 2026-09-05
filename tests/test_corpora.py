@@ -6,6 +6,7 @@ with a reason that says exactly how to fetch. A skip here is not a pass; it is "
 this machine", and the report that quotes these corpora must come from a machine where they ran.
 """
 import importlib.util
+import json
 import pathlib
 import sys
 
@@ -77,3 +78,19 @@ def test_skillretbench_schema_maps_onto_our_metadata():
     settings = {q["setting"] for q in queries}
     assert settings == {"single_skill", "multi_skill_composition", "distractor", "outdated_redundant", "budget_constrained"}
     assert "gold_skills" in queries[0] and "distractor_skills" in queries[0]
+
+
+# ------------------------------------------------------------------ dev split (always: the id list is committed)
+def test_dev_split_is_frozen_and_from_train_only():
+    spec = json.loads(C.DEV_SPLIT.read_text())
+    assert spec["n"] == len(spec["query_ids"]) == len(set(spec["query_ids"]))
+    assert "train.jsonl" in spec["source"] and "test" not in spec["source"].split("data/")[-1]
+    assert spec["seed"] == 20260905
+    assert set(spec["k_distribution"]) <= {"1", "2", "3"}
+
+
+def test_dev_split_queries_are_disjoint_from_test_queries():
+    _needs("skillret")
+    dev = set(json.loads(C.DEV_SPLIT.read_text())["query_ids"])
+    test_ids = {q["id"] for q in C.load_skillret()["queries"]}
+    assert not (dev & test_ids)
