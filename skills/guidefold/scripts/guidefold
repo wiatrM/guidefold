@@ -2266,13 +2266,32 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
     degradation_reason = "config" if search_cfg.get("config_error") else None
     remote_thread = None
     remote_result = None
-    if search_cfg["backend"] == "service":
+    # Contract v1.1 can only ever express a SUBSET of what a local caller can ask for (E2.9
+    # fixture audit, 2026-09-05, cross-checked against the service worktree's independent
+    # MERIDIAN-GRAPH-PARITY-2026-09-05.md finding of the same client defect):
+    #   - `budget.max_cards` is 0..4. Omitted entirely (as this call used to send it), the Go/
+    #     ParadeDB service applies its OWN default of 4 -- silently disagreeing with whatever local
+    #     `k` actually is (hook's k=3, find's default k=8, any --limit). The client MUST send it
+    #     whenever k is in range, so both sides target the same budget.
+    #   - There is no field at all for include_deprecated, and the service unconditionally excludes
+    #     deprecated cards with no override on that side either.
+    # Whenever the caller's actual local request falls outside what the wire format can carry --
+    # k>4 (or k<0), or include_deprecated=True -- a remote reply can never be a correct answer to
+    # what was actually asked, regardless of ranking correctness. Racing it anyway would silently
+    # replace a local answer that DOES honour the request with one that structurally cannot, with
+    # nothing downstream showing the discrepancy. Treat it exactly like any other backend the
+    # service cannot satisfy: never open the socket, fall back to local with a visible reason.
+    budget_representable = 0 <= k <= 4
+    if (include_deprecated or not budget_representable) and search_cfg["backend"] == "service":
+        degradation_reason = degradation_reason or "config"
+    elif search_cfg["backend"] == "service":
         import threading
         remote_result = _RemoteSearchResult()
         try:
             scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
             payload = {"schema_version": "1.1", "query": query, "node": node, "profile": profile,
-                       "deadline_ms": search_cfg["deadline_ms"], "request_id": search_id}
+                       "deadline_ms": search_cfg["deadline_ms"], "request_id": search_id,
+                       "budget": {"max_cards": k}}
             timeout_s = search_cfg["deadline_ms"] / 1000.0
             remote_thread = threading.Thread(
                 target=_remote_call,

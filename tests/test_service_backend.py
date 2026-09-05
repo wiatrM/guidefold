@@ -239,6 +239,69 @@ def test_happy_path_remote_replaces_local_selection_and_sends_bearer_token(gf, m
     assert ctrl.requests[0]["headers"]["Authorization"] == "Bearer secret-token-abc"
     assert ctrl.requests[0]["payload"]["schema_version"] == "1.1"
     assert ctrl.requests[0]["payload"]["query"] == "q"
+    assert ctrl.requests[0]["payload"]["budget"] == {"max_cards": 3}
+
+
+@pytest.mark.parametrize("k", [0, 1, 3, 4])
+def test_budget_max_cards_is_sent_for_every_representable_k(gf, monkeypatch, tmp_path, k):
+    """E2.9 fixture audit (2026-09-05, cross-checked against the service worktree's independent
+    MERIDIAN-GRAPH-PARITY-2026-09-05.md finding of the same defect): the client used to omit
+    `budget` entirely, so the Go/ParadeDB service silently applied its OWN default of 4 regardless
+    of the caller's actual local k (hook's k=3, find's default k=8, any --limit). `budget.max_cards`
+    is 0..4 per contract v1.1 -- the client must send the real k whenever it fits so both sides
+    target the same selection size."""
+    remote_cards = [_card(f"urn:skill:m:n:r{i}") for i in range(4)]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: ([], []))
+    with running_service(_search_ok(remote_cards)) as (url, ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive", k=k,
+                                search_id=f"sid-budget-{k}", search_cfg=search_cfg)
+    assert ctrl.requests[0]["payload"]["budget"] == {"max_cards": k}
+
+
+@pytest.mark.parametrize("k", [5, 8, -1])
+def test_unrepresentable_k_never_races_the_service_backend(gf, monkeypatch, tmp_path, k):
+    """Contract v1.1's `budget.max_cards` tops out at 4 (and bottoms out at 0): find's default
+    k=8 (and any k outside 0..4) cannot be expressed on the wire at all. Clamping it and comparing
+    against a different local limit would still misreport a budget difference as a ranking parity
+    mismatch (the service worktree's report is explicit that this must not happen) -- so, exactly
+    like include_deprecated, never open the socket and fall back to local with a visible reason."""
+    def _forbidden(*a, **kw):
+        raise AssertionError(f"k={k} must never race the service backend")
+    monkeypatch.setattr(socket, "socket", _forbidden)
+    local_fixed = [_card("urn:skill:m:n:local-only")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (local_fixed, local_fixed))
+    search_cfg = {"backend": "service", "url": "http://127.0.0.1:1", "deadline_ms": 2000,
+                  "token": "t", "config_error": False}
+    result = gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive", k=k,
+                                     search_id=f"sid-k-{k}", search_cfg=search_cfg)
+    assert result["backend"] == "local_sparse"
+    assert result["degradation_reason"] == "config"
+    assert result["selected"] == local_fixed
+
+
+def test_include_deprecated_never_races_the_service_backend(gf, monkeypatch, tmp_path):
+    """E2.9 fixture audit (2026-09-05): Contract v1.1's search_request has no field for
+    include_deprecated, and the Go/ParadeDB service unconditionally excludes deprecated cards --
+    no override exists on that side either. So `--include-deprecated --backend service` can never
+    get an honest remote answer: racing it anyway would silently drop deprecated cards the caller
+    explicitly asked to see, with no visible sign of the discrepancy. The fix is to never open the
+    socket in this combination and fall back to local with a visible "config" degradation reason,
+    exactly like any other backend:service config the service structurally cannot satisfy."""
+    def _forbidden(*a, **kw):
+        raise AssertionError("include_deprecated=True must never race the service backend")
+    monkeypatch.setattr(socket, "socket", _forbidden)
+    local_fixed = [_card("urn:skill:m:n:local-only")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (local_fixed, local_fixed))
+    search_cfg = {"backend": "service", "url": "http://127.0.0.1:1", "deadline_ms": 2000,
+                  "token": "t", "config_error": False}
+    result = gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive", k=3,
+                                     search_id="sid-incdep", include_deprecated=True,
+                                     search_cfg=search_cfg)
+    assert result["backend"] == "local_sparse"
+    assert result["degradation_reason"] == "config"
+    assert result["selected"] == local_fixed
 
 
 def test_client_uses_the_services_ordered_selection_as_is(gf, monkeypatch, tmp_path):

@@ -134,6 +134,8 @@ jobs:
         run: python -c "from tools.eval.corpora import fetch; fetch('skillret')"
       - name: Full default SEARCH parity against the unchanged CLI (1000 DEV queries)
         run: python tools/search_service/parity.py --output .guidefold/checks/router-parity.json
+      - name: Structured-corpus SEARCH parity (Meridian graph edges, scope hierarchy, negative_triggers, deprecated skills, node context; E1.1b/E2.9, PR #61 regression gate)
+        run: python tools/search_service/parity.py --fixture --output .guidefold/checks/router-parity-fixture.json
       - name: Upload integration evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -142,6 +144,7 @@ jobs:
           path: |
             .guidefold/checks/compose-smoke.json
             .guidefold/checks/router-parity.json
+            .guidefold/checks/router-parity-fixture.json
             .guidefold/checks/graph-parity.json
             .guidefold/checks/graph-lifecycle.json
             .guidefold/checks/http-admission.json
