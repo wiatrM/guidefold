@@ -1,0 +1,74 @@
+{
+  "identity": "E0",
+  "k=1": {
+    "all_required4": 0.9298780487804879,
+    "ceiling10": 0.9634146341463414,
+    "ceiling15": 0.9817073170731707,
+    "ceiling4": 0.9298780487804879,
+    "ceiling50": 0.9969512195121951,
+    "hit1": 0.8323170731707317,
+    "n": 328,
+    "ndcg10": 0.897912182561931,
+    "recall10": 0.9634146341463414
+  },
+  "k=2": {
+    "all_required4": 0.19519519519519518,
+    "ceiling10": 0.3483483483483483,
+    "ceiling15": 0.43843843843843844,
+    "ceiling4": 0.19519519519519518,
+    "ceiling50": 0.5735735735735735,
+    "hit1": 0.8378378378378378,
+    "n": 333,
+    "ndcg10": 0.691602173376467,
+    "recall10": 0.6651651651651652
+  },
+  "k=3": {
+    "all_required4": 0.017699115044247787,
+    "ceiling10": 0.07964601769911504,
+    "ceiling15": 0.12389380530973451,
+    "ceiling4": 0.017699115044247787,
+    "ceiling50": 0.23303834808259588,
+    "hit1": 0.8466076696165191,
+    "n": 339,
+    "ndcg10": 0.59623951785913,
+    "recall10": 0.5014749262536873
+  },
+  "model_meta": {
+    "device": "cuda",
+    "dims": 1024,
+    "dtype": "torch.bfloat16",
+    "encode_ms_per_item": {
+      "queries": 4.879954099655151,
+      "skills": 70.9044804724264
+    },
+    "encode_time_s": {
+      "queries": 4.879954099655151,
+      "skills": 717.7660558223724
+    },
+    "identity": "E0",
+    "n_queries": 1000,
+    "n_skills": 10123,
+    "quant_cosine_mean": {
+      "queries": 0.9973621964454651,
+      "skills": 0.9973660707473755
+    },
+    "query_batch_size": 64,
+    "query_prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+    "revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+    "skill_batch_size": 4,
+    "source": "ThakiCloud/SKILLRET-Embedding-0.6B"
+  },
+  "n_cases": 1000,
+  "overall": {
+    "all_required4": 0.376,
+    "ceiling10": 0.459,
+    "ceiling15": 0.51,
+    "ceiling4": 0.376,
+    "ceiling50": 0.597,
+    "hit1": 0.839,
+    "n": 1000,
+    "ndcg10": 0.726943916168922,
+    "recall10": 0.7075
+  },
+  "run_time_s": 225.93565940856934
+}
