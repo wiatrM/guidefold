@@ -1,0 +1,480 @@
+{
+  "base_url": "http://127.0.0.1:8766",
+  "client_timeout_seconds": 5.0,
+  "created_unix": 1788614469.7007442,
+  "fresh_process_arm": {
+    "actual_harness_or_distributed_CLI": false,
+    "measurement": "Python process start + stdlib client imports + token read + HTTP + exit",
+    "rows": [],
+    "summary": {
+      "all_attempt_latency_ms": {
+        "p50": null,
+        "p95": null,
+        "p99": null
+      },
+      "attempted": 0,
+      "batch_elapsed_ms": 0.0016999983927235007,
+      "budget_failures_including_rejections": 0,
+      "budget_ms": 300.0,
+      "client_error_counts": {},
+      "failed": 0,
+      "http_status_counts": {},
+      "server_stage_ms": {},
+      "succeeded": 0,
+      "success_latency_ms": {
+        "max": null,
+        "p50": null,
+        "p95": null,
+        "p99": null
+      },
+      "successful_backend_counts": {},
+      "successful_requests_per_second": 0.0,
+      "successful_within_budget": 0,
+      "within_budget_fraction_of_all_attempts": null
+    }
+  },
+  "http_arms": [
+    {
+      "concurrency": 1,
+      "rows": [
+        {
+          "backend": "sparse_only",
+          "card_count": 4,
+          "client_ms": 169.8700779961655,
+          "composition": {
+            "incomplete": null,
+            "status": "not_evaluated"
+          },
+          "error": null,
+          "failure_code": null,
+          "http_status": 200,
+          "live_encode_calls": 0,
+          "model": null,
+          "policy": "shared-router-policy-candidates-score-select-v1",
+          "query_id": "q-train-017617",
+          "search_id": "c54ac6c5-0d0d-4bd3-b60b-594aa29779d3",
+          "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+          "stages_ms": {
+            "candidates": 119.128191996424,
+            "engine_queue": 0.0043000036384910345,
+            "policy": 10.955689002003055,
+            "score": 2.7205730002606288,
+            "select": 0.3509960006340407
+          }
+        }
+      ],
+      "summary": {
+        "all_attempt_latency_ms": {
+          "p50": 169.8700779961655,
+          "p95": 169.8700779961655,
+          "p99": 169.8700779961655
+        },
+        "attempted": 1,
+        "batch_elapsed_ms": 169.89557700435398,
+        "budget_failures_including_rejections": 0,
+        "budget_ms": 300.0,
+        "client_error_counts": {},
+        "failed": 0,
+        "http_status_counts": {
+          "200": 1
+        },
+        "server_stage_ms": {
+          "candidates": {
+            "p50": 119.128191996424,
+            "p95": 119.128191996424,
+            "p99": 119.128191996424
+          },
+          "engine_queue": {
+            "p50": 0.0043000036384910345,
+            "p95": 0.0043000036384910345,
+            "p99": 0.0043000036384910345
+          },
+          "policy": {
+            "p50": 10.955689002003055,
+            "p95": 10.955689002003055,
+            "p99": 10.955689002003055
+          },
+          "score": {
+            "p50": 2.7205730002606288,
+            "p95": 2.7205730002606288,
+            "p99": 2.7205730002606288
+          },
+          "select": {
+            "p50": 0.3509960006340407,
+            "p95": 0.3509960006340407,
+            "p99": 0.3509960006340407
+          }
+        },
+        "succeeded": 1,
+        "success_latency_ms": {
+          "max": 169.8700779961655,
+          "p50": 169.8700779961655,
+          "p95": 169.8700779961655,
+          "p99": 169.8700779961655
+        },
+        "successful_backend_counts": {
+          "sparse_only": 1
+        },
+        "successful_requests_per_second": 5.88596841443596,
+        "successful_within_budget": 1,
+        "within_budget_fraction_of_all_attempts": 1.0
+      }
+    }
+  ],
+  "label": "sparse-fault-smoke-during-index-build",
+  "live_encode_audit": {
+    "counter_after": 0,
+    "counter_before": 0,
+    "exactly_one_forward_per_success": false,
+    "interpretation": "Hybrid forward-pass evidence only; timed-out searches may also encode, sparse arm should have zero, concurrent external traffic invalidates equality.",
+    "observed_forward_passes": 0,
+    "successful_searches_including_use_setup": 2
+  },
+  "probe_sha256": "e6d42a0cba67ab7700117f23ac7d41f02f6483f1c845767ccc436a6cd366b1b6",
+  "ready_after": {
+    "backend": "sparse_only",
+    "device": null,
+    "error": null,
+    "initialization_ms": {
+      "resident_index": 11302.913305997208,
+      "total": 12614.623773006315,
+      "verified_corpus": 1311.706567001238
+    },
+    "live_encode_calls": 0,
+    "model": null,
+    "model_load_calls": 0,
+    "n_skills": 6006,
+    "policy": "shared-router-policy-candidates-score-select-v1",
+    "policy_revision": "c790f6847edf59e3ec3096270969956a2627bfd6360ddb6a1755c2e1e934c3df",
+    "production_iam": false,
+    "ready": true,
+    "reranker": false,
+    "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+    "telemetry_errors": 0
+  },
+  "ready_before_measurement": {
+    "backend": "sparse_only",
+    "device": null,
+    "error": null,
+    "initialization_ms": {
+      "resident_index": 11302.913305997208,
+      "total": 12614.623773006315,
+      "verified_corpus": 1311.706567001238
+    },
+    "live_encode_calls": 0,
+    "model": null,
+    "model_load_calls": 0,
+    "n_skills": 6006,
+    "policy": "shared-router-policy-candidates-score-select-v1",
+    "policy_revision": "c790f6847edf59e3ec3096270969956a2627bfd6360ddb6a1755c2e1e934c3df",
+    "production_iam": false,
+    "ready": true,
+    "reranker": false,
+    "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+    "telemetry_errors": 0
+  },
+  "ready_before_warmups": {
+    "backend": "sparse_only",
+    "device": null,
+    "error": null,
+    "initialization_ms": {
+      "resident_index": 11302.913305997208,
+      "total": 12614.623773006315,
+      "verified_corpus": 1311.706567001238
+    },
+    "live_encode_calls": 0,
+    "model": null,
+    "model_load_calls": 0,
+    "n_skills": 6006,
+    "policy": "shared-router-policy-candidates-score-select-v1",
+    "policy_revision": "c790f6847edf59e3ec3096270969956a2627bfd6360ddb6a1755c2e1e934c3df",
+    "production_iam": false,
+    "ready": true,
+    "reranker": false,
+    "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+    "telemetry_errors": 0
+  },
+  "request_node": "_root",
+  "request_profile": "hook",
+  "requested_deadline_ms": 1000,
+  "runtime_fault_checks": {
+    "cases": {
+      "invalid_token": {
+        "backend": null,
+        "card_count": 0,
+        "client_ms": 35.48174099705648,
+        "composition": null,
+        "error": null,
+        "failure_code": "unauthorized",
+        "http_status": 401,
+        "live_encode_calls": null,
+        "model": null,
+        "policy": null,
+        "query_id": null,
+        "search_id": null,
+        "snapshot": null,
+        "stages_ms": {}
+      },
+      "one_ms_deadline": {
+        "backend": null,
+        "card_count": 0,
+        "client_ms": 64.22994899912737,
+        "composition": null,
+        "error": null,
+        "failure_code": "deadline_exceeded",
+        "http_status": 504,
+        "live_encode_calls": null,
+        "model": null,
+        "policy": null,
+        "query_id": "q-train-017617",
+        "search_id": null,
+        "snapshot": null,
+        "stages_ms": {}
+      },
+      "oversized_body": {
+        "backend": null,
+        "card_count": 0,
+        "client_ms": 5.4027450023568235,
+        "composition": null,
+        "error": null,
+        "failure_code": "payload_too_large",
+        "http_status": 413,
+        "live_encode_calls": null,
+        "model": null,
+        "policy": null,
+        "query_id": null,
+        "search_id": null,
+        "snapshot": null,
+        "stages_ms": {}
+      },
+      "recovery_search": {
+        "backend": "sparse_only",
+        "card_count": 4,
+        "client_ms": 184.23693200020352,
+        "composition": {
+          "incomplete": null,
+          "status": "not_evaluated"
+        },
+        "error": null,
+        "failure_code": null,
+        "http_status": 200,
+        "live_encode_calls": 0,
+        "model": null,
+        "policy": "shared-router-policy-candidates-score-select-v1",
+        "query_id": "q-train-017617",
+        "search_id": "db8b9b63-1388-4672-a7f2-7bef348f916d",
+        "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+        "stages_ms": {
+          "candidates": 123.91654399834806,
+          "engine_queue": 0.00429999636253342,
+          "policy": 11.706480996508617,
+          "score": 2.521175003494136,
+          "select": 0.34359600249445066
+        }
+      },
+      "stale_use_revision": {
+        "backend": null,
+        "card_count": 0,
+        "client_ms": 74.09364899649518,
+        "composition": null,
+        "error": null,
+        "failure_code": "revision_mismatch",
+        "http_status": 409,
+        "live_encode_calls": null,
+        "model": null,
+        "policy": null,
+        "query_id": null,
+        "search_id": null,
+        "snapshot": null,
+        "stages_ms": {}
+      }
+    },
+    "checks": {
+      "invalid_token_rejected_401": true,
+      "next_search_recovers_200": true,
+      "one_ms_deadline_rejected_504": true,
+      "oversized_body_rejected_413": true,
+      "stale_use_revision_rejected_409": true,
+      "still_ready": true
+    },
+    "outside_latency_and_encode_audit_arms": true,
+    "passed": true,
+    "ready_after": {
+      "backend": "sparse_only",
+      "device": null,
+      "error": null,
+      "initialization_ms": {
+        "resident_index": 11302.913305997208,
+        "total": 12614.623773006315,
+        "verified_corpus": 1311.706567001238
+      },
+      "live_encode_calls": 0,
+      "model": null,
+      "model_load_calls": 0,
+      "n_skills": 6006,
+      "policy": "shared-router-policy-candidates-score-select-v1",
+      "policy_revision": "c790f6847edf59e3ec3096270969956a2627bfd6360ddb6a1755c2e1e934c3df",
+      "production_iam": false,
+      "ready": true,
+      "reranker": false,
+      "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+      "telemetry_errors": 0
+    },
+    "ready_before": {
+      "backend": "sparse_only",
+      "device": null,
+      "error": null,
+      "initialization_ms": {
+        "resident_index": 11302.913305997208,
+        "total": 12614.623773006315,
+        "verified_corpus": 1311.706567001238
+      },
+      "live_encode_calls": 0,
+      "model": null,
+      "model_load_calls": 0,
+      "n_skills": 6006,
+      "policy": "shared-router-policy-candidates-score-select-v1",
+      "policy_revision": "c790f6847edf59e3ec3096270969956a2627bfd6360ddb6a1755c2e1e934c3df",
+      "production_iam": false,
+      "ready": true,
+      "reranker": false,
+      "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+      "telemetry_errors": 0
+    },
+    "semantics": "loopback token + active state only; no tenant IAM or execution evidence"
+  },
+  "schema_version": "e11b-loopback-probe-v1",
+  "scope": "local resident service feasibility; not deployment or product readiness",
+  "use": {
+    "correctness": {
+      "checks": {
+        "all_checksums_match_body": true,
+        "all_correlation_echoes_match": true,
+        "all_http_200": true,
+        "all_revisions_match_requested": true,
+        "hydration_not_execution": true,
+        "missing_revision_rejected_400": true
+      },
+      "passed": true
+    },
+    "missing_revision_error": "invalid_revision",
+    "missing_revision_status": 400,
+    "requested_revision": "425025fc77c1e66523cc85a54e93c03bf8ccfee7f27b1a87ea18065e24a94da5",
+    "requested_skill_id": "fedcfbc0-ead1-461f-beb7-aa825d93760e",
+    "rows": [
+      {
+        "backend": "revision_pinned_hydration",
+        "body_bytes": 9414,
+        "checksum_matches_body": true,
+        "client_ms": 40.777287002129015,
+        "error": null,
+        "execution_observed": false,
+        "http_status": 200,
+        "revision": "425025fc77c1e66523cc85a54e93c03bf8ccfee7f27b1a87ea18065e24a94da5",
+        "revision_matches_requested": true,
+        "search_correlation_matches": true,
+        "status": "hydrated"
+      },
+      {
+        "backend": "revision_pinned_hydration",
+        "body_bytes": 9414,
+        "checksum_matches_body": true,
+        "client_ms": 40.0780929994653,
+        "error": null,
+        "execution_observed": false,
+        "http_status": 200,
+        "revision": "425025fc77c1e66523cc85a54e93c03bf8ccfee7f27b1a87ea18065e24a94da5",
+        "revision_matches_requested": true,
+        "search_correlation_matches": true,
+        "status": "hydrated"
+      }
+    ],
+    "semantics": "body hydration only; no applied/useful/executed claim",
+    "setup_search": {
+      "backend": "sparse_only",
+      "card_count": 4,
+      "client_ms": 197.32829999702517,
+      "composition": {
+        "incomplete": null,
+        "status": "not_evaluated"
+      },
+      "error": null,
+      "failure_code": null,
+      "http_status": 200,
+      "live_encode_calls": 0,
+      "model": null,
+      "policy": "shared-router-policy-candidates-score-select-v1",
+      "query_id": "q-train-017617",
+      "search_id": "5a19810b-5f1b-4079-8ff5-1e3f2517bb80",
+      "snapshot": "skillret:a050ad233a504a43135bafe8cdf45574052b5729",
+      "stages_ms": {
+        "candidates": 144.97223000216763,
+        "engine_queue": 0.0036999990697950125,
+        "policy": 9.961598996596877,
+        "score": 2.516574997571297,
+        "select": 0.3431959994486533
+      }
+    },
+    "status": "measured",
+    "summary": {
+      "all_attempt_latency_ms": {
+        "p50": 40.0780929994653,
+        "p95": 40.777287002129015,
+        "p99": 40.777287002129015
+      },
+      "attempted": 2,
+      "budget_failures_including_rejections": 0,
+      "budget_ms": 300.0,
+      "client_error_counts": {},
+      "failed": 0,
+      "http_status_counts": {
+        "200": 2
+      },
+      "server_stage_ms": {},
+      "succeeded": 2,
+      "success_latency_ms": {
+        "max": 40.777287002129015,
+        "p50": 40.0780929994653,
+        "p95": 40.777287002129015,
+        "p99": 40.777287002129015
+      },
+      "successful_backend_counts": {
+        "revision_pinned_hydration": 2
+      },
+      "successful_within_budget": 2,
+      "within_budget_fraction_of_all_attempts": 1.0
+    }
+  },
+  "verdict": {
+    "latency_gate_loopback_http": true,
+    "missing_validation": [
+      "WAN + TLS + real authentication + production queue/load",
+      "actual harness integration and its whole-hook budget",
+      "quality on approved corpora with product policy/select",
+      "30k real or audited scale corpus",
+      "revision-pinned package/cache client and offline integration",
+      "telemetry durability, tenant isolation and outcome attribution"
+    ],
+    "production_ready": false,
+    "runtime_fault_checks_passed": true,
+    "use_hydration_checks_passed": true
+  },
+  "warmup_requests_excluded": 1,
+  "warmup_successes": 1,
+  "workload": {
+    "dataset": "SKILLRET frozen DEV subset of train",
+    "distinct_query_texts": 1,
+    "frozen_dev_split_sha256": "c126dfd7b118e72013338261b8302e116bf9b1129e52eabf38738ab1c3b78aa2",
+    "hf_revision": "a050ad233a504a43135bafe8cdf45574052b5729",
+    "labels_used_for_selection_or_quality": false,
+    "quality_claim": "none; labelled public DEV texts are used solely as a latency workload",
+    "retrieval_pool_may_differ_from_dev": true,
+    "sample_query_ids": [
+      "q-train-017617"
+    ],
+    "sample_rule": "sha256(e11b-v1:query_id), ascending, first N unique texts",
+    "sample_size": 1,
+    "sample_text_sha256": "008866cdcb322490f0e6521cafb5ddf9a9e9380d2d8278e4382789f4017bd768",
+    "source_query_file_sha256": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c"
+  }
+}

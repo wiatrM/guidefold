@@ -3,7 +3,7 @@
 **Status:** Proposed · 2026-09-05 · requested MVP revision; no service is deployed by this ADR
 **Proposes amendments to:** ADR-0009 (serving location), ADR-0013 and ADR-0018 (online service dependency), ADR-0015 and ADR-0020 (resident contextual models), ADR-0021 (local artifact budget), ADR-0016 (usage is not probation success).
 **Preserves:** Git as source of truth, owner approval, one Postgres, GCS artifacts, single-file stdlib + PyYAML client, and ADR-0022's eligibility/composition requirements.
-**Delivery:** [MVP](../MVP.md), E2 client/distribution and new E6 service/measurement. Existing E3 remains promotion; story IDs are not renumbered.
+**Delivery:** [MVP](../MVP.md), immediate blocking **E1.1b service feasibility**, then E2 client/distribution and new E6 service/measurement. Existing E3 remains promotion; story IDs are not renumbered.
 
 ## Context
 
@@ -38,7 +38,7 @@ SEARCH responses contain `search_id`, snapshot/model/pipeline/policy versions, a
 
 Proposed targets, to validate rather than advertise as achieved:
 
-- Whole-hook warm p95 <=300 ms, including process start, local reads, authentication, network, policy, composition and output. Retain a separate portable 3 s crash watchdog; it is not the normal timeout or SLO.
+- Whole-hook warm p95 <400 ms, including process start, local reads, authentication, network, policy, composition and output. Retain a separate portable 3 s crash watchdog; it is not the normal timeout or SLO.
 - Interactive SEARCH client-observed p95 <=1 s initially, including requested reranking. Measure encoder-only and reranked profiles separately; disable the latter if it cannot meet its budget.
 - USE has separate cache-hit/cold-hydration p50/p95, error and byte metrics. It is outside the automatic hook budget. Freeze its pilot target from measured bundle sizes in week 1.
 
@@ -64,7 +64,7 @@ Prompt text is transient SEARCH input, excluded from normal logs/traces/spool by
 
 ### 6. Rebaseline MVP around delivery and evidence
 
-E2 delivers distribution and thin clients; E6 delivers service and measurement. E1 closes scorer/evaluation/composition blockers. Preserve a concierge owner-reviewed E3 slice, basic E4 validation/withdrawal and one diagnostic E5 view. Defer automated induction, full promotion orchestration, automatic probation promotion, custom graph UI, own training and HA. Eight weeks from this revision at 2 engineers +0.5 ML is a capacity estimate with narrower scope, not an extension that retains every old feature.
+E1.1b first validates a runnable HTTP/live-encoder service spike with startup, latency, concurrency, failure/fallback and revision hydration evidence. Review its proceed/change/stop decision before service-dependent E2/E6 implementation; a local benchmark does not establish target-network/TLS/IAM performance. E2 then delivers distribution and thin clients; E6 delivers the operational service and measurement. E1 closes scorer/evaluation/composition blockers. Preserve a concierge owner-reviewed E3 slice, basic E4 validation/withdrawal and one diagnostic E5 view. Defer automated induction, full promotion orchestration, automatic probation promotion, custom graph UI, own training and HA. Eight weeks from this revision at 2 engineers +0.5 ML is a capacity estimate with narrower scope, not an extension that retains every old feature.
 
 Admission requires a corrected sparse baseline, independent labelled tasks, common denominators including empty results, shared eligibility/composition, and whole-client latency under load. Cached query embeddings cannot pass the serving gate. Ship the same API with sparse retrieval if no contextual profile earns adoption. Freeze the prospective remote experiment separately; do not rewrite DENSE-PROGRAM's historical, pre-registered sections after seeing results.
 

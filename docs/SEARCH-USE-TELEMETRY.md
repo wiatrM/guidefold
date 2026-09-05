@@ -188,7 +188,7 @@ Pair them with unauthorized disclosures (target zero), closure/cap violations (z
 event delivery coverage, unsupported observation share and feedback coverage. Include
 all logical requests in reliability denominators; publish offline/denied/error slices.
 
-Proposed targets: whole-hook p95 ≤300 ms and interactive online SEARCH p95 ≤1 s,
+Proposed targets: whole-hook p95 <400 ms and interactive online SEARCH p95 ≤1 s,
 measured from the client under declared pilot concurrency and network conditions.
 Measure startup/index loading, auth, network, queue, ranking and output costs; report
 cold/warm modes separately. Retain a separate portable 3 s crash watchdog; validate it on every supported OS, without treating it as the normal latency target.
