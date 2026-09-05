@@ -22,10 +22,23 @@ import random
 #
 #   measured:  889 skills -> 26,489 distinct terms, 757,089 tokens, 852 tokens/skill
 #   Heaps:     V = 620.2 * n^0.553   (exponent in the natural-language range 0.4-0.6)
-REAL_TOKENS_PER_SKILL = 852
-REAL_HEAPS_K = 620.2
-REAL_HEAPS_BETA = 0.553
-VOCAB_SIZE = int(REAL_HEAPS_K * (2000 ** REAL_HEAPS_BETA))   # ~41,473 at 2000 skills
+# Profile measured on a real 2 111-skill corpus (103 MB, gitignored under experiment/), which made
+# the 2000-skill row measurable instead of projected. Both earlier estimates were optimistic:
+#
+#   at ~2000 skills   synthetic   from-889 projection   MEASURED at 2111
+#   distinct terms       41,473              41,473            56,059  (+35%)
+#   tokens/skill            120                 852             1,127
+#   sparse artifact     3.47 MB             4.97 MB           5.40 MB
+#   + 34k word table      83.5%               91.8%             96.5%
+#
+# Heaps refitted on that corpus: V = 1475.8 * n^0.475 (the 889-skill corpus gave 620.2 * n^0.553).
+# The two real corpora disagree on both parameters — a Heaps fit is a property of the corpus, not
+# of the domain — so these constants are indicative and get re-measured when a bigger corpus lands.
+REAL_TOKENS_PER_SKILL = 1127
+REAL_HEAPS_K = 1475.8
+REAL_HEAPS_BETA = 0.475
+REAL_SPARSE_BYTES_PER_SKILL = 2681        # 5,660,305 B / 2,111 skills, measured
+VOCAB_SIZE = int(REAL_HEAPS_K * (2000 ** REAL_HEAPS_BETA))   # ~56,000 at 2000 skills
 ZIPF_EXPONENT = 1.142                                        # measured on the same corpus
 NODE_COUNT = 25
 CARD_COUNT = 2000
