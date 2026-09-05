@@ -205,7 +205,7 @@ def test_dense_candidate_router_returns_empty_without_a_query_vector(cli):
     """_dense_scores must fail closed (empty dict, not an exception) when _current_qid has no
     entry in query_vec_of -- candidates() then falls back to the bm25-only candidate pool for
     that query rather than crashing the whole run."""
-    import numpy as np
+    np = pytest.importorskip("numpy")   # CI runs stdlib + pyyaml only; the R1 dense router needs numpy
     from _router_helpers import make_card, make_nodes
 
     nodes = make_nodes("a")
@@ -221,7 +221,7 @@ def test_dense_candidate_router_returns_empty_without_a_query_vector(cli):
 
 
 def test_build_r1_index_and_router_raises_on_missing_embedding(cli):
-    import numpy as np
+    np = pytest.importorskip("numpy")   # CI runs stdlib + pyyaml only; the R1 dense router needs numpy
     from _router_helpers import make_card, make_nodes
 
     nodes = make_nodes("a")
