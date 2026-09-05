@@ -85,7 +85,7 @@ The table reports **F0 / ParadeDB**. Existing official metrics condition on answ
 queries. hit@1 and graded nDCG@10 use retrieval order; all_required@4 uses the actual
 selected injection. A good top result does not imply a complete bundle.
 
-| Dataset | Queries / skills | Answered F0 / Parade | hit@1 % | graded nDCG@10 | all_required@4 % |
+| Dataset | Queries / skills | Answered answerable F0 / Parade | hit@1 % | graded nDCG@10 | all_required@4 % |
 |---|---:|---:|---:|---:|---:|
 | dev | 1000 / 10123 | 1000 / 1000 | 71.30 / 76.30 | 0.6104 / 0.6518 | 30.00 / 32.60 |
 | test_a | 4392 / 6006 | 4392 / 4392 | 38.25 / 46.79 | 0.3850 / 0.4537 | 27.00 / 32.38 |
@@ -136,7 +136,8 @@ this is not a controlled experiment isolating any one of those choices.
 ## Validation and evidence
 
 - 633 existing Python tests passed; fixture validation, golden regression gate and
-  fresh `index --check` passed. The shipped CLI source is unchanged.
+  fresh `index --check` passed. Another 30 pilot-analysis tests passed after merging
+  the latest main. The shipped CLI source is unchanged.
 - Go race tests and vet passed. 144 deterministic policy conformance cases are
   regenerated from the unchanged CLI, including scope, negative triggers, dependency
   closure, PageRank, abstention and selection caps. This is policy conformance, not
