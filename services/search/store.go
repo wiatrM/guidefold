@@ -62,6 +62,7 @@ type Store struct {
 	Pool                             *pgxpool.Pool
 	Tenant, Repo, PolicySHA, Version string
 	LexicalEngine                    string
+	Dense                            *DenseClient
 	mu                               sync.Mutex
 	cached                           *Catalog
 	Searches, Uses                   atomic.Uint64
@@ -148,6 +149,11 @@ func (s *Store) catalog(ctx context.Context) (*Catalog, error) {
 	}
 	if s.LexicalEngine != "paradedb-experimental" {
 		if e = s.verifyRouterIndex(ctx, c); e != nil {
+			return nil, e
+		}
+	}
+	if s.Dense != nil {
+		if e = s.Dense.verifyCatalog(ctx, s, c); e != nil {
 			return nil, e
 		}
 	}
@@ -249,7 +255,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(78350001)`); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, migration+routerMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, migration+routerMigration+denseMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	password, e := secret(env("APP_PASSWORD_FILE", "/run/secrets/app_password"))

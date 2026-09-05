@@ -52,6 +52,23 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	eligible := map[string][]string{}
 	merged := map[string]Candidate{}
 	dropCount := 0
+	type encodedQuery struct {
+		vector []float32
+		ms     float64
+		err    error
+	}
+	var encodeResult chan encodedQuery
+	var vector []float32
+	if s.Dense != nil {
+		encodeResult = make(chan encodedQuery, 1)
+		go func() {
+			started := time.Now()
+			denseCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+			defer cancel()
+			v, e := s.Dense.encode(denseCtx, str(p["query"]), c.DensePrompt)
+			encodeResult <- encodedQuery{v, elapsed(started), e}
+		}()
+	}
 	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
 	for _, node := range scopes {
 		stage := time.Now()
@@ -63,11 +80,42 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 		}
 		policyMS += elapsed(stage)
 		stage = time.Now()
-		candidates, e := s.search(ctx, c, str(p["query"]), allowed)
+		var candidates []Candidate
+		if s.Dense != nil {
+			if s.Dense.Mode == "hybrid" {
+				candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+			}
+		} else {
+			candidates, e = s.search(ctx, c, str(p["query"]), allowed)
+		}
 		if e != nil {
 			return nil, e
 		}
 		searchMS += elapsed(stage)
+		if s.Dense != nil {
+			if vector == nil {
+				waitStart := time.Now()
+				select {
+				case encoded := <-encodeResult:
+					if encoded.err != nil {
+						return nil, encoded.err
+					}
+					vector = encoded.vector
+					stages["encode_http"] = encoded.ms
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				stages["encoder_wait_after_sparse"] = elapsed(waitStart)
+			}
+			denseStart := time.Now()
+			dense, e := s.denseSearch(ctx, c, vector, allowed, candidates)
+			if e != nil {
+				return nil, e
+			}
+			previous, _ := stages["dense_database"].(float64)
+			stages["dense_database"] = previous + elapsed(denseStart)
+			candidates = fuseCandidates(candidates, dense)
+		}
 		stage = time.Now()
 		for _, row := range c.score(candidates, node) {
 			if old, ok := merged[row.URN]; !ok || row.Score > old.Score {
@@ -164,6 +212,12 @@ func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
 	result := M{"search_id": uuid(), "backend": s.backendName(), "snapshot": c.ID, "model": nil, "policy": "go-router-policy-select-v1", "policy_revision": c.PolicySHA, "optimized": true, "pipeline": false, "native_dense_rank": false, "encoder_process": false, "gil_switch_ms_effective": nil, "torch_threads_effective": nil, "profile": text(p, "profile", "hook"), "reranker": false, "ranked": ranked, "cards": cards, "composition": M{"status": "not_evaluated", "incomplete": nil}, "abstained": len(selected) == 0, "policy_drops": dropCount, "stages_ms": stages, "live_encode_calls": 0, "retrieval": M{"engine": "ParadeDB/Tantivy", "pg_search_version": s.Version, "revision": "bm25-concatenated-unicode-v1", "dense": "disabled", "exact_legacy_ranking_parity": false}}
 	if s.LexicalEngine != "paradedb-experimental" {
 		result["retrieval"] = M{"engine": "Guidefold integer BM25F / Postgres postings", "revision": "router-bm25f-v1", "index_revision": c.RouterIndexSHA, "dense": "disabled", "exact_legacy_ranking_parity": true}
+	}
+	if s.Dense != nil {
+		result["model"] = s.Dense.ID
+		result["encoder_process"] = true
+		result["live_encode_calls"] = 1
+		result["retrieval"] = M{"engine": "Guidefold BM25F + pgvector exact cosine + TEI GPU", "revision": s.backendName(), "index_revision": c.RouterIndexSHA, "encoder_id": s.Dense.ID, "dense": s.Dense.Mode, "fusion": "rrf-k60-top50-union-full-channel-ranks", "exact_legacy_ranking_parity": false, "quality_admitted": false}
 	}
 	if contextual {
 		result["schema_version"] = "1.1"
@@ -332,7 +386,21 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respondError(e)
 			return
 		}
+		if a.Store.Dense != nil {
+			if e = a.Store.Dense.ready(ctx); e != nil {
+				respondError(e)
+				return
+			}
+		}
 		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
+		if a.Store.Dense != nil {
+			result["encoder_id"] = a.Store.Dense.ID
+			result["retrieval_mode"] = a.Store.Dense.Mode
+			result["live_encode_calls"] = a.Store.Dense.Calls.Load()
+			result["database_dense_calls"] = a.Store.Dense.Searches.Load()
+			result["model_load_calls"] = nil
+			result["quality_admitted"] = false
+		}
 		send()
 		return
 	}
@@ -446,11 +514,29 @@ func run() error {
 		}
 		return publish(ctx, store, os.Args[2])
 	}
+	if command == "publish-embeddings" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("publish_embeddings_requires_path")
+		}
+		return publishEmbeddings(ctx, store, os.Args[2])
+	}
 	if command != "serve" {
 		return fmt.Errorf("unknown_command")
 	}
 	if e = pool.QueryRow(ctx, `SELECT extversion FROM pg_extension WHERE extname='pg_search'`).Scan(&store.Version); e != nil {
 		return e
+	}
+	store.Dense, e = newDenseClient()
+	if e != nil {
+		return e
+	}
+	if store.Dense != nil {
+		if store.LexicalEngine != "router" {
+			return fmt.Errorf("dense_requires_router_baseline")
+		}
+		if e = store.Dense.ready(ctx); e != nil {
+			return e
+		}
 	}
 	validator, e := newValidator(env("GUIDEFOLD_CONTRACT", "/app/contract.json"))
 	if e != nil {
