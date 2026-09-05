@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def prepare(args):
+    from tools.search_service.index import with_router_index
     from tools.serve_spike.repository import build, canonical
     from tools.serve_spike.server import load_cli_snapshot
     local = ROOT / '.guidefold/compose'
@@ -32,6 +33,7 @@ def prepare(args):
         path.chmod(0o444)
     cli, sha = load_cli_snapshot(ROOT / 'skills/guidefold/scripts/guidefold')
     bundle = build(Path(args.repo_root), args.repo_id, args.revision, cli, sha)
+    bundle = with_router_index(cli, bundle)
     (local / 'snapshot.json').write_bytes(canonical(bundle) + b'\n')
     print(json.dumps({'prepared': True, 'repo_id': args.repo_id,
                       'revision': bundle['snapshot']['revision'],

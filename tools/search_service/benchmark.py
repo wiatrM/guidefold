@@ -53,6 +53,7 @@ def worker():
 
 
 def prepare(args):
+    from tools.search_service.index import with_router_index
     from tools.eval import corpora, skillret
     from tools.serve_spike.server import load_cli_snapshot
     from tools.serve_spike.repository import canonical
@@ -68,6 +69,7 @@ def prepare(args):
               'revision':skillret.CORPUS_REVISION,'cli_sha256':sha,'nodes':nodes,'cards':cards,
               'weights':index.weights,'source':'pinned_public_documents_latency_only','assets_included':False}
     bundle={'snapshot':snapshot,'sha256':hashlib.sha256(canonical(snapshot)).hexdigest()}
+    bundle=with_router_index(cli,bundle,index)
     output=ROOT/'.guidefold/compose/benchmark-snapshot.json'
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_bytes(canonical(bundle)+b'\n')

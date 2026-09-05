@@ -73,11 +73,17 @@ status, retrieves BM25 candidates from SQL, then applies the Go policy/score/clo
 selection port. USE reads the exact body from SQL. The API DB role has SELECT only;
 admin credentials exist only in migration/publication jobs.
 
-The backend is `paradedb_bm25_v1`: Unicode BM25 over concatenated name, description,
-digest, triggers and body. It is a new retrieval implementation, so exact rankings
-against the historical Python BM25F are not promised. Policy conformance and retrieval
-quality are evaluated separately. The CLI remains unchanged. The old Python/C++
-`tools/serve_spike` implementation remains reproducible experimental evidence.
+The default backend is `router_bm25f_v1`: the reference CLI exports its integer IDF,
+field norms and postings; Go compiles exactly the same BM25F term contributions and
+stores them in Postgres. SEARCH reads only query-term postings, applies scope and
+negative filters before top-50, then runs the shared integer policy/selection. It
+never truncates candidates with a different search engine first. A missing canonical
+index fails readiness: re-run `dev.py deploy` to upgrade an existing deployment.
+
+`GUIDEFOLD_LEXICAL_ENGINE=paradedb-experimental` explicitly enables the old Tantivy
+ranker for reproduction only. Its historical latency numbers do not describe the
+corrected default, and its test-B harmful-skill exposure failed admission. There is
+no automatic fallback to it. The CLI remains unchanged.
 
 Dense is explicitly disabled in this Go backend. The installed pgvector extension and
 nullable vector column are preparation, not an embedding or GPU service. A separately
@@ -90,6 +96,9 @@ python3 -m pip install pyyaml 'jsonschema>=4.23,<5'
 python3 tools/search_service/smoke.py --recovery
 (cd services/search && go test -race ./... && go vet ./...)
 python3 tools/search_service/contract_fixtures.py
+python3 tools/search_service/bm25f_fixtures.py
+# Requires the pinned DEV corpus; 1,000 real HTTP vs CLI comparisons:
+python3 tools/search_service/parity.py
 ```
 
 The smoke test uses the committed Meridian fixture. It checks real SQL, Top K,
@@ -128,3 +137,5 @@ SLOs, bounded snapshot retention/garbage collection and durable E6.4 telemetry b
 production admission. A retained snapshot currently retains its table and index;
 automatic GC is deliberately not implemented. No Kubernetes deployment or HA claim
 is made by this Compose release.
+
+Default-router correction and measured parity/latency: [report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

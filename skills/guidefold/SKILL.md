@@ -44,6 +44,12 @@ to find and load the right ones progressively, so you never pre-load the whole o
    whether it is an ancestor-scope skill. Ranking: exact node > ancestors > semantic hits
    elsewhere. Cards are cheap; do not load everything.
 
+   **Multi-step tasks: one `find` per step, not one for the whole request.** Search ranks by
+   how much of the query a skill matches, so "onboard the new hires in Rippling and then run
+   the lint/type/test suite on their scripts" drowns the second skill. Split the task into its
+   atomic steps first (as you would plan them anyway), run `find` for each, and take the best
+   card per step. Cards from different steps together form the bundle you load in step 3.
+
 3. **Load only what you need**
    ```bash
    scripts/guidefold load <urn>
@@ -60,6 +66,8 @@ to find and load the right ones progressively, so you never pre-load the whole o
 
 - Prefer the most specific skill; ancestor skills add constraints, they do not override
   the specific one.
+- A task with several distinct steps needs several `find` calls (one per step); a single
+  query for a compound task reliably misses the secondary skills.
 - If `find` returns nothing relevant, say so and proceed with general best practice — do
   not invent this organization's conventions.
 - Never edit files under `.guidefold/cache/`. To improve a skill, open a PR in the

@@ -61,6 +61,7 @@ INSERT INTO gf.schema_version VALUES (4) ON CONFLICT DO NOTHING;
 type Store struct {
 	Pool                             *pgxpool.Pool
 	Tenant, Repo, PolicySHA, Version string
+	LexicalEngine                    string
 	mu                               sync.Mutex
 	cached                           *Catalog
 	Searches, Uses                   atomic.Uint64
@@ -145,6 +146,11 @@ func (s *Store) catalog(ctx context.Context) (*Catalog, error) {
 	if e = c.prepare(); e != nil {
 		return nil, e
 	}
+	if s.LexicalEngine != "paradedb-experimental" {
+		if e = s.verifyRouterIndex(ctx, c); e != nil {
+			return nil, e
+		}
+	}
 	s.cached = c
 	return c, nil
 }
@@ -155,6 +161,9 @@ const bm25SQL = `SELECT urn,paradedb.score(id) AS relevance FROM gf.skills
  ORDER BY relevance DESC,urn COLLATE "C" ASC LIMIT 50`
 
 func (s *Store) search(ctx context.Context, c *Catalog, query string, allowed map[string]bool) ([]Candidate, error) {
+	if s.LexicalEngine != "paradedb-experimental" {
+		return s.routerSearch(ctx, c, query, allowed)
+	}
 	if len(allowed) == 0 {
 		return []Candidate{}, nil
 	}
@@ -240,7 +249,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, e = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(78350001)`); e != nil {
 		return e
 	}
-	if _, e = tx.Exec(ctx, migration, pgx.QueryExecModeSimpleProtocol); e != nil {
+	if _, e = tx.Exec(ctx, migration+routerMigration, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
 	password, e := secret(env("APP_PASSWORD_FILE", "/run/secrets/app_password"))
@@ -293,7 +302,7 @@ func publish(ctx context.Context, s *Store, path string) error {
 	if e != nil {
 		return e
 	}
-	if st.Size() > 256*1024*1024 {
+	if st.Size() > 768*1024*1024 {
 		return fmt.Errorf("snapshot_too_large")
 	}
 	raw, e := os.ReadFile(path)
@@ -353,6 +362,10 @@ func publish(ctx context.Context, s *Store, path string) error {
 	if e = check.prepare(); e != nil {
 		return e
 	}
+	terms, e := compileRouterIndex(obj(envelope["router_index"]), cards, weights, str(envelope["sha256"]), s.PolicySHA, str(envelope["router_index_sha256"]))
+	if e != nil {
+		return e
+	}
 	tx, e := s.Pool.Begin(ctx)
 	if e != nil {
 		return e
@@ -388,6 +401,9 @@ func publish(ctx context.Context, s *Store, path string) error {
 		}
 	}
 	if e = ensureSearchIndex(ctx, tx, s.Tenant, s.Repo, id); e != nil {
+		return e
+	}
+	if e = ensureRouterIndex(ctx, tx, s, id, str(envelope["router_index_sha256"]), terms, len(cards)); e != nil {
 		return e
 	}
 	if _, e = tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, s.Tenant, s.Repo, id); e != nil {
