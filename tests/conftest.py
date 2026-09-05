@@ -50,6 +50,20 @@ def fixture_copy(tmp_path, fixture_root):
     return dest
 
 
+@pytest.fixture(autouse=True)
+def _guard_fixture_root_read_only(fixture_root):
+    """`fixture_root` is documented above as read-only for the suite -- `fixture_copy` exists
+    precisely for commands that write files. `find`/`hook`/`load` now also emit SEARCH/USE
+    telemetry (docs/SEARCH-USE-TELEMETRY.md) into `<cwd>/.guidefold/telemetry/...` on every
+    invocation, including from tests that intentionally call `run_cli` with `cwd=fixture_root`
+    (e.g. test_acceptance_smoke.py, test_cli_smoke.py) because search itself is still read-only
+    from their point of view. Strip any such generated `.guidefold/` state after every test so it
+    can never leak into another test's `fixture_copy` (shutil.copytree would otherwise copy it in
+    and break tests that assert `.guidefold` is absent/pristine in a fresh copy)."""
+    yield
+    shutil.rmtree(fixture_root / ".guidefold", ignore_errors=True)
+
+
 @pytest.fixture
 def tmp_repo(tmp_path):
     """A tiny, fully-valid throwaway monorepo (guidefold.yaml + 3 skills) for tests that mutate it."""
