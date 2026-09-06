@@ -3111,6 +3111,7 @@ def cmd_hook(a, root):
             # which is the agent's context.
             if not prompt:
                 try:
+                    import yaml   # lazy, like every other optional import in this file
                     cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
                     write_index_artifact(root, cfg, dest, sha)
                 except _HookTimeout:
