@@ -73,13 +73,46 @@ with a CI excluding zero while `all_required@4`/`hit@1` stay within tolerance on
 The test-once sibling maps are built from each test corpus's own skill vectors (E0, no labels),
 exactly as a deployment would build them at index time.
 
-## 4. Dev results
+## 4. Dev results (measured 2026-09-06 19:10Z; `validation/dev-sibling-summary.json`, `dev-sibling-f6-*.jsonl.gz`)
 
-TODO — filled by `tools/eval/dev_sibling.py run` after this protocol is committed.
+**A harness bug first.** The first dev run reported 0 firings for every configuration. The
+exposure diagnostic (F0 has 67/1,000 queries with a mapped non-gold sibling in its top-4, and in
+54 of them the gold is *also* in the top-4, i.e. the rule had somewhere to act) showed that was
+impossible, and the cause was that the product's callers invoke `select()` without the query text
+— the rule saw an empty query and always tied. Fixed (the query is captured in `score()`, which
+every caller passes it to), the test now mirrors the real call path, the first run's artefacts were
+discarded (kept outside the repo as `f6-dev-summary.attempt1-no-query-bug.json`), and the run was
+repeated. F0 re-run in-process is identical to the recorded `dev-sparse-p-shipped.jsonl.gz`.
 
-## 5. Freeze decision
+**Before the numbers, the diagnostic that frames them.** On the 54 rule-able F0 pairs, the
+discriminating-term rule (margin, reference map) picks the gold 33 times, the *sibling* 30 times,
+and ties 3 — near a coin flip on dev. Several "siblings" are functional duplicates of the gold
+(`mcp-integration` vs `mcp-integration`, `shadcn` vs `shadcn-ui`, `k8s-…` vs `kubernetes-…`),
+where the dev label chose one arbitrarily; dev cannot say whether removing the other is harm.
+That is what SkillRetBench's distractor labels exist for.
 
-TODO.
+| config | map pairs | queries fired / removals | `all_required@4` (injected) | exposure proxy | Δ all_required@4, k = 1 |
+|---|---|---|---|---|---|
+| F0 | — | — | 0.299 | 0.067 | — |
+| F6-1 | 204 | 28 / 29 | 0.294 (-0.5 pp [-1.0, -0.1]) | 0.062 (-0.5 pp [-1.0, -0.1]) | -1.2 pp [-2.4, -0.3] |
+| F6-2 | 517 | 58 / 71 | 0.290 (-0.9 pp [-1.6, -0.3]) | 0.052 (-1.5 pp [-2.3, -0.8]) | -2.1 pp [-4.0, -0.3] |
+| F6-3 | 517 | 13 / 16 | 0.297 (-0.2 pp [-0.5, +0.0]) | 0.065 (-0.2 pp [-0.5, +0.0]) | -0.6 pp [-1.8, +0.0] |
+| F6-4 | 1123 | 17 / 20 | 0.297 (-0.2 pp [-0.5, +0.0]) | 0.063 (-0.4 pp [-0.9, -0.1]) | -0.6 pp [-1.8, +0.0] |
+
+`hit@1`, `nDCG@10`, `recall@10` are unchanged in every configuration (the rule touches only the
+injected set, never `ranked`). Abstentions: 0 in every arm. F6-2 fires on 58 queries and removes
+71 cards: exposure −1.5 pp, completeness −0.9 pp — for every three exposures removed, roughly two
+gold cards are lost, exactly the coin-flip the diagnostic predicted.
+
+## 5. Freeze decision (per §3, mechanical)
+
+All four configurations are within the ±1.0 pp point-estimate tolerance on `all_required@4` and
+`hit@1`; F6-2 has the largest proxy reduction → **F6-2 (τ 0.80, N 3, margin) freezes**. Recorded
+with its caveat in full: on dev the rule trades completeness for exposure at nearly 2:3, and its
+`all_required@4` CI [−1.6, −0.3] excludes zero — dev says the discriminating-term heuristic has weak
+power *on dev's labels*. The test-once run is what the protocol requires next and it is also the
+only measurement that can tell duplicates from distractors: the hypothesis survives dev only in
+the weak sense that dev could not refute it.
 
 ## 6. Test-once
 
