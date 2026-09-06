@@ -79,8 +79,8 @@ repo-wide pool when the leaf runs short (`sample_hard_negatives`, tested).
 | file | backend | records | usable | parse failures | queries | notes |
 |---|---|---|---|---|---|---|
 | `per-skill-dev.jsonl` | transformers bf16, batch 8, max 320 new tokens | 10,123 / 10,123 | 10,026 skills | 97 (0.96 %) | **50,160** | 9,664 generated 2026-09-05 (16,900 s), 459 resumed 2026-09-06 after the NUL-line repair (§2 note); a batch-24 attempt thrashed GPU memory (72 skills / 10 min) and was restarted at batch 8 |
-| `composite-dev.jsonl` | vLLM 0.28 bf16 (`VLLM_WSL2_ENABLE_PIN_MEMORY=1`), continuous batching, max 160 new tokens | _pending — filled when stage 1 completes_ | | | | 8,700-ish sets targeted (`composite_sets_for_target_rows`, 21,692 target rows) |
-| `hard-negatives-dev.jsonl` | pure sampling, seed 20260905 | _pending_ | | | | |
+| `composite-dev.jsonl` | vLLM 0.28 bf16 (`VLLM_WSL2_ENABLE_PIN_MEMORY=1`), continuous batching, max 160 new tokens | 8,703 sets | 8,694 sets | 9 (0.10 %) | 8,694 (→ 21,669 rows, one per gold skill) | 1,848 s wall; sets sized by `composite_sets_for_target_rows` for 21,692 target rows |
+| `hard-negatives-dev.jsonl` | pure sampling, seed 20260905 | 18,720 records (10,026 per-skill + 8,694 composite) | all | — | — | 3 per positive; composite negatives keyed per gold skill, excluding the whole set |
 
 The two backends are not bit-identical samplers at the same seed (recorded in each file's
 `.manifest.json`); this is offline data generation, not a runtime determinism claim. vLLM measured
@@ -96,7 +96,17 @@ query sets — dev (1,000), SKILLRET-test (4,392) and SkillRetBench (1,250) = 6,
 | file | generated | labelled | violations |
 |---|---|---|---|
 | per-skill | 50,160 | 6,642 | **0** |
-| composite | _pending_ | 6,642 | _pending_ |
+| composite | 8,694 | 6,642 | **0** |
+
+### Training rows (`finetune.py rows`, measured 2026-09-06)
+
+| configuration | per-skill rows | composite rows | total | composite share | dropped |
+|---|---|---|---|---|---|
+| E1 (per-skill only, 0 negatives) | 50,160 | 0 | **50,160** | 0 % | 97 skills with no parsable queries |
+| E2 (+ composite, 0 negatives) | 50,160 | 21,669 | **71,829** | 30.2 % | 97 + 9 composite parse failures |
+| E3 (+ 3 hard negatives) | 50,160 | 21,669 | **71,829** | 30.2 % | same; every row has exactly 3 negatives |
+
+The composite share lands on the registered ≈ 30 % of training pairs (target 21,692 rows).
 
 (The first run of this check crashed on the SkillRetBench loader — its query list sits one level
 down in the benchmark JSON — fixed and re-run before anything was trained.)
