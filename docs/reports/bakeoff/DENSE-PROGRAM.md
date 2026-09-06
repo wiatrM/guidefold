@@ -711,3 +711,41 @@ this project's dev/test corpus discipline exists to prevent (see PR #19). Full t
 quality, bundle-detector firing/identical-to-C0 rates, candidate ceiling @4/10/15/50, paired CIs
 vs C0, freeze-gate detail, model-arm reliability investigation and $2.88 total cost):
 `docs/reports/bakeoff/DEV-C-composer-2026-09-05.md`.
+
+### 2026-09-06 — family E (synthetic in-distribution training) dev run: terminated under v2.8.1 rule 3a, nothing frozen, premise untested
+
+Full detail: `docs/reports/bakeoff/DEV-E-synthetic-training-2026-09-05.md` (§1 data, §2 implementation
+notes incl. four bugs caught before any number was read, §3a–§3c results, §3b diagnostic, §4 decision).
+Data: 50,160 per-skill + 8,694 composite synthetic queries (local Qwen2.5-7B, 0 leakage against
+dev/test-A/test-B), 18,720 hard-negative records, 100-group manual audit 74/25/1. **E1** (full
+fine-tune, per-skill rows): dense-only `all_required@4` 37.1 % vs E0 46.6 % (**−9.5 pp
+[−11.6, −7.6]**), `hit@1` −4.6 pp; still +7.2 pp over F0. Diagnostic: +14.5 pp hit@1 on its own
+training pairs, **−10.5 pp recall@10 on unseen queries from the same generator** — memorisation,
+not adaptation. **E5** (v2.8 WiSE-FT): α 0.5 fails the forgetting guard (−2.55 pp); α 0.75 passes
+(Δ 0.0) and equals E0 on dev (`all_required@4` −0.9 pp [−2.1, +0.3], `hit@1` +1.3 pp [0.0, +2.7]).
+Rule 3a: no dev gain → no test-B run. E2/E3/E4 not run (same recipe; pipeline stopped after the
+E2 checkpoint was truncated by a reboot). **Decision: "no sound adaptation recipe found: the
+fine-tune direction carried memorisation, not transferable signal."** The family's premise
+(label-free per-tenant adaptation recovering the OOD gap) is untested, not refuted; a next attempt
+needs a labelled OOD dev split first (§4b) and rule 2b's recipe (LoRA + round-trip-filtered
+queries). GPU: ≈ 3.5 h training + ≈ 2.5 h encodes, local; API cost $0.
+
+### 2026-09-06 — family F6 (offline dense sibling map): F6-2 frozen on dev, HSR@4 −0.3 pp on test-B, NOT ADOPTED; premise refuted on the labelled corpus
+
+Full detail: `docs/reports/bakeoff/DEV-F6-sibling-map-2026-09-06.md`. Four configurations on dev
+(harness bug — query not passed to the rule — found by the exposure diagnostic and fixed before
+any number was read): F6-2 (τ 0.80, N 3, margin) freezes mechanically with exposure-proxy −1.5 pp
+and `all_required@4` −0.9 pp [−1.6, −0.3]; the discriminating-term rule picks the gold 33 : 30 on
+dev's rule-able pairs. Test-once on SkillRetBench: **HSR@4 0.7433 → 0.7400 (−0.3 pp [−1.0, 0.0])**,
+`all_required@4` −0.1 pp, the map holds **6 pairs of 501 skills**. Post-hoc: the benchmark's 9,209
+labelled (gold, distractor) pairs sit at E0 cosine **p50 0.12, p90 0.34; 0.1 % ≥ 0.80** — the
+encoder's −10 pp HSR (PR #35) came from ranking distractors low against the *query*, not from
+near-duplicate pair geometry. There is no precomputable pair structure to ship; the v2.2 premise
+is wrong on this corpus. Test-A not run (gate of record failed). **Not adopted; budget spent.**
+
+**Programme status after these two entries.** Families F1–F6, C, D, E have all spent their dev
+budgets; no frozen variant cleared §5 on both corpora. Per §5's termination sentence: **"none of
+the studied variants earned deployment."** Best dev result per family and the gate each failed
+are in the entries above and in each family's report. The one dense measurement that remains
+unrefuted and unexploited is the query-time encoder's HSR reduction on test-B, which no T300
+shape captured; it is a T500/T1-service question, not a programme-level one, and it is parked.
