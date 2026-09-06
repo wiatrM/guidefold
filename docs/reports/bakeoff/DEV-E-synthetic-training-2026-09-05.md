@@ -319,7 +319,52 @@ recipe known to forget to SkillRetBench would consume test-B's one run for famil
 failure we can already explain. A v2.8 amendment is proposed below (§4c), for the owner to accept
 or reject before any test-B run.
 
+## 3c. E5 — v2.8 WiSE-FT interpolation (measured 2026-09-06 18:54Z)
+
+Two interpolations θ(α) = α·θ_E0 + (1−α)·θ_E1 scored on the §3b guard set first (CPU, no dev):
+
+| α | guard: recall@10 on unseen same-generator composite, Δ vs E0 | verdict |
+|---|---|---|
+| 0.50 | −2.55 pp [−3.62, …] | **FAIL** (rule 1) |
+| 0.75 | **0.0 pp [−0.68, +0.73]** (hit@1 +1.4 [−0.2, +3.1]; on E1's own training pairs still +6.3 pp hit@1) | PASS → the single E5 dev configuration |
+
+E5 = α 0.75, same encode regime as every arm (full body, batch 4, E0's prompt), both modes:
+
+| mode / scope | n | all_required4 | hit1 | ndcg10 | recall10 |
+|---|---|---|---|---|---|
+| hybrid overall | 1000 | 0.366 | 0.834 | 0.720 | 0.699 |
+| dense-only overall | 1000 | 0.457 | 0.891 | 0.787 | 0.768 |
+| dense-only k=1 | 328 | 0.973 | 0.893 | 0.947 | 0.994 |
+| dense-only k=2 | 333 | 0.357 | 0.892 | 0.756 | 0.721 |
+| dense-only k=3 | 339 | 0.056 | 0.888 | 0.663 | 0.597 |
+
+Paired vs **E0, dense-only** (its better mode): `all_required@4` **−0.9 pp [−2.1, +0.3]**
+(k = 3: −2.1), `hit@1` **+1.3 pp [0.0, +2.7]**, nDCG@10 +0.3 [−0.3, +0.8], recall@10 −0.6
+[−1.2, −0.0]. Hybrid vs E0 hybrid: −1.0 [−1.7, −0.3] / −0.5 / −0.7 / −0.9. Vs F0 (sparse): +15.8 pp
+`all_required@4` and +18.1 pp `hit@1` dense-only — i.e. E5 keeps essentially all of E0's advantage
+over sparse, and adds nothing to it.
+
+**Read-out.** Three-quarters of the way back to E0, the damage is gone (guard Δ = 0.0) and so is
+almost everything else: a small single-skill gain (`hit@1` +1.3, CI touching zero — the per-skill
+queries did carry a little transferable signal for *single*-skill retrieval) paid for with a small
+multi-skill loss (k = 3 completeness −2.1). Under **v2.8.1 rule 3a** (registered before this
+number was read) a guard-passing recipe goes to the test-B premise check only with a dev gain over
+E0 on *both* `all_required@4` and `hit@1`; E5 has a negative `all_required@4` point estimate, so
+**E5 does not take §4b**, and — α = 0.75 having passed rule 1 — rule 2b's LoRA fallback is not
+triggered by the letter of v2.8 either.
+
 ## 4. Freeze decision
+
+**Decision (2026-09-06 18:58Z, v2.8.1 rule 3a): family E terminates — "no sound adaptation recipe
+found: the fine-tune direction carried memorisation, not transferable signal".** E1 forgot (§3b);
+its interpolations either still forget (α 0.5) or reduce to E0 ± noise (α 0.75, §3c). Nothing
+freezes; the premise (label-free per-tenant adaptation recovering the OOD gap) is **untested, not
+refuted** — no recipe earned the one test-B run. E2 (composite) / E3 (hard negatives) / E4 (small
+CPU base) were registered and complete for the record (same recipe, so the same failure is
+expected; they are appended to §3 as they land and can reopen this decision only by passing the
+§3b guard *and* showing a dev gain over E0, per rule 3a). What a next attempt would change is
+recorded in DENSE-PROGRAM.md §4c rule 2b (LoRA + round-trip-filtered queries) and, above all, in
+§4b's precondition that a labelled OOD dev split exists before any further E configuration.
 
 Interim (2026-09-06 15:18Z): **E1 does not freeze** — fails both the ≥ E0 + 2.0 pp condition (−9.5 pp dense-only, −2.5 pp hybrid) and the `hit@1` guard (−4.6 pp). E2–E4 pending.
 
