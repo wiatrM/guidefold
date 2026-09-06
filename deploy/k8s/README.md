@@ -4,7 +4,7 @@ This chart deploys the Go SEARCH/USE service and optional TEI GPU **shadow**. It
 not install a cloud-specific gateway, database operator or tenant IAM. GCP can later
 supply these through cluster configuration without changing the artifact lifecycle.
 Kubernetes >=1.33, Helm 3, a NetworkPolicy-capable CNI and existing Secrets are required.
-[ADR-0029](../../docs/adr/ADR-0029-immutable-service-releases-on-kubernetes.md) records
+[ADR-0030](../../docs/adr/ADR-0030-immutable-service-releases-on-kubernetes.md) records
 the release design. Tests and measured limits are in the [validation report](../../docs/reports/bakeoff/KUBERNETES-RELEASE-2026-09-06.md).
 
 ## Release identity and rebuilding

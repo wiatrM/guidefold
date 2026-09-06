@@ -37,7 +37,8 @@ index was built from; the two must not drift.
 | [0026](ADR-0026-native-search-paradedb-compose.md) | Go/Postgres hosting and Docker Compose for SEARCH/USE | Accepted | 2026-09-05 | hosting only; preserves ADR-0024 default Router parity and amends the T1 implementation mapping |
 | [0027](ADR-0027-gpu-retrieval-profile.md) | Explicit GPU retrieval profile with a pinned TEI worker | Proposed | 2026-09-05 | preserves ADR-0024 default parity; extends ADR-0026 hosting with opt-in GPU |
 | [0028](ADR-0028-graph-publication-validation.md) | Validate graph integrity before publishing a serving snapshot | Proposed | 2026-09-06 | graph admission only; HTTP 1.1 and scoring unchanged |
-| [0029](ADR-0029-immutable-service-releases-on-kubernetes.md) | Immutable service releases on portable Kubernetes | Proposed | 2026-09-06 | release/deployment lifecycle; API 1.1 and quality gates unchanged |
+| [0029](ADR-0029-product-focus-hard-rules.md) | Product focus — hard rules until the pilot decides (surface freeze, T0/T1 sparse + authoring loop + telemetry, done = used, one backlog on GitHub Issues) | Accepted | 2026-09-06 | amends ADR-0023/0024/0026 |
+| [0030](ADR-0030-immutable-service-releases-on-kubernetes.md) | Immutable service releases on portable Kubernetes | Proposed | 2026-09-06 | release/deployment lifecycle; API 1.1 and quality gates unchanged |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

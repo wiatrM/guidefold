@@ -156,7 +156,7 @@ pinned snapshots, staged publisher Jobs, separate CPU/GPU workloads, HPA, PDB,
 NetworkPolicies and compare-and-swap promotion/rollback. Kubernetes >=1.33 is required.
 `GUIDEFOLD_SNAPSHOT_ID` selects an immutable tenant/repo snapshot; unset, Compose keeps
 following the active head. `/metrics` exposes aggregate load/error/latency metrics.
-See [ADR-0029](../../docs/adr/ADR-0029-immutable-service-releases-on-kubernetes.md).
+See [ADR-0030](../../docs/adr/ADR-0030-immutable-service-releases-on-kubernetes.md).
 The kind validation is not a multi-node HA, GPU, TLS/IAM or production-load sign-off.
 
 Default-router correction and measured parity/latency: [report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).

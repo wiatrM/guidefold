@@ -50,7 +50,7 @@ zero-error deployment for clients requesting incompatible old repository revisio
 
 ## Reproduction and CI
 
-See the [runbook](../../../deploy/k8s/README.md) and [ADR-0029](../../adr/ADR-0029-immutable-service-releases-on-kubernetes.md).
+See the [runbook](../../../deploy/k8s/README.md) and [ADR-0030](../../adr/ADR-0030-immutable-service-releases-on-kubernetes.md).
 `kubernetes-service` runs unit/Helm contracts, the real kind release test, GPU manifest
 server dry run and the CPU HPA test, then uploads JSON evidence. Existing default
 HTTP/CLI, graph and ledger CI gates remain unchanged.
