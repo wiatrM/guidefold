@@ -231,7 +231,65 @@ the candidate's own better mode).
 TODO — batch-1 GPU/CPU latency for E0 not yet captured under this report (`dev_dense.py latency`);
 will be filled in alongside E1–E5's numbers so all arms are comparable in one table.
 
+
+## 3a. Dev table — E1 (measured 2026-09-06 15:18Z, run under E0's exact encode regime after the §2 leak repair)
+
+E1 = `SKILLRET-Embedding-0.6B` fine-tuned on the 50,160 per-skill synthetic queries only (no
+composite, no mined negatives; in-batch negatives, batch 64), 783 steps, 1 epoch, lr 2e-5, pure
+bf16, train cap 1,024 tokens, base query prompt; 1.42 GPU-h. Final train loss
+0.044 (from 0.226 at step 25). Same 1,000 dev cases, same paired bootstrap (1,000
+resamples, seed 0) as the E0 table.
+
+### E1 — hybrid
+
+| scope | n | all_required4 | hit1 | ndcg10 | recall10 | Δ all_required4 vs F0 (CI) | Δ all_required4 vs E0 (CI) | Δ hit1 vs E0 (CI) |
+|---|---|---|---|---|---|---|---|---|
+| overall | 1000 | 0.351 | 0.794 | 0.696 | 0.673 | +5.2pp [3.8, 6.7] | -2.5pp [-3.6, -1.4] | -4.5pp [-6.3, -2.9] |
+| k=1 | 328 | 0.909 | 0.823 | 0.889 | 0.951 | +6.7pp [4.3, 9.5] | -2.1pp [-3.7, -0.6] | -0.9pp [-2.7, 0.9] |
+| k=2 | 333 | 0.150 | 0.790 | 0.650 | 0.623 | +8.1pp [5.1, 11.4] | -4.5pp [-7.2, -1.8] | -4.8pp [-7.5, -2.1] |
+| k=3 | 339 | 0.009 | 0.770 | 0.556 | 0.454 | +0.9pp [0.0, 2.1] | -0.9pp [-2.4, 0.3] | -7.7pp [-11.5, -3.8] |
+
+Candidate ceiling (hybrid): ceiling4 0.351 · ceiling10 0.415 · ceiling15 0.436 · ceiling50 0.517 (E0 hybrid: 0.376 / 0.459 / 0.510 / 0.597).
+
+### E1 — dense-only
+
+| scope | n | all_required4 | hit1 | ndcg10 | recall10 | Δ all_required4 vs F0 (CI) | Δ all_required4 vs E0 (CI) | Δ hit1 vs E0 (CI) |
+|---|---|---|---|---|---|---|---|---|
+| overall | 1000 | 0.371 | 0.832 | 0.721 | 0.686 | +7.2pp [5.4, 9.2] | -9.5pp [-11.6, -7.6] | -4.6pp [-6.7, -2.3] |
+| k=1 | 328 | 0.951 | 0.857 | 0.922 | 0.985 | +11.0pp [7.3, 14.6] | -2.1pp [-4.3, 0.0] | -1.8pp [-5.2, 1.5] |
+| k=2 | 333 | 0.171 | 0.811 | 0.673 | 0.626 | +10.2pp [6.0, 13.8] | -19.2pp [-24.0, -14.7] | -6.6pp [-10.5, -2.4] |
+| k=3 | 339 | 0.006 | 0.829 | 0.575 | 0.457 | +0.6pp [0.0, 1.5] | -7.1pp [-9.7, -4.4] | -5.3pp [-9.7, -1.2] |
+
+Candidate ceiling (dense-only): ceiling4 0.371 · ceiling10 0.420 · ceiling15 0.439 · ceiling50 0.524 (E0 dense-only: 0.466 / 0.541 / 0.563 / 0.602).
+
+**Read-out.** E1 is *better than sparse* (F0) on every metric in both modes, and *worse than the
+zero-shot encoder* (E0) on every metric in both modes — decisively so in the mode that matters:
+dense-only `all_required@4` **−9.5 pp [−11.6, −7.6]** vs E0, with the loss concentrated on
+multi-skill cases (k = 2: −19.2 pp; k = 3: −7.1 pp; k = 1: −2.1 pp), and `hit@1` −4.6 pp. The
+candidate ceiling also drops (ceiling@50 0.602 → lower), i.e. the fine-tuned encoder *surfaces
+fewer* of the required skills into the pool, not just ranks them worse. **E1 fails the freeze gate
+on both conditions** (needs ≥ E0 + 2.0 pp; `hit@1` not worse than E0 by > 1.0 pp).
+
+What this does and does not say. E0 was fine-tuned by SkillRet on queries a 122B model wrote over
+this same skill distribution; our per-skill queries come from a 7B model with a different style
+(§1 audit: 25 % of groups are single-scenario paraphrases). Training on them moved the encoder
+*toward our generator's distribution and away from the dev queries'* — on dev, that is a
+regression by construction, exactly the in-distribution ceiling the v2.7 amendment (§4b) was
+written for before this number existed. It does **not** show that per-tenant adaptation fails
+out-of-distribution (SkillRetBench), which is the family's premise and is measured only by §4b.
+A second, uglier reading — that pure-bf16 AdamW at lr 2e-5 damaged the model rather than
+re-targeted it — cannot be separated from the first with dev alone; the post-hoc diagnostic that
+would separate them (E0 vs E1 on a *held-out* synthetic query set from a fresh generator seed:
+if E1 wins there, it learned our distribution; if it loses there too, training hurt) is recorded
+here as a planned diagnostic, not a selection step, and runs when the GPU is free.
+
+Per the registered plan the family continues: E2 (+ composite) and E3 (+ hard negatives) measure
+whether the *other two* data kinds move multi-skill completeness relative to E1, which is the
+question they were registered to answer; nothing about E1's result changes their protocol.
+
 ## 4. Freeze decision
+
+Interim (2026-09-06 15:18Z): **E1 does not freeze** — fails both the ≥ E0 + 2.0 pp condition (−9.5 pp dense-only, −2.5 pp hybrid) and the `hit@1` guard (−4.6 pp). E2–E4 pending.
 
 TODO — not reached. Recorded here once E1–E5 are measured: which recipe (if any) clears
 `all_required4 ≥ F0+2.0pp` and `≥ E0+2.0pp` (both CI excl. 0) with `hit1` not worse than E0 by
