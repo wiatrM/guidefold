@@ -39,13 +39,38 @@ def test_find_prints_best_match_first_and_scores_descending():
 
 
 def test_hook_keeps_general_to_specific_injection_order():
+    # The hook reads only the pre-built artifact for the current git sha (E1.5) — build it first,
+    # exactly as CI / SessionStart would; without it the hook is silent by contract.
+    built = _run(["index"])
+    assert built.returncode == 0, built.stderr
     payload = json.dumps({"session_id": "t", "hook_event_name": "UserPromptSubmit",
                           "cwd": str(FIXTURE / "platforms" / "atlas" / "identity" / "turnstile"),
                           "prompt": "the auth check in the Spanner path fails after the deploy, fix it"})
     r = _run(["hook"], stdin=payload)
     assert r.returncode == 0, r.stderr
     urns = [l.split()[1] for l in r.stdout.splitlines() if l.startswith("- urn:")]
-    assert urns, r.stdout
+    assert urns, (r.stdout, r.stderr)
     # root-most card first: an atlas.identity card precedes the atlas.identity.turnstile cards
     depth = [u.split(":")[3].count(".") for u in urns]
     assert depth == sorted(depth), urns
+
+
+def test_hook_without_artifact_builds_on_sessionstart_and_hints_on_prompt(tmp_path, monkeypatch):
+    """Missing artifact for the current sha: the prompt hook prints a hint on STDERR (stdout stays
+    empty — it is the agent's context) and exits 0; SessionStart builds the artifact and answers."""
+    import shutil
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    fixture = tmp_path / "monorepo"
+    shutil.copytree(FIXTURE, fixture, ignore=shutil.ignore_patterns(".guidefold"))
+    env = dict(os.environ, PYTHONHASHSEED="0", GUIDEFOLD_CACHE=str(tmp_path / "cache"))
+    def run(stdin):
+        return subprocess.run([sys.executable, str(CLI), "hook"], input=stdin, cwd=fixture, env=env,
+                              capture_output=True, text=True, timeout=120)
+    prompt = json.dumps({"hook_event_name": "UserPromptSubmit", "cwd": str(fixture),
+                         "prompt": "the auth check in the Spanner path fails after the deploy, fix it"})
+    r = run(prompt)
+    assert r.returncode == 0 and r.stdout == "" and "hook idle" in r.stderr, (r.stdout, r.stderr)
+    s = run(json.dumps({"hook_event_name": "SessionStart", "cwd": str(fixture)}))
+    assert s.returncode == 0 and s.stdout.startswith("[guidefold] scope="), (s.stdout, s.stderr)
+    r2 = run(prompt)
+    assert r2.returncode == 0 and "- urn:" in r2.stdout, (r2.stdout, r2.stderr)

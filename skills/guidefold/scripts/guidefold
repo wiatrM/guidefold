@@ -3101,7 +3101,30 @@ def cmd_hook(a, root):
         session_id = payload.get("session_id") or None   # E6.4: Claude Code's own hook payload
         # field, "where available" (Sec4) -- Codex/Copilot payloads observed so far don't carry
         # one, so this stays None there, not fabricated.
-        idx = load_index_artifact(index_cache_dir(sha))
+        dest = index_cache_dir(sha)
+        if not (dest / "manifest.json").exists():
+            # E1.5 keeps the prompt hook read-only and silent when the artifact for this sha is
+            # missing -- and that silence is the most likely "it does nothing" a first-time user
+            # sees after `init`, a checkout or a commit (PR #68). SessionStart runs once per session
+            # and has no card budget, so it builds the artifact here (same writer as `index`);
+            # the prompt hook stays read-only and says why it is idle on stderr -- never stdout,
+            # which is the agent's context.
+            if not prompt:
+                try:
+                    cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
+                    write_index_artifact(root, cfg, dest, sha)
+                except _HookTimeout:
+                    raise
+                except Exception as e:      # say why, on stderr, instead of the silent no-op
+                    print(f"[guidefold] index build failed for sha {sha}: {type(e).__name__}: {e}",
+                          file=sys.stderr)
+                    return
+            else:
+                print(f"[guidefold] hook idle: no index artifact for sha {sha}; run "
+                      f"`.agents/skills/guidefold/scripts/guidefold index` or start a new session "
+                      f"(SessionStart builds it)", file=sys.stderr)
+                return
+        idx = load_index_artifact(dest)
         try:
             relpath = rel(root, cwd)
         except ValueError:
