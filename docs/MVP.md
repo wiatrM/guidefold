@@ -187,6 +187,8 @@ Search quality is the product. This epic is how it improves after release withou
 
 ## 5. Rebaselined delivery plan and gates
 
+**Hard rules (ADR-0027, 2026-09-06) bind this section:** surface freeze until the pilot; product = T0/T1 sparse + authoring loop + telemetry; "done" = used by a real developer in a real harness; the GitHub issue backlog is the source of truth for what is next; one research family at a time.
+
 **Priority plan — approved by the product owner on 2026-09-05 (evening), executed step by step.** It sits on top
 of the week table below and wins where they differ. Each row names what it unblocks; each item has a
 pre-registered measurement or a hard acceptance criterion, never a vibe.
