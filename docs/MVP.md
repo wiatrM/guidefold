@@ -189,6 +189,8 @@ Search quality is the product. This epic is how it improves after release withou
 
 **Hard rules (ADR-0027, 2026-09-06) bind this section:** surface freeze until the pilot; product = T0/T1 sparse + authoring loop + telemetry; "done" = used by a real developer in a real harness; the GitHub issue backlog is the source of truth for what is next; one research family at a time.
 
+> **Source of truth for *what is next*: the GitHub issue backlog** ([ADR-0027](adr/ADR-0027-product-focus-hard-rules.md) rule 4), mirrored offline in [`docs/BACKLOG.md`](BACKLOG.md) with the epic → story → issue-number map and the register of what this section's epics had parked or dropped on 2026-09-06. The focus those decisions rest on, with the competitive matrix that argues for it, is [`docs/PRODUCT-FOCUS.md`](PRODUCT-FOCUS.md). This section remains the narrative; where it and the issues differ, the issues win.
+
 **Priority plan — approved by the product owner on 2026-09-05 (evening), executed step by step.** It sits on top
 of the week table below and wins where they differ. Each row names what it unblocks; each item has a
 pre-registered measurement or a hard acceptance criterion, never a vibe.
