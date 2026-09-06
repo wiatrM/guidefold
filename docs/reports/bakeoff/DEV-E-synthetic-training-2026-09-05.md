@@ -287,9 +287,59 @@ Per the registered plan the family continues: E2 (+ composite) and E3 (+ hard ne
 whether the *other two* data kinds move multi-skill completeness relative to E1, which is the
 question they were registered to answer; nothing about E1's result changes their protocol.
 
+## 3b. Post-hoc diagnostic — did E1 learn our distribution, or was it damaged? (2026-09-06 18:05Z)
+
+Registered in §3a as a diagnostic, not a selection step. CPU-only (`tools/eval/dev_dense_diag_e1.py`,
+`validation/dev-dense-E1-diag-style.json`), same int8 skill vectors as the dev runs, same query
+prompt, 1,000 queries per kind, paired bootstrap 1,000 resamples:
+
+| query set | metric | E0 | E1 | Δ E1−E0 (95 % CI) |
+|---|---|---|---|---|
+| **E1's own training queries** (per-skill, seen) | hit@1 | 0.577 | 0.722 | **+14.5 pp [11.8, 16.8]** |
+| | recall@10 | 0.824 | 0.952 | +12.8 pp [10.9, 15.0] |
+| **composite queries — same generator, same style, never seen by E1** | hit@1 (any gold) | 0.869 | 0.825 | −4.4 pp [−7.0, −1.7] |
+| | recall@10 (gold set) | 0.801 | 0.696 | **−10.5 pp [−11.9, −9.1]** |
+| | all-gold@4 | 0.379 | 0.229 | **−15.0 pp [−17.8, −12.4]** |
+
+**Verdict: damage, not re-targeting.** If E1 had merely learned our generator's style, it would beat
+E0 on *unseen* queries in that style; it loses to E0 there by the same margin it loses on dev, while
+winning by +14.5 pp on the exact pairs it was trained on. That is memorisation of 50k (query,
+skill) pairs with loss of general retrieval geometry — classic over-fitting / forgetting from a
+full-parameter fine-tune (lr 2e-5, pure bf16, in-batch negatives only, no regulariser toward the
+base, no replay) of a model that was *already* tuned for this task, on data where 25 % of the
+5-query groups are paraphrases of one scenario (§1 audit). The composite-query drop is the largest,
+which is expected: E1 never saw a multi-skill query and its single-skill training pulled skills
+apart from each other.
+
+**Consequence for the family.** E2 and E3 use the same recipe (only the data differ) and are
+expected to inherit the same failure; they are allowed to finish because they were registered and
+cost only local GPU time, and E2 vs E1 still answers "do composite rows recover the multi-skill
+geometry" — but **the v2.7 premise check (§4b) should not be spent on this recipe**: sending a
+recipe known to forget to SkillRetBench would consume test-B's one run for family E to confirm a
+failure we can already explain. A v2.8 amendment is proposed below (§4c), for the owner to accept
+or reject before any test-B run.
+
 ## 4. Freeze decision
 
 Interim (2026-09-06 15:18Z): **E1 does not freeze** — fails both the ≥ E0 + 2.0 pp condition (−9.5 pp dense-only, −2.5 pp hybrid) and the `hit@1` guard (−4.6 pp). E2–E4 pending.
+
+### 4c. Proposed v2.8 (owner decision pending; written 2026-09-06 18:10Z, before any E2/E3 number)
+
+1. **Forgetting guard before any test-B run.** A family-E recipe may take the §4b premise check
+   only if it is *not worse than E0* on the held-out same-generator composite set of §3b
+   (recall@10 Δ ≥ 0, CI not excluding a loss > 2 pp). A recipe that fails this has not adapted, it
+   has forgotten; test-B cannot tell those apart and must not be spent on it.
+2. **One registered recipe fix (E5 slot, ≤ 2 configurations), chosen for its evidence base, not
+   tuned on dev:** (a) weight-space interpolation between E0 and the fine-tuned model
+   (WiSE-FT, α ∈ {0.5}; one extra α = 0.75 if 0.5 passes the guard) — the standard remedy for
+   exactly this failure, costs one encode per α, no re-training; or, if (a) fails the guard,
+   (b) LoRA rank 16 at lr 1e-4 on the same data with round-trip filtering of the synthetic queries
+   (keep a query only if E0 ranks its source skill in its top-10 — doc2query-- / SkillRet practice),
+   one run. Both evaluated exactly as E1–E4 (both modes, F0 and E0 baselines, CIs).
+3. Only a recipe that passes (1) proceeds to §4b. If none does, the family terminates with
+   "none of the studied variants earned deployment" and its premise recorded as *untested by a
+   sound recipe*, not refuted.
+
 
 TODO — not reached. Recorded here once E1–E5 are measured: which recipe (if any) clears
 `all_required4 ≥ F0+2.0pp` and `≥ E0+2.0pp` (both CI excl. 0) with `hit1` not worse than E0 by
