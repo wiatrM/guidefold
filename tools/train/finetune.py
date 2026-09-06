@@ -406,7 +406,7 @@ def cmd_train(args) -> int:
         "loss": args.loss, "mini_batch_size": args.mini_batch_size,
         "dataloader_workers": args.dataloader_workers,
         "max_seq_length": model.max_seq_length, "base_max_seq_length": base_max,
-        "query_prompt": query_prompt, "precision": "bf16-autocast" if use_bf16 else "fp32",
+        "query_prompt": query_prompt, "precision": ("bf16-autocast over " + str(next(model.parameters()).dtype).replace("torch.", "") + " weights") if use_bf16 else "fp32",
         "gradient_checkpointing": bool(args.gradient_checkpointing),
         "device": device, "train_time_s": dt,
         "gpu_hours": dt / 3600.0 if device.startswith("cuda") else 0.0,
