@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.6
+# Dense retrieval programme — pre-registered, v2.8
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** **v2.7 (2026-09-06, owner-approved, written before any E1–E5 dev result was read) adds a family-E premise check on test-B when no E arm clears the dev gate — §4b.** **v2.8 (2026-09-06 18:20Z, owner-approved, written after E1 and its §3b diagnostic, before any E2/E3 number) adds a forgetting guard in front of §4b and fixes the E5 slot — §4c.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -213,6 +213,100 @@ convenient. Three rules:
 3. **Every test-corpus run is counted in the final report**, so a reader can judge the multiplicity
    themselves. Running k variants and reporting the best of k without saying k is the failure mode
    this section exists to prevent.
+
+## 4b. Family E premise check — v2.7 amendment (registered 2026-09-06T11:24Z, before any E1–E5 dev result)
+
+**State at registration.** Per-skill generation complete (50,160 queries, 0 leakage violations
+against dev/test-A/test-B), composite generation running, **no E1–E5 checkpoint, encode or dev run
+exists** (`docs/reports/bakeoff/validation/` holds only E0). The owner approved this amendment on
+the recommendation below, in writing, at this point.
+
+**Why the dev gate cannot measure E's premise.** Family E exists because the zero-shot encoder
+(E0) gave `all_required@4` +17.96 pp on SKILLRET-test (its own training distribution) and
++0.67 pp [−1.50, +2.83] on SkillRetBench (disjoint) — the premise is *out-of-distribution
+recovery* through label-free adaptation on the tenant's own catalogue. But the dev split is
+carved from SKILLRET-train, i.e. **E0 is already in-distribution on dev** (its training queries
+include multi-skill tasks over these very skills). The freeze rule "≥ E0 + 2.0 pp on dev" is
+therefore evaluated exactly where E0 is strongest and where E has the least to add; a recipe can
+fail it while the premise is true, and pass it without saying anything about the premise. Left as
+registered in v2.6, a dev failure would end the family with the actual question unanswered.
+
+**Rule.** If, after E1–E5 are measured on dev, **no E arm clears the v2.6 freeze gate**, then:
+
+1. The **best-on-dev E recipe** — highest `all_required@4` in its better retrieval mode
+   (`hybrid` / `dense-only`, per the report's §0 addendum); ties broken by `hit@1`; the choice
+   is mechanical and recorded before step 2 starts — is run **once on test-B (SkillRetBench)**:
+   generate per-skill + composite queries + hard negatives from SkillRetBench's **501 skills only**
+   (family rule 2 already permits this: skills, never queries or qrels), fine-tune the **same base
+   with the identical recipe and hyper-parameters** (no re-tuning of anything on test-B), and
+   evaluate through the unchanged product path in that recipe's chosen mode, on test-B's own
+   1,250 queries. Leakage check against test-B's queries runs before training, as for dev.
+2. Paired baselines on test-B, same mode: F0 (exists), and E0 in the same mode (the recorded
+   test-B reference is the hybrid R1 run; if the chosen mode is `dense-only`, E0 is run in that
+   mode on test-B as a fixed reference — no selection is involved in a zero-shot reference).
+   Report `all_required@4`, `hit@1`, `nDCG@10`, `HSR@4` with paired-bootstrap 95 % CIs, both
+   scopes as in the PR #35 entry.
+3. **This consumes test-B's "once" for family E.** No second E variant, mode or hyper-parameter
+   may be run on test-B afterwards, whatever the result. **test-A is not touched** by this
+   amendment: it is in-distribution for E0 and would only repeat the flattered comparison; it is
+   reached only by a recipe that freezes normally.
+4. **What the result decides — and does not.** This is a *premise check*, not an adoption path.
+   A positive result (E-on-tenant-catalogue ≥ E0 + 2.0 pp `all_required@4` on test-B, CI
+   excluding 0, `hit@1` and `HSR@4` within the §5 tolerances) adopts nothing — §5 still requires
+   both corpora — but earns the family a v2.8 that must first *build a labelled OOD dev split*
+   (none exists today; that is the real gap) before any further configuration. A negative or
+   inconclusive result terminates the family with numbers, per §5's termination sentence, and the
+   programme records that per-tenant synthetic adaptation did not recover the OOD gap on the one
+   corpus that could show it.
+
+**Why this is not cherry-picking.** The rule, the recipe-selection criterion, the mode rule, the
+baselines and the interpretation are all fixed here before any E dev number exists; the only
+thing the dev results choose is *which* single recipe gets the one pre-committed run. Writing the
+same rule after seeing dev results would be exactly the selection-set problem §0 point 2 exists to
+prevent, and would not be allowed.
+
+## 4c. Family E forgetting guard and the E5 slot — v2.8 amendment (registered 2026-09-06 18:20Z)
+
+**State at registration.** E1 measured on dev (§3a of the family report: −9.5 pp `all_required@4`
+dense-only vs E0) and diagnosed (§3b): +14.5 pp hit@1 on its own training pairs, −10.5 pp recall@10
+on *unseen* queries from the same generator — memorisation with loss of general retrieval, i.e.
+forgetting, not adaptation. E2 is at step ~300/1,122 with no dev number; E3/E4 not started. The
+owner approved this amendment in writing at this point.
+
+**Rule 1 — forgetting guard.** No family-E recipe takes the §4b premise check on test-B unless it
+is *not worse than E0* on the held-out same-generator composite set of §3b (1,000 composite
+queries never used in training; recall@10 Δ vs E0 ≥ 0 and its 95 % CI excluding a loss larger
+than 2 pp; `tools/eval/dev_dense_diag_e1.py`). test-B cannot distinguish "adapted" from
+"forgot"; the guard can, on data we own, so it goes first. A recipe that fails the guard is
+recorded as *forgot*, and §4b is not spent on it.
+
+**Rule 2 — the E5 slot (≤ 2 dev configurations, chosen for evidence, not tuned on dev).**
+(a) **Weight-space interpolation** (WiSE-FT, Wortsman et al. 2022) between E0 and the fine-tuned
+model: θ(α) = α·θ_E0 + (1−α)·θ_E1, α ∈ {0.5, 0.75}. *Both* αs are scored on the guard set
+(cheap, CPU, our own synthetic data — not dev, not test); the α that passes Rule 1 with the higher
+guard recall@10 is the **single** E5 dev configuration, measured exactly as E1–E4 (both modes, F0
+and E0 baselines, paired CIs). If E3 later scores higher than E1 on the guard set, the
+interpolation partner becomes E3 — same rule, still one dev configuration. (b) Only if no α
+passes Rule 1: **LoRA** (rank 16, lr 1e-4, same data) with **round-trip filtering** of the
+synthetic queries (keep a query only if E0 ranks its source skill in its top-10; doc2query-- /
+SkillRet practice), one run, same guard, same dev measurement. (a) and (b) together are the
+family's remaining budget; the ≤ 6 cap of §4 is unchanged (E0–E4 + one E5).
+
+**Rule 3 — what the guard is not.** Passing the guard proves the recipe did not destroy the
+encoder; it says nothing about the premise. The premise is still decided only by §4b, once, on
+the guard-passing recipe with the best dev `all_required@4` in its better mode. If nothing
+passes, the family terminates with "none of the studied variants earned deployment" and the
+premise recorded as *untested by a sound recipe*, not refuted.
+
+**Rule 3a (v2.8.1, 2026-09-06 18:50Z — written after the α = 0.75 guard result (PASS, Δ = 0.0 pp
+[−0.68, …]) and before its dev run was read).** A guard-passing recipe takes §4b only if it also
+shows a *gain* on dev over E0 in its better mode (`all_required@4` ≥ E0 + 2.0 pp, CI excluding 0)
+or, failing that, at least a positive point estimate on both `all_required@4` and `hit@1`. A recipe
+that passes the guard by being indistinguishable from E0 (the interpolation's trivial fixed point:
+α → 1 recovers E0 exactly) has no adaptation signal to test on test-B, and running it there would
+spend the family's one test-B run to re-measure E0. In that case the family terminates with
+"no sound adaptation recipe found: the fine-tune direction carried memorisation, not transferable
+signal" — and the premise stays *untested*, not refuted.
 
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
@@ -617,3 +711,41 @@ this project's dev/test corpus discipline exists to prevent (see PR #19). Full t
 quality, bundle-detector firing/identical-to-C0 rates, candidate ceiling @4/10/15/50, paired CIs
 vs C0, freeze-gate detail, model-arm reliability investigation and $2.88 total cost):
 `docs/reports/bakeoff/DEV-C-composer-2026-09-05.md`.
+
+### 2026-09-06 — family E (synthetic in-distribution training) dev run: terminated under v2.8.1 rule 3a, nothing frozen, premise untested
+
+Full detail: `docs/reports/bakeoff/DEV-E-synthetic-training-2026-09-05.md` (§1 data, §2 implementation
+notes incl. four bugs caught before any number was read, §3a–§3c results, §3b diagnostic, §4 decision).
+Data: 50,160 per-skill + 8,694 composite synthetic queries (local Qwen2.5-7B, 0 leakage against
+dev/test-A/test-B), 18,720 hard-negative records, 100-group manual audit 74/25/1. **E1** (full
+fine-tune, per-skill rows): dense-only `all_required@4` 37.1 % vs E0 46.6 % (**−9.5 pp
+[−11.6, −7.6]**), `hit@1` −4.6 pp; still +7.2 pp over F0. Diagnostic: +14.5 pp hit@1 on its own
+training pairs, **−10.5 pp recall@10 on unseen queries from the same generator** — memorisation,
+not adaptation. **E5** (v2.8 WiSE-FT): α 0.5 fails the forgetting guard (−2.55 pp); α 0.75 passes
+(Δ 0.0) and equals E0 on dev (`all_required@4` −0.9 pp [−2.1, +0.3], `hit@1` +1.3 pp [0.0, +2.7]).
+Rule 3a: no dev gain → no test-B run. E2/E3/E4 not run (same recipe; pipeline stopped after the
+E2 checkpoint was truncated by a reboot). **Decision: "no sound adaptation recipe found: the
+fine-tune direction carried memorisation, not transferable signal."** The family's premise
+(label-free per-tenant adaptation recovering the OOD gap) is untested, not refuted; a next attempt
+needs a labelled OOD dev split first (§4b) and rule 2b's recipe (LoRA + round-trip-filtered
+queries). GPU: ≈ 3.5 h training + ≈ 2.5 h encodes, local; API cost $0.
+
+### 2026-09-06 — family F6 (offline dense sibling map): F6-2 frozen on dev, HSR@4 −0.3 pp on test-B, NOT ADOPTED; premise refuted on the labelled corpus
+
+Full detail: `docs/reports/bakeoff/DEV-F6-sibling-map-2026-09-06.md`. Four configurations on dev
+(harness bug — query not passed to the rule — found by the exposure diagnostic and fixed before
+any number was read): F6-2 (τ 0.80, N 3, margin) freezes mechanically with exposure-proxy −1.5 pp
+and `all_required@4` −0.9 pp [−1.6, −0.3]; the discriminating-term rule picks the gold 33 : 30 on
+dev's rule-able pairs. Test-once on SkillRetBench: **HSR@4 0.7433 → 0.7400 (−0.3 pp [−1.0, 0.0])**,
+`all_required@4` −0.1 pp, the map holds **6 pairs of 501 skills**. Post-hoc: the benchmark's 9,209
+labelled (gold, distractor) pairs sit at E0 cosine **p50 0.12, p90 0.34; 0.1 % ≥ 0.80** — the
+encoder's −10 pp HSR (PR #35) came from ranking distractors low against the *query*, not from
+near-duplicate pair geometry. There is no precomputable pair structure to ship; the v2.2 premise
+is wrong on this corpus. Test-A not run (gate of record failed). **Not adopted; budget spent.**
+
+**Programme status after these two entries.** Families F1–F6, C, D, E have all spent their dev
+budgets; no frozen variant cleared §5 on both corpora. Per §5's termination sentence: **"none of
+the studied variants earned deployment."** Best dev result per family and the gate each failed
+are in the entries above and in each family's report. The one dense measurement that remains
+unrefuted and unexploited is the query-time encoder's HSR reduction on test-B, which no T300
+shape captured; it is a T500/T1-service question, not a programme-level one, and it is parked.

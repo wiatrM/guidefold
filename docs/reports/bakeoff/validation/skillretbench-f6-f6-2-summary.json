@@ -1,0 +1,884 @@
+{
+  "header": {
+    "corpus": "skillretbench",
+    "config": "F6-2",
+    "params": {
+      "tau": 0.8,
+      "n_max": 3,
+      "rule": "margin"
+    },
+    "n_skills": 501,
+    "n_cases": 1250,
+    "encoder": {
+      "hf_id": "ThakiCloud/SKILLRET-Embedding-0.6B",
+      "revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+      "dims": 1024,
+      "n_skills": 501,
+      "n_queries": 1250,
+      "device": "cuda",
+      "dtype": "torch.float16",
+      "batch_size": 64,
+      "max_seq_length": 8192,
+      "encode_time_skills_s": 37.89427375793457,
+      "encode_time_queries_s": 4.621228456497192,
+      "quant_error_skills": {
+        "mean_cosine": 0.9973695278167725,
+        "min_cosine": 0.9971850514411926,
+        "mean_abs_diff": 0.001966599142178893
+      },
+      "quant_error_queries": {
+        "mean_cosine": 0.9973704814910889,
+        "min_cosine": 0.9970898628234863
+      }
+    },
+    "map_skills": 12,
+    "map_pairs": 6,
+    "protocol": "docs/reports/bakeoff/DEV-F6-sibling-map-2026-09-06.md"
+  },
+  "settings": {
+    "node_scoped": {
+      "F0": {
+        "single_skill": {
+          "n": 400,
+          "n_answerable": 400,
+          "n_answered": 350,
+          "hit@1": 0.7285714285714285,
+          "recall@8": 0.9457142857142857,
+          "ndcg@10": 0.8483590592428699,
+          "completeness@4": 0.8885714285714286,
+          "all_required@4": 0.86,
+          "distractor_rate@4": NaN,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.875
+        },
+        "multi_skill_composition": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.82,
+          "recall@8": 0.52075,
+          "ndcg@10": 0.6730168200182085,
+          "completeness@4": 0.925,
+          "all_required@4": 0.155,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "distractor": {
+          "n": 300,
+          "n_answerable": 300,
+          "n_answered": 300,
+          "hit@1": 0.5333333333333333,
+          "recall@8": 0.83,
+          "ndcg@10": 0.6972316824612754,
+          "completeness@4": 0.7633333333333333,
+          "all_required@4": 0.6866666666666666,
+          "distractor_rate@4": 0.7433333333333333,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "outdated_redundant": {
+          "n": 150,
+          "n_answerable": 150,
+          "n_answered": 150,
+          "hit@1": 0.7866666666666666,
+          "recall@8": 0.98,
+          "ndcg@10": 0.8937275942936541,
+          "completeness@4": 0.96,
+          "all_required@4": 0.94,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "budget_constrained": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.73,
+          "recall@8": 0.136,
+          "ndcg@10": 0.5039685538384029,
+          "completeness@4": 0.77,
+          "all_required@4": 0.0,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "OVERALL": {
+          "n": 1250,
+          "n_answerable": 1250,
+          "n_answered": 1200,
+          "hit@1": 0.7025,
+          "recall@8": 0.7152916666666667,
+          "ndcg@10": 0.7296261578239646,
+          "completeness@4": 0.8525,
+          "all_required@4": 0.5658333333333333,
+          "distractor_rate@4": 0.7433333333333333,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.96
+        }
+      },
+      "F6": {
+        "single_skill": {
+          "n": 400,
+          "n_answerable": 400,
+          "n_answered": 350,
+          "hit@1": 0.7285714285714285,
+          "recall@8": 0.9457142857142857,
+          "ndcg@10": 0.8483590592428699,
+          "completeness@4": 0.8885714285714286,
+          "all_required@4": 0.8571428571428571,
+          "distractor_rate@4": NaN,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.875
+        },
+        "multi_skill_composition": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.82,
+          "recall@8": 0.52075,
+          "ndcg@10": 0.6730168200182085,
+          "completeness@4": 0.925,
+          "all_required@4": 0.155,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "distractor": {
+          "n": 300,
+          "n_answerable": 300,
+          "n_answered": 300,
+          "hit@1": 0.5333333333333333,
+          "recall@8": 0.83,
+          "ndcg@10": 0.6972316824612754,
+          "completeness@4": 0.7633333333333333,
+          "all_required@4": 0.6866666666666666,
+          "distractor_rate@4": 0.74,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "outdated_redundant": {
+          "n": 150,
+          "n_answerable": 150,
+          "n_answered": 150,
+          "hit@1": 0.7866666666666666,
+          "recall@8": 0.98,
+          "ndcg@10": 0.8937275942936541,
+          "completeness@4": 0.96,
+          "all_required@4": 0.94,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "budget_constrained": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.73,
+          "recall@8": 0.136,
+          "ndcg@10": 0.5039685538384029,
+          "completeness@4": 0.77,
+          "all_required@4": 0.0,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "OVERALL": {
+          "n": 1250,
+          "n_answerable": 1250,
+          "n_answered": 1200,
+          "hit@1": 0.7025,
+          "recall@8": 0.7152916666666667,
+          "ndcg@10": 0.7296261578239646,
+          "completeness@4": 0.8525,
+          "all_required@4": 0.565,
+          "distractor_rate@4": 0.74,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.96
+        }
+      },
+      "gates_vs_F0": {
+        "single_skill": {
+          "all_required@4": {
+            "delta": -0.0028571428571428914,
+            "ci_lo": -0.008571428571428563,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 350,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 350,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.7423141768375112,
+            "dense": 0.7423141768375112,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "multi_skill_composition": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.6730168200182085,
+            "dense": 0.6730168200182085,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "distractor": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 300,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 300,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.6972316824612754,
+            "dense": 0.6972316824612754,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": 0.7433333333333333,
+            "dense": 0.74,
+            "delta": -0.0033333333333332993,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "outdated_redundant": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 150,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 150,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.8937275942936541,
+            "dense": 0.8937275942936541,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "budget_constrained": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.5039685538384029,
+            "dense": 0.5039685538384029,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "OVERALL": {
+          "all_required@4": {
+            "delta": -0.0008333333333333526,
+            "ci_lo": -0.0025000000000000577,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 1200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 1200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.700441111511006,
+            "dense": 0.700441111511006,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": 0.7433333333333333,
+            "dense": 0.74,
+            "delta": -0.0033333333333332993,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        }
+      },
+      "hsr_bootstrap": {
+        "single_skill": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "multi_skill_composition": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "distractor": {
+          "delta": -0.0033333333333332993,
+          "ci_lo": -0.010000000000000009,
+          "ci_hi": 0.0,
+          "n_resamples": 1000,
+          "n": 300
+        },
+        "outdated_redundant": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "budget_constrained": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "OVERALL": {
+          "delta": -0.0033333333333332993,
+          "ci_lo": -0.010000000000000009,
+          "ci_hi": 0.0,
+          "n_resamples": 1000,
+          "n": 300
+        }
+      },
+      "firing": {
+        "queries_fired": 33,
+        "replacements": 33
+      }
+    },
+    "node_root": {
+      "F0": {
+        "single_skill": {
+          "n": 400,
+          "n_answerable": 400,
+          "n_answered": 350,
+          "hit@1": 0.4257142857142857,
+          "recall@8": 0.6685714285714286,
+          "ndcg@10": 0.5573962340400223,
+          "completeness@4": 0.5914285714285714,
+          "all_required@4": 0.5285714285714286,
+          "distractor_rate@4": NaN,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.875
+        },
+        "multi_skill_composition": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.565,
+          "recall@8": 0.589,
+          "ndcg@10": 0.585610147831488,
+          "completeness@4": 0.755,
+          "all_required@4": 0.355,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "distractor": {
+          "n": 300,
+          "n_answerable": 300,
+          "n_answered": 300,
+          "hit@1": 0.21333333333333335,
+          "recall@8": 0.4,
+          "ndcg@10": 0.3123917243245253,
+          "completeness@4": 0.3433333333333333,
+          "all_required@4": 0.2833333333333333,
+          "distractor_rate@4": 0.39666666666666667,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "outdated_redundant": {
+          "n": 150,
+          "n_answerable": 150,
+          "n_answered": 150,
+          "hit@1": 0.6133333333333333,
+          "recall@8": 0.9133333333333333,
+          "ndcg@10": 0.770880760260986,
+          "completeness@4": 0.84,
+          "all_required@4": 0.7266666666666667,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "budget_constrained": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.19,
+          "recall@8": 0.0506,
+          "ndcg@10": 0.17291636108408995,
+          "completeness@4": 0.23,
+          "all_required@4": 0.0,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "OVERALL": {
+          "n": 1250,
+          "n_answerable": 1250,
+          "n_answered": 1200,
+          "hit@1": 0.38,
+          "recall@8": 0.5157666666666666,
+          "ndcg@10": 0.46345301252802407,
+          "completeness@4": 0.5275,
+          "all_required@4": 0.375,
+          "distractor_rate@4": 0.39666666666666667,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.96
+        }
+      },
+      "F6": {
+        "single_skill": {
+          "n": 400,
+          "n_answerable": 400,
+          "n_answered": 350,
+          "hit@1": 0.4257142857142857,
+          "recall@8": 0.6685714285714286,
+          "ndcg@10": 0.5573962340400223,
+          "completeness@4": 0.5914285714285714,
+          "all_required@4": 0.5285714285714286,
+          "distractor_rate@4": NaN,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.875
+        },
+        "multi_skill_composition": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.565,
+          "recall@8": 0.589,
+          "ndcg@10": 0.585610147831488,
+          "completeness@4": 0.755,
+          "all_required@4": 0.355,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "distractor": {
+          "n": 300,
+          "n_answerable": 300,
+          "n_answered": 300,
+          "hit@1": 0.21333333333333335,
+          "recall@8": 0.4,
+          "ndcg@10": 0.3123917243245253,
+          "completeness@4": 0.3433333333333333,
+          "all_required@4": 0.2833333333333333,
+          "distractor_rate@4": 0.39666666666666667,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "outdated_redundant": {
+          "n": 150,
+          "n_answerable": 150,
+          "n_answered": 150,
+          "hit@1": 0.6133333333333333,
+          "recall@8": 0.9133333333333333,
+          "ndcg@10": 0.770880760260986,
+          "completeness@4": 0.84,
+          "all_required@4": 0.7266666666666667,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "budget_constrained": {
+          "n": 200,
+          "n_answerable": 200,
+          "n_answered": 200,
+          "hit@1": 0.19,
+          "recall@8": 0.0506,
+          "ndcg@10": 0.17291636108408995,
+          "completeness@4": 0.23,
+          "all_required@4": 0.0,
+          "distractor_rate@4": NaN,
+          "abstention_precision": NaN,
+          "abstention_recall": NaN,
+          "coverage": 1.0
+        },
+        "OVERALL": {
+          "n": 1250,
+          "n_answerable": 1250,
+          "n_answered": 1200,
+          "hit@1": 0.38,
+          "recall@8": 0.5157666666666666,
+          "ndcg@10": 0.46345301252802407,
+          "completeness@4": 0.5275,
+          "all_required@4": 0.375,
+          "distractor_rate@4": 0.39666666666666667,
+          "abstention_precision": 0.0,
+          "abstention_recall": NaN,
+          "coverage": 0.96
+        }
+      },
+      "gates_vs_F0": {
+        "single_skill": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 350,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 350,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.48772170478501947,
+            "dense": 0.48772170478501947,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "multi_skill_composition": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.585610147831488,
+            "dense": 0.585610147831488,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "distractor": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 300,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 300,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.3123917243245253,
+            "dense": 0.3123917243245253,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": 0.39666666666666667,
+            "dense": 0.39666666666666667,
+            "delta": 0.0,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "outdated_redundant": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 150,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 150,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.770880760260986,
+            "dense": 0.770880760260986,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "budget_constrained": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.17291636108408995,
+            "dense": 0.17291636108408995,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": NaN,
+            "dense": NaN,
+            "delta": NaN,
+            "gate_harmful_exposure": null,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        },
+        "OVERALL": {
+          "all_required@4": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 1200,
+            "gate_bundle_completeness": false
+          },
+          "hit@1": {
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "n_resamples": 1000,
+            "n": 1200,
+            "gate_primary_quality": true
+          },
+          "ndcg@10": {
+            "b1": 0.4449148920269031,
+            "dense": 0.4449148920269031,
+            "delta": 0.0,
+            "ci_lo": 0.0,
+            "ci_hi": 0.0,
+            "gate_primary_quality": true
+          },
+          "HSR@4": {
+            "b1": 0.39666666666666667,
+            "dense": 0.39666666666666667,
+            "delta": 0.0,
+            "gate_harmful_exposure": true,
+            "note": "computed via metrics.py's distractor_rate(); named HSR@4 for SkillRetBench per DENSE-PROGRAM.md SS5, not a second metric"
+          }
+        }
+      },
+      "hsr_bootstrap": {
+        "single_skill": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "multi_skill_composition": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "distractor": {
+          "delta": 0.0,
+          "ci_lo": 0.0,
+          "ci_hi": 0.0,
+          "n_resamples": 1000,
+          "n": 300
+        },
+        "outdated_redundant": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "budget_constrained": {
+          "delta": NaN,
+          "ci_lo": NaN,
+          "ci_hi": NaN,
+          "n_resamples": 1000,
+          "n": 0
+        },
+        "OVERALL": {
+          "delta": 0.0,
+          "ci_lo": 0.0,
+          "ci_hi": 0.0,
+          "n_resamples": 1000,
+          "n": 300
+        }
+      },
+      "firing": {
+        "queries_fired": 7,
+        "replacements": 7
+      }
+    }
+  }
+}
