@@ -1,34 +1,50 @@
-# .github/workflows/ci.yml (or a job appended to your own) — Guidefold authoring-loop CI for a
-# consumer monorepo (docs/MVP.md §5 "3-6 authoring loop"). Copy this file's `skill-authoring-report`
-# job into your workflow, or use it standalone; adjust `on.pull_request.paths` if your skills do
-# not live at repo root.
+# .github/workflows/ci.yml (or jobs appended to your own) — Guidefold authoring-loop CI for a
+# consumer monorepo (docs/MVP.md §5 "3-6 authoring loop"). Copy either job below into your
+# workflow, or use this file standalone; adjust `on.pull_request.paths` if your skills do not
+# live at repo root.
 #
-# What it does: on every PR that touches a SKILL.md, it builds the product's own Index/Router
-# (via `.agents/skills/guidefold/scripts/guidefold`, never a second ranking implementation) at the
-# PR's base and head commits, runs every query in `guidefold.yaml`'s `eval.queries` file through
+# Two independent jobs, both driven by `guidefold.yaml`'s `eval.queries` (a golden-format
+# directory/file — see tests/golden/README.md upstream — or unset):
+#
+# `skill-authoring-report` — on every PR that touches a SKILL.md, it builds the product's own
+# Index/Router (via `.agents/skills/guidefold/scripts/guidefold`, never a second ranking
+# implementation) at the PR's base and head commits, runs every query in `eval.queries` through
 # both (or, if that key is unset, the changed skills' own `triggers` phrases), and posts ONE sticky
 # PR comment (found and updated by a hidden marker on every push — never a new comment per push)
 # showing what the PR's text changes did to retrieval: which queries changed rank, which sibling
 # skill took or lost queries from which other one, which new/changed skill is never exposed at
 # all, and (only in labelled mode) Δhit@1 / Δall_required@k / Δdistractor_rate@k with a 95% CI.
-#
 # This job INFORMS. It never gates the merge — there is no pass/fail threshold here, only a
-# report; nothing is auto-applied to any SKILL.md, ever. `E7.5`'s separate gate (not this file)
-# is what actually blocks on a regression.
+# report; nothing is auto-applied to any SKILL.md, ever.
+#
+# `quality-gate` (E7.5) — the job that actually blocks. On a PR it runs `guidefold eval --gate`
+# against the committed `docs/reports/golden/eval-baseline.json` and fails the check if hit@1 or
+# all_required@k drops, or distractor_rate@k rises, beyond `eval.gate`'s margin (see
+# templates/guidefold.example.yaml; default 1.0 percentage point each). On a push to your default
+# branch it refreshes that baseline with `--write-baseline` and commits it back — the same
+# deliberate, reviewed-by-diff act as `tools/eval/run_golden.py --update-baseline` upstream, just
+# automated for the branch everyone else's PRs are compared against. If `eval.queries` is unset,
+# both jobs no-op with a one-line message — there is nothing labelled to gate on.
 #
 # Configuration: pin the tooling checkout below to a released guidefold tag or commit SHA once one
 # exists (this repo, ${{ vars.GUIDEFOLD_TOOLS_REPO }}, defaults to the upstream OSS repo) — `main`
 # is the friendly default so this template works immediately, but an unpinned `main` means the
-# exact report logic your PRs see can change under you without a version bump in your own repo.
+# exact report/gate logic your PRs see can change under you without a version bump in your own repo.
 
 name: skill-authoring-report
 
 on:
   pull_request:
-    paths: ["**/SKILL.md"]
+    paths: ["**/SKILL.md", "guidefold.yaml"]
+  push:
+    branches: [main]   # your default branch — only quality-gate's baseline refresh reacts to this
 
 jobs:
   skill-authoring-report:
+    # Added alongside quality-gate's `push` trigger above so this PR-only job (it dereferences
+    # github.event.pull_request.*) never runs on a push event — the job's own steps are otherwise
+    # unchanged.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -99,3 +115,67 @@ jobs:
             --repo "${{ github.repository }}" \
             --pr "${{ github.event.pull_request.number }}" \
             --body-file authoring-report.md
+
+  quality-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # only used to commit a refreshed baseline on a push to your default branch
+    steps:
+      - name: Checkout this monorepo
+        uses: actions/checkout@v4
+
+      - name: Checkout the guidefold tooling (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GUIDEFOLD_TOOLS_REPO || 'wiatrM/guidefold' }}
+          ref: ${{ vars.GUIDEFOLD_TOOLS_REF || 'main' }}
+          path: .guidefold-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Read guidefold.yaml's eval.queries (optional)
+        id: cfg
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import yaml
+          cfg = yaml.safe_load(open("guidefold.yaml")) or {}
+          q = ((cfg.get("eval") or {}).get("queries") or "").strip()
+          print(f"queries={q}")
+          PY
+
+      - name: No eval.queries configured — nothing to gate on
+        if: steps.cfg.outputs.queries == ''
+        run: echo "guidefold.yaml has no eval.queries set; skipping the quality gate."
+
+      - name: guidefold eval --gate (PR — block a regression vs the committed baseline)
+        if: steps.cfg.outputs.queries != '' && github.event_name == 'pull_request'
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold eval \
+            --queries "${{ steps.cfg.outputs.queries }}" \
+            --baseline docs/reports/golden/eval-baseline.json \
+            --gate
+
+      - name: guidefold eval --write-baseline (default-branch push — refresh the committed baseline)
+        if: steps.cfg.outputs.queries != '' && github.event_name == 'push'
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold eval \
+            --queries "${{ steps.cfg.outputs.queries }}" \
+            --write-baseline docs/reports/golden/eval-baseline.json
+
+      - name: Commit the refreshed baseline, if it changed
+        if: steps.cfg.outputs.queries != '' && github.event_name == 'push'
+        run: |
+          if git diff --quiet -- docs/reports/golden/eval-baseline.json; then
+            echo "eval baseline unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/reports/golden/eval-baseline.json
+          git commit -m "chore: refresh guidefold eval baseline [skip ci]"
+          git push

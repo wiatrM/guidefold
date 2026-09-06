@@ -12,6 +12,16 @@ eval:
   # `triggers` phrases and says "unlabelled: exposure changes only" in its PR comment — you get
   # collision/exposure signal with zero authoring effort, just no Δhit@1/Δall_required@k/CI.
   queries: eval/authoring_queries.yaml
+  # Optional. Margins for `guidefold eval --gate` (E7.5), run by templates/ci.yml's `quality-gate`
+  # job against docs/reports/golden/eval-baseline.json (or wherever your CI points `--baseline`).
+  # Each margin is in percentage points; the gate fails only when the *point estimate* drops (or,
+  # for distractor_rate, rises) by more than its margin versus the baseline -- the printed paired
+  # bootstrap 95% CI is diagnostic context, never itself the gate. Omit `gate` (or any key in it)
+  # to keep the default of 1.0 for that metric.
+  gate:
+    hit_at_1_margin: 1.0            # RETRIEVAL: Router.score put the right skill at rank 1
+    all_required_margin: 1.0        # INJECTION: every must-have card was in the <=k Router.select emits
+    distractor_rate_margin: 1.0     # INJECTION: a plausible-but-wrong card rode along (higher is worse)
 # search:                     # optional (E2.6/E2.9) -- SEARCH/USE client backend for `find`/`hook`/`load`.
 #   backend: local            # local | service. Default local; a bad/incomplete block below always
 #                              # falls back to local with degradation_reason=config, never crashes.
