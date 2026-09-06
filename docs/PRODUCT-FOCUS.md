@@ -1,7 +1,7 @@
 # Product focus
 
 **Status:** Accepted · 2026-09-06 · product owner / product manager pass required by
-[ADR-0027](adr/ADR-0027-product-focus-hard-rules.md) rule 4 · binds `docs/MVP.md` §5 and
+[ADR-0029](adr/ADR-0029-product-focus-hard-rules.md) rule 4 · binds `docs/MVP.md` §5 and
 [`docs/BACKLOG.md`](BACKLOG.md)
 
 Every claim about our own state points to a merged PR or a report file. Every claim about a
@@ -77,7 +77,7 @@ Proposition 1 is measured. Propositions 2 and 3 are built and unproven — which
 | Indexing MCP servers or tools | the official MCP registry [8] |
 | Winning single-harness, single-repo discovery | Anthropic (`/skill-doctor`, `claude plugin validate`) [1]; Copilot `applyTo` [2] |
 | A registry, control plane or hosting product | Google Cloud Agent Registry [7] — for us it is an optional downstream mirror (`docs/MVP.md` §2), parked in #117 |
-| Our own retrieval model | our own number: dense gives +17.96 pp in distribution and **+0.67 pp [−1.50, +2.83]** out of it (DENSE-PROGRAM §7). It is one gated research track (#76), never a product dependency (ADR-0027 rule 2) |
+| Our own retrieval model | our own number: dense gives +17.96 pp in distribution and **+0.67 pp [−1.50, +2.83]** out of it (DENSE-PROGRAM §7). It is one gated research track (#76), never a product dependency (ADR-0029 rule 2) |
 | Automated promotion, probation, induction, lifecycle | nobody — and it is downstream of a value we have not yet demonstrated. Parked in #117 |
 
 ## The next four weeks, in one measurable sentence
@@ -97,7 +97,7 @@ Nothing else in this repository is more important than that sentence until it is
 | Ten commented skill PRs produce zero text changes (#88) | Value proposition 2 is false. Drop the authoring loop to a plain linter and re-scope. |
 | Four weeks of real sessions produce no owner decision (#95) | Value proposition 3 is false. Stop building telemetry as a product surface. |
 | TLS and IAM push whole-client p95 past 400 ms and it cannot be recovered (#97) | T1 is not a supported tier. The product is T0 only, and the runbook says so. |
-| Pilot E6.7 shows no paired time or task-success benefit (#106) | No work beyond T1. ADR-0027 rule 6. |
+| Pilot E6.7 shows no paired time or task-success benefit (#106) | No work beyond T1. ADR-0029 rule 6. |
 | Family E misses its pre-registered gate (#111) | Dense is closed as a product path. This is the expected outcome, not a surprise. |
 | A vendor ships cross-harness, location-scoped retrieval with pre-merge author feedback | The differentiator is gone. Re-scope to the authoring loop alone, or stop. |
 
@@ -105,7 +105,7 @@ Nothing else in this repository is more important than that sentence until it is
 
 To be filled by #78 before 2026-09-20: repository, developers, receiving skill owner, data policy,
 start date. Until this section has names in it, every "done" in this repository is provisional under
-ADR-0027 rule 3.
+ADR-0029 rule 3.
 
 ## Sources
 
