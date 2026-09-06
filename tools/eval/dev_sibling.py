@@ -106,10 +106,18 @@ def make_sibling_router_class(cli):
                     return loser
             return None
 
+        def score(self, cands: list, query: str, node: str) -> list:
+            # The product's callers (dev_sparse.run_product_case, skillretbench.run_case, the CLI's
+            # own route()) call select() WITHOUT the query -- `query` is only a compose_mode
+            # courtesy there. The rule needs it, so it is captured on the way through score(),
+            # which every caller does pass it to. (The first dev run missed this and never fired.)
+            self._last_query = query
+            return super().score(cands, query, node)
+
         def select(self, scored: list, k: int = 4, abstain_threshold=None, *, admissible: set,
                    query: str = "") -> list:
             self.last_fired, self.last_removed = 0, []
-            qtok = set(cli.tokenize(query))
+            qtok = set(cli.tokenize(query or getattr(self, "_last_query", "")))
             scored = list(scored)
             injected = super().select(scored, k, abstain_threshold, admissible=admissible, query=query)
             for _ in range(self.max_iter):

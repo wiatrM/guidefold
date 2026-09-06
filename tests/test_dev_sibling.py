@@ -57,7 +57,9 @@ def _inject(router, query):
     admissible, _ = router.policy_filter("_root", query)
     cands = router.candidates(query, "_root", top_n=50)
     scored = router.score(cands, query, "_root")
-    return [c["urn"] for c in router.select(scored, k=4, admissible=set(admissible), query=query)]
+    # select() is called WITHOUT the query, exactly as dev_sparse.run_product_case and
+    # skillretbench.run_case call it -- the rule must pick the query up from score().
+    return [c["urn"] for c in router.select(scored, k=4, admissible=set(admissible))]
 
 
 def test_rule_removes_the_sibling_the_query_does_not_discriminate_for():
