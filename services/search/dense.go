@@ -307,6 +307,9 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 		return fmt.Errorf("embedding_identity_mismatch")
 	}
 	id := str(data["snapshot_id"])
+	if s.SnapshotID != "" && s.SnapshotID != id {
+		return fmt.Errorf("snapshot_pin_mismatch")
+	}
 	vectors := obj(data["vectors"])
 	if len(vectors) == 0 || len(vectors) > 100000 {
 		return fmt.Errorf("invalid_embedding_count")

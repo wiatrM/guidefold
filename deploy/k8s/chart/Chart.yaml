@@ -1,0 +1,7 @@
+apiVersion: v2
+name: guidefold
+version: 0.1.0
+appVersion: "unreleased"
+description: Immutable Guidefold release with external Postgres and optional GPU shadow
+kubeVersion: ">=1.33.0-0"
+type: application

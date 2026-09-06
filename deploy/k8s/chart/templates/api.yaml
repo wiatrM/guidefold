@@ -1,0 +1,155 @@
+{{- if eq .Values.workload "serve" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gf.name" . }}
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  minReadySeconds: 5
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "gf.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: {{ include "gf.name" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "gf.podSecurity" . | nindent 8 }}
+      imagePullSecrets: {{ toJson .Values.imagePullSecrets }}
+      nodeSelector: {{ toJson .Values.nodeSelector }}
+      tolerations: {{ toJson .Values.tolerations }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "gf.labels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      containers:
+        - name: api
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            {{- include "gf.containerSecurity" . | nindent 12 }}
+          envFrom: [{configMapRef: {name: {{ include "gf.name" . }}}}]
+          env:
+            {{- include "gf.dbEnv" . | nindent 12 }}
+            - {name: PGUSER, value: {{ .Values.database.user | quote }}}
+            - {name: PG_PASSWORD_FILE, value: /run/credentials/app-password}
+            - {name: GUIDEFOLD_TOKEN_FILE, value: /run/credentials/api-token}
+          ports: [{name: http, containerPort: 8080}]
+          startupProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 3
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            preStop: {sleep: {seconds: 5}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: credentials, mountPath: /run/credentials, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+            {{- include "gf.tlsMount" . | nindent 12 }}
+      volumes:
+        - name: credentials
+          secret:
+            secretName: {{ .Values.credentialsSecret }}
+            defaultMode: 0440
+            items:
+              - {key: app-password, path: app-password}
+              - {key: api-token, path: api-token}
+        - {name: tmp, emptyDir: {sizeLimit: 32Mi}}
+        {{- include "gf.tlsVolume" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gf.name" . }}
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "gf.name" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "gf.name" . }}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: {{ include "gf.name" . }}}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies: [{type: Pods, value: 2, periodSeconds: 60}]
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies: [{type: Pods, value: 1, periodSeconds: 60}]
+  metrics:
+    - type: Resource
+      resource: {name: cpu, target: {type: Utilization, averageUtilization: {{ .Values.autoscaling.cpuUtilization }}}}
+    {{- if .Values.autoscaling.inflightMetric }}
+    - type: Pods
+      pods:
+        metric: {name: {{ .Values.autoscaling.inflightMetric | quote }}}
+        target: {type: AverageValue, averageValue: {{ .Values.autoscaling.inflightTarget | quote }}}
+    {{- end }}
+{{- end }}
+{{- if .Values.metrics.serviceMonitor }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "gf.name" . }}
+  labels:
+    {{- toYaml .Values.metrics.additionalLabels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  endpoints: [{port: http, path: /metrics, interval: 15s}]
+{{- end }}
+{{- end }}

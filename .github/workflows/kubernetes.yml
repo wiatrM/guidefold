@@ -1,0 +1,50 @@
+name: Kubernetes
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  kubernetes-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/search/go.mod
+      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+        with:
+          version: v3.20.0
+      - name: Install pinned kind and test dependencies
+        run: |
+          go install sigs.k8s.io/kind@v0.32.0
+          python -m pip install pyyaml numpy pytest 'jsonschema>=4.23,<5'
+          kubectl version --client
+      - name: Release identity, promotion races and Helm safety contracts
+        run: python -m pytest tests/test_k8s_release.py
+      - name: Real Kubernetes staging, promotion, rollback and replica tests
+        run: python tools/search_service/k8s_e2e.py
+      - name: GPU and custom HPA server-side schema validation
+        run: python tools/search_service/k8s_schema.py
+      - name: Real CPU HPA with Metrics Server
+        run: python tools/search_service/k8s_hpa_e2e.py
+      - name: Upload Kubernetes evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubernetes-release
+          path: |
+            .guidefold/checks/kubernetes-release.json
+            .guidefold/checks/kubernetes-hpa.json
+            .guidefold/checks/kubernetes-gpu-schema.json
+      - name: Collect failed fixture diagnostics
+        if: failure()
+        run: |
+          kubectl --kubeconfig .guidefold/kubeconfig --context kind-guidefold-release-e2e -n guidefold-release-e2e get pods,jobs,hpa
+          kubectl --kubeconfig .guidefold/kubeconfig --context kind-guidefold-release-e2e -n guidefold-release-e2e get events --sort-by=.metadata.creationTimestamp
+      - name: Remove only this test cluster
+        if: always()
+        run: kind delete cluster --name guidefold-release-e2e

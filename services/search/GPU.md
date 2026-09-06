@@ -149,10 +149,16 @@ rejected experiments. `throughput.py ledger` resets only the isolated
 unique `--label` and `--image`; shadow also accepts `--batch` and `--queue`. These
 are engineering measurements without relevance labels or quality tuning.
 
-## Kubernetes boundary
+## Kubernetes deployment
 
-Reuse Go and pinned TEI images with separate CPU/GPU Deployments, probes and bounded
-queues; preserve the encoder/index identity on rollout. Migration and staged
-publication remain Jobs. GPU autoscaling should observe queue time and request/token
-load, with separate indexing capacity. No Kubernetes manifests, HA, WAN/TLS/IAM,
-backup/restore or production admission are claimed by this Compose experiment.
+The [portable Kubernetes runbook](../../deploy/k8s/README.md) includes a separate,
+release-specific TEI Deployment/Service, model image Dockerfile and initContainer
+file verification. Stage complete matching vectors before preflight and promotion;
+never point a shared Service at pods running different encoder IDs. GPU HPA requires
+an explicitly configured queue metric; it is disabled by default. Model rebuilding
+runs offline, with a separate allocation from online inference. The profile remains
+shadow, and the existing model/quality admission rules remain unchanged.
+
+CPU deployment/rollback mechanics are exercised on kind. Actual GPU scheduling,
+worker startup and custom-metric scaling require validation on the target GPU cluster;
+the CPU kind run does not establish these results.
