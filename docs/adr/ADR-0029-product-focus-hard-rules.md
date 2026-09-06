@@ -1,4 +1,4 @@
-# ADR-0027: Product focus — hard rules until the pilot decides
+# ADR-0029: Product focus — hard rules until the pilot decides
 
 **Status:** Accepted · 2026-09-06 · decision of the product owner ("zapisz te ustalenia jako HARD RULE w ADR i trzymaj się tego")
 **Amends:** ADR-0024 (the target architecture stands; this ADR fixes *what is built now* and forbids the rest), ADR-0023/0026 (service surface frozen at what is merged)
