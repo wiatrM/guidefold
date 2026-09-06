@@ -132,10 +132,12 @@ reference in `compose-service`. It also verifies USE bodies/checksums and requir
 This supplements the flat SKILLRET DEV gate; it does not evaluate retrieval quality.
 
 An adapter must send `budget.max_cards` when its local selection cap differs from the API
-default of four. `profile: hook` alone does not change that cap. PR #61 currently omits the
-budget while using local k=3 for hook and default k=8 for find. The
-[measured reproduction](reports/bakeoff/MERIDIAN-GRAPH-PARITY-2026-09-05.md) distinguishes this
-integration defect from scorer parity. Limits above four and `include_deprecated` have no
+default of four. `profile: hook` alone does not change that cap. PR #67 fixes the CLI
+adapter: representable k values are sent explicitly; k above four and deprecated-skill
+requests fall back locally. The
+[measured reproduction](reports/bakeoff/MERIDIAN-GRAPH-PARITY-2026-09-05.md) and
+[structured gate](reports/bakeoff/PARITY-STRUCTURED-CORPUS-2026-09-05.md) distinguish the
+former integration defect from scorer parity. Limits above four and `include_deprecated` have no
 matching request semantics in contract 1.1: preserve the requested local behavior via explicit
 fallback, or introduce a negotiated contract version before remote execution. Do not silently
 clamp k or suppress the parity counter.
@@ -156,3 +158,19 @@ Historical snapshots are not retroactively rewritten or rejected by the reader. 
 traversal remains bounded, while the publication E2E now requires malformed imports to fail
 without changing the active graph. Graph admission is not the full catalog linter or a guarantee
 that the delivery budget fits every dependency. HTTP contract 1.1 and scoring stay unchanged.
+
+## Pinned Kubernetes releases
+
+`GUIDEFOLD_SNAPSHOT_ID` is operator configuration, not a request field. Kubernetes
+pods load only that immutable snapshot within their configured tenant/repository;
+an absent or incompatible pin fails readiness. Unset, the existing Compose deployment
+continues to follow `gf.heads`. Requests still check the database and return the actual
+snapshot/revisions. Staging another release never mutates a running pod's model/index.
+
+The [release preflight and promotion tool](../tools/search_service/k8s_release.py)
+checks all candidate replicas, then changes the separately owned traffic Service using
+compare-and-swap. Data-plane convergence and old connections are asynchronous. Exact
+workspace and skill revision checks remain: keep an old versioned endpoint or use local
+fallback for older client revisions; a 409 is not permission to hydrate a newer revision.
+`/metrics` is an internal aggregate Prometheus endpoint, outside the `/v1` JSON schema;
+keep it out of public ingress. No request-field meaning or retrieval gate changes.

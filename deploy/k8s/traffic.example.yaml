@@ -1,0 +1,19 @@
+# Optional generic Ingress, owned separately from release Helm installations.
+# Replace host/class/TLS Secret; install only after the stable Service exists.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: guidefold
+spec:
+  ingressClassName: replace-with-installed-controller
+  tls:
+    - hosts: [skills.example.internal]
+      secretName: guidefold-ingress-tls
+  rules:
+    - host: skills.example.internal
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service: {name: guidefold, port: {number: 8080}}

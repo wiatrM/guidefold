@@ -25,6 +25,7 @@ type App struct {
 	Token      string
 	Slots      chan struct{}
 	EventSlots chan struct{}
+	Metrics    serviceMetrics
 }
 
 func uuid() string {
@@ -347,6 +348,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := 200
 	result := M{}
 	endpoint := strings.TrimPrefix(r.URL.Path, "/v1/")
+	if r.Method == http.MethodGet && r.URL.Path == "/metrics" {
+		a.serveMetrics(w)
+		return
+	}
+	if r.Method == http.MethodPost {
+		if i := metricEndpoint(endpoint); i >= 0 {
+			defer func() { a.Metrics.observe(i, status, time.Since(start)) }()
+		}
+	}
 	attempt := uuid()
 	var payload M
 	send := func() {
@@ -586,6 +596,12 @@ func run() error {
 		}
 		return nil
 	}
+	if command == "verify-model" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("verify_model_requires_directory")
+		}
+		return verifyModelDirectory(os.Args[2], env("GUIDEFOLD_ENCODER_ID", ""))
+	}
 	root, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	pool, e := openPool(root)
@@ -597,12 +613,16 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha}
+	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha, SnapshotID: env("GUIDEFOLD_SNAPSHOT_ID", "")}
 	store.LexicalEngine = env("GUIDEFOLD_LEXICAL_ENGINE", "router")
 	if store.LexicalEngine != "router" && store.LexicalEngine != "paradedb-experimental" {
 		return fmt.Errorf("invalid_lexical_engine")
 	}
-	ctx, done := context.WithTimeout(root, 120*time.Second)
+	operatorSeconds, e := strconv.Atoi(env("GUIDEFOLD_OPERATOR_TIMEOUT_SECONDS", "120"))
+	if e != nil || operatorSeconds < 1 || operatorSeconds > 86400 {
+		return fmt.Errorf("invalid_operator_timeout")
+	}
+	ctx, done := context.WithTimeout(root, time.Duration(operatorSeconds)*time.Second)
 	defer done()
 	if command == "migrate" {
 		return migrate(ctx, pool)
@@ -651,6 +671,9 @@ func run() error {
 		}
 		n, e := store.retainEvents(ctx, days, now)
 		return printOperatorResult(M{"deleted": n}, e)
+	}
+	if command == "verify-release" {
+		return verifyRelease(ctx, store, shadowEnabled)
 	}
 	if command != "serve" {
 		return fmt.Errorf("unknown_command")
