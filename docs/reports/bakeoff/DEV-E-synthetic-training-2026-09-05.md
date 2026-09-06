@@ -210,9 +210,14 @@ TODO — not reached. Recorded here once E1–E5 are measured: which recipe (if 
 
 ## 5. Test-once results
 
-TODO — not run. Only runs if a recipe freezes in §4, using that recipe's frozen mode, on
-SKILLRET-test (6,006 skills / 4,392 queries) and SkillRetBench (501 skills / 1,250 queries, HSR@4
-gate).
+TODO — not run. Two routes, both fixed in advance:
+
+- **Normal freeze (§4 passes):** the frozen recipe, in its frozen mode, once on SKILLRET-test
+  (6,006 skills / 4,392 queries) and once on SkillRetBench (501 skills / 1,250 queries, HSR@4 gate).
+- **No freeze (§4 fails for every arm):** DENSE-PROGRAM.md v2.7 §4b — the best-on-dev recipe gets
+  one premise-check run on SkillRetBench only (generate from its 501 skills, same recipe, same
+  hyper-parameters, paired vs F0 and vs E0 in the same mode); test-A untouched. Registered
+  2026-09-06T11:24Z, before any E1–E5 dev result existed.
 
 ## 6. GPU-hours
 
