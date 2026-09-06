@@ -1,0 +1,24 @@
+{
+  "unique_dev_rows_per_arm": 1000,
+  "total_new_arm_rows": 5000,
+  "all_recomputed_metrics_match": true,
+  "prompted_query_lengths": {
+    "train": {
+      "n": 2000,
+      "max_prompted_tokens": 291,
+      "over_1024_including_prompt": 0
+    },
+    "dev": {
+      "n": 1000,
+      "max_prompted_tokens": 219,
+      "over_1024_including_prompt": 0
+    }
+  },
+  "source_hash_matches": true,
+  "negative_overlap": {
+    "excluded_negative_pairs": 36953,
+    "dev_skill_label_exposure_positive_or_negative": 0,
+    "blocked_skill_rows": 1832,
+    "negative_sampling_note": "top20 channels +20random drawn then blocked removed; no refill"
+  }
+}

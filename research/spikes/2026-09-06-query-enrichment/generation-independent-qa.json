@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "checked_documents": 512,
+  "all_ids_unique_ordered_and_match_manifest": true,
+  "mechanical_filter_exactly_reproduced": true,
+  "source_hashes_verified": true,
+  "freeze_hashes_verified": true,
+  "counts": {
+    "accepted_intents": 869,
+    "accepted_queries": 734,
+    "docs_with_intents": 409,
+    "docs_with_queries": 365,
+    "empty_documents": 58,
+    "input_tokens": 751685,
+    "output_tokens": 123600,
+    "body_excerpted": 258,
+    "cap_hits": 8
+  },
+  "rejections": {
+    "evidence_not_in_source": 1071,
+    "word_bounds": 268,
+    "invalid_item": 5,
+    "invalid_json": 20
+  },
+  "generation_freeze_sha256": "a8ebcd52a9d10d7caf89311ea92a113feb58dac5a089bc59089698fcac65dbfd",
+  "qa_script_sha256": "d49e2ec1b622d9b319c0b4e37f791713568cda54acdf67fbc5f7cca435772366",
+  "before_retrieval_results": true
+}

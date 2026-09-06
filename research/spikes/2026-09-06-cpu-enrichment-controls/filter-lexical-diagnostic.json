@@ -1,0 +1,282 @@
+{
+  "status": "Descriptive, post-hoc source-token diagnostic; not semantic validation or causal effect",
+  "groups": {
+    "intents/retained": {
+      "items": 654,
+      "item_unique_tokens": 2639,
+      "novel_item_token_pairs": 100,
+      "items_with_novel_tokens": 92,
+      "novel_fraction": 0.037893141341417205,
+      "most_frequent_novel_tokens": [
+        [
+          "implement",
+          13
+        ],
+        [
+          "analyze",
+          4
+        ],
+        [
+          "using",
+          3
+        ],
+        [
+          "configure",
+          3
+        ],
+        [
+          "use",
+          3
+        ],
+        [
+          "create",
+          3
+        ],
+        [
+          "understand",
+          2
+        ],
+        [
+          "ensure",
+          2
+        ],
+        [
+          "manage",
+          2
+        ],
+        [
+          "generate",
+          2
+        ],
+        [
+          "perform",
+          2
+        ],
+        [
+          "in",
+          2
+        ],
+        [
+          "coordinate",
+          2
+        ],
+        [
+          "tasks",
+          1
+        ],
+        [
+          "study",
+          1
+        ]
+      ]
+    },
+    "queries/removed": {
+      "items": 277,
+      "item_unique_tokens": 2390,
+      "novel_item_token_pairs": 907,
+      "items_with_novel_tokens": 269,
+      "novel_fraction": 0.37949790794979077,
+      "most_frequent_novel_tokens": [
+        [
+          "i",
+          110
+        ],
+        [
+          "how",
+          94
+        ],
+        [
+          "do",
+          62
+        ],
+        [
+          "my",
+          59
+        ],
+        [
+          "what",
+          53
+        ],
+        [
+          "can",
+          39
+        ],
+        [
+          "should",
+          29
+        ],
+        [
+          "a",
+          16
+        ],
+        [
+          "an",
+          15
+        ],
+        [
+          "me",
+          14
+        ],
+        [
+          "way",
+          12
+        ],
+        [
+          "is",
+          11
+        ],
+        [
+          "are",
+          11
+        ],
+        [
+          "in",
+          10
+        ],
+        [
+          "ensure",
+          10
+        ]
+      ]
+    },
+    "queries/retained": {
+      "items": 457,
+      "item_unique_tokens": 3965,
+      "novel_item_token_pairs": 992,
+      "items_with_novel_tokens": 374,
+      "novel_fraction": 0.2501891551071879,
+      "most_frequent_novel_tokens": [
+        [
+          "how",
+          165
+        ],
+        [
+          "i",
+          123
+        ],
+        [
+          "what",
+          71
+        ],
+        [
+          "do",
+          63
+        ],
+        [
+          "can",
+          54
+        ],
+        [
+          "my",
+          50
+        ],
+        [
+          "a",
+          25
+        ],
+        [
+          "the",
+          18
+        ],
+        [
+          "does",
+          15
+        ],
+        [
+          "are",
+          15
+        ],
+        [
+          "to",
+          14
+        ],
+        [
+          "is",
+          14
+        ],
+        [
+          "using",
+          14
+        ],
+        [
+          "an",
+          13
+        ],
+        [
+          "up",
+          12
+        ]
+      ]
+    },
+    "intents/removed": {
+      "items": 215,
+      "item_unique_tokens": 714,
+      "novel_item_token_pairs": 127,
+      "items_with_novel_tokens": 106,
+      "novel_fraction": 0.17787114845938376,
+      "most_frequent_novel_tokens": [
+        [
+          "implement",
+          8
+        ],
+        [
+          "create",
+          5
+        ],
+        [
+          "ensure",
+          5
+        ],
+        [
+          "define",
+          4
+        ],
+        [
+          "configure",
+          3
+        ],
+        [
+          "analyze",
+          3
+        ],
+        [
+          "validate",
+          3
+        ],
+        [
+          "conduct",
+          3
+        ],
+        [
+          "perform",
+          2
+        ],
+        [
+          "manage",
+          2
+        ],
+        [
+          "generate",
+          2
+        ],
+        [
+          "reviews",
+          2
+        ],
+        [
+          "optimize",
+          2
+        ],
+        [
+          "preserve",
+          2
+        ],
+        [
+          "detect",
+          2
+        ]
+      ]
+    }
+  },
+  "interpretation": "Novel terms can be helpful paraphrases or generic noise; their presence/absence is not a quality label. Counts are distinct token-item pairs, not corpus-unique vocabulary."
+}

@@ -1,0 +1,154 @@
+{
+  "status": "post-hoc fragility sensitivity; does not alter preregistered gate",
+  "created_utc": "2026-09-06T10:14:33.694280+00:00",
+  "primary_gate_preserved": true,
+  "script_sha256": "bfb6683a1cd4577fcd5345ef55d30878a9049e4f50a902035400c848c0ad9c5b",
+  "metrics": {
+    "recall10": {
+      "positive_query_differences": 5,
+      "negative_query_differences": 0,
+      "unchanged_queries": 2043,
+      "changed_k_counts": {
+        "1": 2,
+        "2": 2,
+        "3": 1
+      },
+      "changed_queries": [
+        {
+          "query_id": "q-train-028793",
+          "gold_k": 1,
+          "component": 52,
+          "difference": 1.0,
+          "gold_skill_ids": [
+            "6176e1be-3631-4189-ac77-3ba20cfbc90a"
+          ]
+        },
+        {
+          "query_id": "q-train-055993",
+          "gold_k": 1,
+          "component": 382,
+          "difference": 1.0,
+          "gold_skill_ids": [
+            "f4d12196-84a6-435e-9f95-617ce8a2610c"
+          ]
+        },
+        {
+          "query_id": "q-train-033002",
+          "gold_k": 2,
+          "component": 552,
+          "difference": 0.5,
+          "gold_skill_ids": [
+            "11db8143-25ec-43c0-acc0-80bbf6413059",
+            "e1977e2c-e30e-4e69-ba48-058d8366cb5d"
+          ]
+        },
+        {
+          "query_id": "q-train-057121",
+          "gold_k": 3,
+          "component": 738,
+          "difference": 0.3333333333333333,
+          "gold_skill_ids": [
+            "0f220f19-5a5c-401c-a3ca-15fade1e95eb",
+            "0f847ce6-0964-47f4-9dc0-7175277f0e56",
+            "abd0856d-b2e9-42a5-bd08-cba872f9aff7"
+          ]
+        },
+        {
+          "query_id": "q-train-024035",
+          "gold_k": 2,
+          "component": 442,
+          "difference": 0.5,
+          "gold_skill_ids": [
+            "d74712d4-bd05-4830-afcd-944953eb6ef6",
+            "f1bbd739-95f9-44fd-bf1c-51f0bca51490"
+          ]
+        }
+      ],
+      "query_sign_flip": {
+        "nonzero_units": 5,
+        "computed": true,
+        "assignments": 32,
+        "two_sided_extreme_assignments": 2,
+        "two_sided_exact_p": 0.0625,
+        "statistic": "absolute sum of paired metric differences; fixed denominator cancels",
+        "assumption": "paired arm-label exchangeability / symmetric sign null; this observational retrieval comparison is not a randomized treatment trial"
+      },
+      "component_sign_flip": {
+        "nonzero_units": 5,
+        "computed": true,
+        "assignments": 32,
+        "two_sided_extreme_assignments": 2,
+        "two_sided_exact_p": 0.0625,
+        "statistic": "absolute sum of paired metric differences; fixed denominator cancels",
+        "assumption": "paired arm-label exchangeability / symmetric sign null; this observational retrieval comparison is not a randomized treatment trial"
+      },
+      "nonzero_components": {
+        "52": 1.0,
+        "382": 1.0,
+        "442": 0.5,
+        "552": 0.5,
+        "738": 0.3333333333333333
+      }
+    },
+    "all_gold_selected4": {
+      "positive_query_differences": 3,
+      "negative_query_differences": 0,
+      "unchanged_queries": 2045,
+      "changed_k_counts": {
+        "1": 3
+      },
+      "changed_queries": [
+        {
+          "query_id": "q-train-024007",
+          "gold_k": 1,
+          "component": 72,
+          "difference": 1.0,
+          "gold_skill_ids": [
+            "1a880cb1-6323-4dd1-af94-70e7dde57c08"
+          ]
+        },
+        {
+          "query_id": "q-train-028793",
+          "gold_k": 1,
+          "component": 52,
+          "difference": 1.0,
+          "gold_skill_ids": [
+            "6176e1be-3631-4189-ac77-3ba20cfbc90a"
+          ]
+        },
+        {
+          "query_id": "q-train-055045",
+          "gold_k": 1,
+          "component": 466,
+          "difference": 1.0,
+          "gold_skill_ids": [
+            "5cd491d1-2924-41a3-af3b-20db5a6881ae"
+          ]
+        }
+      ],
+      "query_sign_flip": {
+        "nonzero_units": 3,
+        "computed": true,
+        "assignments": 8,
+        "two_sided_extreme_assignments": 2,
+        "two_sided_exact_p": 0.25,
+        "statistic": "absolute sum of paired metric differences; fixed denominator cancels",
+        "assumption": "paired arm-label exchangeability / symmetric sign null; this observational retrieval comparison is not a randomized treatment trial"
+      },
+      "component_sign_flip": {
+        "nonzero_units": 3,
+        "computed": true,
+        "assignments": 8,
+        "two_sided_extreme_assignments": 2,
+        "two_sided_exact_p": 0.25,
+        "statistic": "absolute sum of paired metric differences; fixed denominator cancels",
+        "assumption": "paired arm-label exchangeability / symmetric sign null; this observational retrieval comparison is not a randomized treatment trial"
+      },
+      "nonzero_components": {
+        "52": 1.0,
+        "72": 1.0,
+        "466": 1.0
+      }
+    }
+  }
+}

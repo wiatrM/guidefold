@@ -1,0 +1,168 @@
+{
+  "status": "Exploratory full-coverage control added before outcome inspection; no confirmatory significance claim",
+  "summary": {
+    "overall": {
+      "queries": 2048,
+      "arms": {
+        "A_original": {
+          "recall10": 0.5804850260416675,
+          "complete4": 0.287109375,
+          "recall50": 0.6593424479166665,
+          "all_gold50": 0.40673828125,
+          "hit1": 0.6953125
+        },
+        "F_full_prefix20": {
+          "recall10": 0.5812174479166676,
+          "complete4": 0.287109375,
+          "recall50": 0.6602376302083333,
+          "all_gold50": 0.4072265625,
+          "hit1": 0.6962890625
+        }
+      }
+    },
+    "k=1": {
+      "queries": 678,
+      "arms": {
+        "A_original": {
+          "recall10": 0.831858407079646,
+          "complete4": 0.7802359882005899,
+          "recall50": 0.9056047197640118,
+          "all_gold50": 0.9056047197640118,
+          "hit1": 0.6710914454277286
+        },
+        "F_full_prefix20": {
+          "recall10": 0.831858407079646,
+          "complete4": 0.7787610619469026,
+          "recall50": 0.9056047197640118,
+          "all_gold50": 0.9056047197640118,
+          "hit1": 0.672566371681416
+        }
+      }
+    },
+    "k=2": {
+      "queries": 646,
+      "arms": {
+        "A_original": {
+          "recall10": 0.5472136222910217,
+          "complete4": 0.08668730650154799,
+          "recall50": 0.6346749226006192,
+          "all_gold50": 0.3080495356037152,
+          "hit1": 0.7151702786377709
+        },
+        "F_full_prefix20": {
+          "recall10": 0.5479876160990712,
+          "complete4": 0.08823529411764706,
+          "recall50": 0.6354489164086687,
+          "all_gold50": 0.30959752321981426,
+          "hit1": 0.7151702786377709
+        }
+      }
+    },
+    "k=3": {
+      "queries": 724,
+      "arms": {
+        "A_original": {
+          "recall10": 0.3747697974217325,
+          "complete4": 0.004143646408839779,
+          "recall50": 0.4507366482504608,
+          "all_gold50": 0.027624309392265192,
+          "hit1": 0.7002762430939227
+        },
+        "F_full_prefix20": {
+          "recall10": 0.3761510128913458,
+          "complete4": 0.004143646408839779,
+          "recall50": 0.4525782688766117,
+          "all_gold50": 0.027624309392265192,
+          "hit1": 0.7016574585635359
+        }
+      }
+    }
+  },
+  "contrast": {
+    "recall10": {
+      "delta_pp": 0.0732421875,
+      "query_ci95_pp": [
+        0.016276041666666664,
+        0.15462239583333331
+      ],
+      "gold_component_ci95_pp": [
+        0.015910898965791564,
+        0.15454882002272446
+      ],
+      "better_queries": 4,
+      "worse_queries": 0
+    },
+    "complete4": {
+      "delta_pp": 0.0,
+      "query_ci95_pp": [
+        -0.146484375,
+        0.146484375
+      ],
+      "gold_component_ci95_pp": [
+        -0.1455604075691412,
+        0.14478764478764478
+      ],
+      "better_queries": 1,
+      "worse_queries": 1
+    },
+    "recall50": {
+      "delta_pp": 0.08951822916666666,
+      "query_ci95_pp": [
+        0.008138020833333332,
+        0.18717447916666669
+      ],
+      "gold_component_ci95_pp": [
+        0.0,
+        0.18773135816962627
+      ],
+      "better_queries": 6,
+      "worse_queries": 1
+    },
+    "all_gold50": {
+      "delta_pp": 0.048828125,
+      "query_ci95_pp": [
+        0.0,
+        0.146484375
+      ],
+      "gold_component_ci95_pp": [
+        0.0,
+        0.14962780175310225
+      ],
+      "better_queries": 1,
+      "worse_queries": 0
+    },
+    "hit1": {
+      "delta_pp": 0.09765625,
+      "query_ci95_pp": [
+        0.0,
+        0.244140625
+      ],
+      "gold_component_ci95_pp": [
+        0.0,
+        0.24851203569235997
+      ],
+      "better_queries": 2,
+      "worse_queries": 0
+    }
+  },
+  "first_vs_companion": {
+    "A_original": {
+      "first_listed_gold_recall10": 0.75830078125,
+      "companion_gold_recall10": 0.25405921680993315,
+      "companion_gold_count": 2094
+    },
+    "F_full_prefix20": {
+      "first_listed_gold_recall10": 0.75927734375,
+      "companion_gold_recall10": 0.25501432664756446,
+      "companion_gold_count": 2094
+    }
+  },
+  "components": 1329,
+  "gpu_used": false,
+  "limitations": [
+    "Same public synthetic cohort as five-arm primary study.",
+    "F uses full coverage and fixed 20 words per document; not length/coverage-matched to partial LLM expansion.",
+    "Cannot attribute F versus B differences solely to LLM generation.",
+    "No human execution or unknown-source replication."
+  ]
+}

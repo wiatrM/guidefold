@@ -1,0 +1,12 @@
+{
+  "status": "Post-hoc fragility check; no added confirmatory claim",
+  "nonzero_gold_components": 4,
+  "signed_sixth_units": [
+    2,
+    2,
+    2,
+    3
+  ],
+  "exact_two_sided_component_signflip_p": 0.125,
+  "interpretation": "Positive percentile intervals with four changed queries do not establish a robust improvement."
+}

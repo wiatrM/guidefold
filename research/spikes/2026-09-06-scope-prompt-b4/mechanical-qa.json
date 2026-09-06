@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "rows": 64,
+  "paired_docs": 32,
+  "first512_doc_overlap": 0,
+  "same_input_sha_as_interrupted_batch8": true,
+  "filter_replay_matches": true,
+  "source_and_output_hashes_match": true,
+  "generation_wall_seconds": 260.35211753845215,
+  "scope": "Mechanical integrity only, no semantic or retrieval claim."
+}

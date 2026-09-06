@@ -1,0 +1,10 @@
+{
+  "created_utc": "2026-09-06T09:45:38.902027+00:00",
+  "results_absent_at_registration": true,
+  "rankings_absent_at_registration": true,
+  "protocol_sha256": "183e9522e8a559a47311410ff3b54328a22262dee1cff9303596e88056662c59",
+  "root_run_sha256": "5c9b5a1c141b6f62f8dfafe655eb0d6e40da565806c586a4fde679380115c259",
+  "primary_gate_unchanged": true,
+  "n_bootstrap": 5000,
+  "seed": 20260907
+}

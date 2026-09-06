@@ -1,0 +1,23 @@
+{
+  "files_sha256": {
+    "skills/guidefold/scripts/guidefold": "7fae2cba8c54db6e1abacba21d38690cb053dfcfc2d6d142c770e9ee6faf41cb",
+    "tools/eval/dev_sparse.py": "ae69a56c9445b88375ccab0ab9c55c3d3ba85a89bd25327240cadec7a0912616",
+    "tools/eval/corpora.py": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298",
+    "tools/bakeoff/tokenizer.py": "0441b64ca752470f70ae34be4a73bd33d9a0de9f1cb6f4b6e180368dfd930bc6",
+    "research/spikes/2026-09-06-query-enrichment/run.py": "5c9b5a1c141b6f62f8dfafe655eb0d6e40da565806c586a4fde679380115c259",
+    "research/spikes/2026-09-06-query-enrichment/PROTOCOL.md": "72dbef0ff2a659a2883c57a5c6593c721681ec44e03f3b32495116c4b18608d1",
+    "research/spikes/2026-09-06-query-enrichment/audit-corpus.py": "826a288c66035abeb056b9041527627bda4934d0ee3c7945cdee364202fed7cf"
+  },
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.16.1",
+    "tokenizers": "0.23.2",
+    "numpy": "2.5.2",
+    "safetensors": "0.8.0"
+  },
+  "python": "3.12.3",
+  "generator": "local cached Qwen2.5-7B-Instruct fp16; trust_remote_code=False; no external API",
+  "source_skills_modified": false,
+  "production_code_modified": false,
+  "timing_context": "Part of the CPU retrieval run overlapped the separate 32-document local GPU prompt ablation. Rank quality remains evaluated on frozen data/configuration; local timing comparisons are uncontrolled diagnostics, not a clean speed benchmark or an SLA measurement."
+}
