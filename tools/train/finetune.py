@@ -325,7 +325,13 @@ def cmd_train(args) -> int:
         print(f"finetune train: resuming from checkpoint {resume_dir}")
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
-    model = SentenceTransformer(args.source, revision=args.revision, device=device,
+    # Same hf_id/revision -> local mirror resolution as tools/eval/dev_dense.py's Encoder, so the
+    # base loads offline from ~/.cache/guidefold/models/<id>__/<revision> (never the network).
+    local_mirror = (synth_queries.MODELS_ROOT / args.source.replace("/", "__") / args.revision
+                    if args.revision else None)
+    load_source, load_revision = ((str(local_mirror), None) if local_mirror and local_mirror.is_dir()
+                                  else (args.source, args.revision))
+    model = SentenceTransformer(load_source, revision=load_revision, device=device,
                                 trust_remote_code=True)
     base_max = model.max_seq_length
     model.max_seq_length = (min(base_max, args.max_seq_length) if base_max
@@ -364,7 +370,7 @@ def cmd_train(args) -> int:
 
     meta = {
         "identity": args.identity, "source": args.source, "revision": args.revision,
-        "resumed_from": str(resume_dir) if resume_dir else None,
+        "loaded_from": load_source, "resumed_from": str(resume_dir) if resume_dir else None,
         "n_rows": len(rows), "row_stats": stats,
         "epochs": args.epochs, "batch_size": args.batch_size, "lr": args.lr,
         "warmup_steps": warmup_steps, "n_steps": n_steps, "seed": args.seed,
