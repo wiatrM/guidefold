@@ -270,3 +270,72 @@ back to **exposure-only mode**: its query set is the union of the changed skills
 phrases, and the comment says "unlabelled: exposure changes only" instead of computing Δmetrics —
 you get collision/exposure signal from day one, with zero authoring effort beyond writing
 `triggers` at all.
+
+## 13. Local suggestions and the quality gate (F5 + E7.5)
+
+§12's `skill-authoring-report` job informs; it never gates. Two more pieces close the loop —
+one lets an author fix their own skill before opening a PR, the other actually blocks a merge.
+
+**`guidefold validate --suggest` (F5)** — the same deterministic trigger/negative-trigger
+extractor `tools/authoring/suggest_triggers.py` runs in CI, callable locally and on demand for any
+skill still missing `metadata.triggers` and/or `metadata.negative_triggers` (§4). It mines a
+`## When to use` / `## Do not use` heading pair when present (§5), else cue-word sentences from
+unheaded prose, and prints a ready-to-paste `metadata:` block plus the source sentence each
+suggested phrase came from — never a rewrite of the skill, never invoked from any script CI
+itself runs, and `--suggest` alone never changes `validate`'s own exit code or its default
+(no-flag) output byte-for-byte (`tests/test_validate_suggest.py`). A corpus-wide guard drops a
+*derived negative-trigger* phrase repeated identically across more than `max(15, 1% of skills)`
+skills (shared-template boilerplate, not skill-specific signal); triggers carry no such guard.
+`--json` gets the same suggestions as a list of `{urn, missing_triggers,
+missing_negative_triggers, suggested_triggers: [{phrase, evidence}], ...,
+frontmatter_block}` objects, for an editor integration to consume instead of parsing text.
+
+**`guidefold eval` (E7.5)** — the gate. `guidefold eval --queries <dir|yaml|jsonl> [--k 4]
+[--json out.json] [--baseline b.json] [--write-baseline b.json] [--gate]` runs every query
+through the exact product path §12 already uses for the collision report
+(`policy_filter → candidates → score → select(admissible=…)`, never `Router.route()`), and prints
+both tables §1 of `tools/eval/run_golden.py`'s docstring defines:
+
+- **RETRIEVAL** (`Router.score` order): hit@1, recall@8, nDCG@10 — did ranking put the right
+  skills on top?
+- **INJECTION** (the ≤k cards `Router.select` actually emits, general → specific,
+  ADR-0022 admissible-gated): completeness@k, all_required@k, distractor_rate@k, plus
+  abstention_precision/abstention_recall/coverage/n_answered — did the cards an agent actually
+  receives hold the whole answer and no plausible-but-wrong one? Unlike `run_golden.py`, which
+  only re-sources `completeness@4`/`distractor_rate@4` from injection and leaves abstention
+  retrieval-computed, `guidefold eval` reads *all four* of those latter metrics from injection —
+  `select`'s `abstain_threshold`, not an empty `candidates()` list, is what actually decides
+  "no answer", so measuring abstention against the near-always-nonempty retrieval list understates
+  it. This is a deliberate widening, not a bug reproduction; both are proved identical to
+  `tools/eval/metrics.py` to 4 decimal places on the 220-case golden set
+  (`tests/test_eval.py`).
+
+`--queries` accepts a golden-format directory (every `*.yaml`/`*.yml` in it — the
+`tests/golden/README.md` schema, generalising `run_golden.py`'s own hardcoded 5-file list to "every
+file here"), a single golden `.yaml`/`.yml` file, or a single `.jsonl` file of minimal unlabelled
+`{"query": ..., "node": ...}` objects — the latter yields *exposure-only* metrics (n, abstain rate,
+coverage, top skills returned) and rejects `--gate`/`--baseline`/`--write-baseline` outright, since
+there is nothing labelled to compare against a margin.
+
+`--gate` compares three metrics against `--baseline`'s JSON — hit@1 and all_required@k
+(higher is better), distractor_rate@k (lower is better) — to `guidefold.yaml`'s `eval.gate`
+margins (`hit_at_1_margin`/`all_required_margin`/`distractor_rate_margin`, percentage points,
+default 1.0 each; see `templates/guidefold.example.yaml`), and exits non-zero the moment any one
+of them regresses beyond its margin. A metric undefined on either side (e.g. hit@1 on an
+abstention-only stratum) is skipped, never treated as a pass or a fail. Next to each delta it
+prints a paired bootstrap 95% confidence interval (stdlib `random`, 1000 resamples, seed 0,
+paired by case id) — diagnostic context for the reviewer, never itself the gate: the decision
+reads only the point estimate against the margin, so the gate stays deterministic across runs.
+`--write-baseline` stores the current metrics plus an index-manifest checksum, the CLI version and
+a sha256 of every file under `--queries`, so a baseline silently compared against a different
+index build or a different query set is detectable, not silently wrong — the same deliberate,
+reviewed-by-diff act as `tools/eval/run_golden.py --update-baseline`, just for the CLI's own
+metric set.
+
+Wired in two places: this repo's own `.github/workflows/ci.yml` `golden-eval` job runs
+`guidefold eval --gate` against the committed `docs/reports/golden/eval-baseline.json` right next
+to `run_golden.py --check`, so both the standalone script and the CLI's port of it gate the same
+PR on the same 220-case set; `templates/ci.yml`'s `quality-gate` job does the same for a consumer
+monorepo — `--gate` on a PR, `--write-baseline` (committed back) on a push to the default branch —
+reading `guidefold.yaml`'s `eval.queries` key (§12) and no-op'ing with a one-line message when
+that key is unset, since there is then no labelled set to gate on.
