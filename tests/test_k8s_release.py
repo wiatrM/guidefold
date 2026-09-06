@@ -1,6 +1,7 @@
 """Release identity, stale-promotion rejection and deployment safety contracts."""
 
 from copy import deepcopy
+import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -9,16 +10,19 @@ import subprocess
 import pytest
 import yaml
 
-from tools.search_service.k8s_release import (
-    build_manifest,
-    digest,
-    preflight,
-    promotion_change,
-    selector,
-    validate_manifest,
-)
-
 ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location(
+    "k8s_release", ROOT / "tools/search_service/k8s_release.py"
+)
+release = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(release)
+build_manifest = release.build_manifest
+digest = release.digest
+preflight = release.preflight
+promotion_change = release.promotion_change
+selector = release.selector
+validate_manifest = release.validate_manifest
+
 PIN = "example.invalid/guidefold@sha256:" + "a" * 64
 
 
