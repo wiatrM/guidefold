@@ -675,7 +675,9 @@ def _load_labelled_queries(args) -> list:
         elif which == "test-a":
             out.extend(q["query"] for q in corpora.load_skillret()["queries"])
         elif which == "test-b":
-            out.extend(q["query"] for q in corpora.load_skillretbench()["queries"])
+            # load_skillretbench()["queries"] is the benchmark's own JSON document
+            # ({"meta": ..., "queries": [...]}) -- the query list sits one level down.
+            out.extend(q["query"] for q in corpora.load_skillretbench()["queries"]["queries"])
         else:
             raise SystemExit(f"synth_queries: unknown --corpus entry {which!r}")
     return out
