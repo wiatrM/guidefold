@@ -353,7 +353,11 @@ def cmd_train(args) -> int:
         warmup_steps=warmup_steps,
         bf16=use_bf16, fp16=False,
         batch_sampler=BatchSamplers.NO_DUPLICATES,
-        dataloader_drop_last=True,
+        # NoDuplicatesBatchSampler emits a *partial* batch whenever it cannot fill one without a
+        # repeated text; with drop_last=True every such batch is discarded and the trainer can end
+        # up with zero steps (seen on the CPU smoke set, 2026-09-06). Partial batches mean a
+        # smaller in-batch-negative pool for that step, never a wrong loss.
+        dataloader_drop_last=False,
         gradient_checkpointing=args.gradient_checkpointing,
         save_strategy="steps", save_steps=args.checkpoint_save_steps, save_total_limit=None,
         logging_steps=25, report_to="none", disable_tqdm=not args.progress_bar,
