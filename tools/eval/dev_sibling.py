@@ -296,6 +296,82 @@ def cmd_run(args) -> int:
     return 0
 
 
+# ------------------------------------------------------------------------- test-B (SkillRetBench), once per frozen configuration
+def cmd_testb(args) -> int:
+    """One configuration on SkillRetBench through the unchanged product path (both node settings,
+    as the R1 reference run did): F0 = B1 vs F6-<config>. HSR@4 (distractor_rate@4) is the gate of
+    record here; hit@1 / nDCG@10 / all_required@4 are the no-harm guards. The sibling map is built
+    from the corpus's own E0 skill vectors (tools/eval/.skillretbench-r1-cache, the R1 reference's
+    cache) — no labels, exactly what an index-time build would do. Runs ONLY after the protocol's
+    freeze/amendment decision; this function does not check that for you."""
+    import skillretbench
+    import skillretbench_r1
+    import dense_ref
+    t0 = time.time()
+    cli = skillretbench._load_cli()
+    metrics_mod = skillretbench._load_metrics()
+    data, skills, cards, nodes, cases, corpus_report, query_report = skillretbench_r1._load_corpus()
+    meta, row_of, skill_mat, query_vec_of = dense_ref.load_dense_cache(skillretbench_r1.CACHE_DIR)
+    urns = list(cards)
+    missing = [u for u in urns if u not in row_of]
+    if missing:
+        raise SystemExit(f"dev_sibling testb: {len(missing)} card urns missing from the test-B vector cache")
+    vec = skill_mat[[row_of[u] for u in urns]]
+    leaf_of = {u: cards[u]["node"] for u in urns}
+    token_sets = {u: card_tokens(cli, cards[u]) for u in urns}
+    cfg = CONFIGS[args.config]
+    smap = build_sibling_map(urns, vec, leaf_of, cfg["tau"], cfg["n_max"])
+    f0 = skillretbench.build_arms(cli, cards, nodes)["B1"]
+    Sib = make_sibling_router_class(cli)
+    f6 = Sib(f0.index, smap, token_sets, cfg["rule"])
+    summary = {"header": {"corpus": "skillretbench", "config": args.config, "params": cfg,
+                          "n_skills": len(cards), "n_cases": len(cases), "encoder": meta,
+                          "map_skills": len(smap), "map_pairs": sum(len(v) for v in smap.values()) // 2,
+                          "protocol": "docs/reports/bakeoff/DEV-F6-sibling-map-2026-09-06.md"},
+               "settings": {}}
+    all_records = []
+    for setting in ("node_scoped", "node_root"):
+        ret0, inj0, rec0 = skillretbench.run_arm(f0, cases, setting)
+        ret6, inj6, rec6 = [], [], []
+        fired_q, replacements = 0, 0
+        for case in cases:
+            rec = skillretbench.run_case(f6, case, setting)
+            rec["fired"], rec["removed"] = f6.last_fired, list(f6.last_removed)
+            fired_q += int(f6.last_fired > 0)
+            replacements += f6.last_fired
+            ret6.append(([e["urn"] for e in rec["retrieval"]], case))
+            inj6.append((rec["injection"], case))
+            rec6.append(rec)
+        for r in rec0:
+            r["arm"], r["node_key"] = "F0", setting
+        for r in rec6:
+            r["arm"], r["node_key"] = f"F6-{args.config}", setting
+        all_records.extend(rec0)
+        all_records.extend(rec6)
+        gates = skillretbench.dense_vs_b1_gate_report(metrics_mod, cases, ret0, inj0, ret6, inj6,
+                                                       k_cards=skillretbench_r1.K_CARDS,
+                                                       n_resamples=skillretbench_r1.BOOTSTRAP_RESAMPLES)
+        hsr = skillretbench_r1.hsr_bootstrap_report(metrics_mod, inj0, inj6)
+        summary["settings"][setting] = {
+            "F0": skillretbench_r1._per_setting_metrics(metrics_mod, ret0, inj0),
+            "F6": skillretbench_r1._per_setting_metrics(metrics_mod, ret6, inj6),
+            "gates_vs_F0": gates, "hsr_bootstrap": hsr,
+            "firing": {"queries_fired": fired_q, "replacements": replacements},
+        }
+        print(f"[{time.time()-t0:6.1f}s] {setting}: fired on {fired_q} queries ({replacements} removals)",
+              file=sys.stderr)
+    VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
+    stem = f"skillretbench-f6-{args.config.lower()}"
+    dev_sparse.write_jsonl_gz(VALIDATION_DIR / f"{stem}.jsonl.gz", all_records)
+    (VALIDATION_DIR / f"{stem}-summary.json").write_text(json.dumps(summary, indent=2))
+    print(f"[{time.time()-t0:6.1f}s] wrote {stem}.jsonl.gz / -summary.json", file=sys.stderr)
+    for setting, s in summary["settings"].items():
+        h = s["hsr_bootstrap"].get("OVERALL") or {}
+        print(f"{setting}: HSR@4 OVERALL delta={h.get('delta')} ci=[{h.get('ci_lo')}, {h.get('ci_hi')}] "
+              f"fired={s['firing']}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -305,6 +381,9 @@ def main(argv=None) -> int:
     r.add_argument("--seed", type=int, default=0)
     r.add_argument("--out", default=None)
     r.set_defaults(func=cmd_run)
+    b = sub.add_parser("testb", help="ONE configuration on SkillRetBench (once, per protocol)")
+    b.add_argument("--config", required=True, choices=list(CONFIGS))
+    b.set_defaults(func=cmd_testb)
     args = p.parse_args(argv)
     return args.func(args)
 
