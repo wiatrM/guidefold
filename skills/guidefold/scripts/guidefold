@@ -2376,7 +2376,12 @@ def cmd_find(a, root, cfg):
                                   search_cfg=search_cfg)
     t_select = time.perf_counter()
     selected = result["selected"]
-    for c in selected:
+    # `select()` returns the *injection* order (general -> specific, ADR-0006) so that a hook's
+    # ≤ 4 cards read root-most first. `find` is the interactive command a person or an agent reads
+    # top-down to pick ONE skill, so it prints the same set in *relevance* order: the card that best
+    # matches the task first, root-level conventions last. Same membership, different order — the
+    # hook path is untouched. (Before this, the exact match sat 7th of 8 behind four root cards.)
+    for c in sorted(selected, key=lambda c: (-c["score"], c["urn"])):
         print(f"- {c['urn']}\n    {c['description'][:160]}\n    (score={c['score']} · node={c.get('node')})")
     if getattr(a, "experimental", False):
         _write_shadow_record(root, a.task, scope, result["local_scored"],
@@ -3998,7 +4003,31 @@ def cmd_hook(a, root):
         session_id = payload.get("session_id") or None   # E6.4: Claude Code's own hook payload
         # field, "where available" (Sec4) -- Codex/Copilot payloads observed so far don't carry
         # one, so this stays None there, not fabricated.
-        idx = load_index_artifact(index_cache_dir(sha))
+        dest = index_cache_dir(sha)
+        if not (dest / "manifest.json").exists():
+            # E1.5 keeps the prompt hook read-only and silent when the artifact for this sha is
+            # missing -- and that silence is the most likely "it does nothing" a first-time user
+            # sees after `init`, a checkout or a commit (PR #68). SessionStart runs once per session
+            # and has no card budget, so it builds the artifact here (same writer as `index`);
+            # the prompt hook stays read-only and says why it is idle on stderr -- never stdout,
+            # which is the agent's context.
+            if not prompt:
+                try:
+                    import yaml   # lazy, like every other optional import in this file
+                    cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
+                    write_index_artifact(root, cfg, dest, sha)
+                except _HookTimeout:
+                    raise
+                except Exception as e:      # say why, on stderr, instead of the silent no-op
+                    print(f"[guidefold] index build failed for sha {sha}: {type(e).__name__}: {e}",
+                          file=sys.stderr)
+                    return
+            else:
+                print(f"[guidefold] hook idle: no index artifact for sha {sha}; run "
+                      f"`.agents/skills/guidefold/scripts/guidefold index` or start a new session "
+                      f"(SessionStart builds it)", file=sys.stderr)
+                return
+        idx = load_index_artifact(dest)
         try:
             relpath = rel(root, cwd)
         except ValueError:
