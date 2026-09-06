@@ -286,6 +286,19 @@ def _query_prompt_for(args) -> str:
     return prompt
 
 
+def restore_eval_seq_length(model, base_max):
+    """Undo the train-time sequence cap on a SentenceTransformer before it is saved, so the
+    checkpoint evaluates under the base model's own limit (what E0 was measured with).
+    `base_max` None/0 means the base had no explicit limit; nothing is restored then."""
+    if not base_max:
+        return model
+    model.max_seq_length = base_max
+    tok = getattr(model, "tokenizer", None)
+    if tok is not None and getattr(tok, "model_max_length", None) != base_max:
+        tok.model_max_length = base_max
+    return model
+
+
 def cmd_train(args) -> int:
     _require_gpu_venv(args.force_any_python)
     _seed_everything(args.seed)
@@ -376,6 +389,12 @@ def cmd_train(args) -> int:
     dt = time.time() - t0
 
     final_dir = checkpoint_dir / "final"
+    # The train-time cap must NOT travel with the checkpoint: SentenceTransformer.save() persists
+    # max_seq_length into tokenizer_config.json (model_max_length), and dev_dense.py would then
+    # embed documents truncated at the cap while E0 embeds up to the base's own limit -- a
+    # different document representation masquerading as a training effect (caught on E1,
+    # 2026-09-06, before any number was read). Restore the base's limit before saving.
+    restore_eval_seq_length(model, base_max)
     model.save(str(final_dir))
 
     meta = {

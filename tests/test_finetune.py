@@ -297,3 +297,32 @@ def test_run_subcommand_n_negatives_defaults_to_hard_negatives_n(tmp_path):
     finally:
         finetune.cmd_rows = orig
     assert seen[-1].n_negatives == finetune.HARD_NEGATIVES_N == 3
+
+
+# --------------------------------------------------------------------------- eval regime must not inherit the train cap
+class _FakeTok:
+    def __init__(self, n):
+        self.model_max_length = n
+
+
+class _FakeST:
+    def __init__(self, cap, tok_cap):
+        self.max_seq_length = cap
+        self.tokenizer = _FakeTok(tok_cap)
+
+
+def test_restore_eval_seq_length_undoes_train_cap_on_model_and_tokenizer():
+    """SentenceTransformer.save() persists max_seq_length into tokenizer_config.json, so a
+    checkpoint trained with a 1024 cap would be *evaluated* at 1024 while E0 is evaluated at the
+    base's 8192 -- a changed document representation, not a training effect (E1, 2026-09-06).
+    The cap must be undone before save on both the model and its tokenizer."""
+    m = _FakeST(cap=1024, tok_cap=1024)
+    finetune.restore_eval_seq_length(m, 8192)
+    assert m.max_seq_length == 8192
+    assert m.tokenizer.model_max_length == 8192
+
+
+def test_restore_eval_seq_length_noop_when_base_had_no_limit():
+    m = _FakeST(cap=512, tok_cap=512)
+    finetune.restore_eval_seq_length(m, None)
+    assert m.max_seq_length == 512 and m.tokenizer.model_max_length == 512
