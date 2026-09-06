@@ -2,13 +2,34 @@
 """tools/train/finetune.py — Family E fine-tuning runner (DENSE-PROGRAM.md v2.6 §4 "Why E exists").
 
 Fine-tunes a sentence-embedding base model on this family's synthetic training data
-(tools/train/synth_queries.py's per-skill queries, composite queries, hard negatives), using
-MultipleNegativesRankingLoss with in-batch negatives plus the family's explicit same-category hard
-negatives, over sentence-transformers' pre-v3 training loop (`SentenceTransformer.old_fit`) — NOT
-`.fit()`: sentence-transformers 6.0.1's new-style `.fit()` requires the `datasets` package
-internally (`fit_mixin.py`: `if not is_datasets_available(): raise ImportError(...)`, because it
-delegates to `SentenceTransformerTrainer`) and `datasets` is not installed in the gpu-venv; `old_fit`
-needs only `torch` + `transformers`, both already installed, and predates that dependency entirely.
+(tools/train/synth_queries.py's per-skill queries, composite queries, hard negatives), with the
+MultipleNegativesRanking objective (in-batch negatives plus the family's explicit same-category
+hard negatives) over sentence-transformers' `SentenceTransformerTrainer`.
+
+Three implementation choices, fixed here before any E1-E5 run (recorded in
+docs/reports/bakeoff/DEV-E-synthetic-training-2026-09-05.md §2 "Training-time implementation note"):
+  * Loss = `CachedMultipleNegativesRankingLoss` (GradCache) by default: the *same* objective as
+    MultipleNegativesRankingLoss, computed in `--mini-batch-size` chunks so the in-batch-negative
+    batch (`--batch-size`, default 64) is no longer bounded by activation memory. `--loss mnrl`
+    keeps the plain loss for tiny smoke runs.
+  * Precision = bf16 autocast over fp32 master weights (`bf16=True`); the 0.6B base is a Qwen3
+    model, which fp16 autocast (the only mode `old_fit`'s `use_amp` offers) can overflow, and pure
+    bf16 weights would round a 2e-5 update away.
+  * Sequence cap = `--max-seq-length` (default 1024) applied to every training text (query,
+    positive, negatives). The dev skill texts are long (median 1,564 tokens under the 0.6B
+    tokenizer, p95 5,516, max 34,410 -- measured 2026-09-06), so training on the full body at any
+    useful batch size does not fit a 24 GB GPU. Eval is NOT changed: tools/eval/dev_dense.py still
+    embeds the full body exactly as it did for E0, so every Ek is scored on the same document
+    representation as the zero-shot reference; the cap is a train-time truncation only, and the
+    same cap applies to every configuration in the family (E4's base has its own 512 limit, which
+    is the binding one there).
+
+Query prompt: the base model's own query-side instruction (tools/eval/dev_dense.py::QUERY_PROMPTS,
+looked up by `--source`, overridable with `--query-prompt`) is prepended to every training query,
+exactly as dev_dense.py prepends it at eval time -- otherwise E0 (evaluated with the prompt) and a
+fine-tuned Ek (trained without it) would not be the same convention. The prompt used is recorded in
+the checkpoint's train_meta.json, and dev_dense.py reads it back from there for a local checkpoint
+directory so an Ek is never accidentally evaluated with a different (or no) prompt.
 
 Training row construction (build_training_rows, pure logic, no torch import — tested without the
 GPU venv):
@@ -27,25 +48,23 @@ GPU venv):
     (skill_texts_for_cards: name+description+full stripped body, truncated only by the model's own
     tokenizer) — the training signal must not see a shorter document than the one scored later.
 
-Batching: NoDuplicatesDataLoader (sentence_transformers.sentence_transformer.datasets), not a plain
-shuffled DataLoader — guarantees no duplicate text within a batch, which
-MultipleNegativesRankingLoss's in-batch-negatives assumption needs (two rows sharing the SAME
-positive text in one batch would make each other's "in-batch negative" a second copy of the correct
-answer). Composite-query multi-positive expansion (>=2 rows can share a query string, one per gold
-skill) is exactly the case this guards against. old_fit() itself wires
-`dataloader.collate_fn = self.smart_batching_collate` on every dataloader in `train_objectives`
-before training starts — this script does not set collate_fn itself.
+Batching: `BatchSamplers.NO_DUPLICATES` -- guarantees no duplicate text within a batch across ALL
+text columns, which the in-batch-negatives assumption needs (two rows sharing the SAME positive
+text in one batch would make each other's "in-batch negative" a second copy of the correct answer;
+a hard negative equal to another row's positive is the same problem). Composite-query
+multi-positive expansion (>=2 rows can share a query string, one per gold skill) and the 5 per-skill
+rows that share one positive are exactly the cases this guards against.
 
-Resumability: old_fit has no `resume_from_checkpoint` kwarg (unlike v3+ `.fit()`), but it always
-writes a full `self.save(...)` snapshot to `checkpoint_path/<global_step>/` every
-`checkpoint_save_steps`, and `checkpoint_save_total_limit=0` (this script's fixed choice) means
-"keep every one, delete none" — so `--resume` picks the highest-numbered step directory under the
-identity's checkpoint root and loads it as the starting model, best-effort.
+Resumability: the trainer writes a full checkpoint to `<checkpoints>/<identity>/checkpoint-<step>/`
+every `--checkpoint-save-steps` (all kept); `--resume` hands the highest-numbered one to
+`trainer.train(resume_from_checkpoint=...)`, which restores optimizer/scheduler/sampler state, not
+just the weights.
 
 Subcommands:
   rows   build training rows from the three generated-data files and report drop-reason stats —
          torch-free, safe in CI, and the thing to run before spending any GPU time on a batch.
-  train  rows, then fine-tune one base-model identity with old_fit; needs the GPU venv.
+  train  rows, then fine-tune one base-model identity with SentenceTransformerTrainer; needs
+         the GPU venv (torch, sentence-transformers, datasets, accelerate).
 
 No import-time torch/transformers/sentence-transformers dependency — build_training_rows,
 _hard_negatives_index, _seed_everything and the CLI's `rows` subcommand are exercised by tests
@@ -232,19 +251,39 @@ def _seed_everything(seed: int):
 
 
 def _latest_checkpoint_dir(checkpoint_path: Path):
-    """old_fit has no native resume_from_checkpoint — best-effort resume: the highest-numbered
-    step subdirectory under checkpoint_path is a complete `self.save(...)` directory (loadable via
-    SentenceTransformer(that_dir)), written by _save_checkpoint after every checkpoint_save_steps.
-    checkpoint_save_total_limit=0 (this script's fixed choice) keeps every one, so the highest step
-    number is always the most recent."""
+    """Best-effort resume: the highest-numbered checkpoint subdirectory under checkpoint_path.
+    Accepts both the trainer's `checkpoint-<step>` directories and bare `<step>` ones (the older
+    old_fit layout, still recognised so a pre-existing checkpoint root keeps working). Every
+    checkpoint is kept (save_total_limit=None), so the highest step is always the most recent."""
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
         return None
-    numbered = [(int(child.name), child) for child in checkpoint_path.iterdir()
-                if child.is_dir() and child.name.isdigit()]
+    numbered = []
+    for child in checkpoint_path.iterdir():
+        if not child.is_dir():
+            continue
+        name = child.name[len("checkpoint-"):] if child.name.startswith("checkpoint-") else child.name
+        if name.isdigit():
+            numbered.append((int(name), child))
     if not numbered:
         return None
     return max(numbered, key=lambda t: t[0])[1]
+
+
+def _query_prompt_for(args) -> str:
+    """The base model's own query-side instruction, same table dev_dense.py uses at eval time."""
+    if args.query_prompt is not None:
+        return args.query_prompt
+    import dev_dense  # tools/eval/dev_dense.py -- torch-free at import
+    prompt = dev_dense.QUERY_PROMPTS.get(args.source)
+    if prompt is None:
+        meta = Path(args.source) / "train_meta.json"   # fine-tuning a previous checkpoint (E5)
+        if meta.is_file():
+            prompt = json.loads(meta.read_text()).get("query_prompt")
+    if prompt is None:
+        raise SystemExit(f"finetune train: no query prompt known for --source {args.source!r}; "
+                          f"pass --query-prompt explicitly (use '' for none)")
+    return prompt
 
 
 def cmd_train(args) -> int:
@@ -263,45 +302,61 @@ def cmd_train(args) -> int:
     if not rows:
         raise SystemExit("finetune train: zero training rows built -- check --per-skill-file / "
                           "--composite-file / --hard-negatives-file / --skills-file inputs")
+    query_prompt = _query_prompt_for(args)
 
-    from sentence_transformers import InputExample, SentenceTransformer
-    from sentence_transformers.sentence_transformer.datasets.no_duplicates_dataloader import (
-        NoDuplicatesDataLoader,
-    )
-    from sentence_transformers.sentence_transformer.losses import MultipleNegativesRankingLoss
+    import torch
+    from datasets import Dataset
+    from sentence_transformers import (SentenceTransformer, SentenceTransformerTrainer,
+                                       SentenceTransformerTrainingArguments)
+    from sentence_transformers.sentence_transformer.losses import (
+        CachedMultipleNegativesRankingLoss, MultipleNegativesRankingLoss)
+    from sentence_transformers.sentence_transformer.training_args import BatchSamplers
 
-    examples = [InputExample(texts=[r["query"], r["positive_text"], *r["negative_texts"]])
-                for r in rows]
-    train_dataloader = NoDuplicatesDataLoader(examples, batch_size=args.batch_size)
+    columns = {"anchor": [query_prompt + r["query"] for r in rows],
+               "positive": [r["positive_text"] for r in rows]}
+    for i in range(args.n_negatives):
+        columns[f"negative_{i + 1}"] = [r["negative_texts"][i] for r in rows]
+    train_dataset = Dataset.from_dict(columns)
 
     checkpoint_dir = CHECKPOINTS_ROOT / args.identity
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     resume_dir = _latest_checkpoint_dir(checkpoint_dir) if args.resume else None
-    source = str(resume_dir) if resume_dir else args.source
     if resume_dir:
         print(f"finetune train: resuming from checkpoint {resume_dir}")
 
-    model = SentenceTransformer(source, revision=None if resume_dir else args.revision)
-    if args.device:
-        model = model.to(args.device)
-    loss = MultipleNegativesRankingLoss(model)
+    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    model = SentenceTransformer(args.source, revision=args.revision, device=device,
+                                trust_remote_code=True)
+    base_max = model.max_seq_length
+    model.max_seq_length = (min(base_max, args.max_seq_length) if base_max
+                            else args.max_seq_length)
+    if args.loss == "cached-mnrl":
+        loss = CachedMultipleNegativesRankingLoss(model, mini_batch_size=args.mini_batch_size)
+    else:
+        loss = MultipleNegativesRankingLoss(model)
 
-    n_steps = (len(examples) // args.batch_size) * args.epochs
+    n_steps = (len(rows) // args.batch_size) * args.epochs
     warmup_steps = (args.warmup_steps if args.warmup_steps is not None
                      else max(1, int(n_steps * 0.1)))
-
-    t0 = time.time()
-    model.old_fit(
-        train_objectives=[(train_dataloader, loss)],
-        epochs=args.epochs,
+    use_bf16 = device.startswith("cuda")
+    targs = SentenceTransformerTrainingArguments(
+        output_dir=str(checkpoint_dir),
+        num_train_epochs=args.epochs,
+        per_device_train_batch_size=args.batch_size,
+        learning_rate=args.lr,
         warmup_steps=warmup_steps,
-        optimizer_params={"lr": args.lr},
-        checkpoint_path=str(checkpoint_dir),
-        checkpoint_save_steps=args.checkpoint_save_steps,
-        checkpoint_save_total_limit=0,  # keep every checkpoint -- resume picks the highest step
-        show_progress_bar=args.progress_bar,
-        use_amp=(str(model.device).startswith("cuda")),
+        bf16=use_bf16, fp16=False,
+        batch_sampler=BatchSamplers.NO_DUPLICATES,
+        dataloader_drop_last=True,
+        gradient_checkpointing=args.gradient_checkpointing,
+        save_strategy="steps", save_steps=args.checkpoint_save_steps, save_total_limit=None,
+        logging_steps=25, report_to="none", disable_tqdm=not args.progress_bar,
+        seed=args.seed, data_seed=args.seed,
     )
+    trainer = SentenceTransformerTrainer(model=model, args=targs, train_dataset=train_dataset,
+                                         loss=loss)
+    t0 = time.time()
+    trainer.train(resume_from_checkpoint=str(resume_dir) if resume_dir else None)
     dt = time.time() - t0
 
     final_dir = checkpoint_dir / "final"
@@ -313,11 +368,18 @@ def cmd_train(args) -> int:
         "n_rows": len(rows), "row_stats": stats,
         "epochs": args.epochs, "batch_size": args.batch_size, "lr": args.lr,
         "warmup_steps": warmup_steps, "n_steps": n_steps, "seed": args.seed,
-        "device": str(model.device), "train_time_s": dt,
-        "gpu_hours": dt / 3600.0 if str(model.device).startswith("cuda") else 0.0,
+        "loss": args.loss, "mini_batch_size": args.mini_batch_size,
+        "max_seq_length": model.max_seq_length, "base_max_seq_length": base_max,
+        "query_prompt": query_prompt, "precision": "bf16-autocast" if use_bf16 else "fp32",
+        "gradient_checkpointing": bool(args.gradient_checkpointing),
+        "device": device, "train_time_s": dt,
+        "gpu_hours": dt / 3600.0 if device.startswith("cuda") else 0.0,
+        "log_history": trainer.state.log_history,
     }
-    (checkpoint_dir / "train_meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True))
-    print(json.dumps(meta, indent=2, sort_keys=True))
+    for d in (checkpoint_dir, final_dir):
+        (d / "train_meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True))
+    print(json.dumps({k: v for k, v in meta.items() if k != "log_history"},
+                     indent=2, sort_keys=True))
     print(f"finetune train: wrote final checkpoint -> {final_dir}")
     return 0
 
@@ -364,10 +426,19 @@ def main(argv=None):
     t.add_argument("--revision", default=None)
     t.add_argument("--seed", type=int, default=20260905)
     t.add_argument("--epochs", type=int, default=1)
-    t.add_argument("--batch-size", type=int, default=32)
+    t.add_argument("--batch-size", type=int, default=64,
+                   help="in-batch-negatives batch (the loss's effective batch)")
+    t.add_argument("--mini-batch-size", type=int, default=4,
+                   help="cached-mnrl forward/backward chunk; memory knob only, no effect on the loss")
+    t.add_argument("--loss", choices=["cached-mnrl", "mnrl"], default="cached-mnrl")
+    t.add_argument("--max-seq-length", type=int, default=1024,
+                   help="train-time token cap for every text (eval keeps the full body)")
+    t.add_argument("--query-prompt", default=None,
+                   help="override the base model's query instruction ('' for none)")
+    t.add_argument("--gradient-checkpointing", action="store_true")
     t.add_argument("--lr", type=float, default=2e-5)
     t.add_argument("--warmup-steps", type=int, default=None)
-    t.add_argument("--checkpoint-save-steps", type=int, default=500)
+    t.add_argument("--checkpoint-save-steps", type=int, default=200)
     t.add_argument("--resume", action="store_true")
     t.add_argument("--device", default=None)
     t.add_argument("--progress-bar", action="store_true")

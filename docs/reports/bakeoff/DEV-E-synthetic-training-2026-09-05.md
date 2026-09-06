@@ -102,6 +102,26 @@ file (`hard_negatives: []` per skill; pre-built at `/home/mike/.cache/guidefold/
 (`MultipleNegativesRankingLoss`) training for those two configurations. E3 uses the real mined file with the default
 `--n-negatives 3`. No code change was needed — `n_neg` was already a generic parameter.
 
+### Training-time implementation note (written 2026-09-06, before any E1–E5 run)
+
+Three things `tools/train/finetune.py` had to settle before the first fine-tune could physically
+run; none changes what is trained on or how it is measured, and all apply identically to every
+configuration in the family:
+
+| what | choice | why (measured) |
+|---|---|---|
+| sequence cap at **training** time | 1,024 tokens on every training text (query, positive, negatives); E4's base has its own 512 limit, which binds there | dev skill texts under the 0.6B tokenizer: median 1,564 tokens, p75 2,739, p95 5,516, max 34,410 (34 % fit in 1,024; 62 % in 2,048). Full-body MNRL at any useful batch does not fit 24 GB. **Eval is unchanged**: `dev_dense.py` still embeds the full body exactly as for E0, so every Ek is scored on the same document representation as the reference; this is a train-time truncation only |
+| loss implementation | `CachedMultipleNegativesRankingLoss` (GradCache), batch 64, mini-batch 4 | the same objective as the registered `MultipleNegativesRanking` with in-batch negatives — identical loss value and gradient, computed in chunks — so the in-batch-negative batch is set by the recipe, not by activation memory. `--loss mnrl` remains for smoke runs |
+| precision | bf16 autocast over fp32 master weights (`SentenceTransformerTrainer`, `bf16=True`) | the 0.6B base is a Qwen3 model; fp16 autocast (the only mixed mode the previous `old_fit` path offered) can overflow it, and pure-bf16 weights round a 2e-5 update away. Needed `datasets`+`accelerate` in the GPU venv (installed 2026-09-06) |
+| query prompt | the base model's own query instruction (`dev_dense.QUERY_PROMPTS[source]`, byte-identical to E0's) is prepended to every training query; recorded in the checkpoint's `train_meta.json`, and `dev_dense._default_query_prompt` now reads it back for a local checkpoint directory | without this, E0 would be evaluated *with* the prompt and an Ek trained *without* it and then evaluated with none — a convention change masquerading as a training effect |
+
+Fixed hyper-parameters for E1–E4 (E5 is the one registered variant): 1 epoch, lr 2e-5, 10 %
+warm-up, batch 64, seed 20260905, `NO_DUPLICATES` batch sampler (no text repeated within a batch
+across any column). Data-file repair on record: the per-skill file's last line was 1,008 NUL bytes
+from the shutdown kill on 2026-09-06 (`per-skill-dev.jsonl.bak-nul-2026-09-06` keeps the original);
+the line was removed and generation resumed from the 9,664 intact records with the same backend,
+prompt, sampling and seed rule as the first run.
+
 ## 3. Dev table — E0 (measured, both modes)
 
 Product path, dev split, 1,000 cases (k=1: 328, k=2: 333, k=3: 339). `all_required4`/hit1/ndcg10/

@@ -191,7 +191,16 @@ class Encoder:
 
 
 def _default_query_prompt(source: str) -> str:
-    return QUERY_PROMPTS.get(source)
+    """The model's own query-side instruction. For a local fine-tuned checkpoint directory
+    (family E's E1..E5), the prompt is whatever tools/train/finetune.py trained with — read back
+    from its train_meta.json — so a fine-tuned model is never scored under a different convention
+    than it was trained under (and never silently with no prompt at all)."""
+    prompt = QUERY_PROMPTS.get(source)
+    if prompt is None and Path(source).is_dir():
+        meta = Path(source) / "train_meta.json"
+        if meta.is_file():
+            prompt = json.loads(meta.read_text()).get("query_prompt")
+    return prompt
 
 
 # ---------------------------------------------------------------------------- corpus / cards (cached in-process)
