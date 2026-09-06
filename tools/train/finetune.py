@@ -359,6 +359,12 @@ def cmd_train(args) -> int:
         # smaller in-batch-negative pool for that step, never a wrong loss.
         dataloader_drop_last=False,
         gradient_checkpointing=args.gradient_checkpointing,
+        # Tokenisation happens in the collator; with 0 workers it runs in the training process
+        # and starves the GPU (E1 measured 19-47 % GPU utilisation at 120 % CPU, 2026-09-06).
+        # Workers move it off the main loop; the batch *composition* is still the sampler's.
+        dataloader_num_workers=args.dataloader_workers,
+        dataloader_pin_memory=True,
+        dataloader_prefetch_factor=(4 if args.dataloader_workers > 0 else None),
         save_strategy="steps", save_steps=args.checkpoint_save_steps, save_total_limit=None,
         logging_steps=25, report_to="none", disable_tqdm=not args.progress_bar,
         seed=args.seed, data_seed=args.seed,
@@ -379,6 +385,7 @@ def cmd_train(args) -> int:
         "epochs": args.epochs, "batch_size": args.batch_size, "lr": args.lr,
         "warmup_steps": warmup_steps, "n_steps": n_steps, "seed": args.seed,
         "loss": args.loss, "mini_batch_size": args.mini_batch_size,
+        "dataloader_workers": args.dataloader_workers,
         "max_seq_length": model.max_seq_length, "base_max_seq_length": base_max,
         "query_prompt": query_prompt, "precision": "bf16-autocast" if use_bf16 else "fp32",
         "gradient_checkpointing": bool(args.gradient_checkpointing),
@@ -438,8 +445,10 @@ def main(argv=None):
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--batch-size", type=int, default=64,
                    help="in-batch-negatives batch (the loss's effective batch)")
-    t.add_argument("--mini-batch-size", type=int, default=4,
+    t.add_argument("--mini-batch-size", type=int, default=8,
                    help="cached-mnrl forward/backward chunk; memory knob only, no effect on the loss")
+    t.add_argument("--dataloader-workers", type=int, default=4,
+                   help="collator (tokenisation) worker processes; throughput knob only")
     t.add_argument("--loss", choices=["cached-mnrl", "mnrl"], default="cached-mnrl")
     t.add_argument("--max-seq-length", type=int, default=1024,
                    help="train-time token cap for every text (eval keeps the full body)")
