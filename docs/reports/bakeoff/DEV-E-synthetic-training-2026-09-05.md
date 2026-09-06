@@ -65,23 +65,62 @@ decision is named explicitly in §4 below, per model, when that model's runs are
 
 ## 1. Data (dev "tenant catalogue")
 
-TODO — not yet generated at full scale. Design (frozen, from the original brief):
+Design (frozen, from the original brief): corpus = SKILLRET-train dev split, 10,123 skills
+(`tools/eval/corpora.py::load_skillret_dev()`); 1,000 dev queries held out, never read by the
+generator. Generator: local `Qwen/Qwen2.5-7B-Instruct` (Apache-2.0, pinned revision
+`a09a35458c702b33eeacc393d103063234e8bc28`), temperature 0.8 / top-p 0.9, seed 20260905 (+ batch
+offset). Per skill: 5 natural queries, ≥ 2 of 5 not naming the skill. Composite: 2–3-skill sets
+sampled by taxonomy co-occurrence (`major.sub`), one natural task needing all of them, sized to
+≈ 30 % of training rows. Hard negatives: 3 same-category siblings per positive, topped up from a
+repo-wide pool when the leaf runs short (`sample_hard_negatives`, tested).
 
-- Corpus: SKILLRET-train dev split, 10,123 skills (`tools/eval/corpora.py::load_skillret_dev()`);
-  1,000 dev queries held out, never read by the generator.
-- Generator: local `Qwen/Qwen2.5-7B-Instruct` (Apache-2.0, pinned revision
-  `a09a35458c702b33eeacc393d103063234e8bc28`), bf16, batched.
-- Per skill: 5 natural queries (skill name not copied verbatim in ≥ 2 of 5).
-- Composite: sample 2–3 skill sets via taxonomy co-occurrence (major.sub), one natural task needing
-  all of them, ≈30% of training pairs composite.
-- Hard negatives: 3 same-category siblings per positive that the query doesn't need
-  (`tools/train/synth_queries.py::sample_hard_negatives`, topped up from a repo-wide fallback pool
-  when the same-taxonomy-leaf sibling pool runs short — tested, `tests/test_synth_queries.py`).
-- Leakage check: exact-string + normalised-string (NFKC, lowercased, punctuation-stripped,
-  whitespace-collapsed) containment of every generated query against the dev/test query sets —
-  `tools/train/synth_queries.py`'s own check, run once per generation batch before that batch is
-  used for training (DENSE-PROGRAM.md v2.6 family-E rule 1, "no labels, ever").
-- 100-sample audit table (good/repetitive/drifted): TODO, pending real generation.
+### Generated (measured, 2026-09-05/06)
+
+| file | backend | records | usable | parse failures | queries | notes |
+|---|---|---|---|---|---|---|
+| `per-skill-dev.jsonl` | transformers bf16, batch 8, max 320 new tokens | 10,123 / 10,123 | 10,026 skills | 97 (0.96 %) | **50,160** | 9,664 generated 2026-09-05 (16,900 s), 459 resumed 2026-09-06 after the NUL-line repair (§2 note); a batch-24 attempt thrashed GPU memory (72 skills / 10 min) and was restarted at batch 8 |
+| `composite-dev.jsonl` | vLLM 0.28 bf16 (`VLLM_WSL2_ENABLE_PIN_MEMORY=1`), continuous batching, max 160 new tokens | _pending — filled when stage 1 completes_ | | | | 8,700-ish sets targeted (`composite_sets_for_target_rows`, 21,692 target rows) |
+| `hard-negatives-dev.jsonl` | pure sampling, seed 20260905 | _pending_ | | | | |
+
+The two backends are not bit-identical samplers at the same seed (recorded in each file's
+`.manifest.json`); this is offline data generation, not a runtime determinism claim. vLLM measured
+3.5 docs/s on a 96-doc probe vs 0.5–0.75 docs/s for the batched `transformers.generate()` loop,
+which is why composite generation switched backend; per-skill stayed on one backend end-to-end.
+
+### Leakage check (family-E rule 1, run before any training)
+
+`synth_queries.py leakage-check --corpus dev,test-a,test-b`: every generated query, raw and
+normalised (NFKC, lower-cased, punctuation-stripped, whitespace-collapsed), against **all** labelled
+query sets — dev (1,000), SKILLRET-test (4,392) and SkillRetBench (1,250) = 6,642 strings.
+
+| file | generated | labelled | violations |
+|---|---|---|---|
+| per-skill | 50,160 | 6,642 | **0** |
+| composite | _pending_ | 6,642 | _pending_ |
+
+(The first run of this check crashed on the SkillRetBench loader — its query list sits one level
+down in the benchmark JSON — fixed and re-run before anything was trained.)
+
+### 100-sample audit (manual, all 500 queries read; `audit-100.json` / `audit-100.labels.json`)
+
+Seeded sample (`audit --n 100`, seed 20260905) of per-skill query groups, labelled by one reader
+(this session) without seeing any ranking result:
+
+| label | definition | groups |
+|---|---|---|
+| **good** | five distinct, plausible user requests this skill answers | **74** |
+| **repetitive** | five paraphrases of one scenario — valid positives, low diversity (e.g. `add-cuda-kernel`: all five "add a scaling kernel to FlashInfer"; `openai-whisper-api`: all five "transcribe this audio") | **25** |
+| **drifted** | ≥ 1 query asks for something outside the skill's scope (`epistemic-cognitive-guardrails`: one query about bilingual scholarly documentation) | **1** |
+
+Heuristic flags on the same 500 queries: 68 (13.6 %) contain the skill's own name — the "≥ 2 of 5
+must not name it" instruction holds in every group; 20 have zero content-word overlap with
+name+description (mostly fine: they describe the need, as instructed); 0 near-duplicate pairs by
+the > 0.6 token-Jaccard heuristic — the 25 "repetitive" groups are semantic paraphrases the
+heuristic does not catch. Non-English output occurs where the skill itself is non-English
+(`pont-de-londres`, French) — consistent with the source, not drift. Read-out: the generator's
+per-skill queries are usable as positives with no observed label leakage; diversity, not
+correctness, is the weak point, and it is what the composite queries and hard negatives are
+supposed to add.
 
 ## 2. Configurations (≤ 6, frozen)
 
