@@ -58,6 +58,13 @@ jobs:
       - name: Run the E1.2 golden set and gate on regression vs the committed baseline
         run: python3 tools/eval/run_golden.py --check
 
+      - name: E7.5 -- guidefold eval --gate on the same golden set vs the committed CLI baseline
+        run: |
+          cd examples/monorepo && python3 ../../skills/guidefold/scripts/guidefold eval \
+            --queries ../../tests/golden \
+            --baseline ../../docs/reports/golden/eval-baseline.json \
+            --gate
+
   index-check:
     runs-on: ubuntu-latest
     steps:

@@ -2821,8 +2821,398 @@ def cmd_load(a, root, cfg):
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
     print(dest / "SKILL.md")
 
+# ------------------------------------------------------------------ F5: trigger/negative-trigger
+# suggestions for `validate --suggest` (docs/MVP.md "3-6 authoring loop"). Ported from
+# tools/enrich/derive.py's deterministic extractor (section mining -> "when to use"/"do not use"
+# material; sentence mining in unheaded prose) — stdlib only, no model path. Only the
+# triggers/negative_triggers half of derive.py is ported: its `requires`/`similar` edge-mining
+# (skill-to-skill mention detection) is out of scope for this command and is not reproduced here.
+# Constants/regexes/functions below are named `_SUG_*`/`_sug_*` and are a deliberate, reviewable
+# duplicate of tools/enrich/derive.py rather than an import of it — `scripts/guidefold` ships
+# stdlib+PyYAML only inside the skill ZIP (see module docstring) and cannot depend on a sibling
+# tools/ package at runtime. If derive.py's extraction rules change, this block must change with
+# it in the same commit.
+_SUG_TRIGGERS_CAP = 12
+_SUG_NEGATIVE_TRIGGERS_CAP = 8
+_SUG_MIN_PHRASE_TOKENS = 3
+_SUG_MAX_PHRASE_TOKENS = 8
+_SUG_NEG_BOILERPLATE_MIN_SKILLS = 15
+_SUG_NEG_BOILERPLATE_FRACTION = 0.01
+
+_SUG_STOPWORDS = frozenset(['a', 'about', 'above', 'again', 'all', 'also', 'an', 'and', 'another', 'any', 'are', 'as', 'at', 'be', 'been', 'being', 'below', 'but', 'by', 'can', 'did', 'do', 'does', 'down', 'each', 'every', 'for', 'from', 'here', 'how', 'i', 'if', 'in', 'into', 'is', 'it', 'its', 'just', 'may', 'me', 'might', 'mine', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'onto', 'or', 'other', 'our', 'out', 'over', 'own', 'per', 'same', 'shall', 'should', 'so', 'some', 'such', 'than', 'that', 'the', 'then', 'there', 'these', 'this', 'those', 'to', 'under', 'up', 'use', 'used', 'using', 'very', 'via', 'was', 'we', 'were', 'what', 'when', 'where', 'which', 'who', 'whom', 'why', 'will', 'with', 'would', 'you', 'your'])
+
+_SUG_USAGE_HEADING_RE = re.compile('^(when\\s+to\\s+use|use\\s+this\\s+skill\\b|use\\s+cases?\\b|when\\s+to\\s+activate|trigger\\s+(phrases?|conditions?)\\b|how\\s+to\\s+(use|activate)\\s+this\\s+skill)', re.I)
+_SUG_EXCLUSION_HEADING_RE = re.compile('^(do\\s*not\\s*use|don.t\\s*use|when\\s+not\\s+to\\s+(use|activate)|out\\s+of\\s+scope|not\\s+for\\b|avoid\\s+this\\s+skill|avoid\\s+(when|if))', re.I)
+_SUG_USAGE_SENTENCE_RE = re.compile('\\buse\\s+(?:this\\s+skill\\s+|it\\s+)?(when|for|if)\\b', re.I)
+_SUG_EXCLUSION_SENTENCE_RE = re.compile('\\b(do\\s*not\\s*use|don.t\\s*use|not\\s+for|avoid\\s+(when|if)|out\\s+of\\s+scope)\\b', re.I)
+_SUG_HEADING_LINE_RE = re.compile('^(#{1,6})\\s*(.+?)\\s*$')
+_SUG_BULLET_LINE_RE = re.compile('^\\s*(?:[-*•]|\\d+[.)])\\s+(.*)$')
+_SUG_MD_LINK_RE = re.compile('\\[([^\\]]*)\\]\\([^)]*\\)')
+_SUG_MD_CODE_RE = re.compile('`([^`]*)`')
+_SUG_MD_EMPHASIS_RE = re.compile('[*_~>#]{1,3}')
+_SUG_PAREN_RE = re.compile('\\([^)]*\\)')
+_SUG_LEADING_NUMBERING_RE = re.compile('^\\d+[.)]\\s*')
+_SUG_SENTENCE_SPLIT_RE = re.compile('(?<=[.!?])\\s+|\\n+')
+
+def _sug_clean_markdown(text):
+    text = _SUG_MD_LINK_RE.sub(r"\1", text)
+    text = _SUG_MD_CODE_RE.sub(r"\1", text)
+    text = _SUG_MD_EMPHASIS_RE.sub("", text)
+    text = _SUG_BULLET_LINE_RE.sub(r"\1", text)
+    return text.strip()
+
+def _sug_normalize_heading(heading):
+    h = _sug_clean_markdown(heading or "")
+    h = _SUG_LEADING_NUMBERING_RE.sub("", h)
+    return h.strip().rstrip(":").strip()
+
+def _sug_split_sentences(text):
+    text = _sug_clean_markdown(text or "")
+    return [p.strip() for p in _SUG_SENTENCE_SPLIT_RE.split(text) if p.strip()]
+
+def _sug_split_sections(body):
+    """[(heading_or_None, [content_line, ...]), ...] — index 0 always has heading None (the
+    content, if any, before the first markdown heading)."""
+    sections = []
+    cur_heading = None
+    cur_lines = []
+    for line in (body or "").splitlines():
+        m = _SUG_HEADING_LINE_RE.match(line.strip())
+        if m:
+            sections.append((cur_heading, cur_lines))
+            cur_heading = m.group(2).strip()
+            cur_lines = []
+        else:
+            cur_lines.append(line)
+    sections.append((cur_heading, cur_lines))
+    return sections
+
+def _sug_sections_with_description(body, description):
+    sections = _sug_split_sections(body)
+    lead = [description] if description else []
+    sections[0] = (sections[0][0], lead + sections[0][1])
+    return sections
+
+def _sug_extract_items(content):
+    """Bullet items if the section has bullets, else sentence-split paragraph text."""
+    lines = [l for l in content.splitlines() if l.strip()]
+    bullets = []
+    for l in lines:
+        m = _SUG_BULLET_LINE_RE.match(l)
+        if m:
+            bullets.append(_sug_clean_markdown(m.group(1)))
+    if bullets:
+        return bullets
+    return _sug_split_sentences(content)
+
+def _sug_cue_remainder(text, cue_re):
+    """Text after the last word of the cue match to the end of the sentence — "Use when X" ->
+    "X"; "Do NOT use for Y (Z)" -> "Y (Z)" (the parenthetical is stripped later, in
+    `_sug_finalize_phrase`)."""
+    m = cue_re.search(text)
+    if not m:
+        return ""
+    return text[m.end():].strip(" \t-:—")
+
+def _sug_finalize_phrase(raw, seen_tokenforms, min_content_tokens=1):
+    """Clean, cap, dedupe-by-tokenized-form. Returns None if the phrase should be dropped.
+
+    `min_content_tokens` (non-stopword tokens required) defaults to 1 for `triggers`, which only
+    feed BM25F soft scoring. `negative_triggers` callers pass 2: the router's hard filter
+    (`Router.policy_filter`) matches a negative trigger by unordered token-SET containment, not
+    phrase or substring match, and has no length floor of its own — a phrase with only one
+    non-stopword token plus common connectives is a real hard-drop hazard. Requiring 2
+    independent content tokens makes an accidental full-set match far less likely."""
+    raw = _SUG_PAREN_RE.sub("", raw or "")
+    raw = raw.strip(" \t.,:;!-—")
+    if not raw:
+        return None
+    raw = re.split(r"\s+or\s+|;", raw, maxsplit=1)[0].strip()
+    toks = tokenize(raw)
+    if len(toks) <= _SUG_MIN_PHRASE_TOKENS - 1:
+        return None
+    if sum(1 for t in toks if t not in _SUG_STOPWORDS) < min_content_tokens:
+        return None
+    if len(toks) > _SUG_MAX_PHRASE_TOKENS:
+        toks = toks[:_SUG_MAX_PHRASE_TOKENS]
+        raw = " ".join(toks)
+        if len(toks) <= _SUG_MIN_PHRASE_TOKENS - 1:
+            return None
+        if sum(1 for t in toks if t not in _SUG_STOPWORDS) < min_content_tokens:
+            return None
+    key = tuple(toks)
+    if key in seen_tokenforms:
+        return None
+    seen_tokenforms.add(key)
+    return raw
+
+def _sug_mine_skill(body, description):
+    """Mine one skill's triggers/negative_triggers. Returns
+    (triggers, trig_prov, neg, neg_prov) where each `*_prov` entry is
+    {"phrase", "rule", "heading", "derived": True, "evidence"} — `evidence` is the original,
+    uncleaned bullet/sentence text the phrase came from, captured here at extraction time (never
+    reconstructed after the fact by re-searching the body)."""
+    sections = _sug_sections_with_description(body or "", description or "")
+
+    triggers, trig_prov = [], []
+    neg, neg_prov = [], []
+    seen_trig_forms, seen_neg_forms = set(), set()
+
+    for heading, lines in sections:
+        content = "\n".join(lines)
+        h_norm = _sug_normalize_heading(heading) if heading else None
+        is_usage = bool(h_norm) and bool(_SUG_USAGE_HEADING_RE.search(h_norm))
+        is_exclusion = bool(h_norm) and bool(_SUG_EXCLUSION_HEADING_RE.search(h_norm))
+
+        if is_usage and len(triggers) < _SUG_TRIGGERS_CAP:
+            for item in _sug_extract_items(content):
+                if len(triggers) >= _SUG_TRIGGERS_CAP:
+                    break
+                # A combined heading ("When to use / when NOT to use") is `is_usage` only, but its
+                # bullet items can still individually be "do not use ..." — reroute those to
+                # negative_triggers instead of mislabelling them as triggers.
+                if len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP and _SUG_EXCLUSION_SENTENCE_RE.search(item):
+                    cleaned = _sug_cue_remainder(item, _SUG_EXCLUSION_SENTENCE_RE) or item
+                    phrase = _sug_finalize_phrase(cleaned, seen_neg_forms, min_content_tokens=2)
+                    if phrase:
+                        neg.append(phrase)
+                        neg_prov.append({"phrase": phrase, "rule": "section_mining",
+                                          "heading": heading, "derived": True, "evidence": item[:200]})
+                    continue
+                cleaned = _sug_cue_remainder(item, _SUG_USAGE_SENTENCE_RE) or item
+                phrase = _sug_finalize_phrase(cleaned, seen_trig_forms)
+                if phrase:
+                    triggers.append(phrase)
+                    trig_prov.append({"phrase": phrase, "rule": "section_mining",
+                                       "heading": heading, "derived": True, "evidence": item[:200]})
+
+        if is_exclusion and len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP:
+            for item in _sug_extract_items(content):
+                if len(neg) >= _SUG_NEGATIVE_TRIGGERS_CAP:
+                    break
+                cleaned = _sug_cue_remainder(item, _SUG_EXCLUSION_SENTENCE_RE) or item
+                phrase = _sug_finalize_phrase(cleaned, seen_neg_forms, min_content_tokens=2)
+                if phrase:
+                    neg.append(phrase)
+                    neg_prov.append({"phrase": phrase, "rule": "section_mining",
+                                      "heading": heading, "derived": True, "evidence": item[:200]})
+
+        # Sentence-level usage/exclusion cues in *unheaded* prose.
+        if h_norm is None:
+            for sentence in _sug_split_sentences(content):
+                # Exclusion is checked FIRST and is exclusive with usage for the same sentence:
+                # "Do not use for X" contains the literal substring "use for" that the usage
+                # regex also matches, with no negation-awareness of its own.
+                is_excl_sentence = bool(_SUG_EXCLUSION_SENTENCE_RE.search(sentence))
+                if len(triggers) < _SUG_TRIGGERS_CAP and not is_excl_sentence and _SUG_USAGE_SENTENCE_RE.search(sentence):
+                    phrase = _sug_finalize_phrase(_sug_cue_remainder(sentence, _SUG_USAGE_SENTENCE_RE), seen_trig_forms)
+                    if phrase:
+                        triggers.append(phrase)
+                        trig_prov.append({"phrase": phrase, "rule": "sentence_mining",
+                                           "heading": None, "derived": True, "evidence": sentence[:200]})
+                if len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP and is_excl_sentence:
+                    phrase = _sug_finalize_phrase(
+                        _sug_cue_remainder(sentence, _SUG_EXCLUSION_SENTENCE_RE), seen_neg_forms, min_content_tokens=2
+                    )
+                    if phrase:
+                        neg.append(phrase)
+                        neg_prov.append({"phrase": phrase, "rule": "sentence_mining",
+                                          "heading": None, "derived": True, "evidence": sentence[:200]})
+
+    return triggers, trig_prov, neg, neg_prov
+
+def _sug_derive(skills):
+    """skills: [{"id":..., "description":..., "body":..., "triggers": [...], "negative_triggers":
+    [...]}, ...] -> {id: {"triggers":[...], "trig_prov":[...], "negative_triggers":[...],
+    "neg_prov":[...]}}.
+
+    Mirrors tools/enrich/derive.py's own merge for these two fields: existing fields win (kept
+    verbatim, provenance rule "existing"), derived phrases are appended up to the cap, then a
+    corpus-wide boilerplate guard drops any *derived* negative_trigger phrase that recurs (by
+    tokenized form) in more skills than max(_SUG_NEG_BOILERPLATE_MIN_SKILLS,
+    _SUG_NEG_BOILERPLATE_FRACTION * n_corpus) — a phrase identical across dozens of otherwise
+    unrelated skills is boilerplate from a shared authoring template, not skill-specific signal,
+    and `negative_triggers` is a hard filter (no length floor) so repeating it everywhere is a
+    precision hazard out of proportion to its provenance. Only derived phrases are ever removed;
+    an authored phrase repeated by its own author is left alone (rule: existing fields win)."""
+    by_id = {str(s["id"]): s for s in skills}
+    mined = {sid: _sug_mine_skill(s.get("body") or "", s.get("description") or "") for sid, s in by_id.items()}
+    results = {sid: {"triggers": [], "trig_prov": [], "negative_triggers": [], "neg_prov": []} for sid in by_id}
+
+    for sid, s in by_id.items():
+        r = results[sid]
+        m_triggers, m_trig_prov, m_neg, m_neg_prov = mined[sid]
+        existing_trig = [str(x) for x in (s.get("triggers") or [])]
+        existing_neg = [str(x) for x in (s.get("negative_triggers") or [])]
+        seen_trig_forms = {tuple(tokenize(x)) for x in existing_trig}
+        seen_neg_forms = {tuple(tokenize(x)) for x in existing_neg}
+
+        r["triggers"].extend(existing_trig)
+        r["trig_prov"].extend(
+            {"phrase": x, "rule": "existing", "heading": None, "derived": False, "evidence": None}
+            for x in existing_trig)
+        for phrase, prov in zip(m_triggers, m_trig_prov):
+            if len(r["triggers"]) >= _SUG_TRIGGERS_CAP:
+                break
+            if tuple(tokenize(phrase)) in seen_trig_forms:
+                continue
+            seen_trig_forms.add(tuple(tokenize(phrase)))
+            r["triggers"].append(phrase)
+            r["trig_prov"].append(prov)
+
+        r["negative_triggers"].extend(existing_neg)
+        r["neg_prov"].extend(
+            {"phrase": x, "rule": "existing", "heading": None, "derived": False, "evidence": None}
+            for x in existing_neg)
+        for phrase, prov in zip(m_neg, m_neg_prov):
+            if len(r["negative_triggers"]) >= _SUG_NEGATIVE_TRIGGERS_CAP:
+                break
+            if tuple(tokenize(phrase)) in seen_neg_forms:
+                continue
+            seen_neg_forms.add(tuple(tokenize(phrase)))
+            r["negative_triggers"].append(phrase)
+            r["neg_prov"].append(prov)
+
+    if by_id:
+        form_skill_counts = {}
+        for r in results.values():
+            seen_forms_this_skill = set()
+            for prov in r["neg_prov"]:
+                if not prov.get("derived"):
+                    continue
+                key = tuple(tokenize(prov["phrase"]))
+                if key in seen_forms_this_skill:
+                    continue
+                seen_forms_this_skill.add(key)
+                form_skill_counts[key] = form_skill_counts.get(key, 0) + 1
+        threshold = max(_SUG_NEG_BOILERPLATE_MIN_SKILLS, _SUG_NEG_BOILERPLATE_FRACTION * len(by_id))
+        boilerplate_forms = {k for k, n in form_skill_counts.items() if n > threshold}
+        if boilerplate_forms:
+            for r in results.values():
+                kept_phrases, kept_prov = [], []
+                for phrase, prov in zip(r["negative_triggers"], r["neg_prov"]):
+                    if prov.get("derived") and tuple(tokenize(phrase)) in boilerplate_forms:
+                        continue
+                    kept_phrases.append(phrase)
+                    kept_prov.append(prov)
+                r["negative_triggers"] = kept_phrases
+                r["neg_prov"] = kept_prov
+
+    return results
+
+def _validate_suggestions(root, cfg, skills):
+    """skills: the (dir, node, frontmatter) tuples `_validate_errors` already produced via
+    `all_skills()`. Mines the WHOLE corpus (the negative_triggers boilerplate guard in
+    `_sug_derive` needs every skill's derived phrases to compute cross-skill frequency, not just
+    the ones missing a field) and returns a suggestion dict for every skill missing `triggers`
+    and/or `negative_triggers`, sorted by URN. Suggestions are data only — nothing here writes to
+    a SKILL.md."""
+    skill_dicts = []
+    meta = {}
+    for d, node, fm in skills:
+        u = urn(cfg, node, d.name)
+        md = fm.get("metadata") or {}
+        body = (d / "SKILL.md").read_text(errors="ignore")
+        existing_trig = md_phrases(md, "triggers")
+        existing_neg = md_phrases(md, "negative_triggers")
+        skill_dicts.append({
+            "id": u, "description": fm.get("description", ""), "body": body,
+            "triggers": existing_trig, "negative_triggers": existing_neg,
+        })
+        meta[u] = {"node": node, "missing_triggers": not existing_trig,
+                   "missing_negative_triggers": not existing_neg}
+
+    enrichment = _sug_derive(skill_dicts)
+    suggestions = []
+    for u in sorted(meta):
+        info = meta[u]
+        if not (info["missing_triggers"] or info["missing_negative_triggers"]):
+            continue
+        enr = enrichment.get(u) or {}
+        sug_triggers, sug_neg = [], []
+        if info["missing_triggers"]:
+            for phrase, prov in zip(enr.get("triggers", []), enr.get("trig_prov", [])):
+                if prov.get("derived"):
+                    sug_triggers.append({"phrase": phrase, "heading": prov.get("heading"),
+                                          "rule": prov.get("rule"), "evidence": prov.get("evidence")})
+        if info["missing_negative_triggers"]:
+            for phrase, prov in zip(enr.get("negative_triggers", []), enr.get("neg_prov", [])):
+                if prov.get("derived"):
+                    sug_neg.append({"phrase": phrase, "heading": prov.get("heading"),
+                                     "rule": prov.get("rule"), "evidence": prov.get("evidence")})
+
+        fm_lines = ["metadata:"]
+        if sug_triggers:
+            fm_lines.append('  triggers: "' + ", ".join(s["phrase"] for s in sug_triggers) + '"')
+        if sug_neg:
+            fm_lines.append('  negative_triggers: "' + ", ".join(s["phrase"] for s in sug_neg) + '"')
+
+        suggestions.append({
+            "urn": u, "node": info["node"],
+            "missing_triggers": info["missing_triggers"],
+            "missing_negative_triggers": info["missing_negative_triggers"],
+            "suggested_triggers": sug_triggers,
+            "suggested_negative_triggers": sug_neg,
+            "frontmatter_block": "\n".join(fm_lines) if len(fm_lines) > 1 else None,
+            "found_nothing": not sug_triggers and not sug_neg,
+        })
+    return suggestions
+
+def _sug_print_text(suggestions):
+    """Plain-text rendering for `validate --suggest` (no --json). Ends with the one-line summary
+    'N skills without triggers; run with --suggest' the brief specifies -- printed only here,
+    inside --suggest's own output, never on the default `validate` path: on the fixture today 14
+    of 26 real skills lack `negative_triggers` (N != 0), so adding any line to the default output
+    would break the byte-identical guarantee `tests/test_validate.py` / the fixture-validate CI
+    job depend on."""
+    missing_triggers_count = sum(1 for s in suggestions if s["missing_triggers"])
+    if not suggestions:
+        print("guidefold validate --suggest: no skill is missing triggers or negative_triggers")
+        return
+    print("--- F5 trigger/negative_trigger suggestions (deterministic; suggestions only, never written to files) ---")
+    for s in suggestions:
+        print()
+        print(f"{s['urn']} (node {s['node']})")
+        missing = []
+        if s["missing_triggers"]:
+            missing.append("triggers")
+        if s["missing_negative_triggers"]:
+            missing.append("negative_triggers")
+        print(f"  missing: {', '.join(missing)}")
+        if s["found_nothing"]:
+            print('  no usage/exclusion material found to derive from -- add a "## When to use '
+                  '/ when NOT to use" section, or write these fields by hand')
+            continue
+        for item in s["suggested_triggers"]:
+            print(f"  + trigger \"{item['phrase']}\"")
+            print(f"      <- \"{item['evidence']}\"")
+        for item in s["suggested_negative_triggers"]:
+            print(f"  + negative_trigger \"{item['phrase']}\"")
+            print(f"      <- \"{item['evidence']}\"")
+        if s["frontmatter_block"]:
+            print("  paste into metadata:")
+            for line in s["frontmatter_block"].splitlines():
+                print(f"    {line}")
+    print()
+    print(f"{missing_triggers_count} skills without triggers; run with --suggest")
+
 def cmd_validate(a, root, cfg):
     skills, errors = _validate_errors(root, cfg)
+    if getattr(a, "suggest", False):
+        suggestions = _validate_suggestions(root, cfg, skills)
+        if getattr(a, "json", False):
+            print(json.dumps({
+                "skill_count": len(skills), "error_count": len(errors), "errors": errors,
+                "missing_triggers_count": sum(1 for s in suggestions if s["missing_triggers"]),
+                "suggestions": suggestions,
+            }, indent=2, sort_keys=True))
+        else:
+            for e in errors:
+                print("ERROR", e)
+            print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
+            print()
+            _sug_print_text(suggestions)
+        sys.exit(1 if errors else 0)
     for e in errors:
         print("ERROR", e)
     print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
@@ -2888,6 +3278,518 @@ def _validate_errors(root, cfg):
     refines_graph = {u: [r for r in md_list(fm.get("metadata") or {}, "refines") if r in urns] for u, fm in urns.items()}
     check_cycles(refines_graph, "refines", errors)
     return skills, errors
+
+# ------------------------------------------------------------------------------------------
+# E7.5: `guidefold eval` -- ports tools/eval/metrics.py's pure functions (prefixed `_eval_`)
+# and tools/eval/run_golden.py's Router call pattern into the CLI, so a consumer monorepo gets
+# the quality gate without a second, hidden ranking/metrics implementation living outside the
+# CLI. Parity with tools/eval/{metrics,run_golden}.py is verified in tests/test_eval.py to 4
+# decimal places on the 220-case golden set; see docs/CONVENTIONS.md for what diverges and why.
+_EVAL_MUST_BE_FIRST = 3
+_EVAL_MUST_BE_IN_TOP_K = 2
+_EVAL_RETRIEVAL_K = 10          # >= the largest k any metric slices (nDCG@10); matches
+                                # tools/eval/run_golden.py's EVAL_K.
+
+
+def _eval_graded(case):
+    return {r["urn"]: int(r["grade"]) for r in case.get("relevant") or []}
+
+
+def _eval_distractors(case):
+    return {d["urn"] for d in case.get("distractors") or []}
+
+
+def _eval_is_abstention_case(case):
+    """True when the correct behaviour is to return nothing."""
+    return not (case.get("relevant") or [])
+
+
+def _eval_hit_at_1(ranked, case):
+    if not ranked:
+        return 0.0
+    return 1.0 if _eval_graded(case).get(ranked[0], 0) >= _EVAL_MUST_BE_IN_TOP_K else 0.0
+
+
+def _eval_recall_at_k(ranked, case, k=8):
+    required = {u for u, g in _eval_graded(case).items() if g >= _EVAL_MUST_BE_IN_TOP_K}
+    if not required:
+        return float("nan")            # undefined for abstention cases; caller filters these out
+    return len(required & set(ranked[:k])) / len(required)
+
+
+def _eval_ndcg_at_k(ranked, case, k=10):
+    import math
+    rel = _eval_graded(case)
+    if not rel:
+        return float("nan")
+    dcg = sum((2 ** rel.get(u, 0) - 1) / math.log2(i + 2) for i, u in enumerate(ranked[:k]))
+    ideal = sum((2 ** g - 1) / math.log2(i + 2)
+                for i, g in enumerate(sorted(rel.values(), reverse=True)[:k]))
+    return dcg / ideal if ideal else float("nan")
+
+
+def _eval_completeness_at_k(ranked, case, k=4):
+    must = {u for u, g in _eval_graded(case).items() if g >= _EVAL_MUST_BE_FIRST}
+    if not must:
+        return float("nan")
+    return 1.0 if must <= set(ranked[:k]) else 0.0
+
+
+def _eval_all_required_at_k(ranked, case, k=4):
+    required = {u for u, g in _eval_graded(case).items() if g >= _EVAL_MUST_BE_IN_TOP_K}
+    if not required:
+        return float("nan")
+    return 1.0 if required <= set(ranked[:k]) else 0.0
+
+
+def _eval_distractor_rate(ranked, case, k=4):
+    d = _eval_distractors(case)
+    if not d:
+        return float("nan")
+    return 1.0 if d & set(ranked[:k]) else 0.0
+
+
+def _eval_abstention_counts(ranked, case):
+    """(tp, fp, fn, tn) treating "the router returned nothing" as the positive class."""
+    abstained = not ranked
+    should = _eval_is_abstention_case(case)
+    return (
+        int(abstained and should),
+        int(abstained and not should),
+        int(not abstained and should),
+        int(not abstained and not should),
+    )
+
+
+def _eval_mean(xs):
+    import math
+    vals = [x for x in xs if not math.isnan(x)]
+    return sum(vals) / len(vals) if vals else float("nan")
+
+
+def _eval_evaluate(results, k_cards=4):
+    """Aggregate every metric over `(ranked_urns, case)` pairs. Ranking metrics are
+    macro-averaged over the cases where they are defined; abstained queries are excluded from
+    them (an abstention is scored on its own axis, never as a ranking failure of 0)."""
+    tp = fp = fn = tn = 0
+    answerable = [(r, c) for r, c in results if not _eval_is_abstention_case(c)]
+    answered = [(r, c) for r, c in answerable if r]
+    for ranked, case in results:
+        ta, fpa, fna, tna = _eval_abstention_counts(ranked, case)
+        tp += ta; fp += fpa; fn += fna; tn += tna
+    return {
+        "n": len(results),
+        "n_answerable": len(answerable),
+        "n_answered": len(answered),
+        "hit@1": _eval_mean(_eval_hit_at_1(r, c) for r, c in answered),
+        "recall@8": _eval_mean(_eval_recall_at_k(r, c, 8) for r, c in answered),
+        "ndcg@10": _eval_mean(_eval_ndcg_at_k(r, c, 10) for r, c in answered),
+        f"completeness@{k_cards}": _eval_mean(_eval_completeness_at_k(r, c, k_cards) for r, c in answered),
+        f"all_required@{k_cards}": _eval_mean(_eval_all_required_at_k(r, c, k_cards) for r, c in answered),
+        f"distractor_rate@{k_cards}": _eval_mean(_eval_distractor_rate(r, c, k_cards) for r, c in results if r),
+        "abstention_precision": tp / (tp + fp) if (tp + fp) else float("nan"),
+        "abstention_recall": tp / (tp + fn) if (tp + fn) else float("nan"),
+        "coverage": len(answered) / len(answerable) if answerable else float("nan"),
+    }
+
+
+def _eval_by_category(results, k_cards=4):
+    """Per-stratum breakdown -- an overall number hides exactly the regressions that matter."""
+    buckets = {}
+    for ranked, case in results:
+        buckets.setdefault(case.get("category", "unknown"), []).append((ranked, case))
+    return {cat: _eval_evaluate(rs, k_cards) for cat, rs in sorted(buckets.items())}
+
+
+def _eval_format_table(overall, per_cat, k_cards=4):
+    import math
+    cols = ["n", "hit@1", "recall@8", "ndcg@10", f"completeness@{k_cards}", f"all_required@{k_cards}",
+            f"distractor_rate@{k_cards}", "abstention_precision"]
+    head = f"{'stratum':<20}" + "".join(f"{c:>22}" for c in cols)
+    lines = [head, "-" * len(head)]
+    for name, m in list(per_cat.items()) + [("OVERALL", overall)]:
+        row = f"{name:<20}"
+        for c in cols:
+            v = m.get(c, float("nan"))
+            row += f"{v:>22}" if isinstance(v, int) else (
+                f"{chr(8212):>22}" if isinstance(v, float) and math.isnan(v) else f"{v:>22.4f}")
+        lines.append(row)
+    return "\n".join(lines)
+
+
+def _eval_json_safe(m):
+    import math
+    return {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in m.items()}
+
+
+def _eval_load_queries(path):
+    """Load cases from `--queries`. Three accepted shapes:
+
+    - a directory: every `*.yaml`/`*.yml` inside, golden schema (tests/golden/README.md) --
+      `version`/`category`/`cases`, category copied down onto each case. Generalises
+      tools/eval/run_golden.py's hardcoded 5-file CATEGORY_FILES list to "every golden file in
+      the directory", so any consumer's own golden set works unmodified.
+    - a single `.yaml`/`.yml` file: same golden schema, one category.
+    - a single `.jsonl` file: the minimal unlabelled format -- one `{"query": ..., "node": ...}`
+      object per line, no `relevant`/`distractors`. Yields exposure metrics only (no
+      hit@1/recall/ndcg/all_required/distractor_rate -- those need graded labels).
+
+    Returns (cases, mode) where mode is "golden" or "unlabelled".
+    """
+    import yaml
+    p = Path(path)
+    cases = []
+
+    def _load_golden_file(f):
+        doc = yaml.safe_load(f.read_text()) or {}
+        category = doc.get("category", f.stem)
+        for c in doc.get("cases", []):
+            c = dict(c)
+            c.setdefault("category", category)
+            cases.append(c)
+
+    if p.is_dir():
+        files = sorted(x for x in p.iterdir() if x.suffix in (".yaml", ".yml"))
+        if not files:
+            sys.exit(f"guidefold eval: no .yaml/.yml files found under {p}")
+        for f in files:
+            _load_golden_file(f)
+        mode = "golden"
+    elif p.suffix in (".yaml", ".yml"):
+        if not p.exists():
+            sys.exit(f"guidefold eval: --queries file not found: {p}")
+        _load_golden_file(p)
+        mode = "golden"
+    elif p.suffix == ".jsonl":
+        if not p.exists():
+            sys.exit(f"guidefold eval: --queries file not found: {p}")
+        mode = "unlabelled"
+        for i, line in enumerate(p.read_text().splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            obj = dict(json.loads(line))
+            obj.setdefault("id", f"case_{i}")
+            obj.setdefault("category", "unlabelled")
+            cases.append(obj)
+    else:
+        sys.exit(f"guidefold eval: --queries must be a directory of golden *.yaml files, a "
+                 f"single .yaml/.yml file, or a .jsonl file of unlabelled {{query, node}} "
+                 f"objects (got {p})")
+    if not cases:
+        sys.exit(f"guidefold eval: no cases loaded from {p}")
+    return cases, mode
+
+
+def _eval_run_cases(router, cases, k_cards=4, retrieval_k=_EVAL_RETRIEVAL_K):
+    """Mirrors tools/eval/run_golden.py's run_cases() exactly: two orderings, because
+    Router.score (retrieval, best-match-first) and Router.select (injection, general-to-specific,
+    <=k_cards, admissible-gated per ADR-0022) answer different questions. Conflating them
+    understated hit@1 by ~64 points against the Meridian fixture (PR #9) -- both are always
+    computed and reported, never just one."""
+    retrieval, injection = [], []
+    for c in cases:
+        cands = router.candidates(c["query"], c["node"])
+        scored = router.score(cands, c["query"], c["node"])
+        retrieval.append(([s["urn"] for s in scored[:retrieval_k]], c))
+        # ADR-0022: the same admissibility decision governs candidates and select's dependency
+        # expansion -- exactly what route() does, spelled out here because eval needs both the
+        # retrieval and injection lists separately, which route() does not expose.
+        admissible, _ = router.policy_filter(c["node"], c["query"])
+        injection.append(([r["urn"] for r in router.select(scored, k=k_cards, admissible=set(admissible))], c))
+    return retrieval, injection
+
+
+def _eval_per_case_metrics(retrieval, injection, k_cards):
+    """Per-case values for exactly the three metrics `--gate` compares (hit@1, all_required@k,
+    distractor_rate@k) -- enough for a paired bootstrap CI keyed by case id. A metric is present
+    for a case only when it was actually counted into the matching `_eval_evaluate` aggregate
+    (same answerable/answered/`if r` gating as `_eval_evaluate` above), so the per-case mean
+    always reconciles with the overall mean. NaN (e.g. all_required@k on a case whose relevant
+    items are all grade-1, or distractor_rate@k on a case with no distractors listed) is left out
+    of the entry entirely -- "undefined for this case", the same convention _eval_mean uses, and
+    the only way to keep NaN out of both the baseline JSON (a raw NaN is not valid JSON) and the
+    bootstrap CI (a single NaN pair silently poisons every resampled mean)."""
+    import math
+
+    def _put(entry, key, value):
+        if not (isinstance(value, float) and math.isnan(value)):
+            entry[key] = value
+
+    out = {}
+    for (r, c), (rinj, _c2) in zip(retrieval, injection):
+        cid = str(c.get("id") or c.get("query"))
+        entry = {"category": c.get("category", "unknown")}
+        if not _eval_is_abstention_case(c) and r:
+            _put(entry, "hit@1", _eval_hit_at_1(r, c))
+        if not _eval_is_abstention_case(c) and rinj:
+            _put(entry, f"all_required@{k_cards}", _eval_all_required_at_k(rinj, c, k_cards))
+        if rinj:
+            _put(entry, f"distractor_rate@{k_cards}", _eval_distractor_rate(rinj, c, k_cards))
+        out[cid] = entry
+    return out
+
+
+def _eval_index_checksum(idx):
+    import hashlib
+    payload = json.dumps({"cards": sorted(idx.cards.items()), "weights": idx.weights},
+                          sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _eval_query_file_sha256(path):
+    """sha256 of every file under --queries, concatenated in the same sorted order they were
+    loaded in -- so a baseline records exactly which query bytes it was measured against."""
+    import hashlib
+    p = Path(path)
+    h = hashlib.sha256()
+    if p.is_dir():
+        for f in sorted(x for x in p.iterdir() if x.suffix in (".yaml", ".yml")):
+            h.update(f.read_bytes())
+    else:
+        h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def _eval_bootstrap_ci(pairs, resamples=1000, seed=0):
+    """Paired bootstrap 95% CI on mean(current) - mean(baseline), resampling case pairs with
+    replacement. stdlib `random` only, fixed seed (0) for determinism. This is diagnostic --
+    noise vs signal, printed next to the delta -- the gate itself never reads it, only the point
+    estimate vs its margin (docs/CONVENTIONS.md)."""
+    import random
+    pairs = [(float(b), float(c)) for b, c in pairs]
+    n = len(pairs)
+    if n == 0:
+        nan = float("nan")
+        return {"n": 0, "delta": nan, "ci_lo": nan, "ci_hi": nan}
+    rng = random.Random(seed)
+    point_delta = (sum(c for _, c in pairs) / n) - (sum(b for b, _ in pairs) / n)
+    deltas = []
+    for _ in range(resamples):
+        sample = [pairs[rng.randrange(n)] for _ in range(n)]
+        mb = sum(b for b, _ in sample) / n
+        mc = sum(c for _, c in sample) / n
+        deltas.append(mc - mb)
+    deltas.sort()
+    lo_idx = int(resamples * 0.025)
+    hi_idx = min(int(resamples * 0.975), resamples - 1)
+    return {"n": n, "delta": point_delta, "ci_lo": deltas[lo_idx], "ci_hi": deltas[hi_idx]}
+
+
+def _eval_compare_to_baseline(overall, per_case, baseline, k_cards, margins):
+    """Compares `overall`/`per_case` (current run) to a `--write-baseline` JSON payload. Returns
+    (problems, lines): `problems` empty iff the gate should pass. Only three metrics are gated --
+    hit@1 / all_required@k dropping, or distractor_rate@k rising, beyond `margins` (fractions,
+    e.g. 0.01 == 1.0pp) -- matching DENSE-PROGRAM Sec5's guardrails."""
+    base_overall = baseline.get("overall") or {}
+    base_per_case = baseline.get("per_case") or {}
+    gated = (
+        ("hit@1", "higher", margins["hit_at_1"]),
+        (f"all_required@{k_cards}", "higher", margins["all_required"]),
+        (f"distractor_rate@{k_cards}", "lower", margins["distractor_rate"]),
+    )
+    import math
+    problems, lines = [], []
+    for metric, direction, margin in gated:
+        cur_v, base_v = overall.get(metric), base_overall.get(metric)
+        if (cur_v is None or (isinstance(cur_v, float) and math.isnan(cur_v))
+                or base_v is None or (isinstance(base_v, float) and math.isnan(base_v))):
+            lines.append(f"{metric}: undefined in current or baseline run -- skipped")
+            continue
+        delta = cur_v - base_v
+        pairs = []
+        for cid, cur_entry in per_case.items():
+            if metric not in cur_entry:
+                continue
+            base_entry = base_per_case.get(cid)
+            if not base_entry or metric not in base_entry:
+                continue
+            pairs.append((base_entry[metric], cur_entry[metric]))
+        ci = _eval_bootstrap_ci(pairs)
+        lines.append(
+            f"{metric}: {cur_v:.4f} vs baseline {base_v:.4f} (delta {delta:+.4f}, "
+            f"95% CI [{ci['ci_lo']:+.4f}, {ci['ci_hi']:+.4f}] over {ci['n']} paired cases)"
+        )
+        if direction == "higher" and delta < -margin:
+            problems.append(f"{metric} dropped by {-delta:.4f} (margin {margin:.4f})")
+        elif direction == "lower" and delta > margin:
+            problems.append(f"{metric} rose by {delta:.4f} (margin {margin:.4f})")
+    return problems, lines
+
+
+def _eval_exposure_report(router, cases, k_cards=4):
+    """Unlabelled --queries (.jsonl of {query, node}): no relevant/distractors means the graded
+    metrics above are undefined for every case, so this reports what the router actually surfaces
+    instead -- abstention rate, average cards returned, and which skills got exposure. Useful to
+    sanity-check a new query set before labelling it, or to watch for a skill going dark."""
+    n = len(cases)
+    n_abstained = 0
+    total_cards = 0
+    urn_counts = {}
+    per_case = {}
+    for c in cases:
+        cid = str(c.get("id") or c.get("query"))
+        cands = router.candidates(c["query"], c["node"])
+        scored = router.score(cands, c["query"], c["node"])
+        admissible, _ = router.policy_filter(c["node"], c["query"])
+        selected = router.select(scored, k=k_cards, admissible=set(admissible))
+        urns = [s["urn"] for s in selected]
+        if not urns:
+            n_abstained += 1
+        total_cards += len(urns)
+        for u in urns:
+            urn_counts[u] = urn_counts.get(u, 0) + 1
+        per_case[cid] = {"category": c.get("category", "unlabelled"), "n_cards": len(urns),
+                          "top_urn": urns[0] if urns else None}
+    report = {
+        "n": n,
+        "n_abstained": n_abstained,
+        "abstain_rate": n_abstained / n if n else float("nan"),
+        "coverage": (n - n_abstained) / n if n else float("nan"),
+        "avg_cards_returned": total_cards / n if n else float("nan"),
+        "top_skills": sorted(urn_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:20],
+    }
+    return report, per_case
+
+
+def cmd_eval(a, root, cfg):
+    """E7.5: run every query in `--queries` through the exact product path
+    (policy_filter -> candidates -> score -> select(admissible=...), ADR-0022) and report the
+    same metrics tools/eval/metrics.py defines, ported here as the `_eval_*` functions above
+    (verified in tests/test_eval.py to 4 decimal places against tools/eval/run_golden.py on the
+    220-case golden set) so a consumer monorepo gets the quality gate without a second ranking/
+    metrics implementation living outside the CLI.
+
+    Retrieval (Router.score order) gives hit@1/recall@8/ndcg@10 -- "did ranking put the right
+    skills on top". Injection (the <=k cards Router.select actually emits, admissible-gated)
+    gives completeness@k/all_required@k/distractor_rate@k *and* abstention_precision/
+    abstention_recall/n_answered/coverage -- "did the agent's actual cards hold the whole
+    answer, no distractor, and did the router correctly say nothing when it should". Reading
+    abstention/coverage from injection rather than retrieval is a deliberate, documented
+    widening of tools/eval/run_golden.py's own overwrite (which only re-sources
+    completeness@4/distractor_rate@4 from injection, leaving abstention on the retrieval list):
+    a retrieval list is empty only when candidates() found nothing, so abstention computed on it
+    misses every case where select()'s abstain_threshold is what actually said no -- the same
+    "wrong list understates the real signal" bug class as PR #9's hit@1 fix.
+    """
+    k = getattr(a, "k", None) or 4
+    eval_cfg = cfg.get("eval") or {}
+    gate_cfg = eval_cfg.get("gate") or {}
+    margins = {
+        "hit_at_1": float(gate_cfg.get("hit_at_1_margin", 1.0)) / 100.0,
+        "all_required": float(gate_cfg.get("all_required_margin", 1.0)) / 100.0,
+        "distractor_rate": float(gate_cfg.get("distractor_rate_margin", 1.0)) / 100.0,
+    }
+
+    idx = Index.build(root, cfg)
+    router = Router(idx)
+    cases, mode = _eval_load_queries(a.queries)
+
+    if mode == "unlabelled":
+        if getattr(a, "gate", False) or getattr(a, "baseline", None) or getattr(a, "write_baseline", None):
+            sys.exit("guidefold eval: --gate/--baseline/--write-baseline need labelled cases "
+                     "(a golden YAML --queries source, not .jsonl)")
+        report, per_case = _eval_exposure_report(router, cases, k_cards=k)
+        print(f"guidefold eval (unlabelled -- exposure only): {report['n']} queries, "
+              f"abstain_rate={report['abstain_rate']:.4f}, coverage={report['coverage']:.4f}, "
+              f"avg_cards_returned={report['avg_cards_returned']:.4f}")
+        print("top skills returned:")
+        for u, n in report["top_skills"]:
+            print(f"  {n:>4}  {u}")
+        if getattr(a, "json", None):
+            payload = {
+                "mode": "unlabelled", "cli_version": CLI_VERSION, "k": k,
+                "query_file_sha256": _eval_query_file_sha256(a.queries),
+                "exposure": _eval_json_safe(report),
+                "per_case": per_case,
+            }
+            Path(a.json).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        sys.exit(0)
+
+    retrieval, injection = _eval_run_cases(router, cases, k_cards=k)
+    ret_overall = _eval_evaluate(retrieval)
+    ret_per_cat = _eval_by_category(retrieval)
+    inj_overall = _eval_evaluate(injection, k_cards=k)
+    inj_per_cat = _eval_by_category(injection, k_cards=k)
+
+    injected_keys = (f"completeness@{k}", f"all_required@{k}", f"distractor_rate@{k}",
+                     "abstention_precision", "abstention_recall", "coverage")
+    overall = dict(ret_overall)
+    overall["n_answered"] = inj_overall["n_answered"]
+    for key in injected_keys:
+        overall[key] = inj_overall.get(key, float("nan"))
+    per_cat = {}
+    for cat in sorted(set(ret_per_cat) | set(inj_per_cat)):
+        merged = dict(ret_per_cat.get(cat, {}))
+        inj_m = inj_per_cat.get(cat, {})
+        merged["n_answered"] = inj_m.get("n_answered", merged.get("n_answered"))
+        for key in injected_keys:
+            merged[key] = inj_m.get(key, float("nan"))
+        per_cat[cat] = merged
+
+    table = ("RETRIEVAL  (Router.score order -- hit@1 / recall@8 / nDCG@10)\n"
+             + _eval_format_table(ret_overall, ret_per_cat, k_cards=k)
+             + "\n\nINJECTION  (<=k cards Router.select emits -- completeness@k / all_required@k / "
+               "distractor_rate@k / abstention / coverage)\n"
+             + _eval_format_table(inj_overall, inj_per_cat, k_cards=k))
+    print(table)
+
+    per_case = _eval_per_case_metrics(retrieval, injection, k)
+    exit_code = 0
+
+    if getattr(a, "write_baseline", None):
+        baseline_payload = {
+            "cli_version": CLI_VERSION,
+            "git_sha": _git_head_short(root),
+            "index_checksum": _eval_index_checksum(idx),
+            "query_file_sha256": _eval_query_file_sha256(a.queries),
+            "k": k,
+            "overall": _eval_json_safe(overall),
+            "by_category": {c: _eval_json_safe(m) for c, m in per_cat.items()},
+            "per_case": per_case,
+        }
+        Path(a.write_baseline).write_text(json.dumps(baseline_payload, indent=2, sort_keys=True) + "\n")
+        print(f"\nwrote baseline: {a.write_baseline}")
+
+    if getattr(a, "baseline", None):
+        bpath = Path(a.baseline)
+        if not bpath.exists():
+            msg = f"guidefold eval: no baseline at {bpath} yet"
+            if getattr(a, "gate", False):
+                sys.exit(msg + " -- run with --write-baseline once to create it")
+            print("\n" + msg)
+        else:
+            baseline = json.loads(bpath.read_text())
+            if baseline.get("k") is not None and baseline.get("k") != k:
+                sys.exit(f"guidefold eval: baseline {bpath} was written with --k {baseline.get('k')}, "
+                         f"this run used --k {k} -- re-run with the matching --k, or a fresh --write-baseline")
+            problems, lines = _eval_compare_to_baseline(overall, per_case, baseline, k, margins)
+            print(f"\nvs baseline {bpath}:")
+            for line in lines:
+                print("  " + line)
+            if getattr(a, "gate", False):
+                if problems:
+                    print("\nGATE FAILED:")
+                    for pr in problems:
+                        print("  - " + pr)
+                    exit_code = 1
+                else:
+                    print("\ngate passed: no gated metric regressed beyond its margin")
+    elif getattr(a, "gate", False):
+        sys.exit("guidefold eval: --gate requires --baseline")
+
+    if getattr(a, "json", None):
+        payload = {
+            "mode": "golden", "cli_version": CLI_VERSION, "git_sha": _git_head_short(root),
+            "index_checksum": _eval_index_checksum(idx),
+            "query_file_sha256": _eval_query_file_sha256(a.queries),
+            "k": k, "overall": _eval_json_safe(overall),
+            "by_category": {c: _eval_json_safe(m) for c, m in per_cat.items()},
+        }
+        Path(a.json).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+    sys.exit(exit_code)
+
 
 def cmd_drift(a, root, cfg):
     diff = subprocess.run(["git", "diff", "--name-only", "--relative", a.base], capture_output=True, text=True, cwd=root).stdout.split()
@@ -4084,7 +4986,19 @@ def main():
                         "instead of only its SHA-256 hash (default: hash only -- prompts can "
                         "carry proprietary detail)")
     l = sub.add_parser("load"); l.add_argument("urn")
-    sub.add_parser("validate")
+    va = sub.add_parser("validate")
+    va.add_argument("--suggest", action="store_true",
+                     help="F5: also print deterministic triggers/negative_triggers suggestions "
+                          "for every skill missing one, mined from the SKILL.md body -- never "
+                          "written to a file. Default validate output is unaffected.")
+    va.add_argument("--json", action="store_true", help="with --suggest, machine-readable output")
+    ev = sub.add_parser("eval", help="E7.5: run --queries through the product path and report ranking/injection metrics; optionally gate on a regression vs --baseline")
+    ev.add_argument("--queries", required=True, help="golden-format directory or single .yaml/.yml file (tests/golden/README.md schema), or a single .jsonl file of unlabelled {query, node} objects")
+    ev.add_argument("--k", type=int, default=4, help="injection cap for completeness@k/all_required@k/distractor_rate@k and Router.select's k (default 4, matching K_CARDS)")
+    ev.add_argument("--json", dest="json", default=None, help="also write the full metrics as JSON to this path")
+    ev.add_argument("--baseline", default=None, help="compare current metrics to this --write-baseline JSON; prints deltas + paired bootstrap 95%% CI")
+    ev.add_argument("--write-baseline", default=None, help="write current metrics (+ per-case detail) as a new baseline JSON to this path")
+    ev.add_argument("--gate", action="store_true", help="exit non-zero if hit@1/all_required@k drop, or distractor_rate@k rises, beyond guidefold.yaml eval.gate's margin (default 1.0pp each) vs --baseline")
     dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")
     pu = sub.add_parser("publish"); pu.add_argument("--changed", action="store_true"); pu.add_argument("--base", default="HEAD~1"); pu.add_argument("--revision"); pu.add_argument("--only", help="publish only skills whose logical URN contains this substring")
     ix = sub.add_parser("index"); ix.add_argument("--check", action="store_true", help="verify the on-disk artifact matches this sha and the current tree; no writes")
