@@ -2816,8 +2816,398 @@ def cmd_load(a, root, cfg):
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
     print(dest / "SKILL.md")
 
+# ------------------------------------------------------------------ F5: trigger/negative-trigger
+# suggestions for `validate --suggest` (docs/MVP.md "3-6 authoring loop"). Ported from
+# tools/enrich/derive.py's deterministic extractor (section mining -> "when to use"/"do not use"
+# material; sentence mining in unheaded prose) — stdlib only, no model path. Only the
+# triggers/negative_triggers half of derive.py is ported: its `requires`/`similar` edge-mining
+# (skill-to-skill mention detection) is out of scope for this command and is not reproduced here.
+# Constants/regexes/functions below are named `_SUG_*`/`_sug_*` and are a deliberate, reviewable
+# duplicate of tools/enrich/derive.py rather than an import of it — `scripts/guidefold` ships
+# stdlib+PyYAML only inside the skill ZIP (see module docstring) and cannot depend on a sibling
+# tools/ package at runtime. If derive.py's extraction rules change, this block must change with
+# it in the same commit.
+_SUG_TRIGGERS_CAP = 12
+_SUG_NEGATIVE_TRIGGERS_CAP = 8
+_SUG_MIN_PHRASE_TOKENS = 3
+_SUG_MAX_PHRASE_TOKENS = 8
+_SUG_NEG_BOILERPLATE_MIN_SKILLS = 15
+_SUG_NEG_BOILERPLATE_FRACTION = 0.01
+
+_SUG_STOPWORDS = frozenset(['a', 'about', 'above', 'again', 'all', 'also', 'an', 'and', 'another', 'any', 'are', 'as', 'at', 'be', 'been', 'being', 'below', 'but', 'by', 'can', 'did', 'do', 'does', 'down', 'each', 'every', 'for', 'from', 'here', 'how', 'i', 'if', 'in', 'into', 'is', 'it', 'its', 'just', 'may', 'me', 'might', 'mine', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'onto', 'or', 'other', 'our', 'out', 'over', 'own', 'per', 'same', 'shall', 'should', 'so', 'some', 'such', 'than', 'that', 'the', 'then', 'there', 'these', 'this', 'those', 'to', 'under', 'up', 'use', 'used', 'using', 'very', 'via', 'was', 'we', 'were', 'what', 'when', 'where', 'which', 'who', 'whom', 'why', 'will', 'with', 'would', 'you', 'your'])
+
+_SUG_USAGE_HEADING_RE = re.compile('^(when\\s+to\\s+use|use\\s+this\\s+skill\\b|use\\s+cases?\\b|when\\s+to\\s+activate|trigger\\s+(phrases?|conditions?)\\b|how\\s+to\\s+(use|activate)\\s+this\\s+skill)', re.I)
+_SUG_EXCLUSION_HEADING_RE = re.compile('^(do\\s*not\\s*use|don.t\\s*use|when\\s+not\\s+to\\s+(use|activate)|out\\s+of\\s+scope|not\\s+for\\b|avoid\\s+this\\s+skill|avoid\\s+(when|if))', re.I)
+_SUG_USAGE_SENTENCE_RE = re.compile('\\buse\\s+(?:this\\s+skill\\s+|it\\s+)?(when|for|if)\\b', re.I)
+_SUG_EXCLUSION_SENTENCE_RE = re.compile('\\b(do\\s*not\\s*use|don.t\\s*use|not\\s+for|avoid\\s+(when|if)|out\\s+of\\s+scope)\\b', re.I)
+_SUG_HEADING_LINE_RE = re.compile('^(#{1,6})\\s*(.+?)\\s*$')
+_SUG_BULLET_LINE_RE = re.compile('^\\s*(?:[-*•]|\\d+[.)])\\s+(.*)$')
+_SUG_MD_LINK_RE = re.compile('\\[([^\\]]*)\\]\\([^)]*\\)')
+_SUG_MD_CODE_RE = re.compile('`([^`]*)`')
+_SUG_MD_EMPHASIS_RE = re.compile('[*_~>#]{1,3}')
+_SUG_PAREN_RE = re.compile('\\([^)]*\\)')
+_SUG_LEADING_NUMBERING_RE = re.compile('^\\d+[.)]\\s*')
+_SUG_SENTENCE_SPLIT_RE = re.compile('(?<=[.!?])\\s+|\\n+')
+
+def _sug_clean_markdown(text):
+    text = _SUG_MD_LINK_RE.sub(r"\1", text)
+    text = _SUG_MD_CODE_RE.sub(r"\1", text)
+    text = _SUG_MD_EMPHASIS_RE.sub("", text)
+    text = _SUG_BULLET_LINE_RE.sub(r"\1", text)
+    return text.strip()
+
+def _sug_normalize_heading(heading):
+    h = _sug_clean_markdown(heading or "")
+    h = _SUG_LEADING_NUMBERING_RE.sub("", h)
+    return h.strip().rstrip(":").strip()
+
+def _sug_split_sentences(text):
+    text = _sug_clean_markdown(text or "")
+    return [p.strip() for p in _SUG_SENTENCE_SPLIT_RE.split(text) if p.strip()]
+
+def _sug_split_sections(body):
+    """[(heading_or_None, [content_line, ...]), ...] — index 0 always has heading None (the
+    content, if any, before the first markdown heading)."""
+    sections = []
+    cur_heading = None
+    cur_lines = []
+    for line in (body or "").splitlines():
+        m = _SUG_HEADING_LINE_RE.match(line.strip())
+        if m:
+            sections.append((cur_heading, cur_lines))
+            cur_heading = m.group(2).strip()
+            cur_lines = []
+        else:
+            cur_lines.append(line)
+    sections.append((cur_heading, cur_lines))
+    return sections
+
+def _sug_sections_with_description(body, description):
+    sections = _sug_split_sections(body)
+    lead = [description] if description else []
+    sections[0] = (sections[0][0], lead + sections[0][1])
+    return sections
+
+def _sug_extract_items(content):
+    """Bullet items if the section has bullets, else sentence-split paragraph text."""
+    lines = [l for l in content.splitlines() if l.strip()]
+    bullets = []
+    for l in lines:
+        m = _SUG_BULLET_LINE_RE.match(l)
+        if m:
+            bullets.append(_sug_clean_markdown(m.group(1)))
+    if bullets:
+        return bullets
+    return _sug_split_sentences(content)
+
+def _sug_cue_remainder(text, cue_re):
+    """Text after the last word of the cue match to the end of the sentence — "Use when X" ->
+    "X"; "Do NOT use for Y (Z)" -> "Y (Z)" (the parenthetical is stripped later, in
+    `_sug_finalize_phrase`)."""
+    m = cue_re.search(text)
+    if not m:
+        return ""
+    return text[m.end():].strip(" \t-:—")
+
+def _sug_finalize_phrase(raw, seen_tokenforms, min_content_tokens=1):
+    """Clean, cap, dedupe-by-tokenized-form. Returns None if the phrase should be dropped.
+
+    `min_content_tokens` (non-stopword tokens required) defaults to 1 for `triggers`, which only
+    feed BM25F soft scoring. `negative_triggers` callers pass 2: the router's hard filter
+    (`Router.policy_filter`) matches a negative trigger by unordered token-SET containment, not
+    phrase or substring match, and has no length floor of its own — a phrase with only one
+    non-stopword token plus common connectives is a real hard-drop hazard. Requiring 2
+    independent content tokens makes an accidental full-set match far less likely."""
+    raw = _SUG_PAREN_RE.sub("", raw or "")
+    raw = raw.strip(" \t.,:;!-—")
+    if not raw:
+        return None
+    raw = re.split(r"\s+or\s+|;", raw, maxsplit=1)[0].strip()
+    toks = tokenize(raw)
+    if len(toks) <= _SUG_MIN_PHRASE_TOKENS - 1:
+        return None
+    if sum(1 for t in toks if t not in _SUG_STOPWORDS) < min_content_tokens:
+        return None
+    if len(toks) > _SUG_MAX_PHRASE_TOKENS:
+        toks = toks[:_SUG_MAX_PHRASE_TOKENS]
+        raw = " ".join(toks)
+        if len(toks) <= _SUG_MIN_PHRASE_TOKENS - 1:
+            return None
+        if sum(1 for t in toks if t not in _SUG_STOPWORDS) < min_content_tokens:
+            return None
+    key = tuple(toks)
+    if key in seen_tokenforms:
+        return None
+    seen_tokenforms.add(key)
+    return raw
+
+def _sug_mine_skill(body, description):
+    """Mine one skill's triggers/negative_triggers. Returns
+    (triggers, trig_prov, neg, neg_prov) where each `*_prov` entry is
+    {"phrase", "rule", "heading", "derived": True, "evidence"} — `evidence` is the original,
+    uncleaned bullet/sentence text the phrase came from, captured here at extraction time (never
+    reconstructed after the fact by re-searching the body)."""
+    sections = _sug_sections_with_description(body or "", description or "")
+
+    triggers, trig_prov = [], []
+    neg, neg_prov = [], []
+    seen_trig_forms, seen_neg_forms = set(), set()
+
+    for heading, lines in sections:
+        content = "\n".join(lines)
+        h_norm = _sug_normalize_heading(heading) if heading else None
+        is_usage = bool(h_norm) and bool(_SUG_USAGE_HEADING_RE.search(h_norm))
+        is_exclusion = bool(h_norm) and bool(_SUG_EXCLUSION_HEADING_RE.search(h_norm))
+
+        if is_usage and len(triggers) < _SUG_TRIGGERS_CAP:
+            for item in _sug_extract_items(content):
+                if len(triggers) >= _SUG_TRIGGERS_CAP:
+                    break
+                # A combined heading ("When to use / when NOT to use") is `is_usage` only, but its
+                # bullet items can still individually be "do not use ..." — reroute those to
+                # negative_triggers instead of mislabelling them as triggers.
+                if len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP and _SUG_EXCLUSION_SENTENCE_RE.search(item):
+                    cleaned = _sug_cue_remainder(item, _SUG_EXCLUSION_SENTENCE_RE) or item
+                    phrase = _sug_finalize_phrase(cleaned, seen_neg_forms, min_content_tokens=2)
+                    if phrase:
+                        neg.append(phrase)
+                        neg_prov.append({"phrase": phrase, "rule": "section_mining",
+                                          "heading": heading, "derived": True, "evidence": item[:200]})
+                    continue
+                cleaned = _sug_cue_remainder(item, _SUG_USAGE_SENTENCE_RE) or item
+                phrase = _sug_finalize_phrase(cleaned, seen_trig_forms)
+                if phrase:
+                    triggers.append(phrase)
+                    trig_prov.append({"phrase": phrase, "rule": "section_mining",
+                                       "heading": heading, "derived": True, "evidence": item[:200]})
+
+        if is_exclusion and len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP:
+            for item in _sug_extract_items(content):
+                if len(neg) >= _SUG_NEGATIVE_TRIGGERS_CAP:
+                    break
+                cleaned = _sug_cue_remainder(item, _SUG_EXCLUSION_SENTENCE_RE) or item
+                phrase = _sug_finalize_phrase(cleaned, seen_neg_forms, min_content_tokens=2)
+                if phrase:
+                    neg.append(phrase)
+                    neg_prov.append({"phrase": phrase, "rule": "section_mining",
+                                      "heading": heading, "derived": True, "evidence": item[:200]})
+
+        # Sentence-level usage/exclusion cues in *unheaded* prose.
+        if h_norm is None:
+            for sentence in _sug_split_sentences(content):
+                # Exclusion is checked FIRST and is exclusive with usage for the same sentence:
+                # "Do not use for X" contains the literal substring "use for" that the usage
+                # regex also matches, with no negation-awareness of its own.
+                is_excl_sentence = bool(_SUG_EXCLUSION_SENTENCE_RE.search(sentence))
+                if len(triggers) < _SUG_TRIGGERS_CAP and not is_excl_sentence and _SUG_USAGE_SENTENCE_RE.search(sentence):
+                    phrase = _sug_finalize_phrase(_sug_cue_remainder(sentence, _SUG_USAGE_SENTENCE_RE), seen_trig_forms)
+                    if phrase:
+                        triggers.append(phrase)
+                        trig_prov.append({"phrase": phrase, "rule": "sentence_mining",
+                                           "heading": None, "derived": True, "evidence": sentence[:200]})
+                if len(neg) < _SUG_NEGATIVE_TRIGGERS_CAP and is_excl_sentence:
+                    phrase = _sug_finalize_phrase(
+                        _sug_cue_remainder(sentence, _SUG_EXCLUSION_SENTENCE_RE), seen_neg_forms, min_content_tokens=2
+                    )
+                    if phrase:
+                        neg.append(phrase)
+                        neg_prov.append({"phrase": phrase, "rule": "sentence_mining",
+                                          "heading": None, "derived": True, "evidence": sentence[:200]})
+
+    return triggers, trig_prov, neg, neg_prov
+
+def _sug_derive(skills):
+    """skills: [{"id":..., "description":..., "body":..., "triggers": [...], "negative_triggers":
+    [...]}, ...] -> {id: {"triggers":[...], "trig_prov":[...], "negative_triggers":[...],
+    "neg_prov":[...]}}.
+
+    Mirrors tools/enrich/derive.py's own merge for these two fields: existing fields win (kept
+    verbatim, provenance rule "existing"), derived phrases are appended up to the cap, then a
+    corpus-wide boilerplate guard drops any *derived* negative_trigger phrase that recurs (by
+    tokenized form) in more skills than max(_SUG_NEG_BOILERPLATE_MIN_SKILLS,
+    _SUG_NEG_BOILERPLATE_FRACTION * n_corpus) — a phrase identical across dozens of otherwise
+    unrelated skills is boilerplate from a shared authoring template, not skill-specific signal,
+    and `negative_triggers` is a hard filter (no length floor) so repeating it everywhere is a
+    precision hazard out of proportion to its provenance. Only derived phrases are ever removed;
+    an authored phrase repeated by its own author is left alone (rule: existing fields win)."""
+    by_id = {str(s["id"]): s for s in skills}
+    mined = {sid: _sug_mine_skill(s.get("body") or "", s.get("description") or "") for sid, s in by_id.items()}
+    results = {sid: {"triggers": [], "trig_prov": [], "negative_triggers": [], "neg_prov": []} for sid in by_id}
+
+    for sid, s in by_id.items():
+        r = results[sid]
+        m_triggers, m_trig_prov, m_neg, m_neg_prov = mined[sid]
+        existing_trig = [str(x) for x in (s.get("triggers") or [])]
+        existing_neg = [str(x) for x in (s.get("negative_triggers") or [])]
+        seen_trig_forms = {tuple(tokenize(x)) for x in existing_trig}
+        seen_neg_forms = {tuple(tokenize(x)) for x in existing_neg}
+
+        r["triggers"].extend(existing_trig)
+        r["trig_prov"].extend(
+            {"phrase": x, "rule": "existing", "heading": None, "derived": False, "evidence": None}
+            for x in existing_trig)
+        for phrase, prov in zip(m_triggers, m_trig_prov):
+            if len(r["triggers"]) >= _SUG_TRIGGERS_CAP:
+                break
+            if tuple(tokenize(phrase)) in seen_trig_forms:
+                continue
+            seen_trig_forms.add(tuple(tokenize(phrase)))
+            r["triggers"].append(phrase)
+            r["trig_prov"].append(prov)
+
+        r["negative_triggers"].extend(existing_neg)
+        r["neg_prov"].extend(
+            {"phrase": x, "rule": "existing", "heading": None, "derived": False, "evidence": None}
+            for x in existing_neg)
+        for phrase, prov in zip(m_neg, m_neg_prov):
+            if len(r["negative_triggers"]) >= _SUG_NEGATIVE_TRIGGERS_CAP:
+                break
+            if tuple(tokenize(phrase)) in seen_neg_forms:
+                continue
+            seen_neg_forms.add(tuple(tokenize(phrase)))
+            r["negative_triggers"].append(phrase)
+            r["neg_prov"].append(prov)
+
+    if by_id:
+        form_skill_counts = {}
+        for r in results.values():
+            seen_forms_this_skill = set()
+            for prov in r["neg_prov"]:
+                if not prov.get("derived"):
+                    continue
+                key = tuple(tokenize(prov["phrase"]))
+                if key in seen_forms_this_skill:
+                    continue
+                seen_forms_this_skill.add(key)
+                form_skill_counts[key] = form_skill_counts.get(key, 0) + 1
+        threshold = max(_SUG_NEG_BOILERPLATE_MIN_SKILLS, _SUG_NEG_BOILERPLATE_FRACTION * len(by_id))
+        boilerplate_forms = {k for k, n in form_skill_counts.items() if n > threshold}
+        if boilerplate_forms:
+            for r in results.values():
+                kept_phrases, kept_prov = [], []
+                for phrase, prov in zip(r["negative_triggers"], r["neg_prov"]):
+                    if prov.get("derived") and tuple(tokenize(phrase)) in boilerplate_forms:
+                        continue
+                    kept_phrases.append(phrase)
+                    kept_prov.append(prov)
+                r["negative_triggers"] = kept_phrases
+                r["neg_prov"] = kept_prov
+
+    return results
+
+def _validate_suggestions(root, cfg, skills):
+    """skills: the (dir, node, frontmatter) tuples `_validate_errors` already produced via
+    `all_skills()`. Mines the WHOLE corpus (the negative_triggers boilerplate guard in
+    `_sug_derive` needs every skill's derived phrases to compute cross-skill frequency, not just
+    the ones missing a field) and returns a suggestion dict for every skill missing `triggers`
+    and/or `negative_triggers`, sorted by URN. Suggestions are data only — nothing here writes to
+    a SKILL.md."""
+    skill_dicts = []
+    meta = {}
+    for d, node, fm in skills:
+        u = urn(cfg, node, d.name)
+        md = fm.get("metadata") or {}
+        body = (d / "SKILL.md").read_text(errors="ignore")
+        existing_trig = md_phrases(md, "triggers")
+        existing_neg = md_phrases(md, "negative_triggers")
+        skill_dicts.append({
+            "id": u, "description": fm.get("description", ""), "body": body,
+            "triggers": existing_trig, "negative_triggers": existing_neg,
+        })
+        meta[u] = {"node": node, "missing_triggers": not existing_trig,
+                   "missing_negative_triggers": not existing_neg}
+
+    enrichment = _sug_derive(skill_dicts)
+    suggestions = []
+    for u in sorted(meta):
+        info = meta[u]
+        if not (info["missing_triggers"] or info["missing_negative_triggers"]):
+            continue
+        enr = enrichment.get(u) or {}
+        sug_triggers, sug_neg = [], []
+        if info["missing_triggers"]:
+            for phrase, prov in zip(enr.get("triggers", []), enr.get("trig_prov", [])):
+                if prov.get("derived"):
+                    sug_triggers.append({"phrase": phrase, "heading": prov.get("heading"),
+                                          "rule": prov.get("rule"), "evidence": prov.get("evidence")})
+        if info["missing_negative_triggers"]:
+            for phrase, prov in zip(enr.get("negative_triggers", []), enr.get("neg_prov", [])):
+                if prov.get("derived"):
+                    sug_neg.append({"phrase": phrase, "heading": prov.get("heading"),
+                                     "rule": prov.get("rule"), "evidence": prov.get("evidence")})
+
+        fm_lines = ["metadata:"]
+        if sug_triggers:
+            fm_lines.append('  triggers: "' + ", ".join(s["phrase"] for s in sug_triggers) + '"')
+        if sug_neg:
+            fm_lines.append('  negative_triggers: "' + ", ".join(s["phrase"] for s in sug_neg) + '"')
+
+        suggestions.append({
+            "urn": u, "node": info["node"],
+            "missing_triggers": info["missing_triggers"],
+            "missing_negative_triggers": info["missing_negative_triggers"],
+            "suggested_triggers": sug_triggers,
+            "suggested_negative_triggers": sug_neg,
+            "frontmatter_block": "\n".join(fm_lines) if len(fm_lines) > 1 else None,
+            "found_nothing": not sug_triggers and not sug_neg,
+        })
+    return suggestions
+
+def _sug_print_text(suggestions):
+    """Plain-text rendering for `validate --suggest` (no --json). Ends with the one-line summary
+    'N skills without triggers; run with --suggest' the brief specifies -- printed only here,
+    inside --suggest's own output, never on the default `validate` path: on the fixture today 14
+    of 26 real skills lack `negative_triggers` (N != 0), so adding any line to the default output
+    would break the byte-identical guarantee `tests/test_validate.py` / the fixture-validate CI
+    job depend on."""
+    missing_triggers_count = sum(1 for s in suggestions if s["missing_triggers"])
+    if not suggestions:
+        print("guidefold validate --suggest: no skill is missing triggers or negative_triggers")
+        return
+    print("--- F5 trigger/negative_trigger suggestions (deterministic; suggestions only, never written to files) ---")
+    for s in suggestions:
+        print()
+        print(f"{s['urn']} (node {s['node']})")
+        missing = []
+        if s["missing_triggers"]:
+            missing.append("triggers")
+        if s["missing_negative_triggers"]:
+            missing.append("negative_triggers")
+        print(f"  missing: {', '.join(missing)}")
+        if s["found_nothing"]:
+            print('  no usage/exclusion material found to derive from -- add a "## When to use '
+                  '/ when NOT to use" section, or write these fields by hand')
+            continue
+        for item in s["suggested_triggers"]:
+            print(f"  + trigger \"{item['phrase']}\"")
+            print(f"      <- \"{item['evidence']}\"")
+        for item in s["suggested_negative_triggers"]:
+            print(f"  + negative_trigger \"{item['phrase']}\"")
+            print(f"      <- \"{item['evidence']}\"")
+        if s["frontmatter_block"]:
+            print("  paste into metadata:")
+            for line in s["frontmatter_block"].splitlines():
+                print(f"    {line}")
+    print()
+    print(f"{missing_triggers_count} skills without triggers; run with --suggest")
+
 def cmd_validate(a, root, cfg):
     skills, errors = _validate_errors(root, cfg)
+    if getattr(a, "suggest", False):
+        suggestions = _validate_suggestions(root, cfg, skills)
+        if getattr(a, "json", False):
+            print(json.dumps({
+                "skill_count": len(skills), "error_count": len(errors), "errors": errors,
+                "missing_triggers_count": sum(1 for s in suggestions if s["missing_triggers"]),
+                "suggestions": suggestions,
+            }, indent=2, sort_keys=True))
+        else:
+            for e in errors:
+                print("ERROR", e)
+            print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
+            print()
+            _sug_print_text(suggestions)
+        sys.exit(1 if errors else 0)
     for e in errors:
         print("ERROR", e)
     print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
@@ -4055,7 +4445,12 @@ def main():
                         "instead of only its SHA-256 hash (default: hash only -- prompts can "
                         "carry proprietary detail)")
     l = sub.add_parser("load"); l.add_argument("urn")
-    sub.add_parser("validate")
+    va = sub.add_parser("validate")
+    va.add_argument("--suggest", action="store_true",
+                     help="F5: also print deterministic triggers/negative_triggers suggestions "
+                          "for every skill missing one, mined from the SKILL.md body -- never "
+                          "written to a file. Default validate output is unaffected.")
+    va.add_argument("--json", action="store_true", help="with --suggest, machine-readable output")
     dr = sub.add_parser("drift"); dr.add_argument("--base", default="origin/main")
     pu = sub.add_parser("publish"); pu.add_argument("--changed", action="store_true"); pu.add_argument("--base", default="HEAD~1"); pu.add_argument("--revision"); pu.add_argument("--only", help="publish only skills whose logical URN contains this substring")
     ix = sub.add_parser("index"); ix.add_argument("--check", action="store_true", help="verify the on-disk artifact matches this sha and the current tree; no writes")
