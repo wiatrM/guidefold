@@ -171,6 +171,25 @@ from the shutdown kill on 2026-09-06 (`per-skill-dev.jsonl.bak-nul-2026-09-06` k
 the line was removed and generation resumed from the 9,664 intact records with the same backend,
 prompt, sampling and seed rule as the first run.
 
+**Leak caught on E1, before any number was read (2026-09-06 14:27Z).** `SentenceTransformer.save()`
+persists `max_seq_length` into the checkpoint's `tokenizer_config.json` (`model_max_length`), so
+the 1,024-token *train* cap travelled with the E1 checkpoint and its first encode truncated every
+document at 1,024 tokens — while E0 was encoded at the base's 8,192. That is a different document
+representation, not a training effect, and would have flattered or hurt E1 for reasons unrelated
+to the recipe. The E1 encode and the one dev run that had completed were **discarded unread**
+(cache and `validation/dev-dense-E1*` deleted before their summaries were opened); the checkpoint's
+persisted limit was restored to 8,192 (original file kept as `tokenizer_config.json.trained-cap-1024`);
+`finetune.py` now restores the base limit before saving (`restore_eval_seq_length`, tested) so
+E2–E5 cannot repeat it; and every Ek encode uses E0's exact regime (`--skill-batch-size 4`, full
+body up to 8,192 tokens). The train-time cap itself is unchanged.
+
+Throughput knobs (no effect on the objective, recorded for reproducibility): E1 attempt 1 ran the
+collator's tokenisation in the training process (GPU 19–47 % busy at 120 % CPU) and was stopped at
+step ~75; the run that produced E1 used 6 dataloader workers and mini-batch 8 (6.5 s/step, 1.42
+GPU-h, 23.8 GB peak VRAM). Its logged losses at steps 25/50 match attempt 1's to three decimals
+(0.226 / 0.112), as expected for a memory/throughput-only change. E2–E4 use mini-batch 6 with
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` for VRAM headroom on the 5-text E3 rows.
+
 ## 3. Dev table — E0 (measured, both modes)
 
 Product path, dev split, 1,000 cases (k=1: 328, k=2: 333, k=3: 339). `all_required4`/hit1/ndcg10/
