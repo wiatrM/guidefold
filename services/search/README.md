@@ -127,18 +127,37 @@ The quality runner uses existing converters/metrics and records per-query result
 `regression`). Test corpora are run once per frozen variant, never used for tuning;
 completed reports cannot be overwritten. It restores the Meridian API afterwards.
 
-## Kubernetes follow-up
+## Request admission and recovery
 
-Reuse the immutable API image as a Deployment and Service, with the same live/ready
-probes, graceful SIGTERM and externally mounted secrets. Run schema migration and
-snapshot publication as ordered Jobs. Budget eight DB connections per replica.
-Choose a Postgres operator or managed service that actually permits the pinned
-`pg_search` extension; ordinary managed Postgres compatibility is not sufficient.
-Add TLS/IAM, tenant credentials/RLS, backup/restore and failover drills, network/load
-SLOs, bounded snapshot retention/garbage collection and authenticated harness integration before
-production admission. A retained snapshot currently retains its table and index;
-automatic GC is deliberately not implemented. No Kubernetes deployment or HA claim
-is made by this Compose release.
+The per-process limit covers authenticated body uploads and JSON parsing as well as
+backend work: eight shared SEARCH/USE slots, and two independent telemetry slots.
+An exhausted pool returns 429 before reading the body, with `Retry-After: 1` and an
+HTTP/1 connection close. Retry on a new connection; preserve request/event IDs.
+Malformed input and disconnected uploads release their slots. Authentication and
+health probes run before admission. The existing six-second HTTP read timeout limits
+slow uploads; this is not a bound on total connections or process memory. The JSON
+`deadline_ms` is read after upload but measured from handler entry.
+
+Run the slow-upload E2E **only on a dedicated test stack**: it deliberately fills both
+pools, checks SEARCH/USE and ledger isolation, closes unfinished uploads, and verifies
+recovery over three repetitions. It uses real HTTP/1 sockets with and without
+`Expect: 100-continue`. `compose-service` runs this automatically:
+
+```sh
+python3 tools/search_service/http_admission.py --url http://127.0.0.1:8765
+```
+
+Evidence and before/after reproduction: [HTTP admission report](../../docs/reports/bakeoff/HTTP-ADMISSION-2026-09-06.md).
+
+## Kubernetes deployment
+
+The [portable Helm chart and release runbook](../../deploy/k8s/README.md) provide
+pinned snapshots, staged publisher Jobs, separate CPU/GPU workloads, HPA, PDB,
+NetworkPolicies and compare-and-swap promotion/rollback. Kubernetes >=1.33 is required.
+`GUIDEFOLD_SNAPSHOT_ID` selects an immutable tenant/repo snapshot; unset, Compose keeps
+following the active head. `/metrics` exposes aggregate load/error/latency metrics.
+See [ADR-0030](../../docs/adr/ADR-0030-immutable-service-releases-on-kubernetes.md).
+The kind validation is not a multi-node HA, GPU, TLS/IAM or production-load sign-off.
 
 Default-router correction and measured parity/latency: [report](../../docs/reports/bakeoff/ROUTER-BM25F-PARITY-2026-09-05.md).
 

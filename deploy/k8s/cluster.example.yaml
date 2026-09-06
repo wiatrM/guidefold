@@ -1,0 +1,24 @@
+# Copy outside the repo and replace with reviewed cluster settings; no secrets here.
+credentialsSecret: guidefold-credentials
+imagePullSecrets: []
+database:
+  host: postgres.example.internal
+  sslMode: verify-full
+  tlsSecret: guidefold-postgres-ca
+  networkPeers:
+    - ipBlock: {cidr: 10.20.0.0/24}
+  connectionBudget: 128
+  reservedConnections: 16
+networkPolicy:
+  clientPeers:
+    - namespaceSelector:
+        matchLabels: {guidefold.access: approved}
+      podSelector:
+        matchLabels: {guidefold.client: "true"}
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 6
+  # Enable once your Prometheus Adapter exposes this per-pod metric:
+  # inflightMetric: guidefold_admitted_requests
+metrics:
+  serviceMonitor: false

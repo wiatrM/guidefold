@@ -1,0 +1,66 @@
+# Each Helm installation owns ONE immutable release. Use a new installation name
+# for a new artifact set; the stable traffic Service is managed separately.
+workload: serve # serve | migrate | publish
+developmentMode: false
+image: "" # registry/image@sha256:... (Go runtime)
+artifactImage: "" # same runtime with /input/snapshot.json and optional embeddings.json
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
+tenant: ""
+repository: ""
+snapshotID: ""
+credentialsSecret: guidefold-credentials # keys: app-password, api-token
+operatorCredentialsSecret: guidefold-operator-credentials # keys: admin-password, app-password
+database:
+  host: ""
+  port: 5432
+  name: guidefold
+  user: guidefold_api
+  adminUser: postgres
+  sslMode: verify-full
+  tlsSecret: guidefold-postgres-ca # key ca.crt
+  networkPeers: [] # explicit NetworkPolicy peers: pod/namespace selectors or ipBlock
+  connectionBudget: 128 # capacity assigned to TWO overlapping releases, plus reserve
+  reservedConnections: 16
+replicas: 2
+resources:
+  requests: {cpu: 500m, memory: 512Mi, ephemeral-storage: 64Mi}
+  limits: {cpu: "2", memory: 2Gi, ephemeral-storage: 256Mi}
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  cpuUtilization: 70
+  # Requires Prometheus Adapter exposing the per-pod sum of the admission gauge.
+  inflightMetric: ""
+  inflightTarget: "4"
+nodeSelector: {}
+tolerations: []
+networkPolicy:
+  enabled: true
+  clientPeers:
+    - podSelector:
+        matchLabels: {guidefold.client: "true"}
+metrics:
+  serviceMonitor: false # requires Prometheus Operator CRDs
+  additionalLabels: {}
+gpu:
+  enabled: false # shadow only; never changes primary SEARCH output
+  image: "" # pinned TEI image with the verified adapter baked into /model
+  encoderID: ""
+  replicas: 1
+  batchRequests: 1
+  nodeSelector: {kubernetes.io/arch: amd64}
+  tolerations: []
+  resources:
+    requests: {cpu: "1", memory: 2Gi, nvidia.com/gpu: 1}
+    limits: {cpu: "2", memory: 4Gi, nvidia.com/gpu: 1}
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    queueMetric: "" # operator-provided per-pod TEI queue metric via adapter
+    queueTarget: "4"
+job:
+  timeoutSeconds: 1800
+  ttlSecondsAfterFinished: 86400

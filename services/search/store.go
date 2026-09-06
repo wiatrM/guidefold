@@ -62,6 +62,7 @@ type Store struct {
 	Pool                             *pgxpool.Pool
 	Tenant, Repo, PolicySHA, Version string
 	LexicalEngine                    string
+	SnapshotID                       string
 	Dense                            *DenseClient
 	Shadow                           *ShadowWorker
 	mu                               sync.Mutex
@@ -90,7 +91,15 @@ func openPool(ctx context.Context) (*pgxpool.Pool, error) {
 }
 func (s *Store) catalog(ctx context.Context) (*Catalog, error) {
 	var id string
-	e := s.Pool.QueryRow(ctx, `SELECT snapshot_id FROM gf.heads WHERE tenant=$1 AND repo=$2`, s.Tenant, s.Repo).Scan(&id)
+	query := `SELECT snapshot_id FROM gf.heads WHERE tenant=$1 AND repo=$2`
+	args := []any{s.Tenant, s.Repo}
+	if s.SnapshotID != "" {
+		// Always check the database, even with cached metadata: pinned does not mean
+		// offline fallback. The pin cannot escape the operator's tenant/repo.
+		query = `SELECT snapshot_id FROM gf.snapshots WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3`
+		args = append(args, s.SnapshotID)
+	}
+	e := s.Pool.QueryRow(ctx, query, args...).Scan(&id)
 	if errors.Is(e, pgx.ErrNoRows) {
 		return nil, fail(503, "snapshot_not_published")
 	}
@@ -372,6 +381,9 @@ func publish(ctx context.Context, s *Store, path string) error {
 		}
 	}
 	id := "repository:" + str(envelope["sha256"])
+	if s.SnapshotID != "" && s.SnapshotID != id {
+		return fmt.Errorf("snapshot_pin_mismatch")
+	}
 	check := &Catalog{Nodes: nodes, Cards: map[string]M{}}
 	for _, u := range keys(cards) {
 		card := obj(cards[u])
@@ -382,6 +394,9 @@ func publish(ctx context.Context, s *Store, path string) error {
 			return fmt.Errorf("invalid_card_body")
 		}
 		check.Cards[u] = card
+	}
+	if e = validateGraph(check.Cards); e != nil {
+		return e
 	}
 	if e = check.prepare(); e != nil {
 		return e

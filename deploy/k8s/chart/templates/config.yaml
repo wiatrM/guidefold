@@ -1,0 +1,28 @@
+{{- include "gf.validate" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gf.name" . }}
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+immutable: true
+data:
+  GUIDEFOLD_TENANT: {{ .Values.tenant | quote }}
+  GUIDEFOLD_REPO: {{ .Values.repository | quote }}
+  GUIDEFOLD_SNAPSHOT_ID: {{ .Values.snapshotID | quote }}
+  GUIDEFOLD_LEXICAL_ENGINE: router
+  GUIDEFOLD_RETRIEVAL_MODE: sparse
+  GUIDEFOLD_EXPERIMENTAL_OUTPUT: "false"
+  GUIDEFOLD_SHADOW: {{ .Values.gpu.enabled | quote }}
+  GUIDEFOLD_ENCODER_ID: {{ .Values.gpu.encoderID | quote }}
+  GUIDEFOLD_TEI_URL: http://{{ include "gf.name" . }}-tei:8080
+  GUIDEFOLD_TEI_BATCH_REQUESTS: {{ .Values.gpu.batchRequests | quote }}
+  GUIDEFOLD_OPERATOR_TIMEOUT_SECONDS: {{ .Values.job.timeoutSeconds | quote }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "gf.name" . }}
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+automountServiceAccountToken: false

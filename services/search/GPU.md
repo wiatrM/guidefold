@@ -52,7 +52,7 @@ API/worker deployment configured with that identity.
 Online default: FP16, last-token pooling, normalized vectors, 8192-token maximum,
 two tokenizer workers, 32 TEI concurrent requests, eight API slots, one request per
 forward. After delivering the sparse response, one of four background workers runs an encode
-alongside BM25F, then exact pgvector cosine search
+while reusing that request's sparse ranks and policy mask, then exact pgvector cosine search
 and equal RRF k=60 over the top-50 union, retaining full channel ranks. The same
 scope/negative/status policy applies before retrieval; existing closure/select and
 SEARCH/USE schemas apply afterwards. No query embedding cache is used.
@@ -65,8 +65,14 @@ it in the generated local env file. Shadow records an error for a mismatched wor
 Document preparation can use batches of eight with the worker at 16, but do not mix
 bulk indexing with online traffic/SLO measurement. The published vectors are fixed.
 
-Shadow has a 32-job bounded queue, four workers, a one-second encode timeout and a
-two-second compute deadline. It pins the snapshot observed by the sparse request.
+Shadow has a 128-job bounded queue, four workers, a one-second encode timeout and a
+two-second compute deadline. `GUIDEFOLD_SHADOW_QUEUE_CAPACITY` accepts 1–256
+(default 128). Each queued request stores compact per-scope admissibility and full
+BM25 ranks, plus its top 50 candidates; this is request-local reuse, not a query cache.
+The masks/ranks use five bytes per catalog document per scope, excluding top candidates
+and other job overhead. The larger queue absorbs short bursts; sustained overload can
+still lose comparisons and increases the age of shadow observations. Each job pins
+the snapshot observed by the sparse request.
 `gf.search_shadow` retains the top 20 sparse/hybrid ranks, delivered sparse selection,
 hybrid selection, timings, encoder identity and `search_id`; no query or path text.
 Queue overflow and persistence failure log the search ID. GPU failure records an
@@ -132,10 +138,27 @@ embeddings to have been published to this GPU project. It refuses completed-arm
 reruns and identity changes. Never point the old Tantivy quality runner at GPU
 or treat repeated test-A/test-B measurements as new admission evidence.
 
-## Kubernetes boundary
+## Throughput diagnostics
 
-Reuse Go and pinned TEI images with separate CPU/GPU Deployments, probes and bounded
-queues; preserve the encoder/index identity on rollout. Migration and staged
-publication remain Jobs. GPU autoscaling should observe queue time and request/token
-load, with separate indexing capacity. No Kubernetes manifests, HA, WAN/TLS/IAM,
-backup/restore or production admission are claimed by this Compose experiment.
+The [throughput report](../../docs/reports/bakeoff/SERVICE-THROUGHPUT-2026-09-05.md)
+records telemetry insert/replay batches, shadow coverage, foreground latency and
+rejected experiments. `throughput.py ledger` resets only the isolated
+`guidefold-ledger-contract` fixture ledger; create it with
+`telemetry_integration.py --keep` first. `throughput.py shadow` requires the
+6006-document benchmark repository and complete vectors described above. Pass a
+unique `--label` and `--image`; shadow also accepts `--batch` and `--queue`. These
+are engineering measurements without relevance labels or quality tuning.
+
+## Kubernetes deployment
+
+The [portable Kubernetes runbook](../../deploy/k8s/README.md) includes a separate,
+release-specific TEI Deployment/Service, model image Dockerfile and initContainer
+file verification. Stage complete matching vectors before preflight and promotion;
+never point a shared Service at pods running different encoder IDs. GPU HPA requires
+an explicitly configured queue metric; it is disabled by default. Model rebuilding
+runs offline, with a separate allocation from online inference. The profile remains
+shadow, and the existing model/quality admission rules remain unchanged.
+
+CPU deployment/rollback mechanics are exercised on kind. Actual GPU scheduling,
+worker startup and custom-metric scaling require validation on the target GPU cluster;
+the CPU kind run does not establish these results.

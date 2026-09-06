@@ -1,0 +1,288 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "workload": {
+      "type": "string",
+      "enum": [
+        "serve",
+        "migrate",
+        "publish"
+      ]
+    },
+    "developmentMode": {
+      "type": "boolean"
+    },
+    "image": {
+      "type": "string"
+    },
+    "artifactImage": {
+      "type": "string"
+    },
+    "imagePullPolicy": {
+      "type": "string",
+      "enum": [
+        "Always",
+        "IfNotPresent",
+        "Never"
+      ]
+    },
+    "imagePullSecrets": {
+      "type": "array"
+    },
+    "tenant": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "string"
+    },
+    "snapshotID": {
+      "type": "string"
+    },
+    "credentialsSecret": {
+      "type": "string"
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "name": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string",
+          "enum": [
+            "guidefold_api"
+          ]
+        },
+        "adminUser": {
+          "type": "string"
+        },
+        "sslMode": {
+          "type": "string",
+          "enum": [
+            "verify-full",
+            "disable"
+          ]
+        },
+        "tlsSecret": {
+          "type": "string"
+        },
+        "networkPeers": {
+          "type": "array"
+        },
+        "connectionBudget": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reservedConnections": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "replicas": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          }
+        }
+      }
+    },
+    "autoscaling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cpuUtilization": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inflightMetric": {
+          "type": "string"
+        },
+        "inflightTarget": {
+          "type": "string"
+        }
+      }
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "clientPeers": {
+          "type": "array"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "serviceMonitor": {
+          "type": "boolean"
+        },
+        "additionalLabels": {
+          "type": "object"
+        }
+      }
+    },
+    "gpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "encoderID": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "batchRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kubernetes.io/arch": {
+              "type": "string"
+            }
+          }
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            }
+          }
+        },
+        "autoscaling": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "queueMetric": {
+              "type": "string"
+            },
+            "queueTarget": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "ttlSecondsAfterFinished": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "operatorCredentialsSecret": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Guidefold immutable release values"
+}

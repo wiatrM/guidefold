@@ -25,6 +25,7 @@ type App struct {
 	Token      string
 	Slots      chan struct{}
 	EventSlots chan struct{}
+	Metrics    serviceMetrics
 }
 
 func uuid() string {
@@ -47,13 +48,21 @@ func (s *Store) searchCaptured(ctx context.Context, p M, capture *ShadowJob) (M,
 	if e != nil {
 		return nil, e
 	}
-	return s.searchCatalog(ctx, c, p, M{"catalog": elapsed(start)}, capture)
+	return s.searchCatalog(ctx, c, p, M{"catalog": elapsed(start)}, capture, nil)
 }
-func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, capture *ShadowJob) (M, error) {
+func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, capture *ShadowJob, prepared *SparsePreparation) (M, error) {
 	var e error
 	scopes, contextualData, e := c.resolve(p)
 	if e != nil {
 		return nil, e
+	}
+	if prepared != nil {
+		if e := prepared.verify(c, str(p["query"]), scopes); e != nil {
+			return nil, e
+		}
+	}
+	if capture != nil && s.Dense == nil {
+		capture.Preparation = &SparsePreparation{Snapshot: c.ID, QueryDigest: hash([]byte(str(p["query"]))), Scopes: map[string]PreparedScope{}}
 	}
 	contextual := str(p["schema_version"]) == "1.1"
 	admissible := map[string]bool{}
@@ -80,7 +89,13 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
 	for _, node := range scopes {
 		stage := time.Now()
-		allowed, drops := c.allowed(node, str(p["query"]))
+		var allowed map[string]bool
+		var drops int
+		if prepared != nil {
+			allowed, drops = prepared.Scopes[node].allowed(c), prepared.Scopes[node].Drops
+		} else {
+			allowed, drops = c.allowed(node, str(p["query"]))
+		}
 		dropCount += drops
 		for u := range allowed {
 			admissible[u] = true
@@ -91,8 +106,18 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 		var candidates []Candidate
 		if s.Dense != nil {
 			if s.Dense.Mode == "hybrid" {
-				candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+				if prepared != nil {
+					candidates = prepared.Scopes[node].Top
+				} else {
+					candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
+				}
 			}
+		} else if capture != nil && capture.Preparation != nil && s.LexicalEngine == "router" {
+			// Capture compact full ranks before the unchanged top-50 truncation.
+			prep := prepareScope(c, allowed, drops)
+			candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 50, prep.Ranks)
+			prep.Top = candidates
+			capture.Preparation.Scopes[node] = prep
 		} else {
 			candidates, e = s.search(ctx, c, str(p["query"]), allowed)
 		}
@@ -122,7 +147,11 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 			}
 			previous, _ := stages["dense_database"].(float64)
 			stages["dense_database"] = previous + elapsed(denseStart)
-			candidates = fuseCandidates(candidates, dense)
+			if prepared != nil {
+				candidates = fusePrepared(c, prepared.Scopes[node], dense)
+			} else {
+				candidates = fuseCandidates(candidates, dense)
+			}
 		}
 		stage = time.Now()
 		for _, row := range c.score(candidates, node) {
@@ -319,6 +348,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := 200
 	result := M{}
 	endpoint := strings.TrimPrefix(r.URL.Path, "/v1/")
+	if r.Method == http.MethodGet && r.URL.Path == "/metrics" {
+		a.serveMetrics(w)
+		return
+	}
+	if r.Method == http.MethodPost {
+		if i := metricEndpoint(endpoint); i >= 0 {
+			defer func() { a.Metrics.observe(i, status, time.Since(start)) }()
+		}
+	}
 	attempt := uuid()
 	var payload M
 	send := func() {
@@ -440,6 +478,22 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send()
 		return
 	}
+	// Bound uploads and JSON parsing as well as backend work. Authenticate first;
+	// telemetry retains its own capacity so one pool cannot exhaust the other.
+	slots, overloadCode := a.Slots, "overloaded"
+	if endpoint == "events:batch" {
+		slots, overloadCode = a.EventSlots, "telemetry_overloaded"
+	}
+	select {
+	case slots <- struct{}{}:
+		defer func() { <-slots }()
+	default:
+		// Do not let HTTP/1 drain an unread slow/large request before the reply.
+		w.Header().Set("Connection", "close")
+		w.Header().Set("Retry-After", "1")
+		respondError(fail(429, overloadCode))
+		return
+	}
 	bodyLimit := int64(16384)
 	if endpoint == "events:batch" {
 		bodyLimit = 2 * 1024 * 1024
@@ -473,13 +527,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respondError(fail(413, "batch_too_large"))
 			return
 		}
-		select {
-		case a.EventSlots <- struct{}{}:
-			defer func() { <-a.EventSlots }()
-		default:
-			respondError(fail(429, "telemetry_overloaded"))
-			return
-		}
+
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		result, e = a.Store.ingestEvents(ctx, batch)
@@ -497,13 +545,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload = p
 	ctx, cancel := context.WithDeadline(r.Context(), start.Add(time.Duration(integer(p, "deadline_ms", 1000))*time.Millisecond))
 	defer cancel()
-	select {
-	case a.Slots <- struct{}{}:
-		defer func() { <-a.Slots }()
-	default:
-		respondError(fail(429, "overloaded"))
-		return
-	}
+
 	var shadowJob *ShadowJob
 	if endpoint == "search" {
 		if a.Store.Shadow != nil {
@@ -554,6 +596,12 @@ func run() error {
 		}
 		return nil
 	}
+	if command == "verify-model" {
+		if len(os.Args) != 3 {
+			return fmt.Errorf("verify_model_requires_directory")
+		}
+		return verifyModelDirectory(os.Args[2], env("GUIDEFOLD_ENCODER_ID", ""))
+	}
 	root, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	pool, e := openPool(root)
@@ -565,12 +613,16 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha}
+	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha, SnapshotID: env("GUIDEFOLD_SNAPSHOT_ID", "")}
 	store.LexicalEngine = env("GUIDEFOLD_LEXICAL_ENGINE", "router")
 	if store.LexicalEngine != "router" && store.LexicalEngine != "paradedb-experimental" {
 		return fmt.Errorf("invalid_lexical_engine")
 	}
-	ctx, done := context.WithTimeout(root, 120*time.Second)
+	operatorSeconds, e := strconv.Atoi(env("GUIDEFOLD_OPERATOR_TIMEOUT_SECONDS", "120"))
+	if e != nil || operatorSeconds < 1 || operatorSeconds > 86400 {
+		return fmt.Errorf("invalid_operator_timeout")
+	}
+	ctx, done := context.WithTimeout(root, time.Duration(operatorSeconds)*time.Second)
 	defer done()
 	if command == "migrate" {
 		return migrate(ctx, pool)
@@ -619,6 +671,9 @@ func run() error {
 		}
 		n, e := store.retainEvents(ctx, days, now)
 		return printOperatorResult(M{"deleted": n}, e)
+	}
+	if command == "verify-release" {
+		return verifyRelease(ctx, store, shadowEnabled)
 	}
 	if command != "serve" {
 		return fmt.Errorf("unknown_command")

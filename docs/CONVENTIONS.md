@@ -34,6 +34,43 @@ Rules:
 - `owner` must match a GitHub team present in `CODEOWNERS` for the same path.
 - Adding a node is a PR reviewed by the parent node's owner.
 
+### 1a. Search backend config — `search:` block (E2.6/E2.9)
+
+Optional, alongside `registry:`. Selects what `find`/`hook`/`load` talk to for SEARCH/USE
+(ADR-0023 §3, ADR-0024's deployment tiers — the same client file and wire contract at T0 and T1):
+
+```yaml
+search:
+  backend: local              # local | service. Default local.
+  url: https://search.internal.acme.example   # required when backend: service
+  deadline_ms: 300            # 1..5000, one monotonic deadline for the whole call.
+                               # Default 300 for `hook`, 1000 for interactive `find`/`load`.
+  token_file: /etc/acme/guidefold-search-token   # bearer token file
+```
+
+- Env overrides win over the yaml block: `GUIDEFOLD_SEARCH_BACKEND`, `GUIDEFOLD_SEARCH_URL`,
+  `GUIDEFOLD_SEARCH_DEADLINE_MS`, `GUIDEFOLD_SEARCH_TOKEN_FILE`. The bearer token itself is read
+  from `GUIDEFOLD_TOKEN` (env, checked first) or `token_file` — **never** written into
+  `guidefold.yaml` directly, never logged, never spooled.
+- `hook` reads this config from the environment **only** — it never parses `guidefold.yaml`/
+  imports PyYAML (E1.5's hard constraint is unaffected by this feature). `find`/`load` read the
+  yaml block too, layered under the same env overrides.
+- Anything invalid — unknown `backend` value, `service` with no `url`, no token resolvable for a
+  `service` backend, `deadline_ms` outside 1..5000 — degrades silently to `backend: local` and
+  reports `degradation_reason: config` in telemetry; it never crashes `find`/`hook`/`load`.
+- With `backend: service`, SEARCH races one POST `/v1/search` (contract 1.1,
+  `docs/HARNESS-SERVICE-CONTRACT.md`) in a background thread against the local sparse fallback,
+  under the single deadline above. The remote answer replaces the local one only if it validates
+  and arrives before the deadline; otherwise the socket is abandoned (closed, never joined) and
+  the local answer stands — `backend: local` opens no socket at all. `find --backend
+  {local,service}` overrides the configured backend for one invocation (distinct from the
+  top-level `--backend {local,agent-registry}`, which selects the skill **registry**, a different
+  axis entirely). `load <urn>@<revision>` uses `/v1/use` when `backend: service`; the non-service
+  path is unchanged and still accepts a bare `<urn>`.
+- `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
+  guideline (recommends `service` above it), configured service reachability + advertised contract
+  versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
+
 ## 2. Skill location
 
 - Canonical location: `<node-path>/.agents/skills/<skill-name>/SKILL.md`
@@ -174,7 +211,7 @@ separate, non-conflated mechanisms share that one parent directory:
 
 | Path | Written by | What |
 |------|------------|------|
-| `spool/<tenant\|local>/<environment>/events-<UTC date>.jsonl` | `find`, `hook`, `load` | E6.4/E2.7 SEARCH/USE contract events (`docs/SEARCH-USE-TELEMETRY.md`): `search_requested`, `search_results`, `card_injected`, `skill_load_requested`, `skill_load_completed`, `telemetry_health`. Append-only, bounded (10 MB / 7 days, oldest-first drop, counted in `telemetry_health.dropped`). No raw prompt text; an optional tenant-scoped keyed HMAC of the query only, rotated monthly. |
+| `spool/<tenant\|local>/<environment>/events-<UTC date>.jsonl` | `find`, `hook`, `load` | E6.4/E2.7 SEARCH/USE contract events (`docs/SEARCH-USE-TELEMETRY.md`): `search_requested`, `search_results`, `card_injected`, `skill_load_requested`, `skill_load_completed`, `telemetry_health`, `telemetry_health.parity_mismatch` (E2.9: emitted only when a `backend: service` call's local and remote selections both finish inside the deadline and disagree — payload is the two 16-hex-char SHA-256 selected-set hashes and `search_id` only, never the query text or a card body). `search_results` also carries `backend` (`online_sparse`/`local_sparse`/`none`) and `fallback_reason` (the E2.6 degradation reason, e.g. `timeout`/`connection`/`http_5xx`/`auth`/`invalid_response`/`config`, or `null`). Append-only, bounded (10 MB / 7 days, oldest-first drop, counted in `telemetry_health.dropped`). No raw prompt text, no bearer token; an optional tenant-scoped keyed HMAC of the query only, rotated monthly. |
 | `spool/<tenant>/<environment>/.health.json` | same | Running counters (`produced`/`acknowledged`/`dropped`/`window_start`) behind `guidefold telemetry status`. |
 | `hmac-key-<YYYY-MM>.bin` | same | This host's monthly HMAC key for query grouping. Never leaves the host; never a plain/unkeyed hash. |
 | `ledger.sqlite3` | `guidefold telemetry flush` (client) / `tools/telemetry/ingest_server.py` (reference server) | The reference E6.4 event ledger (`tools/telemetry/ledger.py`), keyed `(tenant_id, event_id)`. Not part of the shipped skill ZIP. |
@@ -187,3 +224,118 @@ only the server's `accepted`/`duplicate` acknowledgements (never `rejected`) to 
 and is never called from the hook path — no command reachable from `hook` makes a network call.
 `guidefold telemetry report` wraps `tools/telemetry/report.py` (per-skill/per-revision usage from
 the ledger) when running from a guidefold tool checkout.
+
+## 12. Authoring loop: what CI tells a skill author
+
+Search quality is 80% the quality of what is searched. A new or edited `SKILL.md` can silently
+steal queries from a sibling in the same node — that is the HSR@4 failure `guidefold validate`'s
+gates (§8) catch only *after* the fact, once the skill is already merged. The `skill-authoring-report`
+CI job (`templates/ci.yml`; this repo's own copy is `.github/workflows/ci.yml`) shows the author,
+**in the PR, before merge**, what their text change does to retrieval — one sticky comment,
+found and updated by a hidden marker on every push, never a new comment per push. It runs on
+every PR that touches a `SKILL.md`.
+
+This job **informs — it never gates the build**. It never computes a pass/fail threshold; there
+is nothing here for a reviewer to override. Nothing it reports is auto-applied to any `SKILL.md` —
+every suggestion is paste-and-decide, by the skill's owner, same as everything else in this table.
+
+The comment has two parts, both produced by replaying the *exact* product path
+(`policy_filter → candidates → score → select(admissible=…)`, never `Router.route()`, and never a
+second ranking implementation — see `tools/authoring/collision_report.py`'s module docstring) at
+the PR's base and head commits:
+
+1. **Collision report** (`tools/authoring/collision_report.py`) — which queries' top-k changed;
+   for each new or changed skill, which sibling skill in the *same node* it took queries from or
+   lost queries to (the HSR proxy, § naming below), with the query ids; which new/changed skills
+   are exposed by **zero** queries ("never exposed — check description/triggers"); and, only when
+   the query file carries graded labels (the `tests/golden/*.yaml` schema — a top-level `cases`
+   list with `relevant`/`distractors`), paired Δhit@1 / Δall_required@k / Δdistractor_rate@k with
+   a 95% confidence interval. Point of care: "top-k changed" and "takes from"/"loses to" are read
+   from **retrieval** order (`Router.score`'s ranked list), not injection-set membership — two
+   same-node siblings can already both fit inside `select`'s k=4 cap, so their injected set can
+   stay byte-identical even when a text edit swaps which one a developer sees ranked first. Only
+   "never exposed" reads injection, because that is the one place the different, product-facing
+   question ("does the agent ever actually receive this card") is the right one to ask.
+2. **Trigger/negative-trigger suggestions** (`tools/authoring/suggest_triggers.py`) — for any
+   added or changed skill still missing `metadata.triggers` and/or `metadata.negative_triggers`
+   (§4), a ready-to-paste `metadata:` block plus the body line each suggested phrase came from,
+   produced by the same deterministic F5 extractor `tools/enrich/derive.py` uses offline
+   (section mining on a `## When to use / when NOT to use` heading, §5; sentence mining in
+   unheaded prose). No model is ever called in CI — an eventual LLM-assisted pass is
+   `derive.py`'s documented, unused `LLM_EXTENSION_POINT` seam, opt-in only, never wired here.
+
+In your own monorepo (`templates/ci.yml`), the query set comes from `guidefold.yaml`'s optional
+`eval: {queries: <path>}` key (a golden-format file you maintain). Omit that key and the job falls
+back to **exposure-only mode**: its query set is the union of the changed skills' own `triggers`
+phrases, and the comment says "unlabelled: exposure changes only" instead of computing Δmetrics —
+you get collision/exposure signal from day one, with zero authoring effort beyond writing
+`triggers` at all.
+
+## 13. Local suggestions and the quality gate (F5 + E7.5)
+
+§12's `skill-authoring-report` job informs; it never gates. Two more pieces close the loop —
+one lets an author fix their own skill before opening a PR, the other actually blocks a merge.
+
+**`guidefold validate --suggest` (F5)** — the same deterministic trigger/negative-trigger
+extractor `tools/authoring/suggest_triggers.py` runs in CI, callable locally and on demand for any
+skill still missing `metadata.triggers` and/or `metadata.negative_triggers` (§4). It mines a
+`## When to use` / `## Do not use` heading pair when present (§5), else cue-word sentences from
+unheaded prose, and prints a ready-to-paste `metadata:` block plus the source sentence each
+suggested phrase came from — never a rewrite of the skill, never invoked from any script CI
+itself runs, and `--suggest` alone never changes `validate`'s own exit code or its default
+(no-flag) output byte-for-byte (`tests/test_validate_suggest.py`). A corpus-wide guard drops a
+*derived negative-trigger* phrase repeated identically across more than `max(15, 1% of skills)`
+skills (shared-template boilerplate, not skill-specific signal); triggers carry no such guard.
+`--json` gets the same suggestions as a list of `{urn, missing_triggers,
+missing_negative_triggers, suggested_triggers: [{phrase, evidence}], ...,
+frontmatter_block}` objects, for an editor integration to consume instead of parsing text.
+
+**`guidefold eval` (E7.5)** — the gate. `guidefold eval --queries <dir|yaml|jsonl> [--k 4]
+[--json out.json] [--baseline b.json] [--write-baseline b.json] [--gate]` runs every query
+through the exact product path §12 already uses for the collision report
+(`policy_filter → candidates → score → select(admissible=…)`, never `Router.route()`), and prints
+both tables §1 of `tools/eval/run_golden.py`'s docstring defines:
+
+- **RETRIEVAL** (`Router.score` order): hit@1, recall@8, nDCG@10 — did ranking put the right
+  skills on top?
+- **INJECTION** (the ≤k cards `Router.select` actually emits, general → specific,
+  ADR-0022 admissible-gated): completeness@k, all_required@k, distractor_rate@k, plus
+  abstention_precision/abstention_recall/coverage/n_answered — did the cards an agent actually
+  receives hold the whole answer and no plausible-but-wrong one? Unlike `run_golden.py`, which
+  only re-sources `completeness@4`/`distractor_rate@4` from injection and leaves abstention
+  retrieval-computed, `guidefold eval` reads *all four* of those latter metrics from injection —
+  `select`'s `abstain_threshold`, not an empty `candidates()` list, is what actually decides
+  "no answer", so measuring abstention against the near-always-nonempty retrieval list understates
+  it. This is a deliberate widening, not a bug reproduction; both are proved identical to
+  `tools/eval/metrics.py` to 4 decimal places on the 220-case golden set
+  (`tests/test_eval.py`).
+
+`--queries` accepts a golden-format directory (every `*.yaml`/`*.yml` in it — the
+`tests/golden/README.md` schema, generalising `run_golden.py`'s own hardcoded 5-file list to "every
+file here"), a single golden `.yaml`/`.yml` file, or a single `.jsonl` file of minimal unlabelled
+`{"query": ..., "node": ...}` objects — the latter yields *exposure-only* metrics (n, abstain rate,
+coverage, top skills returned) and rejects `--gate`/`--baseline`/`--write-baseline` outright, since
+there is nothing labelled to compare against a margin.
+
+`--gate` compares three metrics against `--baseline`'s JSON — hit@1 and all_required@k
+(higher is better), distractor_rate@k (lower is better) — to `guidefold.yaml`'s `eval.gate`
+margins (`hit_at_1_margin`/`all_required_margin`/`distractor_rate_margin`, percentage points,
+default 1.0 each; see `templates/guidefold.example.yaml`), and exits non-zero the moment any one
+of them regresses beyond its margin. A metric undefined on either side (e.g. hit@1 on an
+abstention-only stratum) is skipped, never treated as a pass or a fail. Next to each delta it
+prints a paired bootstrap 95% confidence interval (stdlib `random`, 1000 resamples, seed 0,
+paired by case id) — diagnostic context for the reviewer, never itself the gate: the decision
+reads only the point estimate against the margin, so the gate stays deterministic across runs.
+`--write-baseline` stores the current metrics plus an index-manifest checksum, the CLI version and
+a sha256 of every file under `--queries`, so a baseline silently compared against a different
+index build or a different query set is detectable, not silently wrong — the same deliberate,
+reviewed-by-diff act as `tools/eval/run_golden.py --update-baseline`, just for the CLI's own
+metric set.
+
+Wired in two places: this repo's own `.github/workflows/ci.yml` `golden-eval` job runs
+`guidefold eval --gate` against the committed `docs/reports/golden/eval-baseline.json` right next
+to `run_golden.py --check`, so both the standalone script and the CLI's port of it gate the same
+PR on the same 220-case set; `templates/ci.yml`'s `quality-gate` job does the same for a consumer
+monorepo — `--gate` on a PR, `--write-baseline` (committed back) on a push to the default branch —
+reading `guidefold.yaml`'s `eval.queries` key (§12) and no-op'ing with a one-line message when
+that key is unset, since there is then no labelled set to gate on.

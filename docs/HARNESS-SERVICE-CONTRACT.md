@@ -97,9 +97,17 @@ is cached. A separate BM25 index per immutable tenant/repo/snapshot keeps docume
 frequencies isolated. A client path never chooses a SQL table or server file.
 
 `GET /health/live` is process liveness; readiness requires a compatible published
-snapshot and a reachable database. Requests are bounded to eight simultaneous
-operations; excess admission returns 429. Deadlines cover validation, pool waits and
-SQL work; 504 means the deadline expired. Database errors return 503. Context policy,
+snapshot and a reachable database. Eight shared SEARCH/USE slots and two separate
+telemetry slots cover body upload, parsing, validation and backend work. Authentication
+precedes admission; excess admission returns 429 (`overloaded` or
+`telemetry_overloaded`) before reading the body, with `Retry-After: 1`. HTTP/1 overload
+responses close the connection so an unread slow body cannot delay the reply; retry
+on a new connection with the same correlation/event IDs. An early rejection cannot
+echo IDs from an unread body, and overload takes precedence over body/schema errors.
+Health probes do not reserve these slots. The HTTP server's read timeout bounds slow
+uploads; the payload's deadline can only be parsed after upload. Once parsed, that
+deadline is measured from handler entry and covers validation, pool waits and SQL work;
+504 means it expired. Database errors return 503. Context policy,
 budgets, checksums and exact revision checks retain the semantics above.
 
 Native conformance: [Go tests](../services/search/routing_test.go),
@@ -108,3 +116,61 @@ Native conformance: [Go tests](../services/search/routing_test.go),
 JSON Schema, including generated request IDs and safe additive response fields.
 The native retrieval revision is distinct; performance and matching quality are
 measured separately from policy compatibility. Dense is explicitly disabled.
+
+## Graph parity and adapter budgets (E2.6 integration)
+
+The default Go router already implements scope distance, graph propagation and depth-two
+`requires` closure. Its graph comes from snapshot card metadata; it is not inferred at request
+time. The default `closure` scorer propagates along `requires`; the supported `pagerank` mode
+also uses `refines` and replacement edges. USE hydrates one exact requested revision; the
+adapter loads the dependency cards selected by SEARCH. A four-card cap can truncate closure;
+`composition.status: not_evaluated` is not a promise of dependency completeness.
+
+[The Meridian HTTP parity gate](../tools/search_service/graph_parity.py) runs both graph modes,
+explicit node and workspace-path requests, and selection limits 0/1/3/4 against the frozen CLI
+reference in `compose-service`. It also verifies USE bodies/checksums and required rejections.
+This supplements the flat SKILLRET DEV gate; it does not evaluate retrieval quality.
+
+An adapter must send `budget.max_cards` when its local selection cap differs from the API
+default of four. `profile: hook` alone does not change that cap. PR #67 fixes the CLI
+adapter: representable k values are sent explicitly; k above four and deprecated-skill
+requests fall back locally. The
+[measured reproduction](reports/bakeoff/MERIDIAN-GRAPH-PARITY-2026-09-05.md) and
+[structured gate](reports/bakeoff/PARITY-STRUCTURED-CORPUS-2026-09-05.md) distinguish the
+former integration defect from scorer parity. Limits above four and `include_deprecated` have no
+matching request semantics in contract 1.1: preserve the requested local behavior via explicit
+fallback, or introduce a negotiated contract version before remote execution. Do not silently
+clamp k or suppress the parity counter.
+
+The additional [graph lifecycle E2E](../tools/search_service/graph_lifecycle.py) exercises
+Postgres metadata persistence, adversarial traversal, dependency delivery, repository/tenant
+isolation, concurrent snapshot replacement, transaction failure, rollback and restart. It runs
+only in a dedicated `guidefold-graph-*` Compose project because it installs a temporary,
+test-repository-scoped failure trigger. See the
+[lifecycle report](reports/bakeoff/GRAPH-LIFECYCLE-E2E-2026-09-05.md).
+
+Graph publication now rejects missing targets, malformed edge values, cycles in requires,
+refines and replacement chains, missing replacements for deprecated cards, and refines targets
+at deeper scopes. Validation runs before a transaction or head change, including reactivation.
+See [ADR-0028](adr/ADR-0028-graph-publication-validation.md) for the precise admission rules.
+
+Historical snapshots are not retroactively rewritten or rejected by the reader. Runtime
+traversal remains bounded, while the publication E2E now requires malformed imports to fail
+without changing the active graph. Graph admission is not the full catalog linter or a guarantee
+that the delivery budget fits every dependency. HTTP contract 1.1 and scoring stay unchanged.
+
+## Pinned Kubernetes releases
+
+`GUIDEFOLD_SNAPSHOT_ID` is operator configuration, not a request field. Kubernetes
+pods load only that immutable snapshot within their configured tenant/repository;
+an absent or incompatible pin fails readiness. Unset, the existing Compose deployment
+continues to follow `gf.heads`. Requests still check the database and return the actual
+snapshot/revisions. Staging another release never mutates a running pod's model/index.
+
+The [release preflight and promotion tool](../tools/search_service/k8s_release.py)
+checks all candidate replicas, then changes the separately owned traffic Service using
+compare-and-swap. Data-plane convergence and old connections are asynchronous. Exact
+workspace and skill revision checks remain: keep an old versioned endpoint or use local
+fallback for older client revisions; a 409 is not permission to hydrate a newer revision.
+`/metrics` is an internal aggregate Prometheus endpoint, outside the `/v1` JSON schema;
+keep it out of public ingress. No request-field meaning or retrieval gate changes.

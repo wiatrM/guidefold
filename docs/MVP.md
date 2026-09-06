@@ -187,6 +187,10 @@ Search quality is the product. This epic is how it improves after release withou
 
 ## 5. Rebaselined delivery plan and gates
 
+**Hard rules (ADR-0029, 2026-09-06) bind this section:** surface freeze until the pilot; product = T0/T1 sparse + authoring loop + telemetry; "done" = used by a real developer in a real harness; the GitHub issue backlog is the source of truth for what is next; one research family at a time.
+
+> **Source of truth for *what is next*: the GitHub issue backlog** ([ADR-0029](adr/ADR-0029-product-focus-hard-rules.md) rule 4), mirrored offline in [`docs/BACKLOG.md`](BACKLOG.md) with the epic → story → issue-number map and the register of what this section's epics had parked or dropped on 2026-09-06. The focus those decisions rest on, with the competitive matrix that argues for it, is [`docs/PRODUCT-FOCUS.md`](PRODUCT-FOCUS.md). This section remains the narrative; where it and the issues differ, the issues win.
+
 **Priority plan — approved by the product owner on 2026-09-05 (evening), executed step by step.** It sits on top
 of the week table below and wins where they differ. Each row names what it unblocks; each item has a
 pre-registered measurement or a hard acceptance criterion, never a vibe.
@@ -197,6 +201,8 @@ pre-registered measurement or a hard acceptance criterion, never a vibe.
 | 2–4 | **Go parity** — **done 2026-09-05 in PR #54**: the Go service compiles the CLI's exact fixed-point BM25F contributions from the exported artifact and proves **0/1 000 mismatches** against the CLI on dev (ordered URNs, integer scores, selections, revisions), enforced by a real-HTTP parity job in CI; ParadeDB is storage/prefilter, never the scorer (ADR-0026 amended to hosting only); p95 21.6 / 29.1 ms at c1/c4. Remaining in this row: `/v1/events:batch` on Postgres (port of `tools/telemetry/ledger.py`), shadow records keyed by `search_id`, T1 runbook | a production-shaped T1 on Go with one truth about the ranking (E2.9, ADR-0024 §1) |
 | 3–6 | **Authoring loop**: F5 trigger/negative-trigger suggestions in `validate` (owner approves in the PR), a per-PR collision report ("this description takes N dev queries from skill X"), E7.5 evaluation in the snapshot build | search quality that improves with every skill PR, not only with every model |
 | 5–8 | **Flywheel on real USE events** (E7.1–E7.2) + **pilot E6.7** (3 teams, 20–40 paired tasks, frozen protocol) | evidence of value for developers, not only better metrics |
+
+> Authoring loop, part 1 (per-PR skill collision report + trigger suggestions, informational CI job) shipped in [PR #65](https://github.com/wiatrM/guidefold/pull/65); F5-in-`validate` and E7.5's gate shipped in [PR #120](https://github.com/wiatrM/guidefold/pull/120).
 
 
 Eight weeks starts at this planning revision. Completed E0/E1 work is reused. Staffing assumes one engineer owns client/distribution, one API/events, and 0.5 ML owns evaluation/model admission; shared auth/ops support and partner access must be available. If those assumptions fail, narrow pilot/harness scope explicitly or re-estimate instead of silently extending the plan.

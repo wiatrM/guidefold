@@ -1,0 +1,155 @@
+{{- if and (eq .Values.workload "serve") .Values.gpu.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gf.name" . }}-tei
+spec:
+  {{- if not .Values.gpu.autoscaling.enabled }}
+  replicas: {{ .Values.gpu.replicas }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  minReadySeconds: 5
+  progressDeadlineSeconds: 1800
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: tei
+  template:
+    metadata:
+      labels:
+        {{- include "gf.labels" . | nindent 8 }}
+        app.kubernetes.io/component: tei
+    spec:
+      serviceAccountName: {{ include "gf.name" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "gf.podSecurity" . | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets: {{ toJson .Values.imagePullSecrets }}
+      nodeSelector: {{ toJson .Values.gpu.nodeSelector }}
+      tolerations: {{ toJson .Values.gpu.tolerations }}
+      initContainers:
+        - name: verify-model
+          image: {{ .Values.gpu.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: [/usr/local/bin/guidefold-verify]
+          args: [verify-model, /model]
+          env: [{name: GUIDEFOLD_ENCODER_ID, value: {{ .Values.gpu.encoderID | quote }}}]
+          securityContext:
+            {{- include "gf.containerSecurity" . | nindent 12 }}
+          resources:
+            requests: {cpu: 250m, memory: 64Mi}
+            limits: {cpu: "1", memory: 256Mi}
+      containers:
+        - name: tei
+          image: {{ .Values.gpu.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            {{- include "gf.containerSecurity" . | nindent 12 }}
+          args:
+            - --model-id
+            - /model
+            - --served-model-name
+            - {{ .Values.gpu.encoderID | quote }}
+            - --dtype
+            - float16
+            - --pooling
+            - last-token
+            - --port
+            - "8080"
+            - --tokenization-workers
+            - "2"
+            - --max-concurrent-requests
+            - "32"
+            - --max-batch-tokens
+            - "8192"
+            - --max-batch-requests
+            - {{ .Values.gpu.batchRequests | quote }}
+            - --max-client-batch-size
+            - "16"
+            - --huggingface-hub-cache
+            - /tmp/hf
+            - --hostname
+            - 0.0.0.0
+            - --json-output
+            - --disable-spans
+          env: [{name: HF_HUB_OFFLINE, value: "1"}]
+          ports: [{name: http, containerPort: 8080}]
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            failureThreshold: 180
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.gpu.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: shm, mountPath: /dev/shm}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 256Mi}}
+        - {name: shm, emptyDir: {medium: Memory, sizeLimit: 1Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gf.name" . }}-tei
+spec:
+  selector:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tei
+  ports: [{name: http, port: 8080, targetPort: http}]
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gf.name" . }}-tei
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: tei
+  policyTypes: [Ingress, Egress]
+  egress: []
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "gf.labels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports: [{protocol: TCP, port: 8080}]
+{{- end }}
+{{- if .Values.gpu.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "gf.name" . }}-tei
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: {{ include "gf.name" . }}-tei}
+  minReplicas: {{ .Values.gpu.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.gpu.autoscaling.maxReplicas }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies: [{type: Pods, value: 1, periodSeconds: 60}]
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies: [{type: Pods, value: 1, periodSeconds: 120}]
+  metrics:
+    - type: Pods
+      pods:
+        metric: {name: {{ .Values.gpu.autoscaling.queueMetric | quote }}}
+        target: {type: AverageValue, averageValue: {{ .Values.gpu.autoscaling.queueTarget | quote }}}
+{{- end }}
+{{- end }}

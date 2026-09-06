@@ -195,6 +195,19 @@ flowchart LR
 
 Components: `guidefold` CLI (single file), `guidefold-ui` (single HTML + stdlib server, optional), CI workflow, index artifact, hook templates, bootstrap skill.
 
+**E2.6/E2.9 (shipped): the same client file at every ADR-0024 tier.** `find`/`hook`/`load` gained a
+`search.backend: local|service` config (`docs/CONVENTIONS.md` §1a). `local` is today's in-process
+BM25/dense Router over this document's index artifact, unchanged. `service` POSTs contract-1.1
+`/v1/search` (`docs/HARNESS-SERVICE-CONTRACT.md`) to a T1 deployment (`deploy/t1/`) in a background
+thread, racing it against the same local computation under **one monotonic deadline**
+(ADR-0023 §3): the remote answer wins only if it validates and lands before the deadline, else the
+socket is abandoned (never joined) and the local answer stands — `backend: local` opens no socket
+at all, and `hook`'s config still comes from the environment only, never `guidefold.yaml` (§4
+determinism, E1.5). A runtime parity counter (E2.9) hashes the ordered selected-set from both
+sides whenever both finish in time and emits `telemetry_health.parity_mismatch` (hashes only) on
+disagreement — the first per-query signal, outside offline eval, that T0's Python BM25F and T1's
+Go/ParadeDB retrieval backend picked different skills for the same query.
+
 ## 7. Index artifact
 
 **E1.4 (shipped):** `guidefold index` builds an immutable, sha-keyed artifact at
@@ -406,6 +419,8 @@ Demo script (Phase 1): open the playground on the Meridian tree → add a skill 
 
 PR: `validate` (frontmatter, kind-per-level, triggers, digest, references, requires exist, no cycles, flattened-node collisions, ZIP limits) → `dedup` (trigram Jaccard ≥ 0.6 same level → warn; ≥ 0.85 → fail) → `drift` → `materialize --check` → `index --check` (index builds; sha in lock file) → `eval` (golden set on the fixture in this repo; on the consumer tree, the consumer's golden set) → `lift` comment.
 Main: `index` (embeddings for changed skills) → upload shards to GCS → `publish --changed` → `hierarchy-index` revision → `materialize` commit-back.
+
+**E7.5 (shipped, standalone CLI form — not yet tied to an index/snapshot build, `dedup`/`lift` remain unbuilt):** `guidefold eval --queries <dir|yaml|jsonl> [--baseline b.json] [--gate]` runs the golden/consumer query set through the real product path (`policy_filter → candidates → score → select`, never a second ranking implementation) and reports the RETRIEVAL metrics (hit@1/recall@k/nDCG@10, `Router.score` order) and INJECTION metrics (completeness@k/all_required@k/distractor_rate@k plus abstention/coverage, the ≤k cards `Router.select` emits) of §8.1's evidence base. `--gate` fails the check when a gated metric regresses beyond its `guidefold.yaml` `eval.gate` margin versus `--baseline`, printing a paired bootstrap 95% CI for context; `--write-baseline` records a new baseline deliberately, the same reviewed act as `run_golden.py --update-baseline`. Wired as this repo's own `golden-eval` CI step and as `templates/ci.yml`'s `quality-gate` job for a consumer monorepo — see `docs/CONVENTIONS.md` §13.
 
 Golden set: ≥ 60 queries on the playground, each with expected URNs and expected order by level; metrics Hit@1, Recall@8, stratification score (fraction of adjacent pairs in non-decreasing level), p50/p95 latency. Thresholds gate merges to the CLI; nightly run against the real registry detects embedder or API changes.
 
