@@ -98,8 +98,14 @@ def test_shadow_record_top20_is_retrieval_order_not_injection_order(run_cli, fix
     record = json.loads(_telemetry_path(fixture_copy).read_text(encoding="utf-8").splitlines()[-1])
     retrieval_first_urn = record["top20"][0]["urn"]
 
-    assert retrieval_first_urn != printed_first_urn
+    # Re-examined in PR #68 (as this docstring asked): `find` now prints the SAME set in relevance
+    # order, so the printed head equals the shadow record's head. The guard that matters survives:
+    # the record is Router.score order (best match first), never the depth-sorted injection order
+    # -- which the hook still uses (tests/test_find_relevance_order.py pins both).
+    assert retrieval_first_urn == printed_first_urn
     assert retrieval_first_urn == "urn:skill:meridian:atlas.identity:rbac-policies"
+    scores = [row["score"] for row in record["top20"]]
+    assert scores == sorted(scores, reverse=True)
 
 
 def test_telemetry_write_failure_never_fails_the_command(run_cli, fixture_copy):
