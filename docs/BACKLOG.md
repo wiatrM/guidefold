@@ -1,6 +1,6 @@
 # Backlog — offline mirror
 
-**The GitHub issues are the source of truth** ([ADR-0027](adr/ADR-0027-product-focus-hard-rules.md)
+**The GitHub issues are the source of truth** ([ADR-0029](adr/ADR-0029-product-focus-hard-rules.md)
 rule 4). This file is a copy so the repository can answer "what is next" without a network call.
 Regenerate it when the issue set changes materially; if the two disagree, the issues win.
 
@@ -23,7 +23,7 @@ Seven epics, forty stories. No story exists without an epic; no research story e
 ---
 
 ## [#71] Epic A — A design partner uses T0 in a real Claude Code and Copilot session
-`epic` `client` `docs` · M1 · *ADR-0027 rule 3: "done" means used.*
+`epic` `client` `docs` · M1 · *ADR-0029 rule 3: "done" means used.*
 
 | # | Story | Size | Depends on | Milestone |
 |---|---|---|---|---|
@@ -71,7 +71,7 @@ Seven epics, forty stories. No story exists without an epic; no research story e
 | [#101] | `doctor` measures the consumer's own corpus and recommends T0 or T1 | S | — | M1 |
 
 ## [#75] Epic E — Pilot E6.7: the go/no-go on developer value
-`epic` `pilot` · M3 · *ADR-0027 rule 6: the decision point.*
+`epic` `pilot` · M3 · *ADR-0029 rule 6: the decision point.*
 
 | # | Story | Size | Depends on | Milestone |
 |---|---|---|---|---|
@@ -83,7 +83,7 @@ Seven epics, forty stories. No story exists without an epic; no research story e
 | [#107] | Hands-on usability sessions in the three teams: a failure list, not a score | M | #104 | M3 |
 
 ## [#76] Epic F — Research: family E, the one dense track in flight
-`epic` `research` · M3 · *ADR-0027 rules 2 and 5. Never a product dependency.*
+`epic` `research` · M3 · *ADR-0029 rules 2 and 5. Never a product dependency.*
 
 | # | Story | Size | Depends on | Milestone |
 |---|---|---|---|---|
@@ -118,15 +118,15 @@ The full register with reopening conditions is #117. Summary:
 | E2.3 registry publication | **parked** | The Agent Registry is a downstream mirror, "never required for SEARCH latency or MVP release" (`docs/MVP.md` §2). It keeps working and keeps its tests; it stops being the headline (#79, #117) |
 | **E3 promotion vertical** (E3.1–E3.7) | **parked, whole epic** | Promotion is downstream of discovery and no developer has used discovery yet. Reopen when epic C shows an owner making decisions from the report and asking for a proposal workflow |
 | E4.1, E4.5, E4.6 governance | **kept** | E4.5 is #89; E4.1 and E4.6 are correctness properties of the frozen surface |
-| E4.2 automated probation, E4.3 induction, E4.4 audit export | **parked** | ADR-0027 rule 1; already deferred in `docs/MVP.md` §7 |
+| E4.2 automated probation, E4.3 induction, E4.4 audit export | **parked** | ADR-0029 rule 1; already deferred in `docs/MVP.md` §7 |
 | **E5 demo UI** (E5.1) | **parked** | Backstage, Port and Cortex already build portals ([`PRODUCT-FOCUS.md`](PRODUCT-FOCUS.md)); `docs/ui/*` retained as a design record. E5.2 (CLI inspection) and E5.3 (owner report) survive as epic C |
 | E6.1–E6.6 service and evidence | **kept**, split across epics C and D | E6.1/E6.6 → #97/#100, E6.2/E6.3 → #98, E6.4 → #93, E6.5 → #91 |
-| E6.7 pilot | **kept**, promoted to epic E | It is the decision point (ADR-0027 rule 6) |
+| E6.7 pilot | **kept**, promoted to epic E | It is the decision point (ADR-0029 rule 6) |
 | E7.3 composer | **closed** | Ran on dev with no arm frozen (PR #59). Not reopened |
 | E7.4 synthetic queries at index time | **merged into** #108 | It is the same generation work, now inside the one research family |
-| **E7.1, E7.2, E7.6** flywheel and per-tenant fine-tune | **parked** | They need pilot USE labels that do not exist. ADR-0027 rules 2 and 6 |
+| **E7.1, E7.2, E7.6** flywheel and per-tenant fine-tune | **parked** | They need pilot USE labels that do not exist. ADR-0029 rules 2 and 6 |
 | **T2 organisation tier** | **parked** | ADR-0024's tier table stays as target architecture; rule 6 makes the pilot the gate |
 | **Codex and Gemini CLI adapters** | **parked** | Claude Code and Copilot are not yet demonstrated (#81, #82). Hook templates stay in `skills/guidefold/hooks/` |
-| **TEI/GPU shadow, k8s, sharding, graph admission** | **parked** | ADR-0027 rule 1 surface freeze — #112, #113, #114, #115 |
+| **TEI/GPU shadow, k8s, sharding, graph admission** | **parked** | ADR-0029 rule 1 surface freeze — #112, #113, #114, #115 |
 
 Nothing was deleted. Every parked item keeps its branch, its flag, its tests and its reports.
