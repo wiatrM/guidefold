@@ -1,0 +1,31 @@
+{
+  "document_selection_independent_hash_verified": true,
+  "query_selection_hash_verified": true,
+  "qrel_sets_checked": 2048,
+  "qrel_relevance_values": {
+    "1": 4121
+  },
+  "old_query_id_overlap": 0,
+  "old_query_text_overlap": 0,
+  "duplicate_normalized_query_groups_in_eval": 0,
+  "duplicate_extra_queries_in_eval": 0,
+  "semantic_audit_selection_rule": "first16 sorted by SHA256(enrichment-audit-v1 + skill_id), independent of outcomes",
+  "semantic_audit_ids": [
+    "b67937a6-255b-4a20-8fe9-79a977e3d8ad",
+    "eab4c43a-cfcc-4e4a-b4f3-f415da7c8574",
+    "fbd54315-3f1a-4bf7-8a50-e634ae7fa7de",
+    "fb403d3b-0a9f-4043-922a-ee716171e258",
+    "4413090c-0805-411b-a68d-530bb6386348",
+    "bad47673-bbe7-40f1-ae46-d3a483b2d872",
+    "46b0f4a3-86d2-466c-a89c-e4fa666a0ed5",
+    "d36a0433-334d-49e4-a885-fb9974f57278",
+    "69507794-bc4e-48aa-bb9e-1fef089ced56",
+    "4ed5d253-fa68-4571-98ba-631c017b0c3e",
+    "30bddd35-f4ba-4589-b49d-43ac63f07ca0",
+    "4d2095dc-0ae4-4ac9-9867-a4ce30a3995b",
+    "a79274ae-05bd-42bf-8ff5-50a2cd377985",
+    "2f1f7b22-dd85-42b7-add8-efd4d68e96bc",
+    "91823ed1-b996-4557-a92c-f5901dda723b",
+    "e69f9870-69bc-4151-af50-b04a9d5faa10"
+  ]
+}

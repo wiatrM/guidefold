@@ -1,0 +1,516 @@
+{
+  "kind": "posthoc CPU-only diagnosis; no retraining, no new treatment or holdout evaluation",
+  "source_run_manifest_sha256": "36310242ad68f07d55042331d5500a2b5691cf5a54962dc3b59e1dc254a3e424",
+  "strata_by_gold_k": {
+    "flat_uniform": {
+      "1": {
+        "n_queries": 328,
+        "metrics": {
+          "hit1": 0.7926829268292683,
+          "recall10": 0.9542682926829268,
+          "ndcg10_binary": 0.8709510425124702,
+          "all_gold4": 0.9054878048780488
+        },
+        "first_gold_recall10": 0.9542682926829268,
+        "companion_gold_micro_recall10": null,
+        "all_gold_in_top10": 0.9542682926829268
+      },
+      "2": {
+        "n_queries": 333,
+        "metrics": {
+          "hit1": 0.8018018018018018,
+          "recall10": 0.6186186186186187,
+          "ndcg10_binary": 0.6264442507538472,
+          "all_gold4": 0.19519519519519518
+        },
+        "first_gold_recall10": 0.7927927927927928,
+        "companion_gold_micro_recall10": 0.4444444444444444,
+        "all_gold_in_top10": 0.27627627627627627
+      },
+      "3": {
+        "n_queries": 339,
+        "metrics": {
+          "hit1": 0.8436578171091446,
+          "recall10": 0.47000983284169134,
+          "ndcg10_binary": 0.5251455488627997,
+          "all_gold4": 0.02064896755162242
+        },
+        "first_gold_recall10": 0.7551622418879056,
+        "companion_gold_micro_recall10": 0.3274336283185841,
+        "all_gold_in_top10": 0.0471976401179941
+      }
+    },
+    "field_uniform": {
+      "1": {
+        "n_queries": 328,
+        "metrics": {
+          "hit1": 0.6097560975609756,
+          "recall10": 0.8963414634146342,
+          "ndcg10_binary": 0.7470974942668656,
+          "all_gold4": 0.7987804878048781
+        },
+        "first_gold_recall10": 0.8963414634146342,
+        "companion_gold_micro_recall10": null,
+        "all_gold_in_top10": 0.8963414634146342
+      },
+      "2": {
+        "n_queries": 333,
+        "metrics": {
+          "hit1": 0.6816816816816816,
+          "recall10": 0.5915915915915916,
+          "ndcg10_binary": 0.5714370418248379,
+          "all_gold4": 0.18018018018018017
+        },
+        "first_gold_recall10": 0.7417417417417418,
+        "companion_gold_micro_recall10": 0.44144144144144143,
+        "all_gold_in_top10": 0.26126126126126126
+      },
+      "3": {
+        "n_queries": 339,
+        "metrics": {
+          "hit1": 0.7669616519174042,
+          "recall10": 0.4523107177974433,
+          "ndcg10_binary": 0.49183510293962013,
+          "all_gold4": 0.017699115044247787
+        },
+        "first_gold_recall10": 0.7020648967551623,
+        "companion_gold_micro_recall10": 0.3274336283185841,
+        "all_gold_in_top10": 0.0471976401179941
+      }
+    },
+    "flat_mlp": {
+      "1": {
+        "n_queries": 328,
+        "metrics": {
+          "hit1": 0.7926829268292683,
+          "recall10": 0.9420731707317073,
+          "ndcg10_binary": 0.8724402775694353,
+          "all_gold4": 0.9085365853658537
+        },
+        "first_gold_recall10": 0.9420731707317073,
+        "companion_gold_micro_recall10": null,
+        "all_gold_in_top10": 0.9420731707317073
+      },
+      "2": {
+        "n_queries": 333,
+        "metrics": {
+          "hit1": 0.8078078078078078,
+          "recall10": 0.6231231231231231,
+          "ndcg10_binary": 0.6384612689370499,
+          "all_gold4": 0.22822822822822822
+        },
+        "first_gold_recall10": 0.8228228228228228,
+        "companion_gold_micro_recall10": 0.42342342342342343,
+        "all_gold_in_top10": 0.2822822822822823
+      },
+      "3": {
+        "n_queries": 339,
+        "metrics": {
+          "hit1": 0.8377581120943953,
+          "recall10": 0.47394296951819037,
+          "ndcg10_binary": 0.5354387169206756,
+          "all_gold4": 0.032448377581120944
+        },
+        "first_gold_recall10": 0.7817109144542773,
+        "companion_gold_micro_recall10": 0.3200589970501475,
+        "all_gold_in_top10": 0.058997050147492625
+      }
+    },
+    "field_mlp": {
+      "1": {
+        "n_queries": 328,
+        "metrics": {
+          "hit1": 0.7530487804878049,
+          "recall10": 0.9054878048780488,
+          "ndcg10_binary": 0.8305510363205338,
+          "all_gold4": 0.8689024390243902
+        },
+        "first_gold_recall10": 0.9054878048780488,
+        "companion_gold_micro_recall10": null,
+        "all_gold_in_top10": 0.9054878048780488
+      },
+      "2": {
+        "n_queries": 333,
+        "metrics": {
+          "hit1": 0.7867867867867868,
+          "recall10": 0.5855855855855856,
+          "ndcg10_binary": 0.6071254281582945,
+          "all_gold4": 0.2042042042042042
+        },
+        "first_gold_recall10": 0.7597597597597597,
+        "companion_gold_micro_recall10": 0.4114114114114114,
+        "all_gold_in_top10": 0.25225225225225223
+      },
+      "3": {
+        "n_queries": 339,
+        "metrics": {
+          "hit1": 0.831858407079646,
+          "recall10": 0.4395280235988197,
+          "ndcg10_binary": 0.511174501470069,
+          "all_gold4": 0.02359882005899705
+        },
+        "first_gold_recall10": 0.7197640117994101,
+        "companion_gold_micro_recall10": 0.2994100294985251,
+        "all_gold_in_top10": 0.05309734513274336
+      }
+    },
+    "sparse_field_mlp": {
+      "1": {
+        "n_queries": 328,
+        "metrics": {
+          "hit1": 0.7591463414634146,
+          "recall10": 0.9359756097560976,
+          "ndcg10_binary": 0.8492454942547019,
+          "all_gold4": 0.8932926829268293
+        },
+        "first_gold_recall10": 0.9359756097560976,
+        "companion_gold_micro_recall10": null,
+        "all_gold_in_top10": 0.9359756097560976
+      },
+      "2": {
+        "n_queries": 333,
+        "metrics": {
+          "hit1": 0.7957957957957958,
+          "recall10": 0.6231231231231231,
+          "ndcg10_binary": 0.6340501253405832,
+          "all_gold4": 0.24024024024024024
+        },
+        "first_gold_recall10": 0.7807807807807807,
+        "companion_gold_micro_recall10": 0.46546546546546547,
+        "all_gold_in_top10": 0.3003003003003003
+      },
+      "3": {
+        "n_queries": 339,
+        "metrics": {
+          "hit1": 0.8466076696165191,
+          "recall10": 0.48377581120943935,
+          "ndcg10_binary": 0.543200184766926,
+          "all_gold4": 0.0471976401179941
+        },
+        "first_gold_recall10": 0.7669616519174042,
+        "companion_gold_micro_recall10": 0.3421828908554572,
+        "all_gold_in_top10": 0.08259587020648967
+      }
+    }
+  },
+  "flat_to_field_gold_recall_transitions": {
+    "first": {
+      "n_gold_instances": 1000,
+      "lost_flat_to_field": 63,
+      "gained_flat_to_field": 9
+    },
+    "companion": {
+      "n_gold_instances": 1011,
+      "lost_flat_to_field": 33,
+      "gained_flat_to_field": 15
+    }
+  },
+  "local_derivatives_at_dev_gold_vectors": {
+    "flat_mlp": {
+      "tfidf_flat": {
+        "negative_derivative_fraction": 0.17056190949776232,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -14.545215410574764,
+          "p50": 24.29828255577599,
+          "p95": 30.6857368978805,
+          "max": 43.9977500489756
+        }
+      },
+      "dense_flat": {
+        "negative_derivative_fraction": 0.3585280954748881,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -12.192016694908128,
+          "p50": 1.4316843931240295,
+          "p95": 9.263272427287962,
+          "max": 9.263272427287962
+        }
+      }
+    },
+    "field_mlp": {
+      "tfidf_name": {
+        "negative_derivative_fraction": 0.23570363003480854,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -23.314082274398768,
+          "p50": 4.687710964081558,
+          "p95": 8.554095148418753,
+          "max": 13.958390132423853
+        }
+      },
+      "tfidf_description": {
+        "negative_derivative_fraction": 0.2347090999502735,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -21.88827319613184,
+          "p50": 5.2383702340974985,
+          "p95": 14.094393643780753,
+          "max": 23.65338208847686
+        }
+      },
+      "tfidf_body": {
+        "negative_derivative_fraction": 0.08204873197414221,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -17.696282167022616,
+          "p50": 22.19637103226369,
+          "p95": 30.250421694999492,
+          "max": 52.04226697230235
+        }
+      },
+      "dense_name": {
+        "negative_derivative_fraction": 0.5096966683242168,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -15.1354838070375,
+          "p50": -0.2762902889642026,
+          "p95": 4.004560090993656,
+          "max": 8.794567148112394
+        }
+      },
+      "dense_description": {
+        "negative_derivative_fraction": 0.9622078567876678,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -9.519183373587678,
+          "p50": -2.33641200227381,
+          "p95": -0.202469288856784,
+          "max": 4.255215027624519
+        }
+      },
+      "dense_body": {
+        "negative_derivative_fraction": 0.12381899552461462,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -8.828745533732716,
+          "p50": 3.036051352752937,
+          "p95": 4.551374506851098,
+          "max": 10.449953120986281
+        }
+      }
+    },
+    "sparse_field_mlp": {
+      "tfidf_name": {
+        "negative_derivative_fraction": 0.22824465440079564,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -16.869824867687363,
+          "p50": 2.134670871268764,
+          "p95": 10.814012559805878,
+          "max": 16.762087779333793
+        }
+      },
+      "tfidf_description": {
+        "negative_derivative_fraction": 0.2416708105420189,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -15.213592492576481,
+          "p50": 8.140531569117428,
+          "p95": 12.960132544278222,
+          "max": 14.162291670923155
+        }
+      },
+      "tfidf_body": {
+        "negative_derivative_fraction": 0.23272003978120337,
+        "raw_score_derivative": {
+          "n": 2011,
+          "min": -16.56062740294025,
+          "p50": 24.33208042394885,
+          "p95": 28.99126810352879,
+          "max": 32.377451564531235
+        }
+      }
+    }
+  },
+  "top20_channel_union_gold_recall_ceiling": {
+    "1": 0.9847560975609756,
+    "2": 0.7492492492492493,
+    "3": 0.616519174041298
+  },
+  "top20_channel_gold_recall": {
+    "1": {
+      "tfidf_name": 0.2865853658536585,
+      "tfidf_description": 0.7896341463414634,
+      "tfidf_body": 0.9695121951219512,
+      "dense_name": 0.45121951219512196,
+      "dense_description": 0.7591463414634146,
+      "dense_body": 0.9054878048780488,
+      "tfidf_flat": 0.9725609756097561,
+      "dense_flat": 0.9054878048780488
+    },
+    "2": {
+      "tfidf_name": 0.24624624624624625,
+      "tfidf_description": 0.545045045045045,
+      "tfidf_body": 0.6876876876876877,
+      "dense_name": 0.29429429429429427,
+      "dense_description": 0.4984984984984985,
+      "dense_body": 0.551051051051051,
+      "tfidf_flat": 0.6966966966966966,
+      "dense_flat": 0.551051051051051
+    },
+    "3": {
+      "tfidf_name": 0.21435594886922318,
+      "tfidf_description": 0.4650934119960669,
+      "tfidf_body": 0.5388397246804326,
+      "dense_name": 0.20452310717797442,
+      "dense_description": 0.36381514257620456,
+      "dense_body": 0.40707964601769914,
+      "tfidf_flat": 0.5535889872173057,
+      "dense_flat": 0.40707964601769914
+    }
+  },
+  "training_pair_reconstruction": {
+    "pairs": 186673,
+    "positives": 3774,
+    "excluded": 36953,
+    "positive_BCE_weight": 48.46290408055114,
+    "by_k": {
+      "1": {
+        "n_queries": 772,
+        "n_pairs": 71228,
+        "positive_pairs": 772,
+        "negative_count_per_query": {
+          "n": 772,
+          "min": 56.0,
+          "p50": 92.0,
+          "p95": 108.0,
+          "max": 120.0
+        },
+        "fraction_global_BCE_weight_mass": 0.2948877849255203,
+        "mean_BCE_weight_mass_per_query": 139.72715278521437
+      },
+      "2": {
+        "n_queries": 682,
+        "n_pairs": 63647,
+        "positive_pairs": 1364,
+        "negative_count_per_query": {
+          "n": 682,
+          "min": 59.0,
+          "p50": 92.0,
+          "p95": 108.0,
+          "max": 120.0
+        },
+        "fraction_global_BCE_weight_mass": 0.35097622503641834,
+        "mean_BCE_weight_mass_per_query": 188.24985508192339
+      },
+      "3": {
+        "n_queries": 546,
+        "n_pairs": 51798,
+        "positive_pairs": 1638,
+        "negative_count_per_query": {
+          "n": 546,
+          "min": 59.0,
+          "p50": 92.0,
+          "p95": 109.0,
+          "max": 123.0
+        },
+        "fraction_global_BCE_weight_mass": 0.35413599003806134,
+        "mean_BCE_weight_mass_per_query": 237.25684410978528
+      }
+    }
+  },
+  "recorded_query_exposure_inventory": {
+    "scope": "committed validation outputs and current research JSON/gzip excluding caches; unknown external logs not covered",
+    "unique_recorded_qtrain_ids": 3000,
+    "raw_train_query_ids": 63259,
+    "unrecorded_train_query_ids": 60259,
+    "unrecorded_by_k": {
+      "2": 20020,
+      "1": 19676,
+      "3": 20563
+    },
+    "files": {
+      "docs/reports/bakeoff/validation/dev-composer-c-model-2.jsonl.gz": 150,
+      "docs/reports/bakeoff/validation/e11b-encoder-process-numeric.json": 40,
+      "docs/reports/bakeoff/validation/e11b-sparse-comparison400-v3.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-p-flat.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-comparison400-v2.json": 200,
+      "docs/reports/bakeoff/validation/e11b-hybrid-native-pipeline-optimized400-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/dev-decompose-d0.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/go-paradedb-dense-prompt-audit.json": 40,
+      "docs/reports/bakeoff/validation/e11b-hybrid.json": 200,
+      "docs/reports/bakeoff/validation/dev-decompose-d-model-2.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-expand-coverage.json": 21,
+      "docs/reports/bakeoff/validation/gpu-dense-batch1-latency.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-fault-smoke.json": 1,
+      "docs/reports/bakeoff/validation/router-bm25f-parity-rows.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/gpu-dev-hybrid-rows.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/gpu-dev-f0.json.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-during-index-build.json": 200,
+      "docs/reports/bakeoff/validation/router-bm25f-latency.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized-v3.json": 200,
+      "docs/reports/bakeoff/validation/gpu-hybrid-batch1-latency-rows.jsonl.gz": 200,
+      "docs/reports/bakeoff/validation/go-paradedb-latency.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized-v2.json": 200,
+      "docs/reports/bakeoff/validation/gpu-dev-hybrid.json": 1,
+      "docs/reports/bakeoff/validation/gpu-hybrid-batch16-latency-rows.jsonl.gz": 200,
+      "docs/reports/bakeoff/validation/dev-decompose-d-det-1.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-gil05-comparison400.json": 200,
+      "docs/reports/bakeoff/validation/e11b-hybrid-gil05-native-pipeline-optimized400-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/dev-expand-e-field-w.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-process-recovery-v3.json": 1,
+      "docs/reports/bakeoff/validation/gpu-hybrid-batch1-latency.json": 200,
+      "docs/reports/bakeoff/validation/dev-composer-c-det-4.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/gpu-dense-batch1-latency-rows.jsonl.gz": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized400-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-r-bm25.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-encoder-threads.json": 40,
+      "docs/reports/bakeoff/validation/gpu-numerical.json": 40,
+      "docs/reports/bakeoff/validation/dev-sparse-p-top200.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-comparison300-v3.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-r-bm25-simple-tok.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-reference-v2.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized400.json": 200,
+      "docs/reports/bakeoff/validation/gpu-dev-dense-rows.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-hybrid-optimized400.json": 200,
+      "docs/reports/bakeoff/validation/dev-decompose-d-model-1.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/skillret-dev-split.json": 1000,
+      "docs/reports/bakeoff/validation/e11b-cache-comparison400.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-p-nopprocl.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-composer-c0.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/go-paradedb-quality-dev-ranks.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-decompose-d-det-3.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-hybrid-native-pipeline-optimized400.json": 200,
+      "docs/reports/bakeoff/validation/dev-expand-e-field-1.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-encoder-stages.json": 40,
+      "docs/reports/bakeoff/validation/e11b-hybrid-gil05-native-pipeline-optimized400.json": 200,
+      "docs/reports/bakeoff/validation/dev-expand-e-append.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-composer-c-det-2.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-decompose-d-det-2.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/gpu-hybrid-batch16-latency.json": 200,
+      "docs/reports/bakeoff/validation/dev-composer-c-det-3.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-reference-v3.json": 200,
+      "docs/reports/bakeoff/validation/dev-composer-c0-sub.jsonl.gz": 150,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized-v3-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/e11b-candidate-cpu-profile.json": 40,
+      "docs/reports/bakeoff/validation/e11b-hybrid-deadline300.json": 200,
+      "docs/reports/bakeoff/validation/e11b-hybrid-reference400.json": 200,
+      "docs/reports/bakeoff/validation/dev-composer-c-model-1.jsonl.gz": 150,
+      "docs/reports/bakeoff/validation/dev-composer-c-det-1.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-native-pipeline-comparison400.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-comparison300-v2.json": 200,
+      "docs/reports/bakeoff/validation/dev-expand-p-flat.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-sparse-optimized-v2-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/e11b-sparse-deadline300.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-p-onefield.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/e11b-hybrid-optimized400-deadline400-burst.json": 200,
+      "docs/reports/bakeoff/validation/dev-sparse-p-k1b.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/t1-router-parity-rows.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-sparse-p-shipped.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/dev-sparse-p-noscope.jsonl.gz": 1000,
+      "docs/reports/bakeoff/validation/service-throughput/manifest.json": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-shadow-before-batch1.json.gz": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-shadow-before-batch4.json.gz": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-final-latency.json.gz": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-shadow-after-reuse-batch1.json.gz": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-shadow-final-compact-q128.json.gz": 200,
+      "docs/reports/bakeoff/validation/service-throughput/throughput-final-parity.json.gz": 1000,
+      "research/spikes/2026-09-06-field-aware/pretraining-manifest-v1.json": 3000,
+      "research/spikes/2026-09-06-field-aware/manifest.json": 3000,
+      "research/spikes/2026-09-06-field-aware/dev-rankings.jsonl.gz": 1000
+    }
+  },
+  "elapsed_seconds": 12.08856463432312
+}

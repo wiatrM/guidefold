@@ -1,0 +1,43 @@
+{
+  "status": "Source-backed mechanism check, not an outcome ablation",
+  "field_average_rule": "Sum and count only positive field lengths; empty fields do not dilute the average.",
+  "code_file": "skills/guidefold/scripts/guidefold",
+  "code_sha256": "3cd032e2fdb188809bb66b1221f2474124aaf6bff75340fdad381b127a4c9071",
+  "lines": [
+    689,
+    697
+  ],
+  "arms": {
+    "A_original": {
+      "nonempty_docs": 0,
+      "total_tokens": 0,
+      "mean_nonempty_tokens": null,
+      "median_nonempty_tokens": null
+    },
+    "B_generated": {
+      "nonempty_docs": 454,
+      "total_tokens": 9768,
+      "mean_nonempty_tokens": 21.515418502202643,
+      "median_nonempty_tokens": 20.0
+    },
+    "C_roundtrip": {
+      "nonempty_docs": 416,
+      "total_tokens": 6639,
+      "mean_nonempty_tokens": 15.959134615384615,
+      "median_nonempty_tokens": 14.0
+    },
+    "D_matched_random": {
+      "nonempty_docs": 416,
+      "total_tokens": 6631,
+      "mean_nonempty_tokens": 15.939903846153847,
+      "median_nonempty_tokens": 13.0
+    },
+    "E_extractive": {
+      "nonempty_docs": 454,
+      "total_tokens": 10320,
+      "mean_nonempty_tokens": 22.73127753303965,
+      "median_nonempty_tokens": 21.0
+    }
+  },
+  "interpretation": "Partial coverage still limits affected relevant documents and alters term document frequency. Do not extrapolate a partial-coverage effect to full coverage. The particular hypothesis that empty trigger fields reduce the average by roughly 20x is contradicted by the code."
+}

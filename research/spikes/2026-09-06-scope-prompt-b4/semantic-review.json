@@ -1,0 +1,1099 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-09-06",
+  "experiment": "2026-09-06-scope-prompt-b4",
+  "review_type": "fixed-eight paired source-faithfulness and scope-specificity audit",
+  "reviewer": "Product Manager subagent; one LLM reviewer",
+  "status": "complete",
+  "provenance": {
+    "read_real_queries": false,
+    "read_qrels": false,
+    "read_retrieval_results": false,
+    "arm_identities_known": true,
+    "fully_blinded": false,
+    "old_partial_batch8_outputs_read": false,
+    "pooled_old_partial_outputs": false,
+    "production_changes": false
+  },
+  "rubric": {
+    "supported_specific": "Task and meaningful scope/workflow/platform are supported by the supplied source; the generated text itself retains a characteristic platform or concrete distinctive workflow.",
+    "weak_generic": "Meaning is supported, but generated text omits distinctive scope/goal and may match unrelated tools/workflows.",
+    "unsupported": "Generated text adds a capability, constraint or objective absent from or contradicted by the supplied source.",
+    "empty_parse_failure": "Record separately; empty output is not counted as a specificity success.",
+    "source_boundary": "Only exact source-inputs excerpts, including name/description/body, count as evidence. Omitted passages and external knowledge do not. Generated evidence field is a locator, not by itself proof; review uses the entire supplied excerpt.",
+    "specificity_not_keyword_rule": "Platform names are not always mandatory: a distinctive workflow or object can suffice. Tool-specific tasks are assessed relative to the source scope.",
+    "predeclaration": "Rubric and fixed eight IDs were set before reading batch4 accepted outputs. Item judgments use this rubric; no retrieval outcomes were inspected."
+  },
+  "integrity": {
+    "row_count": 64,
+    "unique_arm_skill_pairs": 64,
+    "arm_counts": [
+      {
+        "Name": "original_prompt",
+        "Count": 32
+      },
+      {
+        "Name": "scoped_task_prompt",
+        "Count": 32
+      }
+    ],
+    "fixed_audit_pairs": 16,
+    "source_inputs_identical_to_abandoned_batch8": true,
+    "files": [
+      {
+        "file": "PROTOCOL.md",
+        "sha256": "0767966474ab8ff28c1e9f822e51dac7f5c7d8f9ff53c29a47d036e926907518"
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "f4188ed843eb4d8608a397c8a6e5caa966babaee339f3a8cdda52a80f1d0a0ff"
+      },
+      {
+        "file": "source-inputs.json",
+        "sha256": "4a055291d54b4456c508471f680235930e7de3f896eda774deb2f714cd40a821"
+      },
+      {
+        "file": "paired-generation.jsonl",
+        "sha256": "bc2a18bd9cb1a0432199a25dc993d535c4a0dac33bb518fe85366594caf56104"
+      },
+      {
+        "file": "generation-summary.json",
+        "sha256": "941361b769bfca5e6bb33c87b17e6a32a6afeffd412a21fc86ae95778fae4b44"
+      }
+    ],
+    "model": "/home/mike/.cache/guidefold/models/Qwen__Qwen2.5-7B-Instruct/a09a35458c702b33eeacc393d103063234e8bc28",
+    "max_new_tokens": 448,
+    "batch_size": 4,
+    "seed": 20260906,
+    "baseline_prompt_sha256": "aabf21b4fba9dc73fdd1013309ec4e44db63b67860b91d73a3e4e9e36eb5afda",
+    "scoped_prompt_sha256": "0357d700fa84064d4d300466e292d5c4bc83c386ce87f08329473494d95742c8"
+  },
+  "aggregates": {
+    "original_prompt": {
+      "assigned_audit_docs": 8,
+      "accepted_intents": 17,
+      "accepted_queries": 11,
+      "accepted_total": 28,
+      "counts": {
+        "supported_specific": 11,
+        "weak_generic": 17,
+        "unsupported": 0
+      },
+      "nonempty_docs": 8,
+      "empty_docs": 0,
+      "parse_failure_docs": 0,
+      "cap_hit_docs": 0,
+      "docs_with_supported_specific": 4,
+      "supported_specific_share_of_accepted": 0.39285714285714285
+    },
+    "scoped_task_prompt": {
+      "assigned_audit_docs": 8,
+      "accepted_intents": 17,
+      "accepted_queries": 12,
+      "accepted_total": 29,
+      "counts": {
+        "supported_specific": 18,
+        "weak_generic": 11,
+        "unsupported": 0
+      },
+      "nonempty_docs": 7,
+      "empty_docs": 1,
+      "parse_failure_docs": 1,
+      "cap_hit_docs": 1,
+      "docs_with_supported_specific": 6,
+      "supported_specific_share_of_accepted": 0.6206896551724138
+    }
+  },
+  "documents": [
+    {
+      "skill_id": "b1ede29c-68f0-4bfc-a804-d5f85fb3df02",
+      "name": "Hermetic SpecKit",
+      "source_text_utf8_sha256": "55d49067898bc9e458c8bfa3410fb5604edd1d0caf4dcb46b4920815b217ab98",
+      "source_chars": 6773,
+      "scope_from_source": "GitHub SpecKit phases in isolated Dagger container-use environments; .specify artifacts followed by reviewed, parallel implementation.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: Build software using isolated container-use environments with SpecKit workflow. Use when user needs to build a feature, application, or complex task that benefits from spec-driven development. Keywords: build, create, implement, feature, app, application, spec, plan, hermetic, isolated, dagger."
+        },
+        {
+          "line": 94,
+          "quote": "**Step 2.2: Clarify (Self-Response)**"
+        },
+        {
+          "line": 207,
+          "quote": "**User**: \"Refactor the payment module to use the strategy pattern\""
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 1,
+          "accepted_queries": 0,
+          "accepted_total": 1,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 1,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "word_bounds": 1,
+            "evidence_not_in_source": 4
+          },
+          "output_tokens": 204,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "generate spec.md for feature specification",
+              "evidence": "Generate `.specify/spec.md` with the feature specification",
+              "label": "weak_generic",
+              "rationale_pl": "Źródło opisuje specyfikację w .specify/spec.md, lecz sam tekst pomija SpecKit i izolowany container-use; nazwa spec.md nie zachowuje charakterystycznego workflow."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 2,
+          "accepted_queries": 2,
+          "accepted_total": 4,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 4,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "word_bounds": 2
+          },
+          "output_tokens": 196,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "generate spec.md for feature specification",
+              "evidence": "Generate `.specify/spec.md` with the feature specification",
+              "label": "weak_generic",
+              "rationale_pl": "Zachowuje tworzenie specyfikacji, ale pomija SpecKit, ścieżkę .specify i container-use."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "fan out implementation to parallel environments",
+              "evidence": "Fans out to: `task-1-models`, `task-2-routes`, `task-3-jwt`",
+              "label": "weak_generic",
+              "rationale_pl": "Parallel environments są wspierane, lecz tekst pomija SpecKit i container-use; pasuje do wielu niezależnych systemów pracy równoległej."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "clarify the requirements for a payment module refactor",
+              "evidence": "Reads existing code via `environment_file_read`",
+              "label": "weak_generic",
+              "rationale_pl": "Cały dostarczony fragment zawiera etap Clarify i przykład refaktoryzacji modułu płatności. Sam cytat o environment_file_read nie wystarcza do tej parafrazy; wsparcie pochodzi z całego fragmentu. Tekst nadal pomija SpecKit i izolowane środowisko."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "implement a task in a parallel environment",
+              "evidence": "Each subagent implements in parallel",
+              "label": "weak_generic",
+              "rationale_pl": "Równoległa implementacja jest opisana w źródle, lecz tekst pomija narzędzie i konkretny proces SpecKit."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "331851d6-9590-4c47-9a08-d836b93cdc84",
+      "name": "packer",
+      "source_text_utf8_sha256": "650a67d216922532836b8dc035cf9df8198f231f348a74006d6c3f0e90ae642e",
+      "source_chars": 5496,
+      "scope_from_source": "HashiCorp Packer machine-image and VM-template builds; .pkr.hcl init/validate/build and Proxmox homelab troubleshooting.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: HashiCorp Packer reference for building machine images and VM templates."
+        },
+        {
+          "line": 10,
+          "quote": "Reference for building machine images with HashiCorp Packer, focusing on VM template creation for homelab environments."
+        },
+        {
+          "line": 16,
+          "quote": "packer init .               # Initialize, download plugins"
+        },
+        {
+          "line": 156,
+          "quote": "- [ ] `packer init` completed successfully"
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 2,
+          "accepted_total": 5,
+          "counts": {
+            "supported_specific": 3,
+            "weak_generic": 2,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 1
+          },
+          "output_tokens": 295,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "building machine images",
+              "evidence": "Reference for building machine images with HashiCorp Packer, focusing on VM template creation for homelab environments.",
+              "label": "weak_generic",
+              "rationale_pl": "Budowanie machine images jest wspierane, ale brak Packer lub jego workflow nie odróżnia innych builderów obrazów."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "running packer commands",
+              "evidence": "Use when working with Packer configurations (.pkr.hcl files), running packer commands, troubleshooting builds, or designing image pipelines.",
+              "label": "supported_specific",
+              "rationale_pl": "Nazwa Packer zachowuje platformę opisaną w źródle."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "designing image pipelines",
+              "evidence": "Use when working with Packer configurations (.pkr.hcl files), running packer commands, troubleshooting builds, or designing image pipelines.",
+              "label": "weak_generic",
+              "rationale_pl": "Image pipelines bez Packer i machine images tracą zarówno platformę, jak i jednoznaczny obiekt zadania."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "How do I initialize Packer?",
+              "evidence": "# Core workflow\npacker init .               # Initialize, download plugins",
+              "label": "supported_specific",
+              "rationale_pl": "Packer init jest konkretnym krokiem źródłowego workflow."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "Where can I find troubleshooting information for Packer?",
+              "evidence": "| Issue | Check |\n|-------|-------|\n| SSH timeout | boot_wait, boot_command, firewall, cloud-init |",
+              "label": "supported_specific",
+              "rationale_pl": "Źródło zawiera diagnostykę Packer i odsyłacze; pytanie zachowuje platformę i cel diagnostyczny."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 2,
+          "accepted_queries": 1,
+          "accepted_total": 3,
+          "counts": {
+            "supported_specific": 3,
+            "weak_generic": 0,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "word_bounds": 3
+          },
+          "output_tokens": 181,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "build machine images with Packer",
+              "evidence": "HashiCorp Packer reference for building machine images and VM templates.",
+              "label": "supported_specific",
+              "rationale_pl": "Zachowuje Packer oraz machine-image build."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "use Packer for homelab environments",
+              "evidence": "Includes Proxmox builder patterns for homelab environments.",
+              "label": "supported_specific",
+              "rationale_pl": "Packer i homelab odpowiadają wskazanemu w źródle zastosowaniu."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "what to do if Packer build fails",
+              "evidence": "Build failures, SSH issues",
+              "label": "supported_specific",
+              "rationale_pl": "Diagnostyka nieudanego Packer build odpowiada opisanym problemom i checks."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "a7532140-ae18-4cce-a9e3-1c843da728f2",
+      "name": "architecture-paradigm-microkernel",
+      "source_text_utf8_sha256": "e1655a0520ea0208f77877ab2ee91ab02f68b9a3e6169dba10dbb1515ea6d0de",
+      "source_chars": 3684,
+      "scope_from_source": "Minimal core plus plugin architecture, contracts, loader/isolation, third-party extension governance and permission model.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: Minimal core system with plugin-based feature extensibility for platform development."
+        },
+        {
+          "line": 28,
+          "quote": "2. **Specify the Plugin Contract**: Design and document the formal contract for all plugins, including registration procedures, capability descriptors, lifecycle hooks (e.g., start, stop), and the permission model."
+        },
+        {
+          "line": 29,
+          "quote": "3. **Build the Extension Loader and Sandbox**: Implement the mechanisms for loading extensions, performing version compatibility checks, negotiating capabilities, and isolating plugins to prevent failures from cascading."
+        },
+        {
+          "line": 35,
+          "quote": "- Formal documentation for the security and permission model, detailing what capabilities are available to plugins."
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 2,
+          "accepted_total": 5,
+          "counts": {
+            "supported_specific": 4,
+            "weak_generic": 1,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "word_bounds": 1
+          },
+          "output_tokens": 255,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "define core services",
+              "evidence": "Clearly delineate the minimal responsibilities of the microkernel, such as scheduling, component lifecycle management, core domain primitives, and messaging.",
+              "label": "weak_generic",
+              "rationale_pl": "Core services bez minimalnego rdzenia lub pluginów nie zachowują wyróżniającej architektury."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "specify plugin contract",
+              "evidence": "Design and document the formal contract for all plugins, including registration procedures, capability descriptors, lifecycle hooks (e.g., start, stop), and the permission model.",
+              "label": "supported_specific",
+              "rationale_pl": "Plugin contract zachowuje konkretną granicę rozszerzeń opisaną jako osobny krok."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "implement extension loader",
+              "evidence": "Implement the mechanisms for loading extensions, performing version compatibility checks, negotiating capabilities, and isolating plugins to prevent failures from cascading.",
+              "label": "supported_specific",
+              "rationale_pl": "Extension loader jest konkretnym mechanizmem ładowania rozszerzeń w źródle."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "how to build an extensible system with plugin architecture",
+              "evidence": "Building extensible systems with plugin architectures",
+              "label": "supported_specific",
+              "rationale_pl": "Extensible system i plugin architecture zachowują charakterystyczną architekturę."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "when to use microkernel architecture",
+              "evidence": "When building platforms, Integrated Development Environments (IDEs), data ingestion pipelines, or marketplaces where third parties need to extend core functionality.",
+              "label": "supported_specific",
+              "rationale_pl": "Wprost nazywa microkernel architecture i źródłowy problem wyboru zastosowania."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 2,
+          "accepted_total": 5,
+          "counts": {
+            "supported_specific": 4,
+            "weak_generic": 1,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 1
+          },
+          "output_tokens": 287,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "plugin-based extensibility",
+              "evidence": "Building extensible systems with plugin architectures",
+              "label": "supported_specific",
+              "rationale_pl": "Plugin-based extensibility zachowuje konkretny mechanizm architektury."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "core stability",
+              "evidence": "When the core system requires extreme stability, while extensions and features must evolve and change rapidly.",
+              "label": "weak_generic",
+              "rationale_pl": "Core stability pomija minimalny rdzeń, pluginy i granice rozszerzeń; jest ogólnym celem wielu architektur."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "third-party extension management",
+              "evidence": "Implement the mechanisms for loading extensions, performing version compatibility checks, negotiating capabilities, and isolating plugins to prevent failures from cascading.",
+              "label": "supported_specific",
+              "rationale_pl": "Third-party extension management zachowuje przedmiot procesu governance opisanego w źródle."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "How to build a platform using microkernel architecture?",
+              "evidence": "When building platforms, Integrated Development Environments (IDEs), data ingestion pipelines, or marketplaces where third parties need to extend core functionality.",
+              "label": "supported_specific",
+              "rationale_pl": "Nazywa microkernel architecture i budowę platformy."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "How to ensure security in a microkernel architecture?",
+              "evidence": "Formal documentation for the security and permission model, detailing what capabilities are available to plugins.",
+              "label": "supported_specific",
+              "rationale_pl": "Nazywa microkernel architecture; źródło opisuje permission model i bezpieczeństwo pluginów."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "ebf47fd2-4fbc-41fd-8f35-81413fbbda74",
+      "name": "sfh-gen",
+      "source_text_utf8_sha256": "545fd1b72ea9e227f4a873d9e2c9224fb78c866de931673f69caebcd40840636",
+      "source_chars": 5536,
+      "scope_from_source": "Fractal acoustic-horn geometry using Hilbert, Peano and Mandelbrot procedures, producing meshes and analysis.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: Generate fractal horn geometries using space-filling curves and Mandelbrot expansion."
+        },
+        {
+          "line": 3,
+          "quote": "Use when designing horn topology, creating geometry variations, or exploring fractal"
+        },
+        {
+          "line": 67,
+          "quote": "### Algorithm 1: Hilbert Horn"
+        },
+        {
+          "line": 83,
+          "quote": "### Algorithm 2: Peano Horn"
+        },
+        {
+          "line": 96,
+          "quote": "def mandelbrot_horn(iterations, c_real, c_imag, throat_d, mouth_d, length):"
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 1,
+          "accepted_total": 4,
+          "counts": {
+            "supported_specific": 2,
+            "weak_generic": 2,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 2
+          },
+          "output_tokens": 264,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "Generate fractal horn geometries",
+              "evidence": "Generate fractal horn geometries using space-filling curves and Mandelbrot expansion.",
+              "label": "supported_specific",
+              "rationale_pl": "Fractal horn geometries zachowuje konkretny obiekt i metodę."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "Explore acoustic optimization",
+              "evidence": "Use when designing horn topology, creating geometry variations, or exploring fractal approaches for acoustic optimization.",
+              "label": "weak_generic",
+              "rationale_pl": "Acoustic optimization pomija horn topology i fractal approaches; obejmuje szeroki zakres innych zadań akustycznych."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "Create STL meshes and fractal analysis data",
+              "evidence": "Produces STL meshes and fractal analysis data.",
+              "label": "weak_generic",
+              "rationale_pl": "Źródło wspiera STL i fractal analysis, ale sam tekst gubi obiekt acoustic horn. Ocena graniczna: zestaw formatów/wyników jest dość szczegółowy, lecz nie identyfikuje zastosowania."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "Can you generate a Hilbert horn with a specific order?",
+              "evidence": "Algorithm 1: Hilbert Horn",
+              "label": "supported_specific",
+              "rationale_pl": "Hilbert horn i parametr order odpowiadają konkretnemu algorytmowi źródła."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 3,
+          "accepted_total": 6,
+          "counts": {
+            "supported_specific": 5,
+            "weak_generic": 1,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {},
+          "output_tokens": 241,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "Generate fractal horn geometries",
+              "evidence": "Generate fractal horn geometries using space-filling curves and Mandelbrot expansion.",
+              "label": "supported_specific",
+              "rationale_pl": "Fractal horn geometries zachowuje konkretny obiekt i metodę."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "Create acoustic optimized horn topology",
+              "evidence": "Use when designing horn topology, creating geometry variations, or exploring fractal approaches for acoustic optimization.",
+              "label": "supported_specific",
+              "rationale_pl": "Acoustic horn topology zachowuje konkretny obiekt projektu i cel opisany w źródle; nie wymagam wszystkich parametrów ani nazwy algorytmu."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "Produce STL meshes and fractal analysis data",
+              "evidence": "Produces STL meshes and fractal analysis data.",
+              "label": "weak_generic",
+              "rationale_pl": "Jak w original: wyniki STL i fractal analysis są wspierane, lecz brakuje acoustic horn. Ta sama decyzja graniczna w obu ramionach."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "Create a Hilbert horn with a specific order",
+              "evidence": "def hilbert_horn(order, throat_d, mouth_d, length):",
+              "label": "supported_specific",
+              "rationale_pl": "Hilbert horn i order są wskazane w algorytmie."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "Generate a Peano horn with detailed parameters",
+              "evidence": "def peano_horn(iterations, throat_d, mouth_d, length):",
+              "label": "supported_specific",
+              "rationale_pl": "Peano horn i parametry odpowiadają konkretnej funkcji źródła."
+            },
+            {
+              "kind": "queries",
+              "index": 2,
+              "text": "Map a Mandelbrot boundary to an expansion profile",
+              "evidence": "def mandelbrot_horn(iterations, c_real, c_imag, throat_d, mouth_d, length):",
+              "label": "supported_specific",
+              "rationale_pl": "Mapowanie Mandelbrot boundary do expansion profile jest charakterystycznym krokiem opisanej procedury."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "80f7aae4-fdd4-4000-ac0f-51d71a6187a3",
+      "name": "huggingface-tokenizers",
+      "source_text_utf8_sha256": "bab4f6975f8702a96c18066857daa66a3617c7a0e184a847cd2ab9327dfd1afe",
+      "source_chars": 6273,
+      "scope_from_source": "HuggingFace Tokenizers Rust/Python library: BPE/WordPiece/Unigram, custom tokenizer training, large-corpus tokenization, padding and alignment.",
+      "source_anchors": [
+        {
+          "line": 4,
+          "quote": "# HuggingFace Tokenizers - Fast Tokenization for NLP"
+        },
+        {
+          "line": 23,
+          "quote": "- **SentencePiece**: Language-independent, used by T5/ALBERT"
+        },
+        {
+          "line": 24,
+          "quote": "- **tiktoken**: OpenAI's BPE tokenizer for GPT models"
+        },
+        {
+          "line": 57,
+          "quote": "### Train custom BPE tokenizer"
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 1,
+          "accepted_total": 4,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 4,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 1,
+            "word_bounds": 1
+          },
+          "output_tokens": 211,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "need extremely fast tokenization",
+              "evidence": "Need extremely fast tokenization (<20s per GB of text)",
+              "label": "weak_generic",
+              "rationale_pl": "Szybkość tokenizacji jest wspierana, ale brak HuggingFace Tokenizers lub konkretnego workflow biblioteki."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "train custom tokenizers from scratch",
+              "evidence": "Training custom tokenizers from scratch",
+              "label": "weak_generic",
+              "rationale_pl": "Custom tokenizer training jest wspierany, lecz tekst pasuje również do alternatyw wymienionych w źródle."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "handle large corpora efficiently",
+              "evidence": "Need to tokenize large corpora efficiently",
+              "label": "weak_generic",
+              "rationale_pl": "Pomija nawet tokenizację, oprócz nazwy biblioteki; large corpora to wiele różnych zadań."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "how to train a custom BPE tokenizer",
+              "evidence": "Train custom BPE tokenizer",
+              "label": "weak_generic",
+              "rationale_pl": "BPE training jest konkretniejsze, lecz wspólne dla wielu bibliotek. Źródło odróżnia HuggingFace Tokenizers od SentencePiece i tiktoken; tekst nie zachowuje platformy. Ocena graniczna."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 1,
+          "accepted_total": 4,
+          "counts": {
+            "supported_specific": 1,
+            "weak_generic": 3,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 2
+          },
+          "output_tokens": 223,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "perform fast tokenization",
+              "evidence": "Fast, production-ready tokenizers with Rust performance and Python ease-of-use.",
+              "label": "weak_generic",
+              "rationale_pl": "Nadal brak HuggingFace Tokenizers lub charakterystycznego workflow biblioteki."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "train custom tokenizers",
+              "evidence": "Training custom tokenizers from scratch",
+              "label": "weak_generic",
+              "rationale_pl": "Nadal wspólne dla wielu bibliotek tokenizacji."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "handle large corpora",
+              "evidence": "Tokenize large corpora efficiently",
+              "label": "weak_generic",
+              "rationale_pl": "Brak tokenizacji i nazwy biblioteki."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "Can I train a custom BPE tokenizer using HuggingFace tokenizers?",
+              "evidence": "Train custom BPE tokenizer",
+              "label": "supported_specific",
+              "rationale_pl": "Jawne HuggingFace tokenizers zachowuje platformę dla źródłowego BPE training."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "8c7de50e-8d10-41ed-930f-fc83a45a197e",
+      "name": "open-prose",
+      "source_text_utf8_sha256": "5da40c0085c091034b7fb4ae535d0c366aa52edac9a4387c066af7a1b20fced6",
+      "source_chars": 6760,
+      "scope_from_source": "OpenProse programming language for AI sessions; prose commands, .prose scripts, agent workflows, failure feedback and contribution process.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: OpenProse is a programming language for AI sessions. Activate on ANY `prose` command (prose boot, prose run, prose compile, prose update, etc.), running .prose files, mentioning OpenProse/Prose, or orchestrating multi-agent workflows. The skill intelligently interprets what the user wants."
+        },
+        {
+          "line": 35,
+          "quote": "- Asks to run a `.prose` file"
+        },
+        {
+          "line": 137,
+          "quote": "If the program failed, or the result wasn't what you expected:"
+        },
+        {
+          "line": 158,
+          "quote": "Read the contribution guidelines first:"
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 1,
+          "accepted_total": 4,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 4,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 2
+          },
+          "output_tokens": 306,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "orchestrate multiple parallel instances of yourself",
+              "evidence": "The capability to orchestrate multiple parallel instances of yourself, to persist state across sessions, to spawn and coordinate agents—it's already in you.",
+              "label": "weak_generic",
+              "rationale_pl": "Opis orkiestracji jest wspierany, ale brak OpenProse, .prose lub wykonywania programu; tekst pasuje do wielu agent frameworks."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "create a reusable workflow",
+              "evidence": "Wants to create a reusable workflow",
+              "label": "weak_generic",
+              "rationale_pl": "Reusable workflow bez języka i rodzaju zadania jest zbyt ogólne."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "interpret context-based commands",
+              "evidence": "Intelligently interpret based on context",
+              "label": "weak_generic",
+              "rationale_pl": "Interpretacja poleceń z kontekstu jest wspierana, lecz nie zachowuje OpenProse ani typu poleceń."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "Where are the examples located?",
+              "evidence": "Examples are bundled in `examples/` (same directory as this file)",
+              "label": "weak_generic",
+              "rationale_pl": "Lokalizacja examples bez nazwy projektu nie określa domeny ani charakterystycznego zadania."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 3,
+          "accepted_queries": 2,
+          "accepted_total": 5,
+          "counts": {
+            "supported_specific": 3,
+            "weak_generic": 2,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "word_bounds": 1
+          },
+          "output_tokens": 224,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "orchestrate multiple AI agents",
+              "evidence": "Orchestrate multiple AI agents from a script",
+              "label": "weak_generic",
+              "rationale_pl": "Nadal brak OpenProse, .prose albo skryptu; ogólna orkiestracja agentów."
+            },
+            {
+              "kind": "intents",
+              "index": 1,
+              "text": "run .prose files",
+              "evidence": "Asks to run a `.prose` file",
+              "label": "supported_specific",
+              "rationale_pl": "Rozszerzenie .prose wskazuje konkretny wykonywalny format źródła."
+            },
+            {
+              "kind": "intents",
+              "index": 2,
+              "text": "create reusable workflows",
+              "evidence": "Wants to create a reusable workflow",
+              "label": "weak_generic",
+              "rationale_pl": "Nadal ogólne reusable workflows bez platformy."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "what to do if a .prose program fails",
+              "evidence": "If the program failed, or the result wasn't what you expected:",
+              "label": "supported_specific",
+              "rationale_pl": ".prose program i diagnostyka niepowodzenia zachowują platformę oraz źródłowy workflow obsługi błędu."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "how to contribute to the open-prose project",
+              "evidence": "The protocol is open. The repo accepts PRs from agents.",
+              "label": "supported_specific",
+              "rationale_pl": "Nazwa open-prose identyfikuje projekt, a dostarczony fragment zawiera contribution guidelines i PR process."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "skill_id": "eafe7b49-7315-4821-a3e4-24894314f1af",
+      "name": "axiom-xcode-debugging",
+      "source_text_utf8_sha256": "e08a9f311c3b38390bec377b74c50c42c2f3cf40d5e89539f7505aca5cd19bf5",
+      "source_chars": 6754,
+      "scope_from_source": "Environment-first Xcode/iOS/macOS troubleshooting, Derived Data, simulator states and zombie processes.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: Use when encountering BUILD FAILED, test crashes, simulator hangs, stale builds, zombie xcodebuild processes, \"Unable to boot simulator\", \"No such module\" after SPM changes, or mysterious test failures despite no code changes - systematic environment-first diagnostics for iOS/macOS projects"
+        },
+        {
+          "line": 4,
+          "quote": "# Xcode Debugging"
+        },
+        {
+          "line": 8,
+          "quote": "Check build environment BEFORE debugging code. **Core principle** 80% of \"mysterious\" Xcode issues are environment problems (stale Derived Data, stuck simulators, zombie processes), not code bugs."
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 0,
+          "accepted_queries": 3,
+          "accepted_total": 3,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 3,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 3
+          },
+          "output_tokens": 409,
+          "items": [
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "My build is failing with 'BUILD FAILED' but no error details. I haven't changed anything. What's going on?",
+              "evidence": "The skill shows environment-first diagnostics: check Derived Data, simulator states, and zombie processes before investigating code",
+              "label": "weak_generic",
+              "rationale_pl": "Objaw jest wspierany, lecz tekst pomija Xcode, iOS/macOS i Derived Data; BUILD FAILED nie jest unikalnym zakresem."
+            },
+            {
+              "kind": "queries",
+              "index": 1,
+              "text": "Tests passed yesterday with no code changes, but now they're failing. How do I fix this?",
+              "evidence": "The skill explains stale Derived Data and intermittent failures, shows the 2-5 minute fix (clean Derived Data)",
+              "label": "weak_generic",
+              "rationale_pl": "Test failures bez zmian są źródłowym objawem, ale tekst traci Xcode oraz environment-first diagnostics."
+            },
+            {
+              "kind": "queries",
+              "index": 2,
+              "text": "My app builds fine but it's running the old code from before my changes. How do I fix this?",
+              "evidence": "The skill demonstrates that Derived Data caches old builds, shows how deletion forces a clean rebuild",
+              "label": "weak_generic",
+              "rationale_pl": "Stale build jest źródłowym problemem, lecz pytanie pomija Xcode i Derived Data. Nawet pytanie bliskie przykładowi ze źródła może być słabą metadaną routingu."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 0,
+          "accepted_queries": 0,
+          "accepted_total": 0,
+          "counts": {
+            "supported_specific": 0,
+            "weak_generic": 0,
+            "unsupported": 0
+          },
+          "empty": true,
+          "parse_failure": true,
+          "cap_hit": true,
+          "rejections": {
+            "invalid_json": 1
+          },
+          "output_tokens": 448,
+          "items": []
+        }
+      }
+    },
+    {
+      "skill_id": "a5fd56b1-56c7-4557-99da-21b1da6e8ba7",
+      "name": "erpnext-syntax-customapp",
+      "source_text_utf8_sha256": "c75e193a915d0f89eca60e6ca20fede0d0ced2912282454ee84f3428b5196414",
+      "source_chars": 6480,
+      "scope_from_source": "Frappe/ERPNext v14/v15 custom-app structure, build configuration, modules, patches and fixtures.",
+      "source_anchors": [
+        {
+          "line": 2,
+          "quote": "DESCRIPTION: Deterministic syntax for building Frappe custom apps including app structure, pyproject.toml, modules, patches and fixtures"
+        },
+        {
+          "line": 6,
+          "quote": "> Complete syntax for building Frappe custom apps in v14/v15, including build configuration, module organization, patches and fixtures."
+        },
+        {
+          "line": 13,
+          "quote": "- Create a new Frappe/ERPNext custom app"
+        }
+      ],
+      "arms": {
+        "original_prompt": {
+          "accepted_intents": 1,
+          "accepted_queries": 1,
+          "accepted_total": 2,
+          "counts": {
+            "supported_specific": 2,
+            "weak_generic": 0,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 3,
+            "word_bounds": 1
+          },
+          "output_tokens": 431,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "Create a new Frappe/ERPNext custom app",
+              "evidence": "USE this skill when you: - Create a new Frappe/ERPNext custom app",
+              "label": "supported_specific",
+              "rationale_pl": "Zachowuje Frappe/ERPNext i konkretny obiekt custom app."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "How to set up the directory structure for a Frappe custom app?",
+              "evidence": "Complete syntax for building Frappe custom apps in v14/v15, including build configuration, module organization, patches and fixtures.",
+              "label": "supported_specific",
+              "rationale_pl": "Zachowuje Frappe oraz directory structure custom app, bez dodawania nieopisanego celu."
+            }
+          ]
+        },
+        "scoped_task_prompt": {
+          "accepted_intents": 1,
+          "accepted_queries": 1,
+          "accepted_total": 2,
+          "counts": {
+            "supported_specific": 2,
+            "weak_generic": 0,
+            "unsupported": 0
+          },
+          "empty": false,
+          "parse_failure": false,
+          "cap_hit": false,
+          "rejections": {
+            "evidence_not_in_source": 3,
+            "word_bounds": 1
+          },
+          "output_tokens": 386,
+          "items": [
+            {
+              "kind": "intents",
+              "index": 0,
+              "text": "Create a new Frappe/ERPNext custom app",
+              "evidence": "USE this skill when you: - Create a new Frappe/ERPNext custom app",
+              "label": "supported_specific",
+              "rationale_pl": "Zachowuje Frappe/ERPNext i konkretny obiekt custom app."
+            },
+            {
+              "kind": "queries",
+              "index": 0,
+              "text": "How to set up the directory structure for a Frappe custom app?",
+              "evidence": "Complete syntax for building Frappe custom apps in v14/v15, including build configuration, module organization, patches and fixtures",
+              "label": "supported_specific",
+              "rationale_pl": "Zachowuje Frappe oraz directory structure custom app."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "interpretation_pl": [
+    "W stałych ośmiu parach scoped zachowuje więcej konkretnych zakresów: 18/29 accepted items supported_specific wobec 11/28. Jest to opis próbki i subiektywnych etykiet, nie oszacowanie skuteczności retrieval.",
+    "Odsetki mają różne mianowniki, ponieważ ramiona wygenerowały różną liczbę accepted items. Dokument pozostaje jednostką sparowania; 6/8 vs 4/8 dokumentów ma co najmniej jeden supported_specific item.",
+    "Pokrycie nie jest pełne: original ma accepted items w 8/8 dokumentów, scoped w 7/8. Scoped Xcode osiągnął 448 output tokens, cap_hit=true, invalid_json=1 i zero accepted items; nie jest to poprawa semantyczna.",
+    "Nie znaleziono unsupported wśród 57 ocenionych accepted items. Nie dotyczy to odrzuconych propozycji, pozostałych 24 dokumentów ani prawdziwości deklaracji samych skilli.",
+    "Poprawa jest nierówna: OpenProse, Packer i zapytanie HuggingFace lepiej identyfikują scope; Hermetic SpecKit nadal go traci.",
+    "Sygnał wystarcza do nominowania scoped prompt jako hipotezy do osobno zamrożonego eksperymentu. Nie zastępuje pierwotnego gate C-A, nie wykazuje recall lift i nie uzasadnia zmian produkcyjnych."
+  ],
+  "borderline_judgments_pl": [
+    "STL meshes and fractal analysis w sfh-gen oceniono jako weak_generic w obu ramionach, bo brak horn. Gdyby uznać zestaw wyników za wystarczająco charakterystyczny, oba ramiona dostałyby po jednym dodatkowym supported_specific; główne zliczenia pozostają bez tej zmiany.",
+    "Custom BPE training bez HuggingFace oznaczono weak_generic; dla microkernel plugin contract/extension loader wystarczają jako konkretne, źródłowe mechanizmy architektury. To jawna decyzja o specyficzności względem zakresu danego źródła.",
+    "Acoustic optimized horn topology zachowuje konkretny obiekt i cel; pominięcie nazwy fractal nie jest automatycznie błędem, bo etykieta nie wymaga odtworzenia każdego szczegółu.",
+    "Clarify payment module refactor jest wspierane przez połączenie etapu Clarify z przykładem refaktoryzacji w całym fragmencie; sam zgłoszony cytat environment_file_read nie stanowi pełnego uzasadnienia."
+  ],
+  "limitations_pl": [
+    "Osiem dokumentów, jeden reviewer LLM, znana tożsamość ramion; brak niezależnej adjudykacji i brak pełnego zaślepienia.",
+    "Etykiety specyficzności zależą od jawnego, ale ocennego progu; nie wykonano testu istotności ani ekstrapolacji na cały korpus.",
+    "Audyt accepted items po filtrze mechanicznym może ukrywać problemy odrzuconych generacji; błędy i puste dokumenty podano osobno.",
+    "Dostarczone fragmenty mogą być skrócone. Weryfikacja dotyczy wierności względem tych fragmentów, nie kompletności pełnego skilla.",
+    "Ocena sfh-gen dotyczy zgodności z treścią źródła, nie naukowej poprawności jego tez akustycznych."
+  ]
+}

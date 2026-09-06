@@ -1,0 +1,7 @@
+{
+  "status": "interrupted before scoped arm completion; not a completed paired comparison",
+  "utc": "2026-09-06T10:03:26Z",
+  "reason": "Observed GPU memory24027MiB and severe generation slowdown; controlled restart of both arms with batch4",
+  "completed_rows": 48,
+  "replacement": "../2026-09-06-scope-prompt-b4/"
+}

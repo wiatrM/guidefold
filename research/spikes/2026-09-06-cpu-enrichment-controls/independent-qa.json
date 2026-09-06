@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "ranking_rows": 10240,
+  "metric_cells": 51200,
+  "source_hashes_checked": 10,
+  "cohort_ids_excluded": 5048,
+  "strata_checked": 7,
+  "query_and_component_bootstraps_recomputed": 5000,
+  "full_pipeline_parity_queries": 384,
+  "component_p_tests": [
+    {
+      "contrast": "C_roundtrip minus B_generated",
+      "exact_dynamic_program_p": 0.25,
+      "reported_p": 0.25,
+      "nonzero_components": 5
+    },
+    {
+      "contrast": "C_roundtrip minus D_matched_random",
+      "exact_dynamic_program_p": 1.0,
+      "reported_p": 1.0,
+      "nonzero_components": 1
+    },
+    {
+      "contrast": "B_generated minus E_extractive",
+      "exact_dynamic_program_p": 0.1484375,
+      "reported_p": 0.1484375,
+      "nonzero_components": 8
+    },
+    {
+      "contrast": "B_generated minus A_original",
+      "exact_dynamic_program_p": 0.2578125,
+      "reported_p": 0.2578125,
+      "nonzero_components": 9
+    }
+  ],
+  "normalized_text_duplicate_extra_rows": 0,
+  "gpu_used": false,
+  "qa_sha256": "0425971649d13b548684053ce94410ed69fbac89ce8c3a448a54ae5537d6c719"
+}

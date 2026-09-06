@@ -1,0 +1,110 @@
+{
+  "status": "exact design calculation, NOT user evidence",
+  "assumptions": "Independent paired binary outcomes; two-sided exact sign/McNemar, alpha=.05; no multiplicity adjustment. Shared developer/skill clustering reduces effective n.",
+  "scenarios": [
+    {
+      "n_pairs": 20,
+      "p_improvement": 0.15,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 10.0,
+      "power_two_sided_exact_005": 0.03179278058494329
+    },
+    {
+      "n_pairs": 20,
+      "p_improvement": 0.2,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 15.000000000000002,
+      "power_two_sided_exact_005": 0.0950137978270811
+    },
+    {
+      "n_pairs": 20,
+      "p_improvement": 0.25,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 20.0,
+      "power_two_sided_exact_005": 0.19562082828290944
+    },
+    {
+      "n_pairs": 40,
+      "p_improvement": 0.15,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 10.0,
+      "power_two_sided_exact_005": 0.17242718864372453
+    },
+    {
+      "n_pairs": 40,
+      "p_improvement": 0.2,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 15.000000000000002,
+      "power_two_sided_exact_005": 0.363705542126689
+    },
+    {
+      "n_pairs": 40,
+      "p_improvement": 0.25,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 20.0,
+      "power_two_sided_exact_005": 0.5673794537450307
+    },
+    {
+      "n_pairs": 100,
+      "p_improvement": 0.15,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 10.0,
+      "power_two_sided_exact_005": 0.5444454279352345
+    },
+    {
+      "n_pairs": 100,
+      "p_improvement": 0.2,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 15.000000000000002,
+      "power_two_sided_exact_005": 0.8367351211564417
+    },
+    {
+      "n_pairs": 100,
+      "p_improvement": 0.25,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 20.0,
+      "power_two_sided_exact_005": 0.9614136089000097
+    },
+    {
+      "n_pairs": 200,
+      "p_improvement": 0.15,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 10.0,
+      "power_two_sided_exact_005": 0.8753004831126032
+    },
+    {
+      "n_pairs": 200,
+      "p_improvement": 0.2,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 15.000000000000002,
+      "power_two_sided_exact_005": 0.9919813927529386
+    },
+    {
+      "n_pairs": 200,
+      "p_improvement": 0.25,
+      "p_regression": 0.05,
+      "true_net_lift_pp": 20.0,
+      "power_two_sided_exact_005": 0.9997863999986292
+    }
+  ],
+  "zero_harm_bounds": [
+    {
+      "n_independent_pairs": 20,
+      "one_sided_95_upper_harm_if_zero_observed": 0.13910834066826516
+    },
+    {
+      "n_independent_pairs": 40,
+      "one_sided_95_upper_harm_if_zero_observed": 0.0721575245055146
+    },
+    {
+      "n_independent_pairs": 100,
+      "one_sided_95_upper_harm_if_zero_observed": 0.029513049607039932
+    },
+    {
+      "n_independent_pairs": 200,
+      "one_sided_95_upper_harm_if_zero_observed": 0.014867039231272083
+    }
+  ],
+  "minimum_zero_harm_pairs_to_bound_rate_below_5pct": 59,
+  "warning": "20-40 tasks establish usability, not a guaranteed small efficacy/harm effect."
+}

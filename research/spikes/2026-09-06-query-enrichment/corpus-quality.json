@@ -1,0 +1,45 @@
+{
+  "source_sha256": "b4978863f6c36c1d42af4a779f86b8e5809b4709c353aa698ec494e3ed663a2b",
+  "n": 10123,
+  "duplicates": {
+    "name": {
+      "duplicate_groups_nonempty": 552,
+      "extra_copies_nonempty": 955,
+      "largest_group": 30
+    },
+    "description": {
+      "duplicate_groups_nonempty": 17,
+      "extra_copies_nonempty": 22,
+      "largest_group": 7
+    },
+    "body": {
+      "duplicate_groups_nonempty": 0,
+      "extra_copies_nonempty": 0,
+      "largest_group": 1
+    }
+  },
+  "fields": {
+    "name": {
+      "empty": 0,
+      "chars_p50": 16,
+      "chars_p95": 28,
+      "chars_max": 61,
+      "under_30_chars": 9791
+    },
+    "description": {
+      "empty": 0,
+      "chars_p50": 192,
+      "chars_p95": 470,
+      "chars_max": 2317,
+      "under_30_chars": 94
+    },
+    "body": {
+      "empty": 0,
+      "chars_p50": 6519,
+      "chars_p95": 22133,
+      "chars_max": 144586,
+      "under_30_chars": 0
+    }
+  },
+  "interpretation": "Structural diagnostics only. Repeated names/descriptions can be legitimate; this does not measure correctness or task utility and performs no deletion."
+}

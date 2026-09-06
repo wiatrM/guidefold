@@ -1,0 +1,9 @@
+{
+  "created_utc": "2026-09-06T10:47:35Z",
+  "analysis_not_run": true,
+  "files": {
+    "analyze.py": "568bbef25aeb90657fad347ccab28e74343450c7bd9634dff66c80707d57068b",
+    "qa-independent.py": "0425971649d13b548684053ce94410ed69fbac89ce8c3a448a54ae5537d6c719",
+    "PROTOCOL.md": "a06389be67d62419bd04d0b490f54bffcaa163fc6c365e6a1a8411beda564c1a"
+  }
+}

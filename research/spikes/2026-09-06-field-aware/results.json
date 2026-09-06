@@ -1,0 +1,233 @@
+{
+  "status": "DEV feasibility only, not admission or paper reproduction",
+  "metrics": {
+    "flat_uniform": {
+      "hit1": 0.813,
+      "recall10": 0.6783333333333337,
+      "ndcg10_binary": 0.6723022185096095,
+      "all_gold_injected4": 0.369
+    },
+    "field_uniform": {
+      "hit1": 0.687,
+      "recall10": 0.6443333333333336,
+      "ndcg10_binary": 0.6020686129437341,
+      "all_gold_injected4": 0.328
+    },
+    "flat_mlp": {
+      "hit1": 0.813,
+      "recall10": 0.6771666666666668,
+      "ndcg10_binary": 0.6802817386349193,
+      "all_gold_injected4": 0.385
+    },
+    "field_mlp": {
+      "hit1": 0.791,
+      "recall10": 0.6410000000000001,
+      "ndcg10_binary": 0.6478816634881991,
+      "all_gold_injected4": 0.361
+    },
+    "sparse_field_mlp": {
+      "hit1": 0.801,
+      "recall10": 0.6785000000000002,
+      "ndcg10_binary": 0.6738360764899434,
+      "all_gold_injected4": 0.389
+    },
+    "shipped_sparse_replay": {
+      "hit1": 0.71,
+      "recall10": 0.5818333333333332,
+      "ndcg10_binary": 0.5804280335260987,
+      "all_gold_injected4": 0.299
+    }
+  },
+  "paired_differences": {
+    "field_mlp minus flat_mlp": {
+      "hit1": {
+        "n": 1000,
+        "delta_pp": -2.1999999999999997,
+        "ci95_pp": [
+          -4.2,
+          -0.3
+        ]
+      },
+      "recall10": {
+        "n": 1000,
+        "delta_pp": -3.6166666666666667,
+        "ci95_pp": [
+          -4.750416666666666,
+          -2.5329166666666683
+        ]
+      },
+      "ndcg10_binary": {
+        "n": 1000,
+        "delta_pp": -3.240007514672076,
+        "ci95_pp": [
+          -4.2473686558164605,
+          -2.282424974896885
+        ]
+      },
+      "all_gold_injected4": {
+        "n": 1000,
+        "delta_pp": -2.4,
+        "ci95_pp": [
+          -3.8,
+          -1.0999999999999999
+        ]
+      }
+    },
+    "field_uniform minus flat_uniform": {
+      "hit1": {
+        "n": 1000,
+        "delta_pp": -12.6,
+        "ci95_pp": [
+          -15.299999999999999,
+          -9.9
+        ]
+      },
+      "recall10": {
+        "n": 1000,
+        "delta_pp": -3.4000000000000004,
+        "ci95_pp": [
+          -4.600416666666667,
+          -2.15
+        ]
+      },
+      "ndcg10_binary": {
+        "n": 1000,
+        "delta_pp": -7.023360556587596,
+        "ci95_pp": [
+          -8.312022161349377,
+          -5.779082808939963
+        ]
+      },
+      "all_gold_injected4": {
+        "n": 1000,
+        "delta_pp": -4.1000000000000005,
+        "ci95_pp": [
+          -5.800000000000001,
+          -2.4
+        ]
+      }
+    },
+    "field_mlp minus field_uniform": {
+      "hit1": {
+        "n": 1000,
+        "delta_pp": 10.4,
+        "ci95_pp": [
+          7.7,
+          13.100000000000001
+        ]
+      },
+      "recall10": {
+        "n": 1000,
+        "delta_pp": -0.3333333333333333,
+        "ci95_pp": [
+          -1.9004166666666666,
+          1.1666666666666667
+        ]
+      },
+      "ndcg10_binary": {
+        "n": 1000,
+        "delta_pp": 4.5813050544465925,
+        "ci95_pp": [
+          3.0629430908085276,
+          6.130569417762902
+        ]
+      },
+      "all_gold_injected4": {
+        "n": 1000,
+        "delta_pp": 3.3000000000000003,
+        "ci95_pp": [
+          1.4975,
+          5.3
+        ]
+      }
+    },
+    "field_mlp minus sparse_field_mlp": {
+      "hit1": {
+        "n": 1000,
+        "delta_pp": -1.0,
+        "ci95_pp": [
+          -2.3,
+          0.3
+        ]
+      },
+      "recall10": {
+        "n": 1000,
+        "delta_pp": -3.75,
+        "ci95_pp": [
+          -4.733333333333333,
+          -2.766666666666667
+        ]
+      },
+      "ndcg10_binary": {
+        "n": 1000,
+        "delta_pp": -2.595441300174394,
+        "ci95_pp": [
+          -3.3174469897627685,
+          -1.8852895993901122
+        ]
+      },
+      "all_gold_injected4": {
+        "n": 1000,
+        "delta_pp": -2.8000000000000003,
+        "ci95_pp": [
+          -4.0,
+          -1.7000000000000002
+        ]
+      }
+    }
+  },
+  "advance_fixed_gate": false,
+  "timings_seconds": {
+    "encode_name": 0.006071329116821289,
+    "encode_description": 0.009917497634887695,
+    "encode_body": 210.50410914421082,
+    "encode_flat": 213.54626989364624,
+    "encode_queries": 24.51444435119629,
+    "feature_scoring_total": 18.631752490997314,
+    "train_flat_mlp": 2.2449448108673096,
+    "train_field_mlp": 2.101346015930176,
+    "train_sparse_field_mlp": 1.9721570014953613
+  },
+  "wall_seconds": 516.5898180007935,
+  "truncation": {
+    "body": {
+      "over_1024_tokens": 6543,
+      "n": 10123
+    },
+    "flat": {
+      "over_1024_tokens": 6686,
+      "n": 10123
+    },
+    "queries": {
+      "over_1024_tokens": 0,
+      "n": 3000
+    }
+  },
+  "head_only_gpu_ms_10123_pairs": {
+    "flat_mlp": {
+      "p50": 0.47380699993482267,
+      "p95": 0.7906062500296683
+    },
+    "field_mlp": {
+      "p50": 0.2682075000848272,
+      "p95": 0.5488438500265147
+    },
+    "sparse_field_mlp": {
+      "p50": 0.25104700000611047,
+      "p95": 0.5384993999655305
+    }
+  },
+  "training_pairs": 186673,
+  "positives": 3774,
+  "caveats": [
+    "No test-A/test-B or user outcomes.",
+    "Per-field encoding uses more aggregate tokens than flat; max1024 may truncate key body evidence.",
+    "Conditional on known public train skill bank; semantic near-duplicates and encoder pretraining contamination unverified.",
+    "MLP standardization fit only on training pairs; unlabelled negatives may be relevant.",
+    "Abstention disabled for five new arms, no NO_SKILL evidence.",
+    "Shared policy/select but exact full-bank score channels replace production candidate/scorer; product rollout still requires an adapter.",
+    "Head-only GPU timing excludes query embedding, feature construction, network and hook.",
+    "Query bootstrap ignores shared-skill clusters and multiple comparisons.",
+    "Sparse replay historical and previously studied on this DEV; descriptive reference only."
+  ]
+}

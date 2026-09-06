@@ -1,0 +1,43 @@
+{
+  "status": "generation-only descriptive feasibility; no retrieval conclusions",
+  "strata": {
+    "overall": {
+      "docs": 512,
+      "empty": 58,
+      "invalid_json": 20
+    },
+    "body_excerpted=True": {
+      "docs": 258,
+      "empty": 37,
+      "invalid_json": 12
+    },
+    "generation_cap=False": {
+      "docs": 504,
+      "empty": 50,
+      "invalid_json": 12
+    },
+    "body_excerpted=False": {
+      "docs": 254,
+      "empty": 21,
+      "invalid_json": 8
+    },
+    "generation_cap=True": {
+      "docs": 8,
+      "empty": 8,
+      "invalid_json": 8
+    }
+  },
+  "measured_generation_seconds": 1155.9238426685333,
+  "measured_process_seconds": 1200.352793931961,
+  "observed_generation_seconds_per_document": 2.257663755211979,
+  "linear_extrapolation_generation_hours": {
+    "10123": 6.348425053891907,
+    "30000": 18.81386462676649
+  },
+  "caveats": [
+    "Extrapolation assumes identical hardware, token-length distribution, batch utilization and throughput; excludes new-corpus preprocessing and QA.",
+    "No new full-corpus generation is authorized or started by this note.",
+    "Body excerpt and generation-cap associations are observational, not causal.",
+    "Generation time is an offline indexing cost and is not search or complete-hook latency."
+  ]
+}
