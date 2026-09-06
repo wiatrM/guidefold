@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.7
+# Dense retrieval programme — pre-registered, v2.8
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** **v2.7 (2026-09-06, owner-approved, written before any E1–E5 dev result was read) adds a family-E premise check on test-B when no E arm clears the dev gate — §4b.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** **v2.7 (2026-09-06, owner-approved, written before any E1–E5 dev result was read) adds a family-E premise check on test-B when no E arm clears the dev gate — §4b.** **v2.8 (2026-09-06 18:20Z, owner-approved, written after E1 and its §3b diagnostic, before any E2/E3 number) adds a forgetting guard in front of §4b and fixes the E5 slot — §4c.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -264,6 +264,39 @@ baselines and the interpretation are all fixed here before any E dev number exis
 thing the dev results choose is *which* single recipe gets the one pre-committed run. Writing the
 same rule after seeing dev results would be exactly the selection-set problem §0 point 2 exists to
 prevent, and would not be allowed.
+
+## 4c. Family E forgetting guard and the E5 slot — v2.8 amendment (registered 2026-09-06 18:20Z)
+
+**State at registration.** E1 measured on dev (§3a of the family report: −9.5 pp `all_required@4`
+dense-only vs E0) and diagnosed (§3b): +14.5 pp hit@1 on its own training pairs, −10.5 pp recall@10
+on *unseen* queries from the same generator — memorisation with loss of general retrieval, i.e.
+forgetting, not adaptation. E2 is at step ~300/1,122 with no dev number; E3/E4 not started. The
+owner approved this amendment in writing at this point.
+
+**Rule 1 — forgetting guard.** No family-E recipe takes the §4b premise check on test-B unless it
+is *not worse than E0* on the held-out same-generator composite set of §3b (1,000 composite
+queries never used in training; recall@10 Δ vs E0 ≥ 0 and its 95 % CI excluding a loss larger
+than 2 pp; `tools/eval/dev_dense_diag_e1.py`). test-B cannot distinguish "adapted" from
+"forgot"; the guard can, on data we own, so it goes first. A recipe that fails the guard is
+recorded as *forgot*, and §4b is not spent on it.
+
+**Rule 2 — the E5 slot (≤ 2 dev configurations, chosen for evidence, not tuned on dev).**
+(a) **Weight-space interpolation** (WiSE-FT, Wortsman et al. 2022) between E0 and the fine-tuned
+model: θ(α) = α·θ_E0 + (1−α)·θ_E1, α ∈ {0.5, 0.75}. *Both* αs are scored on the guard set
+(cheap, CPU, our own synthetic data — not dev, not test); the α that passes Rule 1 with the higher
+guard recall@10 is the **single** E5 dev configuration, measured exactly as E1–E4 (both modes, F0
+and E0 baselines, paired CIs). If E3 later scores higher than E1 on the guard set, the
+interpolation partner becomes E3 — same rule, still one dev configuration. (b) Only if no α
+passes Rule 1: **LoRA** (rank 16, lr 1e-4, same data) with **round-trip filtering** of the
+synthetic queries (keep a query only if E0 ranks its source skill in its top-10; doc2query-- /
+SkillRet practice), one run, same guard, same dev measurement. (a) and (b) together are the
+family's remaining budget; the ≤ 6 cap of §4 is unchanged (E0–E4 + one E5).
+
+**Rule 3 — what the guard is not.** Passing the guard proves the recipe did not destroy the
+encoder; it says nothing about the premise. The premise is still decided only by §4b, once, on
+the guard-passing recipe with the best dev `all_required@4` in its better mode. If nothing
+passes, the family terminates with "none of the studied variants earned deployment" and the
+premise recorded as *untested by a sound recipe*, not refuted.
 
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
