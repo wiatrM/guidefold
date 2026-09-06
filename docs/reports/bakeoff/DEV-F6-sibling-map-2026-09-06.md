@@ -114,6 +114,29 @@ power *on dev's labels*. The test-once run is what the protocol requires next an
 only measurement that can tell duplicates from distractors: the hypothesis survives dev only in
 the weak sense that dev could not refute it.
 
-## 6. Test-once
+## 6. Test-once (SkillRetBench, 2026-09-06 19:05Z; `validation/skillretbench-f6-f6-2.jsonl.gz` / `-summary.json`)
 
-TODO — only if §5 freezes a configuration.
+F6-2 (τ 0.80, N 3, margin) vs F0 = B1, 1,250 queries, both node settings, map built from the
+corpus's own E0 vectors (`.skillretbench-r1-cache`, the R1 reference's cache):
+
+| setting | map | fired | HSR@4 F0 → F6-2 (Δ, 95 % CI) | all_required@4 | hit@1 / nDCG@10 |
+|---|---|---|---|---|---|
+| node_scoped | **12 skills / 6 pairs of 501** | 33 queries | 0.7433 → 0.7400 (**−0.3 pp [−1.0, 0.0]**) | 0.5658 → 0.5650 (−0.1 pp) | unchanged |
+| node_root | same | 7 queries | 0.3967 → 0.3967 (0.0 [0.0, 0.0]) | 0.375 → 0.375 | unchanged |
+
+**Verdict: no effect, and the hypothesis is refuted for the corpus that carries the label.** The
+map that should have carried the encoder's −10 pp HSR win contains six pairs. Post-hoc diagnostic
+on the labelled (gold, distractor) pairs themselves — 9,209 pairs, 51.9 % same category — under E0:
+cosine p10 / p50 / p90 = **0.008 / 0.116 / 0.339**; **0.1 %** of pairs reach 0.80 (0.3 % reach
+0.70); the same-category nearest-neighbour cosine on this corpus is p50 0.40 / p90 0.63. The
+benchmark's distractors are *not* near their golds in the encoder's space — they are far from
+them. The encoder reduced harmful exposure by ranking distractors *low against the query*, not by
+separating near-duplicate pairs; there is no precomputable pair structure to ship, and a lexical
+discriminating-term rule over a cosine map has nothing to act on. The v2.2 premise ("its real
+value is discrimination between near-identical skills, a job that can be precomputed") is wrong
+on SkillRetBench, and dev's weak-power result (§4, gold 33 : sibling 30) points the same way.
+
+Test-A (SKILLRET-test) was not run: the gate of record failed on test-B, and a no-harm check on
+the other corpus cannot change the decision (a variant must clear both). **F6 is not adopted; the
+family's budget is spent.** What survives is the negative result and its mechanism: a query-time
+dense signal is what lowered HSR, and the programme has no T300 shape for that.
