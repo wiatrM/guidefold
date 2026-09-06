@@ -1,7 +1,7 @@
-# Dense retrieval programme — pre-registered, v2.6
+# Dense retrieval programme — pre-registered, v2.7
 
 **Status:** Pre-registered 2026-09-05 (v1, PR #26); amended to v2 the same day after methodological
-review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** The v1 text is in git history. Results are appended under
+review; v2.1 added family F5 (offline enrichment). **v2.2 adds family F6 (offline dense sibling map), derived from a measured result and registered before F6 itself is measured.** **v2.4 adds family C (composition, ADR-0022 §4 / ADR-0024 §4), a test-corpus power rule in §3, and a §7 correction entry on what the test-B R1 result did and did not show.** **v2.5 adds family D (query decomposition for multi-skill queries), registered — per §4a's own rule — before any dev run.** **v2.6 adds family E (synthetic in-distribution training over the tenant's own skill pool), registered before any generation or training, with an explicit no-label-leakage rule.** **v2.7 (2026-09-06, owner-approved, written before any E1–E5 dev result was read) adds a family-E premise check on test-B when no E arm clears the dev gate — §4b.** The v1 text is in git history. Results are appended under
 §7 as they land; §1–6 are frozen from v2 onward.
 **Goal (user, verbatim intent):** make dense earn its place by beating everything else *methodically*
 — on real data, through the product path, inside the budget — and **stop honestly if it cannot.**
@@ -213,6 +213,57 @@ convenient. Three rules:
 3. **Every test-corpus run is counted in the final report**, so a reader can judge the multiplicity
    themselves. Running k variants and reporting the best of k without saying k is the failure mode
    this section exists to prevent.
+
+## 4b. Family E premise check — v2.7 amendment (registered 2026-09-06T11:24Z, before any E1–E5 dev result)
+
+**State at registration.** Per-skill generation complete (50,160 queries, 0 leakage violations
+against dev/test-A/test-B), composite generation running, **no E1–E5 checkpoint, encode or dev run
+exists** (`docs/reports/bakeoff/validation/` holds only E0). The owner approved this amendment on
+the recommendation below, in writing, at this point.
+
+**Why the dev gate cannot measure E's premise.** Family E exists because the zero-shot encoder
+(E0) gave `all_required@4` +17.96 pp on SKILLRET-test (its own training distribution) and
++0.67 pp [−1.50, +2.83] on SkillRetBench (disjoint) — the premise is *out-of-distribution
+recovery* through label-free adaptation on the tenant's own catalogue. But the dev split is
+carved from SKILLRET-train, i.e. **E0 is already in-distribution on dev** (its training queries
+include multi-skill tasks over these very skills). The freeze rule "≥ E0 + 2.0 pp on dev" is
+therefore evaluated exactly where E0 is strongest and where E has the least to add; a recipe can
+fail it while the premise is true, and pass it without saying anything about the premise. Left as
+registered in v2.6, a dev failure would end the family with the actual question unanswered.
+
+**Rule.** If, after E1–E5 are measured on dev, **no E arm clears the v2.6 freeze gate**, then:
+
+1. The **best-on-dev E recipe** — highest `all_required@4` in its better retrieval mode
+   (`hybrid` / `dense-only`, per the report's §0 addendum); ties broken by `hit@1`; the choice
+   is mechanical and recorded before step 2 starts — is run **once on test-B (SkillRetBench)**:
+   generate per-skill + composite queries + hard negatives from SkillRetBench's **501 skills only**
+   (family rule 2 already permits this: skills, never queries or qrels), fine-tune the **same base
+   with the identical recipe and hyper-parameters** (no re-tuning of anything on test-B), and
+   evaluate through the unchanged product path in that recipe's chosen mode, on test-B's own
+   1,250 queries. Leakage check against test-B's queries runs before training, as for dev.
+2. Paired baselines on test-B, same mode: F0 (exists), and E0 in the same mode (the recorded
+   test-B reference is the hybrid R1 run; if the chosen mode is `dense-only`, E0 is run in that
+   mode on test-B as a fixed reference — no selection is involved in a zero-shot reference).
+   Report `all_required@4`, `hit@1`, `nDCG@10`, `HSR@4` with paired-bootstrap 95 % CIs, both
+   scopes as in the PR #35 entry.
+3. **This consumes test-B's "once" for family E.** No second E variant, mode or hyper-parameter
+   may be run on test-B afterwards, whatever the result. **test-A is not touched** by this
+   amendment: it is in-distribution for E0 and would only repeat the flattered comparison; it is
+   reached only by a recipe that freezes normally.
+4. **What the result decides — and does not.** This is a *premise check*, not an adoption path.
+   A positive result (E-on-tenant-catalogue ≥ E0 + 2.0 pp `all_required@4` on test-B, CI
+   excluding 0, `hit@1` and `HSR@4` within the §5 tolerances) adopts nothing — §5 still requires
+   both corpora — but earns the family a v2.8 that must first *build a labelled OOD dev split*
+   (none exists today; that is the real gap) before any further configuration. A negative or
+   inconclusive result terminates the family with numbers, per §5's termination sentence, and the
+   programme records that per-tenant synthetic adaptation did not recover the OOD gap on the one
+   corpus that could show it.
+
+**Why this is not cherry-picking.** The rule, the recipe-selection criterion, the mode rule, the
+baselines and the interpretation are all fixed here before any E dev number exists; the only
+thing the dev results choose is *which* single recipe gets the one pre-committed run. Writing the
+same rule after seeing dev results would be exactly the selection-set problem §0 point 2 exists to
+prevent, and would not be allowed.
 
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
