@@ -298,6 +298,16 @@ the guard-passing recipe with the best dev `all_required@4` in its better mode. 
 passes, the family terminates with "none of the studied variants earned deployment" and the
 premise recorded as *untested by a sound recipe*, not refuted.
 
+**Rule 3a (v2.8.1, 2026-09-06 18:50Z — written after the α = 0.75 guard result (PASS, Δ = 0.0 pp
+[−0.68, …]) and before its dev run was read).** A guard-passing recipe takes §4b only if it also
+shows a *gain* on dev over E0 in its better mode (`all_required@4` ≥ E0 + 2.0 pp, CI excluding 0)
+or, failing that, at least a positive point estimate on both `all_required@4` and `hit@1`. A recipe
+that passes the guard by being indistinguishable from E0 (the interpolation's trivial fixed point:
+α → 1 recovers E0 exactly) has no adaptation signal to test on test-B, and running it there would
+spend the family's one test-B run to re-measure E0. In that case the family terminates with
+"no sound adaptation recipe found: the fine-tune direction carried memorisation, not transferable
+signal" — and the premise stays *untested*, not refuted.
+
 ## 5. Gates — fixed now, with minimum benefit and tolerated regression
 
 A frozen variant is **adopted** only if, on **both** test-A and test-B:

@@ -1,0 +1,75 @@
+{
+  "identity": "E1",
+  "k=1": {
+    "all_required4": 0.9085365853658537,
+    "ceiling10": 0.9512195121951219,
+    "ceiling15": 0.9603658536585366,
+    "ceiling4": 0.9085365853658537,
+    "ceiling50": 0.9908536585365854,
+    "hit1": 0.823170731707317,
+    "n": 328,
+    "ndcg10": 0.8888718562729825,
+    "recall10": 0.9512195121951219
+  },
+  "k=2": {
+    "all_required4": 0.15015015015015015,
+    "ceiling10": 0.2672672672672673,
+    "ceiling15": 0.3153153153153153,
+    "ceiling4": 0.15015015015015015,
+    "ceiling50": 0.47147147147147145,
+    "hit1": 0.7897897897897898,
+    "n": 333,
+    "ndcg10": 0.64963034054292,
+    "recall10": 0.6231231231231231
+  },
+  "k=3": {
+    "all_required4": 0.008849557522123894,
+    "ceiling10": 0.04129793510324484,
+    "ceiling15": 0.0471976401179941,
+    "ceiling4": 0.008849557522123894,
+    "ceiling50": 0.10324483775811209,
+    "hit1": 0.7699115044247787,
+    "n": 339,
+    "ndcg10": 0.5560260690838154,
+    "recall10": 0.45427728613569324
+  },
+  "mode": "hybrid",
+  "model_meta": {
+    "device": "cuda",
+    "dims": 1024,
+    "dtype": "torch.bfloat16",
+    "encode_ms_per_item": {
+      "queries": 28.996495723724365,
+      "skills": 259.71767074044584
+    },
+    "encode_time_s": {
+      "queries": 28.996495723724365,
+      "skills": 2629.121980905533
+    },
+    "identity": "E1",
+    "n_queries": 1000,
+    "n_skills": 10123,
+    "quant_cosine_mean": {
+      "queries": 0.9973668456077576,
+      "skills": 0.9973665475845337
+    },
+    "query_batch_size": 64,
+    "query_prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+    "revision": null,
+    "skill_batch_size": 4,
+    "source": "/home/mike/.cache/guidefold/finetune-checkpoints/E1/final"
+  },
+  "n_cases": 1000,
+  "overall": {
+    "all_required4": 0.351,
+    "ceiling10": 0.415,
+    "ceiling15": 0.436,
+    "ceiling4": 0.351,
+    "ceiling50": 0.517,
+    "hit1": 0.794,
+    "n": 1000,
+    "ndcg10": 0.696369709677744,
+    "recall10": 0.6735
+  },
+  "run_time_s": 189.2953062057495
+}
