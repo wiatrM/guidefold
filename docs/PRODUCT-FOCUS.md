@@ -57,6 +57,14 @@ tracks per-asset install counts [10]. Absence of a competitor is not evidence of
    injects at most four cards. Measured: whole-hook p95 113 ms at 500 skills and 320 ms at 6 006
    (`docs/reports/bakeoff/R4b-lazy-terms-postings-2026-09-05.md`, PR #45); T1 sparse p95 54 ms at
    one client and 128 ms at four (`docs/reports/bakeoff/E1.1b-service-feasibility-2026-09-05.md`).
+   The card-first shape this speed depends on (`SkillSummary` without body, full `Revision` fetched
+   only on demand — `docs/API-CONTRACT.md` §5.2-5.3) also holds up on correctness, not just latency:
+   across 75 tasks on 70 real skills, an agent seeing only the card correctly recognised when it
+   needed the full body 97% of the time (66/68 body-only tasks), with zero needless fetches on the
+   7 card-answerable ones — `docs/reports/market/2026-09-07-progressive-disclosure-evidence.md`.
+   The blended token-savings figure that report finds (as low as 9% or as high as 43%, depending on
+   task mix) is not a deployment number; the number that replicates is conditional — ~86% saved when
+   the card is sufficient, ~0-2% when it is not — pending real usage telemetry to weight the two.
 2. **The author finds out before merge.** The nearest thing anyone ships is frontmatter validation
    and a single skill's trigger A/B [1]. Nobody tells an author "this description takes N queries
    from skill X" across the whole corpus. PR #65 does; `docs/CONVENTIONS.md` §12 defines it.
