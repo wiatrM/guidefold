@@ -1,0 +1,1363 @@
+{
+  "status": "passed",
+  "independent_metric_rows": 6144,
+  "summary_strata": 7,
+  "paired_metric_cells_checked": 84,
+  "primary_gate_matches": true,
+  "primary_gate_value": true,
+  "qa_script_sha256": "7d5d28eedbc8cafeee137033b16f1d42d15b4fd3e993af652fb839f2af3e90a1",
+  "rankings_sha256": "3d88b82d91f502a72da84003411b920b92011c84bebe7b627b1d146a0bb52190",
+  "clustering_preregistered": {
+    "created_utc": "2026-09-06T09:45:38.902027+00:00",
+    "results_absent_at_registration": true,
+    "rankings_absent_at_registration": true,
+    "protocol_sha256": "183e9522e8a559a47311410ff3b54328a22262dee1cff9303596e88056662c59",
+    "root_run_sha256": "5c9b5a1c141b6f62f8dfafe655eb0d6e40da565806c586a4fde679380115c259",
+    "primary_gate_unchanged": true,
+    "n_bootstrap": 5000,
+    "seed": 20260907
+  },
+  "source_hashes_checked": [
+    "/home/mike/.cache/guidefold/corpora/skillret/data/skills/train.jsonl",
+    "/home/mike/.cache/guidefold/corpora/skillret/data/queries/train.jsonl",
+    "/home/mike/.cache/guidefold/corpora/skillret/data/qrels/train.jsonl",
+    "/home/mike/projects/guidefold/research/spikes/2026-09-06-query-enrichment/run.py",
+    "/home/mike/projects/guidefold/research/spikes/2026-09-06-query-enrichment/PROTOCOL.md",
+    "/home/mike/.cache/guidefold/models/Qwen__Qwen2.5-7B-Instruct/a09a35458c702b33eeacc393d103063234e8bc28/config.json",
+    "/home/mike/.cache/guidefold/models/Qwen__Qwen2.5-7B-Instruct/a09a35458c702b33eeacc393d103063234e8bc28/tokenizer_config.json"
+  ],
+  "model_weight_hashes_independently_recomputed": false,
+  "model_weight_hash_note": "Original generation freeze records model weight digests; independent QA rechecks data, model config/tokenizer config, script and artifact hashes, not the large weight shards.",
+  "cluster_sensitivity": {
+    "overall": {
+      "component_stats": {
+        "queries": 2048,
+        "components": 1341,
+        "singleton_components": 992,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 4.0,
+        "maximum_size": 18,
+        "largest_query_fraction": 0.0087890625,
+        "effective_component_count": 777.8753709198813,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.048828125,
+            "query_ci95_pp": [
+              0.0,
+              0.146484375
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.14947869396295416
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.016276041666666664,
+            "query_ci95_pp": [
+              0.0,
+              0.048828125
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.05037783375314861
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.036438879510881685,
+            "query_ci95_pp": [
+              0.0038568100848297834,
+              0.08490313667164219
+            ],
+            "cluster_ci95_pp": [
+              0.004439555952316282,
+              0.08416090150315804
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 0.244140625,
+            "query_ci95_pp": [
+              0.048828125,
+              0.48828125
+            ],
+            "cluster_ci95_pp": [
+              0.048947626040137054,
+              0.4887585532746823
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.16276041666666669,
+            "query_ci95_pp": [
+              0.0244140625,
+              0.3580729166666667
+            ],
+            "cluster_ci95_pp": [
+              0.03219056816352809,
+              0.34314567338220847
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.1649989804729519,
+            "query_ci95_pp": [
+              0.06133003086427698,
+              0.30845872717982814
+            ],
+            "cluster_ci95_pp": [
+              0.060940417662365395,
+              0.3088781696282364
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.146484375,
+            "query_ci95_pp": [
+              0.0,
+              0.341796875
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.336380784940672
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 0.1953125,
+            "query_ci95_pp": [
+              0.048828125,
+              0.390625
+            ],
+            "cluster_ci95_pp": [
+              0.04730257192575199,
+              0.42918966844674494
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.146484375,
+            "query_ci95_pp": [
+              0.0244140625,
+              0.341796875
+            ],
+            "cluster_ci95_pp": [
+              0.024015081606140555,
+              0.3226047303264339
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.12856010096207018,
+            "query_ci95_pp": [
+              0.03615129836590528,
+              0.2712644405530765
+            ],
+            "cluster_ci95_pp": [
+              0.03687589867293197,
+              0.26690487986694306
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.146484375,
+            "query_ci95_pp": [
+              0.0,
+              0.341796875
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.336380784940672
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "no_gold_selected": {
+      "component_stats": {
+        "queries": 1842,
+        "components": 1239,
+        "singleton_components": 928,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 4.0,
+        "maximum_size": 16,
+        "largest_query_fraction": 0.008686210640608035,
+        "effective_component_count": 749.3295053003534,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": -0.001475329124635445,
+            "query_ci95_pp": [
+              -0.003970760092437667,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              -0.004014363653808263,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 0.05428881650380022,
+            "query_ci95_pp": [
+              0.0,
+              0.16286644951140067
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.16722408026755853
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.05428881650380022,
+            "query_ci95_pp": [
+              0.0,
+              0.13572204125950055
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.13858285279646018
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.023182361823989334,
+            "query_ci95_pp": [
+              -0.007798107733062803,
+              0.06041830101370458
+            ],
+            "cluster_ci95_pp": [
+              -0.0072777413268005735,
+              0.06159891979994175
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 0.05428881650380022,
+            "query_ci95_pp": [
+              0.0,
+              0.16286644951140067
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.16722408026755853
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.05428881650380022,
+            "query_ci95_pp": [
+              0.0,
+              0.13572204125950055
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.13858285279646018
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.02465769094862478,
+            "query_ci95_pp": [
+              -0.00584301571707047,
+              0.061888428112410784
+            ],
+            "cluster_ci95_pp": [
+              -0.005632414877684439,
+              0.06303750714275279
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "k=3": {
+      "component_stats": {
+        "queries": 674,
+        "components": 453,
+        "singleton_components": 326,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 3.3999999999999773,
+        "maximum_size": 8,
+        "largest_query_fraction": 0.011869436201780416,
+        "effective_component_count": 303.2550066755674,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.04945598417408506,
+            "query_ci95_pp": [
+              0.0,
+              0.1483679525222552
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.15385208012326645
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.022766652863259806,
+            "query_ci95_pp": [
+              -0.002488215585950406,
+              0.06899508917340114
+            ],
+            "cluster_ci95_pp": [
+              -0.0024993402457981727,
+              0.06911069227198452
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 0.1483679525222552,
+            "query_ci95_pp": [
+              0.0,
+              0.44510385756676557
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.46369646044377205
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.04945598417408506,
+            "query_ci95_pp": [
+              0.0,
+              0.1483679525222552
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.15385208012326645
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.06385715781873254,
+            "query_ci95_pp": [
+              -0.004527933891968897,
+              0.15492845027594676
+            ],
+            "cluster_ci95_pp": [
+              -0.0016259998572643274,
+              0.15403070539904284
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 0.1483679525222552,
+            "query_ci95_pp": [
+              0.0,
+              0.44510385756676557
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.46369646044377205
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.04109050495547273,
+            "query_ci95_pp": [
+              -0.007696727696620675,
+              0.10786852841864387
+            ],
+            "cluster_ci95_pp": [
+              -0.008541830729587517,
+              0.10960665159161823
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "k=2": {
+      "component_stats": {
+        "queries": 725,
+        "components": 580,
+        "singleton_components": 480,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 3.0,
+        "maximum_size": 8,
+        "largest_query_fraction": 0.011034482758620689,
+        "effective_component_count": 455.0865800865801,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.13793103448275862,
+            "query_ci95_pp": [
+              0.0,
+              0.41379310344827586
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.4231311706629055
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.059253506323265676,
+            "query_ci95_pp": [
+              -0.002591762200156142,
+              0.17008172027144036
+            ],
+            "cluster_ci95_pp": [
+              -0.0026097605487683372,
+              0.1737072398803144
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 0.41379310344827586,
+            "query_ci95_pp": [
+              0.0,
+              0.9655172413793104
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.9641873278236914
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.13793103448275862,
+            "query_ci95_pp": [
+              0.0,
+              0.3448275862068966
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.35112359550561795
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.16999642309274116,
+            "query_ci95_pp": [
+              0.029252778545939735,
+              0.3513169442929958
+            ],
+            "cluster_ci95_pp": [
+              0.02557138780439356,
+              0.3493178748613761
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 0.27586206896551724,
+            "query_ci95_pp": [
+              0.0,
+              0.6896551724137931
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.7062396614964156
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.13793103448275862,
+            "query_ci95_pp": [
+              0.0,
+              0.3448275862068966
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.35112359550561795
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.11074291676947544,
+            "query_ci95_pp": [
+              -0.0006736088305011539,
+              0.24559993422050538
+            ],
+            "cluster_ci95_pp": [
+              0.00036267591299797845,
+              0.2560267657894714
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "k=1": {
+      "component_stats": {
+        "queries": 649,
+        "components": 622,
+        "singleton_components": 596,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 1.0,
+        "maximum_size": 3,
+        "largest_query_fraction": 0.004622496147919877,
+        "effective_component_count": 597.4482269503546,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.025151477849123215,
+            "query_ci95_pp": [
+              0.0,
+              0.07047703174931846
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.07153633362445777
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 0.15408320493066258,
+            "query_ci95_pp": [
+              0.0,
+              0.46224961479198773
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.46656298600311047
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.30816640986132515,
+            "query_ci95_pp": [
+              0.0,
+              0.7704160246533128
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.7751937984496124
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.2644542078529158,
+            "query_ci95_pp": [
+              0.035173032097306205,
+              0.6480595365942946
+            ],
+            "cluster_ci95_pp": [
+              0.03522731146782674,
+              0.632469020238173
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.46224961479198773,
+            "query_ci95_pp": [
+              0.0,
+              1.078582434514638
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              1.078582434514638
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 0.15408320493066258,
+            "query_ci95_pp": [
+              0.0,
+              0.46224961479198773
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.46656298600311047
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.30816640986132515,
+            "query_ci95_pp": [
+              0.0,
+              0.7704160246533128
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.7751937984496124
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.23930273000379265,
+            "query_ci95_pp": [
+              0.017434082090209302,
+              0.6246488294824467
+            ],
+            "cluster_ci95_pp": [
+              0.017460313926687628,
+              0.6036211086590253
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.46224961479198773,
+            "query_ci95_pp": [
+              0.0,
+              1.078582434514638
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              1.078582434514638
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "any_gold_selected": {
+      "component_stats": {
+        "queries": 206,
+        "components": 163,
+        "singleton_components": 133,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 3.0,
+        "maximum_size": 5,
+        "largest_query_fraction": 0.024271844660194174,
+        "effective_component_count": 130.17177914110428,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.48543689320388345,
+            "query_ci95_pp": [
+              0.0,
+              1.4563106796116505
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              1.4925373134328357
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.16181229773462782,
+            "query_ci95_pp": [
+              0.0,
+              0.48543689320388345
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.5128205128205128
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.37545816255273873,
+            "query_ci95_pp": [
+              0.06355813280167842,
+              0.8277974853176533
+            ],
+            "cluster_ci95_pp": [
+              0.06604337357734896,
+              0.8341151552641219
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 1.9417475728155338,
+            "query_ci95_pp": [
+              0.48543689320388345,
+              3.8834951456310676
+            ],
+            "cluster_ci95_pp": [
+              0.47393364928909953,
+              3.9215686274509802
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 1.132686084142395,
+            "query_ci95_pp": [
+              0.0,
+              2.5889967637540456
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              2.7275289123115174
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 1.4330873860622189,
+            "query_ci95_pp": [
+              0.46133417277202077,
+              2.702106538520752
+            ],
+            "cluster_ci95_pp": [
+              0.49363940352785596,
+              2.732655595416579
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 1.4563106796116505,
+            "query_ci95_pp": [
+              0.0,
+              3.3980582524271843
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              3.3816425120772946
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 1.4563106796116505,
+            "query_ci95_pp": [
+              0.0,
+              3.3980582524271843
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              3.2611235270215326
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.9708737864077669,
+            "query_ci95_pp": [
+              0.0,
+              2.4271844660194173
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              2.4875621890547266
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 1.05762922350948,
+            "query_ci95_pp": [
+              0.2190924832447057,
+              2.2403329281549573
+            ],
+            "cluster_ci95_pp": [
+              0.22145095527248107,
+              2.3364190508352722
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 1.4563106796116505,
+            "query_ci95_pp": [
+              0.0,
+              3.3980582524271843
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              3.3816425120772946
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    },
+    "all_gold_selected": {
+      "component_stats": {
+        "queries": 40,
+        "components": 37,
+        "singleton_components": 35,
+        "minimum_size": 1,
+        "median_size": 1.0,
+        "p95_size": 1.1999999999999957,
+        "maximum_size": 3,
+        "largest_query_fraction": 0.075,
+        "effective_component_count": 33.333333333333336,
+        "unstable_regime": false
+      },
+      "contrasts": {
+        "B_metadata minus A_original": {
+          "hit1": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 0.4080827281020241,
+            "query_ci95_pp": [
+              0.0,
+              1.3092975357145753
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              1.0637114791932019
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 0.0,
+            "query_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              0.0
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus A_original": {
+          "hit1": {
+            "delta_pp": 2.5,
+            "query_ci95_pp": [
+              0.0,
+              7.5
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              8.108108108108109
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 5.0,
+            "query_ci95_pp": [
+              0.0,
+              12.5
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              12.82051282051282
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 4.29076952241356,
+            "query_ci95_pp": [
+              0.7226620657947197,
+              10.267912412920529
+            ],
+            "cluster_ci95_pp": [
+              0.6386817247388172,
+              10.02075228725873
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 7.5,
+            "query_ci95_pp": [
+              0.0,
+              15.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              16.216216216216218
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        },
+        "C_metadata_queries minus B_metadata": {
+          "hit1": {
+            "delta_pp": 2.5,
+            "query_ci95_pp": [
+              0.0,
+              7.5
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              8.108108108108109
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "recall10": {
+            "delta_pp": 5.0,
+            "query_ci95_pp": [
+              0.0,
+              12.5
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              12.82051282051282
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          },
+          "ndcg10": {
+            "delta_pp": 3.8826867943115357,
+            "query_ci95_pp": [
+              0.37715674660317017,
+              9.888795027450257
+            ],
+            "cluster_ci95_pp": [
+              0.3703100561502129,
+              9.739852873141746
+            ],
+            "query_ci_excludes_zero": true,
+            "cluster_ci_excludes_zero": true,
+            "interval_informative": true
+          },
+          "all_gold_selected4": {
+            "delta_pp": 7.5,
+            "query_ci95_pp": [
+              0.0,
+              15.0
+            ],
+            "cluster_ci95_pp": [
+              0.0,
+              16.216216216216218
+            ],
+            "query_ci_excludes_zero": false,
+            "cluster_ci_excludes_zero": false,
+            "interval_informative": true
+          }
+        }
+      }
+    }
+  }
+}

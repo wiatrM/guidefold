@@ -1,0 +1,647 @@
+{
+  "audit_version": "final-v1",
+  "timestamp_utc": "2026-09-06T09:54:09.920705+00:00",
+  "reviewer": "CTO independent manual source-grounding review",
+  "status": "complete: 16 reviewed, 0 pending",
+  "sample_rule": "first16 sorted by SHA256(enrichment-audit-v1 + skill_id), independent of outcomes",
+  "sample_size_documents": 16,
+  "reviewed_documents": 16,
+  "pending_documents": 0,
+  "accepted_items_reviewed": 44,
+  "counts": {
+    "supported": 26,
+    "weak_or_generic": 18,
+    "unsupported": 0,
+    "empty": 1
+  },
+  "denominators": {
+    "supported_weak_unsupported": "accepted items in reviewed documents, mutually exclusive",
+    "empty": "reviewed documents with zero accepted items; pending documents are not zero-valued observations"
+  },
+  "blindness": "The manual semantic audit read provided source and generated items only; no real evaluation query text or retrieval ranking/metrics was inspected. Separate structural code computed gold-label components without using or printing query text. Earlier cohort/qrel validation was structural.",
+  "criteria": {
+    "supported": "Requested action or capability is grounded in the full source actually supplied to the generator; the quotation alone is not treated as entailment.",
+    "weak_or_generic": "Source-grounded action, but wording drops a material scope or platform discriminator, or is excessively generic. This is not a demonstrated retrieval failure.",
+    "unsupported": "Invented capability or contradiction of the supplied source, including unsupported specificity. Questions about limits are not positive claims that a limit can be bypassed.",
+    "empty": "Document has zero accepted intents and zero accepted pseudoqueries."
+  },
+  "limitations": [
+    "Single reviewer, 16 fixed sampled documents, all reviewed before retrieval outcomes.",
+    "Evaluates support relative to the truncated provided source, not original full corpus or external factual correctness.",
+    "Does not establish retrieval utility, safety, scientific correctness, or absence of unsupported statements in the other documents.",
+    "No prompts, output filters, generation outputs, or retrieval settings were changed."
+  ],
+  "documents": [
+    {
+      "sample_index": 1,
+      "skill_id": "b67937a6-255b-4a20-8fe9-79a977e3d8ad",
+      "name": "qa-resilience",
+      "source_sha256": "68c5b43d715df162f21b5ddde731862a2f0a0900823540e451c5c4fceea16b64",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "8f6a41e7824719b91041a45c04ec8705e556e922dd628dbf7c235234330f2d30",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Configure retry strategies",
+          "evidence": "Retry strategies and exponential backoff",
+          "label": "supported",
+          "reason": "Explicit retry strategies and exponential backoff are part of the supplied resilience workflow."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How to handle external dependency failures in QA?",
+          "evidence": "Dependency failure: partial outage, slow downstream, rate limiting, DNS failures, auth failures, and corrupted/invalid responses.",
+          "label": "supported",
+          "reason": "The supplied source explicitly covers external dependency failures and QA fault injection."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What are the steps for production hardening?",
+          "evidence": "Define scope: critical user journeys, top N dependencies, and SLOs/SLIs (latency, errors, saturation).",
+          "label": "weak_or_generic",
+          "reason": "Production hardening is a supported use case, but this wording omits the resilience and failure-mode scope and can describe other hardening work."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "How do we validate system resilience under failure conditions?",
+          "evidence": "Failure Mode Testing (What to Validate)",
+          "label": "supported",
+          "reason": "The full supplied workflow describes failure-mode validation, beyond the cited heading alone."
+        }
+      ]
+    },
+    {
+      "sample_index": 2,
+      "skill_id": "eab4c43a-cfcc-4e4a-b4f3-f415da7c8574",
+      "name": "php-laravel",
+      "source_sha256": "36fca64625e728ef7342ba23bd69804cc269ee3cd23a57436c3155160cb490e7",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "b268ccdc992062daed33673694214c6f8509a7e6dc5d2419c68007b53c7be0d0",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Laravel 12+ development patterns",
+          "evidence": "This skill provides Laravel 12+ development patterns, Eloquent optimization techniques, architectural guidelines, and PHP 8.x best practices.",
+          "label": "supported",
+          "reason": "The source explicitly names Laravel 12+ development patterns and related Eloquent/PHP guidance."
+        }
+      ]
+    },
+    {
+      "sample_index": 3,
+      "skill_id": "fbd54315-3f1a-4bf7-8a50-e634ae7fa7de",
+      "name": "xcstrings-localizer",
+      "source_sha256": "4f318d3f8aacc2bcd4958b8e1b351a57c9fb99a926358cb9021a91f1c7fa7cb5",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "64e77b2a8db6705c11ac988836e9d6c28da76470dec70c95dec3c0f2b71ff076",
+      "items": [
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "translate Xcode String Catalog files",
+          "evidence": "Translate Xcode String Catalog (.xcstrings) files directly in Claude Code.",
+          "label": "supported",
+          "reason": "Direct translation of Xcode String Catalog files is the stated purpose and preserves the Xcode scope."
+        }
+      ]
+    },
+    {
+      "sample_index": 4,
+      "skill_id": "fb403d3b-0a9f-4043-922a-ee716171e258",
+      "name": "ce:work",
+      "source_sha256": "f84d7d7fd1c49418203c96e9c8a8c73466c1d1b67c87919e9fc3c3561627423b",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "d7e01fc66da1334624b9e73d8982ff775625edc9a8332c450b2d9ab5c7997a04",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "execute work plans efficiently",
+          "evidence": "Execute a work plan efficiently while maintaining quality and finishing features.",
+          "label": "supported",
+          "reason": "Executing implementation work plans is the stated purpose."
+        },
+        {
+          "kind": "intents",
+          "index": 1,
+          "text": "create todo list from work plan",
+          "evidence": "Use your available task tracking tool (e.g., TodoWrite, task lists) to break the plan into actionable tasks",
+          "label": "supported",
+          "reason": "The source explicitly instructs breaking a work plan into actionable tracked tasks."
+        },
+        {
+          "kind": "intents",
+          "index": 2,
+          "text": "choose execution strategy based on plan size",
+          "evidence": "After creating the task list, decide how to execute based on the plan's size and dependency structure",
+          "label": "supported",
+          "reason": "The source explicitly chooses execution strategy using plan size and dependencies."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "what to do if the plan is unclear",
+          "evidence": "If anything is unclear or ambiguous, ask clarifying questions now",
+          "label": "weak_or_generic",
+          "reason": "Clarifying an unclear plan is explicitly supported, but the standalone wording loses the coding work-plan context."
+        }
+      ]
+    },
+    {
+      "sample_index": 5,
+      "skill_id": "4413090c-0805-411b-a68d-530bb6386348",
+      "name": "issue",
+      "source_sha256": "b854a166b58ef8c08d080aeade7dcd421c78580fabb6171a26884525fa5d3bba",
+      "status": "reviewed",
+      "counts": {
+        "supported": 2,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "b0b661aeec4f7729839e41b3343a08054aa22a018618553f5bf07ea9cf852dd8",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "manage issues",
+          "evidence": "Create and manage Issues with testable acceptance criteria.",
+          "label": "weak_or_generic",
+          "reason": "The source manages local Issue specifications under specs/issues and distinguishes GitHub issues; this phrase omits that material scope."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I create a new task?",
+          "evidence": "Create and manage Issues with testable acceptance criteria.",
+          "label": "weak_or_generic",
+          "reason": "Creating a task is supported within the local Issue/Epic workflow, but the wording omits that scope and is broadly applicable."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What is the process for adding a bug fix task?",
+          "evidence": "Breaking down an Epic into work items",
+          "label": "supported",
+          "reason": "Adding a bug-fix task is an explicit use case of the supplied Issue workflow, even though the cited quotation alone is less specific."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "Can I create an issue without reading the Epic?",
+          "evidence": "This ensures Issues are consistent with Epic's design and requirements.",
+          "label": "supported",
+          "reason": "The source explicitly requires reading the Epic first. This is a question about that boundary, not an assertion that it may be bypassed."
+        }
+      ]
+    },
+    {
+      "sample_index": 6,
+      "skill_id": "bad47673-bbe7-40f1-ae46-d3a483b2d872",
+      "name": "Offline vs Online Evaluation",
+      "source_sha256": "dca48353e9edffa2286822f3219d95172183f41f92cd1b89cc2f5322e416da89",
+      "status": "reviewed",
+      "counts": {
+        "supported": 2,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Implement offline and online evaluation strategies",
+          "evidence": "This skill provides comprehensive guidance and best practices for implementation.",
+          "label": "supported",
+          "reason": "The supplied description and second Overview explicitly cover offline/online evaluation for AI/ML. The chosen evidence sentence alone is generic; this label does not validate the mostly templated body as usable implementation guidance."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How to implement offline and online evaluation strategies?",
+          "evidence": "This skill provides comprehensive guidance and best practices for implementation.",
+          "label": "supported",
+          "reason": "Offline/online evaluation is the stated source purpose. Support comes from the full supplied text, not the generic implementation quotation alone."
+        }
+      ],
+      "accepted_output_sha256": "952063198eeb352f225000e5d9be8ebf47e114b3015208a4df7376afc01d5e57",
+      "note": "The source has an evaluation-specific title/description but a largely generic implementation template. Source-grounded metadata does not prove that this underlying skill contains adequate specialist instructions."
+    },
+    {
+      "sample_index": 7,
+      "skill_id": "46b0f4a3-86d2-466c-a89c-e4fa666a0ed5",
+      "name": "airflow-dag-patterns",
+      "source_sha256": "64bbe3aebad9526572b4e0a2b1cc297e5ee033c49e0b384e95f451d01db29174",
+      "status": "reviewed",
+      "counts": {
+        "supported": 0,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 1
+      },
+      "items": [],
+      "accepted_output_sha256": "fba7cbc4845bd133261d533245d5683c03a6acf55aab78eb3dbf4f8348217bc6",
+      "note": "Zero accepted items after frozen mechanical filtering. Counted as one empty document, not an unsupported item. No claim about the source quality or generator raw text follows."
+    },
+    {
+      "sample_index": 8,
+      "skill_id": "d36a0433-334d-49e4-a885-fb9974f57278",
+      "name": "implement architect workflow",
+      "source_sha256": "5cd6b0c3615fe65a01a5d30c39759afac38d6a0f949c5491828b847e310f1858",
+      "status": "reviewed",
+      "counts": {
+        "supported": 0,
+        "weak_or_generic": 6,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Implement error handling strategy",
+          "evidence": "*   **No Try-Catch Blocks**",
+          "label": "weak_or_generic",
+          "reason": "The action exists, but this is a repository-specific Express/globalAsyncHandler error strategy; the phrase omits that important implementation context."
+        },
+        {
+          "kind": "intents",
+          "index": 1,
+          "text": "Register API routes",
+          "evidence": "1.  **Initialize & Apply Handler**",
+          "label": "weak_or_generic",
+          "reason": "The source uses a particular Express router/globalAsyncHandler/registerRoute workflow; generic API-route registration drops those applicability conditions."
+        },
+        {
+          "kind": "intents",
+          "index": 2,
+          "text": "Use layered architecture",
+          "evidence": "*   **Role**: Entry point for HTTP requests",
+          "label": "weak_or_generic",
+          "reason": "The source specifies a Controller-Service-Repository API pattern; broad layered architecture loses both that pattern and API implementation scope."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How to handle errors in API controllers?",
+          "evidence": "*   **Do not** use `try-catch` blocks in **Controllers**, **Services**, or **Repositories**.",
+          "label": "weak_or_generic",
+          "reason": "The question concerns a supported action, but the source prohibition on local try/catch depends on this repository already installing globalAsyncHandler. The generic controller question omits that condition."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What is the correct way to define API routes?",
+          "evidence": "1.  **Initialize & Apply Handler**",
+          "label": "weak_or_generic",
+          "reason": "The phrase presents a generic correct API-route workflow while the source prescribes specific Express and registerRoute conventions in one repository."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "How should I structure my API code for better organization?",
+          "evidence": "Follow the **Controller-Service-Repository** pattern",
+          "label": "weak_or_generic",
+          "reason": "API organization is supported through one Controller-Service-Repository implementation; this broad request does not preserve the source-specific conventions."
+        }
+      ],
+      "accepted_output_sha256": "145dd49a7a0d624ac02afd24aade6c7e37603c7c1dc4289ed147b35a50a0c5d5"
+    },
+    {
+      "sample_index": 9,
+      "skill_id": "69507794-bc4e-48aa-bb9e-1fef089ced56",
+      "name": "code-review",
+      "source_sha256": "ba9d6ce1d4bf2f93456ff0bf0189667606cc1b01e4b3315408670d421138c8aa",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "796b2289890f03df4d7ff7036aa934ae23f54da3c831168617e7a3ecabc0483d",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Perform comprehensive code reviews",
+          "evidence": "Capable of performing comprehensive code reviews on git commits.",
+          "label": "supported",
+          "reason": "Comprehensive code review is the stated purpose and the supplied workflow covers commit, staged, range, and file review."
+        }
+      ]
+    },
+    {
+      "sample_index": 10,
+      "skill_id": "4ed5d253-fa68-4571-98ba-631c017b0c3e",
+      "name": "rrna-prediction-patterns",
+      "source_sha256": "3944486fc6c32d77698a97977ac86c1dc5f54b8119640c0ef2814604eb8c642c",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "9b272f1289ade7140672f40df5774f49c1b9b654b16c69afa07901589b3e21c3",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Use HMM for rRNA detection",
+          "evidence": "Use established HMM profiles from databases like Rfam or create custom profiles.",
+          "label": "supported",
+          "reason": "The source explicitly describes HMM profiles for rRNA detection."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I detect rRNA using HMM?",
+          "evidence": "Use established HMM profiles from databases like Rfam or create custom profiles.",
+          "label": "supported",
+          "reason": "The source explicitly describes the requested HMM-based rRNA detection workflow."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "Can I use BLAST to find rRNA sequences?",
+          "evidence": "Use specialized rRNA databases like SILVA or RDP.",
+          "label": "supported",
+          "reason": "The full supplied source has a BLAST-based rRNA section; this is supported beyond the database-only evidence quotation."
+        }
+      ]
+    },
+    {
+      "sample_index": 11,
+      "skill_id": "30bddd35-f4ba-4589-b49d-43ac63f07ca0",
+      "name": "go-error-wrapping",
+      "source_sha256": "9054abc3edca85d24f3ceb9e70605a3e11356b2bb62ccc92116472fa8f83b685",
+      "status": "reviewed",
+      "counts": {
+        "supported": 4,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "wrap errors with context",
+          "evidence": "Use `fmt.Errorf` with `%w` to add context while preserving the error chain.",
+          "label": "supported",
+          "reason": "Wrapping errors with contextual information is the narrow action explicitly described in the source."
+        },
+        {
+          "kind": "intents",
+          "index": 1,
+          "text": "preserve error chain",
+          "evidence": "Use `%w` to wrap, not `%v` or `%s`",
+          "label": "supported",
+          "reason": "Preserving the original error chain is an explicit source rule and a specific error-handling concept."
+        },
+        {
+          "kind": "intents",
+          "index": 2,
+          "text": "add meaningful context",
+          "evidence": "Add meaningful context (file names, IDs, operations)",
+          "label": "weak_or_generic",
+          "reason": "The source means context in wrapped errors; the phrase drops errors and can refer to almost any kind of context."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "how to add context to errors in Go",
+          "evidence": "Use `fmt.Errorf` with `%w` to add context while preserving the error chain.",
+          "label": "supported",
+          "reason": "The query preserves the Go language and specific error-context purpose."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "what is the correct way to handle errors in Go",
+          "evidence": "Use `fmt.Errorf` with `%w` to add context while preserving the error chain.",
+          "label": "weak_or_generic",
+          "reason": "The source covers error wrapping, while this asks about general Go error handling and omits that narrower scope."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "why should I preserve the error chain when wrapping errors",
+          "evidence": "Use `%w` to wrap, not `%v` or `%s`",
+          "label": "supported",
+          "reason": "The source explains preservation of the original error for type checking and illustrates the wrapped chain, supporting a question about why to retain it."
+        }
+      ],
+      "accepted_output_sha256": "c1094290117479c9f681210afd2e45b24957af8cdd8530a8bfb3dfa21c5834c0"
+    },
+    {
+      "sample_index": 12,
+      "skill_id": "4d2095dc-0ae4-4ac9-9867-a4ce30a3995b",
+      "name": "code-review",
+      "source_sha256": "db3398c1eabd8d90b98c4d039ac214d16b3eda4c73764c8240ef826180ad0a4e",
+      "status": "reviewed",
+      "counts": {
+        "supported": 4,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "perform code review",
+          "evidence": "Perform systematic code review with actionable feedback.",
+          "label": "supported",
+          "reason": "Systematic code review is the stated purpose."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How to review code for security issues?",
+          "evidence": "- [ ] No hardcoded secrets or API keys\n- [ ] Input validation present\n- [ ] SQL injection prevention\n- [ ] XSS prevention",
+          "label": "supported",
+          "reason": "The supplied checklist explicitly covers secrets, input validation, SQL injection and XSS."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What should I look for in a code review?",
+          "evidence": "Perform systematic code review with actionable feedback.",
+          "label": "supported",
+          "reason": "The source contains a security, quality and tests checklist answering this question."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "How do I format the output of a code review?",
+          "evidence": "Use severity levels:\n- **CRITICAL**: Security issues, data loss risk\n- **WARNING**: Code quality, maintainability\n- **INFO**: Style, suggestions",
+          "label": "supported",
+          "reason": "The source explicitly defines severity levels and a review output example."
+        }
+      ],
+      "accepted_output_sha256": "ed167876132090ffad435e76f578590502379e04343e41334cc2be715871a611"
+    },
+    {
+      "sample_index": 13,
+      "skill_id": "a79274ae-05bd-42bf-8ff5-50a2cd377985",
+      "name": "btdp-it-masterdata-retrieval",
+      "source_sha256": "51fcae65e5bfcb95475c31af3af1854a77394292b12e7411e24bddb0e774b2a7",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "retrieve IT masterdata",
+          "evidence": "Expert in retrieving IT masterdata and data lineage from L'Oréal's BTDP infrastructure.",
+          "label": "weak_or_generic",
+          "reason": "IT masterdata retrieval is supported specifically for Loreal BTDP; the phrase omits the organization/platform boundary."
+        },
+        {
+          "kind": "intents",
+          "index": 1,
+          "text": "data lineage queries",
+          "evidence": "Also use for data lineage queries (upstream/downstream dependencies, parents/children).",
+          "label": "weak_or_generic",
+          "reason": "Lineage queries are supported specifically through BTDP data sources and infrastructure; the phrase is platform-generic."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "What is the lineage for tables_v2",
+          "evidence": "What is the lineage for tables_v2",
+          "label": "supported",
+          "reason": "This exact question is a documented workflow example for tables_v2 in the supplied source."
+        }
+      ],
+      "accepted_output_sha256": "409b6b1a34b513cd994afa16ae7f959c189efa61371b4edb5eda516d5c6e48fb"
+    },
+    {
+      "sample_index": 14,
+      "skill_id": "2f1f7b22-dd85-42b7-add8-efd4d68e96bc",
+      "name": "frontend-engineering",
+      "source_sha256": "78f9b820b503a0b98d62f9b781785e23dcc57d57d32fd2e42802088f0727332f",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "state management",
+          "evidence": "State management (Pinia, Vuex, Redux)",
+          "label": "weak_or_generic",
+          "reason": "The skill is restricted to frontend engineering; state management alone drops that domain qualifier."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How can I improve state management in my React app?",
+          "evidence": "State management (Pinia, Vuex, Redux)",
+          "label": "supported",
+          "reason": "The query preserves frontend/React scope and the source explicitly supports React and state management."
+        }
+      ],
+      "accepted_output_sha256": "69e70054741f2c04d070c7b847cf39028ca8dffd0e2d8594aa466cc20ae432ae"
+    },
+    {
+      "sample_index": 15,
+      "skill_id": "91823ed1-b996-4557-a92c-f5901dda723b",
+      "name": "tailwindcss-accessibility",
+      "source_sha256": "5192466b6ff3c235be4e515dc1f5b476febf90b03dca1f7f3097b605c98ad690",
+      "status": "reviewed",
+      "counts": {
+        "supported": 0,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "focus management",
+          "evidence": "Focus indicators must be visible",
+          "label": "weak_or_generic",
+          "reason": "The source covers focus management through Tailwind CSS accessibility utilities; the phrase drops the Tailwind/web accessibility scope."
+        }
+      ],
+      "accepted_output_sha256": "34137afe42f2d28a821b510dd7c8c3a9e86a640b3e5c09f13e25842c8a9ff411"
+    },
+    {
+      "sample_index": 16,
+      "skill_id": "e69f9870-69bc-4151-af50-b04a9d5faa10",
+      "name": "node-generator",
+      "source_sha256": "c1b3f64abc8ac50ffbaaaca2c241a862e59defefcb8c75f63651a886a18cc684",
+      "status": "reviewed",
+      "counts": {
+        "supported": 0,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "87971cc87101f98e869ee14c5b6b39ce01685a20dbd354bf020d50109d92b4f9",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "generate workflow nodes",
+          "evidence": "Generate workflow nodes for Dafthunk: research requirements, create implementation and tests, register in the node registry.",
+          "label": "weak_or_generic",
+          "reason": "Workflow-node generation is supported specifically for Dafthunk. Omitting Dafthunk removes a material platform discriminator."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I generate a new workflow node?",
+          "evidence": "Generate workflow nodes for Dafthunk: research requirements, create implementation and tests, register in the node registry.",
+          "label": "weak_or_generic",
+          "reason": "The requested action is present, but the source is a Dafthunk implementation/test/registry workflow, while this wording is platform-generic."
+        }
+      ]
+    }
+  ],
+  "finalized_before_rankings_and_results": true,
+  "generation_freeze_sha256": "a8ebcd52a9d10d7caf89311ea92a113feb58dac5a089bc59089698fcac65dbfd"
+}

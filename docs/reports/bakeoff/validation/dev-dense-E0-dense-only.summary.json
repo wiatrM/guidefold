@@ -1,0 +1,75 @@
+{
+  "identity": "E0",
+  "k=1": {
+    "all_required4": 0.9725609756097561,
+    "ceiling10": 0.9908536585365854,
+    "ceiling15": 0.9939024390243902,
+    "ceiling4": 0.9725609756097561,
+    "ceiling50": 0.9939024390243902,
+    "hit1": 0.875,
+    "n": 328,
+    "ndcg10": 0.9364414887799061,
+    "recall10": 0.9908536585365854
+  },
+  "k=2": {
+    "all_required4": 0.3633633633633634,
+    "ceiling10": 0.4774774774774775,
+    "ceiling15": 0.5135135135135135,
+    "ceiling4": 0.3633633633633634,
+    "ceiling50": 0.5705705705705706,
+    "hit1": 0.8768768768768769,
+    "n": 333,
+    "ndcg10": 0.7530038662415002,
+    "recall10": 0.7327327327327328
+  },
+  "k=3": {
+    "all_required4": 0.07669616519174041,
+    "ceiling10": 0.168141592920354,
+    "ceiling15": 0.19469026548672566,
+    "ceiling4": 0.07669616519174041,
+    "ceiling50": 0.2536873156342183,
+    "hit1": 0.8820058997050148,
+    "n": 339,
+    "ndcg10": 0.6684363095509713,
+    "recall10": 0.6057030481809242
+  },
+  "mode": "dense-only",
+  "model_meta": {
+    "device": "cuda",
+    "dims": 1024,
+    "dtype": "torch.bfloat16",
+    "encode_ms_per_item": {
+      "queries": 4.879954099655151,
+      "skills": 70.9044804724264
+    },
+    "encode_time_s": {
+      "queries": 4.879954099655151,
+      "skills": 717.7660558223724
+    },
+    "identity": "E0",
+    "n_queries": 1000,
+    "n_skills": 10123,
+    "quant_cosine_mean": {
+      "queries": 0.9973621964454651,
+      "skills": 0.9973660707473755
+    },
+    "query_batch_size": 64,
+    "query_prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+    "revision": "0e10886e80a0aacc9efddc28282a258e2ab7eae1",
+    "skill_batch_size": 4,
+    "source": "ThakiCloud/SKILLRET-Embedding-0.6B"
+  },
+  "n_cases": 1000,
+  "overall": {
+    "all_required4": 0.466,
+    "ceiling10": 0.541,
+    "ceiling15": 0.563,
+    "ceiling4": 0.466,
+    "ceiling50": 0.602,
+    "hit1": 0.878,
+    "n": 1000,
+    "ndcg10": 0.7845030047160081,
+    "recall10": 0.7743333333333333
+  },
+  "run_time_s": 94.16258835792542
+}

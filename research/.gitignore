@@ -1,0 +1,8 @@
+# Research spikes: evidence files are committed; model/feature caches are not (rebuildable, up to 1 GB).
+**/cache/
+**/__pycache__/
+*.pyc
+*.npy
+*.f32
+*.pt
+*.safetensors

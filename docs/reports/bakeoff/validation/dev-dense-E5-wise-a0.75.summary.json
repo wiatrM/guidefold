@@ -1,0 +1,75 @@
+{
+  "identity": "E5-wise-a0.75",
+  "k=1": {
+    "all_required4": 0.9146341463414634,
+    "ceiling10": 0.9542682926829268,
+    "ceiling15": 0.9725609756097561,
+    "ceiling4": 0.9146341463414634,
+    "ceiling50": 0.9969512195121951,
+    "hit1": 0.8292682926829268,
+    "n": 328,
+    "ndcg10": 0.8930784179333868,
+    "recall10": 0.9542682926829268
+  },
+  "k=2": {
+    "all_required4": 0.18618618618618618,
+    "ceiling10": 0.3333333333333333,
+    "ceiling15": 0.4084084084084084,
+    "ceiling4": 0.18618618618618618,
+    "ceiling50": 0.5615615615615616,
+    "hit1": 0.8498498498498499,
+    "n": 333,
+    "ndcg10": 0.6869480916658697,
+    "recall10": 0.6576576576576577
+  },
+  "k=3": {
+    "all_required4": 0.011799410029498525,
+    "ceiling10": 0.07079646017699115,
+    "ceiling15": 0.09144542772861357,
+    "ceiling4": 0.011799410029498525,
+    "ceiling50": 0.22123893805309736,
+    "hit1": 0.8230088495575221,
+    "n": 339,
+    "ndcg10": 0.5859139739721225,
+    "recall10": 0.49262536873156343
+  },
+  "mode": "hybrid",
+  "model_meta": {
+    "device": "cuda",
+    "dims": 1024,
+    "dtype": "torch.bfloat16",
+    "encode_ms_per_item": {
+      "queries": 6.519889831542969,
+      "skills": 76.99637795512082
+    },
+    "encode_time_s": {
+      "queries": 6.519889831542969,
+      "skills": 779.4343340396881
+    },
+    "identity": "E5-wise-a0.75",
+    "n_queries": 1000,
+    "n_skills": 10123,
+    "quant_cosine_mean": {
+      "queries": 0.9973685145378113,
+      "skills": 0.9973674416542053
+    },
+    "query_batch_size": 64,
+    "query_prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+    "revision": null,
+    "skill_batch_size": 4,
+    "source": "/home/mike/.cache/guidefold/finetune-checkpoints/E5-wise-a0.75/final"
+  },
+  "n_cases": 1000,
+  "overall": {
+    "all_required4": 0.366,
+    "ceiling10": 0.448,
+    "ceiling15": 0.486,
+    "ceiling4": 0.366,
+    "ceiling50": 0.589,
+    "hit1": 0.834,
+    "n": 1000,
+    "ndcg10": 0.720308272783435,
+    "recall10": 0.699
+  },
+  "run_time_s": 224.7858624458313
+}

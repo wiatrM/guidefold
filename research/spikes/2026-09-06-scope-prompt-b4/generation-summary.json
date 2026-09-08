@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "original_prompt": {
+      "docs": 32,
+      "accepted_intents": 57,
+      "accepted_queries": 38,
+      "empty_docs": 4,
+      "rejections": {
+        "word_bounds": 21,
+        "evidence_not_in_source": 70,
+        "invalid_json": 1
+      },
+      "cap_hits": 0,
+      "input_tokens": 50246,
+      "output_tokens": 8119
+    },
+    "scoped_task_prompt": {
+      "docs": 32,
+      "accepted_intents": 62,
+      "accepted_queries": 57,
+      "empty_docs": 1,
+      "rejections": {
+        "word_bounds": 19,
+        "evidence_not_in_source": 48,
+        "invalid_json": 1
+      },
+      "cap_hits": 1,
+      "input_tokens": 53734,
+      "output_tokens": 8228
+    }
+  },
+  "generation_wall_seconds": 260.35211753845215,
+  "paired_sha256": "bc2a18bd9cb1a0432199a25dc993d535c4a0dac33bb518fe85366594caf56104",
+  "source_sha256": "4a055291d54b4456c508471f680235930e7de3f896eda774deb2f714cd40a821",
+  "caveat": "Source-only prompt feasibility, not retrieval improvement or full semantic validation. Same corpus source;32 docs disjoint from first512."
+}

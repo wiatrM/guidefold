@@ -1,0 +1,404 @@
+{
+  "audit_version": "partial-v1",
+  "timestamp_utc": "2026-09-06T09:44:43.422650+00:00",
+  "reviewer": "CTO independent manual source-grounding review",
+  "status": "partial: 8 reviewed, 8 pending",
+  "sample_rule": "first16 sorted by SHA256(enrichment-audit-v1 + skill_id), independent of outcomes",
+  "sample_size_documents": 16,
+  "reviewed_documents": 8,
+  "pending_documents": 8,
+  "accepted_items_reviewed": 20,
+  "counts": {
+    "supported": 14,
+    "weak_or_generic": 6,
+    "unsupported": 0,
+    "empty": 0
+  },
+  "denominators": {
+    "supported_weak_unsupported": "accepted items in reviewed documents, mutually exclusive",
+    "empty": "reviewed documents with zero accepted items; pending documents are not zero-valued observations"
+  },
+  "blindness": "For this semantic audit, no real evaluation query text, qrels, rankings, or retrieval metrics were read. Generator pseudoqueries are the output under review. Earlier structural cohort/qrel QA is separate.",
+  "criteria": {
+    "supported": "Requested action or capability is grounded in the full source actually supplied to the generator; the quotation alone is not treated as entailment.",
+    "weak_or_generic": "Source-grounded action, but wording drops a material scope or platform discriminator, or is excessively generic. This is not a demonstrated retrieval failure.",
+    "unsupported": "Invented capability or contradiction of the supplied source, including unsupported specificity. Questions about limits are not positive claims that a limit can be bypassed.",
+    "empty": "Document has zero accepted intents and zero accepted pseudoqueries."
+  },
+  "limitations": [
+    "Single reviewer, 16 fixed sampled documents, incomplete until pending records are reviewed.",
+    "Evaluates support relative to the truncated provided source, not original full corpus or external factual correctness.",
+    "Does not establish retrieval utility, safety, scientific correctness, or absence of unsupported statements in the other documents.",
+    "No prompts, output filters, generation outputs, or retrieval settings were changed."
+  ],
+  "documents": [
+    {
+      "sample_index": 1,
+      "skill_id": "b67937a6-255b-4a20-8fe9-79a977e3d8ad",
+      "name": "qa-resilience",
+      "source_sha256": "68c5b43d715df162f21b5ddde731862a2f0a0900823540e451c5c4fceea16b64",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "8f6a41e7824719b91041a45c04ec8705e556e922dd628dbf7c235234330f2d30",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Configure retry strategies",
+          "evidence": "Retry strategies and exponential backoff",
+          "label": "supported",
+          "reason": "Explicit retry strategies and exponential backoff are part of the supplied resilience workflow."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How to handle external dependency failures in QA?",
+          "evidence": "Dependency failure: partial outage, slow downstream, rate limiting, DNS failures, auth failures, and corrupted/invalid responses.",
+          "label": "supported",
+          "reason": "The supplied source explicitly covers external dependency failures and QA fault injection."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What are the steps for production hardening?",
+          "evidence": "Define scope: critical user journeys, top N dependencies, and SLOs/SLIs (latency, errors, saturation).",
+          "label": "weak_or_generic",
+          "reason": "Production hardening is a supported use case, but this wording omits the resilience and failure-mode scope and can describe other hardening work."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "How do we validate system resilience under failure conditions?",
+          "evidence": "Failure Mode Testing (What to Validate)",
+          "label": "supported",
+          "reason": "The full supplied workflow describes failure-mode validation, beyond the cited heading alone."
+        }
+      ]
+    },
+    {
+      "sample_index": 2,
+      "skill_id": "eab4c43a-cfcc-4e4a-b4f3-f415da7c8574",
+      "name": "php-laravel",
+      "source_sha256": "36fca64625e728ef7342ba23bd69804cc269ee3cd23a57436c3155160cb490e7",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "b268ccdc992062daed33673694214c6f8509a7e6dc5d2419c68007b53c7be0d0",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Laravel 12+ development patterns",
+          "evidence": "This skill provides Laravel 12+ development patterns, Eloquent optimization techniques, architectural guidelines, and PHP 8.x best practices.",
+          "label": "supported",
+          "reason": "The source explicitly names Laravel 12+ development patterns and related Eloquent/PHP guidance."
+        }
+      ]
+    },
+    {
+      "sample_index": 3,
+      "skill_id": "fbd54315-3f1a-4bf7-8a50-e634ae7fa7de",
+      "name": "xcstrings-localizer",
+      "source_sha256": "4f318d3f8aacc2bcd4958b8e1b351a57c9fb99a926358cb9021a91f1c7fa7cb5",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "64e77b2a8db6705c11ac988836e9d6c28da76470dec70c95dec3c0f2b71ff076",
+      "items": [
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "translate Xcode String Catalog files",
+          "evidence": "Translate Xcode String Catalog (.xcstrings) files directly in Claude Code.",
+          "label": "supported",
+          "reason": "Direct translation of Xcode String Catalog files is the stated purpose and preserves the Xcode scope."
+        }
+      ]
+    },
+    {
+      "sample_index": 4,
+      "skill_id": "fb403d3b-0a9f-4043-922a-ee716171e258",
+      "name": "ce:work",
+      "source_sha256": "f84d7d7fd1c49418203c96e9c8a8c73466c1d1b67c87919e9fc3c3561627423b",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 1,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "d7e01fc66da1334624b9e73d8982ff775625edc9a8332c450b2d9ab5c7997a04",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "execute work plans efficiently",
+          "evidence": "Execute a work plan efficiently while maintaining quality and finishing features.",
+          "label": "supported",
+          "reason": "Executing implementation work plans is the stated purpose."
+        },
+        {
+          "kind": "intents",
+          "index": 1,
+          "text": "create todo list from work plan",
+          "evidence": "Use your available task tracking tool (e.g., TodoWrite, task lists) to break the plan into actionable tasks",
+          "label": "supported",
+          "reason": "The source explicitly instructs breaking a work plan into actionable tracked tasks."
+        },
+        {
+          "kind": "intents",
+          "index": 2,
+          "text": "choose execution strategy based on plan size",
+          "evidence": "After creating the task list, decide how to execute based on the plan's size and dependency structure",
+          "label": "supported",
+          "reason": "The source explicitly chooses execution strategy using plan size and dependencies."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "what to do if the plan is unclear",
+          "evidence": "If anything is unclear or ambiguous, ask clarifying questions now",
+          "label": "weak_or_generic",
+          "reason": "Clarifying an unclear plan is explicitly supported, but the standalone wording loses the coding work-plan context."
+        }
+      ]
+    },
+    {
+      "sample_index": 5,
+      "skill_id": "4413090c-0805-411b-a68d-530bb6386348",
+      "name": "issue",
+      "source_sha256": "b854a166b58ef8c08d080aeade7dcd421c78580fabb6171a26884525fa5d3bba",
+      "status": "reviewed",
+      "counts": {
+        "supported": 2,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "b0b661aeec4f7729839e41b3343a08054aa22a018618553f5bf07ea9cf852dd8",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "manage issues",
+          "evidence": "Create and manage Issues with testable acceptance criteria.",
+          "label": "weak_or_generic",
+          "reason": "The source manages local Issue specifications under specs/issues and distinguishes GitHub issues; this phrase omits that material scope."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I create a new task?",
+          "evidence": "Create and manage Issues with testable acceptance criteria.",
+          "label": "weak_or_generic",
+          "reason": "Creating a task is supported within the local Issue/Epic workflow, but the wording omits that scope and is broadly applicable."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "What is the process for adding a bug fix task?",
+          "evidence": "Breaking down an Epic into work items",
+          "label": "supported",
+          "reason": "Adding a bug-fix task is an explicit use case of the supplied Issue workflow, even though the cited quotation alone is less specific."
+        },
+        {
+          "kind": "queries",
+          "index": 2,
+          "text": "Can I create an issue without reading the Epic?",
+          "evidence": "This ensures Issues are consistent with Epic's design and requirements.",
+          "label": "supported",
+          "reason": "The source explicitly requires reading the Epic first. This is a question about that boundary, not an assertion that it may be bypassed."
+        }
+      ]
+    },
+    {
+      "sample_index": 6,
+      "skill_id": "bad47673-bbe7-40f1-ae46-d3a483b2d872",
+      "name": "Offline vs Online Evaluation",
+      "source_sha256": "dca48353e9edffa2286822f3219d95172183f41f92cd1b89cc2f5322e416da89",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 7,
+      "skill_id": "46b0f4a3-86d2-466c-a89c-e4fa666a0ed5",
+      "name": "airflow-dag-patterns",
+      "source_sha256": "64bbe3aebad9526572b4e0a2b1cc297e5ee033c49e0b384e95f451d01db29174",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 8,
+      "skill_id": "d36a0433-334d-49e4-a885-fb9974f57278",
+      "name": "implement architect workflow",
+      "source_sha256": "5cd6b0c3615fe65a01a5d30c39759afac38d6a0f949c5491828b847e310f1858",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 9,
+      "skill_id": "69507794-bc4e-48aa-bb9e-1fef089ced56",
+      "name": "code-review",
+      "source_sha256": "ba9d6ce1d4bf2f93456ff0bf0189667606cc1b01e4b3315408670d421138c8aa",
+      "status": "reviewed",
+      "counts": {
+        "supported": 1,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "796b2289890f03df4d7ff7036aa934ae23f54da3c831168617e7a3ecabc0483d",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Perform comprehensive code reviews",
+          "evidence": "Capable of performing comprehensive code reviews on git commits.",
+          "label": "supported",
+          "reason": "Comprehensive code review is the stated purpose and the supplied workflow covers commit, staged, range, and file review."
+        }
+      ]
+    },
+    {
+      "sample_index": 10,
+      "skill_id": "4ed5d253-fa68-4571-98ba-631c017b0c3e",
+      "name": "rrna-prediction-patterns",
+      "source_sha256": "3944486fc6c32d77698a97977ac86c1dc5f54b8119640c0ef2814604eb8c642c",
+      "status": "reviewed",
+      "counts": {
+        "supported": 3,
+        "weak_or_generic": 0,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "9b272f1289ade7140672f40df5774f49c1b9b654b16c69afa07901589b3e21c3",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "Use HMM for rRNA detection",
+          "evidence": "Use established HMM profiles from databases like Rfam or create custom profiles.",
+          "label": "supported",
+          "reason": "The source explicitly describes HMM profiles for rRNA detection."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I detect rRNA using HMM?",
+          "evidence": "Use established HMM profiles from databases like Rfam or create custom profiles.",
+          "label": "supported",
+          "reason": "The source explicitly describes the requested HMM-based rRNA detection workflow."
+        },
+        {
+          "kind": "queries",
+          "index": 1,
+          "text": "Can I use BLAST to find rRNA sequences?",
+          "evidence": "Use specialized rRNA databases like SILVA or RDP.",
+          "label": "supported",
+          "reason": "The full supplied source has a BLAST-based rRNA section; this is supported beyond the database-only evidence quotation."
+        }
+      ]
+    },
+    {
+      "sample_index": 11,
+      "skill_id": "30bddd35-f4ba-4589-b49d-43ac63f07ca0",
+      "name": "go-error-wrapping",
+      "source_sha256": "9054abc3edca85d24f3ceb9e70605a3e11356b2bb62ccc92116472fa8f83b685",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 12,
+      "skill_id": "4d2095dc-0ae4-4ac9-9867-a4ce30a3995b",
+      "name": "code-review",
+      "source_sha256": "db3398c1eabd8d90b98c4d039ac214d16b3eda4c73764c8240ef826180ad0a4e",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 13,
+      "skill_id": "a79274ae-05bd-42bf-8ff5-50a2cd377985",
+      "name": "btdp-it-masterdata-retrieval",
+      "source_sha256": "51fcae65e5bfcb95475c31af3af1854a77394292b12e7411e24bddb0e774b2a7",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 14,
+      "skill_id": "2f1f7b22-dd85-42b7-add8-efd4d68e96bc",
+      "name": "frontend-engineering",
+      "source_sha256": "78f9b820b503a0b98d62f9b781785e23dcc57d57d32fd2e42802088f0727332f",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 15,
+      "skill_id": "91823ed1-b996-4557-a92c-f5901dda723b",
+      "name": "tailwindcss-accessibility",
+      "source_sha256": "5192466b6ff3c235be4e515dc1f5b476febf90b03dca1f7f3097b605c98ad690",
+      "status": "pending",
+      "counts": null,
+      "items": [],
+      "reason": "Not included in the eight records reviewed before this partial audit; complete after root confirms generation freeze."
+    },
+    {
+      "sample_index": 16,
+      "skill_id": "e69f9870-69bc-4151-af50-b04a9d5faa10",
+      "name": "node-generator",
+      "source_sha256": "c1b3f64abc8ac50ffbaaaca2c241a862e59defefcb8c75f63651a886a18cc684",
+      "status": "reviewed",
+      "counts": {
+        "supported": 0,
+        "weak_or_generic": 2,
+        "unsupported": 0,
+        "empty": 0
+      },
+      "accepted_output_sha256": "87971cc87101f98e869ee14c5b6b39ce01685a20dbd354bf020d50109d92b4f9",
+      "items": [
+        {
+          "kind": "intents",
+          "index": 0,
+          "text": "generate workflow nodes",
+          "evidence": "Generate workflow nodes for Dafthunk: research requirements, create implementation and tests, register in the node registry.",
+          "label": "weak_or_generic",
+          "reason": "Workflow-node generation is supported specifically for Dafthunk. Omitting Dafthunk removes a material platform discriminator."
+        },
+        {
+          "kind": "queries",
+          "index": 0,
+          "text": "How do I generate a new workflow node?",
+          "evidence": "Generate workflow nodes for Dafthunk: research requirements, create implementation and tests, register in the node registry.",
+          "label": "weak_or_generic",
+          "reason": "The requested action is present, but the source is a Dafthunk implementation/test/registry workflow, while this wording is platform-generic."
+        }
+      ]
+    }
+  ]
+}
