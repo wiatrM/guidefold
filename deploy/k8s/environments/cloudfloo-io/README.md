@@ -38,7 +38,8 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    automatically) or run it manually via `workflow_dispatch`. Copy the two digests
    from the run's step summary.
 
-2. **Create the namespace and Postgres app-role secret**, then the Postgres cluster:
+2. **Create the namespace and Postgres app-role secret**, then the Postgres cluster
+   (done — 2026-09-08, this exact sequence, against the real cluster):
    ```
    kubectl create namespace guidefold
    kubectl create secret generic guidefold-postgres-app -n guidefold \
@@ -50,16 +51,28 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    This also auto-creates `guidefold-postgres-ca` (cluster CA, has the `ca.crt` key
    the chart mounts for `sslMode: verify-full`) — nothing more to do for TLS.
 
+   Note on what actually happened: CNPG uses `bootstrap.initdb.owner` (`guidefold_api`)
+   as the real role name regardless of the secret's own `username` field — `\du` on
+   the live cluster shows `guidefold_api` exists, not `guidefold_bootstrap`. The
+   secret's username field is vestigial here; only its password mattered. Left as-is
+   rather than renamed, to not re-churn an already-created role.
+
+   `enableSuperuserAccess: true` is also on by default in this file now — the
+   chart's migrate Job connects as `database.adminUser` (`postgres` by default) to
+   run DDL, and CNPG does not expose a superuser secret unless this is set.
+
 3. **Create the app-facing secrets** the chart requires
-   (`deploy/k8s/README.md` § "Create the existing Secrets"):
+   (`deploy/k8s/README.md` § "Create the existing Secrets") — done 2026-09-08:
    ```
    kubectl create secret generic guidefold-credentials -n guidefold \
      --from-literal=app-password="$(openssl rand -base64 32)" \
      --from-literal=api-token="$(openssl rand -base64 32)"
    kubectl create secret generic guidefold-operator-credentials -n guidefold \
-     --from-literal=admin-password="$(kubectl get secret guidefold-postgres-app -n guidefold -o jsonpath='{.data.password}' | base64 -d)" \
+     --from-literal=admin-password="$(kubectl get secret guidefold-postgres-superuser -n guidefold -o jsonpath='{.data.password}' | base64 -d)" \
      --from-literal=app-password="$(openssl rand -base64 32)"
    ```
+   (the operator's `admin-password` is the CNPG-managed `postgres` superuser secret,
+   not the app-owner secret from step 2 — different roles, different privileges)
    **WorkOS** (`auth: workos`) needs its own secret with the real API key — this is
    the one value the assistant session will not handle as pasted chat text. Either:
    - hand a local file path containing the key to the session so it can be read

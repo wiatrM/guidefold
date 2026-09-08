@@ -20,6 +20,10 @@ metadata:
   namespace: guidefold
 spec:
   instances: 1
+  # Exposes CNPG's own managed `postgres` superuser password as a secret
+  # (guidefold-postgres-superuser) — the chart's migrate Job connects as
+  # database.adminUser (postgres by default) to run DDL, so this has to be real.
+  enableSuperuserAccess: true
   # Same image already running successfully on this cluster (webkd-prod-cloudnativepg),
   # pinned by digest so this isn't the first pull of an unverified tag.
   imageName: ghcr.io/cloudnative-pg/postgresql:17.10@sha256:04aa5d1157637716ef2d990fb623a33a59e321429365685c3338309ab5ad2266
