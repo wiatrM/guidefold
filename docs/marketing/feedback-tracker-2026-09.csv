@@ -1,0 +1,26 @@
+id,channel,persona,hook,date,post_url,reply_url,problem_event,frequency,current_workaround,paid_need,security_or_data_constraint,next_step,signal_class,utm_source,utm_campaign,owner,status
+1,producthunt_forum,P1/P2,Which instructions did the coding agent receive?,2026-09-08,https://www.producthunt.com/p/guidefold/how-do-you-check-which-instructions-your-coding-agent-received,,,,,,,,,producthunt_forum,oss-to-saas-feedback-2026-09,Michal,published
+2,openai_developer_community,P2,Guidefold: checking which repo instructions reach a Codex session,2026-09-08,,,,,,,,Account on hold pending staff review; no public topic verified; do not resubmit,,openai_developer_community,oss-to-saas-feedback-2026-09,Michal,account_on_hold
+3,cursor_forum,P2,Rules across a monorepo,,,,,,,,,,,cursor_forum,oss-to-saas-feedback-2026-09,Michal,requires_author_participation
+4,langchain_forum,P2,Versioning context outside the prompt,,,,,,,,,,,langchain_forum,oss-to-saas-feedback-2026-09,Michal,excluded_vendor_lead_generation
+5,langgraph_discussions,P2,Evidence an agent loaded intended context,,,,,,,,,,,langgraph_discussions,oss-to-saas-feedback-2026-09,Michal,duplicate_of_langchain_forum
+6,huggingface_forums,P2,Git-native instruction discovery demo,,,,,,,,,,,huggingface_forums,oss-to-saas-feedback-2026-09,Michal,requires_email_verification
+7,cncf_slack,P1,Installed versions versus session-loaded instructions,2026-09-08,https://cloud-native.slack.com/archives/C093U0DN49H/p1788891987610779?thread_ts=1788593442.439139&cid=C093U0DN49H,,Existing thread asks about skill MCP and plugin version inventory,unknown,unknown,unknown,No private inventories requested,Wait for reply; distinguish fleet inventory from instruction delivery,unqualified,cncf_slack,oss-to-saas-feedback-2026-09,Michal,published
+8,cncf_tag_devex,P1,Instruction drift as a DevEx problem,,,,,,,,,,,cncf_tag_devex,oss-to-saas-feedback-2026-09,Michal,requires_channel_review
+9,cncf_community_groups,P1,Instruction context clinic,,,,,,,,,,,cncf_community_groups,oss-to-saas-feedback-2026-09,Michal,discovered
+10,platformengineering_community,P1,What gets audited when rules change?,,,,,,,,,,,platformengineering_community,oss-to-saas-feedback-2026-09,Michal,requires_join_and_terms
+11,mlops_community,P1,Export is not proof of delivery,,,,,,,,,,,mlops_community,oss-to-saas-feedback-2026-09,Michal,requires_registration
+12,ai_tinkerers,P2,Inspect the instruction graph on a fixture,,,,,,,,,,,ai_tinkerers,oss-to-saas-feedback-2026-09,Michal,requires_live_demo_and_event
+13,devto,P2,What breaks when instructions live in a monorepo?,,,,,,,,,,,devto,oss-to-saas-feedback-2026-09,Michal,excluded_ai_assisted_promotion
+14,hashnode,P2,Why export is not proof of delivery,,,,,,,,,,,hashnode,oss-to-saas-feedback-2026-09,Michal,requires_author_participation
+15,lobsters,P2,A small CLI for scoped agent instructions,,,,,,,,,,,lobsters,oss-to-saas-feedback-2026-09,Michal,discovered
+16,hacker_news,P2,Show HN when runnable demo is ready,,,,,,,,,,,hacker_news,oss-to-saas-feedback-2026-09,Michal,requires_human_written_submission
+17,daily_dev,P2,Which rules did the coding agent read?,,,,,,,,,,,daily_dev,oss-to-saas-feedback-2026-09,Michal,requires_human_authored_content
+18,reddit_claudecode,P2,How do you check the next session got intended instructions?,2026-09-08,https://www.reddit.com/r/ClaudeCode/comments/1w9pn3e/comment/p8l3ysq/,,,,,,,,,reddit_claudecode,oss-to-saas-feedback-2026-09,Michal,published
+19,reddit_llmdevs,P2,Instruction provenance for agent systems,,,,,,,,,,,reddit_llmdevs,oss-to-saas-feedback-2026-09,Michal,excluded_commercial_research
+20,reddit_aiagentengineering,P1,What belongs in a receipt for instructions delivered to a coding agent?,2026-09-08,https://www.reddit.com/r/AIAgentEngineering/comments/1wavu87/what_belongs_in_a_receipt_for_instructions/,,,,,,,,,reddit_aiagentengineering,oss-to-saas-feedback-2026-09,Michal,published
+21,reddit_alphaandbetausers,P2,First-run OSS setup and instruction selection,2026-09-08,https://www.reddit.com/r/alphaandbetausers/comments/1wavp2c/open_source_developer_tool_guidefold_looking_for/,,,,,,,,,reddit_alphaandbetausers,oss-to-saas-feedback-2026-09,Michal,published
+22,reddit_sideproject,P2,Track which agent instructions were delivered,2026-09-08,https://www.reddit.com/r/SideProject/comments/1waugep/i_built_guidefold_to_track_which_agent/,,,,,,,,,reddit_sideproject,oss-to-saas-feedback-2026-09,Michal,published
+23,reddit_devops_weekly,P1,Instruction review for platform teams,2026-09-08,https://www.reddit.com/r/devops/comments/1w9k9gw/comment/p8kxako/,,,,,,,,,reddit_devops_weekly,oss-to-saas-feedback-2026-09,Michal,published
+24,indiehackers,P1/P2,Git-native instructions for coding agents in monorepos,2026-09-08,https://www.indiehackers.com/product/guidefold,,,,,,,,,indiehackers,oss-to-saas-feedback-2026-09,Michal,product_page_created_posts_restricted
+25,github_discussions,P1/P2,Watch the demo and report the first unclear step,2026-09-08,https://github.com/wiatrM/guidefold/discussions/127,,,,,,,,,github_discussions,oss-to-saas-feedback-2026-09,Michal,published
