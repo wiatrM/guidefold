@@ -1,0 +1,6 @@
+{
+  "excluded_negative_pairs": 36953,
+  "dev_skill_label_exposure_positive_or_negative": 0,
+  "blocked_skill_rows": 1832,
+  "negative_sampling_note": "top20 channels +20random drawn then blocked removed; no refill"
+}

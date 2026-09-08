@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "items": 869,
+    "retained": 654,
+    "source_rank_1": 389,
+    "source_rank_2_10": 265,
+    "source_rank_11_50": 121,
+    "source_outside_top50": 94
+  },
+  "queries": {
+    "items": 734,
+    "retained": 457,
+    "source_rank_1": 264,
+    "source_rank_2_10": 193,
+    "source_rank_11_50": 118,
+    "source_outside_top50": 159
+  }
+}

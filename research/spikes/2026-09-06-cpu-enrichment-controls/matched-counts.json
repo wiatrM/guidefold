@@ -1,0 +1,8914 @@
+[
+  {
+    "skill_id": "09bc2370-c2f8-4410-b766-24b68594be05",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "09bc2370-c2f8-4410-b766-24b68594be05",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "a3891a39-8df9-4626-b16c-f354213ecea6",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "a3891a39-8df9-4626-b16c-f354213ecea6",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "f7a0ddd8-3e3c-45ec-8f13-31d96bc8d636",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f7a0ddd8-3e3c-45ec-8f13-31d96bc8d636",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95821cd1-2550-45ae-86e6-733e411e634b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95821cd1-2550-45ae-86e6-733e411e634b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e235f92d-b3f5-41b0-98a3-e59ae32c2b95",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e235f92d-b3f5-41b0-98a3-e59ae32c2b95",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6004fed4-acc2-4244-97d1-94fd0b8bd4cc",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6004fed4-acc2-4244-97d1-94fd0b8bd4cc",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "da824ab2-93e3-4664-9a12-5fb842f90a18",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "da824ab2-93e3-4664-9a12-5fb842f90a18",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4ed5d253-fa68-4571-98ba-631c017b0c3e",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4ed5d253-fa68-4571-98ba-631c017b0c3e",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "9bb5842a-75c3-4e73-a48e-019ebf0486eb",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9bb5842a-75c3-4e73-a48e-019ebf0486eb",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "69507794-bc4e-48aa-bb9e-1fef089ced56",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "69507794-bc4e-48aa-bb9e-1fef089ced56",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "271d134e-70d9-42e6-8a53-ad139b526723",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "271d134e-70d9-42e6-8a53-ad139b526723",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "8ed53929-0123-4451-9ac1-f838b869a7dd",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8ed53929-0123-4451-9ac1-f838b869a7dd",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fefbb84c-7b5f-466e-8f3b-ed07edbe4563",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "fefbb84c-7b5f-466e-8f3b-ed07edbe4563",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "2545807d-dd56-466f-bed0-989190215ce3",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2545807d-dd56-466f-bed0-989190215ce3",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "36120850-e797-476e-a91c-3e33571a7f01",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "36120850-e797-476e-a91c-3e33571a7f01",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "cdd92f0e-181b-470e-9e04-a07addf922c5",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cdd92f0e-181b-470e-9e04-a07addf922c5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6f5e7ff6-0993-4fed-97f6-0168cf665e8c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6f5e7ff6-0993-4fed-97f6-0168cf665e8c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "bd0c511d-250b-436b-92a8-a5d92773a865",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "bd0c511d-250b-436b-92a8-a5d92773a865",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "7f3013d5-c82e-49fe-8dc8-6c7cf83c2c65",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "7f3013d5-c82e-49fe-8dc8-6c7cf83c2c65",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "d961bdee-0133-406a-a160-6c02d3f92f59",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d961bdee-0133-406a-a160-6c02d3f92f59",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1290c6ad-c136-4788-88a8-e8dcc3b662f6",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "1290c6ad-c136-4788-88a8-e8dcc3b662f6",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "885f4f75-fabe-4d81-8089-4bb431df3c02",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "885f4f75-fabe-4d81-8089-4bb431df3c02",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a4baae6c-1f83-4a5b-a5ef-21700b8bb9e8",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a4baae6c-1f83-4a5b-a5ef-21700b8bb9e8",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "77c78044-ebac-40e2-ac0b-04b3e16cbb1f",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "77c78044-ebac-40e2-ac0b-04b3e16cbb1f",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "a08c44b9-ce9f-47f3-8bd6-16566317ee90",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a08c44b9-ce9f-47f3-8bd6-16566317ee90",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ac15affe-fb50-48e6-93ed-a10a1d3b5763",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "ac15affe-fb50-48e6-93ed-a10a1d3b5763",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f678f873-bdea-46e4-a121-e3816939760b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f678f873-bdea-46e4-a121-e3816939760b",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "fb403d3b-0a9f-4043-922a-ee716171e258",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "fb403d3b-0a9f-4043-922a-ee716171e258",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "84f7f87b-041e-4ed3-a2c4-14765532a929",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "84f7f87b-041e-4ed3-a2c4-14765532a929",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "02bf699b-0b6c-4f4f-a924-551a5c852dee",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "02bf699b-0b6c-4f4f-a924-551a5c852dee",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "43aab0c5-0104-4f78-bd59-8ef5025a33e4",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "43aab0c5-0104-4f78-bd59-8ef5025a33e4",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "b4a68ed4-3013-4a55-af1a-2036fc19e04e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "b4a68ed4-3013-4a55-af1a-2036fc19e04e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "890e5363-4652-4248-9e62-e3f6c6667c48",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "890e5363-4652-4248-9e62-e3f6c6667c48",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "db08c9e1-09de-4533-8915-0634b3a28365",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "db08c9e1-09de-4533-8915-0634b3a28365",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "55916b6e-0427-4797-87dd-f0d8ddcbaf4d",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "55916b6e-0427-4797-87dd-f0d8ddcbaf4d",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "05acf4d5-32ea-4cb7-b516-73ead1cc4ebb",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "05acf4d5-32ea-4cb7-b516-73ead1cc4ebb",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b792be9f-eb47-4fab-af87-cd5eb27f5c8c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b792be9f-eb47-4fab-af87-cd5eb27f5c8c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1abb481d-1b6f-4a0c-b93a-d789fb4ec95c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1abb481d-1b6f-4a0c-b93a-d789fb4ec95c",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "a3587b2c-d335-4370-92a0-436c66b12788",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a3587b2c-d335-4370-92a0-436c66b12788",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9f600f58-c166-4e27-97a6-ab6bf65c2b3e",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "9f600f58-c166-4e27-97a6-ab6bf65c2b3e",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e4315d97-72cf-45b7-8a3b-f59aead1c910",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "e4315d97-72cf-45b7-8a3b-f59aead1c910",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "7f95644f-135d-4d04-be02-bfa68767dbeb",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7f95644f-135d-4d04-be02-bfa68767dbeb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d041f1d8-6843-4470-852c-c0968db94c79",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d041f1d8-6843-4470-852c-c0968db94c79",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1b8e19bb-755f-4fa6-83cd-1e746d6c5bd0",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1b8e19bb-755f-4fa6-83cd-1e746d6c5bd0",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7af17a71-9b13-4ad1-8d7d-a0b972782d46",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "7af17a71-9b13-4ad1-8d7d-a0b972782d46",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "41021133-96dc-4e63-9dbc-31b51e61b8ad",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "41021133-96dc-4e63-9dbc-31b51e61b8ad",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ce153c5c-90a1-4e63-b6b0-64eb9320eba0",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ce153c5c-90a1-4e63-b6b0-64eb9320eba0",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7f4864f9-a350-4f68-a834-8a0178a75cac",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7f4864f9-a350-4f68-a834-8a0178a75cac",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f519a3a2-237d-4546-9620-87e1ab474966",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f519a3a2-237d-4546-9620-87e1ab474966",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fa155a59-9645-4172-a812-d03553b0f958",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "fa155a59-9645-4172-a812-d03553b0f958",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "51060d41-8c97-4268-917c-6722f51e1536",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "51060d41-8c97-4268-917c-6722f51e1536",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f61736b4-8d3b-47e1-baa8-fa72748402c9",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "f61736b4-8d3b-47e1-baa8-fa72748402c9",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "abbeba37-1e4f-4e93-b47a-97030db6d0b5",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "abbeba37-1e4f-4e93-b47a-97030db6d0b5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0d81d732-36ae-4c0d-8eeb-d341f7c68761",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "0d81d732-36ae-4c0d-8eeb-d341f7c68761",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9ab211e1-5f47-42c1-81f5-54c2ae019c27",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "9ab211e1-5f47-42c1-81f5-54c2ae019c27",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "c775536a-e4c2-483b-bc2d-b8487c0a4a6f",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "c775536a-e4c2-483b-bc2d-b8487c0a4a6f",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "41803039-e6d5-48b1-9264-fa0490e27872",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "41803039-e6d5-48b1-9264-fa0490e27872",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7ceb871f-8562-4da2-8b0d-0ed659f36730",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "7ceb871f-8562-4da2-8b0d-0ed659f36730",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "92eb8a97-08f6-41b6-9bac-b68a0e482e80",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "92eb8a97-08f6-41b6-9bac-b68a0e482e80",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eb2742a6-8a92-48a3-a1d3-9b5146ee3f6b",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eb2742a6-8a92-48a3-a1d3-9b5146ee3f6b",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7b6b67fd-43f9-459c-9bdd-6009f2b53c2e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "7b6b67fd-43f9-459c-9bdd-6009f2b53c2e",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1e913713-7a87-41db-b7e2-003260b000ae",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "1e913713-7a87-41db-b7e2-003260b000ae",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "aeed1c95-e6bd-4657-8064-c1e80c11dc9d",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "aeed1c95-e6bd-4657-8064-c1e80c11dc9d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ed9fa054-8357-4a08-959c-a51a0a430823",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ed9fa054-8357-4a08-959c-a51a0a430823",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f941170e-f05b-4f63-bf6f-34d74f168619",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f941170e-f05b-4f63-bf6f-34d74f168619",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "c7098bc3-65a5-4d11-9a07-df98eceff8ea",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "c7098bc3-65a5-4d11-9a07-df98eceff8ea",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5cd491d1-2924-41a3-af3b-20db5a6881ae",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5cd491d1-2924-41a3-af3b-20db5a6881ae",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "298f88e4-4400-4897-b4d8-9caa0d14cd27",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "298f88e4-4400-4897-b4d8-9caa0d14cd27",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "5bf12f56-bb78-48b7-803f-c15354e2dd68",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5bf12f56-bb78-48b7-803f-c15354e2dd68",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "4413090c-0805-411b-a68d-530bb6386348",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4413090c-0805-411b-a68d-530bb6386348",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a649153e-2996-46aa-b238-51c799e0b074",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a649153e-2996-46aa-b238-51c799e0b074",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f4d12196-84a6-435e-9f95-617ce8a2610c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "f4d12196-84a6-435e-9f95-617ce8a2610c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2301ef50-f63a-4bb5-9832-aa4b7af5790e",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2301ef50-f63a-4bb5-9832-aa4b7af5790e",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d121882a-a284-4378-a3f5-ef5160942c9c",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d121882a-a284-4378-a3f5-ef5160942c9c",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7cb9bd2d-0676-49cb-ac19-9d91255e1400",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7cb9bd2d-0676-49cb-ac19-9d91255e1400",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "259eb848-6e6a-4d35-ae08-e1c93dbcc6df",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "259eb848-6e6a-4d35-ae08-e1c93dbcc6df",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ee3d32f1-ac35-40d3-a640-620ef27d8198",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ee3d32f1-ac35-40d3-a640-620ef27d8198",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7e3a654e-6b43-4619-95fb-273c04810e8b",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7e3a654e-6b43-4619-95fb-273c04810e8b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2154193a-3b20-42f3-80a5-73cc258d6939",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2154193a-3b20-42f3-80a5-73cc258d6939",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "568fe6be-fead-4be5-9456-bf681442d713",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "568fe6be-fead-4be5-9456-bf681442d713",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ce8c79e7-b2f5-4b17-ad1c-dd73162ae986",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ce8c79e7-b2f5-4b17-ad1c-dd73162ae986",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f925f17d-727a-44b1-97b0-981a4cf60966",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f925f17d-727a-44b1-97b0-981a4cf60966",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cb7e30ec-e2cf-4459-b632-0456d4681350",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cb7e30ec-e2cf-4459-b632-0456d4681350",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "00d73122-3eff-479f-af18-aeb07f07120d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "00d73122-3eff-479f-af18-aeb07f07120d",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1e683948-b42c-4d5d-9a71-b491377c7ec8",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1e683948-b42c-4d5d-9a71-b491377c7ec8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "77d36b9a-8428-4dc1-b0c0-2e85ae80fc7e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "77d36b9a-8428-4dc1-b0c0-2e85ae80fc7e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ebd7a46a-710c-4797-93a6-6978cdc6cb2d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ebd7a46a-710c-4797-93a6-6978cdc6cb2d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f91a0fd5-68f1-4147-a2ae-e967072e5ca4",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f91a0fd5-68f1-4147-a2ae-e967072e5ca4",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "888b0383-ccf8-42c0-8eae-697f0b8a7481",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "888b0383-ccf8-42c0-8eae-697f0b8a7481",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a3c47620-f313-453c-921a-2f684ae1aad7",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a3c47620-f313-453c-921a-2f684ae1aad7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d11d01dc-94d3-4ff6-967d-ed6151cde49a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "d11d01dc-94d3-4ff6-967d-ed6151cde49a",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "3a521e64-1d9f-4337-9225-e5ea700ee96a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3a521e64-1d9f-4337-9225-e5ea700ee96a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "690697b3-971a-489f-a2d8-4c5cfbdfc980",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "690697b3-971a-489f-a2d8-4c5cfbdfc980",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6a00056a-c477-4ff0-b09b-0352775bafb2",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "6a00056a-c477-4ff0-b09b-0352775bafb2",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "d5899559-d74a-43f0-bae9-63f0e6f67fc8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "d5899559-d74a-43f0-bae9-63f0e6f67fc8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "15cbd542-b3d1-45cf-b95b-12ab9e2964f6",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "15cbd542-b3d1-45cf-b95b-12ab9e2964f6",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "0d36f5b0-a678-4e72-bec4-eebfdf1ac2f6",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "0d36f5b0-a678-4e72-bec4-eebfdf1ac2f6",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f4ae95d0-3561-4474-bb39-887eb82355ec",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f4ae95d0-3561-4474-bb39-887eb82355ec",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c690dce6-8fc5-4dab-8390-cab19465c4e8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "c690dce6-8fc5-4dab-8390-cab19465c4e8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f60927c2-f2f3-4eb1-8ceb-1a139aec0309",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f60927c2-f2f3-4eb1-8ceb-1a139aec0309",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "39c18a0d-075b-4af3-8814-e1869ab62b5c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "39c18a0d-075b-4af3-8814-e1869ab62b5c",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7837bf3a-da0d-4ef3-8c02-1b06bcf43840",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "7837bf3a-da0d-4ef3-8c02-1b06bcf43840",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "351996ee-37d0-41dd-884d-022c27be5fb8",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "351996ee-37d0-41dd-884d-022c27be5fb8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "6ca75e76-bbe1-488e-9cf5-3a26d4cd3d53",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "6ca75e76-bbe1-488e-9cf5-3a26d4cd3d53",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "13d70268-64d7-4fa9-adbc-a00e5262abb4",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "13d70268-64d7-4fa9-adbc-a00e5262abb4",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "543dcde6-150b-4585-9cbc-4d175b572b81",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "543dcde6-150b-4585-9cbc-4d175b572b81",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "59e826ef-4823-4e6b-bf7d-adef036bbfb5",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "59e826ef-4823-4e6b-bf7d-adef036bbfb5",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "0e9f4075-5013-4066-b21d-64e0020d3295",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "0e9f4075-5013-4066-b21d-64e0020d3295",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "fbd54315-3f1a-4bf7-8a50-e634ae7fa7de",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fbd54315-3f1a-4bf7-8a50-e634ae7fa7de",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5e7970b0-b4e2-4181-b7f5-b6be1810049d",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5e7970b0-b4e2-4181-b7f5-b6be1810049d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "17b2967f-d7dc-421c-aebe-448859e96b76",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "17b2967f-d7dc-421c-aebe-448859e96b76",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "f1a6bcc7-54c7-463f-8f8d-a8f8ad724b1a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f1a6bcc7-54c7-463f-8f8d-a8f8ad724b1a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9414d56f-add9-45b3-802f-a7441940c627",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "9414d56f-add9-45b3-802f-a7441940c627",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "0fc172e8-19ae-4690-937c-0e69cf3c0081",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "0fc172e8-19ae-4690-937c-0e69cf3c0081",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "925f29a6-fad7-431c-9d13-5d3c183e42a3",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "925f29a6-fad7-431c-9d13-5d3c183e42a3",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4e73ac9c-43e6-4312-ab95-3ed1c0ccc080",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4e73ac9c-43e6-4312-ab95-3ed1c0ccc080",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "dedb279c-32f3-41d2-af9c-780c5a41df7c",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "dedb279c-32f3-41d2-af9c-780c5a41df7c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "eab4c43a-cfcc-4e4a-b4f3-f415da7c8574",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "eab4c43a-cfcc-4e4a-b4f3-f415da7c8574",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "543dacc5-d344-49bb-bc15-7be1884edd6d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "543dacc5-d344-49bb-bc15-7be1884edd6d",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "85d06125-1177-4129-a341-447b66b4227e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "85d06125-1177-4129-a341-447b66b4227e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7923526e-be18-4831-981a-aaf37a6d663d",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "7923526e-be18-4831-981a-aaf37a6d663d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "8c077c6c-bd1e-4434-be2b-84637729e90a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8c077c6c-bd1e-4434-be2b-84637729e90a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a7f45cc9-805b-4e38-b6b2-b2c1ef8714a0",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "a7f45cc9-805b-4e38-b6b2-b2c1ef8714a0",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f2f93be6-0666-4ee9-8067-5f5154358ee5",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f2f93be6-0666-4ee9-8067-5f5154358ee5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5fb58f12-2a94-4483-8581-a785d0d0538a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "5fb58f12-2a94-4483-8581-a785d0d0538a",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "083df084-75f0-4afa-ab7b-0606ed870836",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "083df084-75f0-4afa-ab7b-0606ed870836",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "a6bc1b66-7570-46f3-908e-55ba832291b8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a6bc1b66-7570-46f3-908e-55ba832291b8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "670dc11e-50cd-4b40-bc91-dc3dac757ad9",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "670dc11e-50cd-4b40-bc91-dc3dac757ad9",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "4de02552-bcd3-4623-b688-a7a61fc6bc4e",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4de02552-bcd3-4623-b688-a7a61fc6bc4e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "77d65218-a5bf-4393-a6f2-61496025da40",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "77d65218-a5bf-4393-a6f2-61496025da40",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "65f9d1be-4a34-4779-923b-a7373e661412",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "65f9d1be-4a34-4779-923b-a7373e661412",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3b9367eb-b5f5-4126-97cb-976ca3868540",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3b9367eb-b5f5-4126-97cb-976ca3868540",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "85b92627-5c59-4db9-abf3-7ef2695342d4",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "85b92627-5c59-4db9-abf3-7ef2695342d4",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "70377fb4-9cfe-4bfe-8332-9293541396ad",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "70377fb4-9cfe-4bfe-8332-9293541396ad",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "7323b995-8ede-4dd5-82e0-127890af62ba",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7323b995-8ede-4dd5-82e0-127890af62ba",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "366adf20-aef1-4247-832d-1099f553e8c7",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "366adf20-aef1-4247-832d-1099f553e8c7",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a3d9ea77-e919-4d28-bffb-96a8a2b0e589",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a3d9ea77-e919-4d28-bffb-96a8a2b0e589",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b4b06f48-36ce-4a9f-905d-f84327749bbb",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "b4b06f48-36ce-4a9f-905d-f84327749bbb",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fce63105-b25a-4b19-8e4f-75ddd0e91c64",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "fce63105-b25a-4b19-8e4f-75ddd0e91c64",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a9a1d0fa-2896-46c1-9c9b-0e7b0137fd31",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "a9a1d0fa-2896-46c1-9c9b-0e7b0137fd31",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "be64cd01-6dbc-4858-b7b0-e9b5ebbc160d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "be64cd01-6dbc-4858-b7b0-e9b5ebbc160d",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "02196b03-3a18-418f-9cff-74b947293744",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "02196b03-3a18-418f-9cff-74b947293744",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "438c69cc-7336-4255-b2cc-8715acbcfadb",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "438c69cc-7336-4255-b2cc-8715acbcfadb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e60e19ed-2ff3-4598-80b8-f389bed55460",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "e60e19ed-2ff3-4598-80b8-f389bed55460",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "49002f6f-049a-439d-884a-dd605a9ce2ad",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "49002f6f-049a-439d-884a-dd605a9ce2ad",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "30bdf585-7b10-4099-b2d9-d94c3305b878",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "30bdf585-7b10-4099-b2d9-d94c3305b878",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "55fda6b4-05e6-4909-bcd5-5a289a593023",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "55fda6b4-05e6-4909-bcd5-5a289a593023",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "12a32ed2-c3dd-43ca-b407-eec31f8500c2",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "12a32ed2-c3dd-43ca-b407-eec31f8500c2",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c9b97f89-b790-4fa6-a300-5e27dc176001",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c9b97f89-b790-4fa6-a300-5e27dc176001",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eadba691-8c67-4941-9551-52835ad16d04",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eadba691-8c67-4941-9551-52835ad16d04",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ec23e973-8aa2-4bac-86ab-d8caab9dd137",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ec23e973-8aa2-4bac-86ab-d8caab9dd137",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5b3d57e0-e1b2-433e-8bde-6b4a5917f36b",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5b3d57e0-e1b2-433e-8bde-6b4a5917f36b",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b67937a6-255b-4a20-8fe9-79a977e3d8ad",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "b67937a6-255b-4a20-8fe9-79a977e3d8ad",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "0d21284f-eb13-4b66-ab3e-ab09e6e2f6d0",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "0d21284f-eb13-4b66-ab3e-ab09e6e2f6d0",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9536a779-fd6a-4914-9d62-4deed60acfd1",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9536a779-fd6a-4914-9d62-4deed60acfd1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6a9f2982-5c65-4d10-b090-659937c66595",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6a9f2982-5c65-4d10-b090-659937c66595",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "bcc5054d-ba4d-423c-a6f7-f1410d434888",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "bcc5054d-ba4d-423c-a6f7-f1410d434888",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5d8f3481-da0e-4d4e-87cb-0baafcc2b1ba",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5d8f3481-da0e-4d4e-87cb-0baafcc2b1ba",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "bd88be5d-3aee-46ce-9351-0e3a6c849ce7",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bd88be5d-3aee-46ce-9351-0e3a6c849ce7",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2a2aeb1d-be22-48d2-b0ff-e3fe68fe7968",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "2a2aeb1d-be22-48d2-b0ff-e3fe68fe7968",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a75e124b-586e-4e1f-b887-32eff7b8e040",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "a75e124b-586e-4e1f-b887-32eff7b8e040",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "e9337737-e147-484c-bc6a-d833e837f19d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "e9337737-e147-484c-bc6a-d833e837f19d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "130304a2-3a21-430f-8511-363fd07a095b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "130304a2-3a21-430f-8511-363fd07a095b",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "cef61047-871c-488f-ba68-caff684c97be",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cef61047-871c-488f-ba68-caff684c97be",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5ee336f0-8ad7-429c-8e53-abab6a140bbf",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5ee336f0-8ad7-429c-8e53-abab6a140bbf",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fc8a3f1c-59bf-4a2b-a860-dcb9eede685e",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fc8a3f1c-59bf-4a2b-a860-dcb9eede685e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "25ad1a3f-b81f-4f14-af23-37eceb2e2e15",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "25ad1a3f-b81f-4f14-af23-37eceb2e2e15",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "be28b20e-a82e-48ca-b795-eb09bdb2f088",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "be28b20e-a82e-48ca-b795-eb09bdb2f088",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4f8b62fb-b870-4e6e-8267-749d7b6f5481",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4f8b62fb-b870-4e6e-8267-749d7b6f5481",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "e039cfd8-0199-4883-8911-4b10877ae8c6",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e039cfd8-0199-4883-8911-4b10877ae8c6",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a63f09bd-64fd-4a77-aebd-e2664018f988",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a63f09bd-64fd-4a77-aebd-e2664018f988",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "1fa9e8e6-ac40-4eba-aa9c-d49242748ae1",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "1fa9e8e6-ac40-4eba-aa9c-d49242748ae1",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "83e31f7d-ae61-4b8b-bf78-9dc97ccb65dc",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "83e31f7d-ae61-4b8b-bf78-9dc97ccb65dc",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "65b2286b-d362-4d04-97ae-d5655895a2d5",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "65b2286b-d362-4d04-97ae-d5655895a2d5",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "15386953-819a-4089-8d57-13422ed11795",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "15386953-819a-4089-8d57-13422ed11795",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "2a6c6ef4-e447-4e4b-8737-d7a4c41e15e3",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2a6c6ef4-e447-4e4b-8737-d7a4c41e15e3",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "d337c7d4-9c1d-4200-ad5b-234579ccb74d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "d337c7d4-9c1d-4200-ad5b-234579ccb74d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "66401c53-7985-4f64-b8f1-a652306f3da1",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "66401c53-7985-4f64-b8f1-a652306f3da1",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1b26095f-9a71-464f-bb4a-ff47732cab78",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1b26095f-9a71-464f-bb4a-ff47732cab78",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e0d11c54-177a-4b62-ac83-2b02c26da32d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e0d11c54-177a-4b62-ac83-2b02c26da32d",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "d19dbc2f-0649-4424-bce9-9082be4c990f",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "d19dbc2f-0649-4424-bce9-9082be4c990f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ee927f5e-9e99-4ba0-9f03-384c60ba11f9",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ee927f5e-9e99-4ba0-9f03-384c60ba11f9",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "d5b9347b-1257-45a8-a7a9-ffee962ddbeb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "d5b9347b-1257-45a8-a7a9-ffee962ddbeb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d3859d3d-2e7b-4dc2-86d8-454a67bfba62",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d3859d3d-2e7b-4dc2-86d8-454a67bfba62",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "583ce738-95f5-4e88-b04a-5455e01b8a1d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "583ce738-95f5-4e88-b04a-5455e01b8a1d",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "8155bb76-2294-4122-a6fa-316f85d720c4",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8155bb76-2294-4122-a6fa-316f85d720c4",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95aa7584-0864-420c-b859-349ff221449e",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95aa7584-0864-420c-b859-349ff221449e",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ab5de163-3acd-4c65-a472-57baa3f2aae0",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ab5de163-3acd-4c65-a472-57baa3f2aae0",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "93e983e0-2c98-47e7-94f8-ed492d97a80e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "93e983e0-2c98-47e7-94f8-ed492d97a80e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "abf8afaf-5e01-471c-98f1-f1b6a36dba8b",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "abf8afaf-5e01-471c-98f1-f1b6a36dba8b",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "e69f9870-69bc-4151-af50-b04a9d5faa10",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e69f9870-69bc-4151-af50-b04a9d5faa10",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4cdceca4-7ef3-4578-b6f3-a917c621ae24",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4cdceca4-7ef3-4578-b6f3-a917c621ae24",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3ece9481-a849-419b-b5d1-8da62fe633d6",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3ece9481-a849-419b-b5d1-8da62fe633d6",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d830416c-4b13-42f4-8e2d-d7b8768c4254",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "d830416c-4b13-42f4-8e2d-d7b8768c4254",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "2ea3a1cd-f5e0-4a78-abf0-ebbf95bb7d7b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2ea3a1cd-f5e0-4a78-abf0-ebbf95bb7d7b",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "4d2ecfec-fc51-4c02-b185-fdd57b36da77",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "4d2ecfec-fc51-4c02-b185-fdd57b36da77",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "cf49c0cc-2917-49ad-8438-327615f2a52d",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cf49c0cc-2917-49ad-8438-327615f2a52d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3e2e3962-a7f5-4be0-a2ee-b0ffea37a111",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3e2e3962-a7f5-4be0-a2ee-b0ffea37a111",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "973c0b7d-67cb-4646-9cc2-18b9326d73c7",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "973c0b7d-67cb-4646-9cc2-18b9326d73c7",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "272ce6b7-f6d1-4c89-a289-93ee3594d919",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "272ce6b7-f6d1-4c89-a289-93ee3594d919",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "6aaf3239-3757-4378-9978-462d088c2d5e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "6aaf3239-3757-4378-9978-462d088c2d5e",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f3c6c58c-ea28-4d8b-92bb-4ce4a5123077",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "f3c6c58c-ea28-4d8b-92bb-4ce4a5123077",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "afd2bf67-92b8-4b4a-b7a6-9de5de1bd55c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "afd2bf67-92b8-4b4a-b7a6-9de5de1bd55c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "21fde00a-0a51-4e93-a61e-2a94f3608f54",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "21fde00a-0a51-4e93-a61e-2a94f3608f54",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2ef3c2ff-d9ef-4ebb-b6e3-d7cf0de6b26a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2ef3c2ff-d9ef-4ebb-b6e3-d7cf0de6b26a",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "eeff1b7c-75a8-4dd0-a962-61e3f76215cf",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "eeff1b7c-75a8-4dd0-a962-61e3f76215cf",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9f56c1b8-b9bc-46fc-abc4-33ee9f04ca52",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9f56c1b8-b9bc-46fc-abc4-33ee9f04ca52",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9fadad06-a84c-4408-9062-a30522aca6f3",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "9fadad06-a84c-4408-9062-a30522aca6f3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7692efe6-6f53-45e0-8e85-422770801269",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "7692efe6-6f53-45e0-8e85-422770801269",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ba496e46-0635-434e-9320-0c1176a9088b",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "ba496e46-0635-434e-9320-0c1176a9088b",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "651a9721-5e09-4c12-98c8-9cdb7f744736",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "651a9721-5e09-4c12-98c8-9cdb7f744736",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d2fdd662-4329-4bee-87c8-65688102a4c0",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "d2fdd662-4329-4bee-87c8-65688102a4c0",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "4c9e3c7b-43f6-4033-8adc-f5252e7f6907",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4c9e3c7b-43f6-4033-8adc-f5252e7f6907",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "703749d5-2bf3-442b-bc0c-3c28ee38c2a4",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "703749d5-2bf3-442b-bc0c-3c28ee38c2a4",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2d6dd30c-12ad-4d87-b2f0-08e57047ca52",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "2d6dd30c-12ad-4d87-b2f0-08e57047ca52",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b9c068c7-0e4c-45ca-9acd-4406db71ca4b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "b9c068c7-0e4c-45ca-9acd-4406db71ca4b",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "73788ed2-4ddc-4208-9ce1-ab719a2f26d6",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "73788ed2-4ddc-4208-9ce1-ab719a2f26d6",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "885601e0-b218-4862-a7b3-00717f9268d7",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "885601e0-b218-4862-a7b3-00717f9268d7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "b81d11c9-08e8-4156-a78a-90e8e1d55fbc",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "b81d11c9-08e8-4156-a78a-90e8e1d55fbc",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b5256bed-bac1-4df9-87de-faab8e64a1ae",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "b5256bed-bac1-4df9-87de-faab8e64a1ae",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "66c14f47-abd6-493e-ac7a-ce19a7de3d65",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "66c14f47-abd6-493e-ac7a-ce19a7de3d65",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1c10ed33-3b21-42c7-976e-cb10fc9ff210",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1c10ed33-3b21-42c7-976e-cb10fc9ff210",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1454d144-f943-4f29-b5db-0eb539ec5037",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1454d144-f943-4f29-b5db-0eb539ec5037",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "17faa998-4c1e-440f-9098-1372cc6f55bb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "17faa998-4c1e-440f-9098-1372cc6f55bb",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "aa05fd09-53ec-4b9c-ac12-cb19173b7d83",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "aa05fd09-53ec-4b9c-ac12-cb19173b7d83",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "91823ed1-b996-4557-a92c-f5901dda723b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "91823ed1-b996-4557-a92c-f5901dda723b",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "61e53e4f-d52f-4c1c-80f9-a327ed790d43",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "61e53e4f-d52f-4c1c-80f9-a327ed790d43",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4f091798-1d29-4806-b5a2-4d2aabd8821a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4f091798-1d29-4806-b5a2-4d2aabd8821a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ddcc2e90-c684-4b16-949f-624c40b8e07c",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ddcc2e90-c684-4b16-949f-624c40b8e07c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "1e891161-4f32-4239-98e6-b1b472832adb",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1e891161-4f32-4239-98e6-b1b472832adb",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c5c8c4e3-03c6-4a46-9f51-dab25f0cd3ea",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "c5c8c4e3-03c6-4a46-9f51-dab25f0cd3ea",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "606c6f43-905c-4928-a66b-807e74a1f3a1",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "606c6f43-905c-4928-a66b-807e74a1f3a1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "789261ba-8a91-4f98-85bc-1cac0698f381",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "789261ba-8a91-4f98-85bc-1cac0698f381",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "273c628b-ff40-4a45-b136-b04e166b8513",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "273c628b-ff40-4a45-b136-b04e166b8513",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "dd3c292c-aa2b-4361-b36a-15e18cf83c8b",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "dd3c292c-aa2b-4361-b36a-15e18cf83c8b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "85f9646c-5cf2-477b-aed1-8dcb8eb11af5",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "85f9646c-5cf2-477b-aed1-8dcb8eb11af5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e73d52c5-5f66-444a-9d7f-63611ee04413",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "e73d52c5-5f66-444a-9d7f-63611ee04413",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "266e6225-3ed3-466a-b995-5c3131e5d7a8",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "266e6225-3ed3-466a-b995-5c3131e5d7a8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f8723c7b-90cc-457d-b156-296c7aea1127",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "f8723c7b-90cc-457d-b156-296c7aea1127",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "4b1a5d34-9c27-4a14-8982-06816f9e7600",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "4b1a5d34-9c27-4a14-8982-06816f9e7600",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4a416770-f99b-4263-96e2-3638cf9fae9a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4a416770-f99b-4263-96e2-3638cf9fae9a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0d4694ae-682a-4c05-8a3b-001bb1b2db7f",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0d4694ae-682a-4c05-8a3b-001bb1b2db7f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c8c7f697-ff1b-42d4-99c8-18fde53b1a87",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c8c7f697-ff1b-42d4-99c8-18fde53b1a87",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e8e70b70-2950-45b5-a19a-aebabb6ed078",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e8e70b70-2950-45b5-a19a-aebabb6ed078",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "77a65e58-d994-4258-971c-1bcfa951e137",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "77a65e58-d994-4258-971c-1bcfa951e137",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "46b0f4a3-86d2-466c-a89c-e4fa666a0ed5",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "46b0f4a3-86d2-466c-a89c-e4fa666a0ed5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3466afa9-cd0d-40c9-b627-572e93a85ddf",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "3466afa9-cd0d-40c9-b627-572e93a85ddf",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1d1896cb-e925-44ed-8dbc-161797c1bb51",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1d1896cb-e925-44ed-8dbc-161797c1bb51",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6c7912ae-309c-499d-9957-8bb69ba33896",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6c7912ae-309c-499d-9957-8bb69ba33896",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e390e1e6-a837-4624-a2b5-bdf6f61c520c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "e390e1e6-a837-4624-a2b5-bdf6f61c520c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "4042cec8-0c15-42c0-996b-e6925ac02093",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "4042cec8-0c15-42c0-996b-e6925ac02093",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "96115c4e-6797-4c8d-944a-b930e5f04b72",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "96115c4e-6797-4c8d-944a-b930e5f04b72",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a9661109-4530-4549-b75b-ccb06487856c",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a9661109-4530-4549-b75b-ccb06487856c",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "da491145-607e-46aa-bb9c-b94c10c27c43",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "da491145-607e-46aa-bb9c-b94c10c27c43",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "bac58f85-8123-4509-bb01-4b0da87bebab",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bac58f85-8123-4509-bb01-4b0da87bebab",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "452b795d-8ee8-4af4-bf3e-4569b6dc448a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "452b795d-8ee8-4af4-bf3e-4569b6dc448a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c328e50a-4ccb-412d-8b51-aff539e31050",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "c328e50a-4ccb-412d-8b51-aff539e31050",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f7834d59-2cfb-46cb-9b5b-daf6675e190c",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f7834d59-2cfb-46cb-9b5b-daf6675e190c",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7a0e2baf-42a9-4965-a548-0b6e27a6afdb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "7a0e2baf-42a9-4965-a548-0b6e27a6afdb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d36a0433-334d-49e4-a885-fb9974f57278",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d36a0433-334d-49e4-a885-fb9974f57278",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "231d5f3c-885c-4df8-a669-913bb1c94694",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "231d5f3c-885c-4df8-a669-913bb1c94694",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e25b01ee-0a01-4255-9778-3794fa899a08",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "e25b01ee-0a01-4255-9778-3794fa899a08",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "0e54ae10-a97e-43b9-a1a9-bde96b687e37",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "0e54ae10-a97e-43b9-a1a9-bde96b687e37",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "35ef525d-df8b-45d9-979f-28b31760048d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "35ef525d-df8b-45d9-979f-28b31760048d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eb09c8cf-5775-4496-97fc-46063bdd6cba",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "eb09c8cf-5775-4496-97fc-46063bdd6cba",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6e19495e-d51f-4f56-8671-b26eee5fa3c5",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "6e19495e-d51f-4f56-8671-b26eee5fa3c5",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9e1a81de-d3f5-4208-9ceb-557dc77e7db3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "9e1a81de-d3f5-4208-9ceb-557dc77e7db3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f368e6dc-e2b5-4355-b28d-803e547cf623",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f368e6dc-e2b5-4355-b28d-803e547cf623",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c6cc828d-e054-4e0f-b792-df400542c995",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c6cc828d-e054-4e0f-b792-df400542c995",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a79274ae-05bd-42bf-8ff5-50a2cd377985",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "a79274ae-05bd-42bf-8ff5-50a2cd377985",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3afbc89c-bcc0-4690-8402-0d3988b9887e",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "3afbc89c-bcc0-4690-8402-0d3988b9887e",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9bac1466-fa74-4939-b144-afb12de3d63a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9bac1466-fa74-4939-b144-afb12de3d63a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9793c17a-8f68-4470-a152-982bf68662c8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "9793c17a-8f68-4470-a152-982bf68662c8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "49282a3c-c75c-40af-baaf-9f8df4d8a6ca",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "49282a3c-c75c-40af-baaf-9f8df4d8a6ca",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1f25fb23-e6af-404e-8702-6f69f74791b5",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1f25fb23-e6af-404e-8702-6f69f74791b5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0752e262-1387-4426-98ed-cf3edaa66a25",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "0752e262-1387-4426-98ed-cf3edaa66a25",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "174effc8-7725-4b45-b41b-34f1b8c0c7db",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "174effc8-7725-4b45-b41b-34f1b8c0c7db",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "d9778110-3afc-46a5-8515-98ab6b31406b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "d9778110-3afc-46a5-8515-98ab6b31406b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1bc42e33-b247-456a-8e99-908303dad6dd",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1bc42e33-b247-456a-8e99-908303dad6dd",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1b6fc7c4-47ae-4cea-bf7a-747cce20e567",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "1b6fc7c4-47ae-4cea-bf7a-747cce20e567",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "84d3fde3-63cb-4684-8b56-957020465824",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "84d3fde3-63cb-4684-8b56-957020465824",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "68f056ac-69ed-440a-a3c9-0253bb7c7417",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "68f056ac-69ed-440a-a3c9-0253bb7c7417",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "33e218c9-02fe-430b-87c5-7f8557a90da7",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "33e218c9-02fe-430b-87c5-7f8557a90da7",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "bf1dc53a-f76c-4770-a3c8-3fbd177e9254",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "bf1dc53a-f76c-4770-a3c8-3fbd177e9254",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ba9041dd-70bf-48e9-8e00-85c6771c1103",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ba9041dd-70bf-48e9-8e00-85c6771c1103",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0fb39f48-b1b4-48fb-b616-0cc8941f2600",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "0fb39f48-b1b4-48fb-b616-0cc8941f2600",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "de0b3f0e-1070-4fd7-a0b3-0569ae469ce5",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "de0b3f0e-1070-4fd7-a0b3-0569ae469ce5",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8ae6f80a-40b4-4437-b812-0064d5a3b1a3",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "8ae6f80a-40b4-4437-b812-0064d5a3b1a3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c09cfda6-56df-4523-bb33-aeba849397c3",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c09cfda6-56df-4523-bb33-aeba849397c3",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2d27d4ec-108e-4024-b23f-b0c75b33e79d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2d27d4ec-108e-4024-b23f-b0c75b33e79d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "99402be5-2b05-42c0-99ef-e06b0ed6af5d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "99402be5-2b05-42c0-99ef-e06b0ed6af5d",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eb5893cc-0687-413e-a6af-ecab6517e6d2",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "eb5893cc-0687-413e-a6af-ecab6517e6d2",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "4461863b-42f9-4ac5-ae05-12f5cd606adf",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "4461863b-42f9-4ac5-ae05-12f5cd606adf",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7793c521-cc37-4408-84de-9bd8c535f065",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7793c521-cc37-4408-84de-9bd8c535f065",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "be067f09-8cf7-4ed9-a2d9-d2bf7c6a3a4d",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "be067f09-8cf7-4ed9-a2d9-d2bf7c6a3a4d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5dc174bc-7c3f-4c60-89c2-2ddef43385c1",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5dc174bc-7c3f-4c60-89c2-2ddef43385c1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2df8a75d-2c89-40ae-81e0-8614d1549dfe",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2df8a75d-2c89-40ae-81e0-8614d1549dfe",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "55b8db03-679e-4147-a9fb-c629d7ab999a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "55b8db03-679e-4147-a9fb-c629d7ab999a",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "21e8bcd6-a492-425b-b9f9-2f7b3c8b9529",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "21e8bcd6-a492-425b-b9f9-2f7b3c8b9529",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3f00161f-a652-450a-9e77-05169bf64a82",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3f00161f-a652-450a-9e77-05169bf64a82",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d1311f4-e03b-4c70-b5a8-cfe9402ada6a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d1311f4-e03b-4c70-b5a8-cfe9402ada6a",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "a257d6b7-e8c0-42a3-9116-3d33d124d05b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a257d6b7-e8c0-42a3-9116-3d33d124d05b",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "9fb9d4e2-dc24-416d-9794-2d083819f4f4",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "9fb9d4e2-dc24-416d-9794-2d083819f4f4",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "92678a90-d01d-4a54-88ef-8fe2065c925c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "92678a90-d01d-4a54-88ef-8fe2065c925c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "08371f60-7284-404b-9ca4-c4177d40f4a9",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "08371f60-7284-404b-9ca4-c4177d40f4a9",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "ad4f7dd8-332a-4bc5-ba6c-ced521a033c5",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ad4f7dd8-332a-4bc5-ba6c-ced521a033c5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ebb6b2fd-2ce7-46e4-bc7a-41d3d31c8fe7",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ebb6b2fd-2ce7-46e4-bc7a-41d3d31c8fe7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "dd6388d5-3588-4985-991a-140ef8c08190",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "dd6388d5-3588-4985-991a-140ef8c08190",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "d72f48f3-6ac0-4c70-912e-c2a33c796391",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "d72f48f3-6ac0-4c70-912e-c2a33c796391",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cbd585fa-544c-4733-93af-b5c9641d45d3",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "cbd585fa-544c-4733-93af-b5c9641d45d3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6424611e-5b49-420e-ae7a-d112b3b70951",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "6424611e-5b49-420e-ae7a-d112b3b70951",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7ca349f9-a7be-4f18-aa23-9ec22204b704",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7ca349f9-a7be-4f18-aa23-9ec22204b704",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5d634220-1c5f-47d4-94ae-a90f8c83e8e7",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5d634220-1c5f-47d4-94ae-a90f8c83e8e7",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "c0943108-1a77-4b0e-a05a-c54f51ba1e4d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c0943108-1a77-4b0e-a05a-c54f51ba1e4d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ecd08e78-970f-4887-a61f-cd50b7825524",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ecd08e78-970f-4887-a61f-cd50b7825524",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "f8f65891-3cae-4241-b458-ee29ca08ddf7",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f8f65891-3cae-4241-b458-ee29ca08ddf7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3670c401-9b58-4437-bfcc-c5745c544504",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3670c401-9b58-4437-bfcc-c5745c544504",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "39ae9520-4efb-4850-acfb-1fb06b90cdf1",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "39ae9520-4efb-4850-acfb-1fb06b90cdf1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "06ba0569-36bd-4630-a9ca-4ff6765a4a54",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "06ba0569-36bd-4630-a9ca-4ff6765a4a54",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "7c4ab4d9-0bc4-45f6-926f-9eee631b79fa",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7c4ab4d9-0bc4-45f6-926f-9eee631b79fa",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "709db997-007d-49b6-b1c2-e1313a3e98fe",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "709db997-007d-49b6-b1c2-e1313a3e98fe",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3116be68-a103-4966-a284-1e3fc38da11a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3116be68-a103-4966-a284-1e3fc38da11a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fc8ee7b4-7707-4795-a0b0-cdc7d225d04d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "fc8ee7b4-7707-4795-a0b0-cdc7d225d04d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "367f279c-046b-4b98-83d3-b5eadf621115",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "367f279c-046b-4b98-83d3-b5eadf621115",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3f141e9c-0071-48b4-9173-f77c982db62e",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "3f141e9c-0071-48b4-9173-f77c982db62e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "c4cde89b-35b7-48c0-8ca3-5eab12a83bfe",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "c4cde89b-35b7-48c0-8ca3-5eab12a83bfe",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eaca4444-a1cf-474a-8977-aa7bf419ff31",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eaca4444-a1cf-474a-8977-aa7bf419ff31",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8d5e17a5-91ff-45d8-97ef-13c14614a994",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d5e17a5-91ff-45d8-97ef-13c14614a994",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "6abdecf2-2f1e-4234-a4ee-a5ffc4782d35",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "6abdecf2-2f1e-4234-a4ee-a5ffc4782d35",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "2bba75c4-0cd1-457b-aacb-47b6c75da2a5",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2bba75c4-0cd1-457b-aacb-47b6c75da2a5",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "27b8561c-dcf2-486e-9d99-3414d542655c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "27b8561c-dcf2-486e-9d99-3414d542655c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "49ae05c4-8a44-4366-8edb-60f9646cbe68",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "49ae05c4-8a44-4366-8edb-60f9646cbe68",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0968e8fe-d466-4c49-a7ee-5e7e9ae10c39",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "0968e8fe-d466-4c49-a7ee-5e7e9ae10c39",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "ba7e951c-9243-4db0-ab68-290e7a6f045d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "ba7e951c-9243-4db0-ab68-290e7a6f045d",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e4937ed2-58fa-49b0-ae40-5288bb7b2c29",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "e4937ed2-58fa-49b0-ae40-5288bb7b2c29",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d706e5b4-3000-4637-b62b-a90f16ac23f8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "d706e5b4-3000-4637-b62b-a90f16ac23f8",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "cb161f56-23c0-4d46-a24f-edb7bc146161",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "cb161f56-23c0-4d46-a24f-edb7bc146161",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "c41b3ea6-e2a9-4738-8f44-55332f8f7c04",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "c41b3ea6-e2a9-4738-8f44-55332f8f7c04",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "378a5eb8-acd0-43de-8a82-2f6473fb0d18",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "378a5eb8-acd0-43de-8a82-2f6473fb0d18",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "603b63e4-8ce0-422f-8ab5-7f064af3adf8",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "603b63e4-8ce0-422f-8ab5-7f064af3adf8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d17da172-352e-4ee0-8ffb-f36fcd9e9fa3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "d17da172-352e-4ee0-8ffb-f36fcd9e9fa3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c284db53-d0df-49fe-87d3-2889ad7f9573",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "c284db53-d0df-49fe-87d3-2889ad7f9573",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "d5736ebd-f152-4739-b293-29bcc95e37e7",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d5736ebd-f152-4739-b293-29bcc95e37e7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "9fb656a2-10ec-4a62-9a09-2e953cc1a917",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "9fb656a2-10ec-4a62-9a09-2e953cc1a917",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2fba9475-ca5f-4182-8ece-4f24bcf05823",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2fba9475-ca5f-4182-8ece-4f24bcf05823",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "af68fb13-8ec4-4e86-a22c-37c264ff0b19",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "af68fb13-8ec4-4e86-a22c-37c264ff0b19",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0f220f19-5a5c-401c-a3ca-15fade1e95eb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "0f220f19-5a5c-401c-a3ca-15fade1e95eb",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "23ac7e2b-8cab-4ffd-abab-82a782dea77f",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "23ac7e2b-8cab-4ffd-abab-82a782dea77f",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cf27636b-932d-4728-b0d4-188aeed3d7e3",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "cf27636b-932d-4728-b0d4-188aeed3d7e3",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "03cf2a80-5557-4143-b6f6-ca2d56c0dd9a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "03cf2a80-5557-4143-b6f6-ca2d56c0dd9a",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "70d978f1-6f4e-4bbb-903a-77f379b418cc",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "70d978f1-6f4e-4bbb-903a-77f379b418cc",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "4bd0c087-6499-48ca-b14a-06ac9beb5a41",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4bd0c087-6499-48ca-b14a-06ac9beb5a41",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6edb705e-ccd1-4786-bca7-d912abd6f189",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "6edb705e-ccd1-4786-bca7-d912abd6f189",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0db1b06f-063d-4d07-b636-5a3ecd03420a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0db1b06f-063d-4d07-b636-5a3ecd03420a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f87c4240-08e2-4462-819c-9ee05a24f6cb",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f87c4240-08e2-4462-819c-9ee05a24f6cb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2a5744ee-2fd6-47ed-a781-736aa582c3b6",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "2a5744ee-2fd6-47ed-a781-736aa582c3b6",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c135bd1a-f2bf-47d0-b867-3c06e82dc764",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c135bd1a-f2bf-47d0-b867-3c06e82dc764",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "14666d2f-7278-4bec-aeee-9b375db14150",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "14666d2f-7278-4bec-aeee-9b375db14150",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4d2095dc-0ae4-4ac9-9867-a4ce30a3995b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4d2095dc-0ae4-4ac9-9867-a4ce30a3995b",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9b105d0d-4c45-4028-922b-c1be9cd2f354",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9b105d0d-4c45-4028-922b-c1be9cd2f354",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "d7134424-0769-4642-bf2d-788db8e0bf2f",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "d7134424-0769-4642-bf2d-788db8e0bf2f",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5338fcc7-4562-4177-90a6-a8e5b9ccc45d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5338fcc7-4562-4177-90a6-a8e5b9ccc45d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5a6be3fa-90a9-42e2-880b-2e059304311b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5a6be3fa-90a9-42e2-880b-2e059304311b",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2681c9df-3248-474e-871b-d605bd947f12",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "2681c9df-3248-474e-871b-d605bd947f12",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "f417050d-a1e6-48ec-8f2c-ba5870c6ced3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "f417050d-a1e6-48ec-8f2c-ba5870c6ced3",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "659fedae-306f-4867-a2ca-6d0f05086ec5",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "659fedae-306f-4867-a2ca-6d0f05086ec5",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "ae4a402d-4cf7-4e3b-ace0-c6743364ffba",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ae4a402d-4cf7-4e3b-ace0-c6743364ffba",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "24d200e9-0ca6-4066-ad12-3ecd080017ed",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "24d200e9-0ca6-4066-ad12-3ecd080017ed",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1455db17-e1cf-4552-9b98-b8074a132f58",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1455db17-e1cf-4552-9b98-b8074a132f58",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6249420f-f479-4a5e-9447-8bfdd6166fc1",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6249420f-f479-4a5e-9447-8bfdd6166fc1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "438fb186-bcff-463c-a8cc-8cd6a5b86d3a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "438fb186-bcff-463c-a8cc-8cd6a5b86d3a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95a25a5c-8f24-43d3-9d13-395c2c1c267e",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "95a25a5c-8f24-43d3-9d13-395c2c1c267e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "3978baac-1852-4dee-a9cc-cec9ef55258a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "3978baac-1852-4dee-a9cc-cec9ef55258a",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "049b6e8d-7b90-4f27-adf4-178ea989bf72",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "049b6e8d-7b90-4f27-adf4-178ea989bf72",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ded730d9-58cf-48f3-ae74-08ec74b35e4c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ded730d9-58cf-48f3-ae74-08ec74b35e4c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9aa500a0-b82a-49af-97fb-84b980dbed5d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "9aa500a0-b82a-49af-97fb-84b980dbed5d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "abd0856d-b2e9-42a5-bd08-cba872f9aff7",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "abd0856d-b2e9-42a5-bd08-cba872f9aff7",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a44bde3e-0447-4dda-be2c-2d2917bba808",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a44bde3e-0447-4dda-be2c-2d2917bba808",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "c1c294d6-b293-4643-8c5b-cc08d77d79d8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "c1c294d6-b293-4643-8c5b-cc08d77d79d8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "edfa2b47-f7ea-4b92-bc9f-2dca58f3a616",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "edfa2b47-f7ea-4b92-bc9f-2dca58f3a616",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bc979336-9246-4c6b-b968-ccf74e13fe35",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bc979336-9246-4c6b-b968-ccf74e13fe35",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "21d251ce-55fe-495a-8720-a41d388e2e64",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "21d251ce-55fe-495a-8720-a41d388e2e64",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95ebc3fb-2613-405f-92dc-d1e5f0305a7e",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "95ebc3fb-2613-405f-92dc-d1e5f0305a7e",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "c0e9c939-eb69-4a41-9480-3df2561a0779",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "c0e9c939-eb69-4a41-9480-3df2561a0779",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "1e31ee94-7fa1-4011-b757-3e03036ae78e",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "1e31ee94-7fa1-4011-b757-3e03036ae78e",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "4d02fb24-2a90-422d-9c62-4657e6221190",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4d02fb24-2a90-422d-9c62-4657e6221190",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "922a4bf1-9a27-4820-85bf-157eefbc3b04",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "922a4bf1-9a27-4820-85bf-157eefbc3b04",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "730b1e99-ca5f-4b8f-baa4-73705f32b778",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "730b1e99-ca5f-4b8f-baa4-73705f32b778",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "70a7cf81-292a-4e18-9ef2-b40fceb6327d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "70a7cf81-292a-4e18-9ef2-b40fceb6327d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "476215ea-d279-4680-ad55-62444d062e79",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "476215ea-d279-4680-ad55-62444d062e79",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "781df3ed-cfcc-413f-85ef-410a27de2f1a",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "781df3ed-cfcc-413f-85ef-410a27de2f1a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "12915dcf-29bd-4fae-9df7-331b583406cf",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "12915dcf-29bd-4fae-9df7-331b583406cf",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "7a6311ed-d65e-4476-b3a6-22c35246a9c8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "7a6311ed-d65e-4476-b3a6-22c35246a9c8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "67c335d1-d417-45d3-81ea-119cf950e6a6",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "67c335d1-d417-45d3-81ea-119cf950e6a6",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "35e8b651-041b-4804-9fd5-426eed7034b1",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "35e8b651-041b-4804-9fd5-426eed7034b1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "437a2cec-2eae-45ee-88ed-41d9d500eb6b",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "437a2cec-2eae-45ee-88ed-41d9d500eb6b",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0d19af93-1397-4a34-bdbc-6067da228b91",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0d19af93-1397-4a34-bdbc-6067da228b91",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e0ccdd10-a565-4538-9120-9e1986ad89f9",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e0ccdd10-a565-4538-9120-9e1986ad89f9",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "68259a99-b3f8-40bf-bc26-364635bc1b9b",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "68259a99-b3f8-40bf-bc26-364635bc1b9b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f43b3c83-0127-4916-87f2-690efb7c4604",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "f43b3c83-0127-4916-87f2-690efb7c4604",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "7fa31d8e-f7a7-4380-a4ee-b6cf6d354239",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "7fa31d8e-f7a7-4380-a4ee-b6cf6d354239",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "f8fc4af2-7baf-435c-be43-b9f80a528899",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "f8fc4af2-7baf-435c-be43-b9f80a528899",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5098526a-5cb9-4bc5-967b-9a586c470083",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5098526a-5cb9-4bc5-967b-9a586c470083",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fffbc62b-7f76-4a1c-aa9f-fd1949e3736f",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "fffbc62b-7f76-4a1c-aa9f-fd1949e3736f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c00a2add-4a75-4b97-8f48-ba848f86ae0d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c00a2add-4a75-4b97-8f48-ba848f86ae0d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "08c74246-ef2a-4b45-9831-20d0d74c8ec5",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "08c74246-ef2a-4b45-9831-20d0d74c8ec5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "849fa50b-13d8-4f9f-b0d0-d8213dfc127c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "849fa50b-13d8-4f9f-b0d0-d8213dfc127c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e3a17b3c-cbb1-4c9d-a86d-834407c58ed1",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e3a17b3c-cbb1-4c9d-a86d-834407c58ed1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "91f1f4e7-7ddf-4805-9f8c-25eb92932bb8",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "91f1f4e7-7ddf-4805-9f8c-25eb92932bb8",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "ae9f08b4-b483-44a8-891b-6d168fe2f3b8",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ae9f08b4-b483-44a8-891b-6d168fe2f3b8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8622c2fe-220c-48a7-b048-dfbfcc6920b3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "8622c2fe-220c-48a7-b048-dfbfcc6920b3",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "1a880cb1-6323-4dd1-af94-70e7dde57c08",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "1a880cb1-6323-4dd1-af94-70e7dde57c08",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0fcebd04-b22e-4b78-9d34-e9aaa8c3517b",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "0fcebd04-b22e-4b78-9d34-e9aaa8c3517b",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4b2bdc48-3372-42dc-99a1-4f9b2b416f3c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "4b2bdc48-3372-42dc-99a1-4f9b2b416f3c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "2f1f7b22-dd85-42b7-add8-efd4d68e96bc",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2f1f7b22-dd85-42b7-add8-efd4d68e96bc",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5af8c5d7-624b-4045-b2b4-3208e3347158",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "5af8c5d7-624b-4045-b2b4-3208e3347158",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "0e300c01-b540-4f6c-9459-7ed45dd11eca",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "0e300c01-b540-4f6c-9459-7ed45dd11eca",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "11ba3898-4bd9-4d0e-91b9-4ca4bf9737f4",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "11ba3898-4bd9-4d0e-91b9-4ca4bf9737f4",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "30bddd35-f4ba-4589-b49d-43ac63f07ca0",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "30bddd35-f4ba-4589-b49d-43ac63f07ca0",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "b79a41d7-c4c4-4290-b543-fd4b9ac51b76",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b79a41d7-c4c4-4290-b543-fd4b9ac51b76",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "76bf5d83-fffc-4fe3-b96f-5b58a41e893f",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "76bf5d83-fffc-4fe3-b96f-5b58a41e893f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0a1afbd9-ad0f-4f75-be90-21774605eb06",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "0a1afbd9-ad0f-4f75-be90-21774605eb06",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "c659a511-6748-4b4c-885a-b7ca53e80fd7",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "c659a511-6748-4b4c-885a-b7ca53e80fd7",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1923243d-58b8-4505-ac93-309d9c8335d2",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "1923243d-58b8-4505-ac93-309d9c8335d2",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "ef898bcd-375f-444a-a4c7-00d0ef7c4c43",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ef898bcd-375f-444a-a4c7-00d0ef7c4c43",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1e6067f9-194b-4407-b363-a545be5a9246",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "1e6067f9-194b-4407-b363-a545be5a9246",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "57dde765-1fdb-46f4-8ca7-dd9127102e70",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "57dde765-1fdb-46f4-8ca7-dd9127102e70",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "bd9dc0e1-bb33-445c-a302-28a5ffab27b8",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bd9dc0e1-bb33-445c-a302-28a5ffab27b8",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "c74744e5-a148-454a-8a0f-4ce8be939dcb",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "c74744e5-a148-454a-8a0f-4ce8be939dcb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "0ad4215d-1dcc-4148-9266-313dc587479a",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "0ad4215d-1dcc-4148-9266-313dc587479a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "b437daa5-4538-4cb6-bc37-8abc2e2415e5",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b437daa5-4538-4cb6-bc37-8abc2e2415e5",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "73135516-3a81-4f6b-8927-0a0451f4a731",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "73135516-3a81-4f6b-8927-0a0451f4a731",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ea36c679-3a75-483a-a030-cf39f92fadc3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ea36c679-3a75-483a-a030-cf39f92fadc3",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "338f29d6-01c9-482a-869a-cbdd95c88e6d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "338f29d6-01c9-482a-869a-cbdd95c88e6d",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6191fe89-4f01-4a90-8bca-5819c7380f9a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "6191fe89-4f01-4a90-8bca-5819c7380f9a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "32d40e03-22a5-4e9c-b4b9-bcf00f57c32a",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "32d40e03-22a5-4e9c-b4b9-bcf00f57c32a",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6c757fc4-2adc-4ba9-ace0-434591d2cd91",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "6c757fc4-2adc-4ba9-ace0-434591d2cd91",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fcb803d6-bdc9-4b17-959b-69298e5c1e81",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "fcb803d6-bdc9-4b17-959b-69298e5c1e81",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "29b3a62a-b11f-4138-906a-9d3882ecd2d9",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "29b3a62a-b11f-4138-906a-9d3882ecd2d9",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "c772f165-3804-4169-89a8-dc2f0a281384",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "c772f165-3804-4169-89a8-dc2f0a281384",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "024f71d7-275a-4463-b98a-cf80b7e51e23",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "024f71d7-275a-4463-b98a-cf80b7e51e23",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ecdf3e39-10a7-442a-9560-9553c1a23c54",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ecdf3e39-10a7-442a-9560-9553c1a23c54",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "007dd272-7bed-4a0c-966b-611fe5ece5f8",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "007dd272-7bed-4a0c-966b-611fe5ece5f8",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "50440b85-5095-4ed1-b520-e5dd2be44f6d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "50440b85-5095-4ed1-b520-e5dd2be44f6d",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "32f68e97-be14-4485-8396-594affd42ae4",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "32f68e97-be14-4485-8396-594affd42ae4",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "54d21019-e025-42b9-a7c1-bc5d0433c200",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "54d21019-e025-42b9-a7c1-bc5d0433c200",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "cda8e89b-1a18-4e10-902f-b534e8b75bfb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "cda8e89b-1a18-4e10-902f-b534e8b75bfb",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a87be15c-f8b7-4726-a43c-cba0e8c7a154",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "a87be15c-f8b7-4726-a43c-cba0e8c7a154",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ab2c67e3-c643-49f4-b728-9bb2611ff2d2",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ab2c67e3-c643-49f4-b728-9bb2611ff2d2",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "fbf69263-d564-4679-ab98-92a019c8705f",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "fbf69263-d564-4679-ab98-92a019c8705f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4f72b40c-c6c2-4f14-b334-3adb980ec62a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "4f72b40c-c6c2-4f14-b334-3adb980ec62a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5c323f16-17da-47c2-b7a4-cbe352162127",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5c323f16-17da-47c2-b7a4-cbe352162127",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "25950bb8-11c5-4433-8c1e-906857ae494b",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "25950bb8-11c5-4433-8c1e-906857ae494b",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "9b585c8c-e254-461f-8654-f69507818ef2",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "9b585c8c-e254-461f-8654-f69507818ef2",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "cb23f610-2f48-41d6-8477-9f566ed0804a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "cb23f610-2f48-41d6-8477-9f566ed0804a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "94ebeaee-653c-41f2-ad78-2d79b5429822",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "94ebeaee-653c-41f2-ad78-2d79b5429822",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "50fb5f7d-4ac3-417a-86cd-a109375bcb23",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "50fb5f7d-4ac3-417a-86cd-a109375bcb23",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6d59a56d-8b1d-4699-b11a-c3f94e75bf40",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "6d59a56d-8b1d-4699-b11a-c3f94e75bf40",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e71648d5-c9cc-49fa-abd4-7a4954b0c5f8",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e71648d5-c9cc-49fa-abd4-7a4954b0c5f8",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b61cc113-2527-4c09-9163-e6b9b9893665",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "b61cc113-2527-4c09-9163-e6b9b9893665",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5b3ec978-b4a7-48a4-af38-258d41fe39f5",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5b3ec978-b4a7-48a4-af38-258d41fe39f5",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "9ff61ef9-97f2-4fc6-a2cd-777847eeee7a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9ff61ef9-97f2-4fc6-a2cd-777847eeee7a",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "3945fccc-7b82-4ad5-93e6-31f5351a9162",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "3945fccc-7b82-4ad5-93e6-31f5351a9162",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "325b87cb-b761-4622-959d-c3009547a2da",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "325b87cb-b761-4622-959d-c3009547a2da",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f4febda3-7b07-4c39-84d9-58e6eb61be1c",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "f4febda3-7b07-4c39-84d9-58e6eb61be1c",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "de942c03-0e56-4637-91ba-7b65a522fd1c",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "de942c03-0e56-4637-91ba-7b65a522fd1c",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "3c0eba5a-5b5b-463e-aec3-1061ca1e6cfa",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "3c0eba5a-5b5b-463e-aec3-1061ca1e6cfa",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "1c4dd2dd-2f8b-4638-8b41-f656408eb3bd",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "1c4dd2dd-2f8b-4638-8b41-f656408eb3bd",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "c0351eaa-e557-402e-8386-e416fcd88eaa",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "c0351eaa-e557-402e-8386-e416fcd88eaa",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "40adbf88-a702-4336-a040-4f60fe19bbf3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "40adbf88-a702-4336-a040-4f60fe19bbf3",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "eb8d422a-1aec-46c1-b140-5e547c8f0e14",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "eb8d422a-1aec-46c1-b140-5e547c8f0e14",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "8bdfce99-4cc1-4c46-8000-7cf0d1e5e426",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "8bdfce99-4cc1-4c46-8000-7cf0d1e5e426",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "01112b90-841f-4674-bc54-ab44a0d8c83d",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "01112b90-841f-4674-bc54-ab44a0d8c83d",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "aa4d29ef-71fc-4f51-b9c1-32072277f4e9",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "aa4d29ef-71fc-4f51-b9c1-32072277f4e9",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2d214e81-d34a-4cae-8a9c-3a34ab2e0964",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "2d214e81-d34a-4cae-8a9c-3a34ab2e0964",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "8f77f6ec-e1ff-493c-b4dc-4c65702c9347",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "8f77f6ec-e1ff-493c-b4dc-4c65702c9347",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "f8fbb80a-3d9c-43fe-953d-a4efda58a4fa",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f8fbb80a-3d9c-43fe-953d-a4efda58a4fa",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a97b959d-50e2-4135-bcd0-ca7d6b6f5ea3",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "a97b959d-50e2-4135-bcd0-ca7d6b6f5ea3",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "71750f49-c413-463c-b525-a0895392fbf1",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "71750f49-c413-463c-b525-a0895392fbf1",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "dcc257b2-c3d6-4cf7-99fb-0dfa57dae8ba",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "dcc257b2-c3d6-4cf7-99fb-0dfa57dae8ba",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "d2e9fb36-bb50-48ac-9f5c-155b8827d0e3",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "d2e9fb36-bb50-48ac-9f5c-155b8827d0e3",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "9fdea986-443e-48f3-bbee-9f81a6a12e9d",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "9fdea986-443e-48f3-bbee-9f81a6a12e9d",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d5fbd58-9675-4e50-820e-c86611482eb3",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d5fbd58-9675-4e50-820e-c86611482eb3",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "e987c47d-de3f-47a5-9df6-2a2caeebdd91",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e987c47d-de3f-47a5-9df6-2a2caeebdd91",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "108111be-c1d3-4dc3-89c9-100b3dbb9bc0",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "108111be-c1d3-4dc3-89c9-100b3dbb9bc0",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "6d08e19f-029e-4aac-83c4-64bdc66e324f",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "6d08e19f-029e-4aac-83c4-64bdc66e324f",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "183ac3eb-4501-4583-a757-f8531577266f",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "183ac3eb-4501-4583-a757-f8531577266f",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "eb4ff85e-b20e-4ccb-a0c8-51765e33b9f1",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "eb4ff85e-b20e-4ccb-a0c8-51765e33b9f1",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "6176e1be-3631-4189-ac77-3ba20cfbc90a",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "6176e1be-3631-4189-ac77-3ba20cfbc90a",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "d03b6097-27b8-42bc-b3e8-0aaf388e52eb",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "d03b6097-27b8-42bc-b3e8-0aaf388e52eb",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5ce0e110-6bf9-4ec3-8601-6dc2e3b78a46",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "5ce0e110-6bf9-4ec3-8601-6dc2e3b78a46",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "12daf2ef-a503-4878-82d7-26c5f8107f24",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "12daf2ef-a503-4878-82d7-26c5f8107f24",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "793bb868-13ad-48fd-84a6-51436a170505",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "793bb868-13ad-48fd-84a6-51436a170505",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e42206da-5134-48d8-bef6-83a341bd6fbf",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      0,
+      2
+    ]
+  },
+  {
+    "skill_id": "e42206da-5134-48d8-bef6-83a341bd6fbf",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      2,
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "112c227c-776b-4fde-b796-ebbe950e1d0f",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "112c227c-776b-4fde-b796-ebbe950e1d0f",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f1c9d403-efc9-4539-9c62-d3e7152393ad",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      2
+    ]
+  },
+  {
+    "skill_id": "f1c9d403-efc9-4539-9c62-d3e7152393ad",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "5acecd78-21bd-4191-8798-7eeb6a4b1e97",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5acecd78-21bd-4191-8798-7eeb6a4b1e97",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "5d0d4b64-8910-4222-b6b9-4d8d5e327727",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      1
+    ]
+  },
+  {
+    "skill_id": "5d0d4b64-8910-4222-b6b9-4d8d5e327727",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "92f7565b-c9e6-4ad3-a20c-a1bc7cde0e9a",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "92f7565b-c9e6-4ad3-a20c-a1bc7cde0e9a",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "ee8bbe61-a7a8-4558-994d-989e7d5462b9",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      0,
+      1
+    ]
+  },
+  {
+    "skill_id": "ee8bbe61-a7a8-4558-994d-989e7d5462b9",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "2d06bb74-ac4a-46f0-b268-471c7f0dfd9c",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "2d06bb74-ac4a-46f0-b268-471c7f0dfd9c",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "5b9979e1-2ae8-4a01-90d9-0876f78bf1e7",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "5b9979e1-2ae8-4a01-90d9-0876f78bf1e7",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 1,
+    "random_indices": [
+      2
+    ]
+  },
+  {
+    "skill_id": "8d80073e-8416-480a-bd44-a295321d8167",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "8d80073e-8416-480a-bd44-a295321d8167",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "bad47673-bbe7-40f1-ae46-d3a483b2d872",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "bad47673-bbe7-40f1-ae46-d3a483b2d872",
+    "kind": "queries",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ff4f6b8a-8023-48d8-8159-c3173a253d72",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "ff4f6b8a-8023-48d8-8159-c3173a253d72",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a6bcc029-2296-43a6-94e7-cb2a3e021778",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "a6bcc029-2296-43a6-94e7-cb2a3e021778",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "d1762560-99a2-42c0-9c7f-8566f9babe81",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "d1762560-99a2-42c0-9c7f-8566f9babe81",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      1,
+      2,
+      0
+    ]
+  },
+  {
+    "skill_id": "ece515c4-f4b8-4333-bfb9-2f762de11d03",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "ece515c4-f4b8-4333-bfb9-2f762de11d03",
+    "kind": "queries",
+    "generated": 3,
+    "retained": 3,
+    "random_indices": [
+      0,
+      2,
+      1
+    ]
+  },
+  {
+    "skill_id": "ef999b9a-a00d-40b5-a7cb-e5470c8794cf",
+    "kind": "intents",
+    "generated": 3,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "ef999b9a-a00d-40b5-a7cb-e5470c8794cf",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "f58c21ff-d5fe-4802-8adf-e9afb68367b0",
+    "kind": "intents",
+    "generated": 2,
+    "retained": 2,
+    "random_indices": [
+      1,
+      0
+    ]
+  },
+  {
+    "skill_id": "f58c21ff-d5fe-4802-8adf-e9afb68367b0",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "e9528eb5-5ad1-41ac-9058-fa2862a3dc43",
+    "kind": "intents",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "e9528eb5-5ad1-41ac-9058-fa2862a3dc43",
+    "kind": "queries",
+    "generated": 0,
+    "retained": 0,
+    "random_indices": []
+  },
+  {
+    "skill_id": "26c490ec-2c95-4726-b194-a0d645378be9",
+    "kind": "intents",
+    "generated": 1,
+    "retained": 1,
+    "random_indices": [
+      0
+    ]
+  },
+  {
+    "skill_id": "26c490ec-2c95-4726-b194-a0d645378be9",
+    "kind": "queries",
+    "generated": 2,
+    "retained": 0,
+    "random_indices": []
+  }
+]

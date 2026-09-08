@@ -1,0 +1,85 @@
+{
+  "versions": {
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.0",
+    "torch": "2.11.0+cu128",
+    "sentence-transformers": "6.0.1",
+    "transformers": "5.16.1",
+    "tokenizers": "0.23.2"
+  },
+  "hashes": [
+    {
+      "path": "/home/mike/projects/guidefold/tools/eval/corpora.py",
+      "bytes": 6498,
+      "sha256": "8e668d471cfbd3171c62178091c15c05eebdece5077bdcb7e3c25af547cce298"
+    },
+    {
+      "path": "/home/mike/projects/guidefold/tools/eval/dev_sparse.py",
+      "bytes": 30924,
+      "sha256": "ae69a56c9445b88375ccab0ab9c55c3d3ba85a89bd25327240cadec7a0912616"
+    },
+    {
+      "path": "/home/mike/projects/guidefold/skills/guidefold/scripts/guidefold",
+      "bytes": 222969,
+      "sha256": "7fae2cba8c54db6e1abacba21d38690cb053dfcfc2d6d142c770e9ee6faf41cb"
+    },
+    {
+      "path": "/home/mike/projects/guidefold/docs/reports/bakeoff/validation/dev-decompose-d0.jsonl.gz",
+      "bytes": 994159,
+      "sha256": "c5bfdaec572b9d85a597552faf8c4b05033c590f90d061dde55bfd0523d7f00f"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/1_Pooling/config.json",
+      "bytes": 313,
+      "sha256": "37bf193fa101f19101bfad9c31d3eb0f786e247b7b1e5cb7f007d730eed1ddbd"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/config.json",
+      "bytes": 727,
+      "sha256": "b5bf1f51fc45be473a54718cef92448d90a1be001bf9b9a44b8c7f10a19feaa9"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/config_sentence_transformers.json",
+      "bytes": 215,
+      "sha256": "10667c72ddb772627bf1780cb7f86af8e2ae0032b8c243c731172064105c6961"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/generation_config.json",
+      "bytes": 117,
+      "sha256": "28396d421a2108acce96383f6a7de78008f7f1b17f807958f3c14c51dbfb65fb"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/merges.txt",
+      "bytes": 1671853,
+      "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/model.safetensors",
+      "bytes": 1191586416,
+      "sha256": "0437e45c94563b09e13cb7a64478fc406947a93cb34a7e05870fc8dcd48e23fd"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/modules.json",
+      "bytes": 349,
+      "sha256": "84e40c8e006c9b1d6c122e02cba9b02458120b5fb0c87b746c41e0207cf642cf"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/tokenizer.json",
+      "bytes": 11423705,
+      "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/tokenizer_config.json",
+      "bytes": 9706,
+      "sha256": "253153d0738ceb4c668d2eff957714dd2bea0b56de772a9fdccd96cbf517e6a0"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/models/Qwen__Qwen3-Embedding-0.6B/97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3/vocab.json",
+      "bytes": 2776833,
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+    }
+  ],
+  "gpu": "name, memory.total [MiB], driver_version\nNVIDIA GeForce RTX 4090, 24564 MiB, 591.86",
+  "timing_note": "Name/description cache reused after pretraining bugfix. Current encoding timers for cache hits are cache-read times, not fresh inference cost. Initial fresh approximate name80s/description78s recorded in tool log."
+}

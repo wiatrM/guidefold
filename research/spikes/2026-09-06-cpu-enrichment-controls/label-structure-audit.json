@@ -1,0 +1,454 @@
+{
+  "status": "Structural audit; semantic relevance is not inferred by this script",
+  "train_queries": 63259,
+  "train_skills": 10123,
+  "train_qrels": 127190,
+  "duplicate_query_ids": 0,
+  "duplicate_qrel_pair_extra_rows": 0,
+  "orphan_qrels": 0,
+  "relevance_counts": {
+    "1": 127190
+  },
+  "structural_violations": [],
+  "by_k": {
+    "1": {
+      "queries": 20776,
+      "has_original_query": 4202
+    },
+    "2": {
+      "queries": 21035,
+      "has_original_query": 4930
+    },
+    "3": {
+      "queries": 21448,
+      "has_original_query": 5094
+    }
+  },
+  "normalized_duplicate_query_groups": 427,
+  "normalized_duplicate_groups_with_different_gold": 0,
+  "duplicate_details": [
+    {
+      "query_ids": [
+        "q-train-000289",
+        "q-train-000485"
+      ],
+      "gold_sets": [
+        [
+          "2105d216-de06-4c42-ad9a-d9c4368e9eb8",
+          "9150e7f0-d733-4f6b-8467-9b34d1de3d54",
+          "bd69e43f-ed5a-4561-b68f-f4a88598a9a8"
+        ],
+        [
+          "2105d216-de06-4c42-ad9a-d9c4368e9eb8",
+          "9150e7f0-d733-4f6b-8467-9b34d1de3d54",
+          "bd69e43f-ed5a-4561-b68f-f4a88598a9a8"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001560",
+        "q-train-002569"
+      ],
+      "gold_sets": [
+        [
+          "0d65cf95-31c8-4bcf-8cb6-bb20ef46de92",
+          "fbc05722-667a-4bc7-9fd1-05336158c6b3",
+          "307fbe69-0ede-4cf0-aa26-daa557d7a096"
+        ],
+        [
+          "0d65cf95-31c8-4bcf-8cb6-bb20ef46de92",
+          "fbc05722-667a-4bc7-9fd1-05336158c6b3",
+          "307fbe69-0ede-4cf0-aa26-daa557d7a096"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001561",
+        "q-train-002570"
+      ],
+      "gold_sets": [
+        [
+          "8ecbf348-0096-4384-b3e1-eb61304e16a8"
+        ],
+        [
+          "8ecbf348-0096-4384-b3e1-eb61304e16a8"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001583",
+        "q-train-002592"
+      ],
+      "gold_sets": [
+        [
+          "462bacbb-e607-4f4e-9889-c6ce6309afc7",
+          "c39dc2a0-7dfe-4836-9860-84eedf79a159",
+          "2e03a29f-8a6b-4da7-a273-e3151a33ec53"
+        ],
+        [
+          "462bacbb-e607-4f4e-9889-c6ce6309afc7",
+          "c39dc2a0-7dfe-4836-9860-84eedf79a159",
+          "2e03a29f-8a6b-4da7-a273-e3151a33ec53"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001617",
+        "q-train-002627"
+      ],
+      "gold_sets": [
+        [
+          "5d5fba46-dbc0-493a-ae05-f46196cc0b15",
+          "e5540d9e-c269-4d53-9597-28008f977ad4",
+          "ebef0d0f-4491-4039-a467-f51388c1e5e7"
+        ],
+        [
+          "5d5fba46-dbc0-493a-ae05-f46196cc0b15",
+          "e5540d9e-c269-4d53-9597-28008f977ad4",
+          "ebef0d0f-4491-4039-a467-f51388c1e5e7"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001622",
+        "q-train-002632"
+      ],
+      "gold_sets": [
+        [
+          "6a3b88f3-da59-475e-9236-a2ce21d3e8c1"
+        ],
+        [
+          "6a3b88f3-da59-475e-9236-a2ce21d3e8c1"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001646",
+        "q-train-002656"
+      ],
+      "gold_sets": [
+        [
+          "99a22602-db50-48ad-991d-fb16540580b5",
+          "bd614e38-4e0a-46f1-bd9f-ded08e22dbbc",
+          "ac6ef24f-0e6c-447c-9053-a04a08e3dee7"
+        ],
+        [
+          "99a22602-db50-48ad-991d-fb16540580b5",
+          "bd614e38-4e0a-46f1-bd9f-ded08e22dbbc",
+          "ac6ef24f-0e6c-447c-9053-a04a08e3dee7"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001698",
+        "q-train-002707"
+      ],
+      "gold_sets": [
+        [
+          "20ebf256-fdf2-44ae-93d3-99f545a50954",
+          "9ceb43d3-87b4-4895-934c-b15b3741f7aa",
+          "f2fee6b7-5351-4c9b-9c0e-44d8e43dc64e"
+        ],
+        [
+          "20ebf256-fdf2-44ae-93d3-99f545a50954",
+          "9ceb43d3-87b4-4895-934c-b15b3741f7aa",
+          "f2fee6b7-5351-4c9b-9c0e-44d8e43dc64e"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001709",
+        "q-train-002718"
+      ],
+      "gold_sets": [
+        [
+          "86bf2539-2245-44c8-85f9-187a3296ef24",
+          "2e89d133-f2ae-43b0-8517-0bd9bdd80e30"
+        ],
+        [
+          "86bf2539-2245-44c8-85f9-187a3296ef24",
+          "2e89d133-f2ae-43b0-8517-0bd9bdd80e30"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001712",
+        "q-train-002721"
+      ],
+      "gold_sets": [
+        [
+          "cef61047-871c-488f-ba68-caff684c97be"
+        ],
+        [
+          "cef61047-871c-488f-ba68-caff684c97be"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001721",
+        "q-train-002730"
+      ],
+      "gold_sets": [
+        [
+          "141b4e83-a346-48c0-b5f9-81ca33c5a5ed",
+          "1a18ba53-8af7-45a9-b54c-57eb2f98efda",
+          "51bd7379-6172-4128-9481-5afe040acb87"
+        ],
+        [
+          "141b4e83-a346-48c0-b5f9-81ca33c5a5ed",
+          "1a18ba53-8af7-45a9-b54c-57eb2f98efda",
+          "51bd7379-6172-4128-9481-5afe040acb87"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001723",
+        "q-train-002732"
+      ],
+      "gold_sets": [
+        [
+          "bec68070-1ca4-4103-b3fa-b68ea393d459",
+          "fc7fa0ba-1814-4c3e-90bc-6e73743ee53f",
+          "34c9db19-dfd4-48e9-af64-71af34c9676c"
+        ],
+        [
+          "bec68070-1ca4-4103-b3fa-b68ea393d459",
+          "fc7fa0ba-1814-4c3e-90bc-6e73743ee53f",
+          "34c9db19-dfd4-48e9-af64-71af34c9676c"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001736",
+        "q-train-002745"
+      ],
+      "gold_sets": [
+        [
+          "b9b8dbeb-b37a-4bca-b416-1409201a6081",
+          "83067c94-e804-4658-b097-9e1ab1760f47",
+          "1dc2130e-029a-490b-b560-4116eb0bcf31"
+        ],
+        [
+          "b9b8dbeb-b37a-4bca-b416-1409201a6081",
+          "83067c94-e804-4658-b097-9e1ab1760f47",
+          "1dc2130e-029a-490b-b560-4116eb0bcf31"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001748",
+        "q-train-002756"
+      ],
+      "gold_sets": [
+        [
+          "0e047b4e-ec30-4360-8c03-9daa346cc48d"
+        ],
+        [
+          "0e047b4e-ec30-4360-8c03-9daa346cc48d"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001768",
+        "q-train-002776"
+      ],
+      "gold_sets": [
+        [
+          "ecd08e78-970f-4887-a61f-cd50b7825524",
+          "d56847b3-3c22-4add-b055-8fe913192f67"
+        ],
+        [
+          "ecd08e78-970f-4887-a61f-cd50b7825524",
+          "d56847b3-3c22-4add-b055-8fe913192f67"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001791",
+        "q-train-002799"
+      ],
+      "gold_sets": [
+        [
+          "39e1a410-ce15-41fe-9e9d-b0fbe890081b",
+          "23b75a68-8345-442b-9ddd-34ef3ef00c31"
+        ],
+        [
+          "39e1a410-ce15-41fe-9e9d-b0fbe890081b",
+          "23b75a68-8345-442b-9ddd-34ef3ef00c31"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001792",
+        "q-train-002800"
+      ],
+      "gold_sets": [
+        [
+          "cf1f9af4-2284-4007-9881-722fab0a2d23",
+          "60043be6-304e-47b4-85a3-a4848f343066"
+        ],
+        [
+          "cf1f9af4-2284-4007-9881-722fab0a2d23",
+          "60043be6-304e-47b4-85a3-a4848f343066"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001794",
+        "q-train-002802"
+      ],
+      "gold_sets": [
+        [
+          "a8c0c3ef-a8af-42b8-b0c8-4656ca789a62",
+          "63176e70-be6d-4e57-a37c-8184cf1f72d5",
+          "4c5b6081-6358-494d-a72b-a82859d4d529"
+        ],
+        [
+          "a8c0c3ef-a8af-42b8-b0c8-4656ca789a62",
+          "63176e70-be6d-4e57-a37c-8184cf1f72d5",
+          "4c5b6081-6358-494d-a72b-a82859d4d529"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001819",
+        "q-train-002828"
+      ],
+      "gold_sets": [
+        [
+          "b5e24809-b618-4b69-9b72-f8a86e7ec98f"
+        ],
+        [
+          "b5e24809-b618-4b69-9b72-f8a86e7ec98f"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001823",
+        "q-train-002832"
+      ],
+      "gold_sets": [
+        [
+          "48d188c7-5e61-42f4-a900-021f411e6853",
+          "ad693da9-322b-443d-8fa3-e700cfe7a830",
+          "37f2278e-f6ef-43e9-946d-f58d1008c6d9"
+        ],
+        [
+          "48d188c7-5e61-42f4-a900-021f411e6853",
+          "ad693da9-322b-443d-8fa3-e700cfe7a830",
+          "37f2278e-f6ef-43e9-946d-f58d1008c6d9"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001827",
+        "q-train-002836"
+      ],
+      "gold_sets": [
+        [
+          "141de99f-39dd-43bb-ada5-e07a5ccb6089",
+          "1b939c23-af0e-4753-949e-1778a0aa534a",
+          "3c88e2ef-15cc-479a-86a5-e3a985006f1b"
+        ],
+        [
+          "141de99f-39dd-43bb-ada5-e07a5ccb6089",
+          "1b939c23-af0e-4753-949e-1778a0aa534a",
+          "3c88e2ef-15cc-479a-86a5-e3a985006f1b"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001835",
+        "q-train-002844"
+      ],
+      "gold_sets": [
+        [
+          "75bdf5da-975a-427c-94d7-9490e832c3b2",
+          "88d8894d-5c2d-4497-a2fb-d3d73e88013d",
+          "eaf363fc-f8e5-46b8-9bdc-0e94cb24ddde"
+        ],
+        [
+          "75bdf5da-975a-427c-94d7-9490e832c3b2",
+          "88d8894d-5c2d-4497-a2fb-d3d73e88013d",
+          "eaf363fc-f8e5-46b8-9bdc-0e94cb24ddde"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001838",
+        "q-train-002847"
+      ],
+      "gold_sets": [
+        [
+          "66401c53-7985-4f64-b8f1-a652306f3da1",
+          "f793d055-cfcc-4ea5-8766-18d95e9205b5",
+          "453cd6bf-7b95-4873-b217-6e23579af6d6"
+        ],
+        [
+          "66401c53-7985-4f64-b8f1-a652306f3da1",
+          "f793d055-cfcc-4ea5-8766-18d95e9205b5",
+          "453cd6bf-7b95-4873-b217-6e23579af6d6"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001873",
+        "q-train-002882"
+      ],
+      "gold_sets": [
+        [
+          "2a92de58-c7c2-4927-b96d-a6f2ca8b31dc"
+        ],
+        [
+          "2a92de58-c7c2-4927-b96d-a6f2ca8b31dc"
+        ]
+      ]
+    },
+    {
+      "query_ids": [
+        "q-train-001881",
+        "q-train-002890"
+      ],
+      "gold_sets": [
+        [
+          "c00d514b-3858-41d8-94e4-2409d49fccfb",
+          "1ebf9f77-4d49-4967-805c-24d6b32803e3",
+          "0907ee9e-ef49-495e-a12c-088fc7e06fe3"
+        ],
+        [
+          "c00d514b-3858-41d8-94e4-2409d49fccfb",
+          "1ebf9f77-4d49-4967-805c-24d6b32803e3",
+          "0907ee9e-ef49-495e-a12c-088fc7e06fe3"
+        ]
+      ]
+    }
+  ],
+  "source_sha256": {
+    "skills": "b4978863f6c36c1d42af4a779f86b8e5809b4709c353aa698ec494e3ed663a2b",
+    "queries": "e1189e402c74d11ba57af3bbc60308cc4a9b51f29f2de265e541d0599067624c",
+    "qrels": "7480dbf936eeee9905c752a681b029bae8e13f67dcacdf4b716684ca21da83e1"
+  }
+}
