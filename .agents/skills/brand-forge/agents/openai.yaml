@@ -1,0 +1,6 @@
+interface:
+  display_name: "Brand Forge Router"
+  short_description: "Route approved brand asset generation"
+  default_prompt: "Use $brand-forge to route this approved brand asset request while preserving the source identity."
+policy:
+  allow_implicit_invocation: false

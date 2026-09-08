@@ -14,3 +14,9 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Preserve the folded cartographic `G` as the core brand asset. It should read as a survey map first and a letterform second, with an orange promotion route used sparingly.
 - Product tone: regulated enterprise operations, not cinematic sci-fi. Prefer graphite surfaces, square geometry, compact data density, technical teal for healthy/system states, safety orange for review/action, and red only for failures.
 - Primary prototype flow: inspect a candidate skill, review CI and governance gates, then approve promotion from team to division to company.
+
+## Durable landing direction (2026-09-07)
+
+- The prototype's default view is a promotional landing page for the Guidefold product, with the five-second folded-map identity animation in the hero.
+- The landing explains the product through the core use cases: repository scan and scope, owner review before Git, and delivery of an approved revision into a real harness.
+- Copy stays concrete and evidence-aware: no generic AI claims, invented metrics, or marketing filler. Operational product screens remain reachable through Product preview.

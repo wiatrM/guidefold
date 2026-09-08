@@ -3,6 +3,9 @@
 Guidefold is git-native skill CI for a monorepo. This file covers how to run it locally, how to
 test a change, the one hard constraint on the CLI, and what a pull request needs.
 
+Choose requirements and update rules through [DOCUMENTATION-RULES](docs/DOCUMENTATION-RULES.md).
+The pivot PRD defines the authorized new product scope; existing CLI behavior is evidenced by code and tests.
+
 ## Running the CLI against the fixture
 
 There is nothing to install beyond Python 3 and PyYAML. The playground lives in
@@ -24,15 +27,13 @@ If PyYAML is not on your system Python, install it in a virtualenv first
 
 `materialize` and `index` write generated files into the tree (`AGENTS.md`, `CLAUDE.md`,
 `.github/instructions/*`, `.agents/skills/hierarchy-index/`). Do not commit their output —
-`git status` after running them should go back to clean before you commit
-(`git clean -fd examples/monorepo` removes anything they left behind); see
+review named output paths against `git status` and preserve unrelated changes; see
 [ADR-0012](docs/adr/ADR-0012-nothing-generated-is-committed.md) and the "no generated files
 committed" line in the PR checklist.
 
 ## Running tests
 
-`tests/` is not built yet (`docs/MVP.md` story E0.1). Once it exists, run `pytest` from the
-repo root. The service contract tests also use NumPy and JSON Schema validation; install
+Run `pytest` from the repo root. The service contract tests also use NumPy and JSON Schema validation; install
 `pyyaml pytest numpy "jsonschema>=4.23,<5"` in the test environment, as CI does. C++ parity
 tests require Linux and `g++` and compile only the local source. The shipped CLI still
 requires only stdlib + PyYAML. Tests that talk to the registry must mock `Registry`/`subprocess` — no test may hit
@@ -62,10 +63,10 @@ recent example.
 - Branch from `main`, name it `feat/<short-description>` (or `fix/…`, `docs/…` for
   non-feature changes).
 - CI must be green: `guidefold validate` on the fixture, `python3 -m py_compile
-  skills/guidefold/scripts/guidefold`, and `pytest` once `tests/` exists.
-- Add or update tests for behaviour you change, once `tests/` exists.
+  skills/guidefold/scripts/guidefold`, and the relevant `pytest` tests.
+- Add or update meaningful tests for changed behavior; do not add tests that merely restate a low-impact documentation edit.
 - Update the docs in the same PR: `docs/DESIGN.md`/`docs/CONVENTIONS.md` if CLI behaviour
-  changed, `docs/MVP.md` if scope changed, a new or amended ADR if a decision changed.
+  changed, the canonical product/UI document selected by `docs/DOCUMENTATION-RULES.md` when scope or interaction changes, and a new or amended ADR when a decision changes.
 - Fill in [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) — it is the
   actual review checklist, not boilerplate to delete.
 - No generated files in the diff (`AGENTS.md`, `CLAUDE.md`/`GEMINI.md` one-liners,

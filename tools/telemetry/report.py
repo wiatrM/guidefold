@@ -10,8 +10,9 @@ leaves every number in this report unchanged (tested in tests/test_telemetry_rep
 Per (skill_id, revision) this reports:
   - exposures        : count of card_injected events (a card was put in front of an agent/user --
                         not proof of attention, docs/SEARCH-USE-TELEMETRY.md Sec1/Sec3).
-  - loads             : count of skill_load_completed events with status == "ok" only. A denied,
-                        errored or otherwise non-"ok" completed load is never counted as a load
+  - loads             : count of skill_load_completed events with status in {"ok", "verified"},
+                        the same closed set as the Go aggregate (API-CONTRACT §5.5). A denied,
+                        errored or otherwise unlisted completed load is never counted as a load
                         (docs/SEARCH-USE-TELEMETRY.md Sec6: "Denied loads ... never become
                         successful use").
   - use_rate          : loads / exposures, shown alongside both raw counts -- "unknown" (not 0 and
@@ -76,6 +77,10 @@ def compute_report(conn, tenant_id: str, roster: list = None) -> dict:
             by_skill[key] = {
                 "skill_id": skill_id, "revision": revision,
                 "exposures": 0, "loads": 0,
+                # Contract 1.1.4: the search_id of every exposure, and of every verified load
+                # ("" when the adapter did not know), so exposures can be linked to the load
+                # that followed them by skill_id + search_id, across revision rows.
+                "exposure_searches": [], "load_searches": [],
                 "scopes": set(), "producers": set(),
                 "last_exposure": None, "last_load": None,
                 "feedback": {v: 0 for v in ledger.VERDICTS},
@@ -89,6 +94,7 @@ def compute_report(conn, tenant_id: str, roster: list = None) -> dict:
         if event_type == "card_injected":
             b = bucket(event.get("skill_id"), event.get("revision"))
             b["exposures"] += 1
+            b["exposure_searches"].append(event.get("search_id") or "")
             b["last_exposure"] = _max_ts(b["last_exposure"], event.get("occurred_at"))
             if producer:
                 b["producers"].add(producer)
@@ -106,8 +112,11 @@ def compute_report(conn, tenant_id: str, roster: list = None) -> dict:
             skill_id, revision = event.get("skill_id"), event.get("revision")
             if skill_id:   # an unresolved selector (skill_id unknown) cannot be attributed
                 b = bucket(skill_id, revision)
-                if event.get("status") == "ok":
+                # The closed set the Go aggregate counts (services/search/internal/usage/domain):
+                # `ok` and `verified` are a completed, checked load; denied/error/anything else is not.
+                if event.get("status") in ("ok", "verified"):
                     b["loads"] += 1
+                    b["load_searches"].append(event.get("search_id") or "")
                     b["last_load"] = _max_ts(b["last_load"], event.get("occurred_at"))
                 if producer:
                     b["producers"].add(producer)
@@ -125,10 +134,22 @@ def compute_report(conn, tenant_id: str, roster: list = None) -> dict:
         if not already:
             bucket(skill_id, None)
 
+    # Contract 1.1.4: a verified load is linked to the exposure it followed by skill_id and
+    # search_id across every revision row of that skill -- the card and the body of one skill
+    # may carry different revision names. Same rule as the Go aggregate.
+    linked_searches: dict = {}
+    for (skill_id, _revision), b in by_skill.items():
+        for s in b["load_searches"]:
+            if s:
+                linked_searches.setdefault(skill_id, set()).add(s)
+
     skills = []
     summary = {s: 0 for s in STATES}
     for (skill_id, revision), b in sorted(by_skill.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")):
         exposures, loads = b["exposures"], b["loads"]
+        exposures_expanded = sum(1 for s in b["exposure_searches"]
+                                 if s and s in linked_searches.get(skill_id, ()))
+        loads_unlinked = sum(1 for s in b["load_searches"] if not s)
         use_rate = "unknown" if exposures == 0 else round(loads / exposures, 4)
         if loads > 0:
             state = "loaded"
@@ -140,6 +161,7 @@ def compute_report(conn, tenant_id: str, roster: list = None) -> dict:
         skills.append({
             "skill_id": skill_id, "revision": revision,
             "exposures": exposures, "loads": loads, "use_rate": use_rate,
+            "exposures_expanded": exposures_expanded, "loads_unlinked": loads_unlinked,
             "distinct_scopes": sorted(b["scopes"]), "distinct_producers": sorted(b["producers"]),
             "last_exposure": b["last_exposure"], "last_load": b["last_load"],
             "feedback": b["feedback"], "state": state,

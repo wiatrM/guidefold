@@ -101,6 +101,19 @@ def test_denied_and_error_loads_never_count_as_use(gf_conn):
     assert row["state"] == "exposed_never_loaded"
 
 
+def test_verified_status_counts_as_a_load_like_the_go_aggregate(gf_conn):
+    # API-CONTRACT §5.5: loads_verified = status in {ok, verified}; report.py must agree with Go.
+    ledger.ingest(gf_conn, TENANT, [
+        _card_injected(),
+        _load_completed(status="verified"),
+        _load_completed(status="download_verified"),
+    ])
+    rep = report.compute_report(gf_conn, TENANT)
+    row = rep["skills"][0]
+    assert row["loads"] == 1
+    assert row["state"] == "loaded"
+
+
 def test_duplicate_replay_leaves_every_number_in_the_report_unchanged(gf_conn):
     batch = [
         _card_injected(),
@@ -173,3 +186,29 @@ def test_render_markdown_produces_a_table_with_a_summary_line(gf_conn):
     assert SKILL in md
     assert "Summary:" in md
     assert "loaded=1" in md
+
+
+def test_an_exposure_is_expanded_only_when_its_own_search_led_to_a_verified_load(gf_conn):
+    """Contract 1.1.4: exposures_expanded links a load to the exposure it followed by skill_id
+    and search_id (across revision rows); loads_unlinked is a load with no search_id -- unknown,
+    never 'without a card'. Mirrors the Go domain test of the same name."""
+    other = "urn:skill:acme:other"
+    shared_search = str(uuid.uuid4())
+    events = [
+        _card_injected(search_id=shared_search),                       # x1 of SKILL, search s1
+        _card_injected(skill_id=other, search_id=shared_search),       # x2 of other, same search
+        _card_injected(),                                              # x3 of SKILL, another search
+        # SKILL's body fetched after s1, under a *different* revision name than the card.
+        _load_completed(revision="catalog-1", search_id=shared_search),
+        # A load of SKILL by an adapter that did not say which exposure it followed.
+        _load_completed(revision="catalog-1"),
+        # A denied load carrying a search_id links nothing.
+        _load_completed(status="denied", skill_id=other, search_id=shared_search),
+    ]
+    ledger.ingest(gf_conn, TENANT, events)
+    rows = {(s["skill_id"], s["revision"]): s for s in report.compute_report(gf_conn, TENANT)["skills"]}
+    card = rows[(SKILL, REV)]
+    assert card["exposures"] == 2 and card["exposures_expanded"] == 1
+    body = rows[(SKILL, "catalog-1")]
+    assert body["loads"] == 2 and body["loads_unlinked"] == 1
+    assert rows[(other, REV)]["exposures_expanded"] == 0 and rows[(other, REV)]["loads"] == 0

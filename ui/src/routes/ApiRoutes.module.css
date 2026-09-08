@@ -1,0 +1,5 @@
+/* Shared presentation for the hosted API route helpers in apiState.tsx.
+   Route-specific layout stays in CatalogRoutes.module.css and ReviewRoutes.module.css. */
+.notice { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border: var(--border-width) solid var(--warning); color: var(--stone-100); background: var(--graphite-900); margin: var(--zero); }
+.notice > svg { width: var(--icon-size); height: var(--icon-size); color: var(--warning); flex: none; }
+.notice p { margin: var(--zero); }

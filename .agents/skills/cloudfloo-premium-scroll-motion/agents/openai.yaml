@@ -1,0 +1,6 @@
+interface:
+  display_name: "Premium Scroll Motion"
+  short_description: "Implement reversible scroll-linked motion"
+  default_prompt: "Use $cloudfloo-premium-scroll-motion to implement this approved scroll sequence with stable fallbacks."
+policy:
+  allow_implicit_invocation: false

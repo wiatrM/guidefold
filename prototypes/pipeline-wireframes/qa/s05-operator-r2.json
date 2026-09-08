@@ -1,0 +1,215 @@
+{
+  "persona": "P3 operator dostarczania",
+  "synthetic": true,
+  "sampleSize": 1,
+  "productEvidence": "Wyłącznie renderowany interfejs HTML",
+  "tasks": [
+    {
+      "id": "A",
+      "completed": true,
+      "summary": "Zaimportowano scenariusz Meridian i otwarto pierwszą mapę Repository.",
+      "evidence": [
+        "Parsed · ready to browse",
+        "27 existing skills and 17 scope nodes",
+        "Publication: Not established · owner review is still required",
+        "Repository tree"
+      ],
+      "counts": {
+        "clicks": 5,
+        "disclosures": 1,
+        "selects": 0,
+        "typing": 0
+      },
+      "lost": []
+    },
+    {
+      "id": "B",
+      "completed": true,
+      "summary": "Ustalono dokładne źródło i zakres postgres-auth.",
+      "sourcePath": "platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md",
+      "scope": "atlas.identity.turnstile",
+      "scopePaths": [
+        "platforms/atlas/identity/turnstile/**"
+      ],
+      "owner": "turnstile-team",
+      "sourceStatus": "active",
+      "publication": "Not established by source status",
+      "bytes": 5540,
+      "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+      "baseCommit": "88e404561a9f6994cd870743bf858b9b0a616126",
+      "counts": {
+        "clicks": 1,
+        "disclosures": 0,
+        "selects": 0,
+        "typing": 0
+      },
+      "lost": []
+    },
+    {
+      "id": "C",
+      "completed": true,
+      "summary": "Oceniono niezmieniony pakiet, zatwierdzono eksport z uzasadnieniem, pobrano i zweryfikowano SHA/rozmiar, osiągnięto Published (fixture), ustalono brak dowodu załadowania.",
+      "states": [
+        "Draft",
+        "Approved for export",
+        "Awaiting Git",
+        "Published (fixture)"
+      ],
+      "decision": "Approve for export",
+      "reason": "Identyczny digest źródła i kandydata, zachowany scope oraz owner; zatwierdzenie pakietu do przeglądu Git.",
+      "publicationEvidence": "Local simulation only; nie zweryfikowano Git merge, review, publikacji serwerowej ani agent load.",
+      "loadStatus": "Unknown",
+      "requiredLoadEvidence": "context_loaded: potwierdzenie adaptera powiązane ze skillem postgres-auth, scope atlas.identity.turnstile i rewizją 0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b. Download ani sukces HTTP nie są takim dowodem.",
+      "uiQuotes": [
+        "Context loaded: Unknown",
+        "Unknown · no adapter observations",
+        "context_loaded\tUnknown\tNo adapter acknowledgement",
+        "Published and loaded are separate. A download or HTTP success would not prove the instruction reached the model context."
+      ],
+      "counts": {
+        "clicks": 6,
+        "disclosures": 0,
+        "selects": 0,
+        "typing": 1
+      },
+      "lost": [
+        {
+          "where": "Usage & quality",
+          "type": "krótkie zawahanie semantyczne",
+          "trigger": "Requires review przy No observations",
+          "recovery": "Odczytano pusty stan i tabelę Delivery and outcome evidence.",
+          "extraInteractions": 0
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "O-R2-01",
+      "priority": "P3",
+      "task": "C",
+      "title": "Nagłówek sugeruje wymaganą pracę mimo pustej kolejki dowodów",
+      "uiQuotes": [
+        "Requires review",
+        "No observations",
+        "No evidence-backed review items can be derived from this fixture."
+      ],
+      "effect": "Operator przez chwilę może odczytać Requires review jako stan wymagający działania, zanim przeczyta wyjaśnienie braku obserwacji. Nie blokuje ustalenia dowodu załadowania.",
+      "fix": "W pustym stanie użyć nagłówka Review queue i statusu No observations; Requires review pokazywać przy co najmniej jednym udokumentowanym elemencie.",
+      "observed": "Syntetyczny punkt zawahania, bez błędnego kliknięcia.",
+      "confidence": "umiarkowana"
+    }
+  ],
+  "thinkaloud": [
+    {
+      "task": "A",
+      "quote": "To jest jawna symulacja. Chcę wejść przez GitHub, bo importuję repozytorium i potrzebuję pierwszej mapy."
+    },
+    {
+      "task": "B",
+      "quote": "Mapa od razu pokazuje wybrany postgres-auth. Widzę scope atlas.identity.turnstile w wyborze, ale dokładne źródło sprawdzę w Open source and scope."
+    },
+    {
+      "task": "C",
+      "quote": "To pakiet istniejącego źródła, bez zmian treści. SHA-256 oryginału i kandydata są identyczne, scope i owner też. Zatwierdzam eksport tego pakietu; Published nadal wymaga osobnego kroku Git, a loaded będzie wymagać dowodu klienta."
+    },
+    {
+      "task": "C",
+      "quote": "Published (fixture) zakończyło scenariusz, lecz Context loaded nadal jest Unknown. W Usage mam kontekst postgres-auth, jego scope i właściwy SHA. Potrzebuję context_loaded z potwierdzeniem adaptera dla tej rewizji; sam plik ani sukces HTTP niczego nie dowodzą. Nagłówek Requires review na chwilę sugeruje zadanie do zrobienia, ale poniżej widzę No observations i brak podstaw do review."
+    }
+  ],
+  "counts": {
+    "clicks": 12,
+    "disclosures": 1,
+    "selects": 0,
+    "typing": 1
+  },
+  "completed": true,
+  "steps": [
+    {
+      "op": "click",
+      "role": "radio",
+      "name": "GitHub (fixture)"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Continue with selected provider (fixture)"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Create meridian (fixture)"
+    },
+    {
+      "op": "click",
+      "text": "Inspect files, hashes and sizes",
+      "disclosure": true
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Simulate import"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Open Map"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Open source and scope"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Proposals"
+    },
+    {
+      "op": "click",
+      "role": "radio",
+      "name": "Approve for export — prepare the candidate file"
+    },
+    {
+      "op": "fill",
+      "placeholder": "Explain the source and scope considered.",
+      "value": "Zatwierdzam eksport niezmienionego postgres-auth dla atlas.identity.turnstile. Źródło i kandydat mają identyczny SHA-256 0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b, owner turnstile-team. Zgoda dotyczy pakietu do przeglądu Git; publikacja i załadowanie wymagają odrębnego potwierdzenia."
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Record decision (local)"
+    },
+    {
+      "op": "download",
+      "role": "button",
+      "name": "Export SKILL.md"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Simulate Git sync"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Check usage evidence"
+    }
+  ],
+  "artifact": {
+    "filename": "postgres-auth.SKILL.md",
+    "bytes": 5540,
+    "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+  },
+  "summary": {
+    "completedTasks": 3,
+    "totalTasks": 3,
+    "P1": 0,
+    "P2": 0,
+    "P3": 1,
+    "totalInteractions": 14,
+    "limits": "Niezależna syntetyczna symulacja n=1; wnioski hipotezami do sprawdzenia z użytkownikami. Nie wykonywano komend ze skilla, nie otwierano zewnętrznych linków ani nie zapisywano repozytorium przez aplikację. Skrypt oglądał renderowany DOM; artefakt pobrano do strumienia i zachowano wyłącznie nazwę, SHA-256 oraz rozmiar.",
+    "outcome": "Ścieżka 3/3 ukończona. Published i loaded poprawnie rozróżnione; dowodu załadowania brak."
+  }
+}

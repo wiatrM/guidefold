@@ -1,0 +1,6 @@
+.gallery{max-width:var(--gallery-width);margin:var(--zero) auto;padding:var(--page-padding);display:grid;gap:var(--space-4);}
+.gallery>header h1{margin:var(--zero) var(--zero) var(--space-3);}
+.case{min-width:var(--zero);border:var(--border-width) solid var(--line-strong);padding:var(--space-3);background:var(--graphite-900);}
+.case>h2{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-section);}
+.row{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);}
+.stack{display:grid;gap:var(--space-3);}

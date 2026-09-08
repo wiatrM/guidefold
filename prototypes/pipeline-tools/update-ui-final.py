@@ -1,0 +1,17 @@
+from pathlib import Path
+import json
+p=Path('ui/package.json'); d=json.loads(p.read_text()); d['scripts']['test:contracts']='node qa/check-contracts.mjs'; p.write_text(json.dumps(d,indent=2)+'\n')
+p=Path('.github/workflows/ui.yml'); s=p.read_text().replace('      - name: Component and domain tests','      - name: Component structure, data boundary and tokens\n        run: pnpm test:contracts\n      - name: Component and domain tests'); p.write_text(s)
+p=Path('ui/README.md'); s=p.read_text().replace('pnpm test\n','pnpm test\npnpm test:contracts\n'); p.write_text(s)
+p=Path('docs/ui/UI.md'); s=p.read_text()
+s=s.replace('Status: implementacja hi-fi etapu 6, 2026-09-06; build, screenshoty, kontrast i axe potwierdzone; etap 6 zamknięty po trzech rundach z 0 otwartych P1/P2. §5 odsyła do planu etapu 7 zamkniętego po dwóch rundach z 0 otwartych P1/P2.', 'Status: frontend fixture w ui/, 2026-09-06; etapy 6 i 7 zamknięte. Ekstrakcja etapu 8 przechodzi końcowy przegląd; wyniki i granice w [08-components](pipeline/08-components.md).')
+s=s.replace('Implementacja: [pipeline-hifi](../../prototypes/pipeline-hifi/).', 'Implementacja: [ui](../../ui/). Zamrożone odniesienie sprzed ekstrakcji: [pipeline-hifi](../../prototypes/pipeline-hifi/).')
+s=s.replace('Bieżące wartości: [src/tokens.css](../../prototypes/pipeline-hifi/src/tokens.css). Nie kopiuj wartości do modułów CSS. W etapie 8 kanonicznym plikiem aplikacji ma być ui/src/tokens/tokens.css; hi-fi pozostaje niezależnym odniesieniem do porównania.', 'Kanoniczne wartości aplikacji: [ui/src/tokens/tokens.css](../../ui/src/tokens/tokens.css). Nie kopiuj wartości do modułów CSS; dotyczy to także transparent. Hi-fi pozostaje niezależnym odniesieniem. Dwa tokeny techniczne etapu 8 uzasadnia [08-components](pipeline/08-components.md).')
+s=s.replace('Aktualne 14 eksportów [Shared.tsx](../../prototypes/pipeline-hifi/src/Shared.tsx), inwentarz z 2026-09-06. Ich wydzielenie z testami i stories jest pracą etapu 8; samo istnienie w hi-fi nie zalicza kontraktów biblioteki.', 'Aktualne 14 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx), inwentarz z 2026-09-06. Każdy wydzielony komponent ma testy i stories; szczegółowe props, stany i dowody: [08-components](pipeline/08-components.md).')
+s=s.replace('Button albo link; neutral/system/human/warning/error, disabled.', 'Button albo link; neutral/system/human, disabled.')
+s=s.replace('W etapie 8 każdy komponent otrzymuje index.tsx, CSS Module, test i story.', 'Każdy komponent ma index.tsx, CSS Module, test i story.')
+s=s.replace('Etap 8 dostarcza wydzielony frontend na fixture;', 'Etap 8 dostarcza F1–F9 jako wydzielony frontend na fixture;')
+p.write_text(s)
+p=Path('docs/ui/pipeline/08-components.md'); s=p.read_text().replace('pnpm build; pnpm test; pnpm test:e2e.', 'pnpm build; pnpm test; pnpm test:contracts; pnpm test:e2e.')
+s=s.replace('| Niezależny pixel diff |','| [Struktura i tokeny](../../../ui/qa/contracts.json) | PASS: 14 kompletów, 103 tokeny, 21 CSS, brak zależności komponentów/domain od fixture i nierozwiązanych var(). |\n| Niezależny pixel diff |')
+p.write_text(s)

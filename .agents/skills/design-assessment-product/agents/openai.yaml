@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Assessment Product"
+  short_description: "Shape a landing page into a useful assessment"
+  default_prompt: "Use $design-assessment-product to design a value-first assessment and its result paths."

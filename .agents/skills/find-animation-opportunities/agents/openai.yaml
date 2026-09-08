@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find Animation Opportunities"
+  short_description: "Spot what should animate and reject what should not"
+  default_prompt: "Use $find-animation-opportunities to propose motion for this UI."

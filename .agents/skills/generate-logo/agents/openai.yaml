@@ -1,0 +1,6 @@
+interface:
+  display_name: "Generate Brand Logo"
+  short_description: "Create approved on-brand SVG logo assets"
+  default_prompt: "Use $generate-logo to create approved SVG logo variants from the active Brand Forge profile."
+policy:
+  allow_implicit_invocation: false

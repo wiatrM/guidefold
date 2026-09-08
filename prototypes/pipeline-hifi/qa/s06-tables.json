@@ -1,0 +1,113 @@
+{
+  "date": "2026-09-06T19:57:28.480Z",
+  "results": [
+    {
+      "view": "library",
+      "width": 390,
+      "table": {
+        "scroll": 0,
+        "client": 324,
+        "width": 640
+      },
+      "scrollAfter": 40,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "organization",
+      "width": 390,
+      "table": {
+        "scroll": 0,
+        "client": 324,
+        "width": 640
+      },
+      "scrollAfter": 37,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "usage",
+      "width": 390,
+      "table": {
+        "scroll": 0,
+        "client": 324,
+        "width": 640
+      },
+      "scrollAfter": 37,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "library",
+      "width": 820,
+      "table": {
+        "scroll": 0,
+        "client": 554,
+        "width": 640
+      },
+      "scrollAfter": 40,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "organization",
+      "width": 820,
+      "table": {
+        "scroll": 0,
+        "client": 554,
+        "width": 640
+      },
+      "scrollAfter": 40,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "usage",
+      "width": 820,
+      "table": {
+        "scroll": 0,
+        "client": 554,
+        "width": 640
+      },
+      "scrollAfter": 40,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "library",
+      "width": 1280,
+      "table": {
+        "scroll": 0,
+        "client": 982,
+        "width": 982
+      },
+      "scrollAfter": 0,
+      "keyboardScroll": "not needed",
+      "pageOverflow": false
+    },
+    {
+      "view": "organization",
+      "width": 1280,
+      "table": {
+        "scroll": 0,
+        "client": 604,
+        "width": 640
+      },
+      "scrollAfter": 36,
+      "keyboardScroll": "verified",
+      "pageOverflow": false
+    },
+    {
+      "view": "usage",
+      "width": 1280,
+      "table": {
+        "scroll": 0,
+        "client": 982,
+        "width": 982
+      },
+      "scrollAfter": 0,
+      "keyboardScroll": "not needed",
+      "pageOverflow": false
+    }
+  ]
+}

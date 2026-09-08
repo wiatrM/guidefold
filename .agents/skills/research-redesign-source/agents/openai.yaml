@@ -1,0 +1,6 @@
+interface:
+  display_name: "Research Redesign Source"
+  short_description: "Audit and sanitize a source website"
+  default_prompt: "Use $research-redesign-source to audit this public site and produce a safe preservation-aware ResearchPacket."
+policy:
+  allow_implicit_invocation: true

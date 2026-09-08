@@ -1,0 +1,6 @@
+interface:
+  display_name: "Humanizer"
+  short_description: "Humanize preserved website copy before QA"
+  default_prompt: "Use $humanizer to rewrite editable website copy without changing facts or protected content."
+policy:
+  allow_implicit_invocation: true

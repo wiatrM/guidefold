@@ -1,5 +1,7 @@
 # Guidefold MVP — searchable skills, observable use, and measured usefulness
 
+> **Nowa propozycja MVP, 2026-09-06:** [pivot po przeglądzie pięciu ról](PRODUCT-PIVOT.md), [React/Go/NestJS i podział usług](PIVOT-ARCHITECTURE.md), [backlog propozycji](PIVOT-BACKLOG.md). Nowe wymagania obejmują UI, organizacje i import/ekstrakcję. Poniższy plan pozostaje historią wcześniejszego zakresu; nowa decyzja jest Proposed w ADR-0031, nie deklaracją wdrożenia.
+
 **Status:** Proposed revision · 2026-09-05, second revision the same day (E1.1b measured; target system in ADR-0024; new epic E7) · replaces the 2026-09-04 delivery scope, not historical completion records
 **Decision owner:** product owner · **Capacity assumption:** 2 engineers + 0.5 ML engineer · **Planning horizon:** 8 weeks from this rebaseline · **Pilot:** 3 partner teams; access and labelled tasks are dependencies
 **Harness request contract:** [ADR-0025](adr/ADR-0025-harness-service-context-contract.md) · [schema and semantics](HARNESS-SERVICE-CONTRACT.md)

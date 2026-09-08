@@ -1,0 +1,98 @@
+{{- if and (eq .Values.workload "serve") .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gf.name" . }}-worker
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  revisionHistoryLimit: 3
+  minReadySeconds: 5
+  progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "gf.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "gf.name" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "gf.podSecurity" . | nindent 8 }}
+      imagePullSecrets: {{ toJson .Values.imagePullSecrets }}
+      nodeSelector: {{ toJson .Values.worker.nodeSelector }}
+      tolerations: {{ toJson .Values.worker.tolerations }}
+      containers:
+        - name: worker
+          image: {{ .Values.worker.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            {{- include "gf.containerSecurity" . | nindent 12 }}
+          envFrom: [{configMapRef: {name: {{ include "gf.name" . }}}}]
+          env:
+            {{- include "gf.dbEnv" . | nindent 12 }}
+            # Operator credentials, exactly like the migrate/publish Job and the
+            # Compose worker. The publish.build job writes the immutable catalog
+            # (gf.snapshots, gf.skills, gf.heads, gf.router_*) where guidefold_api
+            # deliberately holds no INSERT, so the request-serving role must not
+            # be the one the worker uses (module-boundaries-go: the two run the
+            # same module code under different database roles).
+            - {name: PGUSER, value: {{ .Values.database.adminUser | quote }}}
+            - {name: PG_PASSWORD_FILE, value: /run/credentials/admin-password}
+            - {name: GUIDEFOLD_GENERATOR, value: {{ .Values.worker.generator | quote }}}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - {name: credentials, mountPath: /run/credentials, readOnly: true}
+            - {name: work, mountPath: /work}
+            {{- include "gf.tlsMount" . | nindent 12 }}
+      volumes:
+        - name: credentials
+          secret:
+            secretName: {{ .Values.operatorCredentialsSecret }}
+            defaultMode: 0440
+            items:
+              - {key: admin-password, path: admin-password}
+        # sizeLimit has to stay inside the container's ephemeral-storage limit,
+        # or the kubelet evicts the pod before the volume quota ever applies.
+        - {name: work, emptyDir: {sizeLimit: {{ index (.Values.worker.resources.limits | default dict) "ephemeral-storage" | default "512Mi" | quote }}}}
+        {{- include "gf.tlsVolume" . | nindent 8 }}
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gf.name" . }}-worker
+spec:
+  # The worker leases jobs from gfm.jobs; it never listens (no Service, no ingress
+  # rule at all — an empty `ingress: []` denies every inbound connection). It is
+  # deliberately its own policy rather than folded into the [api, operator]
+  # component selector below, which opens port 8080 ingress that the worker must
+  # never accept.
+  podSelector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    {{- if .Values.database.networkPeers }}
+    - to:
+        {{- toYaml .Values.database.networkPeers | nindent 8 }}
+      ports: [{protocol: TCP, port: {{ .Values.database.port }}}]
+    {{- end }}
+{{- end }}
+{{- end }}

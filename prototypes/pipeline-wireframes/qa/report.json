@@ -1,0 +1,216 @@
+{
+  "fixture": "Meridian fixture",
+  "origin": "http://127.0.0.1:4320",
+  "records": [
+    {
+      "view": "import",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "library",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "map",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "skill",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "proposals",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "usage",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "organization",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": []
+    },
+    {
+      "view": "import",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "library",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "map",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "skill",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "proposals",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "usage",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "organization",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": []
+    },
+    {
+      "view": "import",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "library",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "map",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "skill",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "proposals",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "usage",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    },
+    {
+      "view": "organization",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": []
+    }
+  ]
+}

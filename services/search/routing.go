@@ -18,16 +18,20 @@ type pathRule struct {
 	specificity   int
 }
 type Catalog struct {
-	DensePrompt                             string
-	ID, Repo, Revision, PolicySHA, ScopeSHA string
-	RouterIndexSHA                          string
-	Nodes                                   M
-	Weights                                 M
-	Cards                                   map[string]M
-	Revisions                               map[string]string
-	Order                                   []string
-	Negatives                               map[string][][]string
-	Rules                                   []pathRule
+	DensePrompt                                     string
+	ID, Tenant, Repo, Revision, PolicySHA, ScopeSHA string
+	RouterIndexSHA                                  string
+	Nodes                                           M
+	Weights                                         M
+	Cards                                           map[string]M
+	Revisions                                       map[string]string
+	Order                                           []string
+	Negatives                                       map[string][][]string
+	Rules                                           []pathRule
+	// The `refines` projection the 1.2 `family` field reads. Built once per
+	// snapshot in prepare(); never consulted by the ranker (family12.go).
+	RefinesParent   map[string]string
+	RefinesChildren map[string][]string
 }
 
 func tokens(s string) []string {
@@ -110,6 +114,7 @@ func (c *Catalog) prepare() error {
 			c.Rules = append(c.Rules, pathRule{node, p, re, utf8.RuneCountInString(p)})
 		}
 	}
+	c.buildFamilyEdges()
 	c.ScopeSHA = hash(pythonJSON(c.Nodes, true))
 	return nil
 }

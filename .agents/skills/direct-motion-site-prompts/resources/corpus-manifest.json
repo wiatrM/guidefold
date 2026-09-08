@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "slug": "001-mostar-city-scroll",
+      "sourceKind": "attachment",
+      "sourceId": "78262104-6dd3-4533-9ee9-af56d2cdfc50",
+      "sha256": "415a2c3f4fd3f5be79a5eaf8577f366a9370837d489ebce2a36e3ad50aa17cbe",
+      "bytes": 28679,
+      "lines": 442,
+      "occurrences": 1,
+      "urls": [
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260730_230438_d526b8b6-8a2e-4e3b-9993-3908acae03a7.png",
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260730_230442_140bc25b-b165-4249-904a-f708bff6970e.png",
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260730_230448_825949c9-ccdb-4857-b4a6-e349eccc9010.png",
+        "https://dcym8fthxf5uu.cloudfront.net/fonts/247a073c-29f5-4a89-aa3a-741020f346fc/OggText-Medium.woff2",
+        "https://raft-blast-61784561.figma.site/_assets/v11/16b5007d9c93971e26ffe4e0e3e37946f6bd538c.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/392db6a6a6b98e868bd7f8d3f55bb719d51e5028.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/7536d7b60a1fce482cf6edf3f0bffd3bad5d0f8a.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/864afe00e41e2fa20a5aa546e15cb807e0f81384.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/8a7f8af50e0ce92ec2e228e7b0b4112178c51cf1.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/ba75252bab2b1c510987b74837770f7bc8a6b2d4.png",
+        "https://raft-blast-61784561.figma.site/_assets/v11/c6a6d8ef49bca43f708aa852692942c45ec950d4.png"
+      ]
+    },
+    {
+      "slug": "002-ai-builder-hls-hero",
+      "sourceKind": "attachment",
+      "sourceId": "d3b9bb65-9ff8-4691-b5b4-7ab75702e58f",
+      "sha256": "b282e777e371b96b46396b5484c060778204c70fc6fe359b4379d754c0371f2d",
+      "bytes": 6180,
+      "lines": 166,
+      "occurrences": 1,
+      "urls": [
+        "https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap",
+        "https://images.unsplash.com/photo-1647356191320-d7a1f80ca777?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGRhcmslMjB0ZWNobm9sb2d5JTIwbmV1cmFsJTIwbmV0d29ya3xlbnwxfHx8fDE3Njg5NzIyNTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        "https://stream.mux.com/T6oQJQ02cQ6N01TR6iHwZkKFkbepS34dkkIc9iukgy400g.m3u8"
+      ]
+    },
+    {
+      "slug": "003-nexum-video-glass-hero",
+      "sourceKind": "attachment",
+      "sourceId": "c2f18efc-9fd4-4cfd-b20a-11620fdacf23",
+      "sha256": "d9e12000f8d8aa32a2c88f56d9a67c045a4233df0ea9f6d8e30b94a04191528b",
+      "bytes": 8208,
+      "lines": 162,
+      "occurrences": 1,
+      "urls": [
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4",
+        "https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Silkscreen:wght@400;700&display=swap",
+        "https://i.pravatar.cc/72?img=12"
+      ]
+    },
+    {
+      "slug": "004-marcus-editorial-marquee-hero",
+      "sourceKind": "attachment",
+      "sourceId": "1c9f075e-b5aa-4d37-9f81-8f147c376bb0",
+      "sha256": "ca1d6790d2994cc73e318d648671f0321019d642b65f0828e533e311d84bcf68",
+      "bytes": 7169,
+      "lines": 154,
+      "occurrences": 1,
+      "urls": [
+        "https://db.onlinewebfonts.com/c/95cecf452d3208890088a5b4c19c7ecf?family=Helvetica+Neue+ME",
+        "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260729_022513_486985a2-ac8c-4278-91a8-071dcd9fcaff.png&w=1280&q=85",
+        "https://stone-expand-60400629.figma.site/_assets/v11/8da570354e86aa0d44ac3e4aa335a72c8e750d68.png"
+      ]
+    },
+    {
+      "slug": "005-wanderful-static-video-hero",
+      "sourceKind": "conversation",
+      "sourceId": "thread-request-2026-08-08",
+      "sha256": "38048de6231a4b044c89ce585f224b49fa8d8f87f981f59052b993670fa758d8",
+      "bytes": 4249,
+      "lines": 77,
+      "occurrences": 1,
+      "urls": [
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260510_060007_60275ce7-030c-4668-a160-8f364ec537d3.mp4",
+        "https://fonts.cdnfonts.com/s/15011/Dirtyline36DaysofType.woff",
+        "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap"
+      ]
+    },
+    {
+      "slug": "006-foldcraft-video-hero",
+      "sourceKind": "conversation",
+      "sourceId": "thread-request-2026-08-08",
+      "sha256": "c98656f0d339265d53f42e544903110b7fb8970b3489c765b5af3fd817729080",
+      "bytes": 4031,
+      "lines": 71,
+      "occurrences": 1,
+      "urls": [
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_204221_5339e40b-e73d-4ab0-9c65-79c18c66fd50.mp4"
+      ]
+    },
+    {
+      "slug": "007-securify-staggered-type-video-hero",
+      "sourceKind": "conversation",
+      "sourceId": "thread-request-2026-08-08",
+      "sha256": "f35cce9f1e6aaacd64121a64a6f936fd31acde3f9205dad75079cd011aa505c4",
+      "bytes": 3841,
+      "lines": 56,
+      "occurrences": 3,
+      "urls": [
+        "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_063509_7d167302-4fd4-480b-8260-18ab572333d4.mp4"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+.errorText{color:var(--error-ink);}
+.field{display:grid;align-content:start;gap:var(--space-2);min-width:var(--zero);}
+.field label{font-size:var(--font-size-small);font-weight:var(--weight-medium);color:var(--stone-300);}
+.field small{font-size:var(--font-size-small);color:var(--stone-300);}
+.errorText{margin:var(--zero);font-size:var(--font-size-small);}

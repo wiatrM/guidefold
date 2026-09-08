@@ -1,0 +1,4 @@
+interface:
+  display_name: "Select Media Generation Route"
+  short_description: "Choose the right media model and cost tier"
+  default_prompt: "Use $select-media-generation-route to choose the best cost-quality route for these landing-page assets."

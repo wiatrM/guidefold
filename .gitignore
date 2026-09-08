@@ -13,6 +13,10 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 
+# Go build output (local `go build` in services/search with no -o produces this)
+/services/search/search
+/services/search/guidefold-search
+
 # Editors / OS
 .idea/
 .vscode/
@@ -60,3 +64,13 @@ tools/bakeoff/build/**/teacher.f16
 # local experiment corpora — real skills used for scale measurement, never committed
 # (103 MB at 2111 skills; the repo ships a measured *profile*, not the corpus — see ADR-0021)
 experiment/
+
+# local research scratch (dated one-off retrieval/reranker investigations; 13 GB, never
+# committed — same rationale as experiment/ above: the repo ships measured conclusions,
+# not the working notebooks/logs that produced them)
+research/
+
+# session-local tool scratch, never committed
+logs/
+.playwright-mcp/
+/.portal-site/

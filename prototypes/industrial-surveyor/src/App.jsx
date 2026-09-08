@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight, Bank, Bell, Buildings, Check, CheckCircle, Clock, Code, Copy,
   Database, DownloadSimple, FileText, GitBranch, ImageSquare, MagnifyingGlass,
@@ -58,7 +58,7 @@ function BrandRail() {
 }
 
 function TopBar({ activeView, setActiveView }) {
-  const items = [["monitor", "Route monitor", Pulse], ["components", "Component bay", SquaresFour], ["assets", "Asset library", ImageSquare]];
+  const items = [["landing", "Landing", MapTrifold], ["monitor", "Product preview", Pulse], ["components", "Component bay", SquaresFour], ["assets", "Asset library", ImageSquare]];
   return <header className="topbar"><div className="mini-brand"><BrandMark size={34} /><span>Guidefold</span></div><nav aria-label="Prototype views">{items.map(([id, label, Icon]) => <button key={id} className={activeView === id ? "active" : ""} onClick={() => setActiveView(id)}><Icon weight="regular" />{label}</button>)}</nav><div className="top-actions"><button className="icon-button" aria-label="Search"><MagnifyingGlass /></button><button className="icon-button notification" aria-label="Notifications"><Bell /><span>3</span></button><button className="avatar" aria-label="Open account menu">AM</button></div></header>;
 }
 
@@ -110,15 +110,120 @@ function AssetLibrary() {
   return <div className="view asset-view"><div className="page-heading"><div><span className="eyebrow">Project-ready raster pack</span><h1>Asset library</h1><p>Independent assets generated from the selected Industrial Surveyor direction.</p></div></div><div className="asset-grid">{assets.map((asset) => <article className="panel asset-card" key={asset.file}><div className={`asset-preview ${asset.className}`}><img src={`${ASSET_ROOT}/${asset.file}`} alt={asset.name} /></div><div className="asset-meta"><div><span className="eyebrow">PNG asset</span><h2>{asset.name}</h2><p>{asset.description}</p></div><a className="secondary-button" href={`${ASSET_ROOT}/${asset.file}`} download><DownloadSimple />Download</a></div></article>)}</div><section className="panel asset-notes"><PanelTitle icon={MapTrifold} eyebrow="Usage rule" title="One map, two information layers" /><p>The map texture carries place and provenance. HTML carries every interactive label, metric and state so the interface remains responsive, accessible and easy to localize.</p></section></div>;
 }
 
+function LandingPage({ onOpenProduct }) {
+  const videoRef = useRef(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [reducedMotion] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  const togglePlayback = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPaused(false);
+    } else {
+      videoRef.current.pause();
+      setIsPaused(true);
+    }
+  };
+
+  const replayAnimation = () => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = 0;
+    videoRef.current.play();
+    setIsPaused(false);
+  };
+
+  return <div className="landing-page">
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <header className="landing-nav">
+      <a className="landing-brand" href="#top" aria-label="Guidefold home"><BrandMark size={38} /><span>Guidefold</span></a>
+      <nav className="landing-links" aria-label="Landing page sections">
+        <a href="#use-cases">Use cases</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#owners">For platform teams</a>
+      </nav>
+      <button className="landing-nav-cta" onClick={onOpenProduct}>Open product preview <ArrowRight weight="bold" /></button>
+    </header>
+
+    <main id="main-content">
+      <section className="landing-hero" id="top">
+        <div className="landing-hero-copy">
+          <span className="landing-kicker"><i /> Platform team / knowledge route</span>
+          <h1>Give every agent the instruction that belongs to the work.</h1>
+          <p className="landing-lede">Guidefold turns repo guidance into a versioned library with visible scope, human review, and delivery across the harnesses your team already uses.</p>
+          <div className="landing-hero-actions">
+            <button className="landing-primary" onClick={onOpenProduct}>See the product <ArrowRight weight="bold" /></button>
+            <a className="landing-secondary-link" href="#use-cases">Explore use cases <span aria-hidden="true">↓</span></a>
+          </div>
+          <p className="landing-quiet-note"><span>Start with a repository scan.</span> You see which files would enter Guidefold before anything changes.</p>
+        </div>
+
+        <figure className="landing-film-card">
+          <div className="film-card-topline"><span>Guidefold / identity study</span><span>05 sec · 16:9</span></div>
+          <div className="film-stage">
+            <video ref={videoRef} autoPlay={!reducedMotion} muted loop playsInline preload="metadata" poster={`${ASSET_ROOT}/guidefold-mark.png`} aria-label="Guidefold folded map logo unfolding into the final mark">
+              <source src={`${ASSET_ROOT}/guidefold-intro.mp4`} type="video/mp4" />
+            </video>
+            <span className="film-corner top-left">N 40° 44′ 12″</span>
+            <span className="film-corner bottom-right">E 74° 00′ 21″</span>
+          </div>
+          <figcaption className="film-caption"><span><i /> Folded map → governed instruction</span><div><button onClick={togglePlayback} aria-label={isPaused ? "Play logo animation" : "Pause logo animation"}>{isPaused ? "Play" : "Pause"}</button><button onClick={replayAnimation}>Replay</button></div></figcaption>
+        </figure>
+      </section>
+
+      <section className="landing-signal-strip" aria-label="Guidefold product principles">
+        <div><span>01</span><strong>Source stays visible</strong><small>Every instruction keeps its repository and scope.</small></div>
+        <div><span>02</span><strong>Review stays human</strong><small>Owners see the source, proposal, and impact before export.</small></div>
+        <div><span>03</span><strong>Delivery stays measured</strong><small>Published content is distinct from a confirmed load.</small></div>
+      </section>
+
+      <section className="landing-section use-case-section" id="use-cases">
+        <div className="section-intro"><span className="landing-kicker"><i /> Where Guidefold earns its place</span><h2>Make the instruction layer part of the delivery path.</h2><p>The value appears in the handoffs that already slow a platform team down: finding the right file, reviewing a change, and getting the approved revision into the next real task.</p></div>
+        <div className="use-case-grid">
+          <article className="use-case-card">
+            <div className="case-heading"><span>01 / FIND</span><MapTrifold /></div>
+            <div className="case-visual source-visual"><div className="source-node"><span>repo</span><strong>platforms / atlas</strong></div><ArrowRight /><div className="source-node active"><span>scope</span><strong>identity / turnstile</strong></div></div>
+            <h3>Keep guidance attached to the repository.</h3><p>Scan the source, show the manifest, and keep the module boundary in view before anyone starts a review.</p><a href="#how-it-works">See the source path <ArrowRight weight="bold" /></a>
+          </article>
+          <article className="use-case-card featured-case">
+            <div className="case-heading"><span>02 / REVIEW</span><ShieldCheck /></div>
+            <div className="case-visual review-visual"><div className="review-line"><i className="removed" /><span>source revision</span><b>changed</b></div><div className="review-line"><i className="added" /><span>proposal</span><b>needs review</b></div><div className="review-rule" /></div>
+            <h3>Show what changed before it reaches Git.</h3><p>Put source, candidate, provenance, and scope beside each other so the owner can decide with the evidence in the same frame.</p><a href="#how-it-works">See the review path <ArrowRight weight="bold" /></a>
+          </article>
+          <article className="use-case-card">
+            <div className="case-heading"><span>03 / LOAD</span><GitBranch /></div>
+            <div className="case-visual load-visual"><div className="load-row"><span>approved revision</span><strong>v1.3</strong></div><div className="load-connector"><i /><i /><i /></div><div className="load-row"><span>harness</span><strong>Claude / Copilot</strong></div></div>
+            <h3>Deliver the same approved instruction where work happens.</h3><p>Keep the published revision, its scope, and its load evidence connected across the harnesses your team supports.</p><a href="#how-it-works">See the delivery path <ArrowRight weight="bold" /></a>
+          </article>
+        </div>
+      </section>
+
+      <section className="landing-section route-section" id="how-it-works">
+        <div className="route-copy"><span className="landing-kicker"><i /> The value for your team</span><h2>A clear route from source to a useful next task.</h2><p>Guidefold gives the platform team one place to inspect, decide, and measure the instruction path without hiding the work inside a black box.</p><ol className="route-steps"><li><span>01</span><div><strong>Find</strong><small>Repository, scope, and owner stay attached.</small></div></li><li><span>02</span><div><strong>Review</strong><small>Source and proposal share the same evidence trail.</small></div></li><li><span>03</span><div><strong>Publish</strong><small>Git remains the canonical place for approved text.</small></div></li><li><span>04</span><div><strong>Load</strong><small>A real task confirms which revision arrived.</small></div></li></ol></div>
+        <div className="route-board" aria-label="Guidefold route from source to task"><div className="route-board-grid" /><div className="route-board-line" /><div className="route-board-node"><span>01</span><strong>Repository</strong><small>source + scope</small></div><div className="route-board-node"><span>02</span><strong>Review</strong><small>owner decision</small></div><div className="route-board-node"><span>03</span><strong>Git</strong><small>approved revision</small></div><div className="route-board-node"><span>04</span><strong>Task</strong><small>confirmed load</small></div><div className="route-board-mark"><BrandMark size={112} /></div></div>
+      </section>
+
+      <section className="landing-section owners-section" id="owners">
+        <div className="section-intro"><span className="landing-kicker"><i /> A working surface for the whole team</span><h2>Each person gets the decision they need.</h2></div>
+        <div className="owner-grid"><article><span className="owner-role">P1 / Owner</span><h3>Review the instruction with its source.</h3><p>Compare scope, provenance, and the proposed change before exporting anything.</p><span className="owner-art"><UsersThree /></span></article><article><span className="owner-role">P2 / Developer</span><h3>Find the rule for the module in front of you.</h3><p>Start with the task and get the repository context that makes the instruction useful.</p><span className="owner-art"><Buildings /></span></article><article><span className="owner-role">P3 / Operator</span><h3>Check which revision actually arrived.</h3><p>See the difference between published content and a confirmed load in a harness.</p><span className="owner-art"><Pulse /></span></article></div>
+      </section>
+
+      <section className="landing-cta-section"><div><span className="landing-kicker"><i /> Start with the source you already have</span><h2>See what your repository would contribute.</h2><p>Guidefold begins with a visible scan and a clear manifest. The first decision stays with your team.</p></div><button className="landing-primary" onClick={onOpenProduct}>Open the product preview <ArrowRight weight="bold" /></button></section>
+    </main>
+    <footer className="landing-footer"><a className="landing-brand" href="#top"><BrandMark size={30} /><span>Guidefold</span></a><span>Repo guidance, made findable and reviewable.</span><span>Industrial Surveyor / 2026</span></footer>
+  </div>;
+}
+
 function ApprovalDialog({ open, onClose, onConfirm, approving }) {
   if (!open) return null;
   return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><section className="approval-dialog" role="dialog" aria-modal="true" aria-labelledby="approval-title" onMouseDown={(event) => event.stopPropagation()}><button className="icon-button close-button" onClick={onClose} aria-label="Close"><X /></button><span className="dialog-icon"><ShieldCheck weight="regular" /></span><span className="eyebrow">Final governance action</span><h2 id="approval-title">Approve promotion to Product Division?</h2><p>This moves <strong>Customer Onboarding Checklist v1.3.0</strong> into a 30-day probationary stage and notifies 3 teams.</p><div className="dialog-summary"><span>Required quorum</span><strong>4 / 5 approvals</strong><span>Activation</span><strong>Sep 05, 2026 · 09:00 UTC</strong></div><div className="dialog-actions"><button className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-action compact" onClick={onConfirm} disabled={approving}>{approving ? <><SpinnerGap className="spin" />Promoting…</> : <><ShieldCheck />Confirm approval</>}</button></div></section></div>;
 }
 
 export function App() {
-  const [activeView, setActiveView] = useState("monitor");
+  const [activeView, setActiveView] = useState("landing");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState("idle");
   const confirmApproval = () => { setApprovalStatus("approving"); window.setTimeout(() => { setApprovalStatus("approved"); setDialogOpen(false); }, 900); };
+  if (activeView === "landing") return <LandingPage onOpenProduct={() => setActiveView("monitor")} />;
   return <div className="prototype-shell"><BrandRail /><main className="workspace"><TopBar activeView={activeView} setActiveView={setActiveView} />{activeView === "monitor" && <RouteMonitor onApprove={() => setDialogOpen(true)} status={approvalStatus} />}{activeView === "components" && <ComponentBay />}{activeView === "assets" && <AssetLibrary />}</main><ApprovalDialog open={dialogOpen} onClose={() => approvalStatus !== "approving" && setDialogOpen(false)} onConfirm={confirmApproval} approving={approvalStatus === "approving"} /></div>;
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prototype"
+  short_description: "Build several variants behind a picker"
+  default_prompt: "Use $prototype to build variants of this interaction."

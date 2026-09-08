@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Animations"
+  short_description: "Critique motion in a diff against a strict bar"
+  default_prompt: "Use $review-animations to critique the motion in this change."

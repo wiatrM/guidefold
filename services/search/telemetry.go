@@ -22,21 +22,6 @@ var telemetrySchema = func() M {
 	return obj(v)
 }()
 
-const telemetryMigration = `
-CREATE TABLE IF NOT EXISTS gf.events (
- tenant_id text NOT NULL, event_id bytea NOT NULL,
- event_type text NOT NULL, schema_version text NOT NULL,
- occurred_at text NOT NULL, received_at text NOT NULL,
- search_id text, load_id text, payload bytea NOT NULL,
- PRIMARY KEY(tenant_id,event_id)
-);
-CREATE INDEX IF NOT EXISTS events_tenant_type ON gf.events(tenant_id,event_type);
-CREATE INDEX IF NOT EXISTS events_occurred ON gf.events(occurred_at);
-CREATE INDEX IF NOT EXISTS events_search ON gf.events(tenant_id,search_id);
-CREATE INDEX IF NOT EXISTS events_load ON gf.events(tenant_id,load_id);
-INSERT INTO gf.schema_version VALUES (7) ON CONFLICT DO NOTHING;
-`
-
 // ID/payload bytes preserve the reference's exact UTF-8 strings (including NUL)
 // without PostgreSQL JSONB/text restrictions. HTTP still uses ordinary JSON IDs.
 func requiredEventFields(e M, required, nullable []string) string {
@@ -121,8 +106,8 @@ func eventLink(v any) any {
 
 const eventInsertSQL = `INSERT INTO gf.events(tenant_id,event_id,event_type,schema_version,occurred_at,received_at,search_id,load_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(tenant_id,event_id) DO NOTHING`
 
-func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
-	if s.Tenant == "" {
+func (s *Store) ingestEvents(ctx context.Context, tenant string, batch []any) (M, error) {
+	if tenant == "" {
 		return nil, fmt.Errorf("verified_tenant_required")
 	}
 	accepted, duplicate, rejected := []any{}, []any{}, []any{}
@@ -144,7 +129,7 @@ func (s *Store) ingestEvents(ctx context.Context, batch []any) (M, error) {
 			rejected = append(rejected, M{"event_id": id, "reason": reason, "retryable": false})
 			continue
 		}
-		queries.Queue("guidefold_event_insert_v1", s.Tenant, []byte(str(id)), str(event["event_type"]), str(event["schema_version"]), str(event["occurred_at"]), received, eventLink(event["search_id"]), eventLink(event["load_id"]), canonical(event))
+		queries.Queue("guidefold_event_insert_v1", tenant, []byte(str(id)), str(event["event_type"]), str(event["schema_version"]), str(event["occurred_at"]), received, eventLink(event["search_id"]), eventLink(event["load_id"]), canonical(event))
 		validIDs = append(validIDs, id)
 	}
 	if len(validIDs) != 0 {

@@ -1,0 +1,10 @@
+# Overlay for the one-off migration Job. Apply on top of values.yaml as a SEPARATE
+# Helm installation (immutable-release design: migrate/serve are different releases,
+# never one values toggle within a running install):
+#
+#   helm install guidefold-migrate ../../chart -n guidefold \
+#     -f values.yaml -f values.migrate.yaml
+#
+# Re-run (new install name, e.g. guidefold-migrate-2) whenever the schema changes;
+# `helm uninstall` the completed Job once it succeeds, it does nothing at rest.
+workload: migrate

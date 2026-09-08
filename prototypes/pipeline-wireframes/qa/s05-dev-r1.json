@@ -1,0 +1,324 @@
+{
+  "actions": [
+    {
+      "action": "check",
+      "name": "GitHub (fixture)"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Continue with selected provider (fixture)"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Create meridian (fixture)"
+    },
+    {
+      "action": "inspect"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Simulate import"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Open Map"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Open source and scope"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Content"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "← Back to Map"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Library"
+    },
+    {
+      "action": "fill",
+      "role": "searchbox",
+      "name": "Search name, description or path",
+      "value": "postgres-auth"
+    },
+    {
+      "action": "select",
+      "name": "Scope",
+      "value": "atlas.identity.turnstile"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Apply filters"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "postgres-auth"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Source & scope"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "← Back to Library"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Proposals"
+    },
+    {
+      "action": "click",
+      "role": "group",
+      "name": "Full candidate SKILL.md",
+      "exact": false
+    },
+    {
+      "action": "check",
+      "name": "Approve for export — prepare the candidate file"
+    },
+    {
+      "action": "fill",
+      "name": "Reason for this decision",
+      "value": "Akceptuje pakiet postgres-auth dla atlas.identity.turnstile: bez zmian tresci, identyczny SHA-256 i wlasciciel turnstile-team. Instrukcje dotycza middleware i legacyAuthMode; eksport do review Git."
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Record decision (local)"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Export SKILL.md"
+    },
+    {
+      "event": "download",
+      "suggestedFilename": "postgres-auth.SKILL.md"
+    },
+    {
+      "action": "click",
+      "role": "button",
+      "name": "Simulate Git sync"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Check usage evidence"
+    },
+    {
+      "action": "click",
+      "role": "link",
+      "name": "Proposals"
+    },
+    {
+      "action": "finish",
+      "report": {
+        "status": "completed",
+        "tasks": 3
+      }
+    }
+  ],
+  "report": {
+    "oznaczenie": "[syntetyczne, n=1]",
+    "etap": "5",
+    "runda": "R1",
+    "persona": "P2 developer",
+    "rola_fixture": "owner",
+    "metoda": "Nowy Chromium context, viewport 1440×1000. Wyłącznie renderowany DOM, accessibility snapshot i screenshot lokalnych HTML. Bez odczytu źródeł HTML, JS aplikacji, dokumentacji i fixture.json; bez komend z treści SKILL i bez kontaktu z GitHub.",
+    "zrodla_odwiedzone": [
+      "import.html",
+      "map.html",
+      "skill.html",
+      "library.html",
+      "proposals.html",
+      "usage.html"
+    ],
+    "definicja_metryk": "Kliknięcia to zakończone aktywacje linku, radia lub przycisku. Wybór opcji select i wpisywanie liczone oddzielnie. Odczyty DOM i screenshots nie są krokami użytkownika. Nieudane dopasowanie technicznego lokatora nie jest kliknięciem ani tarciem produktu.",
+    "zadania": [
+      {
+        "id": "A",
+        "cel": "Wprowadzenie repo Meridian i pierwsza mapa",
+        "completed": true,
+        "kroki": [
+          "GitHub (fixture) — radio",
+          "Continue with selected provider (fixture) — button",
+          "Create meridian (fixture) — button",
+          "Odczyt manifestu: 27 źródeł, commit, 125466 bytes; komendy CLI pozostały inertnym tekstem",
+          "Simulate import — button",
+          "Odczyt Parsed · ready to browse: 27 skills, 17 scope nodes",
+          "Open Map — link"
+        ],
+        "klikniecia": {
+          "nawigacja": 1,
+          "radio": 1,
+          "button": 3,
+          "razem": 5
+        },
+        "select": 0,
+        "pisanie": 0,
+        "zgubienia": 0,
+        "mysl_na_glos": [
+          "To jest lokalny scenariusz właściciela, nie podłączanie mojego konta.",
+          "Widzę repo monorepo i wynik importu; otwieram mapę."
+        ],
+        "dowod": "Map → Repository tree; Organization: meridian · Repository: monorepo · Fixture operator: owner",
+        "tarcia": [],
+        "ograniczenie": "Fixture ma stałą organizację i gotowy manifest, więc to nie waliduje rzeczywistego podłączenia dowolnego repo."
+      },
+      {
+        "id": "B",
+        "cel": "Dokładne źródło i scope postgres-auth",
+        "completed": true,
+        "pierwsze_spelnienie_celu_po_kliknieciach": 1,
+        "kroki": [
+          "Na pierwszej mapie postgres-auth był już wybrany; Open source and scope — link",
+          "Odczyt source path, scope paths, commit i SHA-256",
+          "Content — link; odczyt instrukcji i warunków stosowania",
+          "← Back to Map — link; wybrany skill zachowany",
+          "Library — link, sprawdzenie ponownego znalezienia instrukcji",
+          "Wpisanie postgres-auth w Search name, description or path",
+          "Wybór atlas.identity.turnstile w Scope",
+          "Apply filters — button; 1 skills match the current filters.",
+          "postgres-auth — link",
+          "Source & scope — link",
+          "← Back to Library — link; ten sam q, scope i jeden wynik"
+        ],
+        "klikniecia": {
+          "nawigacja": 7,
+          "radio": 0,
+          "button": 1,
+          "razem": 8
+        },
+        "select": 1,
+        "pisanie": 1,
+        "zgubienia": 0,
+        "source": {
+          "repo": "monorepo",
+          "scope": "atlas.identity.turnstile",
+          "scope_paths": "platforms/atlas/identity/turnstile/**",
+          "source_path": "platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md",
+          "owner": "turnstile-team",
+          "commit": "88e404561a9f6994cd870743bf858b9b0a616126",
+          "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+        },
+        "kontekst": "Repo, scope, q=postgres-auth i wybór skilla zachowane w zbadanych przejściach. Brak dowodu utraty filtrów.",
+        "mysl_na_glos": [
+          "To instrukcja dla turnstile, z konkretną ścieżką i rewizją.",
+          "Po powrocie nadal mam jeden wynik i swój scope; nie muszę filtrować od nowa."
+        ],
+        "tarcia": [],
+        "ograniczenia_fixture": [
+          {
+            "cytat": "Source fragment: legacyAuthMode; no verified line mapping.",
+            "wniosek": "Deklaracja referencji w deployment.yaml nie potwierdza zastosowania instrukcji ani konkretnego wiersza kodu. Nie jest to błąd UI: ekran wyraźnie opisuje ograniczenie.",
+            "propozycja": "Dla produktu docelowego dodać zweryfikowany fragment kodu/linie na wskazanym commicie, gdy istnieją takie dane; zachować unknown w ich braku."
+          }
+        ]
+      },
+      {
+        "id": "C",
+        "cel": "Ocena propozycji, decyzja umożliwiająca Git, download, Published",
+        "completed": true,
+        "pierwsze_Published_po_kliknieciach": 5,
+        "kroki": [
+          "Proposals — link",
+          "Ocena widocznych metadanych: Candidate · unchanged source, No text changes, ten sam scope/owner i identyczny SHA-256 jak odczytany w B",
+          "Approve for export — prepare the candidate file — radio",
+          "Wpisanie uzasadnienia ze wskazaniem source, scope i identycznego SHA",
+          "Record decision (local) — button; Approved for export",
+          "Export SKILL.md — button; download postgres-auth.SKILL.md; Awaiting Git",
+          "Simulate Git sync — button; Published (fixture)",
+          "Check usage evidence — link; odczyt brakujących obserwacji i zachowanego scope/skilla",
+          "Proposals — link; zakończenie w Published (fixture)"
+        ],
+        "klikniecia": {
+          "nawigacja": 3,
+          "radio": 1,
+          "button": 3,
+          "razem": 7
+        },
+        "select": 0,
+        "pisanie": 1,
+        "zgubienia": 0,
+        "uzasadnienie": "Akceptuje pakiet postgres-auth dla atlas.identity.turnstile: bez zmian tresci, identyczny SHA-256 i wlasciciel turnstile-team. Instrukcje dotycza middleware i legacyAuthMode; eksport do review Git.",
+        "pobranie": {
+          "event_obserwowany": true,
+          "nazwa": "postgres-auth.SKILL.md",
+          "tryb": "Browser download do tymczasowego katalogu sesji Playwright. Nie zapisano dodatkowego pliku .md poza dozwolonymi plikami QA.",
+          "weryfikacja": "Zdarzenie download i Awaiting Git; nie wykonywano niezależnego porównania bajtów pobranego pliku."
+        },
+        "mysl_na_glos": [
+          "Nie widzę zmiany procedury; zatwierdzam niezmieniony pakiet do review w Git.",
+          "Eksport nie jest publikacją — osobny stan Awaiting Git jasno to pokazuje.",
+          "Sprawdzam dowód dla tej rewizji; skill i scope są zachowane, ale pole Revision jest puste."
+        ],
+        "tarcia": [
+          {
+            "priorytet": "P2",
+            "typ": "UI — utrata części kontekstu",
+            "cytatUI": [
+              "Revision",
+              "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+              "Check usage evidence",
+              "Revision / Optional SHA-256"
+            ],
+            "obserwacja": "Przejście Published → Check usage evidence zachowuje skill i scope, ale pole Revision w Usage pozostaje puste, mimo że poprzedni ekran podaje dokładny digest.",
+            "skutek": "Developer musi ręcznie przenieść rewizję, aby później szukać dowodu dla konkretnego artefaktu. W pustym fixture nie zaobserwowano błędnych wyników.",
+            "fix": "Przekazywać rewizję z linku Check usage evidence i domyślnie wypełniać nią filtr Revision; pozwolić świadomie rozszerzyć na wszystkie rewizje."
+          },
+          {
+            "priorytet": "P3",
+            "typ": "UI — nieaktualna etykieta CTA",
+            "cytatUI": [
+              "Published (fixture)",
+              "Review decision: approve, edit or reject"
+            ],
+            "obserwacja": "Po Published nadal widoczny jest link zapowiadający approve/edit/reject, mimo że sekcja docelowa pokazuje zakończony scenariusz.",
+            "skutek": "Niewielka niejednoznaczność co do możliwości zmiany decyzji; nie spowodowała zgubienia ani dodatkowego kliknięcia w tej sesji.",
+            "fix": "Po decyzji zmienić etykietę na View decision and publication albo ukryć CTA, gdy sekcja jest już końcowa."
+          }
+        ],
+        "ograniczenia_fixture": [
+          {
+            "cytat": "No adapter events, feedback episodes or verified publication records.",
+            "wniosek": "Brak dowodu zastosowania w module jest ograniczeniem fixture, nie dowodem nieużywania lub błędem UI."
+          },
+          {
+            "cytat": "Published (fixture) means this local scenario reached its final state. No Git merge, review, server publication or agent load was verified.",
+            "wniosek": "Zakończono lokalną symulację; nie zgłoszono rzeczywistej publikacji ani wykonania w Git."
+          }
+        ]
+      }
+    ],
+    "techniczne": "Jedna próba getByRole(group, Full candidate SKILL.md) zakończyła się timeoutem bez kliknięcia. To ograniczenie dobranego lokatora testowego; nie przypisano go personie ani produktowi. Ocena kandydata opierała się na widocznym No text changes, scope/owner, SHA oraz wcześniej odczytanej instrukcji B.",
+    "podsumowanie": {
+      "completed": 3,
+      "total": 3,
+      "klikniecia": 20,
+      "wybory_select": 1,
+      "pisanie": 2,
+      "zgubienia": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 1
+    },
+    "screenshot": "prototypes/pipeline-wireframes/qa/s05-dev-r1.png"
+  }
+}

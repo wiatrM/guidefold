@@ -1,0 +1,6 @@
+interface:
+  display_name: "Route Agent Models"
+  short_description: "Route models by role, quality, and budget"
+  default_prompt: "Use $route-agent-models to choose one bounded model route and reasoning level for this Unslopify job."
+policy:
+  allow_implicit_invocation: true

@@ -83,3 +83,45 @@ Po negatywnym wyniku field-aware user poprosił o dalsze iteracje i konkretnie o
 ## Aktualizacja po eksperymentach CPU, 6 września 2026
 
 Ukończono sześć wariantów bez GPU. Pełne dopiski zwiększają Recall@10 o 0,0732 pp, bez poprawy kompletności netto; filtr top-10 źródła nie przechodzi zamrożonego progu. Nie ma podstaw do zmiany MVP ani masowej generacji na tej podstawie. Priorytetem badawczym staje się weryfikacja podejrzanych dodatkowych etykiet SKILLRET TRAIN: surowe qrels są strukturalnie spójne, ale znaleziono konkretne semantyczne rozbieżności. Przygotowano 120 zapytań do niezależnej oceny; ocen jeszcze nie wykonano. [Wyniki CPU](cpu-enrichment-controls.md), [audyt danych](skillret-train-label-audit.md).
+
+## Aneks: fresh evidence po pullu, 8 września 2026
+
+Wykonano git pull --ff-only na branchu deploy/argocd-cloudfloo-io. Nie było
+nowych commitów z origin; lokalne zmiany innych agentów zostały zachowane.
+Poniższy aneks aktualizuje rekomendację badawczo-pilotażową na podstawie
+późniejszych, zapisanych artefaktów. Nie usuwa ani nie przepisuje decyzji
+operacyjnej z 6 września.
+
+Nowe kontrole zawęziły hipotezy:
+
+- dokładna optymalizacja wszystkich trójek po zablokowaniu pierwszego wyniku
+  dała +1,98 pp Complete@4 na R3, lecz -0,25 pp na source-disjoint; dodatkowy
+  wariant +0,70 pp nie przechodzi bramki +2 pp, więc greedy selector pozostaje
+  prosty i lokalny;
+- routing taksonomiczny z prawdziwym LLM był lepszy od centroidu przy 6 szerokich
+  kategoriach, ale nadal 16 pp poniżej flat dense all-gold@20; przy 18 kategoriach
+  przewaga zniknęła, dlatego routing jako generator kandydatów zamknięto;
+- card-first progressive disclosure na 75 zadaniach i 70 skillach rozszerzało
+  kontekst w 97,1% trudnych i 0% łatwych przypadków, a na zadaniach
+  card-sufficient oszczędzało 86,3% tokenów treści. Wynik 9,3% blended zależy
+  od sztucznego miksu i nie jest prognozą wdrożenia. Niezależne replaye wszystkich
+  trzech kontroli mają status PASS.
+
+**Zaktualizowana decyzja dla następnego pilota:** przygotować dense SKILLRET jako
+główny generator kandydatów, trzymać cross-encoder w shadow/top-1, używać
+source-disjoint fixed set selector tylko dla próśb wieloskillsowych oraz
+włączyć card-first loading z telemetryką rozszerzeń, provenance i rewizji.
+Sparse Go/BM25F pozostaje kompatybilnym fallbackiem i punktem odniesienia.
+
+To jest rekomendacja konfiguracji badawczo-pilotażowej, nie automatyczna akceptacja
+nowego runtime. Przełączenie produkcji i twierdzenie o poprawie pracy developera
+nadal wymagają pomiaru całego hooka, niezależnego testu semantycznego, paired
+skill/no-skill execution, safety/closure oraz realnego pilota. W szczególności
+nie przyjmujemy taxonomy routing, late interaction, adaptive top-50 ani brute-force
+global subset search do ścieżki domyślnej.
+
+Źródła surowe i niezależne weryfikatory:
+[set objective](../../../research/set-objective-transfer-2026-09-07/README.md),
+[LLM pyramid](../../../research/pyramid-routing-llm-2026-09-07/README.md),
+[progressive disclosure](../../../research/progressive-disclosure-execution-2026-09-07/README.md),
+[fresh synthesis](../../../research/fresh-evidence-2026-09-08/README.md).

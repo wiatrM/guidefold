@@ -4,36 +4,57 @@ Git-native skill CI for a monorepo. Skills (`SKILL.md` dirs) live next to the co
 CI validates and publishes them to Google Cloud Agent Registry, and one bootstrap skill + a tiny
 CLI let any harness (Claude Code, Copilot CLI, Codex, Gemini CLI) discover them by location.
 
-Read `docs/DESIGN.md` (v0.3) first, then `docs/CONVENTIONS.md`. Decisions are in `docs/adr/`;
-ADR-0008..0010 are Proposed. `docs/ASSESSMENT.md` holds every verified fact about the registry API.
+Project entry point: [AGENTS.md](AGENTS.md). Local workflows: [product changes](.agents/skills/guidefold-product-changes/SKILL.md) and [UI workflow](.agents/skills/guidefold-ui-workflow/SKILL.md).
+Thirty rule skills (product direction, KISS/YAGNI/DRY/SOLID, hexagonal architecture, Definition of Done, review, UI) are indexed in `AGENTS.md`, linked from `.claude/skills/`, and decided in [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md). Hooks in `.claude/settings.json` are described in [.claude/README.md](.claude/README.md).
+
+Start with `docs/DOCUMENTATION-RULES.md` to select the authoritative document for the task.
+For the authorized product pivot, read `docs/PRODUCT-PIVOT.md` (requirements),
+`docs/PIVOT-ARCHITECTURE.md` (system boundaries), `docs/PIVOT-BACKLOG.md` (order),
+and `docs/PIVOT-REVIEW.md` (rationale). Their Proposed status does not cancel a task the user
+has already authorized; it also does not prove that planned behavior is implemented.
+For existing CLI behavior, read its code/tests plus `docs/DESIGN.md` and `docs/CONVENTIONS.md`.
+For hosted UI, use `docs/ui/IA.md`, `UX.md`, `UI.md` and the relevant entry in
+`docs/ui/pipeline/README.md`; do not restore the former four-section local UI.
+Decisions are recorded in `docs/adr/`. `docs/ASSESSMENT.md` records dated registry API evidence;
+verify time-sensitive claims before relying on them.
 
 ## Layout
 
 | Path | What |
 |------|------|
 | `skills/guidefold/` | **The distributable unit.** Bootstrap `SKILL.md`, `scripts/guidefold` (CLI), `hooks/*.json` (harness hook templates). This whole dir is what a consumer monorepo copies to `.agents/skills/guidefold/`. |
-| `docs/` | Design doc, conventions, ADRs, assessment. |
-| `docs/ui/` | UI information architecture (`IA.md`), interaction principles and anti-slop gate (`UX.md`), visual system and React port plan (`UI.md`) — for the future `guidefold ui` (E5). |
+| `docs/` | Product requirements, architecture, backlog, documentation rules, CLI conventions, ADRs and evidence. |
+| `docs/ui/` | Hosted U4 information architecture, UX, visual system and reviewed pipeline 00–08. Read each file's current status; a prototype is not the API implementation. |
 | `templates/` | Files a consumer monorepo copies: CI workflow, example `guidefold.yaml`. |
-| `examples/monorepo/` | "Meridian" playground: fictional Palantir-style data platform, 17 nodes / 26 skills / stub code, `registry.backend: local`. Fixture for demos and tests. |
-| `tests/` | pytest suite (to be built). |
+| `examples/monorepo/` | "Meridian" playground: fictional Palantir-style data platform, 17 declared nodes / 27 SKILL.md files including the hierarchy index at the pivot baseline / stub code, `registry.backend: local`. Fixture for demos and tests. |
+| `tests/` | Existing pytest suite; use the checks appropriate to the changed behavior. |
+| `services/search/` | Product-pivot Go modular monolith: API + worker. `internal/{identity,mgmt,jobs,worker,schema,testdb,importer,knowledge,review,usage,graph,pivottest}` (ownership per module in `services/search/internal/README.md`); `openapi/management-v1.yaml` is the OpenAPI half of the contract. |
+| `tools/dev/` | Local dev loop with no Docker/sudo: `pg.py` (non-root Postgres 18), `stack.py` (builds `guidefold-search`, runs migrate/serve/worker, optional `pnpm dev` UI). |
+| `tools/worker/` | `build_tree.py`, used only by the worker container for `import.parse` (needs Python3 + PyYAML; the API image stays Python-free). |
+| `tools/contract/` | `check_api_contract.py`: the contract-first drift checker (doc vs OpenAPI vs Go code). |
+| `tests/acceptance/` | End-to-end acceptance scenarios for ACT-01 against a running stack; report lands at `.guidefold/checks/acceptance-<date>.json`. |
+| `ui/` | React/Vite hosted UI: seven views, fixture and API `DataSource` modes; see `ui/README.md` for per-view coverage. |
 
 Two repos are involved and must not be confused: **this repo** (the tool) and the **consumer
 monorepo** (where `guidefold.yaml`, `.agents/skills/**`, generated `AGENTS.md` cards and the
 CI workflow live). `templates/` and `skills/` are copied into the consumer; nothing else is.
 
-## Hard constraints (from the design)
+## Existing CLI constraints
 
 - `scripts/guidefold` stays a **single-file Python 3 script, stdlib + PyYAML only**. It ships
-  inside the skill ZIP to the registry, so no package layout, no third-party deps.
+  inside the skill ZIP, so no package layout or additional runtime dependencies. This constraint
+  applies to the distributable CLI, not the proposed Go API/worker or React UI.
 - Git is the source of truth; the registry is a build artifact (ADR-0001). Never design a
   flow that edits the registry by hand.
-- Generated files (`AGENTS.md`, `CLAUDE.md`/`GEMINI.md` one-liners, `.github/instructions/*`,
+- Generated consumer files (`AGENTS.md`, `CLAUDE.md`/`GEMINI.md` one-liners, `.github/instructions/*`,
   `_index-hierarchy` skill) are produced only by `guidefold materialize` / `index`.
 - Scope cards are capped at 80 lines. Digests only, no procedures.
 - All registry access goes through the `Registry` class in the CLI so it can be swapped for
   MCP or an ARD endpoint later (ADR-0003).
 - Preview API: `gcloud alpha agent-registry skills ...` — pin the gcloud version in CI.
+- For `services/search`, `ui/`, and the CLI's network commands: `docs/API-CONTRACT.md` is binding
+  and comes before code — do not add a handler, DTO, table, or CLI network command without a
+  contract entry in the same change; `tools/contract/check_api_contract.py` enforces this.
 
 ## Working here
 
@@ -41,11 +62,21 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
   The monorepo root is the nearest ancestor with `guidefold.yaml` (or `$GUIDEFOLD_ROOT`).
 - Real registry: GCP project `guidefold-test-b6a18a`, location `global`, needs
   `roles/agentregistry.admin`. Publish flow and ID mapping: `docs/adr/ADR-0008-*.md`.
-- Tests: `pytest` from repo root (once `tests/` exists). Registry calls must be mocked; never
+- Tests: `pytest` from repo root. Registry calls must be mocked; never
   hit GCP in unit tests.
 - Syntax check: `python3 -m py_compile skills/guidefold/scripts/guidefold`.
 - New decision → new `docs/adr/ADR-000N-<slug>.md` (same format as existing ones).
-- Keep `docs/DESIGN.md` and `docs/CONVENTIONS.md` in sync with the CLI's behaviour.
+- Keep `docs/DESIGN.md` and `docs/CONVENTIONS.md` in sync with the CLI's behavior.
+- Update the canonical document and its affected consumers in the same task; use the new-file
+  and evidence rules in `docs/DOCUMENTATION-RULES.md`. Preserve unrelated work and do not commit
+  when the user requested uncommitted review.
+- Go toolchain (product pivot): `export PATH=$HOME/.cache/guidefold/toolchain/go/bin:$PATH`, then
+  `cd services/search && go vet ./... && go test ./...`. `go test -race ./...` and the database
+  tests use a local Postgres via `internal/testdb`, not a shared server — no separate service to
+  start by hand. `tools/dev/pg.py` and `tools/dev/stack.py` run the same stack for manual checks.
+  Route pytest output for the pivot suites through `rtk proxy` when the default hook garbles it
+  (e.g. `rtk proxy python3 -m pytest tests/ -q`).
+- Pivot implementation status vs. P01–P15: `docs/PIVOT-IMPLEMENTATION.md`.
 
 ## Evaluation corpora (rule since 2026-09-05)
 
@@ -68,9 +99,9 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 - Skill `description` starts with `[<node/path>]`; root uses `[<publisher>]` (the `publisher`
   value from `guidefold.yaml`) — never a hard-coded organisation name.
 
-## Relevant installed skills (global, `~/.agents/skills`)
+## Earlier skill references
 
-Invoke via the Skill tool when the task matches. Reinstall with `npx skills add <repo> --skill <name> -g -y`.
+Use skills actually available in the current session. This table records earlier references, not a guarantee that those global skills are installed; project workflows are linked above.
 
 | Skill | Repo | Use for |
 |-------|------|---------|
@@ -85,4 +116,4 @@ Invoke via the Skill tool when the task matches. Reinstall with `npx skills add 
 | `mermaid-diagrams` | softaworks/agent-toolkit | diagrams in `docs/DESIGN.md` |
 | `mcp-builder` | anthropics/skills | Phase 2+ MCP server, if the registry never exposes skill tools |
 
-Already installed from before and also relevant: `superpowers:*` (brainstorming, tdd, writing-plans), `tdd`, `codebase-design`, `writing-great-skills`, `setup-pre-commit`.
+Other earlier references: `superpowers:*` (brainstorming, tdd, writing-plans), `tdd`, `codebase-design`, `writing-great-skills`, `setup-pre-commit`.

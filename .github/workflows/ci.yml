@@ -101,10 +101,25 @@ jobs:
           python tools/search_service/bm25f_fixtures.py
           python tools/search_service/telemetry_fixtures.py
           git diff --exit-code -- services/search/testdata/policy.json services/search/testdata/bm25f.json services/search/testdata/telemetry.json services/search/telemetry-schema.json
+      # Every test that proves the three technical gates (per-request identity,
+      # the 1.2 package contract, trusted publication) needs a real PostgreSQL:
+      # internal/testdb boots a throwaway cluster from these binaries. Without
+      # them the whole database-backed suite skips and `go test` still exits 0,
+      # so a green pipeline would prove nothing. GUIDEFOLD_REQUIRE_PG=1 below
+      # turns that absence into a failure.
+      - name: Install the PostgreSQL binaries the database-backed Go suite boots
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          test -x "$bin/initdb" && test -x "$bin/postgres"
+          echo "GUIDEFOLD_PG_BIN=$bin" >> "$GITHUB_ENV"
       - name: Go race tests and vet
         working-directory: services/search
+        env:
+          GUIDEFOLD_REQUIRE_PG: "1"
         run: |
-          test -z "$(gofmt -l *.go)"
+          test -z "$(gofmt -l .)"
           go test -race ./...
           go vet ./...
 
@@ -112,6 +127,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSE_PROJECT_NAME: guidefold-graph-ci
+      # compose.yaml defaults GUIDEFOLD_AUTH to workos, which refuses to start
+      # without WorkOS credentials. This throwaway stack has none, so it names
+      # the development provider deliberately -- the choice is here, in the job
+      # that makes it, not in the file every deployment copies.
+      GUIDEFOLD_AUTH: dev
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -162,6 +182,10 @@ jobs:
   telemetry-service:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Same reason as compose-service: a throwaway stack names the development
+      # provider explicitly rather than inheriting it from a default.
+      GUIDEFOLD_AUTH: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

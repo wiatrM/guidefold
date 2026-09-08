@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+#
+# Worker image for `guidefold-search worker` (API-CONTRACT §8, PIVOT-ARCHITECTURE "Co
+# wdrażamy", module-boundaries-go). `import.parse` runs the repository's own trusted
+# tools/worker/build_tree.py over a materialised tree, which imports the CLI's own
+# frontmatter/graph/BM25F code (`load_map`/`Index.build`/`with_router_index`) so the
+# catalog can never disagree with the ranker about what a SKILL.md says. That needs a
+# real Python 3 interpreter and PyYAML; the API image (services/search/Dockerfile) stays
+# Python-free on purpose, so a compromised/odd import cannot reach an interpreter through
+# the request-serving process. The worker never executes anything from an imported
+# repository (security-baseline): only this image's own copies of build_tree.py and the
+# CLI ever run.
+#
+# Build stage: byte-identical to services/search/Dockerfile's build stage (same base
+# image, same module, same commit), so the API and worker run the exact same Go binary.
+FROM golang:1.26-bookworm@sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81 AS build
+WORKDIR /src
+COPY services/search/go.mod services/search/go.sum ./
+RUN go mod download
+COPY services/search/ ./
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/guidefold-search .
+
+# Runtime stage: pinned python:3.12-slim-bookworm (Debian, matches the build stage's
+# bookworm base) plus exactly the PyYAML the CLI needs (CLAUDE.md: CLI is "stdlib +
+# PyYAML only"). No other interpreter package is installed; there is no shell use here
+# beyond what pip needs at build time, and nothing runs an interactive shell at runtime.
+FROM python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254
+RUN pip install --no-cache-dir --root-user-action=ignore "PyYAML==6.0.3"
+
+WORKDIR /app
+COPY --from=build /out/guidefold-search /app/guidefold-search
+
+# Mirror the repo layout under /app/repo so build_tree.py's own `tools.*` imports
+# resolve exactly as they do in this repository, with nothing else from the tree
+# present. This is the complete, checked transitive import set of
+# tools/worker/build_tree.py: tools/serve_spike/repository.py (imports
+# tools/serve_spike/context.py) and tools/search_service/index.py (imports
+# tools/serve_spike/repository.py again); tools/serve_spike/server.py is imported
+# by build_tree.py's own main() for load_cli_snapshot. No other file under tools/
+# or private/, experiment/, .guidefold/, research/ is ever copied into this image.
+COPY skills/guidefold/scripts/guidefold /app/repo/skills/guidefold/scripts/guidefold
+COPY tools/worker/build_tree.py        /app/repo/tools/worker/build_tree.py
+COPY tools/serve_spike/repository.py   /app/repo/tools/serve_spike/repository.py
+COPY tools/serve_spike/context.py      /app/repo/tools/serve_spike/context.py
+COPY tools/serve_spike/server.py       /app/repo/tools/serve_spike/server.py
+COPY tools/search_service/index.py     /app/repo/tools/search_service/index.py
+
+ENV GUIDEFOLD_REPO_ROOT=/app/repo \
+    GUIDEFOLD_BUILD_TREE=tools/worker/build_tree.py \
+    GUIDEFOLD_PYTHON=python3 \
+    GUIDEFOLD_POLICY_SOURCE=/app/repo/skills/guidefold/scripts/guidefold \
+    GUIDEFOLD_WORKER_DIR=/work \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Same non-root UID/GID the API image's distroless "nonroot" user carries, so both
+# images work under the same Kubernetes/Compose securityContext (runAsUser: 65532).
+# /work is where the worker materialises import trees (never /tmp); it is always a
+# mounted tmpfs/emptyDir, never a writable layer on the image itself.
+RUN mkdir -p /work && chown 65532:65532 /work
+USER 65532:65532
+ENTRYPOINT ["/app/guidefold-search", "worker"]

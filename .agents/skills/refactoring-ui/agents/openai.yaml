@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactoring UI"
+  short_description: "Polish hierarchy, spacing, color, and depth"
+  default_prompt: "Use $refactoring-ui to audit this interface, define a coherent visual system, and fix the highest-impact design problems."

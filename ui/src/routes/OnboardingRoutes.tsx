@@ -1,0 +1,658 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, GoogleLogo, Key, LinkSimple, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
+import { ActionButton, DataTable, Field, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
+import { isStale, type ApiError } from '../api/client';
+import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, unknown, useAsync, type ApiProps } from './apiState';
+import { proposalKinds } from '../api/decoders';
+import type { AuditEntry, Job, ImportStatus, Installation, Member, Org, ProposalKind, ProposalLimits, Repo } from '../api/decoders';
+import styles from './OnboardingRoutes.module.css';
+
+type ImportStep = 'login' | 'organization' | 'preview' | 'result';
+
+function CommandBlock({ commands }: { commands: string }) {
+  const [status, setStatus] = useState('');
+  const codeRef = useRef<HTMLElement>(null);
+  async function copyCommands() {
+    try {
+      await navigator.clipboard.writeText(commands);
+      setStatus('Copied text only. No command was executed.');
+    } catch {
+      const buffer = document.createElement('textarea');
+      buffer.className = styles.clipboardBuffer;
+      buffer.value = commands;
+      buffer.setAttribute('aria-hidden', 'true');
+      buffer.tabIndex = -1;
+      document.body.append(buffer);
+      buffer.select();
+      let copied = false;
+      try { copied = document.execCommand('copy'); } catch { /* Use the visible selection below. */ }
+      buffer.remove();
+      if (copied) setStatus('Copied text only. No command was executed.');
+      else {
+        const range = document.createRange();
+        if (codeRef.current) {
+          range.selectNodeContents(codeRef.current);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+        setStatus('Clipboard is unavailable. Command text is selected; use your browser Copy action.');
+      }
+    }
+  }
+  return <div className={styles.stack}>
+    <pre className={styles.command}><code ref={codeRef}>{commands}</code></pre>
+    <ActionButton onClick={copyCommands}><Copy weight="regular" aria-hidden="true" />Copy proposed commands</ActionButton>
+    <p className={styles.feedback} role="status">{status}</p>
+  </div>;
+}
+
+// ---------------------------------------------------------------------------
+// Hosted API routes (F11, F12, F19).
+// ---------------------------------------------------------------------------
+
+const terminalImportStates = ['ready', 'partial', 'failed', 'cancelled'];
+/** `proposal.generate` job states that stop the generation panel's own poll (contract §6). */
+const terminalJobStates = ['done', 'failed', 'skipped', 'cancelled'];
+const apiSteps: { id: ImportStep; label: string; detail: string }[] = [
+  { id: 'login', label: 'Sign in', detail: 'Identity provider' },
+  { id: 'organization', label: 'Organization', detail: 'Choose or create one' },
+  { id: 'preview', label: 'Repository', detail: 'Pick what the CLI uploads' },
+  { id: 'result', label: 'Import status', detail: 'Files, jobs and publication' },
+];
+/** Values the API returns once and never again. Kept in component state, never persisted. */
+function ShownOnce({ title, label, value, note }: { title: string; label: string; value: string; note: string }) {
+  const [status, setStatus] = useState('');
+  return <Panel title={title} eyebrow="Shown once" icon={<Key weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Not stored</StateBadge>}>
+    <p>{note}</p>
+    <div className={styles.stack}>
+      <pre className={styles.command}><code aria-label={label}>{value}</code></pre>
+      <ActionButton onClick={async () => {
+        try { await navigator.clipboard.writeText(value); setStatus('Copied. This value is not shown again after you leave this view.'); }
+        catch { setStatus('Clipboard is unavailable. Select the text above and use your browser Copy action.'); }
+      }}><Copy weight="regular" aria-hidden="true" />Copy value</ActionButton>
+      <p className={styles.feedback} role="status">{status}</p>
+    </div>
+  </Panel>;
+}
+
+function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
+  const { source, org, repo } = ctx;
+  const [status, setStatus] = useState<ImportStatus | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!org || !repo) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const poll = async () => {
+      try {
+        const next = await source.getImport({ org, repo }, importId);
+        if (!live) return;
+        setStatus(next);
+        setError(null);
+        // Polling stops on a terminal state and on unmount; the same import_id is kept.
+        if (!terminalImportStates.includes(next.state)) timer = setTimeout(() => { void poll(); }, 2000);
+      } catch (failure) {
+        if (!live || isStale(failure)) return;
+        setError(asApiError(failure));
+      }
+    };
+    void poll();
+    return () => { live = false; if (timer) clearTimeout(timer); };
+  }, [source, org, repo, importId, attempt]);
+
+  if (!status && error) return <ApiFailure error={error} onRetry={() => setAttempt(current => current + 1)} retryLabel="Retry this import status" />;
+  if (!status) return <RouteState state="loading" title="Reading import status" description="Waiting for the first status of this import." />;
+  const counts = status.counts;
+  const files = status.files;
+  const group = (state: string) => files.filter(file => file.status === state);
+  const failedJobs = status.jobs.filter(item => item.state === 'failed');
+  const publication = status.publication;
+  const degraded = Boolean(error) || failedJobs.length > 0 || publication?.state === 'failed';
+  return <>
+    {status.state === 'partial' && <div className={styles.notice} role="status"><StateBadge tone="warning">Partial</StateBadge><p>{group('accepted').length} of {files.length} files were accepted. Omitted and failed paths are listed below; completeness is not established.</p></div>}
+    {/* §5.2: the API cuts the file list. The counts above still cover the whole import, so the
+        two numbers differ on purpose and the shorter one is named as incomplete. */}
+    {status.files_truncated && <PartialNotice>{'The API returned a shortened file list: ' + files.length + ' of ' + (counts?.files ?? files.length) + ' files are shown below. The counts above cover the whole import; the lists do not.'}</PartialNotice>}
+    {degraded && <div className={styles.notice} role="status"><StateBadge tone="warning">Degraded</StateBadge><p>{error ? 'Showing the last status read at ' + unknown(status.updated_at) + '. The status could not be refreshed.' : 'Import files were read, but ' + (failedJobs.length ? failedJobs.length + ' job(s) failed.' : 'the publication step failed.')}</p></div>}
+    <MetricRow items={[
+      { label: 'Accepted', value: String(counts?.accepted ?? group('accepted').length), detail: 'Files stored for this import' },
+      { label: 'Omitted', value: String(counts?.omitted ?? group('omitted').length), detail: 'Excluded by scan rules' },
+      { label: 'Failed', value: String(counts?.failed ?? group('failed').length), detail: 'Parse errors, listed with a reason' },
+    ]} />
+    <Panel title="Import result" eyebrow="Files" icon={<FileCode weight="regular" aria-hidden="true" />} action={<StateBadge tone={status.state === 'failed' ? 'error' : status.state === 'partial' ? 'warning' : 'system'}>{status.state}</StateBadge>}>
+      <ProvenanceTrail entries={[
+        { label: 'Import', value: <Urn value={status.import_id} /> },
+        { label: 'Manifest digest', value: unknown(status.manifest_digest), code: true },
+        { label: 'Commit', value: unknown(status.commit), code: true },
+        { label: 'Manifest completeness', value: status.complete ? 'Complete scan' : 'Partial scan', detail: 'A partial scan never produces deletions.' },
+      ]} />
+      {(['accepted', 'omitted', 'failed'] as const).map(state => <details key={state} className={styles.disclosure}>
+        <summary>{state[0].toUpperCase() + state.slice(1)} files ({group(state).length})</summary>
+        {group(state).length === 0 ? <p className={styles.help}>No files in this group.</p> : <DataTable caption={'Files with status ' + state} headings={['Source path', 'Kind', 'Reason']}>
+          {group(state).map(file => <tr key={file.path}><td className={styles.pathCell}><code>{file.path}</code></td><td>{unknown(file.kind)}</td><td>{unknown(file.reason)}</td></tr>)}
+        </DataTable>}
+      </details>)}
+    </Panel>
+    <Panel title="Jobs" eyebrow="Worker" icon={<Terminal weight="regular" aria-hidden="true" />}>
+      {status.jobs.length === 0 ? <p className={styles.help}>No jobs are recorded for this import.</p> : <DataTable caption="Jobs for this import" headings={['Job', 'Kind', 'State', 'Attempts', 'Error']}>
+        {status.jobs.map(item => <tr key={item.job_id}><th scope="row" className={styles.pathCell}><code>{item.job_id}</code></th><td>{item.kind}</td><td><StateBadge tone={item.state === 'failed' ? 'error' : item.state === 'done' ? 'system' : 'neutral'}>{item.state}</StateBadge></td><td>{item.attempts}</td><td>{unknown(item.error)}</td></tr>)}
+      </DataTable>}
+    </Panel>
+    <Panel title="Publication" eyebrow="Separate from import" icon={<CheckCircle weight="regular" aria-hidden="true" />} action={<StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>}>
+      <ProvenanceTrail entries={[
+        { label: 'Publication state', value: publication?.state ?? 'none', detail: 'Import stores files; publication activates a snapshot.' },
+        { label: 'Snapshot', value: unknown(publication?.snapshot_id), code: true },
+        { label: 'Error', value: unknown(publication?.error) },
+      ]} />
+    </Panel>
+    <ProposalGenerationPanel ctx={ctx} importId={importId} />
+  </>;
+}
+
+/** `ImportPlan.groups_skipped` counts, per kind, the scopes `max_groups` cut from the plan (§5.2). */
+const skippedGroups = (skipped: Record<string, number>): number =>
+  Object.values(skipped).reduce((total, count) => total + count, 0);
+const describeSkipped = (skipped: Record<string, number>): string =>
+  Object.entries(skipped).filter(([, count]) => count > 0).map(([kind, count]) => count + ' ' + kind).join(', ');
+
+/**
+ * Read-before-start proposal generation (contract §4.2). `GET …/plan` is owner-only, so a member
+ * sees the existing owner notice instead of an attempted read; `POST …/proposals:generate` opens
+ * one `proposal.generate` job per requested kind, then this panel polls just those jobs by id
+ * (the shared import poll above already stopped once the import itself reached a terminal state).
+ */
+function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: string }) {
+  const { source, org, repo, role } = ctx;
+  const owner = role === 'owner';
+  const [kinds, setKinds] = useState<ProposalKind[]>([...proposalKinds]);
+  const [limitInputs, setLimitInputs] = useState({ max_tokens: '', max_calls: '', max_usd: '' });
+  const [limitError, setLimitError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [jobIds, setJobIds] = useState<string[] | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const kindsKey = proposalKinds.filter(kind => kinds.includes(kind)).join(',');
+  const plan = useAsync(
+    () => source.getImportPlan({ org: org ?? '', repo: repo ?? '' }, importId, kinds),
+    'import-plan:' + org + '/' + repo + '/' + importId + ':' + kindsKey,
+    owner && Boolean(org && repo) && kinds.length > 0,
+  );
+
+  useEffect(() => {
+    if (!jobIds || !org || !repo) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const poll = async () => {
+      try {
+        const status = await source.getImport({ org, repo }, importId);
+        if (!live) return;
+        const matched = status.jobs.filter(item => jobIds.includes(item.job_id));
+        setJobs(matched);
+        const complete = matched.length === jobIds.length && matched.every(item => terminalJobStates.includes(item.state));
+        if (!complete) timer = setTimeout(() => { void poll(); }, 2000);
+      } catch (failure) {
+        if (!live || isStale(failure)) return;
+      }
+    };
+    void poll();
+    return () => { live = false; if (timer) clearTimeout(timer); };
+  }, [jobIds, source, org, repo, importId]);
+
+  function toggleKind(kind: ProposalKind) {
+    if (busy || jobIds) return;
+    setKinds(current => current.includes(kind) ? current.filter(item => item !== kind) : [...current, kind]);
+  }
+  function updateLimit(key: 'max_tokens' | 'max_calls' | 'max_usd', raw: string) {
+    setLimitInputs(current => ({ ...current, [key]: raw }));
+    setLimitError('');
+  }
+  async function generate() {
+    if (!org || !repo || busy || jobIds || kinds.length === 0) return;
+    const labels: Record<'max_tokens' | 'max_calls' | 'max_usd', string> = { max_tokens: 'Max tokens', max_calls: 'Max model calls', max_usd: 'Max spend' };
+    const limits: Partial<ProposalLimits> = {};
+    for (const key of ['max_tokens', 'max_calls', 'max_usd'] as const) {
+      const raw = limitInputs[key].trim();
+      if (!raw) continue;
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < 0) { setLimitError(labels[key] + ' must be a non-negative number.'); return; }
+      const ceiling = plan.value?.limits[key];
+      if (ceiling != null && value > ceiling) { setLimitError(labels[key] + ' cannot exceed the plan estimate of ' + ceiling + '.'); return; }
+      limits[key] = value;
+    }
+    setLimitError('');
+    setFormError('');
+    setBusy(true);
+    try {
+      const result = await source.generateProposals(
+        { org, repo }, importId, { kinds, limits },
+        'generate-proposals:' + org + ':' + repo + ':' + importId + ':' + kindsKey + ':' + JSON.stringify(limits),
+      );
+      setJobIds(result.job_ids);
+      setJobs([]);
+    } catch (error) { setFormError('Generation was not started (' + asApiError(error).code + '). No job was queued and nothing was spent.'); }
+    finally { setBusy(false); }
+  }
+
+  if (!owner) return <Panel title="Generate proposals" eyebrow="Owner" icon={<Sparkle weight="regular" aria-hidden="true" />}>
+    <OwnerNote role={role} />
+  </Panel>;
+
+  return <Panel title="Generate proposals" eyebrow="Optional" icon={<Sparkle weight="regular" aria-hidden="true" />} action={jobIds ? <StateBadge tone="system">Started</StateBadge> : undefined}>
+    <p>Read the estimate before starting. Generation runs as a background job; nothing in Proposals changes until it finishes.</p>
+    {plan.phase === 'loading' && <RouteState state="loading" title="Reading the plan" description="Estimating groups, inputs and cost before any generation starts." />}
+    {plan.phase === 'error' && plan.error && <ApiFailure error={plan.error} onRetry={plan.reload} retryLabel="Retry the plan" />}
+    {plan.phase === 'ready' && plan.value && <>
+      <MetricRow items={[
+        { label: 'Groups', value: String(plan.value.groups.length), detail: 'Inputs the next run would cover' },
+        { label: 'Estimated max cost', value: '$' + plan.value.estimated_usd_max.toFixed(2), detail: 'Upper bound, not a charge' },
+        { label: 'Generator', value: plan.value.generator.name, detail: plan.value.generator.configured ? 'Configured' : 'Not configured' },
+      ]} />
+      {!plan.value.generator.configured && <div className={styles.notice} role="status"><StateBadge tone="warning">No generator configured</StateBadge><p>This API has no LLM generator configured. Generation jobs finish as skipped, not failed; this is expected until an operator configures one.</p></div>}
+      {/* `max_groups` cuts scopes out of the plan; the list below is then not every scope. */}
+      {skippedGroups(plan.value.groups_skipped) > 0 && <PartialNotice>{'The plan limit of ' + plan.value.limits.max_groups + ' groups left out ' + skippedGroups(plan.value.groups_skipped) + ' scope(s): ' + describeSkipped(plan.value.groups_skipped) + '. The list below is not every scope of this import, and a run now covers only what it shows.'}</PartialNotice>}
+      <details className={styles.disclosure}>
+        <summary>Groups and inputs ({plan.value.groups.length})</summary>
+        {plan.value.groups.length === 0 ? <p className={styles.help}>No groups are available for the selected kinds.</p> : <DataTable caption="Plan groups" headings={['Group', 'Kind', 'Inputs', 'Estimated tokens']}>
+          {plan.value.groups.map(group => <tr key={group.group_id}><th scope="row"><code>{group.group_id}</code></th><td>{group.kind}</td><td className={styles.pathCell}>{formatList(group.inputs)}</td><td>{group.estimated_tokens ?? 'Unknown'}</td></tr>)}
+        </DataTable>}
+      </details>
+      <fieldset className={styles.providers} disabled={busy || Boolean(jobIds)}>
+        <legend>Proposal kinds</legend>
+        {proposalKinds.map(kind => <label key={kind} className={styles.provider}>
+          <input type="checkbox" checked={kinds.includes(kind)} onChange={() => toggleKind(kind)} />
+          <span>{kind}</span>
+        </label>)}
+      </fieldset>
+      {kinds.length === 0 && <p className={styles.help}>Select at least one proposal kind.</p>}
+      <p className={styles.help}>Fixed by the API: at most {plan.value.limits.max_groups} groups, {plan.value.limits.max_proposals_per_group} proposals per group, {plan.value.limits.max_neighbours} neighbours.</p>
+      <div className={styles.twoColumns}>
+        <Field id="limit-max-tokens" label="Max tokens" hint={plan.value.limits.max_tokens != null ? 'Plan allows up to ' + plan.value.limits.max_tokens + '.' : 'No ceiling from the plan.'}>
+          <input id="limit-max-tokens" inputMode="numeric" value={limitInputs.max_tokens} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_tokens', event.target.value)} />
+        </Field>
+        <Field id="limit-max-calls" label="Max model calls" hint={plan.value.limits.max_calls != null ? 'Plan allows up to ' + plan.value.limits.max_calls + '.' : 'No ceiling from the plan.'}>
+          <input id="limit-max-calls" inputMode="numeric" value={limitInputs.max_calls} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_calls', event.target.value)} />
+        </Field>
+        <Field id="limit-max-usd" label="Max spend (USD)" hint={plan.value.limits.max_usd != null ? 'Plan allows up to ' + plan.value.limits.max_usd + '.' : 'No ceiling from the plan.'}>
+          <input id="limit-max-usd" inputMode="decimal" value={limitInputs.max_usd} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_usd', event.target.value)} />
+        </Field>
+      </div>
+      {limitError && <p className={styles.feedback} role="alert">{limitError}</p>}
+      {formError && <p className={styles.feedback} role="alert">{formError}</p>}
+      <ActionButton tone="human" disabled={busy || kinds.length === 0 || Boolean(jobIds)} onClick={() => { void generate(); }}>
+        {jobIds ? 'Generation started' : 'Generate proposals'}
+      </ActionButton>
+    </>}
+    {jobIds && <DataTable caption="Generation jobs" headings={['Job', 'State', 'Error']}>
+      {jobIds.map(id => {
+        const job = jobs.find(item => item.job_id === id);
+        const state = job?.state ?? 'queued';
+        return <tr key={id}>
+          <th scope="row"><code>{id}</code></th>
+          <td><StateBadge tone={state === 'failed' ? 'error' : state === 'skipped' ? 'warning' : state === 'done' ? 'system' : 'neutral'}>{state}</StateBadge></td>
+          <td>{unknown(job?.error)}</td>
+        </tr>;
+      })}
+    </DataTable>}
+    {jobs.some(item => item.state === 'skipped' && item.error === 'llm_not_configured') && <div className={styles.notice} role="status"><StateBadge tone="warning">Skipped</StateBadge><p>No generator is configured on this API. This is not a failure: existing skills stay usable, and generation can run again once a generator is configured.</p></div>}
+    {jobIds && jobs.length === jobIds.length && jobs.every(item => terminalJobStates.includes(item.state)) && <p className={styles.help}>Generation finished. Open <Link to={ctx.href('proposals', {})}>Proposals</Link> to review the result.</p>}
+  </Panel>;
+}
+
+export function ApiImportRoute({ ctx }: ApiProps) {
+  const { source, me, org, repo, role } = ctx;
+  const signedIn = Boolean(me);
+  const owner = role === 'owner';
+  const requested = ctx.params.get('step');
+  const fallbackStep: ImportStep = !signedIn ? 'login' : !org ? 'organization' : !repo ? 'preview' : 'result';
+  const step = apiSteps.some(item => item.id === requested) ? requested as ImportStep : fallbackStep;
+  const current = apiSteps.findIndex(item => item.id === step);
+  const providers = useAsync(() => source.getAuthProviders(), 'providers', step === 'login');
+  const orgs = useAsync(() => source.listOrgs(), 'orgs:' + (me?.user.id ?? ''), signedIn && step === 'organization');
+  const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'result'));
+  const imports = useAsync(() => source.listImports({ org: org ?? '', repo: repo ?? '' }), 'imports:' + org + '/' + repo, Boolean(org && repo) && step === 'result');
+  const [orgName, setOrgName] = useState('');
+  const [orgSlug, setOrgSlug] = useState('');
+  const [repoId, setRepoId] = useState('');
+  const [gitUrl, setGitUrl] = useState('');
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const importId = ctx.params.get('import_id') ?? imports.value?.[0]?.import_id ?? null;
+  const commands = 'guidefold login\nguidefold org use ' + (org ?? '<organization>') + '\nguidefold scan . --dry-run\nguidefold import .';
+
+  async function signIn(provider: string) {
+    try {
+      const redirect = await source.startLogin(provider, '/import?step=organization');
+      if (redirect.loginUrl) window.location.assign(redirect.loginUrl);
+    } catch (error) { setFormError('Sign-in could not start (' + asApiError(error).code + '). You are not signed in and nothing was sent to the provider.'); }
+  }
+  async function createOrg(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const slug = orgSlug.trim();
+    if (!/^[a-z0-9-]{2,40}$/.test(slug)) { setFormError('The slug must be 2 to 40 characters of a-z, 0-9 or hyphen.'); return; }
+    setBusy(true);
+    try {
+      const created: Org = await source.createOrg({ name: orgName.trim() || slug, slug }, 'create-org:' + slug);
+      setFormError('');
+      // Membership is derived from the access controller's cached /me, not this response;
+      // without a forced re-check the very next screen reads "Organization unavailable" for
+      // up to ~25 s (the normal cadence) even though creation just succeeded.
+      await ctx.recheckAccess?.();
+      ctx.go('import', { org: created.slug, step: 'preview' });
+    } catch (error) { setFormError('The organization was not created (' + asApiError(error).code + '). Nothing was saved; the name and slug above are kept.'); }
+    finally { setBusy(false); }
+  }
+  async function createRepo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !org) return;
+    const id = repoId.trim();
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(id)) { setFormError('The repository id may use letters, digits, dot, underscore and hyphen, up to 64 characters.'); return; }
+    setBusy(true);
+    try {
+      const created: Repo = await source.createRepo(org, { repo_id: id, git_host_url: gitUrl.trim() || null }, 'create-repo:' + org + ':' + id);
+      setFormError('');
+      ctx.go('import', { repo: created.repo_id, step: 'result' });
+    } catch (error) { setFormError('The repository was not registered (' + asApiError(error).code + '). Nothing was saved and no import was started.'); }
+    finally { setBusy(false); }
+  }
+
+  return <div className={styles.route}>
+    <ol className={styles.steps} aria-label="Import progress">
+      {apiSteps.map((item, index) => <li key={item.id} className={index === current ? styles.currentStep : undefined} aria-current={index === current ? 'step' : undefined}>
+        <span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+        <div><strong>{item.label}</strong><span>{item.detail}</span></div>
+      </li>)}
+    </ol>
+    {signedIn && <OwnerNote role={role} />}
+    {formError && <p className={styles.feedback} role="alert">{formError}</p>}
+
+    {step === 'login' && <Panel title="Sign in" eyebrow="01 / Identity" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+      {providers.phase === 'loading' && <RouteState state="loading" title="Reading providers" description="Asking the API which identity providers are configured." />}
+      {providers.phase === 'error' && providers.error && <ApiFailure error={providers.error} onRetry={providers.reload} retryLabel="Retry the provider list" />}
+      {providers.phase === 'ready' && (providers.value?.providers.length
+        ? <><p>Sign in with an account you already use. No repository scopes are requested.</p>
+          <div className={styles.providers}>{providers.value.providers.map(provider => <ActionButton key={provider.id} tone="human" onClick={() => { void signIn(provider.id); }}>
+            {provider.id === 'github' ? <GithubLogo weight="regular" aria-hidden="true" /> : <GoogleLogo weight="regular" aria-hidden="true" />}Continue with {provider.label}
+          </ActionButton>)}</div></>
+        : <p className={styles.help}>No identity provider is configured on this API.</p>)}
+    </Panel>}
+
+    {step === 'organization' && <div className={styles.asideColumns}>
+      <Panel title="Your organizations" eyebrow="02 / Organization" icon={<Buildings weight="regular" aria-hidden="true" />}>
+        {orgs.phase === 'loading' && <RouteState state="loading" title="Reading organizations" description="Waiting for the membership list." />}
+        {orgs.phase === 'error' && orgs.error && <ApiFailure error={orgs.error} onRetry={orgs.reload} retryLabel="Retry the organization list" />}
+        {orgs.phase === 'ready' && (orgs.value?.length
+          ? <DataTable caption="Organizations you belong to" headings={['Organization', 'Role', 'Action']}>
+            {orgs.value.map(entry => <tr key={entry.org_id}><th scope="row">{entry.name}<span className={styles.linkHint}>{entry.slug}</span></th><td><StateBadge tone={entry.my_role === 'owner' ? 'human' : 'neutral'}>{entry.my_role ?? 'member'}</StateBadge></td><td><Link to={ctx.href('import', { org: entry.slug, repo: null, step: 'preview' })}>Use this organization</Link></td></tr>)}
+          </DataTable>
+          : <RouteState state="empty" title="No organization yet" description="Create one to hold a repository, its skills and its members." />)}
+      </Panel>
+      <Panel title="Create an organization" eyebrow="Owner" icon={<Buildings weight="regular" aria-hidden="true" />}>
+        <form className={styles.form} onSubmit={createOrg}>
+          <Field id="new-org-name" label="Organization name" hint="Shown in the header and in member invitations."><input id="new-org-name" name="name" value={orgName} onChange={event => setOrgName(event.target.value)} maxLength={80} /></Field>
+          <Field id="new-org-slug" label="Slug" hint="2 to 40 characters: a-z, 0-9 and hyphen."><input id="new-org-slug" name="slug" value={orgSlug} onChange={event => { setOrgSlug(event.target.value); setFormError(''); }} required maxLength={40} /></Field>
+          <ActionButton type="submit" tone="human" disabled={busy}>Create organization<ArrowRight weight="regular" aria-hidden="true" /></ActionButton>
+        </form>
+      </Panel>
+    </div>}
+
+    {step === 'preview' && <div className={styles.asideColumns}>
+      <Panel title="Repositories" eyebrow="03 / Repository" icon={<FileCode weight="regular" aria-hidden="true" />}>
+        {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
+        {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
+        {repos.phase === 'ready' && (repos.value?.length
+          ? <DataTable caption="Repositories in this organization" headings={['Repository', 'Git host', 'Action']}>
+            {repos.value.map(entry => <tr key={entry.repo_id}><th scope="row"><code>{entry.repo_id}</code></th><td className={styles.pathCell}>{unknown(entry.git_host_url)}</td><td><Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link></td></tr>)}
+          </DataTable>
+          : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={<ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogo weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>} />)}
+        {owner && <div className={styles.notice} role="note">
+          <StateBadge tone="system">Automatic import</StateBadge>
+          <p>Repository registration is handled by GitHub. Select a repository and revision after connecting; no repository id or local CLI upload is required.</p>
+          <ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogo weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
+        </div>}
+      </Panel>
+      <Panel title="Upload from your checkout" eyebrow="CLI" icon={<Terminal weight="regular" aria-hidden="true" />}>
+        <p>The browser never reads your repository. The CLI builds the manifest and uploads it for <strong>{org ?? 'your organization'}</strong>.</p>
+        <CommandBlock commands={commands} />
+      </Panel>
+    </div>}
+
+    {step === 'result' && (!repo
+      ? <RouteState state="empty" title="No repository selected" description="Choose a repository before reading an import status." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system">Choose a repository</ActionButton>} />
+      : <>
+        {imports.phase === 'loading' && <RouteState state="loading" title="Reading imports" description="Waiting for the import list of this repository." />}
+        {imports.phase === 'error' && imports.error && <ApiFailure error={imports.error} onRetry={imports.reload} retryLabel="Retry the import list" />}
+        {imports.phase === 'ready' && (imports.value?.length
+          ? <Panel title="Imports" eyebrow="Newest first" icon={<FileCode weight="regular" aria-hidden="true" />}>
+            <DataTable caption="Imports for this repository" headings={['Import', 'State', 'Commit', 'Action']}>
+              {imports.value.map(entry => <tr key={entry.import_id}><th scope="row"><code>{entry.import_id}</code></th><td><StateBadge tone={entry.state === 'failed' ? 'error' : entry.state === 'partial' ? 'warning' : 'neutral'}>{entry.state}</StateBadge></td><td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td><td><Link to={ctx.href('import', { step: 'result', import_id: entry.import_id })}>Read this import</Link></td></tr>)}
+            </DataTable>
+          </Panel>
+          : <RouteState state="empty" title="No import yet" description="Run the CLI from your checkout; this view then reports accepted, omitted and failed files." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system">Show the CLI commands</ActionButton>} />)}
+        {importId && <ImportStatusView ctx={ctx} importId={importId} />}
+      </>)}
+  </div>;
+}
+
+export function ApiOrganizationRoute({ ctx }: ApiProps) {
+  const { source, org, role, me } = ctx;
+  const owner = role === 'owner';
+  const tabParam = ctx.params.get('tab');
+  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : 'members';
+  const deviceCode = ctx.params.get('device');
+  const auditCursor = ctx.params.get('cursor');
+  const members = useAsync(() => source.listMembers(org ?? ''), 'members:' + org, Boolean(org) && tab === 'members');
+  const installations = useAsync(() => source.listInstallations(org ?? ''), 'installations:' + org, Boolean(org) && tab === 'integrations');
+  const audit = useAsync(
+    () => source.getAudit(org ?? '', auditCursor ?? undefined),
+    'audit:' + org + ':' + (auditCursor ?? ''),
+    owner && Boolean(org) && tab === 'audit',
+  );
+  const [linkStatus, setLinkStatus] = useState('');
+  const [email, setEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'owner' | 'member'>('member');
+  const [inviteError, setInviteError] = useState('');
+  const [acceptUrl, setAcceptUrl] = useState('');
+  const [rowError, setRowError] = useState<{ userId: string; message: string } | null>(null);
+  const [memberStatus, setMemberStatus] = useState('');
+  const [installationName, setInstallationName] = useState('');
+  const [harness, setHarness] = useState('claude');
+  const [secret, setSecret] = useState('');
+  const [integrationStatus, setIntegrationStatus] = useState('');
+  const [deviceStatus, setDeviceStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function invite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || busy) return;
+    const value = email.trim();
+    if (!value.includes('@')) { setInviteError('Enter the e-mail address the invitation is sent to.'); return; }
+    setBusy(true);
+    try {
+      const invitation = await source.inviteMember(org, { email: value, role: inviteRole }, 'invite:' + org + ':' + value + ':' + inviteRole);
+      setAcceptUrl(invitation.accept_url);
+      setEmail('');
+      setInviteError('');
+      setMemberStatus('Invitation created for ' + value + '. The link below is shown once.');
+      members.reload();
+    } catch (error) { setInviteError('The invitation was not created (' + asApiError(error).code + '). Nobody was invited and the address above is kept.'); }
+    finally { setBusy(false); }
+  }
+  async function changeRole(target: Member, next: 'owner' | 'member') {
+    if (!org || next === target.role) return;
+    setRowError(null);
+    try {
+      await source.changeMemberRole(org, target.user_id, next, 'role:' + org + ':' + target.user_id + ':' + next);
+      setMemberStatus(target.email + ' is now ' + next + '.');
+      members.reload();
+    } catch (error) {
+      const failure = asApiError(error);
+      setRowError({
+        userId: target.user_id,
+        message: failure.code === 'last_owner_protected'
+          ? 'The last owner keeps the owner role. Add another owner first.'
+          : 'The role was not changed (' + failure.code + '). This membership is unchanged.',
+      });
+    }
+  }
+  async function remove(target: Member) {
+    if (!org) return;
+    setRowError(null);
+    try {
+      await source.removeMember(org, target.user_id, 'remove:' + org + ':' + target.user_id);
+      setMemberStatus(target.email + ' was removed from this organization.');
+      members.reload();
+    } catch (error) {
+      const failure = asApiError(error);
+      setRowError({
+        userId: target.user_id,
+        message: failure.code === 'last_owner_protected'
+          ? 'The last owner cannot be removed. Add another owner first.'
+          : 'The member was not removed (' + failure.code + '). This membership is unchanged.',
+      });
+    }
+  }
+  async function createInstallation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || busy) return;
+    const name = installationName.trim();
+    if (!name) { setIntegrationStatus('Enter a name so the token can be recognised later.'); return; }
+    setBusy(true);
+    try {
+      const created: Installation = await source.createInstallation(org, { name, repo_id: ctx.repo, scopes: ['search', 'use', 'events'], harness }, 'installation:' + org + ':' + name);
+      setSecret(created.token ?? '');
+      setInstallationName('');
+      setIntegrationStatus(created.token ? 'Installation created. Its token is shown once below.' : 'Installation created. The API returned no token value.');
+      installations.reload();
+    } catch (error) { setIntegrationStatus('The installation was not created (' + asApiError(error).code + '). No token was issued.'); }
+    finally { setBusy(false); }
+  }
+  async function revoke(installationId: string) {
+    if (!org) return;
+    try {
+      await source.revokeInstallation(org, installationId, 'revoke:' + org + ':' + installationId);
+      setSecret('');
+      setIntegrationStatus('Installation revoked. Adapters using that token stop being served.');
+      installations.reload();
+    } catch (error) { setIntegrationStatus('The installation was not revoked (' + asApiError(error).code + '). Its token still works.'); }
+  }
+  async function decideDevice(approve: boolean) {
+    if (!deviceCode) return;
+    try {
+      const result = await source.decideDevice(deviceCode, approve, 'device:' + deviceCode + ':' + (approve ? 'approve' : 'deny'));
+      setDeviceStatus('Device request ' + deviceCode + ' is now ' + result.state + '.');
+    } catch (error) { setDeviceStatus('The device request was not decided (' + asApiError(error).code + '). It stays as it was, and no device was authorized.'); }
+  }
+  /** Never auto-linked: the operator picks the provider, then the API redirects to confirm it. */
+  async function startLink(provider: string) {
+    try {
+      const redirect = await source.startIdentityLink(provider, 'identity-link:' + (me?.user.id ?? '') + ':' + provider);
+      if (redirect.loginUrl) window.location.assign(redirect.loginUrl);
+      else setLinkStatus('The API returned no redirect for ' + provider + '.');
+    } catch (error) { setLinkStatus('The identity link could not start (' + asApiError(error).code + '). No identity was linked to your account.'); }
+  }
+
+  if (!org) return <RouteState state="empty" title="No organization selected" description="Choose an organization before reading its membership or integrations." action={<ActionButton href={ctx.href('import', { step: 'organization' })} tone="system">Choose an organization</ActionButton>} />;
+
+  return <div className={styles.route}>
+    <p className={styles.intro}>Membership and adapter installations for <strong>{org}</strong>.</p>
+    <Tabs label="Organization sections" current={tab} items={[
+      { id: 'members', label: 'Members', href: ctx.href('organization', { tab: 'members', cursor: null }) },
+      { id: 'integrations', label: 'Integrations', href: ctx.href('organization', { tab: 'integrations', cursor: null }) },
+      { id: 'audit', label: 'Audit', href: ctx.href('organization', { tab: 'audit', cursor: null }) },
+    ]} />
+    <OwnerNote role={role} />
+
+    {tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+      {owner && <>
+        {audit.phase === 'loading' && <RouteState state="loading" title="Reading audit entries" description="Waiting for the audit log of this organization." />}
+        {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}
+        {audit.phase === 'ready' && (audit.value?.items.length
+          ? <>
+            <DataTable caption="Audit entries for this organization" headings={['At', 'Actor', 'Action', 'Entity', 'Revision', 'Request']}>
+              {audit.value.items.map((entry: AuditEntry, index: number) => <tr key={entry.request_id ?? index}>
+                <td>{unknown(entry.at)}</td>
+                <td>{unknown(entry.actor)}</td>
+                <td>{entry.action}</td>
+                <td className={styles.pathCell}><code>{unknown(entry.entity)}</code></td>
+                <td className={styles.hashCell}><code>{unknown(entry.revision)}</code></td>
+                <td className={styles.hashCell}><code>{unknown(entry.request_id)}</code></td>
+              </tr>)}
+            </DataTable>
+            {audit.value?.next_cursor && <div className={styles.actions}><ActionButton onClick={() => ctx.go('organization', { tab: 'audit', cursor: audit.value?.next_cursor })}>Next page</ActionButton></div>}
+          </>
+          : <RouteState state="empty" title="No audit entries yet" description="No action has been recorded for this organization yet." />)}
+      </>}
+    </Panel> : tab === 'members' ? <div className={styles.asideColumns}>
+      <Panel title="Members" eyebrow="Organization access" icon={<Users weight="regular" aria-hidden="true" />}>
+        {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the membership list." />}
+        {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
+        {members.phase === 'ready' && members.value && <DataTable caption="Members of this organization" headings={['Member', 'Role', 'Joined', 'Action']}>
+          {members.value.map(entry => <tr key={entry.user_id}>
+            <th scope="row" className={styles.pathCell}>{entry.email}<span className={styles.linkHint}>{unknown(entry.name)}</span></th>
+            <td>{owner
+              ? <select aria-label={'Role of ' + entry.email} value={entry.role} onChange={event => { void changeRole(entry, event.target.value === 'owner' ? 'owner' : 'member'); }}><option value="owner">owner</option><option value="member">member</option></select>
+              : <StateBadge tone={entry.role === 'owner' ? 'human' : 'neutral'}>{entry.role}</StateBadge>}</td>
+            <td>{unknown(entry.joined_at)}</td>
+            <td><ActionButton disabled={!owner} onClick={() => { void remove(entry); }}>Remove</ActionButton>
+              {rowError?.userId === entry.user_id && <span className={styles.feedback} role="alert">{rowError.message}</span>}</td>
+          </tr>)}
+        </DataTable>}
+        <p className={styles.feedback} role="status">{memberStatus}</p>
+        {me?.link_suggestions.map(suggestion => <div key={suggestion.provider} className={styles.notice} role="status">
+          <LinkSimple weight="regular" aria-hidden="true" />
+          <span>Another sign-in method uses this e-mail.</span>
+          <ActionButton onClick={() => { void startLink(suggestion.provider); }}>Link {suggestion.provider}</ActionButton>
+        </div>)}
+        {linkStatus && <p className={styles.feedback} role="alert">{linkStatus}</p>}
+      </Panel>
+      <Panel title="Invite a member" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+        <form className={styles.memberForm} onSubmit={invite}>
+          <Field id="invite-email" label="E-mail address" hint="The invitation link is returned once and is not stored here." error={inviteError || undefined}><input id="invite-email" name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setInviteError(''); }} required maxLength={200} disabled={!owner} aria-invalid={Boolean(inviteError)} /></Field>
+          <Field id="invite-role" label="Role"><select id="invite-role" value={inviteRole} onChange={event => setInviteRole(event.target.value === 'owner' ? 'owner' : 'member')} disabled={!owner}><option value="member">member</option><option value="owner">owner</option></select></Field>
+          <ActionButton type="submit" tone="human" disabled={!owner || busy}>Create invitation</ActionButton>
+        </form>
+        {acceptUrl && <ShownOnce title="Invitation link" label="Invitation accept URL" value={acceptUrl} note="Send this link to the invited person. It is not shown again and is not stored in this browser." />}
+      </Panel>
+    </div> : <>
+      {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<Key weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Pending</StateBadge>}>
+        <p>A CLI on another machine asked for code <code>{deviceCode}</code>. Approve it only if you started that sign-in.</p>
+        <div className={styles.actions}>
+          <ActionButton tone="human" disabled={!owner} onClick={() => { void decideDevice(true); }}>Approve this device</ActionButton>
+          <ActionButton disabled={!owner} onClick={() => { void decideDevice(false); }}>Deny</ActionButton>
+        </div>
+        <p className={styles.feedback} role="status">{deviceStatus}</p>
+      </Panel>}
+      <div className={styles.asideColumns}>
+        <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimple weight="regular" aria-hidden="true" />}>
+          {installations.phase === 'loading' && <RouteState state="loading" title="Reading installations" description="Waiting for the installation list." />}
+          {installations.phase === 'error' && installations.error && <ApiFailure error={installations.error} onRetry={installations.reload} retryLabel="Retry the installation list" />}
+          {installations.phase === 'ready' && (installations.value?.length
+            ? <DataTable caption="Installations and adapter health" headings={['Installation', 'Scopes', 'Last seen', 'Adapter version', 'Capabilities', 'Action']}>
+              {installations.value.map(entry => <tr key={entry.installation_id}>
+                <th scope="row">{entry.name}<span className={styles.linkHint}>{unknown(entry.repo_id)}</span></th>
+                <td>{formatList(entry.scopes)}</td>
+                <td>{unknown(entry.last_seen_at)}</td>
+                <td>{unknown(entry.adapter_version)}</td>
+                <td>{formatList(entry.capabilities)}</td>
+                <td><ActionButton disabled={!owner} onClick={() => { void revoke(entry.installation_id); }}>Revoke</ActionButton></td>
+              </tr>)}
+            </DataTable>
+            : <RouteState state="empty" title="No installation yet" description="Create one to let an adapter read this organization. Absent health values stay Unknown." />)}
+          <p className={styles.feedback} role="status">{integrationStatus}</p>
+        </Panel>
+        <Panel title="Create an installation" eyebrow="Owner" icon={<Key weight="regular" aria-hidden="true" />}>
+          <form className={styles.form} onSubmit={createInstallation}>
+            <Field id="installation-name" label="Installation name" hint="Names the machine or harness this token belongs to."><input id="installation-name" name="name" value={installationName} onChange={event => setInstallationName(event.target.value)} required maxLength={80} disabled={!owner} /></Field>
+            <Field id="installation-harness" label="Harness"><select id="installation-harness" value={harness} onChange={event => setHarness(event.target.value)} disabled={!owner}><option value="claude">Claude Code</option><option value="copilot">Copilot CLI</option></select></Field>
+            <ActionButton type="submit" tone="human" disabled={!owner || busy}>Create installation</ActionButton>
+          </form>
+          {secret && <ShownOnce title="Installation token" label="Installation token value" value={secret} note="Store this token in your credentials file. It is shown once and is not kept in this browser." />}
+        </Panel>
+      </div>
+    </>}
+  </div>;
+}

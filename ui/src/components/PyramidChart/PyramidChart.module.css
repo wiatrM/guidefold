@@ -1,0 +1,20 @@
+.chart { display: grid; gap: var(--space-4); }
+.graph { position: relative; display: grid; gap: var(--space-4); }
+.lines { position: absolute; inset: var(--zero); width: var(--full); height: var(--full); pointer-events: none; }
+.band { display: grid; gap: var(--space-2); position: relative; }
+.bandLabel { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.bandName { font-family: var(--font-display); text-transform: uppercase; letter-spacing: var(--tracking-label); font-weight: var(--weight-semibold); }
+.bandLabel p { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
+.band[data-layer="abstract"] .bandName { color: var(--layer-abstract-ink); }
+.band[data-layer="task"] .bandName { color: var(--layer-task-ink); }
+.band[data-layer="atomic"] .bandName { color: var(--survey-teal); }
+.bandNodes { display: flex; gap: var(--space-2); list-style: none; margin: var(--zero); padding: var(--zero); }
+.bandNodes > li { flex: 1; min-width: var(--zero); display: flex; justify-content: center; }
+.bandEmpty { margin: var(--zero); padding: var(--space-3); border: var(--border-width) dashed var(--line-strong); color: var(--stone-300); font-size: var(--font-size-small); text-align: center; background: var(--graphite-950); }
+.node { min-height: var(--touch-height); max-width: var(--full); padding: var(--space-2) var(--space-3); border: var(--border-width) solid var(--line-strong); background: var(--graphite-900); color: var(--stone-100); font: var(--font-size-small)/var(--line-height-body) var(--font-body); cursor: pointer; overflow-wrap: anywhere; text-align: center; }
+.node:hover { background: var(--graphite-800); }
+.node[data-layer="abstract"] { border-color: var(--layer-abstract-ink); background: var(--layer-abstract-wash); }
+.node[data-layer="task"] { border-color: var(--layer-task-ink); background: var(--layer-task-wash); }
+.node[data-layer="atomic"] { border-color: var(--survey-teal); background: var(--survey-teal-dim); }
+.node[aria-current="true"] { border-color: var(--safety-orange); border-width: var(--focus-width); background: var(--human-wash); font-weight: var(--weight-semibold); }
+.node:focus-visible { outline: var(--focus-width) solid var(--safety-orange); outline-offset: var(--focus-offset); }

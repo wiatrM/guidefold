@@ -1,0 +1,126 @@
+/* Guidefold portal: the hosted UI's own visual system (ui/src/tokens/tokens.css, docs/ui/UI.md)
+   over MkDocs Material. Dark graphite ground, survey teal for the system, safety orange for the
+   human, JetBrains Mono for anything exact. Light scheme is the same palette with the ground
+   inverted; the accent stays. */
+
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --gf-graphite-950: #07090c;
+  --gf-graphite-900: #0c1014;
+  --gf-graphite-850: #11161b;
+  --gf-graphite-800: #171d23;
+  --gf-graphite-700: #232b33;
+  --gf-stone-100: #eef1f3;
+  --gf-stone-300: #a3adb6;
+  --gf-steel: #5f6c77;
+  --gf-teal: #3fb8b1;
+  --gf-teal-dim: #15413f;
+  --gf-teal-ink: #8ad3ce;
+  --gf-orange: #ff7a3d;
+  --gf-line: rgba(163, 173, 182, .12);
+  --gf-line-strong: rgba(163, 173, 182, .22);
+  --gf-radius: 6px;
+  --md-text-font: "Manrope", system-ui, sans-serif;
+  --md-code-font: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+/* Dark scheme (default): graphite ground */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--gf-graphite-900);
+  --md-default-bg-color--light: var(--gf-graphite-850);
+  --md-default-bg-color--lighter: var(--gf-graphite-800);
+  --md-default-bg-color--lightest: var(--gf-graphite-700);
+  --md-default-fg-color: var(--gf-stone-100);
+  --md-default-fg-color--light: var(--gf-stone-300);
+  --md-default-fg-color--lighter: var(--gf-steel);
+  --md-default-fg-color--lightest: var(--gf-line-strong);
+  --md-typeset-color: var(--gf-stone-100);
+  --md-typeset-a-color: var(--gf-teal-ink);
+  --md-primary-fg-color: var(--gf-graphite-950);
+  --md-primary-fg-color--light: var(--gf-graphite-900);
+  --md-primary-fg-color--dark: var(--gf-graphite-950);
+  --md-primary-bg-color: var(--gf-stone-100);
+  --md-primary-bg-color--light: var(--gf-stone-300);
+  --md-accent-fg-color: var(--gf-teal);
+  --md-accent-fg-color--transparent: rgba(63, 184, 177, .1);
+  --md-accent-bg-color: var(--gf-graphite-950);
+  --md-code-bg-color: var(--gf-graphite-850);
+  --md-code-fg-color: var(--gf-stone-100);
+  --md-code-hl-color: rgba(63, 184, 177, .18);
+  --md-typeset-table-color: var(--gf-line-strong);
+  --md-typeset-table-color--light: var(--gf-line);
+  --md-footer-bg-color: var(--gf-graphite-950);
+  --md-footer-bg-color--dark: var(--gf-graphite-950);
+  --md-footer-fg-color: var(--gf-stone-300);
+  --md-footer-fg-color--light: var(--gf-steel);
+  --md-admonition-fg-color: var(--gf-stone-100);
+  --md-admonition-bg-color: var(--gf-graphite-850);
+  --md-typeset-kbd-color: var(--gf-graphite-800);
+  --md-typeset-mark-color: rgba(255, 122, 61, .25);
+}
+
+/* Light scheme: same accent, stone ground */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #f6f8f8;
+  --md-default-fg-color: var(--gf-graphite-900);
+  --md-default-fg-color--light: #3d4a54;
+  --md-default-fg-color--lighter: var(--gf-steel);
+  --md-typeset-color: var(--gf-graphite-900);
+  --md-typeset-a-color: #0e6b6b;
+  --md-primary-fg-color: #ffffff;
+  --md-primary-bg-color: var(--gf-graphite-900);
+  --md-accent-fg-color: #0e6b6b;
+  --md-accent-fg-color--transparent: rgba(14, 107, 107, .1);
+  --md-code-bg-color: #e9eeee;
+  --md-code-fg-color: var(--gf-graphite-900);
+  --md-typeset-table-color: rgba(12, 16, 20, .18);
+  --md-typeset-table-color--light: rgba(12, 16, 20, .08);
+}
+
+/* Header and left rail: flat, one hairline, no material shadow */
+.md-header { box-shadow: none; border-bottom: 1px solid var(--gf-line-strong); }
+.md-header__title { font-family: "Instrument Sans", var(--md-text-font); font-weight: 600; letter-spacing: -.02em; }
+.md-tabs { border-bottom: 1px solid var(--gf-line); }
+.md-sidebar--primary .md-nav__title { font-family: "JetBrains Mono", monospace; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--gf-steel); }
+.md-nav__item--section > .md-nav__link { font-family: "JetBrains Mono", monospace; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--gf-steel); }
+.md-nav__link--active, .md-nav__link:focus, .md-nav__link:hover { color: var(--gf-teal-ink); }
+.md-nav__link--active { border-left: 2px solid var(--gf-teal); margin-left: -.6rem; padding-left: calc(.6rem - 2px); }
+
+/* Type scale */
+.md-typeset { font-size: .82rem; line-height: 1.6; }
+.md-typeset h1 { font-family: "Instrument Sans", var(--md-text-font); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--md-default-fg-color); margin-bottom: .4em; }
+.md-typeset h2 { font-family: "Instrument Sans", var(--md-text-font); font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin-top: 2.2em; padding-top: .9em; border-top: 1px solid var(--gf-line); }
+.md-typeset h3 { font-family: "Instrument Sans", var(--md-text-font); font-weight: 600; }
+.md-typeset .headerlink { color: var(--gf-steel); }
+.md-content__inner > p:first-of-type { color: var(--md-default-fg-color--light); font-size: .95rem; }
+
+/* Code and tables: exact things get the mono, hairlines, 6 px radius, no zebra */
+.md-typeset code { font-family: var(--md-code-font); font-size: .78em; border-radius: var(--gf-radius); padding: .1em .4em; }
+.md-typeset pre > code { font-size: .74rem; line-height: 1.55; border: 1px solid var(--gf-line); border-radius: var(--gf-radius); }
+.md-typeset .highlight { border-radius: var(--gf-radius); }
+.md-typeset table:not([class]) { font-size: .78rem; border: 1px solid var(--gf-line-strong); border-radius: var(--gf-radius); overflow: hidden; }
+.md-typeset table:not([class]) th { font-family: "JetBrains Mono", monospace; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; color: var(--gf-steel); background: var(--md-default-bg-color--light); border-bottom: 1px solid var(--gf-line-strong); }
+.md-typeset table:not([class]) td { border-top: 1px solid var(--gf-line); vertical-align: top; }
+.md-typeset__table { width: 100%; }
+.md-typeset table:not([class]) tbody tr:hover { background: var(--md-accent-fg-color--transparent); }
+
+/* Mermaid on graphite */
+.md-typeset .mermaid { background: var(--md-default-bg-color--light); border: 1px solid var(--gf-line); border-radius: var(--gf-radius); padding: 1rem; }
+
+/* Admonitions: one left rule, teal for system notes, orange for human decisions */
+.md-typeset .admonition, .md-typeset details { border: 1px solid var(--gf-line-strong); border-left: 3px solid var(--gf-teal); border-radius: var(--gf-radius); box-shadow: none; }
+.md-typeset .admonition.warning { border-left-color: var(--gf-orange); }
+
+/* Focus: orange, 2 px, offset 3 px (accessibility contract) */
+:focus-visible { outline: 2px solid var(--gf-orange); outline-offset: 3px; }
+
+/* Search */
+.md-search__form { border-radius: var(--gf-radius); }
+.md-search__input { font-family: var(--md-text-font); }
+
+/* Footer */
+.md-footer-meta { border-top: 1px solid var(--gf-line); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

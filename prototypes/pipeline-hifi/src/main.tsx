@@ -1,0 +1,13 @@
+import ReactDOM from 'react-dom/client';
+import {BrowserRouter} from 'react-router-dom';
+import {IconContext} from '@phosphor-icons/react';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/barlow-condensed/latin-500.css';
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import './tokens.css';
+import './global.css';
+import App from './app';
+ReactDOM.createRoot(document.getElementById('root')!).render(<BrowserRouter><IconContext.Provider value={{weight:'regular'}}><App/></IconContext.Provider></BrowserRouter>);

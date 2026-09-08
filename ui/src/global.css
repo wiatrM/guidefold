@@ -1,0 +1,27 @@
+*{box-sizing:border-box;}
+html{background:var(--graphite-950);scroll-behavior:auto;}
+body{margin:var(--zero);min-width:var(--min-page-width);min-height:var(--viewport);background:var(--graphite-950);color:var(--stone-100);font:var(--weight-normal) var(--font-size-body)/var(--line-height-body) var(--font-body);-webkit-font-smoothing:antialiased;}
+button,input,select,textarea{font:inherit;color:inherit;}
+input,select,textarea{width:var(--full);min-width:var(--zero);min-height:var(--control-height);padding:var(--space-2);border:var(--border-width) solid var(--control-border);border-radius:var(--radius);background:var(--graphite-950);}
+textarea{resize:vertical;line-height:var(--line-height-body);}
+input[type=radio],input[type=checkbox]{width:auto;min-height:auto;accent-color:var(--safety-orange);}
+input:disabled,select:disabled,textarea:disabled{opacity:var(--disabled-opacity);cursor:not-allowed;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:var(--focus-width) solid var(--safety-orange);outline-offset:var(--focus-offset);}
+main:focus{outline:none;}
+a{color:var(--system-ink);text-underline-offset:var(--space-1);overflow-wrap:anywhere;}
+a:hover{color:var(--stone-100);}
+p{margin:var(--zero) var(--zero) var(--space-3);}
+h1,h2,h3,h4{font-family:var(--font-display);line-height:var(--line-height-heading);}
+h3{font-size:var(--font-size-section);}
+code,pre{font-family:var(--font-mono);font-size:var(--font-size-code);}
+code{overflow-wrap:anywhere;}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:var(--full);}
+small{font-size:var(--font-size-small);}
+svg{width:var(--icon-size);height:var(--icon-size);flex:none;}
+details{min-width:var(--zero);}
+summary{min-height:var(--control-height);padding:var(--space-2) var(--zero);cursor:pointer;color:var(--stone-100);font-weight:var(--weight-medium);overflow-wrap:anywhere;}
+details>pre{max-height:var(--raw-max-height);overflow:auto;padding:var(--space-3);background:var(--graphite-950);border:var(--border-width) solid var(--line-strong);}
+fieldset{min-width:var(--zero);margin:var(--zero);padding:var(--space-3);border:var(--border-width) solid var(--line-strong);}
+legend{font-weight:var(--weight-medium);padding:var(--zero) var(--space-2);}
+form{min-width:var(--zero);}
+::selection{background:var(--survey-teal-dim);color:var(--stone-100);}

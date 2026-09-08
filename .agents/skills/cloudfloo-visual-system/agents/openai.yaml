@@ -1,0 +1,6 @@
+interface:
+  display_name: "Premium Visual System"
+  short_description: "Build coherent premium design foundations"
+  default_prompt: "Use $cloudfloo-visual-system to derive reusable visual tokens and component rules from this DESIGN.md."
+policy:
+  allow_implicit_invocation: false

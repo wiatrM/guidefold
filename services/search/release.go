@@ -5,7 +5,7 @@ import "context"
 // Operator preflight. GPU shadow is checked here without making GPU availability
 // a dependency of sparse serving readiness or starting background workers.
 func verifyRelease(ctx context.Context, s *Store, shadow bool) error {
-	c, err := s.catalog(ctx)
+	c, err := s.catalog(ctx, s.Tenant, s.Repo)
 	if err != nil {
 		return err
 	}

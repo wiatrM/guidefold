@@ -1,0 +1,6 @@
+interface:
+  display_name: "Higgsfield Cinematic Assets"
+  short_description: "Generate approved cinematic hero media"
+  default_prompt: "Use $higgsfield-cinematic-assets to plan and generate this operator-approved cinematic asset with full provenance."
+policy:
+  allow_implicit_invocation: false

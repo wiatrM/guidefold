@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Guidefold GitHub Import",
+  "version": "0.1.0",
+  "description": "Open the secure Guidefold GitHub import flow from any repository.",
+  "permissions": ["identity", "storage", "activeTab"],
+  "action": { "default_title": "Import repository into Guidefold", "default_popup": "popup.html" },
+  "background": { "service_worker": "service-worker.js", "type": "module" },
+  "options_page": "options.html",
+  "host_permissions": ["https://github.com/*", "http://127.0.0.1:4332/*", "http://localhost:4332/*"]
+}

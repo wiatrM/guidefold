@@ -1,0 +1,6 @@
+.evidence{display:grid;gap:var(--space-3);margin:var(--zero);}
+.evidence>div{display:grid;gap:var(--space-1);min-width:var(--zero);}
+.evidence dt{font-size:var(--font-size-small);font-weight:var(--weight-medium);color:var(--stone-300);}
+.evidence dd{margin:var(--zero);overflow-wrap:anywhere;word-break:break-word;}
+.evidence small{display:block;color:var(--stone-300);font-family:var(--font-body);font-size:var(--font-size-small);}
+.mono{font-family:var(--font-mono);font-size:var(--font-size-code);}

@@ -1,0 +1,86 @@
+.stack { display: grid; gap: var(--space-3); min-width: var(--zero); align-content: start; }
+.intro { margin: var(--zero); color: var(--stone-300); }
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3); border: var(--border-width) solid var(--warning); background: var(--graphite-900); color: var(--stone-300); }
+.notice p { margin: var(--zero); }
+.filterForm { grid-template-columns:var(--filter-form-columns);grid-template-areas:var(--filter-form-areas);display: grid; gap: var(--space-3); padding: var(--zero); }
+.filterGrid { grid-area:filters;display: grid; grid-template-columns: var(--filter-columns); gap: var(--space-3); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.resultsSummary { padding: var(--zero) var(--zero) var(--space-1); border-bottom: var(--border-width) solid var(--line); }
+.resultsSummary p { margin: var(--zero); }
+.resultsSummary p + p { margin-top: var(--zero); }
+.muted { display: block; color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
+.identifier { overflow-wrap: anywhere; }
+.skillCell { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; }
+.skillName { display: inline-flex; align-items: center; min-height: var(--control-height); font-weight: var(--weight-semibold); }
+.sourceDetails { flex: 1; min-width: var(--source-disclosure-width); color: var(--stone-300); font-size: var(--font-size-small); }
+.sourceDetails summary { min-height: var(--control-height); display: list-item; align-content: center; cursor: pointer; }
+.sourceDetails p { margin-block: var(--space-2); }
+.sourceLink { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); overflow-wrap: anywhere; min-height: var(--control-height); }
+.sourceLink > span:first-child { min-width: var(--zero); overflow-wrap: anywhere; }
+.sourceLink svg { flex-shrink: var(--zero); }
+.externalLabel { font-size: var(--font-size-small); color: var(--stone-300); }
+.emptyResult { padding: var(--space-4); }
+.emptyResult h3 { margin-top: var(--zero); }
+.mapGrid { display: grid; grid-template-columns: var(--aside-columns); gap: var(--space-3); align-items: start; min-width: var(--zero); }
+.panelIntro { padding: var(--space-3); margin: var(--zero); color: var(--stone-300); border-bottom: var(--border-width) solid var(--line); }
+.panelIntro p { margin: var(--zero); }
+.panelIntro p + p { margin-top: var(--space-2); }
+.panelBody { display: grid; gap: var(--space-3); padding: var(--space-3); min-width: var(--zero); }
+.panelBody > p { margin: var(--zero); }
+.panelBody > h3 { margin: var(--zero); }
+/* Scope header reads clearly heavier than the skill rows nested under it (font-display,
+   same treatment as a Panel eyebrow/title), and indentation (set inline, per node depth) mirrors
+   the dotted scope path instead of a flat sequence of equal-weight headers. */
+.scopeMeta { display: grid; gap: var(--space-2); margin: var(--zero); }
+.scopeMeta > div { display: grid; gap: var(--space-1); min-width: var(--zero); }
+.scopeMeta dt, .identityGrid dt { font-size: var(--font-size-small); color: var(--stone-300); }
+.scopeMeta dd, .identityGrid dd { margin: var(--zero); overflow-wrap: anywhere; }
+.scopeMeta code { display: block; }
+.relations { display: grid; gap: var(--space-3); min-width: var(--zero); }
+.relationHeading { display: flex; align-items: center; gap: var(--space-2); margin: var(--zero); font-size: var(--font-size-body); }
+.relationHeading svg { color: var(--survey-teal); }
+.relationList { list-style: none; margin: var(--space-2) var(--zero) var(--zero); padding: var(--zero); }
+.relationList li { display: grid; gap: var(--space-1); padding-block: var(--space-2); border-bottom: var(--border-width) solid var(--line); min-width: var(--zero); }
+.relationList a { display: inline-flex; align-items: center; min-height: var(--control-height); }
+.relationList code { overflow-wrap: anywhere; font-size: var(--font-size-small); color: var(--stone-300); }
+.backLink { display: inline-flex; gap: var(--space-2); align-items: center; min-height: var(--control-height); justify-self: start; }
+.description { line-height: var(--line-height-body); }
+.identityGrid { display: grid; grid-template-columns: var(--field-columns); gap: var(--space-3); padding-block: var(--space-3); margin: var(--zero); border-top: var(--border-width) solid var(--line); border-bottom: var(--border-width) solid var(--line); }
+.identityGrid > div { display: grid; align-content: start; gap: var(--space-1); min-width: var(--zero); }
+.identityGrid dd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.revisionStrip { display: grid; grid-template-columns: var(--two-columns); gap: var(--space-3); margin: var(--zero); font-size: var(--font-size-small); }
+.revisionStrip dt { color: var(--stone-300); margin-bottom: var(--space-1); }
+.revisionStrip dd { margin: var(--zero); overflow-wrap: anywhere; }
+.feedbackStatus { margin: var(--zero); color: var(--survey-teal); }
+
+
+
+.filterForm>div:first-child{grid-area:search;}.filterForm>.actions{grid-area:actions;align-self:end;}
+
+/* Hosted API routes (F13-F15): paging, lazy map branches, module order and the feedback form. */
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3); border-top: var(--border-width) solid var(--line); }
+.pager p { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
+.branchRoot { display: grid; gap: var(--space-2); padding: var(--space-3); min-width: var(--zero); }
+.branchList { list-style: none; margin: var(--zero); padding: var(--zero) var(--zero) var(--zero) var(--space-3); display: grid; gap: var(--space-1); min-width: var(--zero); }
+.branchList > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: var(--control-height); min-width: var(--zero); overflow-wrap: anywhere; }
+.branchList > li > svg { flex-shrink: var(--zero); color: var(--survey-teal); }
+.branchList code { font-size: var(--font-size-small); color: var(--stone-300); overflow-wrap: anywhere; }
+.branchList details { min-width: var(--zero); width: var(--full); border-left: var(--border-width) solid var(--line); padding-left: var(--space-2); }
+.branchList summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: var(--control-height); cursor: pointer; overflow-wrap: anywhere; }
+.readingOrder { display: grid; gap: var(--space-2); margin: var(--zero); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); }
+.readingOrder li { min-width: var(--zero); overflow-wrap: anywhere; }
+.readingOrder a { display: inline-flex; align-items: center; min-height: var(--control-height); }
+.disclosure { margin: var(--space-3); border-top: var(--border-width) solid var(--line); }
+.disclosure summary { min-height: var(--control-height); padding: var(--space-2) var(--zero); cursor: pointer; color: var(--stone-100); font-weight: var(--weight-medium); }
+.pathCell, .hashCell { overflow-wrap: anywhere; word-break: break-word; }
+.hashCell code { font-size: var(--font-size-small); }
+.choices { display: grid; gap: var(--space-2); border: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
+.choices legend { padding: var(--zero); margin-bottom: var(--space-2); font-weight: var(--weight-medium); }
+.choice { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); min-height: var(--touch-height); border: var(--border-width) solid var(--line-strong); background: var(--graphite-950); cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--survey-teal); background: var(--graphite-800); }
+.choice input { width: var(--icon-size); height: var(--icon-size); min-height: var(--zero); margin: var(--zero); flex: none; accent-color: var(--survey-teal); }
+.choice span { font-weight: var(--weight-medium); }
+.choice small { display: block; color: var(--stone-300); font-size: var(--font-size-small); font-weight: var(--weight-normal); margin-top: var(--space-1); }
+
+/* Map · Pyramid axis: labelled bands (Abstract/Task/Atomic/Unclassified), typographic hierarchy
+   only — no graph canvas (IA §4). */

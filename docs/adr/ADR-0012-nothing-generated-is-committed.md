@@ -1,6 +1,6 @@
 # ADR-0012: No generated file is committed; L0 cards are delivered at SessionStart
 
-**Status:** Proposed · 2026-09-04 · amends ADR-0006
+**Status:** Proposed · 2026-09-04 · amends ADR-0006 **Proposed amendment:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md); historical status unchanged.
 
 ## Context
 Committed generated files were the dominant conflict source in v0.3 and coupled every skill merge to hundreds of directories.

@@ -38,6 +38,14 @@ def test_render_comment_body_puts_marker_on_its_own_first_line():
     assert "some text" in body
 
 
+def test_render_comment_body_does_not_repeat_a_marker_the_body_already_carries():
+    """`guidefold report --markdown` writes its own marker as line 1 (P12/U7), so the same file
+    is self-identifying whether this script or a workflow's own `gh api` call posts it."""
+    already = "<!-- m -->\n# Guidefold change report\n\ntext"
+    assert SC.render_comment_body(already, marker="<!-- m -->") == already
+    assert SC.plan_upsert([], already, marker="<!-- m -->")["body"] == already
+
+
 def test_find_marked_comment_none_when_no_comment_carries_the_marker():
     comments = [{"id": 1, "body": "unrelated comment"}, {"id": 2, "body": "another one"}]
     assert SC.find_marked_comment(comments, marker="<!-- guidefold:skill-authoring-report -->") is None

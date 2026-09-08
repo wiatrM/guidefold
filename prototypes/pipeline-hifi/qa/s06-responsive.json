@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-06T19:46:25.616Z",
+  "checks": [
+    "keyboard opens mobile menu",
+    "seven destinations",
+    "destination collapses menu",
+    "loaded route content",
+    "field hint relation",
+    "title within720px"
+  ],
+  "titleTop": 288.375,
+  "fonts": {
+    "body": "Inter, Arial, sans-serif",
+    "title": "\"Barlow Condensed\", sans-serif"
+  }
+}

@@ -1,0 +1,54 @@
+# Postgres for the guidefold.cloudfloo.io pilot deployment, via the CloudNativePG
+# operator already installed on the target cluster (cnpg-system namespace — confirmed
+# present; modelled on the existing webkd-prod-cloudnativepg Cluster on the same
+# cluster). One small instance: this is a temporary-domain pilot, not HA production —
+# raise `instances` and storage size before this is a real customer-facing deployment.
+#
+# No pg_search/vector extensions required: the chart defaults to
+# GUIDEFOLD_LEXICAL_ENGINE=router and gpu.enabled=false, both of which run on plain
+# PostgreSQL (see services/search/main.go, the "Plain PostgreSQL profile" comment next
+# to the paradedb_engine_requires_pg_search check). Do not provision ParadeDB for this
+# environment unless the retrieval/GPU-shadow path is turned on.
+#
+# Apply with: kubectl apply -f postgres-cluster.yaml -n guidefold
+# (not applied by the assistant session that authored this file — see the deploy
+# runbook in this directory's README.md for the full manual sequence.)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: guidefold-postgres
+  namespace: guidefold
+spec:
+  instances: 1
+  # Exposes CNPG's own managed `postgres` superuser password as a secret
+  # (guidefold-postgres-superuser) — the chart's migrate Job connects as
+  # database.adminUser (postgres by default) to run DDL, so this has to be real.
+  enableSuperuserAccess: true
+  # Same image already running successfully on this cluster (webkd-prod-cloudnativepg),
+  # pinned by digest so this isn't the first pull of an unverified tag.
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.10@sha256:04aa5d1157637716ef2d990fb623a33a59e321429365685c3338309ab5ad2266
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: guidefold
+      owner: guidefold_api
+      dataChecksums: true
+      encoding: UTF8
+      # Explicit, not CNPG's default-named secret: guidefold-search migrate creates
+      # guidefold_api itself as a role inside the database (see deploy/k8s/README.md,
+      # "migrator creates guidefold_api"), so this only needs to be a real Postgres
+      # role CNPG can authenticate as to run initdb — not the final app role. Create
+      # it first (see this directory's README.md, step 2) so the name below resolves.
+      secret:
+        name: guidefold-postgres-app
+  # CNPG auto-issues a cluster CA (secret "guidefold-postgres-ca", key ca.crt) and a
+  # server cert signed by it — that is what satisfies the chart's
+  # database.sslMode=verify-full requirement. Do not override spec.certificates
+  # unless you also update database.tlsSecret in values.yaml to match.
+  postgresql:
+    parameters:
+      max_connections: "150" # covers the chart's own connection-budget check with headroom
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}

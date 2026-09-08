@@ -13,20 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const shadowMigration = `
-CREATE TABLE IF NOT EXISTS gf.search_shadow (
- tenant_id text NOT NULL, search_id text NOT NULL, repo text NOT NULL,
- snapshot_id text NOT NULL, encoder_id text NOT NULL, status text NOT NULL,
- sparse_ranked bytea NOT NULL, hybrid_ranked bytea NOT NULL,
- selected bytea NOT NULL, hybrid_selected bytea NOT NULL,
- timings jsonb NOT NULL, error text,
- created_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(tenant_id,search_id)
-);
-CREATE INDEX IF NOT EXISTS search_shadow_created ON gf.search_shadow(created_at);
-INSERT INTO gf.schema_version VALUES (8) ON CONFLICT DO NOTHING;
-`
-
 // Per-request immutable work reused only by this request's shadow. No query cache.
 type PreparedScope struct {
 	Allowed []bool
@@ -181,8 +167,10 @@ func (w *ShadowWorker) process(job ShadowJob) {
 	ctx, cancel := context.WithTimeout(w.Context, 2*time.Second)
 	defer cancel()
 	clone := *job.Catalog // Maps/index metadata are immutable; DensePrompt is per-copy.
-	s := &Store{Pool: w.Store.Pool, Tenant: w.Store.Tenant, Repo: w.Store.Repo,
-		PolicySHA: w.Store.PolicySHA, Version: w.Store.Version, LexicalEngine: "router", Dense: w.Dense}
+	// The shadow reruns one request against its own catalog copy, so the tenant
+	// and repository come from that catalog, never from process configuration.
+	s := &Store{Pool: w.Store.Pool, PolicySHA: w.Store.PolicySHA, Version: w.Store.Version,
+		LexicalEngine: "router", Dense: w.Dense, catalogs: w.Store.catalogs}
 	capture := &ShadowJob{}
 	var response M
 	e := w.Dense.ready(ctx)
@@ -216,7 +204,7 @@ func (w *ShadowWorker) process(job ShadowJob) {
 	tx, err := s.Pool.BeginTx(persist, pgx.TxOptions{AccessMode: pgx.ReadWrite})
 	if err == nil {
 		defer tx.Rollback(persist)
-		_, err = tx.Exec(persist, `INSERT INTO gf.search_shadow(tenant_id,search_id,repo,snapshot_id,encoder_id,status,sparse_ranked,hybrid_ranked,selected,hybrid_selected,timings,error) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(tenant_id,search_id) DO NOTHING`, s.Tenant, job.SearchID, s.Repo, clone.ID, w.Dense.ID, status, canonical(job.SparseRanked), canonical(ranked), canonical(job.Selected), canonical(selected), string(canonical(timings)), reason)
+		_, err = tx.Exec(persist, `INSERT INTO gf.search_shadow(tenant_id,search_id,repo,snapshot_id,encoder_id,status,sparse_ranked,hybrid_ranked,selected,hybrid_selected,timings,error) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(tenant_id,search_id) DO NOTHING`, clone.Tenant, job.SearchID, clone.Repo, clone.ID, w.Dense.ID, status, canonical(job.SparseRanked), canonical(ranked), canonical(job.Selected), canonical(selected), string(canonical(timings)), reason)
 		if err == nil {
 			err = tx.Commit(persist)
 		}

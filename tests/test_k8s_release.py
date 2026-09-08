@@ -26,7 +26,7 @@ validate_manifest = release.validate_manifest
 PIN = "example.invalid/guidefold@sha256:" + "a" * 64
 
 
-def manifest():
+def manifest(worker_image=None):
     snapshot = {
         "format": "guidefold-service-snapshot-v1",
         "repo_id": "repo",
@@ -43,7 +43,7 @@ def manifest():
         "router_index": index,
         "router_index_sha256": digest(index),
     }
-    return build_manifest(bundle, "tenant", PIN, PIN)
+    return build_manifest(bundle, "tenant", PIN, PIN, worker_image=worker_image)
 
 
 def test_manifest_binds_all_runtime_artifacts():
@@ -61,6 +61,27 @@ def test_manifest_binds_all_runtime_artifacts():
         changed[key] += "changed"
         with pytest.raises(ValueError):
             validate_manifest(changed)
+
+
+def test_manifest_binds_worker_image_when_present():
+    without = manifest()
+    validate_manifest(without)
+    assert without["worker_image"] is None
+
+    with_worker = manifest(worker_image=PIN)
+    validate_manifest(with_worker)
+    assert with_worker["worker_image"] == PIN
+    # A worker image is part of the content-derived identity: adding one changes
+    # the release name, exactly like adding a model image would.
+    assert with_worker["release"] != without["release"]
+
+    tampered = deepcopy(with_worker)
+    tampered["worker_image"] += "changed"
+    with pytest.raises(ValueError):
+        validate_manifest(tampered)
+
+    with pytest.raises(ValueError):
+        manifest(worker_image="guidefold-search-worker:unpinned")
 
 
 def test_promotion_requires_owned_matching_tenant_and_previous_release():
@@ -94,6 +115,11 @@ class Candidate:
     def get(self, kind, name):
         m = self.m
         if kind == "deployment":
+            image = m["image"]
+            if name.endswith("-tei"):
+                image = m["model_image"]
+            elif name.endswith("-worker"):
+                image = m["worker_image"]
             return {
                 "metadata": {"generation": 3},
                 "status": {
@@ -105,7 +131,7 @@ class Candidate:
                     "replicas": 2,
                     "selector": {"matchLabels": selector(m["release"])},
                     "template": {
-                        "spec": {"containers": [{"name": "api", "image": m["image"]}]}
+                        "spec": {"containers": [{"name": "api", "image": image}]}
                     },
                 },
             }
@@ -163,6 +189,21 @@ def test_preflight_checks_every_replica_and_rejects_live_index_mismatch():
     with pytest.raises(ValueError, match="differs from manifest"):
         preflight(bad, m)
     assert bad.visited == ["pod-1", "pod-2"]
+
+
+def test_preflight_checks_worker_image():
+    m = manifest(worker_image=PIN)
+    ok = Candidate(m)
+    assert preflight(ok, m)["replicas_verified"] == 2
+
+    wrong = deepcopy(m)
+    wrong["worker_image"] = "example.invalid/guidefold@sha256:" + "f" * 64
+    # Candidate always answers with the ORIGINAL manifest's worker image, so a
+    # preflight against a manifest expecting a different one must fail closed —
+    # mirroring the existing GPU/model-image mismatch contract.
+    mismatched = Candidate(m)
+    with pytest.raises(ValueError, match="worker image mismatch"):
+        preflight(mismatched, wrong)
 
 
 @pytest.fixture
@@ -223,6 +264,31 @@ def render(tmp_path, values):
             }
         },
         {"autoscalling": {"enabled": True}},
+        # Chart defaults (replicas 2, autoscaling maxReplicas 6, connectionBudget
+        # 128) are already an exact fit for the API alone (16 * (6+1) = 112, plus
+        # reservedConnections 16 = 128); enabling a worker adds another
+        # 16 * (1+1) = 32 and must overflow that budget without a bump.
+        {"worker": {"enabled": True, "image": PIN}},
+        {
+            "worker": {"enabled": True, "image": "guidefold-search-worker:latest"},
+            "database": {
+                "host": "db",
+                "connectionBudget": 300,
+                "networkPeers": [{"ipBlock": {"cidr": "10.0.0.0/8"}}],
+            },
+        },
+        {
+            "worker": {"enabled": True, "image": PIN, "generator": "made-up"},
+            "database": {
+                "host": "db",
+                "connectionBudget": 300,
+                "networkPeers": [{"ipBlock": {"cidr": "10.0.0.0/8"}}],
+            },
+        },
+        {"worker": {"enabled": True, "image": PIN, "replicas": 0}},
+        # S1: the development sign-in form is never part of a production release.
+        {"auth": "dev"},
+        {"auth": "none"},
     ],
 )
 def test_chart_rejects_unsafe_or_unknown_configuration(tmp_path, helm_values, change):
@@ -252,6 +318,9 @@ def test_chart_workload_contracts(tmp_path, helm_values, workload, gpu):
     assert config["data"]["GUIDEFOLD_SNAPSHOT_ID"] == helm_values["snapshotID"]
     assert config["data"]["GUIDEFOLD_RETRIEVAL_MODE"] == "sparse"
     assert config["data"]["GUIDEFOLD_EXPERIMENTAL_OUTPUT"] == "false"
+    # S1: the sign-in provider is always stated, and a production release states
+    # the one that does not mint sessions from a form.
+    assert config["data"]["GUIDEFOLD_AUTH"] == "workos"
     assert not any(d["kind"] in ("Secret", "Ingress", "StatefulSet") for d in docs)
     for d in docs:
         if d["kind"] not in ("Deployment", "Job"):
@@ -286,3 +355,68 @@ def test_chart_workload_contracts(tmp_path, helm_values, workload, gpu):
         assert (
             "tei" not in expression["values"]
         )  # a second policy must not widen GPU ingress
+
+
+def test_chart_worker_deployment_has_no_service_and_dedicated_network_policy(
+    tmp_path, helm_values
+):
+    helm_values.update(
+        database={
+            "host": "db.internal",
+            "networkPeers": [{"ipBlock": {"cidr": "10.20.0.0/24"}}],
+            "connectionBudget": 300,
+        },
+        worker={"enabled": True, "image": PIN, "generator": "deterministic"},
+    )
+    result = render(tmp_path, helm_values)
+    assert result.returncode == 0, result.stderr
+    docs = list(yaml.safe_load_all(result.stdout))
+
+    deployment = next(
+        d
+        for d in docs
+        if d["kind"] == "Deployment" and d["metadata"]["name"] == "gf-release-worker"
+    )
+    pod = deployment["spec"]["template"]["spec"]
+    assert pod["securityContext"]["runAsNonRoot"]
+    container = pod["containers"][0]
+    assert container["securityContext"]["readOnlyRootFilesystem"]
+    assert container["securityContext"]["capabilities"]["drop"] == ["ALL"]
+    assert "ports" not in container
+    env = {v["name"]: v["value"] for v in container["env"]}
+    assert env["GUIDEFOLD_GENERATOR"] == "deterministic"
+    # G5: the worker writes the immutable catalog the API may only read, so it
+    # runs as the operator role with the operator secret, never as guidefold_api.
+    assert env["PGUSER"] == "postgres"
+    assert env["PG_PASSWORD_FILE"] == "/run/credentials/admin-password"
+    secret = next(v["secret"] for v in pod["volumes"] if v["name"] == "credentials")
+    assert secret["secretName"] == "guidefold-operator-credentials"
+    assert {i["key"] for i in secret["items"]} == {"admin-password"}
+    # The work volume quota must not exceed the container's ephemeral-storage
+    # limit, or eviction fires before sizeLimit ever applies.
+    work = next(v["emptyDir"] for v in pod["volumes"] if v["name"] == "work")
+    assert work["sizeLimit"] == container["resources"]["limits"]["ephemeral-storage"]
+
+    assert not any(
+        d["kind"] == "Service" and d["metadata"]["name"] == "gf-release-worker"
+        for d in docs
+    )
+
+    network = next(
+        d
+        for d in docs
+        if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "gf-release-worker"
+    )
+    assert network["spec"]["ingress"] == []
+    assert network["spec"]["podSelector"]["matchLabels"]["app.kubernetes.io/component"] == "worker"
+
+
+def test_chart_worker_disabled_by_default_leaves_no_worker_resources(
+    tmp_path, helm_values
+):
+    result = render(tmp_path, helm_values)
+    assert result.returncode == 0, result.stderr
+    docs = list(yaml.safe_load_all(result.stdout))
+    assert not any(
+        d["metadata"]["name"] == "gf-release-worker" for d in docs if d.get("metadata")
+    )

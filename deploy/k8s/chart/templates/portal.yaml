@@ -1,0 +1,123 @@
+{{- if .Values.portal.enabled }}
+{{- if not .Values.portal.image }}{{ fail "portal.image is required when portal.enabled" }}{{ end }}
+# The developer portal: static HTML behind an unprivileged nginx (portal/Dockerfile). It reads
+# nothing and writes nothing; it has no database, no credentials and no egress. It is a separate
+# Deployment and Service so that the API can be scaled, restarted or locked down without the
+# documentation going with it, and vice versa.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gf.name" . }}-portal
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: portal
+spec:
+  replicas: {{ .Values.portal.replicas }}
+  selector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: portal
+  template:
+    metadata:
+      labels:
+        {{- include "gf.labels" . | nindent 8 }}
+        app.kubernetes.io/component: portal
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: portal
+          image: {{ .Values.portal.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # nginx-unprivileged writes its pid and cache under /tmp
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.portal.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gf.name" . }}-portal
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: portal
+spec:
+  selector:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: portal
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- if .Values.portal.host }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "gf.name" . }}-portal
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: portal
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.portal.tlsSecret }}
+  tls:
+    - hosts: [{{ .Values.portal.host }}]
+      secretName: {{ .Values.portal.tlsSecret }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.portal.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "gf.name" . }}-portal
+                port: {name: http}
+{{- end }}
+{{- if .Values.networkPolicy.enabled }}
+---
+# The portal answers HTTP from the ingress and needs nothing else: no DNS, no database, no egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gf.name" . }}-portal
+  labels:
+    {{- include "gf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: portal
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: portal
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports: [{protocol: TCP, port: 8080}]
+  egress: []
+{{- end }}
+{{- end }}
