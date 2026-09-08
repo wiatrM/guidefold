@@ -1,0 +1,64 @@
+# Helm values for the guidefold.cloudfloo.io pilot deployment (ADR-0034 deployment
+# target). Two placeholders MUST be filled in before this can be installed — the
+# chart's own gf.validate deliberately fails closed until they are:
+#
+#   image / worker.image   — pinned by digest. Filled in from the GitHub Actions
+#                             summary of .github/workflows/publish-images.yml after its
+#                             first successful run on main (Actions → Publish images →
+#                             latest run → Summary).
+#
+# See README.md in this directory for the full apply sequence (Postgres, secrets,
+# migrate, serve, ArgoCD Application) — this file alone is not a complete deployment.
+
+tenant: cloudfloo    # legacy Store default (services/search/store.go); the
+repository: guidefold # multi-tenant mgmt/import/review API resolves org/repo per
+                       # request instead and does not read these two fields.
+
+database:
+  host: guidefold-postgres-rw.guidefold.svc.cluster.local
+  name: guidefold
+  sslMode: verify-full
+  tlsSecret: guidefold-postgres-ca # CNPG's own auto-issued cluster CA secret (see
+                                    # postgres-cluster.yaml) — has the required ca.crt key.
+  networkPeers:
+    - podSelector:
+        matchLabels: {cnpg.io/cluster: guidefold-postgres}
+  connectionBudget: 128
+  reservedConnections: 16
+
+# TODO: pinned digest from the first publish-images.yml run.
+image: ""
+
+# No published snapshot exists yet for this tenant/repo (nothing has been imported
+# and published through the pivot flow). "unpublished" is a real, non-empty
+# placeholder, not a workaround: gf.validate requires a non-empty snapshotID so a
+# fresh deploy can never silently follow gf.heads' mutable head (ADR-0030). Because
+# it matches no row in gf.snapshots, /health/ready reports
+# {"ready": true, "retrieval": "not_configured"} instead of failing (main.go) — the
+# management/import/review API is fully up; only SEARCH/USE retrieval is unconfigured
+# until the first snapshot is published. Replace with the real snapshot id at that point.
+snapshotID: unpublished
+
+replicas: 2
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 3 # small pilot; raise together with connectionBudget if traffic grows
+
+worker:
+  enabled: true
+  # TODO: pinned digest from the first publish-images.yml run.
+  image: ""
+  replicas: 1
+  generator: deterministic # det-1: no network, no LLM key required for this pilot
+
+ingress:
+  enabled: true
+  className: nginx # matches the cluster's ingress-nginx controller
+  host: guidefold.cloudfloo.io
+  tlsSecret: "" # HTTP only for now — the owner is adding DNS + TLS separately
+
+networkPolicy:
+  enabled: true
+  clientPeers:
+    - podSelector:
+        matchLabels: {guidefold.client: "true"}

@@ -37,11 +37,17 @@ provenance when rebuilding changes those outputs. Do not add a nonce to evade ev
 
 ## Cluster prerequisites
 
-Provision Postgres with the extensions required by the pinned service (`pg_search`
-and `vector`), TLS with a verified hostname/CA, backup/PITR and tested restore/failover.
-The Compose reference pins ParadeDB 0.25.6/PG17; ordinary managed PostgreSQL does not
-necessarily permit its extensions. The Kubernetes chart intentionally uses an external
-DB; the single-node database in the kind test is not a production database template.
+Provision Postgres with TLS (a verified hostname/CA), backup/PITR and tested
+restore/failover. `pg_search` and `vector` are needed only if you turn on the
+ParadeDB lexical engine (`lexicalEngine: paradedb-experimental`) or the GPU dense
+shadow (`gpu.enabled: true`) — both off by default. With the default `router` engine
+on plain PostgreSQL, the migration's `CREATE EXTENSION` calls for both simply no-op
+(`internal/schema/sql.go`) and `serve` starts normally (`main.go`'s "Plain PostgreSQL
+profile" check only requires `pg_search` when the ParadeDB engine is selected). The
+Compose reference pins ParadeDB 0.25.6/PG17 for the engine that does need it; plain
+managed PostgreSQL is enough for the default profile, and does not necessarily permit
+ParadeDB's extensions anyway. The Kubernetes chart intentionally uses an external DB;
+the single-node database in the kind test is not a production database template.
 
 Allocate a namespace and deployment cell per tenant/repository, preferably a separate
 DB/credentials where tenant isolation is required. Namespace separation does not create

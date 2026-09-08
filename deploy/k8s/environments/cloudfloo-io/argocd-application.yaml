@@ -1,0 +1,94 @@
+# ArgoCD AppProject + Application for guidefold.cloudfloo.io, matching the pattern
+# already used on this cluster for every other app (one dedicated AppProject per app,
+# scoped destination namespace, CreateNamespace=true, automated prune+selfHeal —
+# modelled directly on the existing "quackback" Application).
+#
+# Values are inlined below (spec.source.helm.values) rather than referenced via
+# valueFiles pointing at ../values.yaml in this directory: ArgoCD's Helm value-file
+# resolution security model is version-sensitive about paths that escape the chart's
+# own directory, and this file needs to work without assuming a specific ArgoCD
+# version. values.yaml in this directory stays the readable, `helm template`-tested
+# source of truth (see README.md) — if you change one, change the other; they must
+# not drift.
+#
+# NOT applied by the assistant session that authored this file. Apply with:
+#   kubectl apply -f argocd-application.yaml -n argocd
+# only after Postgres, secrets and the pinned image digests are in place (this
+# directory's README.md has the full sequence) — ArgoCD will otherwise sync a
+# release that immediately CrashLoopBackOffs on gf.validate's own required-field
+# checks, which is a noisy but harmless failure mode, not a dangerous one.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: guidefold
+  namespace: argocd
+spec:
+  description: Guidefold pilot deployment (guidefold.cloudfloo.io)
+  sourceRepos:
+    - https://github.com/wiatrM/guidefold.git
+  destinations:
+    - namespace: guidefold
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - {group: "*", kind: "*"}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guidefold
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: guidefold
+spec:
+  project: guidefold
+  source:
+    repoURL: https://github.com/wiatrM/guidefold.git
+    targetRevision: main
+    path: deploy/k8s/chart
+    helm:
+      values: |
+        tenant: cloudfloo
+        repository: guidefold
+        database:
+          host: guidefold-postgres-rw.guidefold.svc.cluster.local
+          name: guidefold
+          sslMode: verify-full
+          tlsSecret: guidefold-postgres-ca
+          networkPeers:
+            - podSelector:
+                matchLabels: {cnpg.io/cluster: guidefold-postgres}
+          connectionBudget: 128
+          reservedConnections: 16
+        image: "" # TODO: pin from publish-images.yml before first sync
+        snapshotID: unpublished
+        replicas: 2
+        autoscaling:
+          minReplicas: 2
+          maxReplicas: 3
+        worker:
+          enabled: true
+          image: "" # TODO: pin from publish-images.yml before first sync
+          replicas: 1
+          generator: deterministic
+        ingress:
+          enabled: true
+          className: nginx
+          host: guidefold.cloudfloo.io
+          tlsSecret: ""
+        networkPolicy:
+          enabled: true
+          clientPeers:
+            - podSelector:
+                matchLabels: {guidefold.client: "true"}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guidefold
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions: [CreateNamespace=true, PrunePropagationPolicy=foreground, PruneLast=true]
+    retry:
+      limit: 5
+      backoff: {duration: 5s, factor: 2, maxDuration: 3m}

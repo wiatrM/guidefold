@@ -45,6 +45,12 @@ networkPolicy:
   clientPeers:
     - podSelector:
         matchLabels: {guidefold.client: "true"}
+ingress:
+  enabled: false
+  className: ""
+  host: "" # required when enabled, e.g. guidefold.example.com
+  tlsSecret: "" # empty = HTTP only; set once a cert-manager/ACME secret exists
+  annotations: {}
 metrics:
   serviceMonitor: false # requires Prometheus Operator CRDs
   additionalLabels: {}
