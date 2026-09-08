@@ -1,11 +1,8 @@
 # Helm values for the guidefold.cloudfloo.io pilot deployment (ADR-0034 deployment
-# target). Two placeholders MUST be filled in before this can be installed — the
-# chart's own gf.validate deliberately fails closed until they are:
-#
-#   image / worker.image   — pinned by digest. Filled in from the GitHub Actions
-#                             summary of .github/workflows/publish-images.yml after its
-#                             first successful run on main (Actions → Publish images →
-#                             latest run → Summary).
+# target). Digests below are from the first real publish-images.yml run
+# (2026-09-08) and match what's actually live in the `guidefold` namespace —
+# update them here whenever services/search or portal/ changes and a new image
+# is published (Actions → Publish images → latest run → Summary).
 #
 # See README.md in this directory for the full apply sequence (Postgres, secrets,
 # migrate, serve, ArgoCD Application) — this file alone is not a complete deployment.
@@ -26,8 +23,7 @@ database:
   connectionBudget: 128
   reservedConnections: 16
 
-# TODO: pinned digest from the first publish-images.yml run.
-image: ""
+image: "ghcr.io/wiatrm/guidefold-search@sha256:a0bded2afc7752f75c25efda3173f758380c236a3557deab1cb191f54654178e"
 
 # No published snapshot exists yet for this tenant/repo (nothing has been imported
 # and published through the pivot flow). "unpublished" is a real, non-empty
@@ -46,8 +42,7 @@ autoscaling:
 
 worker:
   enabled: true
-  # TODO: pinned digest from the first publish-images.yml run.
-  image: ""
+  image: "ghcr.io/wiatrm/guidefold-worker@sha256:8c340cf569da602b8dda6819af73fe22d24571c73bd0f176b0f7b25ef49c69b7"
   replicas: 1
   generator: deterministic # det-1: no network, no LLM key required for this pilot
 
@@ -64,7 +59,7 @@ ingress:
 # domain until the API has something real to serve publicly.
 portal:
   enabled: true
-  image: "" # TODO: pin from publish-images.yml's `portal` job
+  image: "ghcr.io/wiatrm/guidefold-portal@sha256:a1b52391990fba75c3b3e6dc7ab9484a47a6a8c4d170da195ae799d0bdda9f7e"
   replicas: 1
   host: guidefold.cloudfloo.io
   tlsSecret: "" # HTTP only for now — the owner is adding DNS + TLS separately

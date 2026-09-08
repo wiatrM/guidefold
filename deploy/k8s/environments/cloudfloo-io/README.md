@@ -88,39 +88,73 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
      currently has no WorkOS volume mount at all (only `credentialsSecret` and
      `operatorCredentialsSecret` are mounted today).
 
-4. **Fill in the two pinned image digests** from step 1 into `values.yaml`
-   (`image` and `worker.image`) and into `argocd-application.yaml`'s inlined
-   `helm.values` block — both files must match; `values.yaml` is the one to
-   `helm template`-test against before touching the inlined copy.
+4. **Pinned image digests** (done — 2026-09-08, `publish-images.yml` on
+   `fix/ghcr-lowercase-owner`, dispatched directly rather than waiting for a
+   merge): both `values.yaml` and `argocd-application.yaml`'s inlined
+   `helm.values` now carry the real digests. Two real bugs hit and fixed along
+   the way, both in `publish-images.yml`/`.dockerignore`, not the chart:
+   `github.repository_owner` is `wiatrM` (registry names must be lowercase —
+   hardcoded `ghcr.io/wiatrm/...`), and `.dockerignore`'s allowlist never
+   included `portal/` (same `**`-then-allowlist pattern as the api/worker
+   paths, just missing an entry).
 
-5. **Migrate the schema** (one-off Job, separate Helm install per the immutable-
-   release design):
+5. **Migrated the schema** (done): `helm install guidefold-migrate ... -f
+   values.migrate.yaml`, waited for `job/guidefold-migrate` to complete,
+   `helm uninstall`. `gfm`/`gf` schemas and tables exist and were verified
+   directly (`\dt gfm.*`) — real tables, not just "job succeeded."
+
+   **Gotcha hit and fixed**: `guidefold-credentials`' `app-password` and
+   `guidefold-operator-credentials`' `app-password` were generated as two
+   independent random values (steps 2/3 above). They must be the **same**
+   value — migrate sets `guidefold_api`'s real Postgres password from the
+   *operator* secret's `app-password`; the running API/worker pods then
+   authenticate using the *app* secret's `app-password`. Mismatched values
+   here produce a clean, correctly-labelled crash
+   (`password authentication failed for user "guidefold_api"`), not a hang —
+   but nothing catches the mismatch at deploy time, so get the value from
+   `guidefold-operator-credentials` and reuse it in `guidefold-credentials`,
+   don't generate a second random one:
    ```
-   helm install guidefold-migrate ../../chart -n guidefold \
-     -f values.yaml -f values.migrate.yaml
-   kubectl wait --for=condition=complete job/guidefold-migrate -n guidefold --timeout=5m
-   helm uninstall guidefold-migrate -n guidefold
+   kubectl create secret generic guidefold-credentials -n guidefold \
+     --from-literal=app-password="$(kubectl get secret guidefold-operator-credentials -n guidefold -o jsonpath='{.data.app-password}' | base64 -d)" \
+     --from-literal=api-token="$(openssl rand -base64 32)"
    ```
 
-6. **Verify locally before ArgoCD ever sees it:**
-   ```
-   helm template guidefold ../../chart -f values.yaml | kubectl apply --dry-run=server -f -
-   ```
+6. **Deployed directly with `helm install`, not yet via ArgoCD** (done): to
+   get live faster than a full PR-merge-then-sync cycle, `helm install
+   guidefold ../../chart -n guidefold -f values.yaml` was run directly
+   against the cluster. `portal.yaml` has no `workload` guard (unlike
+   api.yaml/worker.yaml), so it renders on *every* release including
+   `migrate` — pass `--set portal.enabled=false` for one-off Job releases or
+   you'll get a stray duplicate portal Deployment.
 
-7. **Apply the ArgoCD Application** (only after 1–6):
+   Result: `guidefold-portal` and `guidefold-worker` pods Running; `guidefold`
+   (api) pods correctly CrashLoopBackOff with `workos_requires_api_key_and_client_id`
+   — expected, not a bug: `auth: workos` with no WorkOS secret wired yet (see
+   step 3's still-open WorkOS mount). Internal only, no ingress route to it,
+   harmless to leave crash-looping until WorkOS is wired.
+
+7. **Apply the ArgoCD Application** (not yet done — the live release above was
+   installed directly with `helm install`, bypassing GitOps for speed):
    ```
    kubectl apply -f argocd-application.yaml -n argocd
    kubectl get application guidefold -n argocd -w
    ```
+   ArgoCD adopts the existing resources on first sync (same chart, same
+   values, same rendered manifests) rather than recreating them — but this
+   hasn't been tried against this specific Helm-installed release yet;
+   verify `kubectl get application guidefold -n argocd` shows `Synced`, not
+   `OutOfSync`, before trusting it for ongoing management.
 
-8. **Verify:**
+8. **Verified** (done, via the cluster's ingress IP + Host header — DNS for
+   `guidefold.cloudfloo.io` isn't pointed at `192.168.8.128` yet):
    ```
-   kubectl get pods -n guidefold
-   curl -s http://guidefold.cloudfloo.io/health/ready   # once DNS points at 192.168.8.128
+   curl -H "Host: guidefold.cloudfloo.io" http://192.168.8.128/
    ```
-   Expect `{"ready": true, "retrieval": "not_configured", ...}` — that's correct,
-   not a failure: nothing has been imported/published yet. The management API
-   (`/api/v1/...`) is live at this point.
+   Real 200, real MkDocs-rendered content, CSS/JS assets load, a second page
+   (`/quickstart/`) resolves. This becomes reachable at the real domain the
+   moment DNS is added — nothing else changes. `/health/ready` on the API
+   isn't reachable externally yet (no ingress for it; see step 6).
 
 9. **GitHub App registration is blocked on real backend work that doesn't exist
    yet — checked this pass, not assumed.** `internal/identity` has a `"github"`
