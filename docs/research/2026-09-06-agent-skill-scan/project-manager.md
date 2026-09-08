@@ -102,3 +102,14 @@ Audyty to szacunkowo 2–4 roboczodni ML/research. Dopuszczalnym wynikiem jest �
 ## Decyzja PM
 
 Przyjąć T0/T1 sparse + authoring + telemetry. Otworzyć rzeczywiste użycie po pierwszej demonstracji całego przepływu; T1 przyjąć warunkowo po bramce sieciowej. Po czterech tygodniach rozliczyć decyzje ownerów. Paper prowadzić jako osobny pakiet dowodowy z ograniczonym budżetem i tezą dobraną do wyników. Największe ryzyko obecnie to partner i integracja, a nie brak nowego retrievera.
+
+## Aktualizacja dla PM, 8 września 2026
+
+Zmiany w planie po skanie z 8 września, bez kodu: [design-2026-09-08-scan-deltas.md](design-2026-09-08-scan-deltas.md).
+Kolejność prac: D1 (korpus, offline, zero ryzyka dla hot path) przed D2 i D3 (kontrakt 1.2,
+selekcja kart, nie ranking), D5 (one-hop w USE) niezależnie, D4 (promocja) po D3 i ledgerze.
+Nic z tego nie jest warunkiem pilota. Powtórka eksperymentu delivery-vs-concatenation z
+poprawionym designem (filler na ścieżce przodków, scoring bez cytowania, trzy przebiegi)
+kosztuje około 20 USD i jeden dzień; bez niej strona evidence pozostaje z wynikiem
+negatywnym. Dwie pozycje do decyzji właściciela w §4 design docu blokują wpis w kontrakcie,
+nie D1.

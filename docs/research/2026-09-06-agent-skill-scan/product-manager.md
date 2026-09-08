@@ -96,3 +96,17 @@ Wykonalność ograniczonego MVP: **wysoka, warunkowa**. Rdzeń i kontrakt istnie
 Paper nie jest bramką release. Potencjalny wkład: różnica między trafnością pojedynczego skilla a użytecznością całego dopuszczalnego zestawu w wielozespołowym repo, wraz z kosztem i granicami transferu dense. Samo BM25+RRF nie daje obronionej nowości. Najcenniejsze braki to niezależnie ocenione zadania i realne zachowanie developerów. Spiki powinny wskazać hipotezę wartą pomiaru, nie symulować wynik użytkowników.
 
 **Głos Product Managera: GO dla przygotowania i startu ograniczonego MVP T1 sparse; NO-GO dla rozbudowy runtime przed pilotem; research kończy się raportem, także negatywnym, bez przesuwania testów.**
+
+## Aktualizacja dla PO, 8 września 2026
+
+Skan z 8 września nie zmienia decyzji o domknięciu MVP na remote Go SEARCH/USE z BM25F.
+Ocena i design delt: [design-2026-09-08-scan-deltas.md](design-2026-09-08-scan-deltas.md). Dla produktu ważne są dwie rzeczy.
+Po pierwsze, pierwsza propozycja wartości („ranked delivery kontra konkatenacja") nie ma
+dziś dowodu: przebieg z 8 września dał konkatenacji 74 do 79 procent i Guidefold 59 do 77
+procent, bo konkatenator nigdy nie trafił na limit; strona
+[evidence](../../../portal/content/evidence.md) portalu prowadzi teraz tym wynikiem jako
+negatywem, a nie obietnicą. Po drugie, najtańsza nowa praca to korpus same-family hard
+negatives (D1); bez niego nie wiemy, czy top-1 między rodzeństwem jest bottleneckiem, a to
+jest warunek dla jawnej abstencji (D2) i rezolucji po rankingu (D3). Dwie decyzje właściciela
+są wypisane w §4 design docu: czy D2 i D3 wchodzą do kontraktu 1.2 przed pilotem oraz czy
+reguły promocji (D4) są częścią Pilot Core.
