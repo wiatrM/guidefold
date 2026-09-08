@@ -60,7 +60,7 @@ spec:
                 matchLabels: {cnpg.io/cluster: guidefold-postgres}
           connectionBudget: 128
           reservedConnections: 16
-        image: "ghcr.io/wiatrm/guidefold-search@sha256:a0bded2afc7752f75c25efda3173f758380c236a3557deab1cb191f54654178e"
+        image: "ghcr.io/wiatrm/guidefold-search@sha256:cbcc19478240567dcf848f621bedbcb06595133b32d7907840cbbe8af7520702"
         snapshotID: unpublished
         replicas: 2
         autoscaling:
@@ -68,20 +68,22 @@ spec:
           maxReplicas: 3
         worker:
           enabled: true
-          image: "ghcr.io/wiatrm/guidefold-worker@sha256:8c340cf569da602b8dda6819af73fe22d24571c73bd0f176b0f7b25ef49c69b7"
+          image: "ghcr.io/wiatrm/guidefold-worker@sha256:09b89b02de57c73224135c6ac8d8206491a5cfd10e33940dbfceadf5145ca28a"
           replicas: 1
           generator: deterministic
         ingress:
-          enabled: false
+          enabled: true
           className: nginx
-          host: ""
+          host: guidefold.cloudfloo.io
           tlsSecret: ""
         portal:
           enabled: true
-          image: "ghcr.io/wiatrm/guidefold-portal@sha256:a1b52391990fba75c3b3e6dc7ab9484a47a6a8c4d170da195ae799d0bdda9f7e"
+          image: "ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b"
           replicas: 1
-          host: guidefold.cloudfloo.io
-          tlsSecret: ""
+        ui:
+          enabled: true
+          image: "ghcr.io/wiatrm/guidefold-ui@sha256:57e625c3dc8c160c7af3c491b339aa74d9b16fa500315958e4a25c517de7b858"
+          replicas: 2
         networkPolicy:
           enabled: true
           clientPeers:

@@ -12,7 +12,13 @@ COPY portal/ /src/portal/
 RUN cd /src/portal && mkdocs build --strict && test -f /src/.portal-site/index.html
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
-COPY --from=build /src/.portal-site/ /usr/share/nginx/html/
+# Nested under docs/, not the document root: the guidefold.cloudfloo.io deployment
+# mounts this at /docs (the hosted UI owns /, see ui/Dockerfile) via a plain,
+# non-rewriting ingress path (deploy/k8s/chart/templates/portal.yaml) — nginx's own
+# directory-redirect (evidence -> evidence/) only comes out with the right Location
+# if nginx's own view of the path already includes /docs. A standalone deployment
+# at domain root would need this COPY destination changed back to the plain root.
+COPY --from=build /src/.portal-site/ /usr/share/nginx/html/docs/
 # Correct directory-redirect Location headers behind ingress — see the file's own
 # comment. Without this, e.g. /evidence -> /evidence/ redirects to a port nothing
 # outside the cluster can reach.

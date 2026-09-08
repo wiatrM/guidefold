@@ -86,13 +86,24 @@ job:
   ttlSecondsAfterFinished: 86400
 
 # The developer portal (portal/Dockerfile): static docs behind an unprivileged nginx, no
-# database, no credentials, no egress. Off by default; give it its own host when on.
+# database, no credentials, no egress. Off by default; served at ingress.host + /docs
+# when both ingress.host and portal.enabled are set (see templates/portal.yaml).
 portal:
   enabled: false
   image: ""
   replicas: 1
-  host: ""
-  tlsSecret: ""
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+
+# The hosted U4 React app (ui/Dockerfile): static build behind an unprivileged nginx,
+# same-origin to the API (no database, no credentials, no egress of its own). Off by
+# default; served at ingress.host + / when both ingress.host and ui.enabled are set
+# (see templates/ui.yaml) — bring ingress.enabled up too, or its /api,/v1 calls 404.
+ui:
+  enabled: false
+  image: ""
+  replicas: 1
   resources:
     requests: {cpu: 50m, memory: 64Mi}
     limits: {cpu: 250m, memory: 128Mi}
