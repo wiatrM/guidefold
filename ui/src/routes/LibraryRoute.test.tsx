@@ -1,13 +1,12 @@
 import { describe, expect, test, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApiLibraryRoute, LibraryRoute } from './CatalogRoutes';
+import { ApiLibraryRoute } from './CatalogRoutes';
 import { ApiError } from '../api/client';
 import type { SkillPage, SkillSummary } from '../api/decoders';
 import type { SkillQuery } from '../data/source';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
-import { renderFixture } from '../test/fixtureRoute';
 
 const summary = (name: string, over: Partial<SkillSummary> = {}): SkillSummary => ({
   skill_id: 'urn:skill:meridian:forge.pipelines:' + name, name, description: '[forge.pipelines] ' + name,
@@ -142,43 +141,46 @@ describe('Library route, filters and paging', () => {
   });
 });
 
-describe('Library route, fixture', () => {
-  test('a deprecated source status renders a warning-tone badge, an active one does not', () => {
-    renderFixture(LibraryRoute, 'q=legacy-session-auth');
-    // "deprecated" also names a <select> option; the badge itself is the only <span>.
-    const deprecated = screen.getAllByText('deprecated').find(el => el.tagName === 'SPAN')!;
-    expect(getComputedStyle(deprecated).color).toBe('var(--warning-ink)');
-    renderFixture(LibraryRoute, 'q=postgres-auth');
-    const active = screen.getAllByText('active').find(el => el.tagName === 'SPAN')!;
-    expect(getComputedStyle(active).color).not.toBe('var(--warning-ink)');
+describe('Library route, rows', () => {
+  test('publication status is a labelled badge whose tone follows the state; colour never stands alone', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page({ items: [summary('published-one', { publication_status: 'published' }), summary('review-one', { publication_status: 'needs_review' }), summary('draft-one')] }),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+    }));
+    const published = await screen.findByText('published');
+    expect(getComputedStyle(published).color).toBe('var(--system-ink)');
+    expect(getComputedStyle(screen.getByText('needs_review')).color).toBe('var(--warning-ink)');
+    expect(getComputedStyle(screen.getByText('draft')).color).not.toBe('var(--warning-ink)');
   });
 
-  test('a skill with no declared scope node renders Unmapped scope as a warning-tone badge', () => {
-    renderFixture(LibraryRoute, 'q=hierarchy-index');
-    const badge = screen.getByText('Unmapped scope');
-    expect(getComputedStyle(badge).color).toBe('var(--warning-ink)');
+  test('an absent owner, layer or knowledge layer reads Unknown, never an empty cell', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page({ items: [summary('bare', { owner: null, source_layer: null, knowledge_layer: null })] }),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+    }));
+    const row = (await screen.findByRole('link', { name: 'bare' })).closest('tr')!;
+    expect(within(row).getAllByText('Unknown')).toHaveLength(2);
+    expect(within(row).getByText('Knowledge layer: Unknown')).toBeInTheDocument();
   });
 
-  test('an unfiltered result groups skills by scope and collapses beyond the threshold', () => {
-    const { container } = renderFixture(LibraryRoute);
-    // The Source-details disclosure on every row is also a <details>; only the scope groups
-    // carry a scope id and count in their summary, never the literal "Source details" text.
-    const scopeGroups = [...container.querySelectorAll('details')]
-      .filter(details => details.querySelector('summary')?.textContent?.trim() !== 'Source details');
-    expect(scopeGroups.length).toBeGreaterThan(5);
-    expect(scopeGroups[0].open).toBe(true);
-    expect(scopeGroups[5].open).toBe(false);
-    expect(screen.getByText(/scopes in this result/)).toBeInTheDocument();
-  });
-
-  test('a skill in a collapsed scope group is reachable once the group is opened', async () => {
+  test('the source details disclosure holds the description and path, and the name links to the exact revision', async () => {
     const user = userEvent.setup();
-    renderFixture(LibraryRoute);
-    // atlas.identity.turnstile sorts past the first five scopes, so postgres-auth starts hidden.
-    expect(screen.queryByRole('link', { name: 'postgres-auth' })).not.toBeVisible();
-    // "atlas.identity.turnstile" also names a <select> option; the group summary is the one in a <summary>.
-    const summaryLabel = screen.getAllByText('atlas.identity.turnstile').find(el => el.closest('summary'))!;
-    await user.click(summaryLabel);
-    expect(screen.getByRole('link', { name: 'postgres-auth' })).toBeVisible();
+    renderApi(ApiLibraryRoute, facets);
+    const link = await screen.findByRole('link', { name: 'pipeline-testing' });
+    expect(link).toHaveAttribute('href', expect.stringContaining('skill=urn%3Askill%3Ameridian%3Aforge.pipelines%3Apipeline-testing'));
+    expect(link).toHaveAttribute('href', expect.stringContaining('revision=rev-pipeline-testing'));
+    await user.click(screen.getByText('Source details'));
+    expect(screen.getByText('[forge.pipelines] pipeline-testing')).toBeInTheDocument();
+    expect(screen.getByText('platforms/forge/pipeline-testing/SKILL.md')).toBeInTheDocument();
+  });
+
+  test('the page summary names the count, whether more pages follow and the snapshot', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page({ items: [summary('a'), summary('b')], next_cursor: 'page-2', snapshot_id: null }),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+    }));
+    expect(await screen.findByText(/2 skill summaries on this page, more pages follow/)).toBeInTheDocument();
+    expect(screen.getByText(/Snapshot Unknown\./)).toBeInTheDocument();
+    expect(screen.getByText('2 on this page')).toBeInTheDocument();
   });
 });

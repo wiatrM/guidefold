@@ -2,13 +2,12 @@ import { describe, expect, test, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { ApiImportRoute, ImportRoute } from './OnboardingRoutes';
+import { ApiImportRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
 import type { ImportPlan, ImportStatus } from '../api/decoders';
-import type { ApiRouteContext, RouteContext } from '../domain';
+import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
-import { meridian } from '../data/meridian';
 
 const me = {
   user: { id: 'u1', email: 'ada@example.com', name: 'Ada' },
@@ -276,73 +275,53 @@ describe('Import route, proposal generation panel', () => {
   });
 });
 
-// The local Meridian fixture flow (ImportRoute), not the hosted API flow above (ApiImportRoute).
-function fixtureCtx(over: Partial<RouteContext> = {}): RouteContext {
-  const params = over.params ?? new URLSearchParams();
-  return {
-    data: meridian, source: fakeSource(), mode: 'fixture', params,
-    state: 'ready', view: 'import', member: false, canWrite: true, canFeedback: true,
-    memory: {}, save: vi.fn(),
-    href: (view, changes = {}) => '/' + view + '?' + new URLSearchParams(
-      Object.entries({ ...Object.fromEntries(params.entries()), ...changes })
-        .filter(([, value]) => value !== null && value !== undefined)
-        .map(([key, value]) => [key, String(value)]),
-    ).toString(),
-    go: vi.fn(),
-    ...over,
-  };
-}
+describe('Import route, stepper', () => {
+  const providers = fakeSource({ getAuthProviders: async () => ({ mode: 'dev' as const, providers: [{ id: 'github', label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }) });
 
-function LocationProbe() {
-  const location = useLocation();
-  return <p>Probe path: {location.pathname}{location.search}</p>;
-}
-
-describe('Import route, fixture, stepper', () => {
-  test('a reached stepper step is a real link and navigates', async () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('step=preview') });
-    render(<MemoryRouter initialEntries={['/import?step=preview']}>
-      <ImportRoute ctx={ctx} />
-      <LocationProbe />
-    </MemoryRouter>);
-    const signInLink = screen.getByRole('link', { name: /Sign in/ });
-    expect(signInLink.tagName).toBe('A');
-    await userEvent.click(signInLink);
-    expect(await screen.findByText(/step=login/)).toBeInTheDocument();
+  test('the four steps are numbered and named for the hosted flow; the current one carries aria-current', () => {
+    renderRoute(fakeSource({ listImports: async () => [] }), 'step=result');
+    const list = screen.getByRole('list', { name: 'Import progress' });
+    const items = within(list).getAllByRole('listitem');
+    expect(items.map(item => within(item).getByText(/^(Sign in|Organization|Repository|Import status)$/).textContent)).toEqual(['Sign in', 'Organization', 'Repository', 'Import status']);
+    expect(items[3]).toHaveAttribute('aria-current', 'step');
+    expect(items[0]).not.toHaveAttribute('aria-current');
+    expect(within(items[0]).getByText('01')).toBeInTheDocument();
   });
 
-  test('a not-yet-reached step stays plain text, not a link', () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('step=login') });
-    render(<MemoryRouter><ImportRoute ctx={ctx} /></MemoryRouter>);
-    expect(screen.queryByRole('link', { name: /Import result/ })).not.toBeInTheDocument();
-    expect(screen.getByText('Import result')).toBeInTheDocument();
+  test('without a session and no step in the address the route starts at sign-in', async () => {
+    renderRoute(providers, '', { me: null, org: null, repo: null, role: null, access: { status: 'checking', me: null, checkedAt: null } });
+    const list = screen.getByRole('list', { name: 'Import progress' });
+    expect(within(list).getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'step');
+    expect(await screen.findByRole('button', { name: /Continue with GitHub/ })).toBeInTheDocument();
   });
 
-  test('a completed step shows the Done text and icon; the current step does not', () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('step=preview') });
-    render(<MemoryRouter><ImportRoute ctx={ctx} /></MemoryRouter>);
-    const signInLink = screen.getByRole('link', { name: /Sign in/ });
-    expect(within(signInLink).getByText('Done')).toBeInTheDocument();
-    expect(signInLink.querySelector('svg')).toBeTruthy();
-    const orgLink = screen.getByRole('link', { name: /Organization/ });
-    expect(within(orgLink).getByText('Done')).toBeInTheDocument();
-    const previewLink = screen.getByRole('link', { name: /Preview/ });
-    expect(within(previewLink).queryByText('Done')).not.toBeInTheDocument();
+  test('a signed-in operator without an organisation lands on the organisation step', async () => {
+    renderRoute(fakeSource({ listOrgs: async () => [] }), '', { org: null, repo: null, role: null });
+    expect(await screen.findByText('No organization yet')).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Import progress' }).querySelectorAll('[aria-current="step"]')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Create organization/ })).toBeInTheDocument();
   });
 
-  test('the result step has an inspectable file list', async () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('step=result') });
-    render(<MemoryRouter><ImportRoute ctx={ctx} /></MemoryRouter>);
-    const summary = screen.getByText(`Inspect files, hashes and sizes (${meridian.fixture.skills.length})`);
-    await userEvent.click(summary);
-    expect(screen.getByRole('table', { name: 'Selected source manifest' })).toBeInTheDocument();
-    expect(screen.getByText(meridian.fixture.skills[0].path)).toBeInTheDocument();
+  test('the repository step lists repositories with a Git host or Unknown and the CLI commands for this organisation', async () => {
+    renderRoute(fakeSource({ listRepos: async () => [
+      { repo_id: 'monorepo', name: null, git_host_url: 'https://github.example.test/meridian/monorepo', created_at: null, created: false },
+      { repo_id: 'docs', name: null, git_host_url: null, created_at: null, created: false },
+    ] }), 'step=preview');
+    expect(await screen.findByText('https://github.example.test/meridian/monorepo')).toBeInTheDocument();
+    const docs = screen.getByText('docs').closest('tr')!;
+    expect(within(docs).getByText('Unknown')).toBeInTheDocument();
+    expect(screen.getByText(/guidefold org use meridian/)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Open import status' })).toHaveLength(2);
   });
 
-  test('the result step file list stays present in partial state, not gated on it', () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('step=result'), state: 'partial' });
-    render(<MemoryRouter><ImportRoute ctx={ctx} /></MemoryRouter>);
-    const visible = meridian.visibleSkills('partial').length;
-    expect(screen.getByText(`Inspect files, hashes and sizes (${visible})`)).toBeInTheDocument();
+  test('the result step lists imports newest first with a state badge and a link that keeps the import id in the address', async () => {
+    renderRoute(fakeSource({
+      listImports: async () => [status({ import_id: 'im-2', state: 'partial' }), status({ import_id: 'im-1' })],
+      getImport: async () => status({ import_id: 'im-2', state: 'partial' }),
+    }), 'step=result&import_id=im-2');
+    const rows = within(await screen.findByRole('table', { name: 'Imports for this repository' })).getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('im-2');
+    expect(within(rows[0]).getByText('partial')).toBeInTheDocument();
+    expect(within(rows[1]).getByRole('link', { name: 'Read this import' })).toHaveAttribute('href', expect.stringContaining('import_id=im-1'));
   });
 });

@@ -1,5 +1,9 @@
 import type {RelationEdge, SkillSummary} from '../api/decoders';
-import {knowledgeLayerOrder, type PyramidLayer} from './pyramid';
+
+/** Abstract, task and atomic read general-to-specific; unclassified always sorts last and is a
+ * named absence, never an invented layer. */
+export const knowledgeLayerOrder = ['abstract', 'task', 'atomic', 'unclassified'] as const;
+export type PyramidLayer = typeof knowledgeLayerOrder[number];
 
 export interface PyramidGraphNode {id: string; label: string; detail: string}
 export interface PyramidGraphBand {layer: PyramidLayer; items: PyramidGraphNode[]}
@@ -7,11 +11,7 @@ export interface PyramidGraphEdge {from: string; to: string}
 
 const layerOf = (skill: SkillSummary): PyramidLayer => skill.knowledge_layer ?? 'unclassified';
 
-/** API-mode counterpart of `pyramid.ts`'s fixture-only `pyramidBands`: kept as its own small
- * function rather than a shared generic, since the two sources disagree on field names
- * (`Skill.refines` denormalised on each skill vs a separately fetched edge list) and sharing one
- * generic here would buy indirection, not less code, for two call sites
- * (`dry-without-wrong-abstraction`). Groups `skills` — already filtered to one repository scope
+/** Groups `skills` — already filtered to one repository scope
  * by the caller (`listSkills({scope})`) — into all four knowledge-layer bands, `unclassified`
  * included, each present even when empty: a caller decides whether an empty band is a dashed
  * placeholder or reason to skip the chart entirely, this function never hides an absence. */
@@ -43,8 +43,7 @@ export function pyramidGraphEdges(skills: SkillSummary[], relations: RelationEdg
   return edges;
 }
 
-/** True once at least one skill in this scope carries a real layer — distinct from the fixture's
- * `isFullyUnclassified`, which reads whole-repo bands; this reads a `pyramidGraphBands` result
- * already scoped by the caller. */
+/** True once at least one skill in this scope carries a real layer; reads a `pyramidGraphBands`
+ * result already scoped by the caller. */
 export const hasAnyClassification = (bands: PyramidGraphBand[]): boolean =>
   bands.some(band => band.layer !== 'unclassified' && band.items.length > 0);

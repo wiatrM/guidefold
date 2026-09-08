@@ -3,12 +3,11 @@ import { resolve } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApiProposalsRoute, ProposalsRoute } from './ReviewRoutes';
+import { ApiProposalsRoute } from './ReviewRoutes';
 import { ApiError } from '../api/client';
 import type { ExportPayload, ProposalDetail, ProposalList, Publication, Snapshot } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
-import { renderFixture } from '../test/fixtureRoute';
 
 const list: ProposalList = {
   items: [{ proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null }],
@@ -211,41 +210,34 @@ describe('Proposals route, decision, conflict and export', () => {
   });
 });
 
-describe('Proposals route, fixture', () => {
-  test('the stage label and non-current stepper steps are plain text; the current step still stands out', () => {
-    renderFixture(ProposalsRoute);
-    // "Draft" names both the header status chip and the current stepper step; only the
-    // stepper one is a StateBadge (rendered as a <span>).
-    const draftLabels = screen.getAllByText('Draft');
-    const headerLabel = draftLabels.find(el => !el.closest('li'))!;
-    const stepperCurrent = draftLabels.find(el => el.closest('li'))!;
-    expect(getComputedStyle(headerLabel).color).toBe('var(--stone-300)');
-    expect(getComputedStyle(headerLabel).color).not.toBe('var(--human-ink)');
-    expect(stepperCurrent.tagName).toBe('SPAN');
-    expect(getComputedStyle(stepperCurrent).color).toBe('var(--human-ink)');
-
-    const lifecycle = screen.getByRole('list', { name: 'Publication lifecycle' });
+describe('Proposals route, detail presentation', () => {
+  test('the lifecycle names four stages; only the current one carries aria-current and the human tone', async () => {
+    renderApi(ApiProposalsRoute, base(), 'proposal=p-1');
+    const lifecycle = await screen.findByRole('list', { name: 'Publication lifecycle' });
     const items = within(lifecycle).getAllByRole('listitem');
-    expect(items).toHaveLength(4);
-    // Draft (current) is the only stepper item that still renders as a bordered badge.
-    expect(items[0].querySelector('span')).not.toBeNull();
-    expect(items[1].querySelector('span')).toBeNull();
-    expect(items[2].querySelector('span')).toBeNull();
-    expect(items[3].querySelector('span')).toBeNull();
+    expect(items.map(item => item.textContent)).toEqual(['draft', 'approved_for_export', 'awaiting_git', 'published']);
+    expect(items[0]).toHaveAttribute('aria-current', 'step');
+    expect(items[1]).not.toHaveAttribute('aria-current');
+    expect(getComputedStyle(within(items[0]).getByText('draft')).color).toBe('var(--human-ink)');
+    expect(getComputedStyle(within(items[1]).getByText('approved_for_export')).color).not.toBe('var(--human-ink)');
   });
 
-  test('the candidate body preview scrolls instead of dumping the full body onto the page', () => {
-    renderFixture(ProposalsRoute);
-    const jumpLinks = screen.getAllByText('Jump to decision and publication');
-    expect(jumpLinks.length).toBeGreaterThan(0);
-    const preview = jumpLinks[0].parentElement!;
+  test('the candidate body preview scrolls instead of dumping the full body onto the page', async () => {
+    renderApi(ApiProposalsRoute, base(), 'proposal=p-1');
+    const summary = await screen.findByText('Read the candidate body');
+    const preview = summary.parentElement!.querySelector('div')!;
     expect(getComputedStyle(preview).maxHeight).toBe('var(--raw-max-height)');
     expect(getComputedStyle(preview).overflow).toBe('auto');
   });
 
-  test('a scope cue names this as one fixture candidate, not a live review queue', () => {
-    renderFixture(ProposalsRoute);
-    expect(screen.getByText(/This fixture always shows the same one candidate, not a live review queue/)).toBeInTheDocument();
+  test('the queue is one row per proposal with its kind, state and a link into the detail', async () => {
+    renderApi(ApiProposalsRoute, base());
+    const link = await screen.findByRole('link', { name: 'p-1' });
+    expect(link).toHaveAttribute('href', expect.stringContaining('proposal=p-1'));
+    const row = link.closest('tr')!;
+    expect(within(row).getByText('extraction')).toBeInTheDocument();
+    expect(within(row).getByText('draft')).toBeInTheDocument();
+    expect(within(row).getByText('platforms/atlas/SKILL.md')).toBeInTheDocument();
   });
 
   test('the decision choice cards declare a hover treatment', () => {

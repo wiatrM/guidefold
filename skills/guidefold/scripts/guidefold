@@ -4828,11 +4828,26 @@ def build_card(root, cfg, node, skills_by_node):
     extra = root / (node_meta(cfg, node).get("paths", ["."])[0].split("*")[0]) / ".agents" / "NODE.md"
     if extra.exists():
         lines += [extra.read_text().strip(), ""]
+    # ADR-0035: ascended scope maps first, root-most first, so a harness that only reads files
+    # on disk (Copilot applyTo, Codex/Gemini nested AGENTS.md) gets the shape of the organisation
+    # before any specific guidance. A map is a normal skill; it is pulled out of the bullet
+    # list below so it is stated once.
+    def _is_map(fm):
+        md = fm.get("metadata") or {}
+        return md.get("generated_by") == ASCEND_MARKER and md.get("ascend_kind") == "map"
+    maps = [(n, name, fm) for n in reversed(chain) for name, fm in sorted(skills_by_node.get(n, [])) if _is_map(fm)]
+    if maps:
+        lines += ["## Scope map (general → specific)", ""]
+        for n, name, fm in maps:
+            lines.append(f"- **{root_label if n == '_root' else n}** `{urn(cfg, n, name)}` — {digest_of(fm)}")
+        lines.append("")
     lines += ["## Inherited guidance (general → specific)", ""]
     for n in reversed(chain):                    # root first
         label = root_label if n == "_root" else n
         lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
         for name, fm in sorted(skills_by_node.get(n, [])):
+            if _is_map(fm):
+                continue
             md = fm.get("metadata") or {}
             flag = f" **DEPRECATED → {md.get('replaced_by', '?')}**" if md.get("status") == "deprecated" else ""
             lines.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
@@ -5017,6 +5032,9 @@ def cmd_hook(a, root):
         }, ids={"session_id": session_id})
         if not top:
             return
+        # ADR-0035: the nearest ascended scope map rides along ahead of the best card, in a
+        # fourth slot (hook k=3, cap 4). Read from the artifact by URN only -- no YAML here.
+        top = _with_parent_map(idx, top)
         print(f"[guidefold] Relevant organizational guidance for scope {node}:")
         for c in top:
             print(f"- {c['urn']} — {c['description'][:140]}")
@@ -8569,6 +8587,39 @@ def node_dir(root: Path, cfg: dict, node: str) -> Path:
     sys.exit(f"guidefold: cannot derive a directory for node {node} from paths {globs}; "
              f"give it a plain `<dir>/**` glob first")
 
+def _ascend_name(node: str, kind: str) -> str:
+    """Deterministic skill name per (scope, kind): `atlas-identity-map`, `root-conventions`.
+    The hook relies on this to find a scope's map by URN from the artifact alone."""
+    return f"{flat_node(node) or 'root'}-{'map' if kind == 'map' else 'conventions'}"
+
+def _parent_map_urn(cards, child_urn: str):
+    """The nearest ascended scope map strictly above `child_urn`'s scope, or None. Pure string
+    work over URNs plus a membership test on the artifact's cards -- no frontmatter, no YAML."""
+    parts = child_urn.split(":")
+    if len(parts) != 5:
+        return None
+    publisher, node = parts[2], parts[3]
+    for anc in ancestors(node)[1:]:
+        cand = f"urn:skill:{publisher}:{anc}:{_ascend_name(anc, 'map')}"
+        if cand in cards:
+            return cand
+    return None
+
+def _with_parent_map(idx, top: list, cap: int = 4) -> list:
+    """ADR-0035 delivery rule: the nearest ascended map above the best-ranked card rides along,
+    ahead of it (ADR-0006: general before specific), in its own slot within `cap`. One map at
+    most; never displaces a selected card; never changes ranking."""
+    if not top or len(top) >= cap:
+        return top
+    have = {c["urn"] for c in top}
+    for c in top:
+        m = _parent_map_urn(idx.cards, c["urn"])
+        if m and m not in have:
+            card = idx.cards[m]
+            return [{"urn": m, "node": card["node"], "name": card["name"],
+                     "description": card["description"], "score": 0, "scope_map": True}] + list(top)
+    return top
+
 def _ascend_children(cfg: dict, node: str) -> list:
     """Direct child nodes of `node` in dotted order."""
     if node == "_root":
@@ -8880,8 +8931,9 @@ def cmd_ascend(a, root, cfg):
             target = existing.get(kind)
             if target and action == "create":
                 action = item["action"] = "edit"       # never a duplicate beside the existing one
-            if target:
-                skill["name"] = target["name"]
+            # Deterministic name per (scope, kind): the hook finds a scope's map by URN alone,
+            # from the artifact, with no frontmatter read (see _with_parent_map).
+            skill["name"] = target["name"] if target else _ascend_name(node, kind)
             ok, reasons = _ascend_gate(cfg, node, kind, skill, records, target["urn"] if target else "")
             if not ok:
                 item["rejected"] = reasons

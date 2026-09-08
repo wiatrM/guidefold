@@ -19,7 +19,7 @@ import type {
 import type { Session } from '../domain';
 import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, RelationQuery, SkillQuery, UsageQuery } from './source';
 
-/** Drafts in API mode live in RAM only and are dropped with the access generation. */
+/** Drafts live in RAM only and are dropped with the access generation. */
 export function createMemoryDraftStore(): DraftStore {
   let current: Session = {};
   const listeners = new Set<() => void>();
@@ -72,7 +72,6 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
   };
 
   const source: ApiDataSource = {
-    mode: 'api',
     drafts,
     client,
 

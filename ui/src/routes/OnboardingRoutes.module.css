@@ -8,14 +8,10 @@
 .steps li { display: flex; gap: var(--space-3); align-items: center; border: var(--border-width) solid var(--line); background: var(--graphite-900); padding: var(--space-3); min-width: var(--zero); min-height: var(--touch-height); }
 .steps .currentStep { border-color: var(--survey-teal); background: var(--graphite-800); }
 .steps .completedStep { border-color: var(--survey-teal); }
-.stepLink { display: flex; gap: var(--space-3); align-items: center; width: var(--full); min-width: var(--zero); color: inherit; text-decoration: none; }
-.stepLink:hover, .stepLink:focus-visible { text-decoration: underline; }
 .stepNumber { font-family: var(--font-display); font-size: var(--font-size-section); color: var(--stone-300); }
 .currentStep .stepNumber { color: var(--survey-teal); }
 .steps strong { display: block; font-weight: var(--weight-semibold); }
 .steps div > span { display: block; color: var(--stone-300); font-size: var(--font-size-small); margin-top: var(--space-1); }
-.stepDone { display: flex; gap: var(--space-1); align-items: center; flex: none; margin-left: auto; color: var(--survey-teal); font-size: var(--font-size-small); font-weight: var(--weight-medium); white-space: nowrap; }
-.stepDone svg { width: var(--icon-size); height: var(--icon-size); }
 .notice { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border: var(--border-width) solid var(--warning); color: var(--stone-100); background: var(--graphite-900); margin: var(--zero); }
 .notice > svg { width: var(--icon-size); height: var(--icon-size); color: var(--warning); flex: none; }
 .providers { display: grid; gap: var(--space-2); border: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
@@ -36,14 +32,10 @@
 .disclosure { margin-top: var(--space-3); border-top: var(--border-width) solid var(--line); }
 .disclosure summary { min-height: var(--control-height); padding: var(--space-2) var(--zero); cursor: pointer; color: var(--stone-100); font-weight: var(--weight-medium); overflow-wrap: anywhere; }
 .disclosure[open] > summary { border-bottom: var(--border-width) solid var(--line); margin-bottom: var(--space-3); }
-.pathList { display: grid; gap: var(--space-2); padding-left: var(--space-4); font-size: var(--font-size-small); color: var(--stone-300); }
 .pathList code, .pathCell, .hashCell { overflow-wrap: anywhere; word-break: break-word; }
 .hashCell code { font-size: var(--font-size-small); }
 .linkHint { display: block; color: var(--stone-300); font-size: var(--font-size-small); font-weight: var(--weight-normal); margin-top: var(--space-1); }
-.actionFooter { display: grid; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-3); border-top: var(--border-width) solid var(--line); }
-.actionFooter p { margin: var(--zero); }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
 .memberForm { display: grid; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: var(--border-width) solid var(--line); }
 .memberForm + .feedback { margin-top: var(--space-3); }
-.tokenExercise { display: grid; gap: var(--space-2); padding-bottom: var(--space-3); }
 .clipboardBuffer { position: fixed; top: var(--zero); left: var(--zero); width: var(--control-height); height: var(--control-height); opacity: var(--zero); pointer-events: none; }

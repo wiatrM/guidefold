@@ -183,8 +183,8 @@ async function checkBoundary(file,chain=[]){
  for(const dep of imports.get(file)||[]){
   if(dep.typeOnly){typeOnlyEdges.push({file:pathLabel(file),specifier:dep.specifier});continue;}
   const target=await resolveModule(file,dep.specifier);if(!target)continue;
-  if(target===resolve(src,'data.ts')||target.startsWith(resolve(src,'data')+'/')||extname(target)==='.json'){
-   issue(file,dep.line,'fixture-boundary','Reusable code imports data composition via '+[...chain,pathLabel(file),dep.specifier].join(' → '));continue;
+  if(target===resolve(src,'sample.ts')||target.startsWith(resolve(src,'data')+'/')||extname(target)==='.json'){
+   issue(file,dep.line,'data-boundary','Reusable code imports a data adapter or sample values via '+[...chain,pathLabel(file),dep.specifier].join(' → '));continue;
   }
   await checkBoundary(target,[...chain,pathLabel(file)]);
  }
@@ -192,8 +192,8 @@ async function checkBoundary(file,chain=[]){
 for(const file of productionRoots)await checkBoundary(file);
 const report={
  schemaVersion:1,stage:8,capturedAt:new Date().toISOString(),command:'cd ui && node qa/check-contracts.mjs',
- purpose:'Public component shape, fixture separation and authored CSS/token source contracts.',
- fixture:'Meridian fixture is allowed in stories and route composition, never a runtime dependency of reusable components or pure domain functions.',
+ purpose:'Public component shape, data-boundary separation and authored CSS/token source contracts.',
+ dataBoundary:'The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.',
  result:diagnostics.length?'failed':'passed',
  totals:{components:components.length,cssFiles:cssFiles.length,tokens:tokens.size,productionFilesTraversed:traversed.size,inlineProperties: inlineStyles.length,diagnostics:diagnostics.length},
  components,typeOnlyEdges,inlineStyles,diagnostics,

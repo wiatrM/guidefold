@@ -107,21 +107,19 @@ how much they are already met:
 1. **Cards, not bodies, at injection time.** The hook and `find` already inject at most four cards
    (ADR-0006 ordering: general to specific, root-most first). Ascended skills are digests capped at
    80 lines and marked `knowledge_layer: abstract`, so they fit that budget. Already true.
-2. **The parent map rides along with any selected child.** When a selected card has an abstract
-   parent (the `family.parent` the 1.2 contract already returns on every SEARCH card, computed from
-   approved `refines` edges), the hook should include that parent's card ahead of the child. This
-   is the "progressive disclosure upward" the paper's framework-then-detail generation relies on,
-   and it is not yet implemented in the hook: today `family` is decorative and provably changes no
-   ranking or card (`TestFamilyDecorationLeavesRankingAndCardsBitIdentical`). Making the hook read
-   it is a bounded change to the delivery path — and, per `PIVOT-BACKLOG` "Zasady prowadzenia", it
-   must ship with the paired evaluation in §2, not before. For `guidefold ascend` output the edge
-   is recorded as `derived_from` on the parent; the follow-up patch that adds `refines` to each
-   source child is what turns it into a `family` link the service can serve.
-3. **Harnesses without a hook still see the map.** Copilot reads `applyTo` instruction files, Codex
-   and Gemini read nested `AGENTS.md`/`GEMINI.md`. `guidefold materialize` should render each
-   scope's ascended map digest into that scope's generated card, so a harness that only reads
-   files on disk gets the same organisational shape the hook delivers. This is a materialize
-   change, not a new component.
+2. **The parent map rides along with any selected child — implemented 2026-09-08.** Ascended
+   skills carry deterministic names (`<scope>-map`, `<scope>-conventions`), so the hook finds the
+   nearest map above the best-ranked card by URN alone, from the pre-built artifact, and prints it
+   ahead of the child in a fourth slot (hook selects 3, cap 4). Ranking is untouched:
+   `search_results` telemetry carries only the selected cards, the map is a `card_injected`
+   exposure at position 1, and the hook path still imports no PyYAML
+   (`tests/test_parent_map_delivery.py`). The service-side `family` field stays decorative until
+   the paired evaluation in §2 says it may influence anything.
+3. **Harnesses without a hook still see the map — implemented 2026-09-08.** `guidefold materialize`
+   opens every scope card (`AGENTS.md`, `CLAUDE.md`/`GEMINI.md` via `@AGENTS.md`, and Copilot's
+   `.github/instructions/<scope>.instructions.md`) with a "Scope map (general → specific)" section
+   listing the ascended maps on the scope's ancestor chain, root-most first, each stated once, before
+   the inherited guidance. A scope with no map above it renders exactly as before.
 
 Two things to keep out of the harness on purpose: the full body of an ascended skill (it is a
 digest; if an agent needs more it should load the cited child, which is where the procedure lives),

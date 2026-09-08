@@ -56,7 +56,7 @@ def _no_change():
                         {"kind": "convention", "action": "no_change", "reason": "nothing shared"}]}
 
 
-def _map_identity(sources=(SRC_TURNSTILE, SRC_RBAC), body=None, name="identity-overview"):
+def _map_identity(sources=(SRC_TURNSTILE, SRC_RBAC), body=None, name="atlas-identity-map"):
     body = body or (
         "Identity is the atlas authorization platform. Turnstile is the ext_authz service that "
         "authorizes every atlas API request; the RBAC policy bundle it evaluates is authored under "
@@ -106,10 +106,10 @@ def test_ascend_creates_the_parent_map_skill_from_a_leaf_change(run_cli, fixture
     r = _ascend(run_cli, fixture_copy, _env(s.base_url))
     assert r.returncode == 0, r.stderr
     out = json.loads(r.stdout)
-    written = Path(fixture_copy) / IDENTITY_DIR / "identity-overview" / "SKILL.md"
+    written = Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map" / "SKILL.md"
     assert written.exists(), out
     text = written.read_text(encoding="utf-8")
-    assert text.startswith("---\nname: identity-overview\n")
+    assert text.startswith("---\nname: atlas-identity-map\n")
     assert 'description: "[atlas/identity] ' in text
     assert "  scope: atlas.identity\n" in text and "  owner: identity-platform\n" in text
     assert "  knowledge_layer: abstract\n" in text and "  generated_by: guidefold-ascend\n" in text
@@ -136,7 +136,7 @@ def test_ascend_climbs_until_a_level_has_nothing_generic(run_cli, fixture_copy, 
     assert "_root" not in nodes
     assert len(s.requests) == 2
     # the atlas-level prompt carried the freshly written identity skill as a changed body
-    assert "urn:skill:meridian:atlas.identity:identity-overview" in s.requests[1]["body"]["messages"][1]["content"]
+    assert "urn:skill:meridian:atlas.identity:atlas-identity-map" in s.requests[1]["body"]["messages"][1]["content"]
 
 
 def test_ascend_rejects_a_claim_that_cites_a_skill_outside_the_context(run_cli, fixture_copy, stub):
@@ -148,7 +148,7 @@ def test_ascend_rejects_a_claim_that_cites_a_skill_outside_the_context(run_cli, 
     assert out["written"] == []
     item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
     assert any("not in context" in reason for reason in item["rejected"])
-    assert not (Path(fixture_copy) / IDENTITY_DIR / "identity-overview").exists()
+    assert not (Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map").exists()
 
 
 def test_ascend_rejects_a_procedure_dressed_as_a_digest(run_cli, fixture_copy, stub):
@@ -175,7 +175,7 @@ def test_ascend_rejects_three_lines_copied_from_a_child(run_cli, fixture_copy, s
 def test_ascend_is_idempotent_without_a_second_model_call(run_cli, fixture_copy, stub):
     s = stub([_map_identity(), _no_change()])
     assert _ascend(run_cli, fixture_copy, _env(s.base_url)).returncode == 0
-    first = (Path(fixture_copy) / IDENTITY_DIR / "identity-overview" / "SKILL.md").read_bytes()
+    first = (Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map" / "SKILL.md").read_bytes()
     calls_before = len(s.requests)
     r = _ascend(run_cli, fixture_copy, _env(s.base_url))
     assert r.returncode == 0, r.stderr
@@ -183,7 +183,7 @@ def test_ascend_is_idempotent_without_a_second_model_call(run_cli, fixture_copy,
     assert out["calls"] == 0 and out["written"] == []
     assert out["levels"][0].get("skipped", "").startswith("fingerprint unchanged")
     assert len(s.requests) == calls_before
-    assert (Path(fixture_copy) / IDENTITY_DIR / "identity-overview" / "SKILL.md").read_bytes() == first
+    assert (Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map" / "SKILL.md").read_bytes() == first
 
 
 def test_ascend_edits_the_existing_abstract_skill_instead_of_adding_a_second(run_cli, fixture_copy, stub):
@@ -198,7 +198,7 @@ def test_ascend_edits_the_existing_abstract_skill_instead_of_adding_a_second(run
     r = _ascend(run_cli, fixture_copy, _env(s.base_url))
     out = json.loads(r.stdout)
     item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
-    assert item["action"] == "edit" and item["path"].endswith("identity-overview/SKILL.md")
+    assert item["action"] == "edit" and item["path"].endswith("atlas-identity-map/SKILL.md")
     assert not (Path(fixture_copy) / IDENTITY_DIR / "totally-different-name").exists()
     assert len([p for p in (Path(fixture_copy) / IDENTITY_DIR).iterdir() if p.is_dir()
                 and (p / "SKILL.md").exists() and "generated_by: guidefold-ascend" in (p / "SKILL.md").read_text()]) == 1
@@ -212,8 +212,8 @@ def test_ascend_dry_run_calls_no_model_and_writes_nothing(run_cli, fixture_copy,
     assert out["dry_run"] is True and out["calls"] == 0 and out["written"] == []
     assert [lv["node"] for lv in out["levels"]] == ["atlas.identity", "atlas", "_root"]
     assert not s.requests
-    assert not (Path(fixture_copy) / IDENTITY_DIR / "identity-overview").exists()
-    assert not (Path(fixture_copy) / ATLAS_DIR / "atlas-overview").exists()
+    assert not (Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map").exists()
+    assert not (Path(fixture_copy) / ATLAS_DIR / "atlas-map").exists()
 
 
 def test_ascend_without_a_key_refuses_clearly(run_cli, fixture_copy):
@@ -231,4 +231,4 @@ def test_ascend_writes_a_pr_summary_with_the_marker(run_cli, fixture_copy, stub,
     assert r.returncode == 0, r.stderr
     text = md.read_text(encoding="utf-8")
     assert text.startswith("<!-- guidefold:ascend -->")
-    assert "identity-overview/SKILL.md" in text and "atlas.identity" in text
+    assert "atlas-identity-map/SKILL.md" in text and "atlas.identity" in text

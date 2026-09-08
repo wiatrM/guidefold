@@ -1,8 +1,7 @@
 /**
  * Logowanie przez dostawcę deweloperskiego i nagłówek złożony z `/me`.
  *
- * Dowodzi, że aplikacja stoi na realnym API: organizacja pochodzi z `/me.orgs`, a odznaka
- * `Local simulation` (wyłącznie tryb fixture) nie występuje.
+ * Dowodzi, że aplikacja stoi na realnym API: organizacja pochodzi z `/me.orgs`.
  */
 import { test, expect } from '@playwright/test';
 import { api, open, orgBase, seed, signIn, query } from './live';
@@ -18,8 +17,6 @@ test('the dev provider signs the owner in and the header comes from /me', async 
   await expect(page.getByText('Owner · organization role')).toBeVisible();
   await expect(page.getByText(`${seed.org} / ${seed.repo}`, { exact: true })).toBeVisible();
 
-  // Tryb fixture i tylko on rysuje tę odznakę; jej brak jest dowodem trybu API.
-  await expect(page.getByText('Local simulation')).toHaveCount(0);
   await expect(page.getByText('Access unavailable')).toHaveCount(0);
   expect(me.csrf_token, 'a session without a CSRF token cannot mutate anything').toBeTruthy();
   expect(me.user.email).toBe(seed.email);
@@ -41,7 +38,7 @@ test('the seven views are reachable and each names itself', async ({ page }) => 
 
 test('an organisation the account does not belong to is restricted, not described', async ({ page }) => {
   await signIn(page);
-  await page.goto(`/library?mode=api&org=not-a-member-of-this&repo=${seed.repo}`);
+  await page.goto(`/library?org=not-a-member-of-this&repo=${seed.repo}`);
   await page.locator('main').waitFor();
   await expect(page.getByText('Organization unavailable')).toBeVisible();
   await expect(page.getByText('An organization in the URL is not authorization.')).toBeVisible();

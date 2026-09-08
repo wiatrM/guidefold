@@ -1,6 +1,7 @@
 /**
- * Wspólne pomocniki dla zestawu "live": ta sama aplikacja co w trybie fixture, ale przez
- * realne hostowane API (Go + Postgres) pod tym samym pochodzeniem, przez proxy `pnpm dev`.
+ * Wspólne pomocniki dla zestawu "live": ta sama aplikacja co w `e2e/*.spec.ts`, ale przez
+ * realne hostowane API (Go + Postgres) pod tym samym pochodzeniem, przez proxy `pnpm dev`,
+ * zamiast stubu z `e2e/stub.ts`.
  *
  * Identyfikatory zasiewu przychodzą ze zmiennych `GUIDEFOLD_E2E_*` (JSON z
  * `python3 tools/dev/stack.py seed`). Czego nie podano, spec odkrywa w czasie działania przez
@@ -30,8 +31,8 @@ export const seed = {
 export const repoBase = `/api/v1/orgs/${seed.org}/repos/${seed.repo}`;
 export const orgBase = `/api/v1/orgs/${seed.org}`;
 
-/** Kanoniczny query trybu API. `mode=api` jest czytany raz, przy starcie aplikacji. */
-export const query = (extra = '') => `?mode=api&org=${seed.org}&repo=${seed.repo}${extra}`;
+/** Kanoniczny query kontekstu organizacji i repozytorium. */
+export const query = (extra = '') => `?org=${seed.org}&repo=${seed.repo}${extra}`;
 
 /**
  * Przesunięcie źródła tak, jak robi to człowiek: dopisek do SKILL.md, commit i `guidefold

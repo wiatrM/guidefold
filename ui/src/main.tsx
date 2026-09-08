@@ -12,17 +12,11 @@ import './tokens/tokens.css';
 import './global.css';
 import App from './app';
 import {AccessProvider} from './api/access';
-import {meridian} from './data/meridian';
-import {createFixtureDataSource} from './data/fixtureSource';
 import {createApiRuntime} from './data/apiSource';
 
-/** API mode when VITE_GUIDEFOLD_API is configured or `?mode=api` is present; `?mode=fixture` wins. */
-const requested=new URLSearchParams(window.location.search).get('mode');
-const useApi=requested==='api'||(requested!=='fixture'&&Boolean(import.meta.env.VITE_GUIDEFOLD_API));
-const root=ReactDOM.createRoot(document.getElementById('root')!);
-if(useApi){
- const {source,access}=createApiRuntime();
- root.render(<BrowserRouter><IconContext.Provider value={{weight:'regular'}}><AccessProvider controller={access}><App source={source}/></AccessProvider></IconContext.Provider></BrowserRouter>);
-}else{
- root.render(<BrowserRouter><IconContext.Provider value={{weight:'regular'}}><App data={meridian} source={createFixtureDataSource(meridian)}/></IconContext.Provider></BrowserRouter>);
-}
+/** The hosted management API is the only data source. `VITE_GUIDEFOLD_API` names another
+ * origin; without it `/api` and `/v1` are read same-origin (the dev server proxies them). */
+const {source,access}=createApiRuntime();
+ReactDOM.createRoot(document.getElementById('root')!).render(
+ <BrowserRouter><IconContext.Provider value={{weight:'regular'}}><AccessProvider controller={access}><App source={source}/></AccessProvider></IconContext.Provider></BrowserRouter>,
+);

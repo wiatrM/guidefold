@@ -1,6 +1,6 @@
 import {MetricRow} from './index';
 export default {title:'Guidefold/MetricRow',component:MetricRow};
-export const Fixture={args:{items:[
+export const Default={args:{items:[
  {label:'Delivery',value:'Unknown',detail:'No adapter event ledger'},
  {label:'Helpfulness',value:'Unknown',detail:'No attributed assessments'},
  {label:'Observation coverage',value:'Unknown',detail:'Eligible episodes unavailable'}

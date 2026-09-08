@@ -1,16 +1,15 @@
 /**
- * Ścieżka właściciela wyłącznie z klawiatury, w trybie API.
+ * Ścieżka właściciela wyłącznie z klawiatury, przez realne API.
  *
- * Odpowiednik `e2e/owner-keyboard.spec.ts`, z etykietami realnego API zamiast fixture:
- * "Continue with ..." zamiast przycisku symulacji, "Save decision" zamiast "Record decision
- * (local)", a import pochodzi z zasiewu, bo w trybie API nie ma przycisku symulującego go.
+ * Odpowiednik `e2e/owner-keyboard.spec.ts`, który chodzi po stubie z `e2e/stub.ts`; tu import
+ * pochodzi z zasiewu, a logowanie z dostawcy deweloperskiego.
  */
 import { test, expect } from '@playwright/test';
 import { anImportId, api, enter, repoBase, settled, seed, signIn, someSkills, tabTo, unique } from './live';
 
 test('owner reaches import, library, skill and a decision with the keyboard only', async ({ page }) => {
   // Logowanie: dostawca jest przyciskiem, więc dochodzimy do niego Tabem i naciskamy Enter.
-  await page.goto(`/import?mode=api&org=${seed.org}&repo=${seed.repo}&step=login`);
+  await page.goto(`/import?org=${seed.org}&repo=${seed.repo}&step=login`);
   await settled(page);
   await enter(page, page.getByRole('button', { name: /Continue with (Google|GitHub)/ }).first());
 
@@ -25,7 +24,7 @@ test('owner reaches import, library, skill and a decision with the keyboard only
 
   // Import: status zasianego importu, osiągnięty linkiem z listy.
   const importId = await anImportId(page);
-  await page.goto(`/import?mode=api&org=${seed.org}&repo=${seed.repo}&step=result`);
+  await page.goto(`/import?org=${seed.org}&repo=${seed.repo}&step=result`);
   await settled(page);
   await enter(page, page.getByRole('link', { name: 'Read this import' }).first());
   await settled(page);
@@ -59,7 +58,7 @@ test('owner reaches import, library, skill and a decision with the keyboard only
   // Przegląd: radio wybierane spacją, powód wpisywany, decyzja zapisywana Enterem.
   const drafts = await api<{ items: { proposal_id: string }[] }>(page, `${repoBase}/proposals?state=draft`);
   test.skip(drafts.items.length === 0, 'no draft proposal to review with the keyboard');
-  await page.goto(`/proposals?mode=api&org=${seed.org}&repo=${seed.repo}&proposal=${drafts.items[0].proposal_id}`);
+  await page.goto(`/proposals?org=${seed.org}&repo=${seed.repo}&proposal=${drafts.items[0].proposal_id}`);
   await settled(page);
   await tabTo(page, page.locator('input[name=decision][value=approve]'));
   await page.keyboard.press('Space');

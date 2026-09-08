@@ -1,26 +1,40 @@
-import {test,expect} from '@playwright/test';
-import path from 'node:path';
-test('unknown URL filter stays visible until the user explicitly replaces or clears it',async({page})=>{
- for(const [key,label] of [['scope','Scope'],['owner','Owner from source'],['layer','Source layer'],['status','Source status']]){
-  await page.goto('/library?'+key+'=missing-value');
-  const field=page.getByLabel(label,{exact:true});
-  await expect(field).toHaveValue('missing-value');
-  await expect(field).toHaveAttribute('aria-invalid','true');
-  await expect(field.locator('option:checked')).toHaveText('Unavailable: missing-value');
-  await expect(page.getByText('Resolve unavailable filters before reading the result count.',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Apply filters',exact:true}).click();
-  expect(new URL(page.url()).searchParams.get(key)).toBe('missing-value');
-  await expect(field).toHaveValue('missing-value');
-  await page.addScriptTag({path:path.resolve('node_modules/axe-core/axe.min.js')});
-  const violations=await page.evaluate(async()=>((await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations).map((v:any)=>v.id));
-  expect(violations).toEqual([]);
-  await field.selectOption('');
-  await page.getByRole('button',{name:'Apply filters',exact:true}).click();
-  expect(new URL(page.url()).searchParams.has(key)).toBe(false);
-  await expect(field).not.toHaveAttribute('aria-invalid','true');
-  // The unfiltered library now groups by scope, collapsed beyond the first five (IA §4);
-  // postgres-auth's scope (atlas.identity.turnstile) sorts past that threshold.
-  await page.locator('details').filter({has:page.locator('> summary').filter({hasText:'atlas.identity.turnstile'})}).first().locator('> summary').click();
-  await expect(page.getByRole('link',{name:'postgres-auth',exact:true})).toBeVisible();
- }
+/** Library filters: an unknown URL value is named and kept until the operator replaces or clears it. */
+import { test, expect } from '@playwright/test';
+import { axeViolations, chosen, open, stubApi } from './stub';
+
+test('unknown URL filter stays visible until the user explicitly replaces or clears it', async ({ page }) => {
+  test.setTimeout(90000);
+  await stubApi(page);
+  for (const [key, label] of [['scope', 'Scope'], ['owner', 'Owner from source'], ['layer', 'Source layer'], ['status', 'Source status']]) {
+    await open(page, 'library', '&' + key + '=missing-value');
+    const field = page.getByLabel(label, { exact: true });
+    await expect(field).toHaveValue('missing-value');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(field.locator('option:checked')).toHaveText('Not available in this snapshot: missing-value');
+    await expect(page.getByText(/This snapshot has no value missing-value/)).toBeVisible();
+    await expect(page.getByText('Filter value unavailable', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+    expect(new URL(page.url()).searchParams.get(key)).toBe('missing-value');
+    await expect(field).toHaveValue('missing-value');
+    expect(await axeViolations(page), key).toEqual([]);
+    await field.selectOption('');
+    await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+    expect(new URL(page.url()).searchParams.has(key)).toBe(false);
+    await expect(field).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByRole('link', { name: chosen.name, exact: true })).toBeVisible();
+  }
+});
+
+test('a facet value outside the current page stays selectable and the cursor is dropped on a new query', async ({ page }) => {
+  await stubApi(page);
+  await open(page, 'library', '&cursor=page-9&scope=' + encodeURIComponent(chosen.scope));
+  await expect(page.getByLabel('Scope', { exact: true })).toHaveValue(chosen.scope);
+  await expect(page.getByText(/Reading a page after the first/)).toBeVisible();
+  await page.getByLabel('Search name, description or path', { exact: true }).fill('turnstile');
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  const url = new URL(page.url());
+  expect(url.searchParams.get('q')).toBe('turnstile');
+  expect(url.searchParams.get('scope')).toBe(chosen.scope);
+  expect(url.searchParams.has('cursor')).toBe(false);
+  await expect(page.getByText('First page.')).toBeVisible();
 });

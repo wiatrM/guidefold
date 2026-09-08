@@ -140,7 +140,7 @@ describe('revocation', () => {
       : fakeResponse({ error: 'unauthenticated', message: 'no session' }, { status }));
     source.setContext({ user: 'u1', org: 'org-a' });
     await source.listMembers('org-a');
-    drafts.save({ proposal: { stage: 'editing', candidate: '# unsent text', digest: 'd', reason: 'r' } });
+    drafts.save({ proposal: { candidate: '# unsent text', digest: 'd', reason: 'r' } });
     const generation = client.generation;
     status = 401;
     await expect(source.listOrgs()).rejects.toMatchObject({ status: 401 });
@@ -156,7 +156,7 @@ describe('revocation', () => {
     client.setCsrfToken('csrf-1');
     const { source, access } = createApiRuntime({ client });
     const drafts = source.drafts;
-    drafts.save({ proposal: { stage: 'editing', candidate: '# unsent text', digest: 'd', reason: 'r' } });
+    drafts.save({ proposal: { candidate: '# unsent text', digest: 'd', reason: 'r' } });
     await expect(source.listOrgs()).rejects.toMatchObject({ status: 403 });
     expect(access.getSnapshot().status).toBe('denied');
     expect(drafts.get()).toEqual({});
@@ -205,7 +205,7 @@ describe('idempotency and confirmation through the source', () => {
     const { source, drafts } = harness(async () => fakeResponse({
       error: 'stale_revision', message: 'The source moved on.', details: { current_revision: 'rev-2' },
     }, { status: 409 }));
-    drafts.save({ proposal: { stage: 'editing', candidate: '# text the operator typed', digest: 'rev-1', reason: 'because' } });
+    drafts.save({ proposal: { candidate: '# text the operator typed', digest: 'rev-1', reason: 'because' } });
     await expect(source.decideProposal({ org: 'org-a', repo: 'monorepo' }, 'p1', { decision: 'approve', reason: 'r', expected_revision: 'rev-1' }, 'decide:p1'))
       .rejects.toMatchObject({ code: 'stale_revision', details: { current_revision: 'rev-2' } });
     expect(drafts.get().proposal?.candidate).toBe('# text the operator typed');
@@ -213,7 +213,7 @@ describe('idempotency and confirmation through the source', () => {
 
   test('drafts in API mode never reach browser storage', () => {
     const { drafts } = harness(async () => fakeResponse({}));
-    drafts.save({ proposal: { stage: 'editing', candidate: '# private', digest: 'd', reason: '' } });
+    drafts.save({ proposal: { candidate: '# private', digest: 'd', reason: '' } });
     expect(sessionStorage.length).toBe(0);
     expect(localStorage.length).toBe(0);
   });

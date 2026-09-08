@@ -2,13 +2,12 @@ import { describe, expect, test, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { ApiOrganizationRoute, OrganizationRoute } from './OnboardingRoutes';
+import { ApiOrganizationRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
 import type { AuditPage, Installation, Member } from '../api/decoders';
-import type { ApiRouteContext, RouteContext } from '../domain';
+import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
-import { meridian } from '../data/meridian';
 
 const me = {
   user: { id: 'u1', email: 'ada@example.com', name: 'Ada' },
@@ -197,65 +196,41 @@ describe('Organization route, identity linking', () => {
   });
 });
 
-// The local Meridian fixture flow (OrganizationRoute), not the hosted API flow above (ApiOrganizationRoute).
-function fixtureCtx(over: Partial<RouteContext> = {}): RouteContext {
-  const params = over.params ?? new URLSearchParams();
-  return {
-    data: meridian, source: fakeSource(), mode: 'fixture', params,
-    state: 'ready', view: 'organization', member: false, canWrite: true, canFeedback: true,
-    memory: {}, save: vi.fn(),
-    href: (view, changes = {}) => '/' + view + '?' + new URLSearchParams(
-      Object.entries({ ...Object.fromEntries(params.entries()), ...changes })
-        .filter(([, value]) => value !== null && value !== undefined)
-        .map(([key, value]) => [key, String(value)]),
-    ).toString(),
-    go: vi.fn(),
-    ...over,
-  };
-}
-
-describe('Organization route, fixture', () => {
-  test('the Members panel action slot no longer holds an inert StateBadge', () => {
-    const ctx = fixtureCtx();
-    render(<MemoryRouter><OrganizationRoute ctx={ctx} /></MemoryRouter>);
-    const membersPanel = screen.getByRole('region', { name: 'Members' });
-    const badge = within(membersPanel).getByText('Local scenario');
-    const header = membersPanel.querySelector('header');
-    expect(header?.contains(badge)).toBe(false);
+describe('Organization route, presentation', () => {
+  test('the three sections are tab links and the address chooses the current one', async () => {
+    renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations');
+    const nav = screen.getByRole('navigation', { name: 'Organization sections' });
+    expect(within(nav).getAllByRole('link').map(link => link.textContent)).toEqual(['Members', 'Integrations', 'Audit']);
+    expect(within(nav).getByRole('link', { name: 'Integrations' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Members' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('No installation yet')).toBeInTheDocument();
   });
 
-  test('feedback text renders with its icon once a local action runs, and stays empty before that', async () => {
-    const ctx = fixtureCtx({ source: fakeSource({
-      inviteMember: async () => ({ invitation_id: 'i1', accept_url: 'https://app.test/accept/i1', expires_at: null, email: null, role: null }),
-    }) });
-    render(<MemoryRouter><OrganizationRoute ctx={ctx} /></MemoryRouter>);
-    const before = screen.getByRole('status', { hidden: true });
-    expect(before).toBeEmptyDOMElement();
-    await userEvent.type(screen.getByLabelText('Member label for local simulation'), 'ops-lead');
-    await userEvent.click(screen.getByRole('button', { name: 'Add local member' }));
-    const feedbackText = await screen.findByText('Local member entry created. No invitation was sent.');
-    const feedback = feedbackText.closest('p[role="status"]');
-    expect(feedback?.querySelector('svg')).toBeTruthy();
+  test('the member status line is empty before any action and carries the outcome after one', async () => {
+    const removeMember = vi.fn(async () => {});
+    renderRoute(fakeSource({ listMembers: async () => owners, removeMember }));
+    await screen.findByRole('table', { name: 'Members of this organization' });
+    // `.feedback:empty` hides the line until it has text, so the query must include hidden nodes.
+    const status = screen.getAllByRole('status', { hidden: true }).find(node => node.tagName === 'P')!;
+    expect(status).toBeEmptyDOMElement();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(await screen.findByText('ada@example.com was removed from this organization.')).toBe(status);
   });
 
-  test('the default integration caption carries no success icon; the icon appears after the local check', async () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('tab=integrations'),
-      source: fakeSource({ listInstallations: async () => [] }) });
-    render(<MemoryRouter><OrganizationRoute ctx={ctx} /></MemoryRouter>);
-    const before = screen.getByText('No local connection check has been run.');
-    expect(before.closest('p[role="status"]')?.querySelector('svg')).toBeFalsy();
-    await userEvent.click(screen.getByRole('button', { name: 'Simulate connection check' }));
-    const after = await screen.findByText(/Local check complete/);
-    expect(after.closest('p[role="status"]')?.querySelector('svg')).toBeTruthy();
+  test('an installation row shows its scopes and reads Unknown for absent health values', async () => {
+    renderRoute(fakeSource({ listInstallations: async () => [installation({ capabilities: ['search'], adapter_version: '0.4.1' })] }), 'tab=integrations');
+    const row = (await screen.findByText('ci-runner')).closest('tr')!;
+    expect(within(row).getByText('search, use, events')).toBeInTheDocument();
+    expect(within(row).getByText('0.4.1')).toBeInTheDocument();
+    expect(within(row).getByText('Unknown')).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'Revoke' })).toBeEnabled();
   });
 
-  test('the Install an adapter panel states the simulation before the button', () => {
-    const ctx = fixtureCtx({ params: new URLSearchParams('tab=integrations') });
-    render(<MemoryRouter><OrganizationRoute ctx={ctx} /></MemoryRouter>);
-    const panel = screen.getByRole('region', { name: 'Install an adapter' });
-    const intro = within(panel).getByText(/This is a local simulation/);
-    const button = within(panel).getByRole('button', { name: 'Simulate connection check' });
-    // eslint-disable-next-line no-bitwise
-    expect(Boolean(intro.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  test('a member reads the installation list but every owner control is disabled', async () => {
+    renderRoute(fakeSource({ listInstallations: async () => [installation()] }), 'tab=integrations', { role: 'member' });
+    expect(await screen.findByRole('button', { name: 'Revoke' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Create installation' })).toBeDisabled();
+    expect(screen.getByLabelText('Harness')).toBeDisabled();
+    expect(screen.getByText(/Member access is read only here/)).toBeInTheDocument();
   });
 });

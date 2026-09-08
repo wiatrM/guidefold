@@ -56,6 +56,73 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Providers" }
 
+  /api/v1/github/webhook:
+    post:
+      tags: [github]
+      summary: GitHub App webhook (ADR-0036). Verifies X-Hub-Signature-256; may enqueue one ascend.run job.
+      security: []
+      parameters:
+        - { name: X-GitHub-Event, in: header, required: true, schema: { type: string } }
+        - { name: X-GitHub-Delivery, in: header, required: true, schema: { type: string } }
+        - { name: X-Hub-Signature-256, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "202":
+          description: Received. `accepted:false` with a reason when nothing is queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted]
+                properties:
+                  accepted: { type: boolean }
+                  job_id: { type: [string, "null"], format: uuid }
+                  reason: { type: [string, "null"] }
+        "401":
+          description: Bad signature.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: App not configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/github/installations:
+    get:
+      tags: [github]
+      summary: GitHub App installations registered for this organisation (ADR-0036).
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Installations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GitHubInstallation" }
+
+  /api/v1/orgs/{org}/github/installations/{installation_id}:
+    delete:
+      tags: [github]
+      summary: Forget a GitHub App installation (ADR-0036).
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+        - { name: installation_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Removed. }
+        "404":
+          description: Unknown installation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/auth/login/{provider}:
     get:
       tags: [auth]
@@ -1672,6 +1739,24 @@ components:
         content_sha256: { type: [string, "null"] }
         exposures_expanded: { type: integer }
         loads_unlinked: { type: integer }
+
+    GitHubInstallation:
+      type: object
+      required: [installation_id, account, repositories, suspended]
+      properties:
+        installation_id: { type: integer }
+        account: { type: string }
+        repositories:
+          type: array
+          items:
+            type: object
+            required: [full_name, repo_id]
+            properties:
+              full_name: { type: string }
+              repo_id: { type: [string, "null"] }
+        suspended: { type: boolean }
+        created_at: { type: [string, "null"], format: date-time }
+        updated_at: { type: [string, "null"], format: date-time }
 
     UsageExport:
       type: object

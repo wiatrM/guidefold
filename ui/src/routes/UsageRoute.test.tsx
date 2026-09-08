@@ -1,13 +1,11 @@
 import { describe, expect, test, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApiUsageRoute, UsageRoute } from './ReviewRoutes';
+import { ApiUsageRoute } from './ReviewRoutes';
 import { ApiError } from '../api/client';
 import type { Usage, UsageSkill } from '../api/decoders';
-import { fixtureUsage } from '../data/fixtureUsage';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
-import { renderFixture } from '../test/fixtureRoute';
 
 const empty: Usage = {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
@@ -434,23 +432,54 @@ describe('Usage route, skill health unknowns and funnel', () => {
   });
 });
 
-describe('Usage route, fixture mode skill health', () => {
-  test('the fixture panel reads the simulated ledger, says so, and lands on every recommendation', async () => {
-    renderFixture(UsageRoute, '', { source: fakeSource({ getUsage: async () => fixtureUsage }) });
+// A ledger whose six rows land on every gate state and every recommendation of domain/skillHealth.
+const ledgerRow = (over: Partial<UsageSkill> & { skill_id: string; scope: string; owner: string }): UsageSkill => ({
+  revision: 'rev', card_revision: null, content_sha256: null, harness: 'claude',
+  exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
+  use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0,
+  feedback: null, helped_ratio: null, zero_loads: false,
+  ...over,
+});
+const fullLedger = (): Usage => report({
+  totals: { exposures: 222, loads_verified: 122, context_loaded: 114, context_unknown: 8, use_reported: 63, use_observed: 57, use_episodes: 99, exposures_expanded: 117, loads_unlinked: 5, feedback: { helped: 73, hindered: 23, mixed: 3, not_applicable: 0, unknown: 0, n: 99 } },
+  skills: [
+    // Promote up: reach, pull, value and health all clear on 30 assessments.
+    ledgerRow({ skill_id: 'urn:promote', scope: '_root', owner: 'platform-engineering', exposures: 84, exposures_expanded: 51, loads_verified: 51, context_loaded: 47, context_unknown: 4, use_reported: 22, use_observed: 19, use_episodes: 33, helped_ratio: { numerator: 26, denominator: 30, small_sample: false } }),
+    // Keep: value clear, but five unlinked loads make pull a lower bound.
+    ledgerRow({ skill_id: 'urn:keep-unlinked', scope: '_root', owner: 'platform-engineering', exposures: 40, exposures_expanded: 9, loads_verified: 14, loads_unlinked: 5, context_loaded: 12, context_unknown: 2, use_reported: 12, use_observed: 10, use_episodes: 22, helped_ratio: { numerator: 15, denominator: 22, small_sample: false } }),
+    // Review: a source_changed item is open although 28 assessments favour the skill.
+    ledgerRow({ skill_id: 'urn:review-drift', scope: 'atlas.identity', owner: 'identity-team', exposures: 55, exposures_expanded: 30, loads_verified: 30, context_loaded: 30, use_reported: 16, use_observed: 16, use_episodes: 28, helped_ratio: { numerator: 24, denominator: 28, small_sample: false } }),
+    // Review: hindered outnumbers helped on a small sample.
+    ledgerRow({ skill_id: 'urn:review-hindered', scope: 'forge.ontology', owner: 'ontology-team', exposures: 31, exposures_expanded: 20, loads_verified: 20, context_loaded: 18, context_unknown: 2, use_reported: 9, use_observed: 8, use_episodes: 12, helped_ratio: { numerator: 5, denominator: 12, small_sample: true } }),
+    // Keep: every gate is under a floor (12 exposures, 4 assessments); nothing is wrong.
+    ledgerRow({ skill_id: 'urn:keep-small', scope: '_root', owner: 'platform-engineering', exposures: 12, exposures_expanded: 7, loads_verified: 7, context_loaded: 7, use_reported: 4, use_observed: 4, use_episodes: 4, helped_ratio: { numerator: 3, denominator: 4, small_sample: true } }),
+    // Archive candidate: published, never shown, never loaded, never assessed.
+    ledgerRow({ skill_id: 'urn:archive', scope: '_root', owner: 'platform-engineering', zero_loads: true }),
+  ],
+  queue: [
+    { item_id: 'q-drift', skill_id: 'urn:review-drift', revision: 'rev', reason: 'source_changed', since: '2026-09-02T10:15:00Z', evidence: { commit: '88e40456' }, decision: null },
+    { item_id: 'q-neg', skill_id: 'urn:review-hindered', revision: 'rev', reason: 'negative_feedback', since: '2026-08-28T08:00:00Z', evidence: { hindered: 7, helped: 5 }, decision: null },
+    { item_id: 'q-zero', skill_id: 'urn:archive', revision: 'rev', reason: 'zero_loads', since: '2026-08-16T00:00:00Z', evidence: { exposures: 0, loads: 0 }, decision: null },
+  ],
+});
+
+describe('Usage route, skill health over a full ledger', () => {
+  test('six rows that cover every gate land on every recommendation, each computed from the API report', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => fullLedger() }));
     const { rows, byId } = await healthRows();
     expect(rows).toHaveLength(6);
-    expect(screen.getByText(/Meridian fixture · simulated ledger for this panel only/)).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:_root:postgres-production')).getByText('Recommended: promote up')).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:_root:release-process')).getByText('Recommended: keep')).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:_root:monorepo-conventions')).getByText('Recommended: keep')).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:atlas.identity:rbac-policies')).getByText('Recommended: review')).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:forge.ontology:object-type-migrations')).getByText('Recommended: review')).toBeInTheDocument();
-    expect(within(byId('urn:skill:meridian:_root:adr-process')).getByText('Recommended: archive candidate')).toBeInTheDocument();
+    expect(within(byId('urn:promote')).getByText('Recommended: promote up')).toBeInTheDocument();
+    expect(within(byId('urn:keep-unlinked')).getByText('Recommended: keep')).toBeInTheDocument();
+    expect(within(byId('urn:keep-small')).getByText('Recommended: keep')).toBeInTheDocument();
+    expect(within(byId('urn:review-drift')).getByText('Recommended: review')).toBeInTheDocument();
+    expect(within(byId('urn:review-hindered')).getByText('Recommended: review')).toBeInTheDocument();
+    expect(within(byId('urn:archive')).getByText('Recommended: archive candidate')).toBeInTheDocument();
   });
 
-  test('without a simulated ledger the fixture route stays as it was', async () => {
-    renderFixture(UsageRoute);
-    expect(screen.getByText(/No adapter events are recorded for this fixture repository/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText('Skill health')).not.toBeInTheDocument());
+  test('a report with no skill rows renders no health panel and no zero recommendation', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => empty }));
+    expect((await screen.findAllByText('No observations')).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.queryByRole('table', { name: 'Skill health per skill' })).not.toBeInTheDocument());
+    expect(screen.queryByText(/Recommended:/)).not.toBeInTheDocument();
   });
 });

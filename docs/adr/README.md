@@ -44,6 +44,7 @@ index was built from; the two must not drift.
 | [0033](ADR-0033-api-contract-first-and-mvp-storage.md) | Contract-first management API, a separate `gfm` schema, and blobs plus jobs in Postgres for the MVP | Proposed | 2026-09-06 | proposes amendments to ADR-0018/0026; builds on ADR-0031/0032 |
 | [0034](ADR-0034-github-app-oauth-and-chrome-extension.md) | Server-side GitHub App import with a thin Chrome extension | Accepted | 2026-09-07 | amends ADR-0031 |
 | [0035](ADR-0035-knowledge-ascent-in-ci.md) | Knowledge ascent: a model writes abstract map/convention skills up the scope tree, gated, as a PR for the parent owner | Accepted | 2026-09-08 | amends ADR-0016; ADR-0031 §7 unchanged |
+| [0036](ADR-0036-github-app-ascent-without-customer-ci.md) | Knowledge ascent for a customer who installed the GitHub App, without editing their CI (webhook → `ascend.run` job → PR) | Proposed | 2026-09-08 | amends ADR-0035, ADR-0034; contract 1.2.0 precedes code |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

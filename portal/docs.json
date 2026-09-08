@@ -1,0 +1,33 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Guidefold",
+  "description": "Skills that live next to the code they describe, reach the agent that needs them, and climb the tree on their own.",
+  "colors": {
+    "primary": "#0E6B6B",
+    "light": "#5FBDBB",
+    "dark": "#0E6B6B"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Start here",
+        "pages": ["index", "how-it-works", "quickstart"]
+      },
+      {
+        "group": "Using it",
+        "pages": ["harnesses", "knowledge-ascent", "telemetry"]
+      },
+      {
+        "group": "Behind it",
+        "pages": ["evidence", "deploy", "glossary"]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/wiatrM/guidefold"
+    }
+  }
+}

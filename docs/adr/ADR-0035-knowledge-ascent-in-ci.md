@@ -57,6 +57,14 @@ the time — so cards are the right unit of context to abstract from.
 6. **Provider.** Any OpenAI-compatible endpoint; OpenRouter by default so the model is a repository
    variable (`GUIDEFOLD_ASCEND_MODEL`), not a code change. The CLI stays a single stdlib+PyYAML file;
    the HTTP call uses `urllib`. The key never enters logs, spool or output.
+8. **Delivery, both paths, without touching ranking.** Ascended skills have deterministic names
+   (`<flat-scope>-map`, `<flat-scope>-conventions`), so the nearest map above a selected card can be
+   found by URN alone. The Claude Code hook prints it ahead of the best card in a fourth slot
+   (hook selects three, cap four), read from the pre-built artifact — no frontmatter, no PyYAML,
+   `search_results` unchanged, the map exposed as an ordinary `card_injected`. `guidefold
+   materialize` opens every scope card and Copilot instruction file with a "Scope map" section
+   listing the maps on the ancestor chain, root-most first, so Copilot, Codex and Gemini get the
+   same shape from files on disk. The service's 1.2 `family` field stays decorative.
 7. **Utility before belief (next step, not yet gated).** The research harness in
    `research/progressive-disclosure-execution-2026-09-07/` is the template for a paired sibling
    test: an agent in a sibling scope answers a question the new parent card answers, with and

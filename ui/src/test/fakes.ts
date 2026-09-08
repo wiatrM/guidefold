@@ -40,8 +40,8 @@ const missing = (name: string) => async (): Promise<never> => {
   throw new ApiError({ status: 501, code: 'not_stubbed', message: name + ' is not stubbed in this test.' });
 };
 
-/** Every port operation, without the two fields and the two optional API-mode hooks. */
-type PortMethods = Omit<DataSource, 'mode' | 'drafts' | 'setContext' | 'revoke'>;
+/** Every port operation, without the draft store and the two optional context hooks. */
+type PortMethods = Omit<DataSource, 'drafts' | 'setContext' | 'revoke'>;
 
 /**
  * The port's operation names. `satisfies` rejects a name that is not on the port and the
@@ -71,7 +71,6 @@ export function fakeSource(overrides: Partial<DataSource> = {}): DataSource {
   let drafts: Session = {};
   const listeners = new Set<() => void>();
   const base = {
-    mode: 'api' as const,
     drafts: {
       get: () => drafts,
       subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },

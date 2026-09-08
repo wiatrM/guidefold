@@ -1,18 +1,17 @@
 /**
- * One behavioural suite for both sides of the DataSource port.
+ * The behavioural promise of the DataSource port.
  *
- * `hexagonal-architecture` ("Testuj po obu stronach portu") asks that the port, not each adapter,
- * carries the promise the routes rely on. Everything asserted here is what a route may assume
- * whichever adapter it was given: the operations exist, unsent drafts round-trip in RAM, and the
- * three reads every composition starts with answer in the shape the decoders declare.
+ * `hexagonal-architecture` ("Testuj po obu stronach portu") asks that the port, not the adapter,
+ * carries the promise the routes rely on. Everything asserted here is what a route may assume of
+ * any implementation handed to it: the operations exist, unsent drafts round-trip in RAM, and the
+ * three reads every composition starts with answer in the shape the decoders declare. The hosted
+ * API adapter is the one production implementation; `fakeSource` is checked against the same list.
  *
- * It is a smoke suite over the port, not a second copy of each adapter's own tests.
+ * It is a smoke suite over the port, not a second copy of the adapter's own tests.
  */
-import { afterEach, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ApiClient } from '../api/client';
 import { createApiDataSource } from './apiSource';
-import { createFixtureDataSource } from './fixtureSource';
-import { meridian } from './meridian';
 import { fakeResponse, portMethods } from '../test/fakes';
 import type { DataSource } from './source';
 
@@ -46,25 +45,19 @@ const stubbedFetch: typeof fetch = async url => {
   return fakeResponse({});
 };
 
-const adapters: [string, () => DataSource][] = [
-  ['fixture', () => createFixtureDataSource(meridian)],
-  ['api', () => createApiDataSource({ client: new ApiClient({ baseUrl: 'https://api.test', fetchImpl: stubbedFetch, delay: async () => {} }) })],
-];
+const create = (): DataSource => createApiDataSource({ client: new ApiClient({ baseUrl: 'https://api.test', fetchImpl: stubbedFetch, delay: async () => {} }) });
 
-afterEach(() => { sessionStorage.clear(); });
-
-describe.each(adapters)('DataSource port, %s adapter', (_name, create) => {
+describe('DataSource port, hosted API adapter', () => {
   test('every port operation is present and callable', () => {
     const source = create();
     for (const name of portMethods) expect(typeof source[name]).toBe('function');
-    expect(['fixture', 'api']).toContain(source.mode);
   });
 
   test('a draft round-trips in memory and notifies its subscriber', () => {
     const source = create();
     const seen: number[] = [];
     const stop = source.drafts.subscribe(() => seen.push(1));
-    source.drafts.save({ proposal: { stage: 'editing', candidate: '# unsent text', digest: 'd', reason: 'r' } });
+    source.drafts.save({ proposal: { candidate: '# unsent text', digest: 'd', reason: 'r' } });
     expect(source.drafts.get().proposal?.candidate).toBe('# unsent text');
     source.drafts.clear();
     expect(source.drafts.get()).toEqual({});

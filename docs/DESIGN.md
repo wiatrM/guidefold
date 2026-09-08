@@ -453,8 +453,11 @@ changed skill only. The climb stops at the first level where the model writes no
 before any write: every claim cites source URNs from the context; no unknown component, code
 block, numbered procedure or three verbatim lines from a child; ≤ 80 lines; `validate` passes.
 A fingerprint of the child cards is stored in the written file, so an unchanged subtree costs no
-call. Output is a separate PR whose reviewers are the parent scope's CODEOWNERS. The original
-design, kept for the next iteration:
+call. Output is a separate PR whose reviewers are the parent scope's CODEOWNERS. Delivery: the
+hook prints the nearest ascended map above the best card in a fourth slot (found by its
+deterministic URN in the artifact; ranking and `search_results` unchanged), and `materialize`
+opens every scope card and Copilot instruction file with a "Scope map" section, root-most first.
+The original design, kept for the next iteration:
 
 Trigger: a PR adds or changes a skill at level ≥ L2. CI runs `guidefold lift`, a model-backed step (Gemini on Vertex, temperature 0, fixed prompt, JSON output), with deterministic pre- and post-processing:
 

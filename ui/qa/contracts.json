@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-08T08:04:08.476Z",
+  "capturedAt": "2026-09-08T08:35:41.049Z",
   "command": "cd ui && node qa/check-contracts.mjs",
-  "purpose": "Public component shape, fixture separation and authored CSS/token source contracts.",
-  "fixture": "Meridian fixture is allowed in stories and route composition, never a runtime dependency of reusable components or pure domain functions.",
+  "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
+  "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
     "components": 15,
     "cssFiles": 23,
     "tokens": 121,
-    "productionFilesTraversed": 38,
+    "productionFilesTraversed": 34,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -24,7 +24,7 @@
         "src/components/ActionButton/ActionButton.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -36,7 +36,7 @@
         "src/components/BrandMark/BrandMark.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -48,7 +48,7 @@
         "src/components/Panel/Panel.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -60,7 +60,7 @@
         "src/components/StateBadge/StateBadge.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -72,7 +72,7 @@
         "src/components/RouteState/RouteState.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -84,7 +84,7 @@
         "src/components/Tabs/Tabs.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -96,7 +96,7 @@
         "src/components/ProvenanceTrail/ProvenanceTrail.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -108,7 +108,7 @@
         "src/components/ScopeTree/ScopeTree.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -120,7 +120,7 @@
         "src/components/DataTable/DataTable.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -132,7 +132,7 @@
         "src/components/SkillDiff/SkillDiff.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -144,7 +144,7 @@
         "src/components/MetricRow/MetricRow.stories.tsx"
       ],
       "scenarios": [
-        "Fixture",
+        "Default",
         "Funnel"
       ]
     },
@@ -157,7 +157,7 @@
         "src/components/Urn/Urn.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -169,7 +169,7 @@
         "src/components/SkillContent/SkillContent.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -181,7 +181,7 @@
         "src/components/Field/Field.stories.tsx"
       ],
       "scenarios": [
-        "Fixture"
+        "Default"
       ]
     },
     {
@@ -232,32 +232,16 @@
       "specifier": "react"
     },
     {
-      "file": "src/domain/pyramid.ts",
-      "specifier": "../domain"
-    },
-    {
-      "file": "src/domain/pyramid.test.ts",
-      "specifier": "../domain"
-    },
-    {
       "file": "src/domain/pyramidGraph.ts",
       "specifier": "../api/decoders"
     },
     {
-      "file": "src/domain/skill.ts",
-      "specifier": "../domain"
+      "file": "src/domain/pyramidGraph.test.ts",
+      "specifier": "../api/decoders"
     },
     {
       "file": "src/domain/skillHealth.ts",
       "specifier": "../api/decoders"
-    },
-    {
-      "file": "src/domain/tree.ts",
-      "specifier": "../domain"
-    },
-    {
-      "file": "src/domain/tree.test.ts",
-      "specifier": "../domain"
     }
   ],
   "inlineStyles": [],

@@ -1,8 +1,8 @@
 /** The single data boundary the seven U4 routes read and write through.
  *
- * Two implementations exist: `FixtureDataSource` (public Meridian fixture plus the
- * sessionStorage simulation, no network) and `ApiDataSource` (the management API through
- * `src/api/client.ts`). Routes never call `fetch` and never import the fixture.
+ * The one production implementation is `ApiDataSource` (the hosted management API through
+ * `src/api/client.ts`); tests substitute `fakeSource` from `src/test/fakes.ts`. Routes never
+ * call `fetch` and never hold sample data of their own.
  */
 import type {
   AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, ExportPayload, Facets, FacetLookup,
@@ -10,11 +10,9 @@ import type {
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
 } from '../api/decoders';
-import type { Proposal, Session } from '../domain';
+import type { Session } from '../domain';
 
-export type SourceMode = 'fixture' | 'api';
-
-/** Local, unsent text: fixture mode persists the public simulation, API mode keeps drafts in RAM. */
+/** Local, unsent text, kept in RAM only and dropped with the access generation. */
 export interface DraftStore {
   get(): Session;
   subscribe(listener: () => void): () => void;
@@ -37,18 +35,16 @@ export interface UsageQuery {
 export interface OrgRepo { org: string; repo: string }
 
 export interface LoginRedirect {
-  /** Empty in fixture mode: there is nothing to redirect to. */
   loginUrl: string;
   provider: string;
 }
 
 export interface DataSource {
-  readonly mode: SourceMode;
   readonly drafts: DraftStore;
 
-  /** API mode only: the user/org/repo/policy context whose answers this source may still accept. */
+  /** The user/org/repo/policy context whose answers this source may still accept. */
   setContext?(next: { user?: string | null; org?: string | null; repo?: string | null; policy?: string | null }): void;
-  /** API mode only: clear drafts, cancel in-flight work, bump the access generation. */
+  /** Clear drafts, cancel in-flight work, bump the access generation. */
   revoke?(reason: string): void;
 
   // Auth and identity -------------------------------------------------------
@@ -120,9 +116,4 @@ export interface DataSource {
   getUsage(target: OrgRepo, query: UsageQuery): Promise<Usage>;
   exportUsage(target: OrgRepo, query: UsageQuery): Promise<string>;
   decideQueueItem(target: OrgRepo, itemId: string, input: { action: 'reviewed' | 'fixed_in_git' | 'no_change'; reason: string }, idempotencyKey: string): Promise<void>;
-}
-
-/** Fixture-only extras the local simulation routes still need. */
-export interface FixtureExtras {
-  defaultProposal(): Proposal;
 }

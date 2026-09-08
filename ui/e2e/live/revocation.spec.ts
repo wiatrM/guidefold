@@ -48,7 +48,7 @@ test('a removed member stops seeing organisation data inside 60 seconds', async 
   test.setTimeout(180000);
   const stamp = Date.now();
   const memberEmail = `revoked-${stamp}@acceptance.test`;
-  const view = `/library?mode=api&org=${seed.org}&repo=${seed.repo}`;
+  const view = `/library?org=${seed.org}&repo=${seed.repo}`;
 
   let ownerContext: BrowserContext | undefined;
   let memberContext: BrowserContext | undefined;

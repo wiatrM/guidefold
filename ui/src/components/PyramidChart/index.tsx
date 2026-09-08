@@ -23,9 +23,8 @@ function positions(bands: PyramidChartBand[]): Map<string, {x: number; y: number
  * elsewhere, never invented as a fourth band. Each band lists its declared skills as selectable
  * nodes; `edges` (child -> parent `refines`, contract §4.5) draw as connector lines between them.
  * The connector SVG is `aria-hidden`; the caller supplies the accessible text alternative (a
- * relationship table), matching the fixture-mode pyramid and `accessibility-contract`. Purely
- * presentational — no `Skill`/`SkillSummary` coupling — so fixture and API callers can each build
- * `bands`/`edges` from their own source shape. */
+ * relationship table), per `accessibility-contract`. Purely presentational — no `SkillSummary`
+ * coupling — so any caller builds `bands`/`edges` from its own source shape. */
 export function PyramidChart({bands, edges, selectedId, onSelect}: {
   bands: PyramidChartBand[]; edges: PyramidChartEdge[]; selectedId?: string | null; onSelect?: (id: string) => void;
 }) {

@@ -5,9 +5,7 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 import App from './app';
 import { AccessController, AccessProvider } from './api/access';
 import { ApiClient, ApiError } from './api/client';
-import { meridian } from './data/meridian';
 import { createApiDataSource } from './data/apiSource';
-import { createFixtureDataSource } from './data/fixtureSource';
 import { fakeResponse, fakeSource } from './test/fakes';
 import type { Me } from './api/decoders';
 
@@ -19,14 +17,28 @@ const me: Me = {
 
 afterEach(() => { sessionStorage.clear(); });
 
+const rejectingSource = () => fakeSource();
+
 describe('shell composition', () => {
-  test('fixture mode keeps the local simulation badge and the fixture context', async () => {
-    render(<MemoryRouter initialEntries={['/import']}><App data={meridian} source={createFixtureDataSource(meridian)} /></MemoryRouter>);
-    expect(await screen.findByText('Local simulation')).toBeInTheDocument();
-    expect(screen.getByText('meridian / monorepo')).toBeInTheDocument();
+  test('the component gallery renders outside the shell and reads nothing from the API', async () => {
+    render(<MemoryRouter initialEntries={['/__components']}><App source={rejectingSource()} /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Component gallery' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Sample values from examples\/monorepo/)).toBeInTheDocument();
   });
 
-  test('API mode shows the organisation from /me and the repository from the URL, without the fixture badge', async () => {
+  test('an unknown path lands on Import, and nothing but the hosted API is named in the footer', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/nowhere']}>
+      <AccessProvider controller={controller}><App source={fakeSource({ getAuthProviders: async () => ({ mode: 'dev' as const, providers: [] }) })} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
+    expect(screen.getByText(/^Hosted API\./)).toBeInTheDocument();
+    expect(document.title).toBe('Import · Guidefold');
+  });
+
+  test('the shell shows the organisation from /me and the repository from the URL', async () => {
     const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
     await controller.check(true);
     render(<MemoryRouter initialEntries={['/import?org=meridian&repo=monorepo&step=organization']}>
@@ -36,7 +48,6 @@ describe('shell composition', () => {
     </MemoryRouter>);
     expect(await screen.findByText('meridian / monorepo')).toBeInTheDocument();
     expect(screen.getByText('Meridian Data')).toBeInTheDocument();
-    expect(screen.queryByText('Local simulation')).not.toBeInTheDocument();
     expect(screen.getByText('Owner · organization role')).toBeInTheDocument();
   });
 
@@ -165,7 +176,7 @@ describe('shell composition', () => {
     expect(screen.getByRole('button', { name: 'Check access now' })).toBeInTheDocument();
   });
 
-  test('the library reads the API and never falls back to fixture content', async () => {
+  test('the library reads the API and shows nothing when it answers an empty page', async () => {
     const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
     await controller.check(true);
     const source = fakeSource({

@@ -1,17 +1,11 @@
 import { describe, expect, test, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ApiSkillRoute, SkillRoute } from './CatalogRoutes';
+import { ApiSkillRoute } from './CatalogRoutes';
 import { ApiError } from '../api/client';
 import type { Revision, SkillDetail } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
-import { renderFixture } from '../test/fixtureRoute';
-
-const legacySkill = {
-  id: 'urn:skill:meridian:atlas.identity:legacy-session-auth',
-  revision: '5b683b9b2f7d5497ca35c023adf55becd0e26c42d661a228cdd1c724261fa115',
-};
 
 const detail: SkillDetail = {
   skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', name: 'postgres-auth',
@@ -143,34 +137,40 @@ describe('Skill route, revision, source and feedback', () => {
   });
 });
 
-describe('Skill route, fixture', () => {
-  test('a deprecated source status renders a warning-tone badge', () => {
-    const search = new URLSearchParams({ skill: legacySkill.id, revision: legacySkill.revision }).toString();
-    renderFixture(SkillRoute, search);
-    const badge = screen.getAllByText('deprecated').find(el => el.tagName === 'SPAN')!;
+describe('Skill route, identity and sections', () => {
+  test('source status, source layer and knowledge layer are shown as the API states them, Unknown when absent', async () => {
+    renderApi(ApiSkillRoute, source({ getSkill: async () => ({ ...detail, source_status: 'deprecated', knowledge_layer: null }) }), 'skill=urn:a');
+    expect(await screen.findByText('deprecated')).toBeInTheDocument();
+    const grid = screen.getByText('Knowledge layer').closest('dl')!;
+    expect(within(grid).getByText('Unknown', { selector: 'dd' })).toBeInTheDocument();
+    expect(within(grid).getByText('team')).toBeInTheDocument();
+  });
+
+  test('the publication badge tone follows the state and the label is always text', async () => {
+    renderApi(ApiSkillRoute, source({ getSkill: async () => ({ ...detail, publication_status: 'needs_review' }) }), 'skill=urn:a');
+    const badge = await screen.findByText('needs_review');
     expect(getComputedStyle(badge).color).toBe('var(--warning-ink)');
   });
 
-  test('Knowledge layer and Publication at import render as warning-tone badges', () => {
-    renderFixture(SkillRoute);
-    expect(getComputedStyle(screen.getByText('Unclassified')).color).toBe('var(--warning-ink)');
-    expect(getComputedStyle(screen.getByText('Not established')).color).toBe('var(--warning-ink)');
-  });
-
-  test('a resting tab link reads as interactive, distinct from the current tab and from muted text', () => {
-    renderFixture(SkillRoute);
-    const current = screen.getByRole('link', { name: 'Content' });
+  test('the section tabs are links; the current one carries aria-current and reads differently from a resting one', async () => {
+    renderApi(ApiSkillRoute, source(), 'skill=urn:a&tab=content');
+    const current = await screen.findByRole('link', { name: 'Content' });
     const resting = screen.getByRole('link', { name: 'Source & scope' });
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(resting).not.toHaveAttribute('aria-current');
+    expect(resting).toHaveAttribute('href', expect.stringContaining('tab=source'));
     expect(getComputedStyle(current).color).toBe('var(--system-ink)');
-    expect(getComputedStyle(resting).color).toBe('var(--stone-100)');
-    expect(getComputedStyle(resting).color).not.toBe('var(--stone-300)');
     expect(getComputedStyle(resting).color).not.toBe(getComputedStyle(current).color);
   });
 
-  test('the Content tab links to Dependencies with the declared relationship count', () => {
-    renderFixture(SkillRoute);
-    // postgres-auth declares two requires and one refines in the fixture.
-    const link = screen.getByRole('link', { name: '3 declared relationships' });
-    expect(link).toHaveAttribute('href', expect.stringContaining('tab=dependencies'));
+  test('the Dependencies tab lists declared requires and refines as links, and names an empty list', async () => {
+    renderApi(ApiSkillRoute, source({ getRevision: async () => revision({ refines: ['urn:skill:meridian:_root:postgres-production'] }) }), 'skill=urn:a&tab=dependencies');
+    // `secrets` is listed under requires and again in the relations table, so two links exist.
+    const links = await screen.findAllByRole('link', { name: 'urn:skill:meridian:atlas.identity:secrets' });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute('href', expect.stringContaining('tab=content'));
+    expect(screen.getByRole('link', { name: 'urn:skill:meridian:_root:postgres-production' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Other declared relations' })).toBeInTheDocument();
+    expect(screen.queryByText('None declared in this revision.')).not.toBeInTheDocument();
   });
 });

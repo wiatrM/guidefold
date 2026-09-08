@@ -1,24 +1,37 @@
-import {test,expect} from '@playwright/test';
-import path from 'node:path';
-const views=['import','library','map','skill','proposals','usage','organization'];
-for(const width of [1280,820,390])test('seven views and gallery axe at '+width,async({page})=>{
- test.setTimeout(120000);await page.setViewportSize({width,height:720});
- for(const view of [...views,'__components']){
-  await page.goto('/'+view,{waitUntil:'networkidle'});
-  if(view==='__components')await page.locator('[data-component=Field]').waitFor();
-  else {await page.locator('main').waitFor();await page.locator('main [aria-busy=true]').waitFor({state:'hidden'});}
-  await page.evaluate(()=>document.fonts.ready);
-  await page.addScriptTag({path:path.resolve('node_modules/axe-core/axe.min.js')});
-  const violations=await page.evaluate(async()=>{const result=await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}});return result.violations.map((v:any)=>({id:v.id,nodes:v.nodes.map((n:any)=>n.target)}));});
-  expect(violations,view).toEqual([]);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),view).toBe(true);
- }
+/** Axe over the seven views and the gallery at three widths, against the stub API (`e2e/stub.ts`). */
+import { test, expect } from '@playwright/test';
+import { axeViolations, chosen, noHorizontalScroll, query, stubApi } from './stub';
+
+const views: [string, string][] = [
+  ['import', '&step=result'], ['library', ''], ['map', '&tab=repository'],
+  ['skill', '&skill=' + encodeURIComponent(chosen.id) + '&revision=' + chosen.revision],
+  ['proposals', '&proposal=p-1'], ['usage', ''], ['organization', ''],
+];
+for (const width of [1280, 820, 390]) test('seven views and gallery axe at ' + width, async ({ page }) => {
+  test.setTimeout(120000);
+  await stubApi(page);
+  await page.setViewportSize({ width, height: 720 });
+  for (const [view, extra] of views) {
+    await page.goto('/' + view + query(extra));
+    await page.locator('main').waitFor();
+    await expect(page.locator('main [aria-busy=true]')).toHaveCount(0);
+    expect(await axeViolations(page), view).toEqual([]);
+    expect(await noHorizontalScroll(page), view).toBe(true);
+  }
+  await page.goto('/__components');
+  await page.locator('[data-component=Field]').waitFor();
+  expect(await axeViolations(page), '__components').toEqual([]);
+  expect(await noHorizontalScroll(page), '__components').toBe(true);
 });
-test('revealed proposal content and mobile menu remain accessible',async({page})=>{
- await page.setViewportSize({width:390,height:720});await page.goto('/proposals');
- await page.getByText('Read source body',{exact:true}).click();
- await page.locator('details').filter({has:page.locator('summary').filter({hasText:'Navigate ·'})}).locator('summary').click();
- await page.addScriptTag({path:path.resolve('node_modules/axe-core/axe.min.js')});
- const ids=await page.evaluate(async()=>((await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations).map((v:any)=>v.id));
- expect(ids).toEqual([]);
+
+test('revealed proposal bodies and the mobile menu remain accessible', async ({ page }) => {
+  await stubApi(page);
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.goto('/proposals' + query('&proposal=p-1'));
+  await expect(page.locator('main [aria-busy=true]')).toHaveCount(0);
+  await page.getByText('Read the source body', { exact: true }).click();
+  await page.getByText('Read the candidate body', { exact: true }).click();
+  await page.locator('details').filter({ has: page.locator('summary').filter({ hasText: 'Navigate ·' }) }).locator('summary').click();
+  expect(await axeViolations(page)).toEqual([]);
+  expect(await noHorizontalScroll(page)).toBe(true);
 });
