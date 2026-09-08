@@ -142,7 +142,10 @@ describe('Skill route, identity and sections', () => {
     renderApi(ApiSkillRoute, source({ getSkill: async () => ({ ...detail, source_status: 'deprecated', knowledge_layer: null }) }), 'skill=urn:a');
     expect(await screen.findByText('deprecated')).toBeInTheDocument();
     const grid = screen.getByText('Knowledge layer').closest('dl')!;
-    expect(within(grid).getByText('Unknown', { selector: 'dd' })).toBeInTheDocument();
+    // Scope to the "Knowledge layer" row specifically: Provenance also renders
+    // "Unknown" when absent, so a grid-wide query is ambiguous between the two.
+    const knowledgeLayerRow = screen.getByText('Knowledge layer').closest('div')!;
+    expect(within(knowledgeLayerRow).getByText('Unknown', { selector: 'dd' })).toBeInTheDocument();
     expect(within(grid).getByText('team')).toBeInTheDocument();
   });
 
