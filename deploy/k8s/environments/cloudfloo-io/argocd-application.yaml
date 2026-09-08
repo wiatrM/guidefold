@@ -60,7 +60,7 @@ spec:
                 matchLabels: {cnpg.io/cluster: guidefold-postgres}
           connectionBudget: 128
           reservedConnections: 16
-        image: "" # TODO: pin from publish-images.yml before first sync
+        image: "ghcr.io/wiatrm/guidefold-search@sha256:a0bded2afc7752f75c25efda3173f758380c236a3557deab1cb191f54654178e"
         snapshotID: unpublished
         replicas: 2
         autoscaling:
@@ -68,7 +68,7 @@ spec:
           maxReplicas: 3
         worker:
           enabled: true
-          image: "" # TODO: pin from publish-images.yml before first sync
+          image: "ghcr.io/wiatrm/guidefold-worker@sha256:8c340cf569da602b8dda6819af73fe22d24571c73bd0f176b0f7b25ef49c69b7"
           replicas: 1
           generator: deterministic
         ingress:
@@ -78,7 +78,7 @@ spec:
           tlsSecret: ""
         portal:
           enabled: true
-          image: "" # TODO: pin from publish-images.yml's `portal` job before first sync
+          image: "ghcr.io/wiatrm/guidefold-portal@sha256:a1b52391990fba75c3b3e6dc7ab9484a47a6a8c4d170da195ae799d0bdda9f7e"
           replicas: 1
           host: guidefold.cloudfloo.io
           tlsSecret: ""

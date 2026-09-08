@@ -22,9 +22,12 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  API_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-search
-  WORKER_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-worker
-  PORTAL_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-portal
+  # github.repository_owner is "wiatrM" (mixed case); OCI registry names must be
+  # lowercase. GitHub Actions expressions have no built-in lowercase() function,
+  # so this is hardcoded rather than derived — it's a fixed fact about this repo.
+  API_IMAGE: ghcr.io/wiatrm/guidefold-search
+  WORKER_IMAGE: ghcr.io/wiatrm/guidefold-worker
+  PORTAL_IMAGE: ghcr.io/wiatrm/guidefold-portal
 
 jobs:
   api-and-worker:

@@ -17,3 +17,6 @@
 !skills/guidefold/
 !skills/guidefold/scripts/
 !skills/guidefold/scripts/guidefold
+# portal/Dockerfile (guidefold-portal image): static docs site, no secrets, no code.
+!portal/
+!portal/**
