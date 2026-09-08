@@ -20,3 +20,16 @@
 # portal/Dockerfile (guidefold-portal image): static docs site, no secrets, no code.
 !portal/
 !portal/**
+# ui/Dockerfile (guidefold-ui image): `pnpm build` (tsc --noEmit && vite build) only
+# needs package.json/pnpm-lock.yaml, src/, vite.config.ts, index.html and public/ —
+# tsconfig.json's own `include` is just ["src", "vite.config.ts"]. Re-excluding the
+# rest keeps node_modules (reinstalled fresh in the image anyway) and QA/test
+# artifacts (baseline screenshots, playwright output) out of the build context.
+!ui/
+!ui/**
+ui/node_modules/
+ui/dist/
+ui/.vitest/
+ui/test-results/
+ui/qa/
+ui/e2e/

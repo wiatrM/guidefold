@@ -13,6 +13,7 @@ on:
     paths:
       - services/search/**
       - portal/**
+      - ui/**
       - .github/workflows/publish-images.yml
   workflow_dispatch: {}
 
@@ -28,6 +29,7 @@ env:
   API_IMAGE: ghcr.io/wiatrm/guidefold-search
   WORKER_IMAGE: ghcr.io/wiatrm/guidefold-worker
   PORTAL_IMAGE: ghcr.io/wiatrm/guidefold-portal
+  UI_IMAGE: ghcr.io/wiatrm/guidefold-ui
 
 jobs:
   api-and-worker:
@@ -110,3 +112,37 @@ jobs:
           echo "- Portal: \`${{ env.PORTAL_IMAGE }}@${{ steps.push-portal.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Pin this digest into the environment's Helm values (portal.image)." >> "$GITHUB_STEP_SUMMARY"
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      ui_digest: ${{ steps.push-ui.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push UI image
+        id: push-ui
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ui/Dockerfile
+          push: true
+          tags: |
+            ${{ env.UI_IMAGE }}:${{ github.sha }}
+            ${{ env.UI_IMAGE }}:latest
+
+      - name: Summary
+        run: |
+          echo "### Published UI image" >> "$GITHUB_STEP_SUMMARY"
+          echo "- UI: \`${{ env.UI_IMAGE }}@${{ steps.push-ui.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin this digest into the environment's Helm values (ui.image)." >> "$GITHUB_STEP_SUMMARY"

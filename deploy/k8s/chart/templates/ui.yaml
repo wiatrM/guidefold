@@ -1,27 +1,28 @@
-{{- if .Values.portal.enabled }}
-{{- if not .Values.portal.image }}{{ fail "portal.image is required when portal.enabled" }}{{ end }}
-# The developer portal: static HTML behind an unprivileged nginx (portal/Dockerfile). It reads
-# nothing and writes nothing; it has no database, no credentials and no egress. It is a separate
-# Deployment and Service so that the API can be scaled, restarted or locked down without the
-# documentation going with it, and vice versa.
+{{- if .Values.ui.enabled }}
+{{- if not .Values.ui.image }}{{ fail "ui.image is required when ui.enabled" }}{{ end }}
+# The hosted U4 React app: static build behind an unprivileged nginx (ui/Dockerfile).
+# Same-origin by design — it calls /api and /v1 on its own host (ingress.yaml routes
+# those to the api Service), so it reads nothing and writes nothing itself; no
+# database, no credentials, no egress. Separate Deployment/Service from api/worker so
+# any of them can scale, restart or roll back independently.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "gf.name" . }}-portal
+  name: {{ include "gf.name" . }}-ui
   labels:
     {{- include "gf.labels" . | nindent 4 }}
-    app.kubernetes.io/component: portal
+    app.kubernetes.io/component: ui
 spec:
-  replicas: {{ .Values.portal.replicas }}
+  replicas: {{ .Values.ui.replicas }}
   selector:
     matchLabels:
       {{- include "gf.labels" . | nindent 6 }}
-      app.kubernetes.io/component: portal
+      app.kubernetes.io/component: ui
   template:
     metadata:
       labels:
         {{- include "gf.labels" . | nindent 8 }}
-        app.kubernetes.io/component: portal
+        app.kubernetes.io/component: ui
     spec:
       automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}
@@ -32,8 +33,8 @@ spec:
         runAsNonRoot: true
         seccompProfile: {type: RuntimeDefault}
       containers:
-        - name: portal
-          image: {{ .Values.portal.image | quote }}
+        - name: ui
+          image: {{ .Values.ui.image | quote }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           ports:
             - name: http
@@ -43,48 +44,43 @@ spec:
             readOnlyRootFilesystem: false   # nginx-unprivileged writes its pid and cache under /tmp
             capabilities: {drop: [ALL]}
           readinessProbe:
-            httpGet: {path: /docs/, port: http}
+            httpGet: {path: /, port: http}
             initialDelaySeconds: 2
             periodSeconds: 10
           livenessProbe:
-            httpGet: {path: /docs/, port: http}
+            httpGet: {path: /, port: http}
             periodSeconds: 30
           resources:
-            {{- toYaml .Values.portal.resources | nindent 12 }}
+            {{- toYaml .Values.ui.resources | nindent 12 }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "gf.name" . }}-portal
+  name: {{ include "gf.name" . }}-ui
   labels:
     {{- include "gf.labels" . | nindent 4 }}
-    app.kubernetes.io/component: portal
+    app.kubernetes.io/component: ui
 spec:
   selector:
     {{- include "gf.labels" . | nindent 4 }}
-    app.kubernetes.io/component: portal
+    app.kubernetes.io/component: ui
   ports:
     - name: http
       port: 80
       targetPort: http
 {{- if .Values.ingress.host }}
 ---
-# Path /docs on the shared host (ingress.host) — the hosted UI (ui.yaml) owns / on
-# the same host, so this cannot also claim /. No rewrite here on purpose: the
-# portal's own nginx directory-redirect (evidence -> evidence/) emits a Location
-# built from nginx's own $uri, which only comes out right if nginx sees the FULL
-# /docs/... path — i.e. the portal image's files must actually live under
-# /usr/share/nginx/html/docs/ (portal/Dockerfile), not get a stripped path handed
-# to a server that thinks it's at the root. Stripping /docs at the ingress instead
-# would need the ingress to also rewrite the backend's *response* Location header,
-# which plain nginx-ingress rewrite-target does not do.
+# Path / (catch-all) on the shared host — must coexist with ingress.yaml's /api,/v1
+# and portal.yaml's /docs on the same host; nginx-ingress matches the more specific
+# prefixes first regardless of which Ingress object declares them, so declaration
+# order across these three files doesn't matter.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "gf.name" . }}-portal
+  name: {{ include "gf.name" . }}-ui
   labels:
     {{- include "gf.labels" . | nindent 4 }}
-    app.kubernetes.io/component: portal
+    app.kubernetes.io/component: ui
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -102,28 +98,30 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
-          - path: /docs
+          - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "gf.name" . }}-portal
+                name: {{ include "gf.name" . }}-ui
                 port: {name: http}
 {{- end }}
 {{- if .Values.networkPolicy.enabled }}
 ---
-# The portal answers HTTP from the ingress and needs nothing else: no DNS, no database, no egress.
+# The UI answers HTTP from the ingress and needs nothing else of its own: no DNS, no
+# database, no egress. Its browser-side fetches to /api and /v1 are the visitor's own
+# connection back through the ingress, not egress from this pod.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "gf.name" . }}-portal
+  name: {{ include "gf.name" . }}-ui
   labels:
     {{- include "gf.labels" . | nindent 4 }}
-    app.kubernetes.io/component: portal
+    app.kubernetes.io/component: ui
 spec:
   podSelector:
     matchLabels:
       {{- include "gf.labels" . | nindent 6 }}
-      app.kubernetes.io/component: portal
+      app.kubernetes.io/component: ui
   policyTypes: [Ingress, Egress]
   ingress:
     - ports: [{protocol: TCP, port: 8080}]

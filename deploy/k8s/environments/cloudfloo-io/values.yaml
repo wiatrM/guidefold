@@ -46,23 +46,33 @@ worker:
   replicas: 1
   generator: deterministic # det-1: no network, no LLM key required for this pilot
 
+# Shared by ingress.yaml (/api, /v1 -> api), portal.yaml (/docs -> portal) and
+# ui.yaml (/ -> ui) — one host, one Ingress object per component, nginx-ingress
+# merges them by path specificity regardless of declaration order. ingress.enabled
+# gates only the api path rule, but the UI calls /api and /v1 same-origin
+# (ui/src/api/client.ts), so this has to be true whenever ui.enabled is — a UI
+# with no working API path is just a static shell that can never sign in.
 ingress:
-  enabled: false # the API isn't meaningfully public yet (no WorkOS wired); the portal
-                  # owns guidefold.cloudfloo.io below. Flip this on with a different host
-                  # (e.g. api.guidefold.cloudfloo.io) once WorkOS + the GitHub App backend
-                  # are real — the API stays reachable inside the cluster regardless.
-  className: nginx # matches the cluster's ingress-nginx controller
-  host: ""
-  tlsSecret: ""
-
-# The developer portal: static docs, no backend dependency, ready today. It owns the
-# domain until the API has something real to serve publicly.
-portal:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-portal@sha256:a1b52391990fba75c3b3e6dc7ab9484a47a6a8c4d170da195ae799d0bdda9f7e"
-  replicas: 1
+  className: nginx # matches the cluster's ingress-nginx controller
   host: guidefold.cloudfloo.io
   tlsSecret: "" # HTTP only for now — the owner is adding DNS + TLS separately
+
+# The developer portal: static docs, no backend dependency. Served at /docs — the
+# hosted UI (below) owns the domain root.
+portal:
+  enabled: true
+  image: "ghcr.io/wiatrm/guidefold-portal@sha256:df62700ac709c9e61e03fa93a16a06b7f65ffe9512241e24d7690da1a4185b0d"
+  replicas: 1
+
+# The hosted U4 React app: real login/import/catalog/review screens. Served at /.
+# The API is still auth: workos with no WorkOS secret wired (see README.md step 3),
+# so /api/v1/me and everything behind it will 503 until that's done — the app shell
+# itself loads and should degrade to its own "not signed in" state, not a blank page.
+ui:
+  enabled: true
+  image: "" # TODO: pin from publish-images.yml's `ui` job
+  replicas: 2
 
 networkPolicy:
   enabled: true

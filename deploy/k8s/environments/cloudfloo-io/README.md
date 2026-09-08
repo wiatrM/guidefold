@@ -131,8 +131,10 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    Result: `guidefold-portal` and `guidefold-worker` pods Running; `guidefold`
    (api) pods correctly CrashLoopBackOff with `workos_requires_api_key_and_client_id`
    — expected, not a bug: `auth: workos` with no WorkOS secret wired yet (see
-   step 3's still-open WorkOS mount). Internal only, no ingress route to it,
-   harmless to leave crash-looping until WorkOS is wired.
+   step 3's still-open WorkOS mount). Harmless to leave crash-looping until
+   WorkOS is wired — **except** that step 10 below routes `/api` and `/v1` to
+   it, so once the UI is live, every API call it makes will 503 until this is
+   fixed. That's expected too, not a new failure — see step 10.
 
 7. **Apply the ArgoCD Application** (not yet done — the live release above was
    installed directly with `helm install`, bypassing GitOps for speed):
@@ -147,14 +149,14 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    `OutOfSync`, before trusting it for ongoing management.
 
 8. **Verified** (done, via the cluster's ingress IP + Host header — DNS for
-   `guidefold.cloudfloo.io` isn't pointed at `192.168.8.128` yet):
+   `guidefold.cloudfloo.io` isn't pointed at `192.168.8.128` yet). At the time
+   this step ran, the portal was still mounted at `/` (before step 10's
+   routing redesign moved it to `/docs` for the UI):
    ```
    curl -H "Host: guidefold.cloudfloo.io" http://192.168.8.128/
    ```
    Real 200, real MkDocs-rendered content, CSS/JS assets load, a second page
-   (`/quickstart/`) resolves. This becomes reachable at the real domain the
-   moment DNS is added — nothing else changes. `/health/ready` on the API
-   isn't reachable externally yet (no ingress for it; see step 6).
+   resolved. Re-verify against the current paths (`/docs`, `/`) after step 10.
 
 9. **GitHub App registration is blocked on real backend work that doesn't exist
    yet — checked this pass, not assumed.** `internal/identity` has a `"github"`
@@ -168,6 +170,36 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    Deploying (steps 1–8) makes the existing CLI-driven import/review/publish API
    live on a real domain; it does not implement the GitHub App surface itself.
    That's the next real chunk of engineering work, separate from this deploy.
+
+10. **Hosted UI added and the domain re-routed (2026-09-08).** The gap flagged
+    after step 8/9 — no React app was ever built or deployed, so "login" had
+    literally nowhere to run — is closed:
+    - `ui/Dockerfile` builds the real React app (`pnpm build`) behind an
+      unprivileged nginx with SPA fallback (`ui/nginx-spa.conf`:
+      `try_files $uri /index.html`). Same-origin by design
+      (`ui/src/api/client.ts`), so it does not proxy `/api`/`/v1` itself.
+    - Routing changed from "portal owns `/`" to three path rules on the one
+      shared host: `/` → UI (`ui.yaml`), `/docs` → portal (`portal.yaml`,
+      **rebuilt to serve from `/usr/share/nginx/html/docs/`, not its root** —
+      the portal's own directory-redirect only comes out correct if nginx's
+      own view of the path already includes `/docs`; stripping the prefix at
+      the ingress instead would need the ingress to rewrite the backend's
+      *response* Location header too, which plain nginx-ingress
+      rewrite-target does not do), `/api` + `/v1` → api (`ingress.yaml`).
+      nginx-ingress merges same-host rules from separate Ingress objects by
+      path specificity, so the three files' declaration order doesn't matter.
+    - `ingress.enabled` is now `true` (was `false`): the UI's own `/api`/`/v1`
+      calls are same-origin, so without this every request the app makes
+      404s against the UI's own static-file catch-all instead of reaching
+      the api Service.
+    - Build/deploy is the same `helm install`-then-`upgrade` pattern as
+      before, with a new `ui` job in `publish-images.yml`; `ui.image` follows
+      the same "TODO: pin from the run's Summary" placeholder pattern.
+    - **Still true after this step**: the API is still `auth: workos` with no
+      WorkOS secret (step 3), so the UI's app shell loads but every
+      `/api/v1/...` call — including the one on load that checks whether
+      you're signed in — gets a 503 from an all-unready backend. Real
+      login/import through the UI needs step 3's WorkOS piece finished first.
 
 ## What this does not cover
 

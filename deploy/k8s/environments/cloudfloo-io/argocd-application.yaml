@@ -72,16 +72,18 @@ spec:
           replicas: 1
           generator: deterministic
         ingress:
-          enabled: false
+          enabled: true
           className: nginx
-          host: ""
+          host: guidefold.cloudfloo.io
           tlsSecret: ""
         portal:
           enabled: true
-          image: "ghcr.io/wiatrm/guidefold-portal@sha256:a1b52391990fba75c3b3e6dc7ab9484a47a6a8c4d170da195ae799d0bdda9f7e"
+          image: "ghcr.io/wiatrm/guidefold-portal@sha256:df62700ac709c9e61e03fa93a16a06b7f65ffe9512241e24d7690da1a4185b0d"
           replicas: 1
-          host: guidefold.cloudfloo.io
-          tlsSecret: ""
+        ui:
+          enabled: true
+          image: "" # TODO: pin from publish-images.yml's `ui` job before first sync
+          replicas: 2
         networkPolicy:
           enabled: true
           clientPeers:

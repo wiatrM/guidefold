@@ -1,5 +1,12 @@
 {{- if .Values.ingress.enabled }}
 {{- if not .Values.ingress.host }}{{ fail "ingress.host is required when ingress.enabled" }}{{ end }}
+# Routes only /api and /v1 — the management API and the SEARCH/USE contract paths
+# (main.go: "contract-route: POST /v1/search" etc.). Everything else on this host
+# belongs to the UI (ui.yaml, path /) or the portal (portal.yaml, path /docs); the
+# hosted UI calls these same-origin (ui/src/api/client.ts: "same-origin /api/v1
+# unless VITE_GUIDEFOLD_API points elsewhere"), so this must be enabled together
+# with ui.enabled or every API call from a deployed UI 404s against the UI's own
+# static-file catch-all instead of reaching this service.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -23,7 +30,13 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
-          - path: /
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "gf.name" . }}
+                port: {name: http}
+          - path: /v1
             pathType: Prefix
             backend:
               service:
