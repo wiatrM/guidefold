@@ -24,6 +24,11 @@ x-app: &app
     GUIDEFOLD_CONTRACT: /app/contract.json
     GUIDEFOLD_POLICY_SOURCE: /app/policy-source
     GUIDEFOLD_LEXICAL_ENGINE: ${GUIDEFOLD_LEXICAL_ENGINE:-router}
+    # The sign-in provider is named, never defaulted: `dev` mounts a form that
+    # mints a session for any e-mail, so it has to be asked for by hand
+    # (GUIDEFOLD_AUTH=dev docker compose up). Unset, the service refuses to
+    # start rather than boot the development provider.
+    GUIDEFOLD_AUTH: ${GUIDEFOLD_AUTH:-workos}
 
 services:
   db:
@@ -84,6 +89,48 @@ services:
       timeout: 3s
       retries: 12
       start_period: 10s
+    stop_grace_period: 15s
+
+  # `guidefold-search worker` runs import.parse jobs: it materialises an import's
+  # blobs and runs the repository's own tools/worker/build_tree.py over them, so it
+  # needs Python 3 + PyYAML (services/search/Dockerfile.worker). The API image above
+  # stays Python-free (PIVOT-ARCHITECTURE "Co wdrażamy"; module-boundaries-go). No
+  # ports: the worker only leases jobs from gfm.jobs, it never accepts a connection.
+  worker:
+    <<: *app
+    image: ${GUIDEFOLD_WORKER_IMAGE:-guidefold-search-worker:local}
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile.worker
+    command: [worker]
+    environment:
+      <<: *environment
+      # Operator credentials, exactly like `migrate` and `publish` above. The
+      # `publish.build` job writes the immutable catalog (gf.snapshots, gf.skills,
+      # gf.heads, gf.router_*), and guidefold_api deliberately has no INSERT there
+      # (schema.grantsSQL: SELECT on gf.*, INSERT only on gf.events/gf.search_shadow)
+      # so a compromised request-serving process can never rewrite what agents read.
+      # The worker is an operator job in that split, not a second API.
+      PGUSER: postgres
+      PG_PASSWORD_FILE: /run/secrets/postgres_password
+      # The worker image has no /app/policy-source (no /app/contract.json either,
+      # but that path is only ever read by `serve`); the CLI it hashes and execs
+      # lives under the mirrored repo tree instead (see Dockerfile.worker).
+      GUIDEFOLD_POLICY_SOURCE: /app/repo/skills/guidefold/scripts/guidefold
+      # none|deterministic|openai|anthropic (API-CONTRACT §8); none completes
+      # proposal.generate as skipped/llm_not_configured instead of guessing.
+      GUIDEFOLD_GENERATOR: ${GUIDEFOLD_GENERATOR:-none}
+    secrets: [postgres_password]
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+      - /work:size=256m,noexec,nosuid
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 1024M}
+        reservations: {cpus: "0.25", memory: 256M}
     stop_grace_period: 15s
 
 networks:

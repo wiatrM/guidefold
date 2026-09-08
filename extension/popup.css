@@ -1,0 +1,10 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #202527; color: #f4f0e8; }
+body { width: 320px; margin: 0; background: #202527; }
+main { padding: 24px; border-left: 3px solid #42c3bc; }
+.eyebrow { margin: 0 0 12px; color: #42c3bc; font-size: 11px; letter-spacing: .14em; font-weight: 700; }
+h1 { margin: 0 0 12px; font-size: 24px; line-height: 1; }
+.copy { color: #b9c0bc; font-size: 13px; line-height: 1.5; margin: 0 0 20px; }
+button { width: 100%; min-height: 44px; border: 0; border-radius: 2px; background: #e58a3a; color: #171b1c; font-weight: 800; cursor: pointer; }
+button:hover, button:focus-visible { background: #f0a35e; outline: 2px solid #f4f0e8; outline-offset: 2px; }
+.status { min-height: 18px; color: #ffbd73; font-size: 12px; }
+a { color: #8de1da; font-size: 12px; }

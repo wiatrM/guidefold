@@ -1,0 +1,24 @@
+.tree{min-width:var(--zero);}
+.tree ul{list-style:none;margin:var(--zero);padding-left:var(--space-3);}
+.tree>ul{padding-left:var(--zero);}
+.tree li{margin:var(--zero);padding:var(--zero);min-width:var(--zero);}
+.tree li ul{margin-left:var(--space-2);border-left:var(--border-width) solid var(--line-strong);}
+/* Both the leaf row and every folder summary reserve a left border at the (invisible against the
+   panel ground) --graphite-900 baseline, so gaining the teal "selected" marker never shifts the
+   row's content — a real token stands in for "no border yet", never a bare transparent literal. */
+.tree summary{display:list-item;min-height:var(--row-height);padding:var(--space-2);cursor:pointer;overflow-wrap:anywhere;border-left:var(--border-width) solid var(--graphite-900);}
+/* Folder icon stays muted (it is navigation chrome); the file icon reads brighter so a leaf is
+   visually distinct from a folder at a glance, not just by which element happens to be clickable. */
+.tree summary svg{vertical-align:middle;margin-right:var(--space-2);color:var(--stone-300);}
+.tree summary small{display:block;color:var(--stone-300);font-size:var(--font-size-small);}
+.treeLeaf{display:flex;align-items:flex-start;gap:var(--space-2);flex-wrap:wrap;min-height:var(--row-height);padding:var(--space-2);border-left:var(--border-width) solid var(--graphite-900);}
+.treeLeaf>a,.treeLeaf>span{overflow-wrap:anywhere;}
+.treeLeaf svg{flex:none;color:var(--stone-100);}
+.treeLeaf small{color:var(--stone-300);font-size:var(--font-size-small);overflow-wrap:anywhere;}
+/* Selected leaf: colour is never the only carrier of state (accessibility-contract), so the row
+   also gets a background block and a left border, not just a teal link. */
+.treeLeaf:has([aria-current=true]){background:var(--graphite-800);border-left-color:var(--survey-teal);}
+.treeLeaf [aria-current=true]{color:var(--system-ink);font-weight:var(--weight-semibold);}
+/* Ancestor folders of the selected leaf: the same structural marker down the open path, so the
+   selection reads as "here" beyond just being auto-expanded. */
+.tree details:has([aria-current=true])>summary{background:var(--graphite-800);border-left-color:var(--survey-teal);}

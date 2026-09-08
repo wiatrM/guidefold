@@ -50,7 +50,8 @@ The current migrator creates `guidefold_api`; it does not provision arbitrary ro
 
 Create existing Secrets through the cluster's secret-management process:
 
-- `guidefold-credentials`: `app-password`, `api-token` (mounted by API only).
+- `guidefold-credentials`: `app-password`, `api-token` (mounted by the API; the worker
+  mounts the same Secret but only its `app-password` key, never `api-token`).
 - `guidefold-operator-credentials`: `admin-password`, `app-password` (publication/migration only).
 - `guidefold-postgres-ca`: `ca.crt` for `PGSSLMODE=verify-full`.
 - Optional registry pull and ingress TLS Secrets.
@@ -97,6 +98,9 @@ python tools/search_service/k8s_release.py manifest \
   --image "$API_IMAGE" --artifact-image "$ARTIFACT_IMAGE" \
   --output release.json
 # For shadow also pass --encoder-id "$ENCODER_ID" --model-image "$MODEL_IMAGE".
+# For a worker (import.parse) also pass --worker-image "$WORKER_IMAGE", built from
+# services/search/Dockerfile.worker; `k8s_release.py values` then sets worker.enabled
+# and worker.image for you.
 RELEASE=$(python -c 'import json; print(json.load(open("release.json"))["release"])')
 
 for MODE in migrate publish serve; do
@@ -209,6 +213,31 @@ for a new release plus surge; HPA does not create GPUs. No scale-to-zero is conf
 not possible: disable the old GPU autoscaler and scale its TEI deployment to zero before
 warming the candidate. Primary sparse traffic can continue, but record the shadow gap.
 Rollback must warm the retained old encoder again before its preflight can pass.
+
+## Worker (import.parse)
+
+`worker.enabled: true` adds a fixed-size `<release>-worker` Deployment running
+`guidefold-search worker` from a separate image (`services/search/Dockerfile.worker`,
+built with Python 3 + PyYAML so it can run the repository's own
+`tools/worker/build_tree.py`); the API image stays Python-free. It shares the release's
+ConfigMap and `guidefold-credentials` Secret (only the `app-password` key — the worker
+never authenticates inbound requests, so it gets no `api-token`) and the same
+`guidefold_api` database role as the API. It has **no Service**: it only leases jobs
+from `gfm.jobs`, it never accepts a connection, so it gets its own NetworkPolicy with
+an empty `ingress: []` (deny all) rather than joining the `[api, operator]` policy that
+opens port 8080. `GUIDEFOLD_GENERATOR` (`none|deterministic|openai|anthropic`,
+API-CONTRACT §8) selects the `proposal.generate` backend once that handler ships;
+`none` is the chart default.
+
+Every worker pod opens its own 8-connection pool exactly like an API pod, so
+`gf.validate` extends the connection-budget formula in `## Scaling and observation`
+above to also reserve `2 * (worker.replicas + 1) * 8` connections when `worker.enabled`
+— raise `database.connectionBudget` accordingly, the same way you would for added API
+replicas. `k8s_release.py manifest --worker-image ...` binds the worker's image digest
+into the same content-derived release identity as the API/artifact/model images (a
+worker image change is a new release, promoted and rolled back like any other), and
+`preflight` checks the candidate `<release>-worker` Deployment's image before promotion
+the same way it checks the GPU `<release>-tei` Deployment's.
 
 ## Failure handling and operations
 

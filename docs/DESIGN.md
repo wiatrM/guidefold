@@ -208,6 +208,58 @@ sides whenever both finish in time and emits `telemetry_health.parity_mismatch` 
 disagreement — the first per-query signal, outside offline eval, that T0's Python BM25F and T1's
 Go/ParadeDB retrieval backend picked different skills for the same query.
 
+### 6a. Hosted service path (product pivot, P03/P10)
+
+**Status: the CLI half is implemented in this repo; every command but `scan` needs a running
+hosted management API** (`docs/PIVOT-ARCHITECTURE.md`, `docs/PRODUCT-PIVOT.md` §4/§8). It is
+additive: `guidefold.yaml` gains an optional `service:` block (`docs/CONVENTIONS.md` §1b) and the
+ranking commands above are untouched.
+
+```
+work tree ──scan──▶ guidefold-import-manifest-v1 (canonical JSON, sorted by path bytes,
+                    no timestamps ⇒ idempotency_key = sha256(manifest bytes))
+                          │
+             import/sync  ├─▶ POST  /api/v1/orgs/{org}/repos/{repo}/imports  {key, manifest}
+                          │        ← missing_blobs[]           (the server decides what is new)
+                          ├─▶ PUT   …/imports/{id}/blobs/{sha}  (only those, retry ≤3, backoff)
+                          ├─▶ POST  …/imports/{id}/finalize
+                          └─▶ GET   …/imports/{id}              (--wait: every 2 s until
+                                                                 ready|partial|failed)
+worker ──materialise blobs──▶ tree ──tools/worker/build_tree.py──▶ snapshot.json + inventory.json
+                                                                   ──▶ Go publisher (gf.snapshots)
+proposals ──GET …/exports/{id}──▶ unified diff ──--write──▶ files in git (never a commit)
+```
+
+Three properties carry the design:
+
+1. **`scan` is offline by construction.** It opens no socket and imports neither `urllib` nor
+   `http.client`; `--dry-run` only says so out loud. The manifest it prints is byte-identical to
+   the one `import` sends, so a reviewer can inspect exactly what would leave the machine
+   (U1 AC1). Secrets are excluded by name *and* by a `-----BEGIN … PRIVATE KEY` content sniff, so
+   their bytes never become a blob.
+2. **The server owns "what is new".** The CLI uploads exactly the hashes `missing_blobs` names.
+   That makes resumption free — an interrupted import is retried by re-posting the same manifest,
+   which yields the same `import_id` and the still-missing subset — and makes "the second sync
+   uploads 0 new blobs" an observation rather than a claim (U1 AC4/AC5).
+3. **The published snapshot stays reproducible from git.** `tools/worker/build_tree.py` is the
+   worker's builder for a materialised import tree, and it reuses the CLI's own
+   `load_map`/`Index.build`/`with_router_index` through `load_cli_snapshot` (hash and execute the
+   same bytes — the CLI sha *is* the policy sha). `tests/test_build_tree.py` builds the same
+   fixture both ways and asserts the snapshots differ in exactly one field, `source`
+   (`import_tree` vs `git_commit_only`). Alongside the snapshot it writes `inventory.json`: one
+   row per parsed `SKILL.md` (scope, owner, layer, status, `requires`/`refines`/`references`/
+   `triggers`, sha256, size, verbatim frontmatter), with per-file parse errors collected rather
+   than aborting the run.
+
+`install --harness claude|copilot` installs the portable adapter package and its harness wiring
+idempotently, records every file's hash plus `package_sha256` in
+`.agents/skills/guidefold/INSTALL-MANIFEST.json`, and has an `uninstall` that removes only what
+that manifest records and only where the hash still matches (`docs/CONVENTIONS.md` §14). `doctor`
+grew the matching diagnostics: service coordinates, `GET /health/ready`, `GET /api/v1/me`
+(user, role, token scopes — never the token), adapter integrity, and per-harness capabilities,
+where `hook_context_injection` is reported only from a wired hook file on disk. Copilot CLI has
+no such hook, so it stays explicit `find`/`load`.
+
 ## 7. Index artifact
 
 **E1.4 (shipped):** `guidefold index` builds an immutable, sha-keyed artifact at
@@ -390,6 +442,20 @@ Hook budget: warm p50 ≤ 300 ms (index load + BM25 + local dense + PPR); cold �
 
 ## 11. Knowledge lift (specific → general)
 
+**Shipped 2026-09-08 as `guidefold ascend` (ADR-0035)** — a card-level ascent rather than the
+per-unit classifier sketched below, which stays as the refinement path. Trigger: a PR changes a
+`SKILL.md`. For each ancestor scope of the changed skill, bottom-up, the CLI asks one
+OpenAI-compatible model (OpenRouter by default; the model is a repository variable) for at most
+two abstract skills — a **map** of what lives in that scope and a **convention** every child
+shares — given: the scope's node (owner, children), the abstract skill already there (to edit,
+never duplicate), the *cards* of every skill in every descendant scope, and the full body of the
+changed skill only. The climb stops at the first level where the model writes nothing. Gates
+before any write: every claim cites source URNs from the context; no unknown component, code
+block, numbered procedure or three verbatim lines from a child; ≤ 80 lines; `validate` passes.
+A fingerprint of the child cards is stored in the written file, so an unchanged subtree costs no
+call. Output is a separate PR whose reviewers are the parent scope's CODEOWNERS. The original
+design, kept for the next iteration:
+
 Trigger: a PR adds or changes a skill at level ≥ L2. CI runs `guidefold lift`, a model-backed step (Gemini on Vertex, temperature 0, fixed prompt, JSON output), with deterministic pre- and post-processing:
 
 1. **Segment** the body into units (headings, steps, bullets).
@@ -421,6 +487,12 @@ PR: `validate` (frontmatter, kind-per-level, triggers, digest, references, requi
 Main: `index` (embeddings for changed skills) → upload shards to GCS → `publish --changed` → `hierarchy-index` revision → `materialize` commit-back.
 
 **E7.5 (shipped, standalone CLI form — not yet tied to an index/snapshot build, `dedup`/`lift` remain unbuilt):** `guidefold eval --queries <dir|yaml|jsonl> [--baseline b.json] [--gate]` runs the golden/consumer query set through the real product path (`policy_filter → candidates → score → select`, never a second ranking implementation) and reports the RETRIEVAL metrics (hit@1/recall@k/nDCG@10, `Router.score` order) and INJECTION metrics (completeness@k/all_required@k/distractor_rate@k plus abstention/coverage, the ≤k cards `Router.select` emits) of §8.1's evidence base. `--gate` fails the check when a gated metric regresses beyond its `guidefold.yaml` `eval.gate` margin versus `--baseline`, printing a paired bootstrap 95% CI for context; `--write-baseline` records a new baseline deliberately, the same reviewed act as `run_golden.py --update-baseline`. Wired as this repo's own `golden-eval` CI step and as `templates/ci.yml`'s `quality-gate` job for a consumer monorepo — see `docs/CONVENTIONS.md` §13.
+
+**P12/U7 (shipped, CLI + consumer CI template):** `guidefold report --base <ref> [--json PATH] [--markdown PATH] [--queries FILE] [--fail-on structure|any|none] [--k N] [--no-reproducible]` is the pre-merge change report. It builds the **base** view by extracting only what it reads at `<ref>` — `guidefold.yaml`, every `SKILL.md`, each skill's packaged `references/`/`scripts/`/`assets/` files, and (second pass, after the cards are parsed) the files `metadata.references`/`metadata.scripts` declare — with `git archive` into a private temp dir, never the working tree and never a second `git worktree` inside the repo; the **head** view is the working tree, committed *and* uncommitted, the same corpus `validate` sees. Both views go through the same `load_map` → `frontmatter`/`all_skills` → `Index.build`, so there is no second parser; the retrieval section replays the same product path `guidefold eval` runs (`policy_filter → candidates → score → select(admissible=…)`, ADR-0022) with the same `_eval_*` metric functions, so there is no second ranking implementation either. `all_skills` grew one opt-in `on_error` callback for this: without it the walk still dies on a broken card exactly as before, with it the broken card becomes an `invalid_card` finding and the other skills are still compared.
+
+What it emits: a JSON artifact under schema `guidefold-change-report-v1` (`base_ref`, `base_commit`, `head_commit|null`, `dirty`, `fail_on`, `summary` counts, `findings[] {severity, code, skill_id?, message, details}`, `changes{skills,scopes,relations,resources}`, `retrieval{…}|null`) and a ≤ 200-line PR-comment Markdown whose first line is the hidden sticky marker `<!-- guidefold:change-report -->`. Both are deterministic — every list is sorted, and the one clock read (`generated_at`) exists only under `--no-reproducible`; `--reproducible` is the default, which is what the CI job wants ("identyczne wejście daje identyczny deterministyczny wynik"). Renames are resolved before add/remove, from `guidefold.yaml`'s `import.aliases` first and then an identical **body** sha256 (body only — a legitimate move rewrites `metadata.scope`, which would defeat whole-file matching), and only when the content match is unambiguous.
+
+Severity follows PRODUCT-PIVOT §10 U7 exactly. **Structure blocks:** `graph_cycle` (the path is printed), `missing_required_dependency`, `missing_required_resource`, `invalid_card` — any of them exits 2 under the default `--fail-on structure`. **Everything arguable warns:** `trigger_collision` (two same-node cards sharing a trigger phrase that tokenises identically — the query-set-free half of `collision_report.py`'s HSR proxy, reported only for skills this change touches), `missing_owner`, `scope_changed`, `description_shortened`, `unknown_scope`. **Retrieval never blocks on its own:** `retrieval_selection_changed` and `retrieval_metric_delta` are warnings, and the report says so in words — a retrieval example shows what the router would select, never that a procedure was executed. `--fail-on any` is the explicit opt-in for a repo that wants warnings to block too; `--fail-on none` reports without ever failing. Wired as `templates/ci.yml`'s `change-report` job — see `docs/CONVENTIONS.md` §12a.
 
 Golden set: ≥ 60 queries on the playground, each with expected URNs and expected order by level; metrics Hit@1, Recall@8, stratification score (fraction of adjacent pairs in non-decreasing level), p50/p95 latency. Thresholds gate merges to the CLI; nightly run against the real registry detects embedder or API changes.
 

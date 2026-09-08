@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "study": "Etap 5 \u00b7 R1",
+  "persona": "P1 \u00b7 owner instrukcji",
+  "sample": "Syntetyczna symulacja n=1; nie badanie z cz\u0142owiekiem",
+  "method": {
+    "browser": "Chromium headless",
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "context": "Jeden nowy context, start wy\u0142\u0105cznie na Import; dalsze adresy odkrywane w renderowanym UI.",
+    "sourceBoundary": "Wy\u0142\u0105cznie renderowany DOM i screenshoty produktu. Nie czytano dokumentacji, implementacji HTML/JS ani fixture.json. Nie uruchomiono instrukcji z SKILL.md. Nie otwierano zewn\u0119trznych link\u00f3w ani nie wysy\u0142ano danych.",
+    "countRule": "Klikni\u0119cia podano \u0142\u0105cznie oraz osobno dla nawigacji/radio/button i disclosure. Wpisywanie liczone jako odr\u0119bna operacja fill. Odczyty DOM i screenshoty nie zwi\u0119kszaj\u0105 licznik\u00f3w.",
+    "technicalNotes": "Pocz\u0105tkowy nieudany import pakietu playwright skorygowano na @playwright/test przed uruchomieniem pierwszej sesji. Operacje techniczne nie s\u0105 krokami testowanego zadania."
+  },
+  "tasks": [
+    {
+      "id": "A",
+      "goal": "Przeprowadzi\u0107 dost\u0119pny scenariusz wprowadzenia repo Meridian i pokaza\u0107 pierwsz\u0105 map\u0119.",
+      "start": "http://127.0.0.1:4320/import.html",
+      "completed": true,
+      "clicks": {
+        "total": 6,
+        "navigationRadioButton": 5,
+        "disclosure": 1
+      },
+      "typingOperations": 0,
+      "steps": [
+        {
+          "n": 1,
+          "type": "radio",
+          "ui": "GitHub (fixture)",
+          "result": "Wybrano dostawc\u0119 fixture."
+        },
+        {
+          "n": 2,
+          "type": "button",
+          "ui": "Continue with selected provider (fixture)",
+          "result": "Otworzono etap tworzenia organizacji."
+        },
+        {
+          "n": 3,
+          "type": "button",
+          "ui": "Create meridian (fixture)",
+          "result": "Otworzono podgl\u0105d manifestu."
+        },
+        {
+          "n": 4,
+          "type": "disclosure",
+          "ui": "Inspect files, hashes and sizes",
+          "result": "Rozwini\u0119to manifest 27 \u017ar\u00f3de\u0142 z rozmiarami i SHA-256; widoczny postgres-auth."
+        },
+        {
+          "n": 5,
+          "type": "button",
+          "ui": "Simulate import",
+          "result": "Parsed \u00b7 ready to browse; 27 existing skills and 17 scope nodes."
+        },
+        {
+          "n": 6,
+          "type": "link",
+          "ui": "Open Map",
+          "result": "Map \u2192 Repository: drzewo \u017ar\u00f3de\u0142 i wybrany postgres-auth."
+        }
+      ],
+      "evidence": [
+        "27 existing skills and 17 scope nodes are read from the embedded Meridian fixture.",
+        "Publication: Not established \u00b7 owner review is still required",
+        "Repository tree",
+        "Actual fixture paths. Expand directories to reach every imported skill."
+      ],
+      "lost": "Brak zagubienia. Etapy i ko\u0144cowy link do mapy prowadzi\u0142y bez cofania. Rozwini\u0119cie manifestu by\u0142o \u015bwiadom\u0105 kontrol\u0105 ownera.",
+      "thinkAloud": "Widz\u0119, \u017ce to lokalny scenariusz. Sprawdzam commit i list\u0119 \u017ar\u00f3de\u0142 przed importem. Wynik m\u00f3wi, \u017ce skille s\u0105 gotowe do przegl\u0105dania, ale publikacja wymaga osobnej decyzji.",
+      "findings": [],
+      "prioritySummary": {
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      }
+    },
+    {
+      "id": "B",
+      "goal": "Znale\u017a\u0107 dok\u0142adne \u017ar\u00f3d\u0142o i scope postgres-auth.",
+      "start": "Map \u2192 Repository po A",
+      "completed": true,
+      "clicks": {
+        "total": 2,
+        "navigationRadioButton": 1,
+        "disclosure": 1
+      },
+      "typingOperations": 0,
+      "steps": [
+        {
+          "n": 1,
+          "type": "link",
+          "ui": "Open source and scope",
+          "result": "Otworzono Source & scope wybranego domy\u015blnie postgres-auth."
+        },
+        {
+          "n": 2,
+          "type": "disclosure",
+          "ui": "Inspect complete SKILL.md including frontmatter",
+          "result": "Przeczytano renderowany orygina\u0142 z frontmatter; nie wykonywano instrukcji."
+        }
+      ],
+      "answer": {
+        "scope": "atlas.identity.turnstile",
+        "scopePaths": "platforms/atlas/identity/turnstile/**",
+        "owner": "turnstile-team",
+        "repository": "monorepo",
+        "sourcePath": "platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md",
+        "baseCommit": "88e404561a9f6994cd870743bf858b9b0a616126",
+        "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+        "sourceLayer": "team",
+        "knowledgeLayer": "Unclassified",
+        "sourceStatus": "active",
+        "publication": "Not established by source status",
+        "exactSourceLinkObserved": "https://github.com/wiatrM/guidefold/blob/88e404561a9f6994cd870743bf858b9b0a616126/examples/monorepo/platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md"
+      },
+      "evidence": [
+        "Owner from source: turnstile-team (ownership metadata; not an access grant)",
+        "Digest of the exact SKILL.md bytes, including frontmatter.",
+        "Open exact source revision (GitHub, new tab)",
+        "Source fragment: legacyAuthMode; no verified line mapping."
+      ],
+      "lost": "Brak zagubienia. Wygodny punkt startu: postgres-auth by\u0142 ju\u017c domy\u015blnie wybrany po A; wynik nie mierzy odnajdywania dowolnego innego skilla.",
+      "thinkAloud": "To instrukcja zespo\u0142u turnstile dla wskazanego poddrzewa. Mam \u015bcie\u017ck\u0119, commit i hash, wi\u0119c wiem, kt\u00f3r\u0105 wersj\u0119 oceniam. Active nie oznacza opublikowania, a owner w metadanych nie nadaje uprawnie\u0144.",
+      "findings": [],
+      "prioritySummary": {
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      }
+    },
+    {
+      "id": "C",
+      "goal": "Oceni\u0107 dost\u0119pn\u0105 propozycj\u0119, zatwierdzi\u0107 mo\u017cliwo\u015b\u0107 dostarczenia do Git, pobra\u0107 artefakt i osi\u0105gn\u0105\u0107 Published.",
+      "start": "Skill \u2192 Source & scope po B",
+      "completed": true,
+      "clicks": {
+        "total": 6,
+        "navigationRadioButton": 5,
+        "disclosure": 1
+      },
+      "typingOperations": 1,
+      "steps": [
+        {
+          "n": 1,
+          "type": "link",
+          "ui": "Proposals",
+          "result": "Draft; por\u00f3wnanie exact imported revision z unchanged source."
+        },
+        {
+          "n": 2,
+          "type": "disclosure",
+          "ui": "Full candidate SKILL.md",
+          "result": "Przeczytano tre\u015b\u0107 kandydata. UI deklaruje No text changes; identyczny SHA-256 i scope."
+        },
+        {
+          "n": 3,
+          "type": "radio",
+          "ui": "Approve for export \u2014 prepare the candidate file",
+          "result": "Wybrano zgod\u0119 na eksport."
+        },
+        {
+          "n": 4,
+          "type": "typing",
+          "ui": "Reason for this decision",
+          "value": "Synthetic owner review: exact source at commit 88e404561a9f6994cd870743bf858b9b0a616126 and matching candidate SHA-256 inspected. Scope stays atlas.identity.turnstile with turnstile-team ownership. Approve unchanged file for export; Git delivery and publication remain separate steps.",
+          "result": "Jedna operacja fill, bez dodatkowego klikni\u0119cia liczonego w skrypcie."
+        },
+        {
+          "n": 5,
+          "type": "button",
+          "ui": "Record decision (local)",
+          "result": "Approved for export; wyja\u015bnienie, \u017ce decyzja nie publikuje skilla."
+        },
+        {
+          "n": 6,
+          "type": "button+download",
+          "ui": "Export SKILL.md",
+          "result": "Browser download postgres-auth.SKILL.md; failure:null. Stan Awaiting Git."
+        },
+        {
+          "n": 7,
+          "type": "button",
+          "ui": "Simulate Git sync",
+          "result": "Published (fixture); evidence level Local simulation only."
+        }
+      ],
+      "decisionBasis": "\u0179r\u00f3d\u0142o i jego zakres zidentyfikowane w B. W C kandydat ma t\u0119 sam\u0105 tre\u015b\u0107, scope i SHA-256, co \u017ar\u00f3d\u0142o. Decyzja dotyczy eksportu istniej\u0105cego pliku, bez deklarowania nowej procedury lub potwierdzonej skuteczno\u015bci.",
+      "download": {
+        "suggestedFilename": "postgres-auth.SKILL.md",
+        "failure": null,
+        "observation": "Pobranie zosta\u0142o potwierdzone przez zdarzenie przegl\u0105darki. Nie zapisywano trwa\u0142ej kopii poza dozwolonym zakresem plik\u00f3w testowych."
+      },
+      "observedStates": [
+        "Draft",
+        "Approved for export",
+        "Awaiting Git",
+        "Published (fixture)"
+      ],
+      "evidence": [
+        "The source file is prepared. This decision does not publish a skill or confirm effectiveness.",
+        "Source file downloaded. Waiting for Git review and sync. Export alone does not publish the revision.",
+        "This prototype cannot observe any of these events. The button below only advances the local scenario; it does not contact Git.",
+        "Published (fixture) means this local scenario reached its final state. No Git merge, review, server publication or agent load was verified."
+      ],
+      "lost": "Brak b\u0142\u0119dnej nawigacji, cofania lub blokady. Kr\u00f3tk\u0105 niepewno\u015b\u0107 interpretacyjn\u0105 na ko\u0144cu wywo\u0142uje jednoczesne Published (fixture) i publication not established w karcie \u017ar\u00f3d\u0142a; nag\u0142\u00f3wek imported revision pozwala to rozstrzygn\u0105\u0107.",
+      "thinkAloud": "\u0179r\u00f3d\u0142o i kandydat maj\u0105 identyczny hash, wi\u0119c zatwierdzam ten plik do eksportu. Pobranie daje Awaiting Git, a nie publikacj\u0119. Symulowany sync doprowadza do ko\u0144ca scenariusza; nie traktuj\u0119 tego jako dowodu rzeczywistego merge lub u\u017cycia przez agenta.",
+      "findings": [
+        {
+          "id": "OWNER-R1-01",
+          "priority": "P3",
+          "title": "Nieaktualna etykieta skr\u00f3tu do decyzji po jej zako\u0144czeniu",
+          "uiQuote": "Review decision: approve, edit or reject",
+          "observed": "Etykieta pozostaje w stanie Published (fixture), a docelowa sekcja zawiera wynik, dowody i Check usage evidence; nie oferuje ju\u017c approve/edit/reject.",
+          "impact": "Skr\u00f3t sugeruje dost\u0119pne dzia\u0142ania, kt\u00f3rych ko\u0144cowa sekcja nie udost\u0119pnia. Nie zablokowa\u0142 uko\u0144czenia zadania.",
+          "fix": "Po decyzji zmieni\u0107 etykiet\u0119 na View decision and publication status; w Draft zachowa\u0107 obecn\u0105 etykiet\u0119."
+        },
+        {
+          "id": "OWNER-R1-02",
+          "priority": "P3",
+          "title": "Nieprecyzyjna perspektywa czasowa statusu \u017ar\u00f3d\u0142a",
+          "uiQuote": "Source status: active \u00b7 publication not established",
+          "pairedQuote": "Published (fixture)",
+          "observed": "Oba komunikaty s\u0105 widoczne r\u00f3wnocze\u015bnie na finalnym ekranie. Karta jest opisana jako exact imported revision, ale samo publication not established nie m\u00f3wi, \u017ce dotyczy chwili importu.",
+          "impact": "Owner musi sam po\u0142\u0105czy\u0107 status historycznego \u017ar\u00f3d\u0142a z osobnym bie\u017c\u0105cym stanem scenariusza. Pe\u0142ne wyja\u015bnienie fixture rozstrzyga sens.",
+          "fix": "W karcie \u017ar\u00f3d\u0142a dopisa\u0107 Publication at import: not established. Zachowa\u0107 osobny aktualny stan publikacji propozycji."
+        }
+      ],
+      "prioritySummary": {
+        "P1": 0,
+        "P2": 0,
+        "P3": 2
+      }
+    }
+  ],
+  "totals": {
+    "completed": 3,
+    "tasks": 3,
+    "clicksTotal": 14,
+    "navigationRadioButton": 11,
+    "disclosureClicks": 3,
+    "typingOperations": 1,
+    "findings": {
+      "P1": 0,
+      "P2": 0,
+      "P3": 2
+    }
+  },
+  "limitations": [
+    "Syntetyczne n=1; think-aloud to wypowiedzi wygenerowane w symulacji, nie cytaty uczestnika.",
+    "Sprawdzono jedn\u0105 \u015bcie\u017ck\u0119 ownera i jedn\u0105 niezmienion\u0105 propozycj\u0119. Nie badano odrzucenia, edycji, b\u0142\u0119d\u00f3w sieci, ponownego pobrania ani innych r\u00f3l.",
+    "Dok\u0142adny link \u017ar\u00f3d\u0142owy odczytano z renderowanego UI, ale nie otwierano zewn\u0119trznego GitHub.",
+    "Published jest wy\u0142\u0105cznie ko\u0144cowym stanem lokalnego scenariusza."
+  ],
+  "artifacts": {
+    "script": "prototypes/pipeline-tools/s05-owner-r1.mjs",
+    "report": "prototypes/pipeline-wireframes/qa/s05-owner-r1.json",
+    "screenshot": "prototypes/pipeline-wireframes/qa/s05-owner-r1.png",
+    "screenshotState": "Published (fixture)"
+  }
+}

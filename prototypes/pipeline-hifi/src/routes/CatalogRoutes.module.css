@@ -1,0 +1,75 @@
+.stack { display: grid; gap: var(--space-3); min-width: 0; align-content: start; }
+.intro { margin: 0; color: var(--stone-300); }
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3); border: var(--border-width) solid var(--warning); background: var(--graphite-900); color: var(--stone-300); }
+.notice p { margin: 0; }
+.filterForm { grid-template-columns:var(--filter-form-columns);grid-template-areas:var(--filter-form-areas);display: grid; gap: var(--space-3); padding: var(--zero); }
+.filterGrid { grid-area:filters;display: grid; grid-template-columns: var(--filter-columns); gap: var(--space-3); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.resultsSummary { padding: var(--zero) var(--zero) var(--space-1); border-bottom: var(--border-width) solid var(--line); }
+.resultsSummary p { margin: 0; }
+.resultsSummary p + p { margin-top: var(--zero); }
+.muted { display: block; color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
+.identifier { overflow-wrap: anywhere; }
+.skillCell { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; }
+.skillName { display: inline-flex; align-items: center; min-height: var(--control-height); font-weight: 600; }
+.sourceDetails { flex: 1; min-width: var(--source-disclosure-width); color: var(--stone-300); font-size: var(--font-size-small); }
+.sourceDetails summary { min-height: var(--control-height); display: list-item; align-content: center; cursor: pointer; }
+.sourceDetails p { margin-block: var(--space-2); }
+.sourceLink { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); overflow-wrap: anywhere; min-height: var(--control-height); }
+.sourceLink > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.sourceLink svg { flex-shrink: 0; }
+.externalLabel { font-size: var(--font-size-small); color: var(--stone-300); }
+.emptyResult { padding: var(--space-4); }
+.emptyResult h3 { margin-top: 0; }
+.mapGrid { display: grid; grid-template-columns: var(--aside-columns); gap: var(--space-3); align-items: start; min-width: 0; }
+.panelIntro { padding: var(--space-3); margin: 0; color: var(--stone-300); border-bottom: var(--border-width) solid var(--line); }
+.panelIntro p { margin: 0; }
+.panelIntro p + p { margin-top: var(--space-2); }
+.panelBody { display: grid; gap: var(--space-3); padding: var(--space-3); min-width: 0; }
+.panelBody > p { margin: 0; }
+.panelBody > h3 { margin: 0; }
+.scopeGroups { display: grid; }
+.scopeGroup { min-width: 0; border-bottom: var(--border-width) solid var(--line); }
+.scopeGroup:last-child { border-bottom: 0; }
+.scopeGroup > summary { min-height: var(--control-height); padding: var(--space-2) var(--space-3); cursor: pointer; color: var(--stone-100); overflow-wrap: anywhere; }
+.scopeGroup > summary > span { margin-right: var(--space-2); }
+.count { color: var(--stone-300); font-size: var(--font-size-small); }
+.scopeBody { display: grid; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-3); }
+.scopeMeta { display: grid; gap: var(--space-2); margin: 0; }
+.scopeMeta > div { display: grid; gap: var(--space-1); min-width: 0; }
+.scopeMeta dt, .identityGrid dt { font-size: var(--font-size-small); color: var(--stone-300); }
+.scopeMeta dd, .identityGrid dd { margin: 0; overflow-wrap: anywhere; }
+.scopeMeta code { display: block; }
+.skillList { display: grid; list-style: none; margin: 0; padding: 0; }
+.skillList > li { display: flex; gap: var(--space-2); align-items: flex-start; min-height: var(--row-height); padding: var(--space-2) var(--space-3); border-bottom: var(--border-width) solid var(--line); }
+.skillList > li:last-child { border-bottom: 0; }
+.skillList > li > svg { flex-shrink: 0; margin-top: var(--space-1); color: var(--survey-teal); }
+.skillList > li > div { min-width: 0; }
+.skillList a { display: inline-flex; align-items: center; min-height: var(--control-height); overflow-wrap: anywhere; }
+.selectedName { font-family: var(--font-display); overflow-wrap: anywhere; }
+.relations { display: grid; gap: var(--space-3); min-width: 0; }
+.relationHeading { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--font-size-body); }
+.relationHeading svg { color: var(--survey-teal); }
+.relationList { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
+.relationList li { display: grid; gap: var(--space-1); padding-block: var(--space-2); border-bottom: var(--border-width) solid var(--line); min-width: 0; }
+.relationList a { display: inline-flex; align-items: center; min-height: var(--control-height); }
+.relationList code { overflow-wrap: anywhere; font-size: var(--font-size-small); color: var(--stone-300); }
+.backLink { display: inline-flex; gap: var(--space-2); align-items: center; min-height: var(--control-height); justify-self: start; }
+.description { line-height: var(--line-height-body); }
+.identityGrid { display: grid; grid-template-columns: var(--field-columns); gap: var(--space-3); padding-block: var(--space-3); margin: 0; border-top: var(--border-width) solid var(--line); border-bottom: var(--border-width) solid var(--line); }
+.identityGrid > div { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.identityGrid dd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.referenceList { display: grid; gap: var(--space-2); list-style: none; padding: 0; margin: 0; }
+.referenceList > li { padding-bottom: var(--space-2); border-bottom: var(--border-width) solid var(--line); }
+.referenceList p { margin: var(--space-1) 0 0; }
+.rawSource { min-width: 0; border: var(--border-width) solid var(--line-strong); }
+.rawSource summary { cursor: pointer; min-height: var(--control-height); padding: var(--space-2) var(--space-3); }
+.rawSource pre { overflow-wrap: anywhere; white-space: pre-wrap; margin: 0; padding: var(--space-3); font-size: var(--font-size-small); line-height: var(--line-height-body); border-top: var(--border-width) solid var(--line); background: var(--graphite-950); }
+.revisionStrip { display: grid; grid-template-columns: var(--two-columns); gap: var(--space-3); margin: 0; font-size: var(--font-size-small); }
+.revisionStrip dt { color: var(--stone-300); margin-bottom: var(--space-1); }
+.revisionStrip dd { margin: 0; overflow-wrap: anywhere; }
+.feedbackStatus { margin: 0; color: var(--survey-teal); }
+
+
+
+.filterForm>div:first-child{grid-area:search;}.filterForm>.actions{grid-area:actions;align-self:end;}

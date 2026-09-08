@@ -41,6 +41,7 @@ def build_manifest(
     encoder_id=None,
     model_image=None,
     development=False,
+    worker_image=None,
 ):
     snapshot = bundle["snapshot"]
     if (
@@ -76,6 +77,7 @@ def build_manifest(
         "encoder_id": encoder_id,
         "model_image": image_ref(model_image, development) if model_image else None,
         "development": development,
+        "worker_image": image_ref(worker_image, development) if worker_image else None,
     }
     result["release"] = "gf-" + digest(result)[:16]
     return result
@@ -94,6 +96,7 @@ def validate_manifest(manifest):
         "encoder_id",
         "model_image",
         "development",
+        "worker_image",
         "release",
     }
     if set(manifest) != required or type(manifest["development"]) is not bool:
@@ -125,6 +128,8 @@ def validate_manifest(manifest):
         image_ref(manifest[key], manifest["development"])
     if manifest["model_image"]:
         image_ref(manifest["model_image"], manifest["development"])
+    if manifest["worker_image"]:
+        image_ref(manifest["worker_image"], manifest["development"])
 
 
 def selector(release):
@@ -274,6 +279,14 @@ def preflight(cluster, manifest):
             != manifest["model_image"]
         ):
             raise ValueError("candidate model image mismatch")
+    if manifest["worker_image"]:
+        worker = cluster.get("deployment", release + "-worker")
+        if (
+            not worker
+            or worker["spec"]["template"]["spec"]["containers"][0]["image"]
+            != manifest["worker_image"]
+        ):
+            raise ValueError("candidate worker image mismatch")
     labels = ",".join(k + "=" + v for k, v in expected_selector.items())
     pods = json.loads(cluster.command("get", "pods", "-l", labels, "-o", "json"))[
         "items"
@@ -329,6 +342,7 @@ def main():
     build.add_argument("--artifact-image", required=True)
     build.add_argument("--encoder-id")
     build.add_argument("--model-image")
+    build.add_argument("--worker-image")
     build.add_argument("--development", action="store_true")
     build.add_argument("--output", type=Path, required=True)
     values = commands.add_parser("values")
@@ -360,6 +374,7 @@ def main():
             args.encoder_id,
             args.model_image,
             args.development,
+            args.worker_image,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2) + "\n")
@@ -382,6 +397,10 @@ def main():
             enabled=bool(manifest["encoder_id"]),
             encoderID=manifest["encoder_id"] or "",
             image=manifest["model_image"] or "",
+        )
+        base.setdefault("worker", {}).update(
+            enabled=bool(manifest["worker_image"]),
+            image=manifest["worker_image"] or "",
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(yaml.safe_dump(base, sort_keys=False))

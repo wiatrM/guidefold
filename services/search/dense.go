@@ -20,25 +20,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const denseMigration = `
-CREATE TABLE IF NOT EXISTS gf.embedding_sets (
- tenant text NOT NULL, repo text NOT NULL, snapshot_id text NOT NULL,
- encoder_id text NOT NULL, manifest jsonb NOT NULL, bundle_sha text NOT NULL,
- n_vectors integer NOT NULL CHECK(n_vectors>0),
- PRIMARY KEY(tenant,repo,snapshot_id,encoder_id),
- FOREIGN KEY(tenant,repo,snapshot_id) REFERENCES gf.snapshots(tenant,repo,snapshot_id)
-);
-CREATE TABLE IF NOT EXISTS gf.embeddings (
- tenant text NOT NULL, repo text NOT NULL, snapshot_id text NOT NULL,
- encoder_id text NOT NULL, urn text NOT NULL, skill_revision text NOT NULL,
- embedding vector(1024) NOT NULL,
- PRIMARY KEY(tenant,repo,snapshot_id,encoder_id,urn),
- FOREIGN KEY(tenant,repo,snapshot_id,encoder_id) REFERENCES gf.embedding_sets(tenant,repo,snapshot_id,encoder_id),
- FOREIGN KEY(tenant,repo,snapshot_id,urn) REFERENCES gf.skills(tenant,repo,snapshot_id,urn)
-);
-INSERT INTO gf.schema_version VALUES (6) ON CONFLICT DO NOTHING;
-`
-
 // TEI owns the GPU and token-based dynamic batch queue. No model or query cache
 // lives in the Go process. The deployment supplies a content-addressed encoder ID.
 type DenseClient struct {
@@ -163,7 +144,7 @@ func (d *DenseClient) encode(ctx context.Context, query, prompt string) ([]float
 func (d *DenseClient) verifyCatalog(ctx context.Context, s *Store, c *Catalog) error {
 	var raw []byte
 	var n int
-	e := s.Pool.QueryRow(ctx, `SELECT manifest,n_vectors FROM gf.embedding_sets WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3 AND encoder_id=$4`, s.Tenant, s.Repo, c.ID, d.ID).Scan(&raw, &n)
+	e := s.Pool.QueryRow(ctx, `SELECT manifest,n_vectors FROM gf.embedding_sets WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3 AND encoder_id=$4`, c.Tenant, c.Repo, c.ID, d.ID).Scan(&raw, &n)
 	if e == pgx.ErrNoRows {
 		return fail(503, "snapshot_embeddings_unavailable")
 	}
@@ -204,7 +185,7 @@ func (s *Store) denseSearch(ctx context.Context, c *Catalog, v []float32, allowe
 	// The B-tree prefix isolates the immutable embedding set. ANN is not needed
 	// for the measured 6k/10k pools, and would introduce a separate recall gate.
 	sql := `WITH ranked AS (SELECT urn,row_number() OVER (ORDER BY embedding <=> $5::vector,urn COLLATE "C" ASC) AS dense_rank FROM gf.embeddings WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3 AND encoder_id=$4`
-	args := []any{s.Tenant, s.Repo, c.ID, s.Dense.ID, string(raw)}
+	args := []any{c.Tenant, c.Repo, c.ID, s.Dense.ID, string(raw)}
 	if len(allowed) != len(c.Cards) {
 		args = append(args, keys(allowed))
 		sql += fmt.Sprintf(` AND urn=ANY($%d::text[])`, len(args))
@@ -265,7 +246,7 @@ func fuseCandidates(sparse, dense []Candidate) []Candidate {
 
 // GPU publication stages cards/index first; only a complete embedding set may
 // activate the new head. Both ordinary and idempotent reactivation are atomic.
-func activateSnapshot(ctx context.Context, tx pgx.Tx, s *Store, id string) error {
+func activateSnapshot(ctx context.Context, tx pgx.Tx, tenant, repo, id string) error {
 	mode := env("GUIDEFOLD_PUBLISH_ACTIVATE", "true")
 	if mode == "false" {
 		return nil
@@ -273,7 +254,7 @@ func activateSnapshot(ctx context.Context, tx pgx.Tx, s *Store, id string) error
 	if mode != "true" {
 		return fmt.Errorf("invalid_publish_activation")
 	}
-	_, e := tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, s.Tenant, s.Repo, id)
+	_, e := tx.Exec(ctx, `INSERT INTO gf.heads(tenant,repo,snapshot_id) VALUES($1,$2,$3) ON CONFLICT(tenant,repo) DO UPDATE SET snapshot_id=excluded.snapshot_id`, tenant, repo, id)
 	return e
 }
 
@@ -374,7 +355,7 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 		if oldSHA != str(envelope["sha256"]) {
 			return fmt.Errorf("immutable_embedding_set_conflict")
 		}
-		if e = activateSnapshot(ctx, tx, s, id); e != nil {
+		if e = activateSnapshot(ctx, tx, s.Tenant, s.Repo, id); e != nil {
 			return e
 		}
 		if e = tx.Commit(ctx); e != nil {
@@ -400,7 +381,7 @@ func publishEmbeddings(ctx context.Context, s *Store, path string) error {
 	if _, e = tx.Exec(ctx, `INSERT INTO gf.embeddings SELECT tenant,repo,snapshot_id,encoder_id,urn,skill_revision,embedding::vector FROM embedding_import`); e != nil {
 		return e
 	}
-	if e = activateSnapshot(ctx, tx, s, id); e != nil {
+	if e = activateSnapshot(ctx, tx, s.Tenant, s.Repo, id); e != nil {
 		return e
 	}
 	if e = tx.Commit(ctx); e != nil {

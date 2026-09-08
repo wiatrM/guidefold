@@ -1,0 +1,206 @@
+{
+  "persona": "P2 developer",
+  "method": "Niezależna syntetyczna symulacja przy zadaniu, n=1. Wyłącznie renderowany interfejs.",
+  "tasks": [
+    {
+      "id": "A",
+      "goal": "Wprowadzenie repo Meridian do pierwszej mapy",
+      "completed": true,
+      "outcome": "Osiągnięto Map po lokalnym imporcie: 27 existing skills, 17 scope nodes; źródło examples/monorepo, commit 88e404561a9f6994cd870743bf858b9b0a616126. Bez wykonywania CLI.",
+      "clicks": 6,
+      "disclosures": 1,
+      "selects": 0,
+      "typing": 0,
+      "lost": []
+    },
+    {
+      "id": "B",
+      "goal": "Dokładne źródło i scope postgres-auth, z zachowaniem kontekstu przy czytaniu instrukcji",
+      "completed": true,
+      "outcome": "Source path platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md; commit 88e404561a9f6994cd870743bf858b9b0a616126; SHA-256 0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b; scope atlas.identity.turnstile; scope paths platforms/atlas/identity/turnstile/**; owner turnstile-team. Content utrzymuje scope w nagłówku, a Back to Map utrzymuje wybrany postgres-auth. Dokładna rewizja GitHub wskazana linkiem, bez otwierania zewnętrznego źródła.",
+      "clicks": 3,
+      "disclosures": 0,
+      "selects": 0,
+      "typing": 0,
+      "lost": [],
+      "facilitation": "postgres-auth był domyślnie wybrany na pierwszej mapie; wynik nie mierzy wyszukiwania dowolnego skilla."
+    },
+    {
+      "id": "C",
+      "goal": "Ocena propozycji, decyzja dopuszczająca Git, pobranie artefaktu i Published",
+      "completed": true,
+      "outcome": "Po porównaniu jawnych metadanych i odczycie pełnego kandydata zatwierdzono niezmieniony postgres-auth. Eksport zakończony, sugerowana nazwa postgres-auth.SKILL.md. Osiągnięto Awaiting Git, następnie Published (fixture) przez Simulate Git sync. Context loaded: Unknown; lokalny koniec scenariusza, bez zewnętrznej publikacji.",
+      "clicks": 7,
+      "disclosures": 2,
+      "selects": 0,
+      "typing": 1,
+      "lost": [],
+      "decision": "approve",
+      "evidence": [
+        "No text changes",
+        "Draft → Approved for export → Awaiting Git → Published (fixture). Each step is separate.",
+        "Source file downloaded. Waiting for Git review and sync. Export alone does not publish the revision.",
+        "Published (fixture) means this local scenario reached its final state. No Git merge, review, server publication or agent load was verified."
+      ]
+    }
+  ],
+  "findings": [],
+  "thinkaloud": [
+    {
+      "task": "A",
+      "text": "Syntetyczny think-aloud: Widzę lokalną symulację z ownerem. Chcę dojść do mapy Meridian, więc wybieram dostawcę repozytorium GitHub."
+    },
+    {
+      "task": "A",
+      "text": "Syntetyczny think-aloud: To podgląd 27 plików, nie skan repo. Rozwijam manifest, żeby przed importem upewnić się, skąd są instrukcje."
+    },
+    {
+      "task": "B",
+      "text": "Syntetyczny think-aloud: Mapa od razu pokazuje postgres-auth jako wybrany skill. Link Open source and scope dokładnie odpowiada temu, czego szukam."
+    },
+    {
+      "task": "B",
+      "text": "Syntetyczny think-aloud: Mam dokładną ścieżkę, commit, hash i scope platforms/atlas/identity/turnstile/**. Sprawdzam instrukcję w Content; zależy mi, by nadal było widać turnstile."
+    },
+    {
+      "task": "C",
+      "text": "Syntetyczny think-aloud: Nie ma zmian tekstu, scope i hash są takie same jak w źródle. To zgoda na eksport istniejącej instrukcji. Rozwijam pełnego kandydata przed decyzją."
+    },
+    {
+      "task": "C",
+      "text": "Syntetyczny think-aloud: Eksport pobrał plik i ustawił Awaiting Git. Tekst wyjaśnia, że niezmienione źródło nie tworzy nowego commita, a przycisk tylko symuluje sync. Ten następny krok jest jasny."
+    },
+    {
+      "task": "C",
+      "text": "Syntetyczny think-aloud: Published (fixture) jest końcem scenariusza, ale nie dowodem użycia przez agenta. Widzę Context loaded: Unknown. Kończę po trzecim zadaniu."
+    }
+  ],
+  "counts": {
+    "clicks": 16,
+    "disclosures": 3,
+    "selects": 0,
+    "typing": 1,
+    "ordinaryClicks": 13,
+    "disclosureClicks": 3,
+    "radioSelections": 2
+  },
+  "completed": true,
+  "steps": [
+    {
+      "task": "A",
+      "action": "click",
+      "role": "radio",
+      "name": "GitHub (fixture)"
+    },
+    {
+      "task": "A",
+      "action": "click",
+      "role": "button",
+      "name": "Continue with selected provider (fixture)"
+    },
+    {
+      "task": "A",
+      "action": "click",
+      "role": "button",
+      "name": "Create meridian (fixture)"
+    },
+    {
+      "task": "A",
+      "action": "click",
+      "name": "Inspect files, hashes and sizes",
+      "disclosure": true
+    },
+    {
+      "task": "A",
+      "action": "click",
+      "role": "button",
+      "name": "Simulate import"
+    },
+    {
+      "task": "A",
+      "action": "click",
+      "role": "link",
+      "name": "Open Map"
+    },
+    {
+      "task": "B",
+      "action": "click",
+      "role": "link",
+      "name": "Open source and scope"
+    },
+    {
+      "task": "B",
+      "action": "click",
+      "role": "link",
+      "name": "Content"
+    },
+    {
+      "task": "B",
+      "action": "click",
+      "role": "link",
+      "name": "← Back to Map"
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "role": "link",
+      "name": "Proposals"
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "name": "Full candidate SKILL.md",
+      "disclosure": true
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "name": "Full candidate SKILL.md",
+      "disclosure": true
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "role": "radio",
+      "name": "Approve for export — prepare the candidate file"
+    },
+    {
+      "task": "C",
+      "action": "fill",
+      "label": "Reason for this decision",
+      "value": "Akceptuję eksport niezmienionego postgres-auth. Ścieżka, scope atlas.identity.turnstile i hash kandydata są zgodne z dokładną rewizją źródła; zachowano zależności i ograniczenia użycia."
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "role": "button",
+      "name": "Record decision (local)"
+    },
+    {
+      "task": "C",
+      "action": "download",
+      "role": "button",
+      "name": "Export SKILL.md"
+    },
+    {
+      "task": "C",
+      "action": "click",
+      "role": "button",
+      "name": "Simulate Git sync"
+    }
+  ],
+  "download": {
+    "suggestedFilename": "postgres-auth.SKILL.md",
+    "downloadCompleted": true
+  },
+  "findingsSummary": "Brak potwierdzonych tarć P1/P2/P3 w trzech wykonanych zadaniach. Brak zagubień. To syntetyczne n=1, nie dowód braku problemów w produkcie.",
+  "countMethod": "clicks obejmuje wszystkie kliknięcia, w tym disclosures oraz wybory radio; disclosures pokazano również osobno. selects to wybory native select, typing to wypełnienia tekstowe. Narzędziowe inspekcje, screenshoty i błędy odczytu screenshotu nie są kliknięciami użytkownika.",
+  "limitations": [
+    "Syntetyczna persona n=1, bez człowieka-badanego.",
+    "postgres-auth był domyślnie wybrany na Map; nie wyciągano wniosków o ogólnym wyszukiwaniu.",
+    "Źródło produktu wyłącznie innerText renderowanych stron i etykiety/linki interfejsu. Bez odczytu kodu aplikacji, fixture JSON lub cudzych raportów.",
+    "PNG przedstawia końcowy Published; próba pokazania lokalnego screenshotu w narzędziu została zablokowana przez ACL, więc ocena opiera się na renderowanym DOM.",
+    "Download zakończył się poprawnie w tymczasowym katalogu Chromium. Zgodnie z ograniczeniem wyjść nie zachowano odrębnego pliku SKILL.md.",
+    "Po osiągnięciu Published zakończono zadania; bez dodatkowych testów."
+  ]
+}

@@ -2,6 +2,10 @@
 # for a new artifact set; the stable traffic Service is managed separately.
 workload: serve # serve | migrate | publish
 developmentMode: false
+# Sign-in provider. `dev` mounts a local form that mints a session for any
+# e-mail, so it is refused outside developmentMode; the service has no default
+# and refuses to start if this is empty.
+auth: workos # workos | dev
 image: "" # registry/image@sha256:... (Go runtime)
 artifactImage: "" # same runtime with /input/snapshot.json and optional embeddings.json
 imagePullPolicy: IfNotPresent
@@ -61,6 +65,16 @@ gpu:
     maxReplicas: 2
     queueMetric: "" # operator-provided per-pod TEI queue metric via adapter
     queueTarget: "4"
+worker:
+  enabled: false # runs `guidefold-search worker` (import.parse); separate image, no Python in the api one
+  image: "" # registry/image@sha256:... (services/search/Dockerfile.worker: same Go binary + pinned Python/PyYAML)
+  replicas: 1
+  generator: none # none | deterministic | openai | anthropic (API-CONTRACT §8 proposal.generate backend)
+  resources:
+    requests: {cpu: 250m, memory: 256Mi, ephemeral-storage: 64Mi}
+    limits: {cpu: "1", memory: 1Gi, ephemeral-storage: 512Mi}
+  nodeSelector: {}
+  tolerations: []
 job:
   timeoutSeconds: 1800
   ttlSecondsAfterFinished: 86400

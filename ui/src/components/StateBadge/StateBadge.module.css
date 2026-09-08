@@ -1,0 +1,5 @@
+.badge{display:inline-flex;align-items:center;gap:var(--space-1);max-width:var(--full);padding:var(--space-1) var(--space-2);border:var(--border-width) solid var(--line-strong);border-radius:var(--radius);color:var(--stone-300);background:var(--graphite-850);font-size:var(--font-size-small);font-weight:var(--weight-medium);}
+.badge.system{color:var(--system-ink);border-color:var(--survey-teal);background:var(--system-wash);}
+.badge.human{color:var(--human-ink);border-color:var(--safety-orange);background:var(--human-wash);}
+.badge.warning{color:var(--warning-ink);border-color:var(--warning);background:var(--warning-wash);}
+.badge.error{color:var(--error-ink);border-color:var(--signal-red);background:var(--error-wash);}

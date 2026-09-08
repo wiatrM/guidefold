@@ -241,6 +241,61 @@ def test_flush_uploads_the_spool_and_drains_it_a_second_flush_sends_nothing(
     conn.close()
 
 
+def test_flush_sends_a_bearer_token_so_it_can_reach_the_real_service(
+        run_cli, fixture_copy, tmp_path):
+    """`/v1/events:batch` authenticates exactly like `/v1/search` and `/v1/use`.
+
+    Without an `Authorization` header the flush can only ever reach the unauthenticated demo
+    ingest server; the hosted service answers `401 unauthorized` and the spool never drains.
+    The token comes from `--token-file`, or from the same `search.token_file` the repository
+    already configured for `find`/`load`.
+    """
+    import http.server
+    import threading
+
+    seen = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            seen.append({"path": self.path,
+                         "authorization": self.headers.get("Authorization"),
+                         "tenant": self.headers.get("X-Guidefold-Tenant")})
+            events = json.loads(body)["events"]
+            payload = json.dumps({"results": [{"event_id": e["event_id"], "status": "accepted"}
+                                              for e in events]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    token_file = tmp_path / "token"
+    token_file.write_text("gf_acceptance-token-value")
+    token_file.chmod(0o600)
+    try:
+        run_cli(["find", QUERY], cwd=fixture_copy)
+        assert _spool_lines(fixture_copy)
+        result = run_cli(["telemetry", "flush", "--url", url, "--token-file", str(token_file)],
+                         cwd=fixture_copy)
+        assert result.returncode == 0, result.stderr
+    finally:
+        server.shutdown()
+
+    assert seen, "the flush sent nothing"
+    assert all(r["path"] == "/v1/events:batch" for r in seen), seen
+    assert all(r["authorization"] == "Bearer gf_acceptance-token-value" for r in seen), seen
+    # The token is read from a file and never printed.
+    assert "gf_acceptance-token-value" not in result.stdout
+    assert "gf_acceptance-token-value" not in result.stderr
+
+
 def test_flush_is_never_invoked_from_the_hook_command(run_cli, fixture_copy):
     """Static check: `telemetry flush` and `hook` are two completely separate argparse subcommands
     and cmd_hook's source never calls cmd_telemetry_flush -- confirmed the exercised way too by
@@ -304,3 +359,44 @@ def test_bounded_spool_eviction_by_size_drops_oldest_lines_and_counts_it(gf, tmp
     health = gf._read_health(gf._health_path(env_dir))
     assert health["produced"] == 30
     assert health["dropped"] > 0
+
+
+def test_a_load_after_a_find_carries_the_search_id_that_exposed_the_card(run_cli, fixture_copy):
+    """Contract 1.1.4: `find` remembers its exposures locally (ids only, no query text); a later
+    `load` of an exposed skill names that search on skill_load_requested and, additively, on
+    skill_load_completed. A load of a skill no recent search exposed stays unlinked (null)."""
+    session_a = dict(os.environ, GUIDEFOLD_SESSION_ID="sess-A")
+    assert run_cli(["find", QUERY], cwd=fixture_copy, env=session_a).returncode == 0
+    events = _spool_lines(fixture_copy)
+    cards = [e for e in events if e["event_type"] == "card_injected"]
+    assert cards
+    exposed_urn = cards[0]["skill_id"]
+    search_id = cards[0]["search_id"]
+
+    memo = Path(fixture_copy) / ".guidefold" / "telemetry" / "recent-exposures.json"
+    assert memo.exists()
+    assert QUERY not in memo.read_text(encoding="utf-8")     # ids and timestamps only
+
+    # A load that does not know its session links by recency: unknown is not "different".
+    assert run_cli(["load", exposed_urn], cwd=fixture_copy).returncode == 0
+    events = _spool_lines(fixture_copy)
+    requested = next(e for e in events if e["event_type"] == "skill_load_requested")
+    completed = next(e for e in events if e["event_type"] == "skill_load_completed")
+    assert requested["search_id"] == search_id
+    assert completed["search_id"] == search_id
+
+    # A session known on both sides and different is not a link: another session's card is
+    # not this one's.
+    session_b = dict(os.environ, GUIDEFOLD_SESSION_ID="sess-B")
+    assert run_cli(["load", exposed_urn], cwd=fixture_copy, env=session_b).returncode == 0
+    last = [e for e in _spool_lines(fixture_copy) if e["event_type"] == "skill_load_completed"][-1]
+    assert "search_id" not in last
+
+
+def test_a_load_with_no_recent_exposure_stays_unlinked(run_cli, fixture_copy):
+    assert run_cli(["load", URN], cwd=fixture_copy).returncode == 0
+    events = _spool_lines(fixture_copy)
+    requested = next(e for e in events if e["event_type"] == "skill_load_requested")
+    completed = next(e for e in events if e["event_type"] == "skill_load_completed")
+    assert requested["search_id"] is None
+    assert "search_id" not in completed

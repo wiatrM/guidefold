@@ -71,6 +71,61 @@ search:
   guideline (recommends `service` above it), configured service reachability + advertised contract
   versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
 
+### 1b. Hosted service config — `service:` block (product pivot, P03/P10)
+
+**Status: implemented in this repo; every command below except `scan` needs a running hosted
+management API** (`docs/PIVOT-ARCHITECTURE.md`). Nothing here changes `find`/`hook`/`load` or the
+`registry:`/`search:` blocks above — a repo that never logs in behaves exactly as before.
+
+Optional, alongside `registry:` and `search:`. Written by `guidefold install`, and only ever with
+non-secret coordinates:
+
+```yaml
+service:
+  api: https://guidefold.internal.acme.example   # management API base URL
+  org: acme                                      # organisation slug
+  repo: monorepo                                 # repo id, [A-Za-z0-9_.-]{1,64}
+```
+
+- **Precedence** for each of `api`/`org`/`repo`: command flag (`--api/--org/--repo`) >
+  environment (`GUIDEFOLD_API`, `GUIDEFOLD_ORG`, `GUIDEFOLD_REPO_ID`) > this block > the
+  credentials file. `repo` falls back to the git remote's basename (or the root directory name),
+  sanitised.
+- **All three are validated wherever they come from**, because all three end up in a request path
+  and in this committed file. `api` must be `https://` with a host; `http://` is accepted only for
+  `127.0.0.1`, `::1` or `localhost`, so a bearer token is never sent in cleartext and a
+  `file://` value can never turn a health probe into a local file read. `org` must match
+  `[a-z0-9][a-z0-9._-]{0,63}` and `repo` `[A-Za-z0-9][A-Za-z0-9._-]{0,63}`; anything else exits 2
+  before a request is made. Both are percent-encoded into the path as well.
+- **Exit codes of the network commands** say what to do next: **2** for "your configuration or
+  credentials" — 401 (with a `guidefold login` hint), 403 (role/scope hint), an invalid `--api`,
+  `--org` or `--repo`, and a scan over the limits; **1** for "the server said no to this request"
+  — 404 (naming `--org`/`--repo`), 409 (re-read and retry), 429 (honouring `Retry-After`) and
+  every other failure. A CI script can tell an expired token from a 500.
+- **The token is never in the repo.** It lives in `$GUIDEFOLD_CREDENTIALS`, or
+  `~/.config/guidefold/credentials.json`, mode 0600, keyed by API URL:
+  `{"<api url>": {"token": …, "user": {…}, "org": "<slug>", "orgs": [...]}}`. Writing that file
+  into the work tree is refused, not obeyed. CI uses `GUIDEFOLD_TOKEN` with a separate,
+  minimal-scope token (U5 AC3) — the same variable the `search:` block already reads.
+- Optional rename mapping, used by `scan`/`import` so a moved skill keeps its identity instead of
+  looking like delete-plus-create:
+
+  ```yaml
+  import:
+    aliases:
+      - from: platforms/atlas/.agents/skills/old-name/SKILL.md
+        to:   platforms/atlas/.agents/skills/new-name/SKILL.md
+  ```
+
+### 1c. `.guidefoldignore`
+
+Same syntax subset as `.gitignore` (`name`, `dir/`, `*.ext`, `a/b/c`, `!negation`), applied by
+`scan` **in addition to** `.gitignore`. Inside a git work tree `.gitignore` is enforced by git
+itself (`git ls-files --cached --others --exclude-standard`); outside one, `scan` walks the tree
+and applies the same subset. A `.gitignore` match is silent (git already treats it as a non-file);
+a `.guidefoldignore` match is reported in the manifest's `excluded` list, because it is
+guidefold's own opt-out and the author should see it took effect.
+
 ## 2. Skill location
 
 - Canonical location: `<node-path>/.agents/skills/<skill-name>/SKILL.md`
@@ -150,7 +205,7 @@ that doctrine.
 
 ## 6. Promotion rule (commonality)
 
-If a paragraph is true for the parent scope, it belongs in a parent-scope skill and is `requires`-linked, not copied. Reviewers check this manually in MVP; Phase 1.5 automates the suggestion.
+If a paragraph is true for the parent scope, it belongs in a parent-scope skill and is `requires`-linked, not copied. Reviewers check this manually; `guidefold ascend` (ADR-0035, `templates/ci.yml` job `ascend`) automates the *proposal*: on a PR that changes a skill it asks a model to write or edit one abstract skill per ancestor scope — a **map** (what lives there, who owns it) and/or a **convention** (what every child shares) — from the cards of every skill below that scope, and opens a separate PR for the parent scope's owner. The written file is a digest (`knowledge_layer: abstract`, `generated_by: guidefold-ascend`, `derived_from` naming its sources), never a procedure: a body that names an unknown component, carries a code block or numbered steps, or copies three lines of a child verbatim is rejected, and the tree must still pass `validate`. `metadata.ascend_fingerprint` records the child cards it was derived from, so an unchanged subtree makes no model call and no diff. Ascent outputs never trigger another ascent on their own.
 
 ## 7. Deprecation
 
@@ -271,6 +326,70 @@ phrases, and the comment says "unlabelled: exposure changes only" instead of com
 you get collision/exposure signal from day one, with zero authoring effort beyond writing
 `triggers` at all.
 
+### 12a. Pre-merge change report (`guidefold report`, P12/U7)
+
+§12's `skill-authoring-report` informs about *ranking*. `guidefold report` is the other half of
+the PR loop and the one that can **block**: it answers "what did this PR do to the corpus, and is
+the result still structurally sound?".
+
+```
+guidefold report --base <git ref> [--json PATH] [--markdown PATH] [--queries FILE]
+                 [--k N] [--fail-on structure|any|none] [--reproducible | --no-reproducible]
+```
+
+The **base** view is the base ref extracted with `git archive` into a private temp directory —
+never your working tree, never a second `git worktree` inside the repo — and only the files the
+report reads (`guidefold.yaml`, every `SKILL.md`, each skill's packaged `references/`/`scripts/`/
+`assets/` files, and the files `metadata.references`/`metadata.scripts` declare). The **head**
+view is the working tree, committed *and* uncommitted, exactly the corpus `validate` sees; the
+JSON records `dirty: true` when it carries uncommitted work. Both are loaded through the same
+`load_map`/`frontmatter`/`all_skills`/`Index.build` every other command uses, and the retrieval
+section replays the same product path `guidefold eval` runs — no second parser, no second ranking
+implementation.
+
+**What blocks (severity `error`, exit 2 under the default `--fail-on structure`):**
+
+| Code | Meaning |
+|------|---------|
+| `graph_cycle` | a `requires` or `refines` cycle in head; the message and `details.path` print the whole path |
+| `missing_required_dependency` | a `requires`/`refines`/`replaces` URN no skill in the tree provides |
+| `missing_required_resource` | a declared `metadata.references`/`metadata.scripts` entry that matches no file, or whose `#token` is in none of its matches — the same `root.glob` resolution §8 item 6 already enforces |
+| `invalid_card` | `SKILL.md` frontmatter that does not parse, has no `--- … ---` block, has no `description`, or whose `name` ≠ its directory |
+
+**What only warns (never changes the exit code unless you pass `--fail-on any`):**
+`trigger_collision` (two skills in the *same node* carrying a trigger phrase that tokenises
+identically — the query-set-free half of §12's HSR proxy, reported only for skills this change
+touches, because a collision that predates the PR is not the PR's finding), `missing_owner`,
+`scope_changed`, `description_shortened`, `unknown_scope`, and every retrieval finding
+(`retrieval_selection_changed`, `retrieval_metric_delta`). This is PRODUCT-PIVOT §10 U7's rule
+verbatim: *struktura blokuje; przypuszczalna kolizja ostrzega*. `--fail-on none` reports without
+ever failing.
+
+**Retrieval is an example, not a proof.** With `--queries` (or `guidefold.yaml`'s `eval.queries` —
+the same shapes `guidefold eval` accepts) the report runs every query through base and head and
+lists, per query, the card set each side selected, plus Δhit@1 and Δall_required@k where the file
+carries graded labels. A *set* change and a same-set *reorder* are counted separately, because
+injection order is a presentation decision (general → specific), not a ranking signal. None of it
+proves the procedure in a card was executed, and none of it blocks a merge on its own — the report
+says so in the Markdown it writes.
+
+**Determinism.** Every list is sorted; the report never reads a clock except for `generated_at`,
+which is present only under `--no-reproducible`. `--reproducible` is the default, so the same two
+commits produce byte-identical `report.json` and `report.md` on every re-run — U7's "identyczne
+wejście daje identyczny deterministyczny wynik". Renames are resolved before add/remove: first
+from `guidefold.yaml`'s `import.aliases` (`{from, to}` paths), then from an identical **body**
+sha256 — body only, since a legitimate move rewrites `metadata.scope` — and only when exactly one
+removed and one added card share it. A rename therefore reads as one rename, not delete + create.
+
+**Outputs.** `--json` writes schema `guidefold-change-report-v1`: `base_ref`, `base_commit`,
+`head_commit` (null outside a git repo), `dirty`, `fail_on`, `summary` counts,
+`findings[] {severity, code, skill_id?, message, details}`, `changes{skills,scopes,relations,resources}`
+and `retrieval{…}|null`. `--markdown` writes a PR comment of at most 200 lines whose first line is
+the hidden marker `<!-- guidefold:change-report -->` — a *different* marker from §12's report, so
+the two sticky comments never overwrite each other, and a retry or a new push edits the existing
+comment instead of adding one. `templates/ci.yml`'s `change-report` job uploads both as artifacts
+and upserts that comment.
+
 ## 13. Local suggestions and the quality gate (F5 + E7.5)
 
 §12's `skill-authoring-report` job informs; it never gates. Two more pieces close the loop —
@@ -339,3 +458,134 @@ PR on the same 220-case set; `templates/ci.yml`'s `quality-gate` job does the sa
 monorepo — `--gate` on a PR, `--write-baseline` (committed back) on a push to the default branch —
 reading `guidefold.yaml`'s `eval.queries` key (§12) and no-op'ing with a one-line message when
 that key is unset, since there is then no labelled set to gate on.
+
+## 14. Hosted service commands (product pivot, P03/P10)
+
+**Status: implemented in this repo; `scan` is fully offline, every other command needs a running
+hosted management API.** Requirements: `docs/PRODUCT-PIVOT.md` §4 (U1) and §8 (U5).
+
+| Command | What it does |
+|---|---|
+| `guidefold scan [PATH] [--dry-run] [--json] [--partial] [--profile P]` | Build the import manifest for a tree. **Opens no socket and imports no HTTP module** — `--dry-run` only makes that explicit and prints "this manifest is exactly what `import` would send". |
+| `guidefold login [--api URL]` / `logout [--all]` | OAuth device flow; prints the user code and the absolute verification URL, honours `interval`/`slow_down`, reports `access_denied`/`expired_token` (exit 1) with nothing stored. |
+| `guidefold org list` / `org use <slug>` | Membership from `GET /api/v1/me` (falling back to what login stored, labelled), and the current organisation. |
+| `guidefold import [PATH] [--no-publish] [--wait] [--json]` | scan → `POST …/imports` → `PUT …/blobs/{sha}` for **only** the hashes the server reports missing → `POST …/finalize`. `--wait` polls every 2 s until `ready`/`partial`/`failed` and prints the per-file result, the jobs and the publication state. |
+| `guidefold sync [PATH] [--wait] [--json]` | The same call, reporting the new/reused blob split so "the second sync uploads 0 new blobs" is visible. |
+| `guidefold status <import_id>` | The same status view for an import that is already running. |
+| `guidefold extract [PATH] [--all] [--personal claude,codex,copilot\|all] [--dry-run] [--no-publish] [--wait] [--json]` | P08: the whole loop in one call — scan → import → `GET …/plan?profile=one_shot` → `POST …/proposals:generate {profile:"one_shot", kinds:[extraction,enrichment,consolidation]}`. **Approves nothing**: every proposal still waits for its scope owner. With `--personal` it also **publishes nothing** — the import is finalized with `publish: false`, so a developer's own skills are never materialised into the served snapshot. `--wait` polls the jobs and prints proposals by kind, each consolidation with its source scopes and its target scope, the declines with their reasons and the cost. See below. |
+| `guidefold install --harness claude\|copilot [--api --org --repo] [--dry-run]` / `uninstall` | Idempotent adapter install with a diff-like summary; see below. |
+| `guidefold proposals list \| show <id> \| apply <export_id> [--write] [--base-check]` | Review exports. `apply` prints the unified diff and writes files only with `--write`; it **never** runs `git commit` or `git push`. Every `path` in the export is server-supplied, so it is checked before anything is created: absolute paths, `..`, `.` and empty segments are refused (exit 2), and the resolved destination must sit under the repository root, which also catches a symlinked parent. A file entry without `content` is refused rather than truncating the file to zero bytes, and a `sha256` that does not match the content refuses the whole export — nothing is written unless every entry passes (exit 1). |
+| `guidefold doctor` | Now also reports `service-config` (api/org/repo), `service-api` (`GET /health/ready`), `service-identity` (user, role, token scopes — never the token), `adapter-install` (manifest present and unmodified, package sha256) and `capabilities-<harness>`. |
+
+### `extract` and personal skill directories
+
+`extract` covers the repository by default; `--all` says so explicitly, which is what a CI job
+should read like. The generation profile is always `one_shot`, so one call plans every group
+instead of the default five — `max_usd` and `max_calls` do not move, and the plan still shows
+every limit before anything is spent (API-CONTRACT §4.2).
+
+`--personal` is the only way content from outside the git tree ever leaves the machine, and it
+is off unless asked for. It takes a comma-separated list of harnesses, or `all`:
+
+| Harness | Default directory | Evidence |
+|---|---|---|
+| `claude` | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` | Claude Code's documented personal skill directory; `<name>/SKILL.md` |
+| `codex` | `${CODEX_HOME:-~/.codex}/skills` | Codex CLI's personal skill directory, same `<name>/SKILL.md` shape |
+| `copilot` | `${COPILOT_CONFIG_DIR:-~/.copilot}/skills` | **[założenie]** — no personal skill directory was verified for Copilot CLI. Override it before relying on it |
+
+Override any of them with `extract.personal_sources` in `guidefold.yaml`:
+
+```yaml
+extract:
+  personal_sources:
+    copilot: ~/.config/github-copilot/skills
+```
+
+or with `personal_sources` in the credentials entry for that API, which is where a path that
+should not be committed belongs. A directory that does not exist is reported as absent, not an
+error.
+
+Rules, all of them the same rules `scan` applies to the repository:
+
+- Only `<skill>/SKILL.md` (kind `skill`) and `<skill>/{references,scripts,assets}/…` (kind
+  `resource`) are collected. Nothing else in a personal directory is part of a skill package and
+  nothing else is sent.
+- A symlink whose target leaves **its own** root is excluded as `symlink_outside_root`. Personal
+  directories often symlink into each other; with `--personal all` the content is picked up under
+  the root it actually lives in, once.
+- Secrets are excluded by name (`.env`, `*.pem`, `*.key`, `id_rsa*`, `*.p12`, `*credentials*.json`)
+  and by content (a PEM private-key header in the first 8 KiB), oversized files by size.
+- Every row lands in the manifest as `_personal/<harness>/…` with
+  `source: {kind: "personal", harness}` (API-CONTRACT §5.6), so a reader can always tell which
+  bytes came from off the repository. Repository rows have no `source` field at all.
+- Nothing in a personal directory is ever executed. `extract` reads bytes and uploads them.
+- `--personal` forces `publish: false` on the import. A complete import with `publish: true`
+  enqueues `publish.build`, which would materialise the manifest into the served snapshot and
+  start answering SEARCH for the whole organisation from one flag. Personal content is imported
+  so an owner can look at it and decide; the preview and the summary both say so.
+
+`--dry-run` prints exactly what would leave the machine — every path, size and sha256, plus the
+excluded rows and why — and **opens no socket**, so it can be run before deciding. CI never
+passes `--personal`: `templates/ci.yml` runs `guidefold extract --all --wait --json` on the
+default branch with a CI token whose scopes are `import` and `generate` (API-CONTRACT §2), and
+skips itself when the secret is absent.
+
+### The manifest (`guidefold-import-manifest-v1`)
+
+Canonical JSON, sorted by raw path bytes, **no timestamps** — the same tree always produces the
+same bytes, and `sha256(manifest bytes)` is the import's idempotency key.
+
+- **Kinds.** `skill` (`SKILL.md`), `config` (`guidefold.yaml`, `.guidefoldignore`), `document`
+  (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `.github/instructions/*.md`,
+  `docs/adr/**/*.md`, `**/runbooks/**/*.md`, `**/*.runbook.md`), `resource` (`references/**`,
+  `scripts/**`, `assets/**` under a skill directory).
+- **Exclusions**, each with a reason: `secret_pattern` (`.env*`, `*.pem`, `*.key`, `id_rsa*`,
+  `*.p12`, `*credentials*.json`, plus a content match for `-----BEGIN … PRIVATE KEY`),
+  `ignored_directory` (`node_modules`, `vendor`, `dist`, `build`, `target`, `__pycache__`,
+  `.venv`; `.git` is pruned silently), `guidefoldignore`, `symlink_outside_root`, `submodule`,
+  `file_too_large` (> 8 MiB), `unsupported_format` (a file inside a skill directory that
+  guidefold does not import), `unreadable`, `non_canonical_skill_path` (a `SKILL.md` that does
+  not sit at `<anything>/.agents/skills/<name>/SKILL.md` — the one shape `all_skills()` rglobs
+  for, and therefore the only shape `find`, `load`, `validate`, `materialize`, `doctor`,
+  `report` and the worker's `build_tree.py` will ever discover; imported anyway, such a skill
+  registers in the catalog but can never publish, so scan excludes it instead of accepting data
+  that can only fail later, opaquely, at `publish.build`). A file that is simply not an
+  importable source and lives outside every skill directory is not listed at all.
+- **`commit`** is `git rev-parse HEAD` only when every listed file is clean in the work tree;
+  otherwise `commit: null` and `dirty: true` (also outside git). A manifest never claims a commit
+  it does not match.
+- **`complete: false`** (`--partial`) tells the server it may not infer deletions from this scan.
+- **Limits** are explicit errors, never silent truncation: > 100 000 files or > 100 MiB exits 2
+  with `limit_exceeded`. The numbers are the server's (`ImportLimits`, API-CONTRACT §5.6); the
+  CLI enforces them before the first request so a scan that cannot be imported fails locally.
+- **`suggestions`** (U1 AC2) are advisory scope/owner guesses for a `skill` file that no node in
+  `guidefold.yaml` covers on its own — including when `guidefold.yaml` is absent entirely. Each
+  entry carries `path`, a `suggested_scope` derived from the directory chain above the
+  `.agents/skills`/`.claude/skills` wrapper (falling back to the raw directory path when no
+  declared node name matches a directory suffix), a `suggested_owner` read from the last matching
+  rule in `.github/CODEOWNERS` / `CODEOWNERS` / `docs/CODEOWNERS`, and a sorted `reasons[]`
+  (`guidefold_yaml_missing`, `no_node_covers_path`, `nested_skill_dir_without_node`,
+  `no_codeowners_rule`, `multiple_codeowners_rules`, `ambiguous_node_match`). Two nodes tied on
+  glob specificity do **not** move the file to `excluded`: it stays in `files` and gets a
+  suggestion carrying `ambiguous_node_match` plus the tied node names in `candidates[]`.
+  Suggestions are purely informational — they never change `files`/`excluded`, and the CLI's own
+  scope resolution (`node_for`) never reads them back. The array is present, sorted by path, and
+  deterministic (empty when `guidefold.yaml` already maps every skill unambiguously, as it does
+  for the Meridian fixture in `examples/monorepo`).
+
+### Installer contract
+
+`install` copies `skills/guidefold/` into `.agents/skills/guidefold/`, merges the harness hook
+(`.claude/settings.json` for Claude, `.github/hooks/guidefold.json` plus a marked section in
+`.github/copilot-instructions.md` for Copilot CLI, which has no context-injection hook and must
+call `find`/`load` explicitly), and writes the `service:` block above. It records everything in
+`.agents/skills/guidefold/INSTALL-MANIFEST.json` (`guidefold-install-manifest-v1`: per-file
+sha256, the harnesses installed, and `package_sha256`, the sha256 of the installed
+`scripts/guidefold` that `doctor` reports).
+
+- Running it twice reports "nothing to do" and changes no byte.
+- A package file edited after installation is reported as `modified locally` and left alone.
+- `uninstall --harness H` removes only what the manifest records, and only where the current
+  hash still matches; a modified file is kept with a reason. Foreign keys in
+  `.claude/settings.json` and foreign text in `.github/copilot-instructions.md` survive. The
+  package itself is removed only when the last harness is uninstalled.

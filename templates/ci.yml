@@ -3,7 +3,7 @@
 # workflow, or use this file standalone; adjust `on.pull_request.paths` if your skills do not
 # live at repo root.
 #
-# Two independent jobs, both driven by `guidefold.yaml`'s `eval.queries` (a golden-format
+# Three independent jobs, all driven by `guidefold.yaml`'s `eval.queries` (a golden-format
 # directory/file — see tests/golden/README.md upstream — or unset):
 #
 # `skill-authoring-report` — on every PR that touches a SKILL.md, it builds the product's own
@@ -16,6 +16,20 @@
 # all, and (only in labelled mode) Δhit@1 / Δall_required@k / Δdistractor_rate@k with a 95% CI.
 # This job INFORMS. It never gates the merge — there is no pass/fail threshold here, only a
 # report; nothing is auto-applied to any SKILL.md, ever.
+#
+# `change-report` (P12/U7) — the pre-merge structural gate. On every PR it runs
+# `guidefold report --base origin/<base branch>`, which extracts the base commit's `guidefold.yaml`,
+# `SKILL.md`s and declared/packaged resources with `git archive` into a private temp dir (never
+# your working tree) and diffs them against the checked-out head: skills added/removed/renamed
+# (renames read from `import.aliases` or an identical body sha, so a moved skill is not reported
+# as delete+create) with per-field changes, scope changes, relation changes and resource changes.
+# It FAILS the check on a structure error — a `requires`/`refines` cycle (the path is printed), a
+# missing required dependency, a missing declared resource file, a missing or invalid card — and
+# only WARNS on a probable trigger collision, a missing owner, a scope change, a shortened
+# description, an unknown scope, and on every retrieval example. It writes `report.json`
+# (`guidefold-change-report-v1`) and `report.md`, uploads both as artifacts and keeps ONE sticky
+# PR comment. Output is deterministic: identical input gives byte-identical artifacts, and the
+# only clock read (`generated_at`) is off unless you pass `--no-reproducible`.
 #
 # `quality-gate` (E7.5) — the job that actually blocks. On a PR it runs `guidefold eval --gate`
 # against the committed `docs/reports/golden/eval-baseline.json` and fails the check if hit@1 or
@@ -35,7 +49,11 @@ name: skill-authoring-report
 
 on:
   pull_request:
-    paths: ["**/SKILL.md", "guidefold.yaml"]
+    # `**/.agents/skills/**` is here so `change-report` also sees a PR that only touches a skill's
+    # packaged references/scripts/assets. A PR that touches ONLY a file some skill declares in
+    # `metadata.references` still will not trigger this workflow — those paths are repo-specific;
+    # add them here if you want the report to catch a deleted runbook the moment it is deleted.
+    paths: ["**/SKILL.md", "**/.agents/skills/**", "guidefold.yaml"]
   push:
     branches: [main]   # your default branch — only quality-gate's baseline refresh reacts to this
 
@@ -116,6 +134,109 @@ jobs:
             --pr "${{ github.event.pull_request.number }}" \
             --body-file authoring-report.md
 
+  change-report:
+    # P12 / U7 ("Kontrola jakości skilla przed merge"). The job that answers "what did this PR do
+    # to the skill corpus, and is the result still structurally sound?" — a deterministic diff of
+    # skills, scopes, relations and resources between the PR's base ref and the checked-out head,
+    # plus structure checks. It BLOCKS on structure (a requires/refines cycle, a missing required
+    # dependency, a missing declared resource file, a missing/invalid card) and only WARNS on a
+    # probable trigger collision, a missing owner, a scope change, a shortened description, an
+    # unknown scope, and on every retrieval example — "Struktura blokuje; przypuszczalna kolizja
+    # ostrzega", and a retrieval test never proves a procedure was executed.
+    #
+    # Distinct from `skill-authoring-report` above: that job informs about ranking/exposure and
+    # never fails; this one is the gate on the graph. They post two different sticky comments, so
+    # they carry two different markers and never overwrite each other.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout this monorepo
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # the base ref must be reachable for `git archive`
+
+      - name: Checkout the guidefold tooling (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GUIDEFOLD_TOOLS_REPO || 'wiatrM/guidefold' }}
+          ref: ${{ vars.GUIDEFOLD_TOOLS_REF || 'main' }}
+          path: .guidefold-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Make sure the base ref is present locally
+        run: git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+
+      # `--queries` is omitted on purpose: the command falls back to `guidefold.yaml`'s optional
+      # `eval.queries`, and skips the retrieval section entirely when that key is unset. Structure
+      # checking works either way. `--reproducible` is the default; it is spelled out here because
+      # a byte-identical artifact across re-runs is the point of the CI copy (U7 AC: "identyczne
+      # wejście daje identyczny deterministyczny wynik").
+      - name: guidefold report (structure blocks, collisions and retrieval examples warn)
+        id: report
+        # Deliberately continue-on-error: the artifacts and the sticky comment are exactly what an
+        # author needs when the report DID find something, so they are produced first and the
+        # check is failed explicitly in the last step.
+        continue-on-error: true
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold report \
+            --base "origin/${{ github.base_ref }}" \
+            --json report.json --markdown report.md \
+            --fail-on structure --reproducible
+
+      - name: Upload the report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guidefold-change-report
+          path: |
+            report.json
+            report.md
+          if-no-files-found: warn
+
+      # One sticky comment, found and updated by the hidden marker `guidefold report --markdown`
+      # writes as the file's first line — a retry or a new push edits that comment instead of
+      # adding another (U7 AC: "Retry nie dubluje komentarza"). `tools/authoring/sticky_comment.py`
+      # is not part of the distributable skill package (that ships only SKILL.md, scripts/guidefold
+      # and hooks/), so it is used from the tooling checkout above when present, with the same
+      # find-and-update-by-marker semantics inlined via `gh api` as the fallback for a pinned
+      # tooling ref that predates it.
+      - name: Post or update the sticky change-report comment
+        if: always()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          MARKER: "<!-- guidefold:change-report -->"
+        run: |
+          [ -f report.md ] || { echo "no report.md — the report step failed before writing it"; exit 0; }
+          if [ -f .guidefold-tools/tools/authoring/sticky_comment.py ]; then
+            python3 .guidefold-tools/tools/authoring/sticky_comment.py \
+              --repo "$REPO" --pr "$PR" --body-file report.md --marker "$MARKER"
+          else
+            ID=$(gh api "repos/$REPO/issues/$PR/comments" \
+                   --jq "map(select(.body | contains(\"$MARKER\"))) | .[0].id // empty")
+            if [ -n "$ID" ]; then
+              gh api "repos/$REPO/issues/comments/$ID" -X PATCH -F body=@report.md > /dev/null
+            else
+              gh api "repos/$REPO/issues/$PR/comments" -X POST -F body=@report.md > /dev/null
+            fi
+          fi
+
+      - name: Fail the check when the report found structure errors
+        if: steps.report.outcome == 'failure'
+        run: |
+          echo "guidefold report found structure errors — see the sticky comment or the artifact."
+          exit 1
+
   quality-gate:
     runs-on: ubuntu-latest
     permissions:
@@ -179,3 +300,170 @@ jobs:
           git add docs/reports/golden/eval-baseline.json
           git commit -m "chore: refresh guidefold eval baseline [skip ci]"
           git push
+
+  # P08 / U2: one-shot extraction on the default branch.
+  #
+  # `guidefold extract` scans the repository, imports it and asks the service to plan and
+  # generate proposals for every group in one call. It publishes nothing and approves nothing:
+  # every proposal still waits for its scope owner in the hosted review (PRODUCT-PIVOT U2.6),
+  # so this job produces work to review, never content to serve.
+  #
+  # `--personal` is deliberately absent and must stay absent. Personal skill directories are
+  # private content on a developer's own machine; a CI runner has no business reading them,
+  # and the flag exists so a human can opt in locally with `--dry-run` first.
+  #
+  # The token is a CI token whose scopes are `import` and `generate` (API-CONTRACT §2). It
+  # cannot publish, cannot change membership and carries no delivery scopes. Without the
+  # secret the job is skipped rather than failing: a fork's PR must not look broken because
+  # it cannot see an organisation secret.
+  extract:
+    name: guidefold extract (one-shot)
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout this monorepo
+        uses: actions/checkout@v4
+
+      - name: Checkout the guidefold tooling (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GUIDEFOLD_TOOLS_REPO || 'wiatrM/guidefold' }}
+          ref: ${{ vars.GUIDEFOLD_TOOLS_REF || 'main' }}
+          path: .guidefold-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the CLI's only dependency
+        run: pip install pyyaml
+
+      - name: Skip without a CI token
+        id: gate
+        run: |
+          if [ -z "${{ secrets.GUIDEFOLD_TOKEN }}" ]; then
+            echo "no GUIDEFOLD_TOKEN secret — skipping the hosted extraction."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: guidefold extract --all --wait --json
+        if: steps.gate.outputs.run == 'true'
+        env:
+          # CI token scopes: `import generate`. Never `publish`, never `membership`,
+          # never the delivery scopes an installation token carries.
+          GUIDEFOLD_TOKEN: ${{ secrets.GUIDEFOLD_TOKEN }}
+          GUIDEFOLD_API: ${{ vars.GUIDEFOLD_API }}
+          GUIDEFOLD_ORG: ${{ vars.GUIDEFOLD_ORG }}
+          GUIDEFOLD_REPO_ID: ${{ vars.GUIDEFOLD_REPO_ID }}
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold extract \
+            --all --wait --json | tee guidefold-extract.json
+
+      - name: Upload the extraction summary
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: guidefold-extract
+          path: guidefold-extract.json
+          if-no-files-found: warn
+
+  # ADR-0035 / U2, U5, U10: knowledge ascent on a PR that changes a skill.
+  #
+  # `guidefold ascend` takes the SKILL.md files this PR changed and, for each ancestor scope,
+  # asks a model to write or edit ONE abstract skill (a "map" of what lives there and/or a
+  # "convention" every child shares), from the CARDS of every skill below that scope and the
+  # full body of only the changed skill. It climbs until a level has nothing generic to add.
+  # Every claim must cite a source skill; a body that names an unknown component, contains a
+  # code block or numbered steps, or copies three lines of a child verbatim is rejected; the
+  # result must pass `guidefold validate`; an unchanged fingerprint means no model call.
+  #
+  # It never commits to your branch. Anything it writes is opened as a SEPARATE pull request
+  # against the base branch, so the parent scope's CODEOWNERS -- not the author of the leaf
+  # change -- review and merge it (API-CONTRACT: scope widening needs the target owner;
+  # ADR-0012: nothing generated is committed without a human).
+  #
+  # Model: any OpenAI-compatible endpoint; the default is OpenRouter, so the model is a
+  # repository variable, not a code change. Without the secret the job is skipped rather
+  # than failing: a fork's PR must not look broken because it cannot see an org secret.
+  ascend:
+    name: guidefold ascend (knowledge up the tree)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout this monorepo
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Checkout the guidefold tooling (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GUIDEFOLD_TOOLS_REPO || 'wiatrM/guidefold' }}
+          ref: ${{ vars.GUIDEFOLD_TOOLS_REF || 'main' }}
+          path: .guidefold-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the CLI's only dependency
+        run: pip install pyyaml
+
+      - name: Skip without a model key
+        id: gate
+        run: |
+          if [ -z "${{ secrets.GUIDEFOLD_ASCEND_API_KEY }}" ]; then
+            echo "no GUIDEFOLD_ASCEND_API_KEY secret — skipping knowledge ascent."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Make sure the base ref is present locally
+        if: steps.gate.outputs.run == 'true'
+        run: git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+
+      - name: guidefold ascend --since origin/<base>
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GUIDEFOLD_ASCEND_API_KEY: ${{ secrets.GUIDEFOLD_ASCEND_API_KEY }}
+          GUIDEFOLD_ASCEND_BASE_URL: ${{ vars.GUIDEFOLD_ASCEND_BASE_URL }}   # default: OpenRouter
+          GUIDEFOLD_ASCEND_MODEL: ${{ vars.GUIDEFOLD_ASCEND_MODEL }}         # e.g. anthropic/claude-sonnet-4.5
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold ascend \
+            --since "origin/${{ github.base_ref }}" \
+            --json ascend.json --summary-md ascend.md
+          # Nothing generated is ever left in this PR's own checkout: the files below are
+          # moved into a separate PR by the next step, and `git status` must be clean after.
+
+      - name: Upload the ascent summary
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: guidefold-ascend
+          path: |
+            ascend.json
+            ascend.md
+          if-no-files-found: warn
+
+      # A separate PR against the base branch. Its reviewers are whoever CODEOWNERS names for
+      # the parent scope directories the ascent wrote into — that is the human gate. Nothing is
+      # pushed to the triggering PR's branch.
+      - name: Open a separate PR with the ascended skills, if any were written
+        if: steps.gate.outputs.run == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          base: ${{ github.base_ref }}
+          branch: guidefold/ascend-pr-${{ github.event.pull_request.number }}
+          title: "skills: knowledge ascent from #${{ github.event.pull_request.number }}"
+          body-path: ascend.md
+          commit-message: "skills: knowledge ascent from #${{ github.event.pull_request.number }}"
+          add-paths: |
+            **/.agents/skills/**/SKILL.md
+          delete-branch: true

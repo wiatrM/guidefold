@@ -1,0 +1,9 @@
+from pathlib import Path
+p=Path('ui/src/routes/CatalogRoutes.tsx'); s=p.read_text()
+s=s.replace("  const words = q.toLowerCase()", "  const unavailableFilters = filterFields.filter(({key, field}) => ctx.params.get(key) && !fixture.skills.some(skill => skill[field] === ctx.params.get(key)));\n  const words = q.toLowerCase()",1)
+s=s.replace('<Field key={key} id={key} label={label}>', '<Field key={key} id={key} label={label} error={unavailableFilters.some(item => item.key === key) ? "This filter value is unavailable in this fixture. Choose a value or clear filters." : undefined}>',1)
+s=s.replace('<option value="">All</option>{[...new Set(fixture.skills.map(skill => skill[field]))]', '<option value="">All</option>{unavailableFilters.some(item => item.key === key) && <option value={ctx.params.get(key)!}>Unavailable: {ctx.params.get(key)}</option>}{[...new Set(fixture.skills.map(skill => skill[field]))]',1)
+s=s.replace('action={<StateBadge>{matches.length} skills</StateBadge>}', 'action={<StateBadge>{unavailableFilters.length ? "Filter unavailable" : matches.length + " skills"}</StateBadge>}',1)
+s=s.replace('<strong>{matches.length} skills</strong> match the current filters{ctx.state === \'partial\' ? ` within ${skills.length} delivered sources` : \'\'}.', '{unavailableFilters.length ? "Resolve unavailable filters before reading the result count." : <><strong>{matches.length} skills</strong> match the current filters{ctx.state === \'partial\' ? ` within ${skills.length} delivered sources` : \'\'}.</>}',1)
+s=s.replace('<h3>No matching skills</h3><p>Adjust the search or filters. The fixture remains available.</p>', '<h3>{unavailableFilters.length ? "Filter unavailable" : "No matching skills"}</h3><p>{unavailableFilters.length ? "Choose an available value or clear filters. The requested value remains in the URL." : "Adjust the search or filters. The fixture remains available."}</p>',1)
+p.write_text(s)

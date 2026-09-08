@@ -149,6 +149,182 @@ python3 tools/search_service/http_admission.py --url http://127.0.0.1:8765
 
 Evidence and before/after reproduction: [HTTP admission report](../../docs/reports/bakeoff/HTTP-ADMISSION-2026-09-06.md).
 
+## Plain Postgres profile
+
+The service also runs on a stock PostgreSQL server, without ParadeDB `pg_search`
+and without `pgvector`. That is what `python3 tools/dev/pg.py start` gives you: a
+non-root instance under `~/.cache/guidefold/pg/dev` on 127.0.0.1:54329, and what
+`services/search/internal/testdb` starts for the Go tests.
+
+`migrate` attempts both extensions inside an exception block and continues without
+them. Without `pgvector` it creates neither the `embedding` column nor the dense
+tables; without `pg_search` it creates no per-snapshot BM25 table. A later `migrate`
+builds them for every published snapshot once the extension exists.
+
+`serve` starts with the default `router` engine, which reads the integer BM25F
+postings in `gf.router_terms` and never touches either extension, so ranking is
+unchanged. `/health/ready` reports `"pg_search_version": "absent"`.
+The reproduction-only `GUIDEFOLD_LEXICAL_ENGINE=paradedb-experimental` refuses to
+start without the extension (`paradedb_engine_requires_pg_search`) rather than
+silently answering from a different scorer, and the GPU profile needs `pgvector`.
+
+```sh
+python3 tools/dev/pg.py start
+export PGHOST=127.0.0.1 PGPORT=54329 PGUSER=postgres PGDATABASE=guidefold PGSSLMODE=disable
+export APP_PASSWORD_FILE=... PG_PASSWORD_FILE=... GUIDEFOLD_POLICY_SOURCE=...
+./search migrate && ./search serve
+```
+
+## Management API and workers
+
+`/api/v1/**` is the management surface: authentication, organisations, membership,
+installation tokens and the device flow, plus repositories, imports and the
+knowledge catalog, described by
+[`openapi/management-v1.yaml`](openapi/management-v1.yaml) and served at
+`GET /api/v1/openapi.yaml`. `GUIDEFOLD_AUTH=dev|workos` selects the identity
+provider; the development provider renders a local form and exists only when it is
+asked for by name. See [`internal/README.md`](internal/README.md) for the packages.
+
+`/v1/search`, `/v1/use` and `/v1/events:batch` resolve the same principal. The
+organisation is the token's own for an installation or CI token, and for a
+session or personal token it comes from the `X-Guidefold-Org` header (org_id or
+slug), or is implied when the person belongs to exactly one organisation. The
+repository is the token's binding when it has one, else `X-Guidefold-Repo`, else
+`workspace.repo_id`, else the organisation's only repository. Naming another
+organisation's repository is `403`, never a different tenant's answer. The legacy
+operator token keeps the configured `GUIDEFOLD_TENANT`/`GUIDEFOLD_REPO` and
+consults no management table.
+
+## Importing a monorepo
+
+    guidefold import --wait          # scan, upload the missing blobs, finalize
+
+`POST {repo_base}/imports` takes the CLI's scan manifest and answers with the
+blob digests it does not already hold; `PUT …/blobs/{sha256}` accepts exactly
+those and nothing else, so a file the scan excluded — a key, an ignored
+directory, a symlink out of the tree — has no route into storage. `POST
+…/finalize` moves the import to `queued` and enqueues `import.parse` (and
+`publish.build` unless the manifest says `publish: false`) in one transaction.
+Sending the same tree twice reuses the same import, uploads nothing and queues
+no second parse.
+
+`state: ready` is not `published`. The publication has its own field: an import
+that parsed is not an import that is serving.
+
+The catalog is then readable under the same repository prefix: `GET …/skills`
+with filters and facets, `…/skills/{skill_id}` and its immutable revisions,
+`…/revisions/{revision_id}/raw` for the exact imported bytes with an
+`X-Content-SHA256` header, the three maps (`repository`, `scopes`, `layers`),
+`…/map/relations` and `…/modules/{scope}`. A revision that does not exist is
+`404` — never the latest one instead.
+
+`guidefold-search worker [--once]` runs queued jobs from `gfm.jobs` with leases,
+heartbeats and generation fencing. Its handler registry lives in
+`worker_handlers.go` and holds `import.parse`, `proposal.generate` and
+`publish.build`. A module whose configuration is broken — a generator naming an
+unknown provider, a missing API key file — makes the worker refuse to start
+rather than quietly dropping its kind from the registry and leaving those jobs
+queued for ever.
+
+**The worker image needs Python 3 and PyYAML; the API image does not.** The parse
+job materialises an import's blobs into a private tree and runs the repository's
+own `tools/worker/build_tree.py` over it, which imports the CLI's parser so the
+catalog cannot disagree with the ranker about what a `SKILL.md` says. It never
+executes anything from the imported repository. Configure it with
+`GUIDEFOLD_REPO_ROOT` (the checkout holding the builder), `GUIDEFOLD_PYTHON`
+(default `python3`), `GUIDEFOLD_BUILD_TREE` (default
+`tools/worker/build_tree.py`) and `GUIDEFOLD_WORKER_DIR` (scratch trees, default
+`~/.cache/guidefold/worker`).
+
+## Review, publication and delivery
+
+`{repo_base}/imports/{import_id}/plan` says what a generation run would do and
+what it could cost — the groups, every limit, and how many scopes the
+`max_groups` ceiling left out — before anything is enqueued.
+`…/proposals:generate` writes one `proposal.generate` job per requested kind in
+one transaction. `GUIDEFOLD_GENERATOR` selects the backend:
+
+| Value | Behaviour |
+|---|---|
+| `none` (default) | The job ends `skipped` with `llm_not_configured` and the import stays exactly as the parse left it. |
+| `deterministic` | Recipe `det-1`: extraction, enrichment and consolidation with no network and no model. Every field it emits carries a source reference or `needs_confirmation`; every consolidation it declines says why. |
+| `openai`, `anthropic` | HTTP providers reading `OPENAI_API_KEY_FILE` / `ANTHROPIC_API_KEY_FILE`, with `GUIDEFOLD_GENERATOR_MODEL`, `GUIDEFOLD_GENERATOR_TIMEOUT_SECONDS` (default 60) and the optional price list `GUIDEFOLD_GENERATOR_USD_PER_MTOK_IN`/`_OUT`. Output is validated against a JSON Schema and retried at most twice; a citation to a document the request did not supply is dropped rather than believed; a call that timed out after the request left is charged to `usd_uncertain`, never to zero. |
+
+A decision (`approve`, `edit`, `reject`) always carries a `reason`. An `edit`
+may change prose only — frontmatter, scope, owner and relations are identity and
+answer `422 invalid_candidate_change`. An `expected_revision` that no longer
+matches is `409 stale_revision` with the current one. Approving writes a
+revision with `origin: human`; exporting writes a patch and moves the proposal to
+`awaiting_git`. **Export is not publication**: the proposal becomes `published`
+only when a later import carries the exported bytes at the same path.
+
+`publish.build` materialises the import's accepted config, skill and resource
+blobs into a private tree, runs the same `tools/worker/build_tree.py`, validates
+the graph and the package resources, and only then writes `gf.snapshots`,
+`gf.skills`, the router index and `gf.heads` in one transaction with the
+`gfm.publications` row. A cycle, a missing dependency or a missing required
+resource fails the publication, records the findings in `publications.validation`
+and leaves the previous head serving. An import in state `partial` never
+activates: a catalog known to be missing skills must not silently become what
+every agent reads.
+
+`POST {repo_base}/snapshots/{snapshot_id}/activate` rolls forward or back. It
+requires a `reason`, re-validates the snapshot's own graph before the head moves,
+and records the reason in the audit log.
+
+Delivery contract 1.2 is additive. A `1.1` request answers exactly as before. A
+`1.2` request may carry `search_snapshot` — a head that has moved since is `409
+snapshot_changed` — and its `/v1/use` answer adds `closure` (the `requires`
+walk, bounded at depth 8, honouring `budget.max_cards` and `loaded_skills`, with
+status `complete`, `unresolved` or `cannot_fit`) and `resources` (the package
+manifest, with paths relative to the skill directory). `GET
+/v1/skills/{skill_id}/revisions/{revision}/resources/{path}` serves one of those
+files, re-checking access rather than trusting the URL. The 1.2 request schema is
+`tools/serve_spike/contracts/harness-service-v1.2.schema.json`, found next to the
+1.1 document or named by `GUIDEFOLD_CONTRACT_12`; without it a `1.2` request is
+`400 unsupported_schema_version` rather than being validated as 1.1.
+
+## Listening address
+
+`guidefold-search serve` binds `GUIDEFOLD_LISTEN` (default `:8080`), and
+`guidefold-search healthcheck` probes the same value, so moving the port does not
+leave a health check pointing at the old one. A wildcard bind is probed on
+loopback.
+
+## Worker image
+
+`services/search/Dockerfile.worker` builds a second image for `guidefold-search worker`,
+sharing the exact same Go build stage as `services/search/Dockerfile` (same module, same
+commit), so both images run the identical binary — the worker is the same program running a
+different subcommand, not a fork. Its runtime stage is a digest-pinned
+`python:3.12-slim-bookworm` plus a pinned `PyYAML`, not the API's distroless base:
+`import.parse` shells out to the repository's own `tools/worker/build_tree.py`, which imports
+`skills/guidefold/scripts/guidefold`'s parser and the `tools/serve_spike/`/`tools/search_service/`
+modules it depends on, so it needs a real interpreter. Nothing else does —
+`services/search/Dockerfile` stays Python-free on purpose (see `module-boundaries-go`), so a
+compromised or malformed import can never reach an interpreter through the request-serving
+process, and the worker itself never executes anything from an imported repository — only this
+image's own copies of `build_tree.py` and the CLI ever run.
+
+The image copies only the checked transitive import set of `build_tree.py` — the CLI,
+`build_tree.py` itself, `tools/serve_spike/{repository,context,server}.py` and
+`tools/search_service/index.py` — into `/app/repo`, mirroring the repository's own layout so
+those modules' `tools.*` imports resolve exactly as they do here. It never copies `private/`,
+`experiment/`, `.guidefold/` or `research/`. It runs as the same non-root UID the API image's
+distroless user carries, and needs only a writable `/work` (`GUIDEFOLD_WORKER_DIR`, mounted as
+tmpfs/emptyDir, never `/tmp`) to materialise import trees — the rest of the filesystem stays
+read-only.
+
+`docker compose up worker` builds and runs it from `compose.yaml`'s `worker` service: same
+`guidefold_api` database role and `db`/`migrate` ordering as `api`, but no published port — it
+only leases jobs from `gfm.jobs`, it never accepts a connection. `GUIDEFOLD_GENERATOR`
+(`none|deterministic|openai|anthropic`) selects the `proposal.generate` backend once that handler
+ships; `none` is the default and completes such jobs as skipped rather than guessing. The
+publication job runs in the same image, over a tree materialised the same way. Static
+shape — allowlisted `COPY` paths, a digest-pinned base image, a non-root `USER`, and no `ports:`
+on the compose service — is enforced by
+[`tests/test_worker_image.py`](../../tests/test_worker_image.py).
+
 ## Kubernetes deployment
 
 The [portable Helm chart and release runbook](../../deploy/k8s/README.md) provide

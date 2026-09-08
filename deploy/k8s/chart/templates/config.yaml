@@ -10,6 +10,7 @@ data:
   GUIDEFOLD_TENANT: {{ .Values.tenant | quote }}
   GUIDEFOLD_REPO: {{ .Values.repository | quote }}
   GUIDEFOLD_SNAPSHOT_ID: {{ .Values.snapshotID | quote }}
+  GUIDEFOLD_AUTH: {{ .Values.auth | quote }}
   GUIDEFOLD_LEXICAL_ENGINE: router
   GUIDEFOLD_RETRIEVAL_MODE: sparse
   GUIDEFOLD_EXPERIMENTAL_OUTPUT: "false"

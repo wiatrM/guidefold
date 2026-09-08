@@ -1,0 +1,854 @@
+{
+  "date": "2026-09-06",
+  "source": "../industrial-surveyor/src/styles.css",
+  "entries": [
+    {
+      "token": "--graphite-950",
+      "value": "#081014",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--graphite-900",
+      "value": "#0f1418",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--graphite-850",
+      "value": "#121a1f",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--graphite-800",
+      "value": "#162126",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--graphite-700",
+      "value": "#253139",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--stone-100",
+      "value": "#e6e8ea",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--stone-300",
+      "value": "#aeb8be",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--steel",
+      "value": "#677681",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--survey-teal",
+      "value": "#2ba6a0",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--survey-teal-dim",
+      "value": "#174d4c",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--safety-orange",
+      "value": "#ff6a28",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--warning",
+      "value": "#efad3f",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--signal-red",
+      "value": "#e24a4a",
+      "origin": "copied named token",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--line",
+      "value": "rgba(174,184,190,.2)",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--line-strong",
+      "value": "rgba(174,184,190,.34)",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--system-ink",
+      "value": "#7bc6c2",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--human-ink",
+      "value": "#ff9b6d",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--warning-ink",
+      "value": "#f3c879",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--error-ink",
+      "value": "#ef8d8d",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--system-wash",
+      "value": "rgba(43,166,160,.12)",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--human-wash",
+      "value": "rgba(255,106,40,.1)",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--warning-wash",
+      "value": "rgba(239,173,63,.1)",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--error-wash",
+      "value": "rgba(226,74,74,.11)",
+      "origin": "new named token or responsive override",
+      "why": "Istniejący kolor statusu przeniesiony do nazwanego tokenu tekstu/tła."
+    },
+    {
+      "token": "--control-border",
+      "value": "var(--steel)",
+      "origin": "new named token or responsive override",
+      "why": "Steel wyraźniej oddziela aktywną kontrolkę od tła; próg 3:1."
+    },
+    {
+      "token": "--layer-skip",
+      "value": "100",
+      "origin": "new named token or responsive override",
+      "why": "Link pomijania nawigacji ponad interfejsem po focusie; ukryty wizualnie poza nim."
+    },
+    {
+      "token": "--skip-hidden-offset",
+      "value": "-200%",
+      "origin": "new named token or responsive override",
+      "why": "Link pomijania nawigacji ponad interfejsem po focusie; ukryty wizualnie poza nim."
+    },
+    {
+      "token": "--zero",
+      "value": "0",
+      "origin": "new named token or responsive override",
+      "why": "Wspólne granice układu zamiast powtarzania rozmiarów w modułach."
+    },
+    {
+      "token": "--full",
+      "value": "100%",
+      "origin": "new named token or responsive override",
+      "why": "Wspólne granice układu zamiast powtarzania rozmiarów w modułach."
+    },
+    {
+      "token": "--viewport",
+      "value": "100vh",
+      "origin": "new named token or responsive override",
+      "why": "Wspólne granice układu zamiast powtarzania rozmiarów w modułach."
+    },
+    {
+      "token": "--font-body",
+      "value": "\"Inter\",Arial,sans-serif",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-display",
+      "value": "\"Barlow Condensed\",sans-serif",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-mono",
+      "value": "ui-monospace,SFMono-Regular,Consolas,monospace",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-body",
+      "value": "14px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-small",
+      "value": "12px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-code",
+      "value": "12px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-section",
+      "value": "20px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-title",
+      "value": "32px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-display",
+      "value": "32px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--font-size-metric",
+      "value": "28px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--line-height-body",
+      "value": "1.55",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--line-height-heading",
+      "value": "1.15",
+      "origin": "new named token or responsive override",
+      "why": "Paleta lub obrys istniejącego wzorca; zachowuje znaczenie stanu."
+    },
+    {
+      "token": "--weight-normal",
+      "value": "400",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--weight-medium",
+      "value": "500",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--weight-semibold",
+      "value": "600",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--weight-bold",
+      "value": "700",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--tracking-label",
+      "value": ".12em",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--tracking-title",
+      "value": ".02em",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--space-1",
+      "value": "4px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-2",
+      "value": "8px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-3",
+      "value": "16px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-4",
+      "value": "24px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-5",
+      "value": "32px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-6",
+      "value": "48px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--space-7",
+      "value": "64px",
+      "origin": "new named token or responsive override",
+      "why": "Odstępy siatki 8 px i jej połówki 4 px przy etykiecie."
+    },
+    {
+      "token": "--border-width",
+      "value": "1px",
+      "origin": "new named token or responsive override",
+      "why": "Geometria wzorca: obrys 1 px, promień 2 px."
+    },
+    {
+      "token": "--focus-width",
+      "value": "2px",
+      "origin": "new named token or responsive override",
+      "why": "Widoczny obrys klawiatury oddzielony od granicy kontrolki."
+    },
+    {
+      "token": "--focus-offset",
+      "value": "3px",
+      "origin": "new named token or responsive override",
+      "why": "Widoczny obrys klawiatury oddzielony od granicy kontrolki."
+    },
+    {
+      "token": "--radius",
+      "value": "2px",
+      "origin": "new named token or responsive override",
+      "why": "Geometria wzorca: obrys 1 px, promień 2 px."
+    },
+    {
+      "token": "--table-min-width",
+      "value": "640px",
+      "origin": "new named token or responsive override",
+      "why": "Minimalna czytelna szerokość tabeli i linku Source details; zamiast pojedynczych liter w kolumnie jest przewijanie poziome."
+    },
+    {
+      "token": "--table-first-column",
+      "value": "240px",
+      "origin": "new named token or responsive override",
+      "why": "Minimalna czytelna szerokość tabeli i linku Source details; zamiast pojedynczych liter w kolumnie jest przewijanie poziome."
+    },
+    {
+      "token": "--source-disclosure-width",
+      "value": "112px",
+      "origin": "new named token or responsive override",
+      "why": "Minimalna czytelna szerokość tabeli i linku Source details; zamiast pojedynczych liter w kolumnie jest przewijanie poziome."
+    },
+    {
+      "token": "--row-height",
+      "value": "40px",
+      "origin": "new named token or responsive override",
+      "why": "Balanced 40 px; kontrolka 44 px na telefonie dla dotyku."
+    },
+    {
+      "token": "--control-height",
+      "value": "40px",
+      "origin": "new named token or responsive override",
+      "why": "Balanced 40 px; kontrolka 44 px na telefonie dla dotyku."
+    },
+    {
+      "token": "--touch-height",
+      "value": "44px",
+      "origin": "new named token or responsive override",
+      "why": "Balanced 40 px; kontrolka 44 px na telefonie dla dotyku."
+    },
+    {
+      "token": "--icon-size",
+      "value": "18px",
+      "origin": "new named token or responsive override",
+      "why": "Spójne rozmiary ikon regular i oryginalnego rastra znaku."
+    },
+    {
+      "token": "--icon-size-large",
+      "value": "24px",
+      "origin": "new named token or responsive override",
+      "why": "Spójne rozmiary ikon regular i oryginalnego rastra znaku."
+    },
+    {
+      "token": "--brand-size",
+      "value": "40px",
+      "origin": "new named token or responsive override",
+      "why": "Spójne rozmiary ikon regular i oryginalnego rastra znaku."
+    },
+    {
+      "token": "--desktop-display",
+      "value": "block",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--mobile-display",
+      "value": "none",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-padding",
+      "value": "24px 16px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--context-padding",
+      "value": "16px 0",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-width",
+      "value": "216px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-height",
+      "value": "100vh",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-position",
+      "value": "sticky",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-top",
+      "value": "0",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-columns",
+      "value": "1fr",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--shell-columns",
+      "value": "var(--rail-width) minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--page-padding",
+      "value": "24px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--topbar-height",
+      "value": "56px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--two-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--aside-columns",
+      "value": "minmax(0,1.8fr) minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--filter-form-columns",
+      "value": "minmax(0,1fr) auto",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--filter-form-areas",
+      "value": "\"search search\" \"filters actions\"",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--filter-columns",
+      "value": "repeat(4,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--field-columns",
+      "value": "repeat(3,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--steps-columns",
+      "value": "repeat(4,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--metric-columns",
+      "value": "repeat(3,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--form-width",
+      "value": "560px",
+      "origin": "new named token or responsive override",
+      "why": "Ograniczenie długości linii formularza, instrukcji i ścieżki."
+    },
+    {
+      "token": "--reading-width",
+      "value": "80ch",
+      "origin": "new named token or responsive override",
+      "why": "Ograniczenie długości linii formularza, instrukcji i ścieżki."
+    },
+    {
+      "token": "--source-width",
+      "value": "40ch",
+      "origin": "new named token or responsive override",
+      "why": "Ograniczenie długości linii formularza, instrukcji i ścieżki."
+    },
+    {
+      "token": "--min-page-width",
+      "value": "320px",
+      "origin": "new named token or responsive override",
+      "why": "Wspólne granice układu zamiast powtarzania rozmiarów w modułach."
+    },
+    {
+      "token": "--text-area-height",
+      "value": "160px",
+      "origin": "new named token or responsive override",
+      "why": "Miejsce na edycję, przewijalny surowy plik i dojście do decyzji."
+    },
+    {
+      "token": "--body-editor-height",
+      "value": "360px",
+      "origin": "new named token or responsive override",
+      "why": "Miejsce na edycję, przewijalny surowy plik i dojście do decyzji."
+    },
+    {
+      "token": "--scroll-offset",
+      "value": "24px",
+      "origin": "new named token or responsive override",
+      "why": "Miejsce na edycję, przewijalny surowy plik i dojście do decyzji."
+    },
+    {
+      "token": "--raw-max-height",
+      "value": "400px",
+      "origin": "new named token or responsive override",
+      "why": "Miejsce na edycję, przewijalny surowy plik i dojście do decyzji."
+    },
+    {
+      "token": "--grid-tile",
+      "value": "660px",
+      "origin": "new named token or responsive override",
+      "why": "Skala istniejącego rastra; nie tworzy nowej ilustracji."
+    },
+    {
+      "token": "--duration",
+      "value": "120ms",
+      "origin": "new named token or responsive override",
+      "why": "Krótka zmiana stanu; reduced motion ustawia czas na zero."
+    },
+    {
+      "token": "--ease",
+      "value": "ease-out",
+      "origin": "new named token or responsive override",
+      "why": "Krótka zmiana stanu; reduced motion ustawia czas na zero."
+    },
+    {
+      "token": "--disabled-opacity",
+      "value": ".65",
+      "origin": "new named token or responsive override",
+      "why": "Dodatkowy sygnał niedostępności obok disabled i opisu."
+    },
+    {
+      "token": "--rail-border",
+      "value": "var(--border-width) solid var(--line-strong)",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-bottom",
+      "value": "none",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--filter-form-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--filter-form-areas",
+      "value": "\"search\" \"filters\" \"actions\"",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--rail-width",
+      "value": "184px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--two-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--aside-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--filter-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--field-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--steps-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--metric-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--desktop-display",
+      "value": "none",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--mobile-display",
+      "value": "block",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-padding",
+      "value": "16px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--context-padding",
+      "value": "8px 0",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--shell-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-height",
+      "value": "auto",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-position",
+      "value": "static",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-columns",
+      "value": "repeat(2,minmax(0,1fr))",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--page-padding",
+      "value": "16px",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--filter-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--field-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--steps-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--metric-columns",
+      "value": "minmax(0,1fr)",
+      "origin": "new named token or responsive override",
+      "why": "Responsywna liczba kolumn bez zmiany kolejności DOM."
+    },
+    {
+      "token": "--rail-border",
+      "value": "none",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--rail-bottom",
+      "value": "var(--border-width) solid var(--line-strong)",
+      "origin": "new named token or responsive override",
+      "why": "Stały rail na desktopie, kompaktowe disclosure na telefonie; kontekst org pozostaje widoczny."
+    },
+    {
+      "token": "--control-height",
+      "value": "44px",
+      "origin": "new named token or responsive override",
+      "why": "Balanced 40 px; kontrolka 44 px na telefonie dla dotyku."
+    },
+    {
+      "token": "--font-size-title",
+      "value": "28px",
+      "origin": "new named token or responsive override",
+      "why": "Jedna skala typograficzna nagłówków, tekstu i dokładnych identyfikatorów."
+    },
+    {
+      "token": "--scroll-offset",
+      "value": "16px",
+      "origin": "new named token or responsive override",
+      "why": "Miejsce na edycję, przewijalny surowy plik i dojście do decyzji."
+    },
+    {
+      "token": "--duration",
+      "value": "0ms",
+      "origin": "new named token or responsive override",
+      "why": "Krótka zmiana stanu; reduced motion ustawia czas na zero."
+    }
+  ],
+  "contrast": [
+    {
+      "fg": "#e6e8ea",
+      "bg": "#0f1418",
+      "use": "body",
+      "ratio": 15.08,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#aeb8be",
+      "bg": "#0f1418",
+      "use": "secondary",
+      "ratio": 9.17,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#7bc6c2",
+      "bg": "#0f1418",
+      "use": "system/link",
+      "ratio": 9.44,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#ff9b6d",
+      "bg": "#0f1418",
+      "use": "human label",
+      "ratio": 8.96,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#ef8d8d",
+      "bg": "#0f1418",
+      "use": "error",
+      "ratio": 7.82,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#081014",
+      "bg": "#ff6a28",
+      "use": "human button",
+      "ratio": 6.71,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "fg": "#677681",
+      "bg": "#081014",
+      "use": "input border",
+      "ratio": 4.1,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "fg": "#677681",
+      "bg": "#0f1418",
+      "use": "button border",
+      "ratio": 3.96,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "fg": "#ff6a28",
+      "bg": "#0f1418",
+      "use": "focus",
+      "ratio": 6.48,
+      "minimum": 3,
+      "passed": true
+    }
+  ]
+}

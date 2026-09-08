@@ -1,0 +1,6 @@
+interface:
+  display_name: "Premium Quality Gate"
+  short_description: "Validate premium motion site quality"
+  default_prompt: "Use $cloudfloo-quality-gate to inspect this built site across the required responsive and motion states."
+policy:
+  allow_implicit_invocation: false

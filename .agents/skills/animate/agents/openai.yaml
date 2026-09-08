@@ -1,0 +1,4 @@
+interface:
+  display_name: "Animate"
+  short_description: "Build an animation from scratch"
+  default_prompt: "Use $animate to build this motion so it survives a strict review."

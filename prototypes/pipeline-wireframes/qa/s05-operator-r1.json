@@ -1,0 +1,428 @@
+{
+  "type": "syntetyczne",
+  "n": 1,
+  "participant": "P3 operator dostarczania",
+  "run": "s05-operator-r1",
+  "events": [
+    {
+      "op": "click",
+      "role": "radio",
+      "name": "GitHub (fixture)",
+      "url": "http://127.0.0.1:4320/import.html"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Continue with selected provider (fixture)",
+      "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=organization"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Create meridian (fixture)",
+      "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=preview"
+    },
+    {
+      "op": "click",
+      "text": "Inspect files, hashes and sizes",
+      "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=preview"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Simulate import",
+      "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=result"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Open Map",
+      "url": "http://127.0.0.1:4320/map.html?org=meridian&repo=monorepo&tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Open source and scope",
+      "url": "http://127.0.0.1:4320/skill.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Proposals",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "text": "Declared references",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "text": "Full original SKILL.md",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "text": "Full candidate SKILL.md",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "radio",
+      "name": "Approve for export — prepare the candidate file",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "fill",
+      "label": "Reason for this decision",
+      "value": "Zatwierdzam eksport niezmienionego postgres-auth: zakres atlas.identity.turnstile, owner turnstile-team oraz SHA-256 kandydata są zgodne z importowanym źródłem. Publikacja i faktyczne załadowanie wymagają osobnego dowodu w tym scenariuszu.",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Record decision (local)",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "download",
+      "name": "Export SKILL.md",
+      "filename": "postgres-auth.SKILL.md",
+      "bytes": 5540,
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository",
+      "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Simulate Git sync",
+      "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Check usage evidence",
+      "url": "http://127.0.0.1:4320/usage.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository"
+    },
+    {
+      "op": "select",
+      "label": "Scope",
+      "value": {
+        "label": "atlas.identity.turnstile"
+      },
+      "url": "http://127.0.0.1:4320/usage.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository"
+    },
+    {
+      "op": "fill",
+      "label": "Revision",
+      "value": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+      "url": "http://127.0.0.1:4320/usage.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Apply observation filters",
+      "url": "http://127.0.0.1:4320/usage.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository&scope=atlas.identity.turnstile&revision=0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Inspect integration setup",
+      "url": "http://127.0.0.1:4320/organization.html?org=meridian&repo=monorepo&tab=integrations&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository&scope=atlas.identity.turnstile&revision=0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+    },
+    {
+      "op": "click",
+      "role": "button",
+      "name": "Simulate connection check",
+      "url": "http://127.0.0.1:4320/organization.html?org=meridian&repo=monorepo&tab=integrations&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository&scope=atlas.identity.turnstile&revision=0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+    },
+    {
+      "op": "click",
+      "role": "link",
+      "name": "Library",
+      "url": "http://127.0.0.1:4320/library.html?org=meridian&repo=monorepo&tab=integrations&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=proposals&return_tab=repository&scope=atlas.identity.turnstile&revision=0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+    }
+  ],
+  "oznaczenie": "[syntetyczne, n=1]",
+  "metoda": "Jedna syntetyczna sesja P3 operator dostarczania, wykonana przez agenta w nowym Chromium BrowserContext. To nie obserwacje ludzi ani telemetria produktu.",
+  "granice": "Produktowe wejścia: wyłącznie renderowany DOM siedmiu lokalnych ekranów HTML, własny screenshot i pobrany przez UI artefakt. Nie czytano docs, wireframes.js, fixture.json ani źródeł HTML. Nie otwierano zewnętrznych odsyłaczy i nie uruchamiano komend z treści SKILL.md. Owner jest rolą lokalnej fixture.",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "start_url": "http://127.0.0.1:4320/import.html",
+  "tasks": [
+    {
+      "id": "A",
+      "cel": "Wprowadzenie repo Meridian i pierwsza mapa.",
+      "completed": true,
+      "completion_scope": "Lokalny import fixture i pierwsza mapa; bez rzeczywistego skanu lub publikacji.",
+      "kroki": [
+        "Wybrano GitHub (fixture).",
+        "Continue with selected provider (fixture) otworzyło tworzenie organizacji.",
+        "Create meridian (fixture) otworzyło podgląd manifestu.",
+        "Rozwinięto Inspect files, hashes and sizes; odczytano manifest i base commit.",
+        "Simulate import pokazało Parsed · ready to browse: 27 skills, 17 scope nodes, Publication Not established.",
+        "Open Map otworzyło Repository tree i panel Selected skill z postgres-auth."
+      ],
+      "klikniecia": {
+        "navigation": 1,
+        "radio": 1,
+        "button": 3,
+        "disclosure": 1,
+        "total": 6
+      },
+      "pisanie": {
+        "liczba_pol": 0
+      },
+      "gdzie_zgubienie": "Brak w tej syntetycznej ścieżce. Kolejne widoczne działania prowadziły od logowania fixture do mapy.",
+      "think_aloud_syntetyczny": "Tworzę tylko scenariusz Meridian. Sprawdzam manifest i commit, uruchamiam symulację importu, a wynik odsyła do mapy. Parsed nie znaczy Published.",
+      "dowody_ui": [
+        "Fixed public fixture organization for this local test.",
+        "27 existing skills and 17 scope nodes are read from the embedded Meridian fixture.",
+        "Publication: Not established · owner review is still required",
+        "Actual fixture paths. Expand directories to reach every imported skill."
+      ],
+      "tarcia": []
+    },
+    {
+      "id": "B",
+      "cel": "Dokładne źródło i zakres postgres-auth.",
+      "completed": true,
+      "kroki": [
+        "Na mapie panel Selected skill był już ustawiony na postgres-auth; nie wykonywano dodatkowego wyboru.",
+        "Kliknięto Open source and scope.",
+        "Odczytano repo, scope paths, owner, source path, base commit i SHA-256."
+      ],
+      "klikniecia": {
+        "navigation": 1,
+        "radio": 0,
+        "button": 0,
+        "disclosure": 0,
+        "total": 1
+      },
+      "pisanie": {
+        "liczba_pol": 0
+      },
+      "gdzie_zgubienie": "Brak. Wynik korzysta z domyślnego wyboru postgres-auth; nie dowodzi łatwości znalezienia innego skilla.",
+      "think_aloud_syntetyczny": "Odsyłacz prowadzi dokładnie do źródła i zakresu. Mam ścieżkę, commit i hash; active to stan źródła, nie dowód publikacji.",
+      "wynik": {
+        "skill": "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "repo": "monorepo",
+        "scope": "atlas.identity.turnstile",
+        "scope_paths": "platforms/atlas/identity/turnstile/**",
+        "owner": "turnstile-team",
+        "source_path": "platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md",
+        "base_commit": "88e404561a9f6994cd870743bf858b9b0a616126",
+        "content_sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+        "source_layer": "team",
+        "knowledge_layer": "Unclassified"
+      },
+      "dowody_ui": [
+        "Digest of the exact SKILL.md bytes, including frontmatter.",
+        "Owner from source: turnstile-team (ownership metadata; not an access grant)",
+        "Publication: Not established by source status"
+      ],
+      "tarcia": []
+    },
+    {
+      "id": "C",
+      "cel": "Ocena propozycji, decyzja umożliwiająca przekazanie do Git, pobranie artefaktu, Published i ocena dowodu załadowanej rewizji.",
+      "completed": true,
+      "operator_evidence_goal_completed": false,
+      "completion_scope": "Osiągnięto Published (fixture). Rzeczywista publikacja oraz rewizja załadowana przez agenta pozostają niezweryfikowane.",
+      "kroki": [
+        "Proposals otworzyło istniejący Draft postgres-auth.",
+        "Rozwinięto Declared references, Full original SKILL.md i Full candidate SKILL.md; odczytano pełne teksty i metadata. Nie wykonano komend z treści.",
+        "Wybrano Approve for export — prepare the candidate file. Wpisano uzasadnienie zgodności zakresu, ownera i hash. Record decision (local) zmieniło stan na Approved for export.",
+        "Export SKILL.md wywołało download przeglądarki: postgres-auth.SKILL.md, 5540 B. Hash obliczony z pobranej treści jest zgodny z UI.",
+        "Awaiting Git wyjaśniało, że niezmieniony plik nie tworzy nowego commita. Simulate Git sync dało Published (fixture).",
+        "Odczytano Revision, Evidence level Local simulation only i Context loaded Unknown · no adapter observations. Zapisano screenshot.",
+        "Check usage evidence otworzyło Usage z wybranym postgres-auth, lecz Scope All i pustą Revision.",
+        "Wybrano Scope atlas.identity.turnstile, wpisano SHA-256 i Apply observation filters. Wyniki nadal Unknown; brak event ledger i adapter acknowledgement.",
+        "Inspect integration setup otworzyło Integrations; Simulate connection check zakończyło lokalną kontrolę, lecz prawdziwe connection and delivery nadal Unknown.",
+        "Library użyto do końcowego odczytu source status active i informacji, że stan źródła nie ustanawia publikacji."
+      ],
+      "klikniecia_do_published": {
+        "navigation": 1,
+        "radio": 1,
+        "button": 3,
+        "disclosure": 3,
+        "total": 8
+      },
+      "klikniecia_dalszej_weryfikacji": {
+        "navigation": 3,
+        "radio": 0,
+        "button": 2,
+        "disclosure": 0,
+        "total": 5
+      },
+      "klikniecia": {
+        "navigation": 4,
+        "radio": 1,
+        "button": 5,
+        "disclosure": 3,
+        "total": 13
+      },
+      "inne_interakcje": [
+        {
+          "typ": "select",
+          "liczba": 1,
+          "pole": "Scope",
+          "wartosc": "atlas.identity.turnstile"
+        }
+      ],
+      "pisanie": {
+        "liczba_pol": 2,
+        "pola": [
+          "Reason for this decision",
+          "Revision"
+        ]
+      },
+      "gdzie_zgubienie": "Przy Published → Check usage evidence znika rewizja i scope. Zakres obserwacji trzeba odtworzyć ręcznie. Dalsza weryfikacja dochodzi do jawnej granicy fixture: brak obserwacji adaptera, więc nie da się wskazać faktycznie załadowanej rewizji.",
+      "think_aloud_syntetyczny": "Akceptuję pakiet identycznego pliku. Published ma oznaczenie fixture i hash, lecz przyznaje brak potwierdzenia publikacji i ładowania. W Usage muszę wkleić hash. Unknown pozostaje Unknown także po kontroli połączenia.",
+      "download": {
+        "browser_event_received": true,
+        "filename": "postgres-auth.SKILL.md",
+        "bytes": 5540,
+        "sha256_computed": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+        "matches_ui_candidate": true,
+        "storage": "Download przeglądarki zweryfikowany po nazwie, długości i SHA-256; pełną treść usunięto z raportu."
+      },
+      "dowody_ui": [
+        "Candidate · unchanged source",
+        "No text changes",
+        "The source file is prepared. This decision does not publish a skill or confirm effectiveness.",
+        "Source file downloaded. Waiting for Git review and sync. Export alone does not publish the revision.",
+        "Published (fixture) means this local scenario reached its final state. No Git merge, review, server publication or agent load was verified.",
+        "Evidence level: Local simulation only",
+        "Context loaded: Unknown · no adapter observations",
+        "context_loaded: Unknown · No adapter acknowledgement",
+        "Published and loaded are separate. A download or HTTP success would not prove the instruction reached the model context.",
+        "Local check complete. Actual adapter connection and delivery remain Unknown."
+      ],
+      "tarcia": [
+        {
+          "id": "P3-R1-C-01",
+          "priority": "P2",
+          "typ": "utrata_kontekstu",
+          "problem": "Przejście do dowodów przenosi skill, lecz nie rewizję i scope.",
+          "cytat_ui": [
+            "Check usage evidence",
+            "Revision",
+            "Optional SHA-256",
+            "Scope: All"
+          ],
+          "obserwacja": "Bezpośrednio po odsyłaczu Skill=postgres-auth, Scope=pusta wartość/All, Revision=puste. Potrzebny wybór scope, wpisanie SHA-256 i Apply observation filters.",
+          "fix": "Przenieść scope i SHA-256 z propozycji do filtrów Usage oraz wyświetlić aktywny zakres i rewizję nad tabelą dowodów."
+        },
+        {
+          "id": "P3-R1-C-02",
+          "priority": "P3",
+          "typ": "hierarchia_informacji",
+          "problem": "Status Published u góry jest oddalony od poziomu dowodu i loaded, które leżą poniżej pierwszego viewportu.",
+          "cytat_ui": [
+            "Published (fixture)",
+            "Evidence level: Local simulation only",
+            "Context loaded: Unknown · no adapter observations"
+          ],
+          "obserwacja": "Screenshot 1440×1000: badge około y=350; Evidence level i Context loaded około y=1100–1180.",
+          "fix": "Obok statusu pokazać zwięzłe zestawienie rewizji, poziomu dowodu i loaded Unknown; zachować pełne objaśnienie poniżej."
+        }
+      ]
+    }
+  ],
+  "operator_verdict": {
+    "local_scenario_published": true,
+    "local_published_revision": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+    "actual_server_publication": "Niezweryfikowana",
+    "actually_loaded_revision": "Nieznana",
+    "delivery_proof": "Brak obserwacji adaptera; lokalny download i kontrola symulacji nie dowodzą context_loaded.",
+    "classification": "Jawne ograniczenie pokrycia fixture. Nie jest dowodem błędu skilla ani faktycznej awarii dostarczania.",
+    "product_completion_need": "Potrzebny powiązany rekord publikacji i potwierdzenie adaptera z tą samą rewizją, zakresem i czasem obserwacji; nie dorabiać pozytywnych danych do fixture."
+  },
+  "totals": {
+    "tasks_local_completed": 3,
+    "tasks": 3,
+    "clicks": 20,
+    "navigation": 6,
+    "radio": 2,
+    "button": 8,
+    "disclosure": 4,
+    "select_interactions": 1,
+    "text_fields": 2,
+    "p1": 0,
+    "p2": 1,
+    "p3": 1
+  },
+  "screenshot": "prototypes/pipeline-wireframes/qa/s05-operator-r1.png",
+  "ograniczenia_badania": [
+    "Syntetyczne n=1, bez uogólniania na rzeczywistych operatorów.",
+    "B startuje z wybranym postgres-auth.",
+    "Kliknięcia to wykonane interakcje UI; odczyty i screenshoty nie są liczone.",
+    "Brak pomiarów czasu użytkownika, realnych osób lub telemetrii."
+  ],
+  "findings": [
+    {
+      "id": "P3-R1-C-01",
+      "priority": "P2",
+      "typ": "utrata_kontekstu",
+      "problem": "Przejście do dowodów przenosi skill, lecz nie rewizję i scope.",
+      "cytat_ui": [
+        "Check usage evidence",
+        "Revision",
+        "Optional SHA-256",
+        "Scope: All"
+      ],
+      "obserwacja": "Bezpośrednio po odsyłaczu Skill=postgres-auth, Scope=pusta wartość/All, Revision=puste. Potrzebny wybór scope, wpisanie SHA-256 i Apply observation filters.",
+      "fix": "Przenieść scope i SHA-256 z propozycji do filtrów Usage oraz wyświetlić aktywny zakres i rewizję nad tabelą dowodów."
+    },
+    {
+      "id": "P3-R1-C-02",
+      "priority": "P3",
+      "typ": "hierarchia_informacji",
+      "problem": "Status Published u góry jest oddalony od poziomu dowodu i loaded, które leżą poniżej pierwszego viewportu.",
+      "cytat_ui": [
+        "Published (fixture)",
+        "Evidence level: Local simulation only",
+        "Context loaded: Unknown · no adapter observations"
+      ],
+      "obserwacja": "Screenshot 1440×1000: badge około y=350; Evidence level i Context loaded około y=1100–1180.",
+      "fix": "Obok statusu pokazać zwięzłe zestawienie rewizji, poziomu dowodu i loaded Unknown; zachować pełne objaśnienie poniżej."
+    }
+  ],
+  "thinkaloud": [
+    {
+      "syntetyczny": "Tworzę tylko scenariusz Meridian. Sprawdzam manifest i commit, uruchamiam symulację importu, a wynik odsyła do mapy. Parsed nie znaczy Published.",
+      "task": "A"
+    },
+    {
+      "syntetyczny": "Odsyłacz prowadzi dokładnie do źródła i zakresu. Mam ścieżkę, commit i hash; active to stan źródła, nie dowód publikacji.",
+      "task": "B"
+    },
+    {
+      "syntetyczny": "Akceptuję pakiet identycznego pliku. Published ma oznaczenie fixture i hash, lecz przyznaje brak potwierdzenia publikacji i ładowania. W Usage muszę wkleić hash. Unknown pozostaje Unknown także po kontroli połączenia.",
+      "task": "C"
+    }
+  ],
+  "counts": {
+    "tasks_local_completed": 3,
+    "tasks": 3,
+    "clicks": 20,
+    "navigation": 6,
+    "radio": 2,
+    "button": 8,
+    "disclosure": 4,
+    "select_interactions": 1,
+    "text_fields": 2,
+    "p1": 0,
+    "p2": 1,
+    "p3": 1
+  },
+  "completed": {
+    "operator_actual_loaded_proof": false,
+    "A": true,
+    "B": true,
+    "C_fixture": true
+  }
+}

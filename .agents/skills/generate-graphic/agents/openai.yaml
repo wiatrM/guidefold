@@ -1,0 +1,7 @@
+interface:
+  display_name: "Generate Brand Graphic"
+  short_description: "Generate opt-in on-brand raster graphics"
+  default_prompt: "Use $generate-graphic to create this explicitly approved raster asset from the active Brand Forge profile."
+policy:
+  allow_implicit_invocation: false
+

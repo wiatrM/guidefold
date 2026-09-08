@@ -11,7 +11,9 @@ app.kubernetes.io/instance: {{ include "gf.name" . }}
 {{- $image := required "image is required" .Values.image -}}
 {{- if and (ne .Values.workload "migrate") (empty .Values.snapshotID) }}{{ fail "snapshotID is required; serving must never follow a mutable head" }}{{ end -}}
 {{- if and (eq .Values.workload "publish") (empty .Values.artifactImage) }}{{ fail "publish requires artifactImage" }}{{ end -}}
+{{- if not (has .Values.auth (list "workos" "dev")) }}{{ fail "auth must be workos or dev" }}{{ end -}}
 {{- if not .Values.developmentMode -}}
+  {{- if eq .Values.auth "dev" }}{{ fail "auth=dev mounts a sign-in form that mints a session for any e-mail; it is only allowed with developmentMode" }}{{ end -}}
   {{- if not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.image) }}{{ fail "production image must be pinned by digest" }}{{ end -}}
   {{- if and (eq .Values.workload "publish") (not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.artifactImage)) }}{{ fail "artifactImage must be pinned by digest" }}{{ end -}}
   {{- if ne .Values.database.sslMode "verify-full" }}{{ fail "production Postgres requires verify-full TLS" }}{{ end -}}
@@ -23,12 +25,19 @@ app.kubernetes.io/instance: {{ include "gf.name" . }}
 {{- $max := int .Values.replicas -}}
 {{- if .Values.autoscaling.enabled }}{{ $max = int .Values.autoscaling.maxReplicas }}{{ end -}}
 {{- if lt $max (int .Values.autoscaling.minReplicas) }}{{ fail "max replicas cannot be below min replicas" }}{{ end -}}
-{{- if gt (add (mul 16 (add $max 1)) (int .Values.database.reservedConnections)) (int .Values.database.connectionBudget) }}{{ fail "Postgres budget must cover two releases, each with maxReplicas+1 surge pods at 8 connections, plus reserve" }}{{ end -}}
+{{- $connections := mul 16 (add $max 1) -}}
+{{- if .Values.worker.enabled }}{{ $connections = add $connections (mul 16 (add (int .Values.worker.replicas) 1)) }}{{ end -}}
+{{- if gt (add $connections (int .Values.database.reservedConnections)) (int .Values.database.connectionBudget) }}{{ fail "Postgres budget must cover two releases, each with maxReplicas+1 surge api pods and (if enabled) worker.replicas+1 surge worker pods, at 8 connections, plus reserve" }}{{ end -}}
 {{- if .Values.gpu.enabled -}}
   {{- if not (regexMatch "^[0-9a-f]{64}$" .Values.gpu.encoderID) }}{{ fail "GPU requires a content-addressed encoderID" }}{{ end -}}
   {{- $gpuImage := required "GPU image is required" .Values.gpu.image -}}
   {{- if and (not .Values.developmentMode) (not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.gpu.image)) }}{{ fail "GPU image must be pinned by digest" }}{{ end -}}
   {{- if and .Values.gpu.autoscaling.enabled (empty .Values.gpu.autoscaling.queueMetric) }}{{ fail "GPU autoscaling requires a measured queue metric; CPU is not a GPU load signal" }}{{ end -}}
+{{- end -}}
+{{- if .Values.worker.enabled -}}
+  {{- $workerImage := required "worker.image is required" .Values.worker.image -}}
+  {{- if and (not .Values.developmentMode) (not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.worker.image)) }}{{ fail "worker image must be pinned by digest" }}{{ end -}}
+  {{- if not (has .Values.worker.generator (list "none" "deterministic" "openai" "anthropic")) }}{{ fail "worker.generator must be none, deterministic, openai or anthropic" }}{{ end -}}
 {{- end -}}
 {{- end -}}
 {{- define "gf.podSecurity" -}}

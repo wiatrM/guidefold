@@ -23,7 +23,14 @@ DEFAULT_MARKER = "<!-- guidefold:skill-authoring-report -->"
 
 def render_comment_body(markdown: str, marker: str = DEFAULT_MARKER) -> str:
     """The marker lives on its own first line so `find_marked_comment` can match it as a plain
-    substring without parsing markdown."""
+    substring without parsing markdown.
+
+    Idempotent: a body that already opens with the marker line is returned unchanged, so a
+    generator that emits its own marker (`guidefold report --markdown`, P12/U7 — its Markdown is
+    self-identifying whether or not this script is the one that posts it) does not end up with
+    two identical hidden comment lines."""
+    if markdown.startswith(f"{marker}\n") or markdown.rstrip("\n") == marker:
+        return markdown
     return f"{marker}\n{markdown}"
 
 

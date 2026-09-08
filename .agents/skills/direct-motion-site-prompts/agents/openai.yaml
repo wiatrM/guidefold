@@ -1,0 +1,6 @@
+interface:
+  display_name: "Motion Site Prompt Director"
+  short_description: "Turn references into motion-site prompt systems"
+  default_prompt: "Use $direct-motion-site-prompts to turn my references and art direction into build, motion, media, and review prompts."
+policy:
+  allow_implicit_invocation: true

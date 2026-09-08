@@ -1,0 +1,29 @@
+.shell{display:grid;grid-template-columns:var(--shell-columns);min-height:var(--viewport);}
+.skip{position:fixed;z-index:var(--layer-skip);left:var(--space-3);top:var(--space-3);padding:var(--space-2) var(--space-3);transform:translateY(var(--skip-hidden-offset));background:var(--graphite-900);border:var(--border-width) solid var(--control-border);}
+.skip:focus{transform:translateY(var(--zero));}
+.rail{position:var(--rail-position);top:var(--rail-top);height:var(--rail-height);overflow-y:auto;padding:var(--rail-padding);border-right:var(--rail-border);border-bottom:var(--rail-bottom);background:var(--graphite-950) url('/assets/survey-grid-pattern.png');background-size:var(--grid-tile);min-width:var(--zero);}
+.edition{display:var(--desktop-display);font:var(--weight-semibold) var(--font-size-small)/var(--line-height-body) var(--font-display);letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--system-ink);margin:var(--space-2) var(--zero) var(--space-4);}
+.railContext{display:grid;gap:var(--space-1);border-top:var(--border-width) solid var(--line-strong);border-bottom:var(--border-width) solid var(--line-strong);padding:var(--context-padding);font-size:var(--font-size-small);overflow-wrap:anywhere;}
+.railContext span{color:var(--stone-300);}
+.navigation{display:grid;grid-template-columns:var(--rail-columns);gap:var(--space-1);padding:var(--space-3) var(--zero);}
+.navigation a{display:flex;align-items:center;gap:var(--space-2);min-height:var(--control-height);padding:var(--space-2);border:var(--border-width) solid var(--transparent);color:var(--stone-300);text-decoration:none;}
+.navigation a:hover{background:var(--graphite-800);color:var(--stone-100);}
+.navigation a[aria-current=page]{background:var(--system-wash);border-color:var(--survey-teal-dim);color:var(--system-ink);}
+.railFoot{display:var(--desktop-display);align-items:flex-start;gap:var(--space-2);border-top:var(--border-width) solid var(--line-strong);padding-top:var(--space-3);color:var(--stone-300);font-size:var(--font-size-small);}
+.railFoot div{display:grid;gap:var(--space-1);}
+.workspace{min-width:var(--zero);background:var(--graphite-950);}
+.topbar{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;min-height:var(--topbar-height);padding:var(--space-2) var(--page-padding);background:var(--graphite-900);border-bottom:var(--border-width) solid var(--line-strong);font-size:var(--font-size-small);}
+.role{margin-left:auto;color:var(--stone-300);}
+.main{padding:var(--page-padding);min-width:var(--zero);}
+.pageHeading{display:flex;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-4);}
+.eyebrow{display:block;margin-bottom:var(--space-1);font:var(--weight-semibold) var(--font-size-small)/var(--line-height-body) var(--font-display);letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--stone-300);}
+.pageHeading h1{font:var(--weight-bold) var(--font-size-title)/var(--line-height-heading) var(--font-display);letter-spacing:var(--tracking-title);text-transform:uppercase;margin:var(--zero);}
+.pageHeading p{margin:var(--space-2) var(--zero) var(--zero);color:var(--stone-300);max-width:var(--reading-width);}
+.notice{display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3);border:var(--border-width) solid var(--warning);margin-bottom:var(--space-3);background:var(--warning-wash);}
+.notice p{margin:var(--zero);}
+.memberNotice{padding:var(--space-3);background:var(--graphite-850);border:var(--border-width) solid var(--line-strong);color:var(--stone-300);}
+.pageFoot{margin-top:var(--space-5);padding-top:var(--space-3);border-top:var(--border-width) solid var(--line);color:var(--stone-300);font-size:var(--font-size-small);}
+
+.desktopNavigation{display:var(--desktop-display);}.mobileNavigation{display:var(--mobile-display);margin-top:var(--space-2);}.mobileNavigation summary{padding:var(--space-2);border:var(--border-width) solid var(--control-border);border-radius:var(--radius);color:var(--system-ink);}.mobileNavigation[open] summary{color:var(--stone-100);}
+
+.mobileCommit{display:var(--mobile-display);font-size:var(--font-size-small);}

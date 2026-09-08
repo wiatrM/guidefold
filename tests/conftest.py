@@ -64,6 +64,17 @@ def _guard_fixture_root_read_only(fixture_root):
     shutil.rmtree(fixture_root / ".guidefold", ignore_errors=True)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_guidefold_credentials(tmp_path, monkeypatch):
+    """No test may read -- or write -- the developer's real credentials file.
+
+    `resolve_service_config` falls back to the single stored API when none is configured, so a
+    developer who has run `guidefold login` for real would otherwise see `doctor` in the test
+    suite try to reach their own hosted API. Same reasoning as `run_cli`'s GUIDEFOLD_CACHE
+    default: the suite never touches ~/.config or ~/.cache as a side effect."""
+    monkeypatch.setenv("GUIDEFOLD_CREDENTIALS", str(tmp_path / "guidefold-credentials.json"))
+
+
 @pytest.fixture
 def tmp_repo(tmp_path):
     """A tiny, fully-valid throwaway monorepo (guidefold.yaml + 3 skills) for tests that mutate it."""

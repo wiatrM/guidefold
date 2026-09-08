@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "stage": 8,
+  "capturedAt": "2026-09-08T08:04:08.476Z",
+  "command": "cd ui && node qa/check-contracts.mjs",
+  "purpose": "Public component shape, fixture separation and authored CSS/token source contracts.",
+  "fixture": "Meridian fixture is allowed in stories and route composition, never a runtime dependency of reusable components or pure domain functions.",
+  "result": "passed",
+  "totals": {
+    "components": 15,
+    "cssFiles": 23,
+    "tokens": 121,
+    "productionFilesTraversed": 38,
+    "inlineProperties": 0,
+    "diagnostics": 0
+  },
+  "components": [
+    {
+      "name": "ActionButton",
+      "files": [
+        "src/components/ActionButton/index.tsx",
+        "src/components/ActionButton/ActionButton.module.css",
+        "src/components/ActionButton/ActionButton.test.tsx",
+        "src/components/ActionButton/ActionButton.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "BrandMark",
+      "files": [
+        "src/components/BrandMark/index.tsx",
+        "src/components/BrandMark/BrandMark.module.css",
+        "src/components/BrandMark/BrandMark.test.tsx",
+        "src/components/BrandMark/BrandMark.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "Panel",
+      "files": [
+        "src/components/Panel/index.tsx",
+        "src/components/Panel/Panel.module.css",
+        "src/components/Panel/Panel.test.tsx",
+        "src/components/Panel/Panel.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "StateBadge",
+      "files": [
+        "src/components/StateBadge/index.tsx",
+        "src/components/StateBadge/StateBadge.module.css",
+        "src/components/StateBadge/StateBadge.test.tsx",
+        "src/components/StateBadge/StateBadge.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "RouteState",
+      "files": [
+        "src/components/RouteState/index.tsx",
+        "src/components/RouteState/RouteState.module.css",
+        "src/components/RouteState/RouteState.test.tsx",
+        "src/components/RouteState/RouteState.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "Tabs",
+      "files": [
+        "src/components/Tabs/index.tsx",
+        "src/components/Tabs/Tabs.module.css",
+        "src/components/Tabs/Tabs.test.tsx",
+        "src/components/Tabs/Tabs.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "ProvenanceTrail",
+      "files": [
+        "src/components/ProvenanceTrail/index.tsx",
+        "src/components/ProvenanceTrail/ProvenanceTrail.module.css",
+        "src/components/ProvenanceTrail/ProvenanceTrail.test.tsx",
+        "src/components/ProvenanceTrail/ProvenanceTrail.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "ScopeTree",
+      "files": [
+        "src/components/ScopeTree/index.tsx",
+        "src/components/ScopeTree/ScopeTree.module.css",
+        "src/components/ScopeTree/ScopeTree.test.tsx",
+        "src/components/ScopeTree/ScopeTree.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "DataTable",
+      "files": [
+        "src/components/DataTable/index.tsx",
+        "src/components/DataTable/DataTable.module.css",
+        "src/components/DataTable/DataTable.test.tsx",
+        "src/components/DataTable/DataTable.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "SkillDiff",
+      "files": [
+        "src/components/SkillDiff/index.tsx",
+        "src/components/SkillDiff/SkillDiff.module.css",
+        "src/components/SkillDiff/SkillDiff.test.tsx",
+        "src/components/SkillDiff/SkillDiff.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "MetricRow",
+      "files": [
+        "src/components/MetricRow/index.tsx",
+        "src/components/MetricRow/MetricRow.module.css",
+        "src/components/MetricRow/MetricRow.test.tsx",
+        "src/components/MetricRow/MetricRow.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture",
+        "Funnel"
+      ]
+    },
+    {
+      "name": "Urn",
+      "files": [
+        "src/components/Urn/index.tsx",
+        "src/components/Urn/Urn.module.css",
+        "src/components/Urn/Urn.test.tsx",
+        "src/components/Urn/Urn.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "SkillContent",
+      "files": [
+        "src/components/SkillContent/index.tsx",
+        "src/components/SkillContent/SkillContent.module.css",
+        "src/components/SkillContent/SkillContent.test.tsx",
+        "src/components/SkillContent/SkillContent.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "Field",
+      "files": [
+        "src/components/Field/index.tsx",
+        "src/components/Field/Field.module.css",
+        "src/components/Field/Field.test.tsx",
+        "src/components/Field/Field.stories.tsx"
+      ],
+      "scenarios": [
+        "Fixture"
+      ]
+    },
+    {
+      "name": "PyramidChart",
+      "files": [
+        "src/components/PyramidChart/index.tsx",
+        "src/components/PyramidChart/PyramidChart.module.css",
+        "src/components/PyramidChart/PyramidChart.test.tsx",
+        "src/components/PyramidChart/PyramidChart.stories.tsx"
+      ],
+      "scenarios": [
+        "Family",
+        "EmptyAtomicLayer"
+      ]
+    }
+  ],
+  "typeOnlyEdges": [
+    {
+      "file": "src/components/ActionButton/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/StateBadge/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/StateBadge/index.tsx",
+      "specifier": "../../domain"
+    },
+    {
+      "file": "src/components/RouteState/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/RouteState/index.tsx",
+      "specifier": "../../domain"
+    },
+    {
+      "file": "src/components/ProvenanceTrail/index.tsx",
+      "specifier": "../../domain"
+    },
+    {
+      "file": "src/components/ScopeTree/index.tsx",
+      "specifier": "../../domain"
+    },
+    {
+      "file": "src/components/DataTable/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/domain/pyramid.ts",
+      "specifier": "../domain"
+    },
+    {
+      "file": "src/domain/pyramid.test.ts",
+      "specifier": "../domain"
+    },
+    {
+      "file": "src/domain/pyramidGraph.ts",
+      "specifier": "../api/decoders"
+    },
+    {
+      "file": "src/domain/skill.ts",
+      "specifier": "../domain"
+    },
+    {
+      "file": "src/domain/skillHealth.ts",
+      "specifier": "../api/decoders"
+    },
+    {
+      "file": "src/domain/tree.ts",
+      "specifier": "../domain"
+    },
+    {
+      "file": "src/domain/tree.test.ts",
+      "specifier": "../domain"
+    }
+  ],
+  "inlineStyles": [],
+  "diagnostics": [],
+  "limits": [
+    "Source check only; build, Vitest, keyboard behavior, axe and independent pixel comparison run separately.",
+    "Type-only imports are erased and allowed; external package internals are outside this authored-source boundary.",
+    "CSS declaration parsing ignores selectors, strings and URLs. Grid indices/repeat counts/flex factors are structural, not dimensions; literal dimensions, zero lengths, font weights, palette colors and responsive boundaries are checked.",
+    "currentColor/inherit/unset/none express CSS inheritance or absence, not a new palette. Transparent is a literal color and belongs in tokens.",
+    "Dynamic inline styles are rejected for review rather than assumed safe. Story export presence proves available scenarios, not their behavioral correctness."
+  ]
+}

@@ -1,0 +1,64 @@
+import { chromium } from '/home/mike/projects/guidefold/prototypes/pipeline-tools/node_modules/@playwright/test/index.mjs';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
+const result={role:'Owner, 15 minute decision hypothesis',round:2,startedAt:new Date().toISOString(),method:'Automated Chromium interaction and rendered DOM inspection; not human usability evidence or a human completion time.',steps:[],errors:[]};
+const browser=await chromium.launch({headless:true});
+const context=await browser.newContext({viewport:{width:1280,height:720},acceptDownloads:true});
+const page=await context.newPage();
+page.on('pageerror',e=>result.errors.push(e.message));
+let mobileScreenshot;
+const check=(value,message)=>{if(!value)throw new Error(message);};
+async function snapshot(label){result.steps.push({label,...await page.evaluate(()=>({url:location.href,text:document.querySelector('main').innerText,headings:[...document.querySelectorAll('h1,h2,h3')].map(e=>({text:e.innerText,y:Math.round(e.getBoundingClientRect().y+scrollY)})),viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth}))});}
+try{
+ await page.goto('http://127.0.0.1:4320/proposals.html');
+ const original=await page.getByLabel('Original source text',{exact:true}).textContent();
+ await page.getByRole('link',{name:'Inspect source and scope',exact:true}).click();
+ result.sourceLink=await page.getByRole('link',{name:'Open exact source revision (GitHub, new tab)',exact:true}).getAttribute('href');
+ await page.getByText('Inspect complete SKILL.md including frontmatter',{exact:true}).click();
+ result.sourceFound=await page.locator('details[open] pre').isVisible();
+ result.sourceMatches=await page.locator('details[open] pre').textContent()===original;
+ check(result.sourceFound&&result.sourceMatches,'Source inspection failed');
+ await snapshot('1. Inspect source and scope; expand complete SKILL.md; source, metadata, base commit and exact Git URL found');
+ await page.getByRole('link',{name:'← Back to Proposals',exact:true}).click();
+ await page.getByRole('link',{name:'Review decision: approve, edit or reject',exact:true}).click();
+ await page.getByRole('radio',{name:'Edit candidate — return to a local draft',exact:true}).check();
+ await page.getByLabel('Reason for this decision',{exact:true}).fill('Review a local body change with unchanged source scope and owner.');
+ await page.getByRole('button',{name:'Record decision (local)',exact:true}).click();
+ const originalBody=await page.getByLabel('Candidate body · local operator edit',{exact:true}).inputValue();
+ check(originalBody.includes('cached 30 s'),'Expected source phrase missing');
+ const changedBody=originalBody.replace('cached 30 s','cached 60 s');
+ await page.getByLabel('Candidate body · local operator edit',{exact:true}).fill(changedBody);
+ await page.getByLabel('Reason for the edit',{exact:true}).fill('Change cached 30 s to cached 60 s for a local comparison test only.');
+ await page.getByRole('button',{name:'Save local draft',exact:true}).click();
+ const diff=page.getByLabel('Source to candidate line diff',{exact:true});
+ await diff.waitFor();
+ const candidate=await page.getByLabel('Candidate source text',{exact:true}).textContent();
+ const diffText=await diff.textContent();
+ const frontmatter=text=>text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/)?.[0];
+ result.edit={bodyOnlyEditor:!originalBody.startsWith('---'),frontmatterPreserved:frontmatter(original)===frontmatter(candidate),candidateExpected:candidate===original.replace('cached 30 s','cached 60 s'),diffText,removedVisible:diffText.split('\n').some(s=>s.startsWith('-')&&s.includes('cached 30 s')),addedVisible:diffText.split('\n').some(s=>s.startsWith('+')&&s.includes('cached 60 s'))};
+ check(result.edit.frontmatterPreserved&&result.edit.candidateExpected&&result.edit.removedVisible&&result.edit.addedVisible,'Edited candidate or diff mismatch');
+ await snapshot('2. Edit body cached 30 s to cached 60 s, save local draft; actual removed/added lines and surrounding context found before decision');
+ await page.setViewportSize({width:390,height:844});
+ await diff.scrollIntoViewIfNeeded();
+ result.mobile=await page.evaluate(()=>{const diff=document.querySelector('#candidate-diff'),decision=document.querySelector('#decision'),r=diff.getBoundingClientRect(),s=getComputedStyle(diff);return{viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,diffVisible:r.height>0,diffBeforeDecision:!!(diff.compareDocumentPosition(decision)&Node.DOCUMENT_POSITION_FOLLOWING),diff:{text:diff.innerText,clientWidth:diff.clientWidth,scrollWidth:diff.scrollWidth,height:r.height,fontSize:s.fontSize,whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap},headings:[...document.querySelectorAll('h1,h2')].map(e=>({text:e.innerText,y:Math.round(e.getBoundingClientRect().y+scrollY)})),fullFilesCollapsed:[...document.querySelectorAll('details')].filter(e=>/Full (original|candidate) SKILL.md/.test(e.querySelector('summary')?.innerText||'')).map(e=>!e.open)};});
+ check(result.mobile.diffBeforeDecision&&result.mobile.diffVisible&&result.mobile.scrollWidth===390&&result.mobile.diff.scrollWidth<=result.mobile.diff.clientWidth,'Mobile review before decision failed');
+ mobileScreenshot=(await page.screenshot({type:'jpeg',quality:60})).toString('base64');
+ await snapshot('3. At 390 px scroll to line diff; removed/added lines readable before decision, full files collapsed and no horizontal overflow');
+ await page.setViewportSize({width:1280,height:720});
+ await page.getByRole('radio',{name:'Approve for export — prepare the candidate file',exact:true}).check();
+ await page.getByLabel('Reason for this decision',{exact:true}).fill('Reviewed removed cached 30 s and added cached 60 s. Frontmatter, scope and owner remain unchanged. Approve this local candidate for export.');
+ await page.getByRole('button',{name:'Record decision (local)',exact:true}).click();
+ await snapshot('4. Approve for export with reason and record local decision; explicit Export SKILL.md action found');
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export SKILL.md',exact:true}).click();
+ const download=await downloading;
+ const bytes=await readFile(await download.path());
+ result.download={filename:download.suggestedFilename(),bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),matchesCandidate:bytes.equals(Buffer.from(candidate)),matchesOriginal:bytes.equals(Buffer.from(original)),frontmatterPreserved:frontmatter(bytes.toString())===frontmatter(original),failure:await download.failure()};
+ check(result.download.matchesCandidate&&!result.download.matchesOriginal&&result.download.frontmatterPreserved&&!result.download.failure,'Export does not match edited candidate');
+ await snapshot('5. Export SKILL.md; edited complete file downloaded and Awaiting Git shown');
+ result.completed=true;
+ result.openFindings={P1:0,P2:0,P3:0};
+}catch(e){result.completed=false;result.errors.push(e.stack);}
+finally{result.finishedAt=new Date().toISOString();await writeFile('/home/mike/projects/guidefold/prototypes/pipeline-wireframes/qa/owner-check.json',JSON.stringify(result,null,2));await browser.close();}
+console.log(JSON.stringify({completed:result.completed,sourceFound:result.sourceFound,sourceMatches:result.sourceMatches,edit:result.edit,mobile:result.mobile,download:result.download,openFindings:result.openFindings,errors:result.errors,...(process.env.OWNER_CAPTURE_IMAGE?{mobileScreenshot}:{})},null,2));
+

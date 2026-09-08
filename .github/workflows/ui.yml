@@ -1,0 +1,86 @@
+name: UI fixture checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ui/**"
+      - "examples/monorepo/**"
+      - "prototypes/pipeline-hifi/src/**"
+      - "prototypes/pipeline-hifi/public/**"
+      - "prototypes/pipeline-hifi/qa/baseline/**"
+      - ".github/workflows/ui.yml"
+  pull_request:
+    paths:
+      - "ui/**"
+      - "examples/monorepo/**"
+      - "prototypes/pipeline-hifi/src/**"
+      - "prototypes/pipeline-hifi/public/**"
+      - "prototypes/pipeline-hifi/qa/baseline/**"
+      - ".github/workflows/ui.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.30.3"
+          package_json_file: ui/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build and typecheck
+        run: pnpm build
+      - name: Component structure, data boundary and tokens
+        run: pnpm test:contracts
+      - name: Component and domain tests
+        run: pnpm test
+      - name: Install pinned Chromium and system dependencies
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser accessibility, states and keyboard journey
+        run: pnpm test:e2e
+      - name: Owner regression and independent visual comparison
+        shell: bash
+        run: |
+          mkdir -p qa
+          node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4331 --strictPort > qa/dev-server.log 2>&1 &
+          ui_server_pid=$!
+          trap 'kill "$ui_server_pid" 2>/dev/null || true; wait "$ui_server_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in {1..60}; do
+            kill -0 "$ui_server_pid" 2>/dev/null || { cat qa/dev-server.log; exit 1; }
+            if curl --fail --silent http://127.0.0.1:4331/ > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 0.5
+          done
+          test "$ready" = 1 || { cat qa/dev-server.log; exit 1; }
+          status=0
+          pnpm test:flow || status=1
+          # Read-only comparison: never regenerate the pre-extraction hifi baseline.
+          pnpm test:visual || status=1
+          exit "$status"
+      - name: Upload fixture QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-fixture-qa
+          path: |
+            ui/qa/
+            ui/test-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,81 @@
+{
+  "date": "2026-09-06T19:41:09.570Z",
+  "kind": "Local fixture browser regression; not human pilot or production proof",
+  "source": {
+    "skill": "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+    "path": "platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md",
+    "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+    "bytes": 5540
+  },
+  "checks": [
+    {
+      "name": "source Markdown is semantic; raw file remains exact and keyboard decision jump works",
+      "pass": true,
+      "headings": 6,
+      "sourceSHA256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+      "sourceBytes": 5540
+    },
+    {
+      "name": "owner edits only body, reviews exact full-file diff and records a fresh approval",
+      "pass": true,
+      "candidateSHA256": "d3e3c91750bfd0bbc13e30bbf2d6a1d5398b8710b69a5c37796a9d4825bb3168",
+      "frontmatterUnchanged": true
+    },
+    {
+      "name": "export retains exact candidate bytes and enters Awaiting Git before fixture sync",
+      "pass": true,
+      "filename": "postgres-auth.SKILL.md",
+      "bytes": 5540,
+      "sha256": "d3e3c91750bfd0bbc13e30bbf2d6a1d5398b8710b69a5c37796a9d4825bb3168",
+      "stageBeforeSync": "awaiting_git",
+      "stageAfterSync": "published fixture"
+    },
+    {
+      "name": "usage preserves exact candidate context and unavailable source revision cannot masquerade as imported body",
+      "pass": true,
+      "selectedCandidateSHA256": "d3e3c91750bfd0bbc13e30bbf2d6a1d5398b8710b69a5c37796a9d4825bb3168",
+      "availableSourceSHA256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b",
+      "bodyBlockedUntilExplicitRevisionChange": true
+    },
+    {
+      "name": "source and two dependency hops retain Map axis and imported-revision source identity",
+      "pass": true,
+      "hops": [
+        "postgres-auth",
+        "rbac-policies"
+      ],
+      "returnedAxis": "scopes",
+      "sourceLinkUsesCommit": true
+    },
+    {
+      "name": "member can save local revision feedback but cannot decide or export",
+      "pass": true,
+      "feedbackAllowed": true,
+      "decisionDisabled": true,
+      "approvedCandidateExportDisabled": true
+    },
+    {
+      "name": "partial preserves source reading and blocks mutations",
+      "pass": true,
+      "sourceReadable": true,
+      "mutationsDisabled": true,
+      "omittedSourceBodyBlocked": true
+    },
+    {
+      "name": "degraded preserves source reading and blocks mutations",
+      "pass": true,
+      "sourceReadable": true,
+      "mutationsDisabled": true,
+      "omittedSourceBodyBlocked": false
+    },
+    {
+      "name": "rejection is a human decision with a retained reason and a route back to Draft",
+      "pass": true,
+      "errorColorNotUsed": true,
+      "reasonPreserved": true,
+      "reopenToDraft": true
+    }
+  ],
+  "jsErrors": [],
+  "passed": true
+}

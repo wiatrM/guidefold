@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hooked UX"
+  short_description: "Design ethical habit-forming product loops"
+  default_prompt: "Use $hooked-ux to diagnose this retention problem and design an ethical Trigger-Action-Reward-Investment loop."

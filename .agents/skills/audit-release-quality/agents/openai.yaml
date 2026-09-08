@@ -1,0 +1,6 @@
+interface:
+  display_name: "Audit Release Quality"
+  short_description: "Run release-blocking redesign QA"
+  default_prompt: "Use $audit-release-quality to produce deterministic QA evidence and block every critical release failure."
+policy:
+  allow_implicit_invocation: true

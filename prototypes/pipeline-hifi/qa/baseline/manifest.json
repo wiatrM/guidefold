@@ -1,0 +1,281 @@
+{
+  "capturedAt": "2026-09-06T20:09:08.256Z",
+  "fixture": "Meridian fixture",
+  "purpose": "Independent hifi gallery before component extraction. Do not overwrite this baseline to accept UI changes.",
+  "sourceHashes": {
+    "src/App.module.css": "c7b8b02e0213cc29649ca4c3689e38342d3d3e4ac0bf2485c26242b55ebdc044",
+    "src/Gallery.module.css": "19cfdd319c7abe9938a408423887698c1c44304ed93f39259e30f97881282d4e",
+    "src/Gallery.tsx": "741054b058c516f04979158e7063d4cb71fa5d3b0f15b3c49049205f9198c8ed",
+    "src/Shared.module.css": "13b6b95c75e337a29f4d354e7956cb8124abf4bda88f0a96876c180942135964",
+    "src/Shared.tsx": "8a67086dbb739056830ade739c1172a18a32635a867d363e8f7e1054e1de58b7",
+    "src/app.tsx": "badf1923f140e743ff8eba3eebc33283fa3ba3f508588bb99c4b5b8dbf8bf08a",
+    "src/data/fixture.json": "7c93698517a60e81ac12f489576530303af004c42c8ae12788dac3aa1a6cbc03",
+    "src/data.ts": "eae1b4cc8280c7f8856e79965bd77f22811fcfa16cc0c0c5eaa86bcd3e6e7be4",
+    "src/domain.ts": "afdab81ef2d300d1c0254ba3f6779c814fe485c8b344520503a943d749bec99d",
+    "src/global.css": "80d82345bd5a77fb3897d31f13f0a1980392ef062fe3edf952bb58622ad810e4",
+    "src/main.tsx": "feef84de6798e348d9330d81fac5fd305823af8da7202963401fd83690828ae7",
+    "src/routes/CatalogRoutes.module.css": "36128138a31a75fafc497c5268ddd09f7563c17bb759a190929dc2d9c5798af1",
+    "src/routes/CatalogRoutes.tsx": "fc1865accae138244ee932aec6c5418d04caea861d3bf32b9c77a3d5dc851492",
+    "src/routes/OnboardingRoutes.module.css": "13410ceb41ada4eaf8a4ec59215ff958fb98d8aa30ce23720cd5bca8987104ce",
+    "src/routes/OnboardingRoutes.tsx": "f3f52615d37739b7c1b69cb39acb9ee73a52908b90443d1dc293fffc46cf1052",
+    "src/routes/ReviewRoutes.module.css": "e34a2f48a8ae909427af728bfdf8792ca63b99938d35a440a77794efbf84f0e5",
+    "src/routes/ReviewRoutes.tsx": "b9cef5c73e10fb68fcdb79573d775f9152953d4d23b621179cbcee87d016fe3b",
+    "src/tokens.css": "d2677ed186d034404c5738b2a02030bf9847787badc53872624816b6ef59cb62",
+    "public/assets/guidefold-mark.png": "9ff7519316814879f58502f08691bbdb19ad3f182dab624a14f66b5d6d337c1d",
+    "public/assets/survey-grid-pattern.png": "aae05ac222b9d6bb738cf61401fb09975aaa7b1e91dfdf522068d22107881156"
+  },
+  "records": [
+    {
+      "name": "ActionButton",
+      "width": 1280,
+      "file": "ActionButton-1280.png",
+      "sha256": "7e5b824ac0fafd59df5da6adca1c3accfcaa510beb0fee6e8d4c6185825146b0"
+    },
+    {
+      "name": "BrandMark",
+      "width": 1280,
+      "file": "BrandMark-1280.png",
+      "sha256": "a0c4b079f68de2b9dcec1b3ede0ad11e58f4e8d8e38b8e69df6ce20aec142d43"
+    },
+    {
+      "name": "Panel",
+      "width": 1280,
+      "file": "Panel-1280.png",
+      "sha256": "44bf2b1521eaf4873080fb47d7e5731713eb77e797036c75aeb54b503951c227"
+    },
+    {
+      "name": "StateBadge",
+      "width": 1280,
+      "file": "StateBadge-1280.png",
+      "sha256": "04aa8578f8ae1817a99e66a3139a634043d7a8651509112155fc8fcb0b6d479e"
+    },
+    {
+      "name": "RouteState",
+      "width": 1280,
+      "file": "RouteState-1280.png",
+      "sha256": "f69336140cc681f5cdf8eeb3c8808de5014a161cd6b82070f39c8dc2066f3a3b"
+    },
+    {
+      "name": "Tabs",
+      "width": 1280,
+      "file": "Tabs-1280.png",
+      "sha256": "a6b92bab9f4ab2d407e8e30fd9e038531bb2d0543a020114246134b5f32c2783"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 1280,
+      "file": "ProvenanceTrail-1280.png",
+      "sha256": "1f2d7b04081e35ec73d5f493150a9d5cbbd182527bbb067f18ce59c6a07c18a3"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 1280,
+      "file": "ScopeTree-1280.png",
+      "sha256": "049b07b27ee2d67ad6ca96afa70495dfbe5693bfd0a6bf945ca3576b779d01b2"
+    },
+    {
+      "name": "DataTable",
+      "width": 1280,
+      "file": "DataTable-1280.png",
+      "sha256": "1ce4bf3bf8ef25bf304060fdfab70ee22491f702f9a25217b20e12ca7cb3c0fe"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 1280,
+      "file": "SkillDiff-1280.png",
+      "sha256": "611614017d1551062b67a33c4a7dafcd4d743bb77b7946cc0326c7333c7d722b"
+    },
+    {
+      "name": "MetricRow",
+      "width": 1280,
+      "file": "MetricRow-1280.png",
+      "sha256": "390e8963217da85f40559c183d639da3aa552af62d741b864691035af1990d86"
+    },
+    {
+      "name": "Urn",
+      "width": 1280,
+      "file": "Urn-1280.png",
+      "sha256": "32443614f08a0144c9117908d07e1d6610098034edfb60ffa7d68e787387bbef"
+    },
+    {
+      "name": "SkillContent",
+      "width": 1280,
+      "file": "SkillContent-1280.png",
+      "sha256": "d894faf8155f83606a7c90e39d07bc9b6c58aee8fb1ea68bb6b03a40887e7d28"
+    },
+    {
+      "name": "Field",
+      "width": 1280,
+      "file": "Field-1280.png",
+      "sha256": "02867db02a71546957a4d2a77640af2ba0f70eea0d00e8dc3e9f01da6974cea3"
+    },
+    {
+      "name": "ActionButton",
+      "width": 820,
+      "file": "ActionButton-820.png",
+      "sha256": "6c5e95bd15eedc78d879d06be8ec838ab85e377f221ea7e642e7ff2425dc67ec"
+    },
+    {
+      "name": "BrandMark",
+      "width": 820,
+      "file": "BrandMark-820.png",
+      "sha256": "73849f53282ca1efcd334a2658dfa5c49fd06d1d0359e6377ebf41c5d1afe17b"
+    },
+    {
+      "name": "Panel",
+      "width": 820,
+      "file": "Panel-820.png",
+      "sha256": "44193baf5899e39569948ed1d03b7ba0148c77ef69d0a12567478d46fca7c776"
+    },
+    {
+      "name": "StateBadge",
+      "width": 820,
+      "file": "StateBadge-820.png",
+      "sha256": "24a3d4a3bd1a8e35fef9820dbd965596e93c52579e9751b02824a61f8974ff76"
+    },
+    {
+      "name": "RouteState",
+      "width": 820,
+      "file": "RouteState-820.png",
+      "sha256": "62a91f22ec1193b7187f961f3706d2f5f7cb5ae8f8c71d919bb5b3df17359f16"
+    },
+    {
+      "name": "Tabs",
+      "width": 820,
+      "file": "Tabs-820.png",
+      "sha256": "b3f1633e1fea3c0a439b6009e361939d9844fe644583aa473fada8204041b802"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 820,
+      "file": "ProvenanceTrail-820.png",
+      "sha256": "97b8a8949d01929ab231d9f94536c77a12006b5eb0a6978c2d9fd4c7d6888397"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 820,
+      "file": "ScopeTree-820.png",
+      "sha256": "84b96968a14dc72fa07745a5f653637bd000f004cfb4ef57b3d692e39efc3fc6"
+    },
+    {
+      "name": "DataTable",
+      "width": 820,
+      "file": "DataTable-820.png",
+      "sha256": "fd40769a74e0b4d33e63184573e88a0b96c598d65a52002dd3401ccce3b78736"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 820,
+      "file": "SkillDiff-820.png",
+      "sha256": "8262adac5ab55b11e92ee3860145ff87a65b1d51bcaa45c9fca602484e386e01"
+    },
+    {
+      "name": "MetricRow",
+      "width": 820,
+      "file": "MetricRow-820.png",
+      "sha256": "fec1085bd845ac11ce40018e0709036f15be00d1cb47cc15baf2ae0306ceaa42"
+    },
+    {
+      "name": "Urn",
+      "width": 820,
+      "file": "Urn-820.png",
+      "sha256": "bf603605ff48ade4ae2197ee9c52cbd192cf03955bbce7170895dce0c9d91503"
+    },
+    {
+      "name": "SkillContent",
+      "width": 820,
+      "file": "SkillContent-820.png",
+      "sha256": "c3b85ad6e947a60856811968168cd26a918d59cc47e3b3c29703be97224f8f10"
+    },
+    {
+      "name": "Field",
+      "width": 820,
+      "file": "Field-820.png",
+      "sha256": "3350b5138d3781b41fa8e59bafb5cf093d6b0a40a6c6f5b9a35588ee190c1e34"
+    },
+    {
+      "name": "ActionButton",
+      "width": 390,
+      "file": "ActionButton-390.png",
+      "sha256": "68a7f30560c032374da3435ba4437042a5d4331f7f10841bb7bccb2e54ae9a3b"
+    },
+    {
+      "name": "BrandMark",
+      "width": 390,
+      "file": "BrandMark-390.png",
+      "sha256": "96b640a9fd5e024a2a68978206491848d7cb733ef1c453b64f82d6b670c2a00e"
+    },
+    {
+      "name": "Panel",
+      "width": 390,
+      "file": "Panel-390.png",
+      "sha256": "743de3fcb8ea870bbcfce377b904f9f46e3cff60fe2111c4808177809b9e92aa"
+    },
+    {
+      "name": "StateBadge",
+      "width": 390,
+      "file": "StateBadge-390.png",
+      "sha256": "58cfb421a69bd8724850ccedeec71fa70c522b7e6f49c7449bcc2bded10dd82b"
+    },
+    {
+      "name": "RouteState",
+      "width": 390,
+      "file": "RouteState-390.png",
+      "sha256": "312746bb88fcf98b555500678f41662f15f6b7c8e81fa3ba64cc7d89205c7e4f"
+    },
+    {
+      "name": "Tabs",
+      "width": 390,
+      "file": "Tabs-390.png",
+      "sha256": "c39b6c8bb47d0f36de917e57ff23fc27ca03cf8dcacf1930e371dcc27e4effa0"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 390,
+      "file": "ProvenanceTrail-390.png",
+      "sha256": "910c85c1083ff1bbc9114f030385498b50f7eaad0fcf3767303a9182538a18c8"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 390,
+      "file": "ScopeTree-390.png",
+      "sha256": "f938fb95db7a3771b0ea2422740c634896184596a7322a2fcd0537022a219351"
+    },
+    {
+      "name": "DataTable",
+      "width": 390,
+      "file": "DataTable-390.png",
+      "sha256": "5b8757243b55176c3e044afc7e3872744839ce06548d5a3553d4c8a0983d0802"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 390,
+      "file": "SkillDiff-390.png",
+      "sha256": "6b5e30c87bda03393fca6e6c88a7f3085524e6d7b9b002ce8e096e1f130042ec"
+    },
+    {
+      "name": "MetricRow",
+      "width": 390,
+      "file": "MetricRow-390.png",
+      "sha256": "684216054b586c93f71d9669089dcfc3a9ed0b831ad5336678218fc898b47fa9"
+    },
+    {
+      "name": "Urn",
+      "width": 390,
+      "file": "Urn-390.png",
+      "sha256": "4387413b6a4518e83226a893a59886be5c36b5affcd91ab249bf57515ff5d087"
+    },
+    {
+      "name": "SkillContent",
+      "width": 390,
+      "file": "SkillContent-390.png",
+      "sha256": "b74844cc89359e46ec69f458ae6c11e61a786fb5dbad2f27285eac23510e9465"
+    },
+    {
+      "name": "Field",
+      "width": 390,
+      "file": "Field-390.png",
+      "sha256": "36a1dd17a9528a952a3034619ba76994f15c4ac40b2ffe0a8d9a6743bdf45c4e"
+    }
+  ]
+}

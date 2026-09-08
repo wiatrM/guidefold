@@ -1,267 +1,131 @@
-# Guidefold UI — visual system and the React port of the Industrial Surveyor prototype
+# UI Guidefold
 
-**Status:** Proposed · 2026-09-04
-**Source of truth for the direction:** `prototypes/industrial-surveyor/design-reference/source-industrial-surveyor.png`
-(option 6 of the folded-map exploration, `design-explorations/guidefold-folded-map-3x3/`)
-**Companion documents:** [`IA.md`](IA.md) (structure), [`UX.md`](UX.md) (principles and the anti-slop gate)
+Status: frontend fixture w ui/, 2026-09-06; etapy 6 i 7 zamknięte. Ekstrakcja etapu 8 zamknięta po dwóch rundach, bez otwartych P1/P2/P3; wyniki i granice w [08-components](pipeline/08-components.md).
+Cel: system wizualny i zakres ekstrakcji siedmiu widoków U4. Wejścia: [IA](IA.md), [UX](UX.md), [brief](pipeline/00-brief.md), [makiety](pipeline/04-wireframes.md), [symulacja](pipeline/05-simulation.md), [pivot](../PRODUCT-PIVOT.md).
+Zastępuje dokument 2026-09-04 z commitu 88e404561a9f6994cd870743bf858b9b0a616126. Reguły użycia: [DOCUMENTATION-RULES](../DOCUMENTATION-RULES.md).
 
----
+## 1. Decyzje wizualne
 
-## 1. What we keep from the prototype, and what we drop
+Jedyny wzorzec: [Industrial Surveyor](../../prototypes/industrial-surveyor/DESIGN.md), [plansza źródłowa](../../prototypes/industrial-surveyor/design-reference/source-industrial-surveyor.png) i [styles.css](../../prototypes/industrial-surveyor/src/styles.css), odczyt 2026-09-06.
+Implementacja: [ui](../../ui/). Zamrożone odniesienie sprzed ekstrakcji: [pipeline-hifi](../../prototypes/pipeline-hifi/). Plansza jest odniesieniem marki; zakres i zachowanie określa aktualny pivot.
 
-`prototypes/industrial-surveyor/` is a **brand and direction prototype**, not an application. It is
-already React 19 + Vite, but it is one 124-line `App.jsx` of hard-coded arrays rendering three
-demo tabs (Route monitor / Component bay / Asset library) against fictional data ("Riverside Team",
-"Vendor Risk Policy"). It proves the look. It is not a foundation.
+| Zachowujemy | Zmieniamy względem starego prototypu / UI | Dlaczego |
+|---|---|---|
+| Paletę graphite, teal i orange; czerwony dla błędów | Rejected oraz usunięta linia diffu nie są czerwonym błędem | Odrzucenie jest decyzją człowieka; diff opisuje zmianę. |
+| Barlow Condensed i Inter, fonty lokalne | Mono dla URN, SHA, ścieżek i kodu | Czytelność dokładnych identyfikatorów i plików. |
+| Siatkę 8 px, radius 2 px, border 1 px | Balanced 40 px jest stałe; brak przełącznika gęstości | Wymaganie zlecenia, bez dodatkowej konfiguracji. |
+| Oryginalny raster znaku i survey-grid-pattern | Brak nowego SVG logo, mapy z divów lub topograficznego tła pod treścią | Zachowanie zatwierdzonego assetu i czytelności danych. |
+| Kanciaste panele i status z etykietą | Siedem widoków, bez Route monitor/Component bay/Asset library w nawigacji | Zakres U4. Galeria pozostaje narzędziem developerskim. |
+| Phosphor regular | Bez fill, emoji oraz dekoracyjnych ikon metryk | Jedna waga w całym interfejsie. |
+| Wzorzec dowodu przy decyzji | Brak fikcyjnej promocji team → division → company, quorum i metryk | Fixture deklaruje inne dane; brak klasyfikacji to Unclassified. |
+| Ciemny motyw graphite | Brak czterech starych sekcji Atlas/Review/Routing/Health | Login, org, import, biblioteka i obieg propozycji wynikają z pivotu. |
 
-| Keep | Drop |
+Końcowy audyt: 21 zrzutów gotowej treści bez overflow, naruszeń axe i błędów JS; dodatkowo 42 scenariusze stanów i brak wycieku restricted. Mobilny rail skrócono z 524 px do Navigate. Formalne przeglądy zamknięte; [dowody](pipeline/06-ux-ui.md).
+
+## 2. Tokeny
+
+Kanoniczne wartości aplikacji: [ui/src/tokens/tokens.css](../../ui/src/tokens/tokens.css). Nie kopiuj wartości do modułów CSS; dotyczy to także transparent. Hi-fi pozostaje niezależnym odniesieniem. Dwa tokeny techniczne etapu 8 uzasadnia [08-components](pipeline/08-components.md).
+
+| Grupa | Pochodzenie / zastosowanie |
 |---|---|
-| Palette, typography, 8 px grid, 2 px radius, `--line` borders | The three prototype tabs and their fictional data |
-| The folded survey-map `G` mark and its usage rules | The asset-library and palette-showcase screens (they are a style guide, not product) |
-| Route-node → arrow → route-node promotion motif | Full-bleed decorative topographic art behind live data |
-| Gate list, state badges, provenance timeline as *patterns* | Their hard-coded contents |
-| Phosphor icons, one weight | Icon-as-decoration usage |
-| Dark graphite as the only theme | Nothing — the light theme is explicitly out of scope for MVP |
+| graphite-950/900/850/800/700, stone-100/300, steel, survey-teal/dim, safety-orange, warning, signal-red, line/strong | Paleta i obrysy skopiowane ze styles.css wzorca. |
+| system/human/warning/error-ink i -wash | Nazwane tokenami istniejące wartości statusów ze wzorca; tekst i płaskie tło stanu. |
+| control-border | Alias steel; istotne granice formularza wymagają silniejszej widoczności niż dekoracyjne line. Zmierzony kontrast obrysu: co najmniej 3,96:1. |
+| font-body/display/mono, font-size-*, weight-*, line-height-*, tracking-* | Stała skala dla formularzy, długiej treści, metadanych, nagłówków i dokładnego kodu. |
+| space-1…7, border-width, radius, focus-width/offset | Odstępy 4/8/16/24/32/48/64 px; geometria 1/2 px. Offset focusu oddziela obrys od kontrolki. |
+| row-height, control-height, touch-height, icon-size/large, brand-size | Wiersz i kontrolka 40 px; kontrolka mobilna 44 px; spójne ikony i oryginalny znak 40 px. |
+| rail-*, shell-columns, page-padding, topbar-height | Przenoszą planszę marki na siedem dostępnych tras z widocznym kontekstem org/repo. |
+| table-min-width, table-first-column, source-disclosure-width | Czytelne minimum tabeli/kolumn i Source details; poziomy scroll zamiast liter w pionie. |
+| filter-columns, filter-form-columns/areas | Filtry i przyciski w zwartej kompozycji desktopu; pierwszy wynik widoczny w 720 px, na mobile kolejno. |
+| two/aside/field/steps/metric-columns | Układy składane do jednej kolumny; kolejność czytania pozostaje w DOM. |
+| form/reading/source-width, text-area/body-editor-height, raw-max-height, scroll-offset | Ograniczają długość wiersza i pełny surowy plik; decyzja pozostaje osiągalna po rozwinięciu treści. |
+| zero, full, viewport, min-page-width, grid-tile | Wspólne rozmiary struktury i skali istniejącego rastra. |
+| desktop/mobile-display, rail/context-padding, layer-skip, skip-hidden-offset | Kompaktowe menu na telefonie oraz link pomijania nawigacji; pełny powód każdego tokenu w [inwentarzu](../../prototypes/pipeline-hifi/qa/token-provenance.json). |
+| duration, ease, disabled-opacity | Krótkie przejścia stanu i oznaczenie niedostępności; reduced motion ustawia duration na zero. |
 
-**The port is a rewrite, not a refactor.** We lift the design tokens and roughly six component
-patterns into a typed component library, then build the four IA sections against real data. The
-prototype stays in the repo, frozen, as the visual reference it is.
+Każdy dalszy token wymaga nazwy, zastosowania i powodu w dokumencie etapu. Sama możliwość stworzenia wariantu nie uzasadnia nowej wartości.
 
----
-
-## 2. Design tokens
-
-Lifted verbatim from `prototypes/industrial-surveyor/src/styles.css`, then extended for the
-application surfaces the prototype never had (tables, graph, diffs, focus states).
-
-### 2.1 Colour
-
-```css
-/* surfaces — darkest to lightest, 5 steps, no gradients anywhere */
---graphite-950: #081014;   /* page ground */
---graphite-900: #0f1418;   /* section ground */
---graphite-850: #121a1f;   /* panel */
---graphite-800: #162126;   /* raised panel, table header, hover */
---graphite-700: #253139;   /* pressed, selected row */
-
-/* text */
---stone-100:    #e6e8ea;   /* primary text          on 950: 14.6:1  ✔ */
---stone-300:    #aeb8be;   /* secondary text        on 950:  8.7:1  ✔ */
---steel:        #677681;   /* tertiary / disabled   on 950:  3.4:1  — non-text only */
-
-/* semantic — one hue per meaning, never mixed */
---survey-teal:  #2ba6a0;   /* healthy, passed, active, system-derived */
---survey-teal-dim: #174d4c;
---safety-orange:#ff6a28;   /* human action required, review, focus ring */
---warning:      #efad3f;   /* probationary, stale, degraded */
---signal-red:   #e24a4a;   /* failed, blocked, rejected */
-
-/* structure */
---line:         rgba(174, 184, 190, 0.20);
---line-strong:  rgba(174, 184, 190, 0.34);
-```
-
-**Semantic discipline.** Teal = the system is fine. Orange = *a human must act*. Yellow = provisional.
-Red = failure. Orange is scarce by construction: on the proposal page it appears on the focus ring,
-the pending gate, and nothing else. If orange is everywhere, the page has no call to action.
-
-New tokens required by the application and absent from the prototype:
-
-```css
---diff-add:     #1c3a2a;   /* diff background, additions   */
---diff-del:     #3a1c20;   /* diff background, deletions   */
---edge-requires:#e6e8ea;   /* solid  2px */
---edge-refines: #2ba6a0;   /* dashed 4 2 */
---edge-replaces:#e24a4a;   /* dashed 2 2 */
---edge-similar: #677681;   /* dotted 1 3, hidden by default */
-```
-
-Every edge kind carries **both** a hue and a dash pattern (UX §4).
-
-### 2.2 Typography
-
-- **Barlow Condensed 500–700** — the operational voice: eyebrows, section labels, wordmark,
-  telemetry numerals. Uppercase with `letter-spacing: 0.14em` for eyebrows only.
-- **Inter 400–600** — everything a person reads as prose: body, forms, tables, descriptions.
-- **`ui-monospace, SFMono-Regular, Menlo, monospace`** — new, required: URNs, shas, paths, diffs,
-  and any string the user might paste into a terminal. These must never be set in a proportional face.
-- Both webfonts bundled locally via `@fontsource` (no Google Fonts request from an enterprise browser).
-
-| Role | Face | Size / line-height | Weight |
-|---|---|---|---|
-| Page title | Barlow Condensed | 28 / 32 | 700 |
-| Eyebrow | Barlow Condensed | 12 / 16, `0.14em`, upper | 600 |
-| Panel title | Barlow Condensed | 16 / 22 | 600 |
-| Body | Inter | 14 / 22 | 400 |
-| Body emphasis | Inter | 14 / 22 | 600 |
-| Table cell | Inter | 13 / 20 | 400 |
-| Caption / meta | Inter | 12 / 18 | 400 |
-| Code, URN, sha | Mono | 12.5 / 20 | 400 |
-| Metric numeral | Barlow Condensed | 32 / 34, tabular | 600 |
-
-### 2.3 Space, geometry, motion
-
-- Base unit **8 px**; scale 4, 8, 16, 24, 32, 48, 64.
-- Radius **2 px** everywhere. One exception: the brand mark. No pills, no `rounded-full` chips.
-- Border **1 px `--line`**; `--line-strong` for structural separation (rail, panel outer edge).
-- Elevation: **one** shadow level, for the confirmation dialog only. Panels are separated by borders.
-- Density modes (the one surviving user toggle, UX §6.3): row height **32 / 40 / 48 px**,
-  default Balanced 40 px. Minimum touch target 44 px in the mobile breakpoint.
-- Motion: 120 ms `ease-out` for hover and panel open; nothing else animates. All of it collapses to
-  0 ms under `prefers-reduced-motion`.
-- The survey-grid background texture is retained on the page ground and the left rail at ≤ 6 %
-  effective contrast. It is **removed** behind tables, diffs and the graph canvas, where it
-  competes with data.
-
----
-
-## 3. Layout
-
-```
-┌──────────────┬─────────────────────────────────────────┬──────────────────┐
-│  Rail 264px  │  Content  minmax(0, 1fr)                │ Inspector 420px  │
-│  ─────────── │  ────────────────────────────────────── │ ──────────────── │
-│  mark + word │  eyebrow                                │  object identity │
-│  scope       │  Page title              [ one action ] │  ─────────────── │
-│  ─ Atlas     │  ─────────────────────────────────────  │  tabs            │
-│    Review    │                                         │                  │
-│    Routing   │  content                                │  body            │
-│    Health    │                                         │                  │
-│  ─────────── │                                         │                  │
-│  index sha   │                                         │                  │
-│  ⌘K          │                                         │                  │
-└──────────────┴─────────────────────────────────────────┴──────────────────┘
-```
-
-The prototype's 342 px brand rail is a showcase width; the application rail is **264 px** because it
-carries navigation and a scope selector, not a logo presentation. The inspector is an overlay panel
-at ≤ 1440 px and a third column above it.
-
-Breakpoints: `≥1600` three columns · `1200–1599` inspector overlays · `900–1199` rail collapses to
-icons · `<900` read-only mobile (queue and proposal only; the graph falls back to `?view=list`).
-
-The bottom of the rail permanently shows the **index sha and its age** — the single most important
-piece of provenance in the product, and the thing a screenshot must always carry (UX §P5).
-
----
-
-## 4. Component inventory
-
-Fourteen components. A fifteenth needs a written justification in the PR (UX §6.3).
-
-**Lifted from the prototype** (pattern kept, contents replaced):
-
-| Component | Prototype origin | Application use |
-|---|---|---|
-| `<BrandMark>` | `BrandMark` | rail, favicon, empty states |
-| `<Eyebrow>` | `.eyebrow` | above every page and panel title |
-| `<Panel>` / `<PanelTitle>` | `PanelTitle` + `.gate-panel` | every content container |
-| `<StateBadge>` | `StateBadge` | status, gate result, lifecycle — **always with a word** |
-| `<GateList>` | `gates` array | proposal gates G1/G2/policy/quorum |
-| `<PromotionRoute>` | `RouteNode` + `ArrowRight` | team → division → company promotion path |
-| `<ProvenanceTrail>` | `provenance` array | skill and proposal history |
-
-**New, required by the IA:**
-
-| Component | Purpose |
+| Rola | Bieżące ustawienie |
 |---|---|
-| `<ScopeGraph>` | nodes + 4 edge kinds, pan/zoom, keyboard traversal, `?view=list` peer |
-| `<DataTable>` | queues, skill lists, eval runs — sortable, keyboard, sticky header |
-| `<SkillDiff>` | parent diff and child patches, unified, mono, `--diff-add`/`--diff-del` |
-| `<MetricRow>` | ≤ 4 metrics, each with value, unit, delta, and its source |
-| `<StageTrace>` | the routing probe: one row per stage with the score it produced |
-| `<Urn>` | mono, click-to-copy, truncation at the node segment, full value in `title` |
-| `<CommandPalette>` | `⌘K` — nodes, URNs, proposal ids |
+| Tytuł | Barlow Condensed 700, 32 px; mobile 28 px |
+| Sekcja / tekst metryki | Barlow Condensed 600, odpowiednio 20 / 28 px |
+| Body | Inter 400, 14 px, line-height 1,55 |
+| Metadane i tabela | Inter, 12 px; ważna treść nie jest ukryta przez mały kontrast |
+| Kod / URN / SHA | Systemowy monospace, 12 px |
+| Eyebrow | Barlow Condensed 600, 12 px, uppercase i tracking 0,12 em |
 
-Each ships with: all six states (UX), an `aria` contract, a keyboard contract, and a story in the
-component gallery rendered from **fixture data only** (`examples/monorepo`), never invented data.
+Teal opisuje system/wybór; orange decyzję człowieka i focus; warning częściowe lub ograniczone dane; red wyłącznie błąd. Neutralne Unknown nie jest zielonym potwierdzeniem.
+Diff korzysta z +/−, opisu i istniejących wash: dodanie teal, usunięcie orange. Kolor nie określa poprawności zmiany.
 
----
+## 3. Układ i stany
 
-## 5. The React port
+| Szerokość | Układ bieżącego hi-fi |
+|---|---|
+| Ponad 1080 px | Rail 216 px, treść minmax(0,1fr), porównanie źródło/kandydat w dwóch kolumnach. |
+| 721–1080 px | Rail 184 px; porównanie w jednej kolumnie, pola i etapy najwyżej w dwóch. |
+| Do 720 px | Kompaktowa nawigacja w natywnym disclosure Navigate, początkowo zamknięta; siedem pozycji po rozwinięciu. Org/repo pozostaje widoczne, pola i panele pojedynczo, padding 16 px. |
 
-### 5.1 Target stack
+Wymagane zrzuty: siedem widoków przy 1280×720, 820×720 i 390×720. Nie ukrywamy funkcji na mobile. Duże tabele mają własny obszar przewijania; body, URN i ścieżki zawijają się.
+Kontekst meridian/monorepo, Meridian fixture, rola symulatora i commit są widoczne, dopóki scenariusz dopuszcza odczyt. Restricted nie pokazuje danych organizacji.
+Map ma Repository/Scopes/Pyramid z tekstowym drzewem i relacjami. Source layer oraz Knowledge layer są oddzielne; nie rysujemy pełnej sieci 10 tys. skilli.
 
-| Choice | Decision | Why |
+| Stan | Wygląd i zachowanie |
+|---|---|
+| Empty | Nazwany brak obiektu/obserwacji i dostępny następny krok, bez liczb udających wyniki. |
+| Loading | Stałe szare wiersze bez shimmeru; aria-busy, brak aktywnej decyzji. |
+| Partial | Etykieta i komunikat warning; jawny dostępny zakres oraz braki. |
+| Error | Tekst błędu i red; informacja o niepotwierdzonej operacji oraz dostępne retry. |
+| Degraded | Warning i opis dostępnego snapshotu; odczyt, bez nowych zmian. |
+| Restricted | Ogólny komunikat dostępu; brak body, nazw, liczników i poprzedniego cache org. |
+
+Stany dotyczą tras; nie wymagamy sześciu sztucznych wariantów każdej ikony. Member w dostępnej org jest innym przypadkiem niż restricted. Macierz per widok i wymagania: [04 §5](pipeline/04-wireframes.md), [UX](UX.md).
+
+## 4. Komponenty
+
+Aktualne 14 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx), inwentarz z 2026-09-06. Każdy wydzielony komponent ma testy i stories; szczegółowe props, stany i dowody: [08-components](pipeline/08-components.md).
+
+| Komponent | Użycie | Granica odpowiedzialności / stan |
 |---|---|---|
-| Framework | **React 19 + TypeScript**, Vite 6 | Prototype is already React 19 + Vite 6; TS because the domain model (URN, node, edge kind, gate state) is exactly what a type system is for. |
-| Routing | **React Router 7**, data-router mode | URL-is-state (UX §3) is a hard requirement; loaders make the six states explicit per route. |
-| Server state | **TanStack Query** | Cache keyed by `(urn, revision)` and index sha mirrors the CLI cache contract (E1.7). |
-| Styling | **CSS Modules + the token file**, no utility framework | Utility-class frameworks are the main vector for §6.1 slop; a token file plus modules keeps the system enforceable and greppable. |
-| Graph | **`elkjs`** layered layout + hand-rolled SVG renderer | The graph is a layered DAG with typed edges, not a physics toy; SVG keeps it accessible, printable, and dash-patternable. |
-| Icons | **`@phosphor-icons/react`**, one weight (`regular`; `fill` only inside `StateBadge`) | Carried over from the prototype. |
-| Fonts | **`@fontsource`** Barlow Condensed + Inter | Carried over; no external font requests. |
-| Charts | **Hand-rolled SVG** for the two charts we actually need | A charting library invites decorative charts (§6.1). |
-| Tests | **Vitest** + Testing Library; **Playwright** for the review flow; **axe-core** in CI | The gate in UX §7 has to be machine-checked or it will rot. |
+| ActionButton | Nawigacja i formularze siedmiu tras | Button albo link; neutral/system/human, disabled. Nie autoryzuje operacji. |
+| BrandMark | Rail | Oryginalny raster oraz wordmark; bez wariantów znaku. |
+| Panel | Dowody, formularze i listy | Tytuł, eyebrow, ikona i opcjonalna akcja; section z nazwą. |
+| StateBadge | Stan źródła, procesu i dowodu | Etykieta z tone; kolor nie zastępuje tekstu. |
+| RouteState | Sześć stanów tras | Tytuł, opis i dostępna akcja; loading ma szkielet i aria-busy. |
+| Tabs | Osie Map, zakładki Skill/Organization | Linki w nav z aria-current; bez pozornego ARIA tablist. |
+| ProvenanceTrail | Metadane źródła i rewizji | Lista label/value/detail/link; nie wnioskuje pochodzenia. |
+| ScopeTree | Repository i Scopes | Natywne disclosure oraz linki; zaznaczenie i opis. |
+| DataTable | Library, manifest, relacje i membership | Caption, nagłówki oraz wiersze; sortowanie/filtry są logiką trasy. |
+| SkillDiff | Proposals | Rzeczywisty source/candidate; No text changes albo oznaczone linie. |
+| MetricRow | Liczniki fixture i dowody użycia | Label/value/detail; Unknown jest dopuszczalne, metryka wymaga źródła. |
+| Urn | Tożsamość skilla | Pełna wartość, kopiowanie i komunikat sukcesu/błędu. |
+| SkillContent | Skill i porównanie propozycji | Semantyczny Markdown bez raw HTML; surowy plik jest osobnym odczytem. |
+| Field | Filtry, feedback i decyzje | Jawna etykieta, hint/error oraz aria-describedby; poprawność kontrolki sprawdza kontrakt a11y. |
 
-No component library (MUI/shadcn/Chakra). Fourteen components against a fixed token set is less code
-than adapting a library away from its defaults, and the default look of every such library is
-precisely what UX §6.1 bans.
+Formularz decyzji, lifecycle, eksport, filtry, auth i wybór źródła zostają w routes/data. Nie tworzymy GateList, StageTrace, PromotionRoute ani CommandPalette bez zadania U4.
+Każdy komponent ma index.tsx, CSS Module, test i story. Drugi wariant wymaga pisemnego powodu; piętnasty komponent wymaga ograniczenia zakresu lub jawnej zmiany decyzji.
 
-### 5.2 Where it lives
+## 5. Plan frontendu
+Kanoniczny plan portu: [07-frontend](pipeline/07-frontend.md), 2026-09-06; dwie rundy Owner/Principal/Architekt zakończone, 0 otwartych P1/P2. Ta sekcja podaje granice, nie drugą listę zadań.
 
-```
-ui/
-├── package.json                  # separate workspace; the CLI stays stdlib-only (CLAUDE.md)
-├── src/
-│   ├── tokens/tokens.css         # §2, the single source of colour/type/space
-│   ├── components/               # the 14, each: index.tsx · *.module.css · *.test.tsx · *.stories.tsx
-│   ├── domain/                   # types + parsers: Urn, Node, Skill, Edge, Gate, Proposal, IndexRef
-│   ├── data/                     # loaders: local index artifact, Knowledge API, telemetry
-│   ├── routes/                   # atlas · review · routing · health, one folder per IA section
-│   └── app.tsx
-└── e2e/                          # Playwright: the owner's 15-minute review path
-```
+| Obszar | Decyzja |
+|---|---|
+| Stack | React 19.2.8, TypeScript 7.0.2, Vite 8.2.2, Router DOM 7.18.3; CSS Modules bez biblioteki komponentów. Node22.14/pnpm10.30, wersjonowane lockfile. |
+| ui/ | src/tokens, components≤14, routes/app, domain/data, przyszła warstwa api, test/e2e/qa. Formularze i lifecycle nie są komponentami biblioteki. |
+| Dane | Fixture i API mają oddzielne adaptery do jednego kontraktu; typy OpenAPI i dekodowanie runtime. Produkcja pobiera summary/cursor i osobne facets/lookup; body dopiero w szczególe. Pełny klucz query/zasobu i numer żądania blokują starsze odpowiedzi. |
+| Backend | Modularne Go API i osobny worker, Postgres/GCS, WorkOS przez Go. Brak mikroserwisów na widok i dodatkowego Nest BFF. |
+| Sesja | Cookie HttpOnly/Secure, CSRF i membership per request; bez sekretów w JS. Potwierdzenie ważne maks.45 s, odnowienie co25 s; brak odnowienia zasłania dane. Wznowienie karty wymaga sprawdzenia. Odwołanie≤60 s ma test przy bezczynnym widoku/ciepłym cache. |
+| Offline/degraded | Publiczny fixture lokalnie. Prywatny snapshot tylko w RAM i po świeżym potwierdzeniu dostępu; brak łączności do auth zasłania dane. 401/403/logout/zmiana org czyści cache i szkice. |
+| Mutacje | Idempotency key + expected revision; 409 wymaga ponownego review. Bez optymistycznego published i bez automatycznej duplikacji zapisu po timeout. |
+| Stany | Macierz siedem tras × empty/loading/partial/error/degraded/restricted w 07; restricted ma pierwszeństwo. |
+| Budżet | U4 AC2: 10k, p95≤2s w realnej sieci; docelowo strona50 summary, lazy map/body i limity renderu. Dodatkowe budżety są jawnymi założeniami. |
+| Kontrole | Vitest5/Testing Library, Playwright owner flow wyłącznie klawiaturą, poprawny Git host/plik/commit i izolacja org, axe w CI, niezależny pixel diff. Pilot AC5 wymaga prawdziwych ludzi. |
 
-`ui/` is a sibling of `skills/`, never inside it. The skill ZIP that reaches the registry must stay
-a single-file Python script plus hooks (CLAUDE.md hard constraint) — the UI must not be able to leak
-into it.
+Etap 8 dostarcza F1–F9 jako wydzielony frontend na fixture; integracja Go/auth/worker i produkcyjny test Git mają własne zależności. F1–F21 w 07 to małe kroki frontendu, nie estymacja całego backendu.
+Hi-fi pozostaje niezależnym renderem sprzed ekstrakcji. Galeria jest narzędziem developerskim poza nawigacją U4; jej baseline nie może importować komponentów ui.
+ui/ jest oddzielne od skills/guidefold; frontend nie trafia do paczki konsumenckiego skilla. Plan nie dodaje komend guidefold ui/import/login/install do istniejącego CLI.
 
-### 5.3 Data sources
+## 6. Weryfikacja
 
-| Route | Source | Offline? |
-|---|---|---|
-| Atlas, Routing · Probe | the local index artifact (E1.4): cards, graph, `nodes.json`, manifest sha | **yes** |
-| Routing · Eval | golden-set run results committed per run (E1.2) | yes |
-| Routing · Shadow | `.guidefold/telemetry/*.jsonl` (E1.6) | yes |
-| Review, Health | Knowledge API over the single Postgres (ADR-0013/0018) | no — state it in the UI |
-
-`guidefold ui` serves `ui/dist` from the CLI over localhost and injects the index artifact path.
-With no Postgres reachable, Atlas and Routing work fully and Review/Health render the **degraded**
-state naming what is missing (UX §P6).
-
-### 5.4 Port sequence
-
-| Step | Work | Done when |
-|---|---|---|
-| **1** | Scaffold `ui/`, extract `tokens.css` from `styles.css`, wire fonts, axe + Vitest in CI | `npm run build` green; token file is the only place a hex appears |
-| **2** | Port the 7 prototype components to TS + CSS Modules with the six states and a11y contracts | gallery renders all 7 from fixture data; axe clean |
-| **3** | Domain types + the index-artifact loader against `examples/monorepo` | `Urn`, `Edge`, `Gate` parse the real fixture; unit-tested |
-| **4** | **Review · Proposal + Decision log** (UI-0) | an owner can complete a decision path end to end; Playwright covers it |
-| **5** | **Atlas** graph + inspectors (UI-1), with the `?view=list` peer | keyboard traversal works; 500-node layout < 1 s |
-| **6** | **Routing** Probe + Eval (UI-2) | probe output matches `guidefold find` byte for byte for the same `(prompt, cwd, sha)` |
-| **7** | **Health** (UI-3) | the MVP §6 weekly metric set renders and prints |
-
-Step 6 has a hard correctness criterion: if the UI and the CLI disagree about what the hook would
-inject, the UI is worse than useless, so the probe is tested against CLI output rather than against
-its own snapshot.
-
-### 5.5 What happens to `prototypes/industrial-surveyor/`
-
-It stays, unmodified, with a `FROZEN.md` note pointing at this document. It is the visual reference
-and the source of the raster assets (`guidefold-mark.png`, `survey-grid-pattern.png`,
-`topographic-route-bg.png`), which move to `ui/public/assets/` at step 1. Its `npm run build` /
-`test:sites` pipeline is not carried over.
-
----
-
-## 6. Open questions
-
-1. **Mark at small sizes.** The folded survey-map `G` is detailed; it needs a simplified 16/24 px
-   variant for the favicon and the rail. Redraw as SVG rather than downscaling the raster.
-2. **Graph at pilot scale.** `elkjs` layered layout is comfortable to a few hundred nodes. Beyond
-   that we need semantic zoom (collapse to node level, expand on focus) — decide with real pilot data.
-3. **Print.** The weekly report (Health) is the one thing people will print or paste into a deck.
-   Print stylesheet, or an explicit PNG/PDF export?
-4. **Light theme.** Out of scope for MVP; the palette above is dark-only by design. If an enterprise
-   accessibility policy forces it, the token file is the single place it lands.
+Build sprawdza TypeScript i pakowanie aplikacji. Nie potwierdza a11y, czytelności, SLA, autoryzacji ani wartości produktu.
+Etap 6 zamknął P3 z symulacji: semantyczny Markdown, dokładny surowy plik i skok klawiaturą ustawiający focus na decyzji; dowód s06-flow.json.
+Decyzje do prawdziwego pilota dotyczą potrzeb i pracy, nie wyboru motywu: rozumienie źródła/scope, granica eksport/published/loaded, sens mapy oraz koszt powrotu do Git. Progi i pytania: [03](pipeline/03-survey.md), [05](pipeline/05-simulation.md).

@@ -1,92 +1,77 @@
 ---
-# This is the bootstrap skill template Guidefold ships to every consumer monorepo (see
-# CLAUDE.md "Layout" and docs/adr/ADR-0019). Replace <publisher> below with the `publisher`
-# value from your monorepo's guidefold.yaml before copying this into `.agents/skills/guidefold/`.
+# Consumer bootstrap template. Replace <publisher> with guidefold.yaml's publisher before copying this directory.
 name: guidefold
-description: "[<publisher>] Discover and load this organization's guidance (conventions, procedures, runbooks) from the Agent Registry, scoped to where you are in the monorepo. Use BEFORE implementing any task that touches this organization's platforms, products, deployment, auth, data stores or internal tooling, or whenever an instruction says 'follow team conventions'. Do not use for generic language/library questions."
+description: "[<publisher>] Discover and load this organization's conventions, procedures and runbooks from its repository or configured service or registry. Use when implementing a task that needs the organization's guidance or when asked to follow team conventions. Do not use for generic language or library questions."
 license: Apache-2.0
-compatibility: "Requires gcloud CLI with `gcloud auth application-default login` and the agentregistry.viewer role on the registry project. Works in Copilot CLI, Claude Code, Codex, Gemini CLI."
 metadata:
   scope: _root
   owner: platform-engineering
   status: active
 ---
 
-# Guidefold — organizational guidance, unfolded on demand
+# Guidefold organizational guidance
 
-This organization keeps procedural knowledge as Agent Skills in a hierarchy that mirrors the
-monorepo: `<publisher> (root) → product/platform → sub-platform → team`. Skills closer to your
-current directory are more specific; ancestors hold shared conventions. This skill tells you how
-to find and load the right ones progressively, so you never pre-load the whole organization.
+Requires Python 3 and PyYAML. Agent Registry access also needs a configured gcloud CLI and registry
+permissions. Service search needs a configured URL and bearer token.
 
-## You may already have most of this
+Discover a small set of relevant instructions, then read their complete content before applying them.
+The scope tree comes from this repository's `guidefold.yaml`; directory depth is not a knowledge layer.
 
-- The `AGENTS.md` / `CLAUDE.md` chain in your context is the **scope card** for where you are:
-  node, owner, and one-line digests of every ancestor level (root → product → platform → team)
-  with skill URNs. Read it first; it is authoritative about *which* skills exist.
-- In Claude Code / Codex a hook may have already printed `[guidefold] Relevant organizational
-  guidance…` with URNs for this prompt. If so, skip to step 3.
+## Start from available context
 
-## Workflow (do these in order, stop as soon as you have enough)
+Read any generated scope card or Guidefold hook result already in context. Cards and hooks are discovery hints;
+check loaded source content and revision before acting. They can be older than the current repository.
+Run the bundled `scripts/guidefold` from the configured consumer repository (use its installed path).
+The CLI finds the nearest ancestor containing `guidefold.yaml`, or uses `GUIDEFOLD_ROOT`.
 
-1. **Locate yourself**
-   ```bash
-   scripts/guidefold where
-   ```
-   Prints the hierarchy node for the current directory (e.g. `atlas.identity.turnstile`),
-   its owner, and the ancestor chain. If you are outside any node you get `_root`.
+## Discover and load
 
-2. **Find candidate skills for the task** (one call; describe the task in plain language)
-   ```bash
-   scripts/guidefold find "add authorization check to Turnstile Spanner path" --scope <node>
-   ```
-   Returns up to 8 ranked cards: URN, display name, one-line description, scope, owner, and
-   whether it is an ancestor-scope skill. Ranking: exact node > ancestors > semantic hits
-   elsewhere. Cards are cheap; do not load everything.
+1. Run `scripts/guidefold where` to get JSON with the current node, owner and ancestor chain.
+   The chain starts with the current node and ends at `_root`; unmatched paths within the repository use `_root`.
+2. Run `scripts/guidefold find "<task>" --scope <node>`. By default it prints up to 8 selected cards:
+   URN, description, score and node. Scope contributes to relevance; the nearest scope does not always rank first.
+   Local results are limited to the requested node's subtree and ancestor chain.
+   For distinct task steps, use focused searches and combine relevant skills and their requirements.
+3. Load the selected instruction with `scripts/guidefold load <urn>` when using the configured registry backend.
+   Read the printed `SKILL.md` path. Load applicable `metadata.requires` dependencies as well.
+   Select by task fit and scope; do not preload the entire organization.
+4. Apply the relevant instructions and identify the URNs used in the result. An ancestor can add shared
+   constraints; a more specific scope alone does not resolve conflicting instructions.
 
-   **Multi-step tasks: one `find` per step, not one for the whole request.** Search ranks by
-   how much of the query a skill matches, so "onboard the new hires in Rippling and then run
-   the lint/type/test suite on their scripts" drowns the second skill. Split the task into its
-   atomic steps first (as you would plan them anyway), run `find` for each, and take the best
-   card per step. Cards from different steps together form the bundle you load in step 3.
+## Service mode
 
-3. **Load only what you need**
-   ```bash
-   scripts/guidefold load <urn>
-   ```
-   Downloads the default revision into `.guidefold/cache/<urn>/` and prints the path of
-   `SKILL.md`. Read that file. If its frontmatter has `metadata.requires`, load those URNs
-   too (they are shared conventions you must follow). Typical depth: 1–3 skills.
+`registry.backend` and `search.backend` are separate settings. The global registry override accepts
+`local|agent-registry`; `find --backend local|service` overrides only that search call.
+For configured service search use `scripts/guidefold find "<task>" --scope <node> --backend service --limit 4`.
+The service accepts budgets 0–4; a larger limit (including the default 8), `--include-deprecated`,
+or an unavailable service causes local search fallback.
 
-4. **Apply and cite**
-   Follow the loaded instructions. In your final summary, list the URNs you applied so the
-   reviewer can check them.
+When effective `search.backend` is `service`, use `scripts/guidefold load <urn>@<revision>`.
+The revision must come from an actual service response or harness metadata. Current `find` stdout does
+not print revisions; do not guess one or assume a one-call find override changes later load behavior.
+Service load verifies the returned checksum, contacts `/v1/use` on each call and has no local fallback.
+If a pinned revision is unavailable, report that limitation instead of substituting another version.
 
-## Rules
+## Related skills on a card
 
-- Prefer the most specific skill; ancestor skills add constraints, they do not override
-  the specific one.
-- A task with several distinct steps needs several `find` calls (one per step); a single
-  query for a compound task reliably misses the secondary skills.
-- If `find` returns nothing relevant, say so and proceed with general best practice — do
-  not invent this organization's conventions.
-- Never edit files under `.guidefold/cache/`. To improve a skill, open a PR in the
-  monorepo at the path shown by `scripts/guidefold where --skill <urn>`.
-- If a loaded skill looks stale (references a file/flag that no longer exists), mention it
-  explicitly in your summary; CI will flag it as drift.
+A service card may carry a `family` block: the more general skill it refines, the more specific
+skills that refine it, and each one's knowledge layer (`atomic`, `task`, `abstract`, or absent).
+When the family names a child whose scope matches the scope you are working in, load that child —
+it is the version written for your part of the tree. Load an abstract parent only when you need the
+rules or constraints that hold everywhere, not the steps. A family lists at most eight children and
+looks one level in each direction, so it never proves that a listed skill is the only one, that a
+missing one does not exist, or that you now have everything the task needs; it is a pointer to
+neighbours, not a dependency list. Use `find` for what else is relevant and the card's own
+`requires` for what a skill needs in order to run.
 
-## Map of the organization (optional, once per session)
+## Sources and cache
 
-```bash
-scripts/guidefold load urn:skill:<publisher>:_index:hierarchy-index
-```
-This is a generated overview of all nodes, owners and skill names. Use it when the task
-spans several platforms or you are unsure where you are.
+`load` prints the path under `${GUIDEFOLD_CACHE:-~/.cache/guidefold}/skills/<encoded-urn>/<revision>/`.
+Read that path instead of constructing it. Do not edit cached copies. Improve a skill in its owning
+repository and open a PR when requested; the cache is not the source of truth.
+If a skill references missing files or flags, report the specific mismatch; do not assume CI has verified it.
+If no relevant skill is found, say so and proceed without inventing organizational conventions.
+Loading or downloading an instruction does not prove it was applied or helped the task.
 
-## Examples
-
-- Task in `platforms/atlas/identity/turnstile/`: `where` → `atlas.identity.turnstile`;
-  `find` → `spanner-auth` (turnstile), `atlas-auth` (atlas), `spanner-production`
-  (root); load all three because `spanner-auth` requires the other two.
-- Task in `products/booking/`: `where` → `booking`; `find "add a new fare rule"` → likely one
-  booking-scope skill and one root skill on ADR/PR conventions.
+For a repository-wide overview, when available, load `urn:skill:<publisher>:_index:hierarchy-index`
+using the same backend and revision rules. This generated index describes declared scopes and owners.

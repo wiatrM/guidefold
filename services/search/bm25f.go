@@ -10,22 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const routerMigration = `
-CREATE TABLE IF NOT EXISTS gf.router_indexes (
- tenant text NOT NULL, repo text NOT NULL, snapshot_id text NOT NULL,
- index_sha text NOT NULL, n_docs integer NOT NULL, n_terms integer NOT NULL,
- PRIMARY KEY(tenant,repo,snapshot_id),
- FOREIGN KEY(tenant,repo,snapshot_id) REFERENCES gf.snapshots(tenant,repo,snapshot_id)
-);
-CREATE TABLE IF NOT EXISTS gf.router_terms (
- tenant text NOT NULL, repo text NOT NULL, snapshot_id text NOT NULL,
- term text NOT NULL, postings bytea NOT NULL,
- PRIMARY KEY(tenant,repo,snapshot_id,term),
- FOREIGN KEY(tenant,repo,snapshot_id) REFERENCES gf.router_indexes(tenant,repo,snapshot_id)
-);
-INSERT INTO gf.schema_version VALUES (5) ON CONFLICT DO NOTHING;
-`
-
 var bm25Fields = []string{"name", "description", "digest", "triggers", "body"}
 
 // Same fixed-point formula as Router._bm25_scores. The CLI provides the only
@@ -137,9 +121,14 @@ func compileRouterIndex(build M, cards M, weights M, snapshot, policy, indexSHA 
 	}
 	return out, nil
 }
-func ensureRouterIndex(ctx context.Context, tx pgx.Tx, s *Store, id, indexSHA string, terms []compiledTerm, nDocs int) error {
+
+// ensureRouterIndex stores one snapshot's compiled postings. Tenant and repo
+// are arguments, not process state: the operator subcommand publishes for the
+// configured tenant and the publication worker publishes for the organisation
+// whose import it is building.
+func ensureRouterIndex(ctx context.Context, tx pgx.Tx, tenant, repo, id, indexSHA string, terms []compiledTerm, nDocs int) error {
 	var old string
-	e := tx.QueryRow(ctx, `SELECT index_sha FROM gf.router_indexes WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3`, s.Tenant, s.Repo, id).Scan(&old)
+	e := tx.QueryRow(ctx, `SELECT index_sha FROM gf.router_indexes WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3`, tenant, repo, id).Scan(&old)
 	if e == nil {
 		if old != indexSHA {
 			return fmt.Errorf("immutable_router_index_conflict")
@@ -149,19 +138,19 @@ func ensureRouterIndex(ctx context.Context, tx pgx.Tx, s *Store, id, indexSHA st
 	if e != pgx.ErrNoRows {
 		return e
 	}
-	if _, e = tx.Exec(ctx, `INSERT INTO gf.router_indexes(tenant,repo,snapshot_id,index_sha,n_docs,n_terms) VALUES($1,$2,$3,$4,$5,$6)`, s.Tenant, s.Repo, id, indexSHA, nDocs, len(terms)); e != nil {
+	if _, e = tx.Exec(ctx, `INSERT INTO gf.router_indexes(tenant,repo,snapshot_id,index_sha,n_docs,n_terms) VALUES($1,$2,$3,$4,$5,$6)`, tenant, repo, id, indexSHA, nDocs, len(terms)); e != nil {
 		return e
 	}
 	rows := make([][]any, 0, len(terms))
 	for _, t := range terms {
-		rows = append(rows, []any{s.Tenant, s.Repo, id, t.term, t.postings})
+		rows = append(rows, []any{tenant, repo, id, t.term, t.postings})
 	}
 	_, e = tx.CopyFrom(ctx, pgx.Identifier{"gf", "router_terms"}, []string{"tenant", "repo", "snapshot_id", "term", "postings"}, pgx.CopyFromRows(rows))
 	return e
 }
 func (s *Store) verifyRouterIndex(ctx context.Context, c *Catalog) error {
 	var n int
-	e := s.Pool.QueryRow(ctx, `SELECT index_sha,n_docs FROM gf.router_indexes WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3`, s.Tenant, s.Repo, c.ID).Scan(&c.RouterIndexSHA, &n)
+	e := s.Pool.QueryRow(ctx, `SELECT index_sha,n_docs FROM gf.router_indexes WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3`, c.Tenant, c.Repo, c.ID).Scan(&c.RouterIndexSHA, &n)
 	if e == pgx.ErrNoRows {
 		return fail(503, "router_index_not_published")
 	}
@@ -200,7 +189,7 @@ func (s *Store) routerCandidates(ctx context.Context, c *Catalog, query string, 
 	if len(frequencies) == 0 || len(allowed) == 0 {
 		return []Candidate{}, nil
 	}
-	rows, e := s.Pool.Query(ctx, `SELECT term,postings FROM gf.router_terms WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3 AND term=ANY($4::text[])`, s.Tenant, s.Repo, c.ID, keys(frequencies))
+	rows, e := s.Pool.Query(ctx, `SELECT term,postings FROM gf.router_terms WHERE tenant=$1 AND repo=$2 AND snapshot_id=$3 AND term=ANY($4::text[])`, c.Tenant, c.Repo, c.ID, keys(frequencies))
 	if e != nil {
 		return nil, e
 	}

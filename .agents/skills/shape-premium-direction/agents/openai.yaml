@@ -1,0 +1,6 @@
+interface:
+  display_name: "Shape Premium Direction"
+  short_description: "Turn research into one premium direction"
+  default_prompt: "Use $shape-premium-direction to turn the ResearchPacket into an executable DESIGN.md and asset plan."
+policy:
+  allow_implicit_invocation: true

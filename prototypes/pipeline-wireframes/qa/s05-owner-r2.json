@@ -1,0 +1,247 @@
+{
+  "methodology": "Niezależna syntetyczna symulacja P1 owner, n=1. Wyłączne wejście: renderowany interfejs. To nie jest badanie z udziałem prawdziwej osoby.",
+  "tasks": [
+    {
+      "id": "A",
+      "goal": "Przeprowadzić dostępny scenariusz wprowadzenia repo Meridian i pokazać pierwszą mapę.",
+      "steps": [
+        {
+          "sequence": 1,
+          "action": "click",
+          "role": "button",
+          "label": "Continue with selected provider (fixture)",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=organization"
+        },
+        {
+          "sequence": 2,
+          "action": "click",
+          "role": "button",
+          "label": "Create meridian (fixture)",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=preview"
+        },
+        {
+          "sequence": 3,
+          "action": "click",
+          "label": "Inspect files, hashes and sizes",
+          "disclosure": true,
+          "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=preview"
+        },
+        {
+          "sequence": 4,
+          "action": "click",
+          "role": "button",
+          "label": "Simulate import",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/import.html?org=meridian&repo=monorepo&step=result"
+        },
+        {
+          "sequence": 5,
+          "action": "click",
+          "role": "link",
+          "label": "Open Map",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/map.html?org=meridian&repo=monorepo&tab=repository"
+        }
+      ],
+      "completed": true,
+      "outcome": "Widoczna pierwsza mapa: Repository tree oraz Selected skill postgres-auth. Wynik importu: 27 instrukcji, 17 scope nodes, commit 88e404561a9f6994cd870743bf858b9b0a616126; brak publikacji.",
+      "confusion": [],
+      "counts": {
+        "clicks": 5,
+        "disclosures": 1,
+        "fields": 0,
+        "selects": 0,
+        "radioSelections": 0
+      }
+    },
+    {
+      "id": "B",
+      "goal": "Znaleźć dokładne źródło i zakres postgres-auth.",
+      "steps": [
+        {
+          "sequence": 6,
+          "action": "click",
+          "role": "link",
+          "label": "Open source and scope",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/skill.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        }
+      ],
+      "completed": true,
+      "outcome": "Source path: platforms/atlas/identity/turnstile/.agents/skills/postgres-auth/SKILL.md. Scope: atlas.identity.turnstile. Scope paths: platforms/atlas/identity/turnstile/**. Owner: turnstile-team. Base commit: 88e404561a9f6994cd870743bf858b9b0a616126. SHA-256: 0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b. Jeden klik z mapy.",
+      "confusion": [],
+      "counts": {
+        "clicks": 1,
+        "disclosures": 0,
+        "fields": 0,
+        "selects": 0,
+        "radioSelections": 0
+      }
+    },
+    {
+      "id": "C",
+      "goal": "Ocenić dostępną propozycję, podjąć decyzję pozwalającą przekazać ją do Git, pobrać artefakt i doprowadzić scenariusz do Published.",
+      "steps": [
+        {
+          "sequence": 7,
+          "action": "click",
+          "role": "link",
+          "label": "Proposals",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 8,
+          "action": "click",
+          "label": "Full candidate SKILL.md",
+          "disclosure": true,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 9,
+          "action": "click",
+          "label": "Full candidate SKILL.md",
+          "disclosure": true,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 10,
+          "action": "click",
+          "role": "radio",
+          "label": "Approve for export — prepare the candidate file",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 11,
+          "action": "fill",
+          "role": "textbox",
+          "label": "Reason for this decision",
+          "value": "Zweryfikowano źródło postgres-auth przy commit 88e404561a9f6994cd870743bf858b9b0a616126 i zgodność SHA-256 kandydata. Zakres atlas.identity.turnstile oraz platforms/atlas/identity/turnstile/**; owner turnstile-team. Kandydat bez zmian tekstu. Zatwierdzam eksport do przeglądu w Git.",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 12,
+          "action": "click",
+          "role": "button",
+          "label": "Record decision (local)",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 13,
+          "action": "click",
+          "role": "button",
+          "label": "Export SKILL.md",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        },
+        {
+          "sequence": 14,
+          "action": "click",
+          "role": "button",
+          "label": "Simulate Git sync",
+          "disclosure": false,
+          "url": "http://127.0.0.1:4320/proposals.html?org=meridian&repo=monorepo&tab=source&skill=urn%3Askill%3Ameridian%3Aatlas.identity.turnstile%3Apostgres-auth&from=map&return_tab=repository"
+        }
+      ],
+      "completed": true,
+      "outcome": "Oceniono kandydata bez zmian, wybrano Approve for export, wpisano uzasadnienie dotyczące źródła i zakresu, zapisano decyzję, uruchomiono pobranie postgres-auth.SKILL.md, przeprowadzono Simulate Git sync. Końcowy widoczny status: Published (fixture), Evidence level: Local simulation only, Context loaded: Unknown · no adapter observations.",
+      "confusion": [
+        "Po otwarciu pełnej treści potrzebny powrót do decyzji; zamknięto disclosure. Brak ślepych uliczek i nieudanych działań UI."
+      ],
+      "counts": {
+        "clicks": 7,
+        "disclosures": 2,
+        "fields": 1,
+        "selects": 0,
+        "radioSelections": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "OWNER-R2-01",
+      "severity": "P3",
+      "task": "C",
+      "title": "Pełna treść kandydata pozostaje długim blokiem surowego Markdownu",
+      "ui_quote": "Full candidate SKILL.md; ## When to use / when NOT to use; ## Steps; ## Verify",
+      "evidence": "Po rozwinięciu Full candidate SKILL.md drzewo dostępności pokazuje całą instrukcję i frontmatter jako jedną grupę, a śródtytuły jako tekst z ##. Formularz Decision and publication następuje dopiero po całym bloku. W symulacji zamknięto disclosure po lekturze przed podjęciem decyzji.",
+      "impact": "Dodatkowy wysiłek skanowania instrukcji i powrotu do decyzji; zadanie pozostaje wykonalne.",
+      "fix": "Zapewnić czytelny podgląd Markdown z semantycznymi nagłówkami i listą kroków oraz link do decyzji przy końcu treści. Pełny surowy plik zachować jako osobny podgląd.",
+      "basis": "Obserwacja widocznego DOM; syntetyczny think-aloud, n=1; bez generalizacji na realnych użytkowników."
+    }
+  ],
+  "thinkaloud": [
+    {
+      "task": "A",
+      "text": "Widzę lokalną symulację z rolą owner. Wybieram domyślne Google, bo zadanie dotyczy przejścia dostępnego scenariusza. Spodziewam się podglądu źródeł przed importem.",
+      "synthetic": true
+    },
+    {
+      "task": "A",
+      "text": "Przed importem widzę commit i liczbę źródeł, ale potrzebuję poznać dokładne pliki. Rozwijam ich listę. Nie uruchamiam proponowanych poleceń.",
+      "synthetic": true
+    },
+    {
+      "task": "B",
+      "text": "postgres-auth jest już wybrany w bocznym panelu. Widzę zależności requires i refines, ale źródło oraz zakres potwierdzę przez wyraźnie nazwany link Open source and scope.",
+      "synthetic": true
+    },
+    {
+      "task": "B",
+      "text": "Mam dokładną ścieżkę źródła, commit i SHA-256; zakres to atlas.identity.turnstile i platforms/atlas/identity/turnstile/**. Opis wyjaśnia zastosowanie i wyłącza Rego oraz incident response. Dane wystarczają do identyfikacji źródła bez otwierania zewnętrznego GitHub.",
+      "synthetic": true
+    },
+    {
+      "task": "C",
+      "text": "Propozycja jasno mówi No text changes i pokazuje zgodny hash. Chcę jednak ocenić to, co zatwierdzę, więc rozwijam pełną treść kandydata. Zakres i owner zgadzają się z wcześniej sprawdzonym źródłem.",
+      "synthetic": true
+    },
+    {
+      "task": "C",
+      "text": "Pełna treść opisuje autoryzację Turnstile, zależności od RBAC/Postgres i właściwy zakres. To kopia istniejącej instrukcji, więc akceptuję eksport. Długi blok treści oddala formularz decyzji; zamykam go po lekturze.",
+      "synthetic": true
+    },
+    {
+      "task": "C",
+      "text": "Eksport pokazuje Awaiting Git i wyjaśnia, że pobranie nie jest publikacją. Instrukcja mówi też, że niezmieniony plik nie tworzy nowego commita. Mogę zakończyć dostępny lokalny scenariusz przyciskiem Simulate Git sync.",
+      "synthetic": true
+    },
+    {
+      "task": "C",
+      "text": "Osiągnięto Published (fixture). Komunikat jawnie mówi, że to końcowy stan lokalny, a nie potwierdzony merge, publikacja serwerowa ani załadowanie instrukcji przez agenta. Kończę po trzech zadaniach.",
+      "synthetic": true
+    }
+  ],
+  "counts": {
+    "clicks": 13,
+    "disclosures": 3,
+    "fields": 1,
+    "selects": 0,
+    "radioSelections": 1,
+    "clicksExcludingDisclosures": 10,
+    "countingNote": "Kliknięcia obejmują disclosure i wybór radio. Wpisanie pola oraz zmiana select są liczone osobno. Disclosure to każde otwarcie lub zamknięcie."
+  },
+  "completed": true,
+  "downloads": [
+    {
+      "filename": "postgres-auth.SKILL.md",
+      "failure": null
+    }
+  ],
+  "findingCounts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 1
+  },
+  "limitations": [
+    "Symulacja syntetyczna n=1, bez udziału prawdziwego użytkownika.",
+    "Ocena oparta na widocznym DOM. Zrzuty zostały zapisane, lecz narzędzie podglądu PNG zwróciło błąd ACL; nie wyciągano wniosków o estetyce.",
+    "Brak nieudanych interakcji UI. Błędy zapisu/podglądu w środowisku narzędzi nie są wynikami produktu.",
+    "Download potwierdzony przez zdarzenie Chromium i brak błędu pobrania; plik nie został odczytany ani wykonany."
+  ]
+}

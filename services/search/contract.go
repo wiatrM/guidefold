@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -290,16 +291,55 @@ func (r schemaRegexp) MatchString(s string) bool {
 	return e == nil && v
 }
 
-type Validator struct{ search, use *jsonschema.Schema }
+// Validator holds the compiled request schemas. 1.2 is a separate document and
+// a separate pair of schemas on purpose: a superset compiled over the 1.1 file
+// would let a 1.1 request carry a 1.2 field, and an old client must not gain a
+// new guarantee by accident (api-contract-versioning).
+type Validator struct {
+	search, use     *jsonschema.Schema
+	search12, use12 *jsonschema.Schema
+}
 
 func newValidator(path string) (*Validator, error) {
-	data, e := os.ReadFile(path)
+	a, b, e := compileRequestSchemas(path, "urn:guidefold:harness-service:1.1")
 	if e != nil {
 		return nil, e
 	}
+	v := &Validator{search: a, use: b}
+	// The 1.2 document is optional. A deployment without it answers
+	// `unsupported_schema_version` to a 1.2 request rather than validating it
+	// against 1.1 and pretending the extra guarantees hold.
+	if twelve := contract12Path(path); twelve != "" {
+		c, d, e := compileRequestSchemas(twelve, "urn:guidefold:harness-service:1.2")
+		if e != nil {
+			return nil, e
+		}
+		v.search12, v.use12 = c, d
+	}
+	return v, nil
+}
+
+// contract12Path finds the 1.2 document next to the configured 1.1 one, or where
+// GUIDEFOLD_CONTRACT_12 points. An absent file is a state, not an error.
+func contract12Path(elevenPath string) string {
+	if v := env("GUIDEFOLD_CONTRACT_12", ""); v != "" {
+		return v
+	}
+	candidate := filepath.Join(filepath.Dir(elevenPath), "harness-service-v1.2.schema.json")
+	if _, e := os.Stat(candidate); e == nil {
+		return candidate
+	}
+	return ""
+}
+
+func compileRequestSchemas(path, uri string) (*jsonschema.Schema, *jsonschema.Schema, error) {
+	data, e := os.ReadFile(path)
+	if e != nil {
+		return nil, nil, e
+	}
 	schema, e := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	c := jsonschema.NewCompiler()
 	c.UseRegexpEngine(func(s string) (jsonschema.Regexp, error) {
@@ -310,16 +350,15 @@ func newValidator(path string) (*Validator, error) {
 		r.MatchTimeout = 50 * time.Millisecond
 		return schemaRegexp{r}, nil
 	})
-	const uri = "urn:guidefold:harness-service:1.1"
 	if e = c.AddResource(uri, schema); e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	a, e := c.Compile(uri + "#/$defs/search_request")
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	b, e := c.Compile(uri + "#/$defs/use_request")
-	return &Validator{a, b}, e
+	return a, b, e
 }
 func (v *Validator) validate(p M, endpoint string) error {
 	if p == nil {
@@ -335,20 +374,37 @@ func (v *Validator) validate(p M, endpoint string) error {
 			contextual = true
 		}
 	}
-	if contextual && str(p["schema_version"]) != "1.1" {
-		return fail(400, "unsupported_schema_version")
-	}
-	cp := M{}
-	for k, x := range p {
-		cp[k] = x
-	}
-	cp["schema_version"] = "1.1"
-	sch := v.search
-	if endpoint == "use" {
-		sch = v.use
-	}
-	if e := sch.Validate(cp); e != nil {
-		return fail(400, "invalid_request_schema")
+	declared := str(p["schema_version"])
+	if declared == schemaVersion12 {
+		// A 1.2 request is validated against the 1.2 document as it was sent —
+		// no rewriting of the version, so `search_snapshot` is admitted here and
+		// nowhere else.
+		sch := v.search12
+		if endpoint == "use" {
+			sch = v.use12
+		}
+		if sch == nil {
+			return fail(400, "unsupported_schema_version")
+		}
+		if e := sch.Validate(p); e != nil {
+			return fail(400, "invalid_request_schema")
+		}
+	} else {
+		if contextual && declared != "1.1" {
+			return fail(400, "unsupported_schema_version")
+		}
+		cp := M{}
+		for k, x := range p {
+			cp[k] = x
+		}
+		cp["schema_version"] = "1.1"
+		sch := v.search
+		if endpoint == "use" {
+			sch = v.use
+		}
+		if e := sch.Validate(cp); e != nil {
+			return fail(400, "invalid_request_schema")
+		}
 	}
 	for _, m := range []M{p, obj(p["budget"])} {
 		for _, k := range []string{"deadline_ms", "max_cards", "max_bytes", "remaining_skill_tokens"} {

@@ -1,0 +1,8 @@
+.routeState{padding:var(--space-4);border:var(--border-width) solid var(--line-strong);background:var(--graphite-900);}
+.routeState p{max-width:var(--reading-width);color:var(--stone-300);}
+.stateHeader{display:flex;align-items:center;gap:var(--space-2);}
+.stateHeader h2{margin:var(--zero);}
+.errorIcon{color:var(--error-ink);}
+.stateAction{margin-top:var(--space-4);}
+.skeleton{display:grid;gap:var(--space-2);margin-top:var(--space-4);}
+.skeleton span{display:block;min-height:var(--row-height);background:var(--graphite-800);border:var(--border-width) solid var(--line);}

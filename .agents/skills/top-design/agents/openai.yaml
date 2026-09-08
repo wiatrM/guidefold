@@ -1,0 +1,4 @@
+interface:
+  display_name: "Top Design"
+  short_description: "Create cinematic, award-level web experiences"
+  default_prompt: "Use $top-design to turn this brief into a cinematic web direction with purposeful motion, dramatic composition, and measurable quality gates."

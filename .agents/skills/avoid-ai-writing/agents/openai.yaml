@@ -1,0 +1,6 @@
+interface:
+  display_name: "Avoid AI Writing"
+  short_description: "Audit generated website copy for AI tells"
+  default_prompt: "Use $avoid-ai-writing for a second-pass audit of generated website copy before QA."
+policy:
+  allow_implicit_invocation: true

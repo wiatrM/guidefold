@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-06",
+  "fixture": "Meridian",
+  "checks": [
+    {
+      "check": "stage-specific action",
+      "pass": true
+    },
+    {
+      "check": "evidence above fold",
+      "pass": true,
+      "bounds": {
+        "x": 232,
+        "y": 395,
+        "width": 1016,
+        "height": 38
+      }
+    },
+    {
+      "check": "source publication qualified",
+      "pass": true
+    },
+    {
+      "check": "empty queue neutral heading",
+      "pass": true
+    },
+    {
+      "check": "skill/scope/revision context preserved",
+      "pass": true
+    },
+    {
+      "check": "observation form matches revision",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

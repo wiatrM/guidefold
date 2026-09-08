@@ -1,0 +1,2933 @@
+openapi: 3.1.0
+info:
+  title: Guidefold management API
+  version: mgmt-1
+  summary: Authentication, organisations, membership, tokens and jobs.
+  description: |
+    The versioned contract for everything under `/api/v1`. Paths marked
+    `x-status: planned` are agreed but not implemented yet; a request to one of
+    them answers `404 not_found` with the standard error envelope.
+
+    Every response carries an `X-Request-Id` header and `Cache-Control:
+    no-store`. Every error body is an `Error`. Mutations marked
+    `x-idempotent: true` require an `Idempotency-Key` header or an
+    `idempotency_key` body field; repeating the same key with the same body
+    replays the stored response, and repeating it with a different body is
+    `409 idempotency_payload_mismatch`. Session-authenticated mutations also
+    require `X-CSRF-Token` equal to the `csrf_token` from `GET /api/v1/me`.
+
+    Access to an organisation the caller is not a member of returns `403
+    forbidden` with a body identical to the one for an organisation that does
+    not exist.
+servers:
+  - url: /
+tags:
+  - name: auth
+  - name: organizations
+  - name: repositories
+  - name: knowledge
+  - name: proposals
+  - name: publication
+  - name: usage
+
+paths:
+  /api/v1/openapi.yaml:
+    get:
+      tags: [auth]
+      summary: This document.
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI document.
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  /api/v1/auth/providers:
+    get:
+      tags: [auth]
+      summary: Sign-in providers and the configured mode.
+      security: []
+      responses:
+        "200":
+          description: Available providers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Providers" }
+
+  /api/v1/auth/login/{provider}:
+    get:
+      tags: [auth]
+      summary: Start a sign-in.
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { $ref: "#/components/schemas/ProviderId" } }
+        - name: return_to
+          in: query
+          required: false
+          description: A same-origin path to return to. Anything else becomes `/`.
+          schema: { type: string }
+      responses:
+        "302": { description: Redirect to the provider (or to the local form in dev mode). }
+        "404":
+          description: Unknown provider.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/dev:
+    get:
+      tags: [auth]
+      summary: Development sign-in form. Only when GUIDEFOLD_AUTH=dev.
+      security: []
+      responses:
+        "200":
+          description: An HTML form.
+          content:
+            text/html:
+              schema: { type: string }
+        "404":
+          description: Not a development deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      tags: [auth]
+      summary: Complete a development sign-in.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/DevSignIn" }
+      responses:
+        "302": { description: Session cookie set; redirect to `return_to`. }
+        "400":
+          description: Invalid identity.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/callback:
+    get:
+      tags: [auth]
+      summary: WorkOS authorization-code callback.
+      security: []
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "302": { description: Session cookie set; redirect to `return_to`. }
+        "400":
+          description: Invalid or replayed state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current session.
+      responses:
+        "204": { description: Signed out. The session is revoked server-side. }
+        "403":
+          description: Missing or wrong CSRF token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/me:
+    get:
+      tags: [auth]
+      summary: The signed-in person, their identities and memberships.
+      description: Memberships are re-read from the database on every call.
+      responses:
+        "200":
+          description: The current principal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/me/identities/link/start:
+    post:
+      tags: [auth]
+      summary: Begin linking another provider identity to this account.
+      description: |
+        A fresh sign-in never links accounts by matching e-mail address. Linking
+        is this explicit flow, and the resulting state is bound to the current
+        session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkStart" }
+      responses:
+        "200":
+          description: Where to send the person.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkStarted" }
+
+  /api/v1/auth/device:
+    post:
+      tags: [auth]
+      summary: Start the CLI device flow.
+      security: []
+      responses:
+        "200":
+          description: A device code and the code to type in the browser.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceAuthorization" }
+
+  /api/v1/auth/device/token:
+    post:
+      tags: [auth]
+      summary: Poll for the personal token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceTokenRequest" }
+      responses:
+        "200":
+          description: Approved. The token is shown once.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceToken" }
+        "400":
+          description: |
+            `authorization_pending`, `slow_down`, `expired_token` or
+            `access_denied` in the `error` field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/device/approve:
+    post:
+      tags: [auth]
+      summary: Approve a pending device code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceDecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceDecision" }
+        "404":
+          description: Unknown, used or expired code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/device/deny:
+    post:
+      tags: [auth]
+      summary: Deny a pending device code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceDecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceDecision" }
+
+  /api/v1/orgs:
+    get:
+      tags: [organizations]
+      summary: Organisations the caller belongs to.
+      responses:
+        "200":
+          description: Memberships with roles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgList" }
+    post:
+      tags: [organizations]
+      summary: Create an organisation. The creator becomes its owner.
+      x-idempotent: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrg" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgCreated" }
+        "409":
+          description: The slug is taken, or the idempotency key was reused with another body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}:
+    get:
+      tags: [organizations]
+      summary: One organisation and its counts.
+      parameters:
+        - $ref: "#/components/parameters/Org"
+      responses:
+        "200":
+          description: The organisation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgDetail" }
+        "403":
+          description: Not a member, or no such organisation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/members:
+    get:
+      tags: [organizations]
+      summary: Members of an organisation.
+      parameters:
+        - $ref: "#/components/parameters/Org"
+      responses:
+        "200":
+          description: Members.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberList" }
+
+  /api/v1/orgs/{org}/members/{user_id}:
+    patch:
+      tags: [organizations]
+      summary: Change a member's role. Owners only.
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/Org"
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetRole" }
+      responses:
+        "200":
+          description: Role changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleChanged" }
+        "409":
+          description: "`last_owner_protected`: the organisation would be left without an owner."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [organizations]
+      summary: Remove a member. Owners only.
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/Org"
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Removed. }
+        "409":
+          description: "`last_owner_protected`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/invitations:
+    post:
+      tags: [organizations]
+      summary: Invite someone. Owners only.
+      description: The accept URL is returned to the inviter; the service sends no e-mail.
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/Org"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvitation" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+
+  /api/v1/invitations/{token}/accept:
+    post:
+      tags: [organizations]
+      summary: Join the organisation that issued this invitation.
+      x-idempotent: true
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Joined.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationAccepted" }
+        "409":
+          description: Already used or expired.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/installations:
+    get:
+      tags: [organizations]
+      summary: Installation and CI tokens, without secrets. Owners only.
+      parameters:
+        - $ref: "#/components/parameters/Org"
+      responses:
+        "200":
+          description: Installations.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstallationList" }
+    post:
+      tags: [organizations]
+      summary: Issue an installation or CI token. Owners only.
+      description: The secret appears in this response and nowhere else.
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/Org"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInstallation" }
+      responses:
+        "201":
+          description: Created. `token` is shown once.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstallationCreated" }
+
+  /api/v1/orgs/{org}/installations/{installation_id}:
+    delete:
+      tags: [organizations]
+      summary: Revoke a token. Owners only. Effective on the next request.
+      x-idempotent: true
+      parameters:
+        - $ref: "#/components/parameters/Org"
+        - { name: installation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Revoked. }
+
+  /api/v1/orgs/{org}/audit:
+    get:
+      tags: [organizations]
+      summary: Audit entries, newest first. Owners only.
+      parameters:
+        - $ref: "#/components/parameters/Org"
+        - { name: cursor, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: One page of audit entries.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditPage" }
+
+  # ---------------------------------------------------------------------------
+  # Agreed, not implemented yet. Owned by the import, knowledge, review and
+  # usage modules; the shapes come from the engineering brief.
+  # ---------------------------------------------------------------------------
+  /api/v1/orgs/{org}/repos:
+    get:
+      tags: [repositories]
+      summary: List the repositories of one organisation.
+      parameters: [{ $ref: "#/components/parameters/Org" }]
+      responses:
+        "200":
+          description: Repositories, by identifier.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepoList" }
+        "403":
+          description: "`forbidden`. Identical body for a non-member and for an unknown organisation."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    post:
+      tags: [repositories]
+      summary: Register a repository. Owners only.
+      description: >-
+        Registering a repository that already exists is success, not a conflict:
+        the CLI calls this before every import. `created` distinguishes the two.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRepo" }
+      responses:
+        "200":
+          description: The repository was already registered.
+          content: { application/json: { schema: { $ref: "#/components/schemas/RepoCreated" } } }
+        "201":
+          description: Registered.
+          content: { application/json: { schema: { $ref: "#/components/schemas/RepoCreated" } } }
+        "400":
+          description: "`invalid_repo_id` or `invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports:
+    get:
+      tags: [repositories]
+      summary: List imports, newest first.
+      description: >-
+        The list carries no per-file detail: `files` is empty, `files_truncated`
+        is true and `counts` is null, because "not measured here" is not zero.
+        One import's own endpoint answers the detailed question.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One keyset page of imports.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportList" } } }
+        "400":
+          description: "`invalid_cursor`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    post:
+      tags: [repositories]
+      summary: Create an import from a scan manifest. Owners only.
+      description: >-
+        The same manifest digest reuses the import that already exists for it,
+        so a repeated sync uploads nothing and `reused_import_id` is set.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }, { $ref: "#/components/parameters/Repo" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateImport" }
+      responses:
+        "201":
+          description: Created or reused, with the blob digests still missing.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportCreated" } } }
+        "400":
+          description: "`unsupported_manifest_format`, `invalid_request` or `invalid_json`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "`limit_exceeded`. Never a silent truncation of the manifest."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}:
+    get:
+      tags: [repositories]
+      summary: Import state, files, jobs and publication.
+      description: "`state: ready` is not `published`: the publication has its own field."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+      responses:
+        "200":
+          description: The import.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportStatus" } } }
+        "404":
+          description: "`import_not_found`, inside the caller's own organisation only."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/blobs/{sha256}:
+    put:
+      tags: [repositories]
+      summary: Upload one blob listed in the manifest. Owners only.
+      description: >-
+        Only a digest the manifest lists is accepted, so content the scan
+        excluded on purpose has no route into storage. The body is hashed as it
+        arrives and compared with the digest in the path. Re-sending the same
+        bytes is success (200), which is what makes an interrupted upload
+        resumable.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+        - name: sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: The organisation already held these bytes.
+          content: { application/json: { schema: { $ref: "#/components/schemas/BlobStored" } } }
+        "201":
+          description: Stored.
+          content: { application/json: { schema: { $ref: "#/components/schemas/BlobStored" } } }
+        "400":
+          description: "`blob_not_in_manifest` or `blob_digest_mismatch`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`import_already_finalized`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "413":
+          description: "`blob_too_large` above 8 MiB."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/finalize:
+    post:
+      tags: [repositories]
+      summary: Enqueue parse and publication for a complete import. Owners only.
+      description: >-
+        The state change and both job rows are one transaction, so a job never
+        exists without the import that justifies it. Finalizing an import that
+        is already queued or parsed is a no-op that answers with its status.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IdempotentRequest" }
+      responses:
+        "200":
+          description: Queued.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportStatus" } } }
+        "409":
+          description: "`blobs_missing`, with `details.missing`; or `import_already_finalized`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/cancel:
+    post:
+      tags: [repositories]
+      summary: Cancel an import and its queued jobs. Owners only.
+      description: >-
+        A leased job's generation moves, so a worker still holding the old lease
+        is fenced at its next write instead of finishing into a cancelled import.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IdempotentRequest" }
+      responses:
+        "200":
+          description: Cancelled.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportStatus" } } }
+        "404":
+          description: "`import_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/plan:
+    get:
+      tags: [proposals]
+      summary: What a generation run would do, and what it could cost. Owners only.
+      description: >-
+        Nothing here enqueues or spends. `groups` are the units of work, ranked
+        by how much material each scope holds and capped at `limits.max_groups`;
+        `groups_skipped` says how many the ceiling left out, per kind, rather
+        than hiding them. `estimated_usd_max` is the ceiling the run will not
+        cross, not a forecast.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+        - name: kinds
+          in: query
+          description: Comma-separated subset of extraction, enrichment, consolidation.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Groups, limits and the estimated maximum spend.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportPlan" } } }
+        "404":
+          description: "`import_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/proposals:generate:
+    post:
+      tags: [proposals]
+      summary: Enqueue proposal generation for the planned groups. Owners only.
+      description: >-
+        One `proposal.generate` job per requested kind, all written in one
+        transaction. `limits` may only lower the deployment's ceilings.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ImportId" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GenerateRequest" }
+      responses:
+        "200":
+          description: Job identifiers and the plan they were built from.
+          content: { application/json: { schema: { $ref: "#/components/schemas/GenerateAccepted" } } }
+        "422":
+          description: "`limit_exceeded`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`import_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills:
+    get:
+      tags: [knowledge]
+      summary: One keyset page of skill summaries.
+      description: >-
+        `filters` echoes every filter that was applied together with whether that
+        value exists in this repository at all. An unknown value returns an empty
+        page and `available: false` — never a silent fall back to "All".
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: layer, in: query, schema: { type: string }, description: The source layer, not the knowledge layer. }
+        - { name: status, in: query, schema: { type: string }, description: The source status. }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One page of skill summaries.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SkillPage" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/facets:
+    get:
+      tags: [knowledge]
+      summary: Distinct values of one filter field, with counts.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: field, in: query, required: true, schema: { type: string, enum: [scope, owner, layer, status] } }
+        - { name: q, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: Facet values.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Facets" } } }
+        "400":
+          description: "`invalid_request` for an unknown field."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/facets/lookup:
+    get:
+      tags: [knowledge]
+      summary: One facet value, so a filter taken from a URL stays visible.
+      description: >-
+        An unrecognised value answers with `available: false` and a zero count
+        rather than disappearing from the interface.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: field, in: query, required: true, schema: { type: string, enum: [scope, owner, layer, status] } }
+        - { name: value, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The value and its count.
+          content: { application/json: { schema: { $ref: "#/components/schemas/FacetLookup" } } }
+        "400":
+          description: "`invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/{skill_id}:
+    get:
+      tags: [knowledge]
+      summary: One skill and every revision the catalog holds for it.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/SkillId" }
+      responses:
+        "200":
+          description: The skill.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SkillDetail" } } }
+        "404":
+          description: "`skill_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/{skill_id}/revisions/{revision_id}:
+    get:
+      tags: [knowledge]
+      summary: One revision, body, references, relations and provenance.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/SkillId" }
+        - { $ref: "#/components/parameters/RevisionId" }
+      responses:
+        "200":
+          description: The revision. `body` is null when the raw upload has expired.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Revision" } } }
+        "404":
+          description: "`revision_not_found`. Never the latest revision instead."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/{skill_id}/revisions/{revision_id}/raw:
+    get:
+      tags: [knowledge]
+      summary: The exact imported bytes of one revision.
+      description: >-
+        `X-Content-SHA256` carries the digest so a caller can verify the bytes
+        without trusting the transport. The media type is octet-stream because
+        these are the bytes as imported and nothing may re-encode them.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/SkillId" }
+        - { $ref: "#/components/parameters/RevisionId" }
+      responses:
+        "200":
+          description: The bytes.
+          headers:
+            X-Content-SHA256:
+              description: sha256 of the body, lower-case hex.
+              schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          description: "`revision_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`revision_unavailable`: the revision exists but its bytes have expired."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/skills/{skill_id}/revisions/{revision_id}/feedback:
+    post:
+      tags: [knowledge]
+      summary: Record one judgment about one revision.
+      description: >-
+        The judgment becomes a `skill_feedback` event in the ledger rather than a
+        row in a feedback table, so a rating from the interface and a rating from
+        an adapter are one observation counted once. Nothing about the skill
+        changes here.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/SkillId" }
+        - { $ref: "#/components/parameters/RevisionId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateFeedback" }
+      responses:
+        "200":
+          description: Recorded.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Judgment" } } }
+        "400":
+          description: "`invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`revision_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/map/repository:
+    get:
+      tags: [knowledge]
+      summary: The source tree, one path at a time.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: path, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: Children of one path.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapRepository" } } }
+        "400":
+          description: "`invalid_cursor`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/map/scopes:
+    get:
+      tags: [knowledge]
+      summary: The scope map from guidefold.yaml, with unmapped skills named.
+      description: >-
+        A skill whose scope is not a declared node is listed under `unmapped`
+        rather than folded into the root: "we do not know who owns this" is the
+        finding, not a detail to hide.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: scope, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Scopes, their skills and the unmapped remainder.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapScopes" } } }
+        "404":
+          description: "`not_found` for an unknown scope."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/map/layers:
+    get:
+      tags: [knowledge]
+      summary: Skill counts by knowledge layer.
+      description: >-
+        The knowledge layer is a classification and never follows from directory
+        depth; the source layer is a separate axis with its own filter.
+      parameters: [{ $ref: "#/components/parameters/Org" }, { $ref: "#/components/parameters/Repo" }]
+      responses:
+        "200":
+          description: Layers and counts.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapLayers" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/map/relations:
+    get:
+      tags: [knowledge]
+      summary: The declared relation neighbourhood.
+      description: "`truncated` says outright when the answer was cut, so a page is never mistaken for the whole graph."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string, enum: [derived_from, requires, refines, similar, conflicts_with] } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: Edges.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Relations" } } }
+        "400":
+          description: "`invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/modules/{scope}:
+    get:
+      tags: [knowledge]
+      summary: One scope as a module — owner, reading order, borrowed skills and documents.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: scope, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The module.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ModulePage" } } }
+        "404":
+          description: "`not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/proposals:
+    get:
+      tags: [proposals]
+      summary: One keyset page of proposals, newest first. Members read.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: state, in: query, schema: { $ref: "#/components/schemas/ProposalState" } }
+        - { name: kind, in: query, schema: { $ref: "#/components/schemas/ProposalKind" } }
+        - { name: scope, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One page of proposals.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProposalList" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_filter_value`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/proposals/{proposal_id}:
+    get:
+      tags: [proposals]
+      summary: One proposal with its candidate, the body it would replace and its provenance.
+      description: >-
+        `source_body` is what makes the review possible: an owner comparing a
+        candidate against nothing is approving prose, not a change. Every entry
+        of `provenance` either names the source bytes it came from or says
+        `needs_confirmation`.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      responses:
+        "200":
+          description: The proposal.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProposalDetail" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/proposals/{proposal_id}/decision:
+    post:
+      tags: [proposals]
+      summary: Approve, edit or reject a proposal. Owners only.
+      description: >-
+        `reason` is required for every decision. `edit` requires
+        `candidate_body` and may change prose only: frontmatter, scope, owner
+        and relations are identity. An `expected_revision` that no longer
+        matches is `409 stale_revision` with `details.current_revision`.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded.
+          content: { application/json: { schema: { $ref: "#/components/schemas/DecisionResult" } } }
+        "409":
+          description: "`stale_revision` or `proposal_state_invalid`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: >-
+            `invalid_candidate_change`, `graph_cycle`, `missing_dependency`,
+            `missing_required_resource`, `scope_widening_not_approved` or
+            `consolidation_sources_insufficient`.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/proposals/{proposal_id}/export:
+    post:
+      tags: [proposals]
+      summary: Turn an approved candidate into a patch. Owners only.
+      description: >-
+        Export is not publication. The proposal becomes `awaiting_git`; it
+        becomes `published` only when a later import carries the same bytes.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IdempotentRequest" }
+      responses:
+        "200":
+          description: The export and its patch.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Export" } } }
+        "409":
+          description: "`proposal_state_invalid`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/proposals/{proposal_id}/publication:
+    get:
+      tags: [proposals]
+      summary: Where one proposal stands between approval and serving.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      responses:
+        "200":
+          description: The publication state of the proposal.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Publication" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/exports/{export_id}:
+    get:
+      tags: [proposals]
+      summary: One export, its files and its patch.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ExportId" }
+      responses:
+        "200":
+          description: The export.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Export" } } }
+        "404":
+          description: "`export_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/exports/{export_id}/patch:
+    get:
+      tags: [proposals]
+      summary: The patch as a diff, ready for `git apply`.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/ExportId" }
+      responses:
+        "200":
+          description: A unified diff. `X-Content-SHA256` carries its digest.
+          content:
+            text/x-diff:
+              schema: { type: string }
+        "404":
+          description: "`export_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/publish:
+    post:
+      tags: [publication]
+      summary: Queue a build of one import. Owners only.
+      description: >-
+        It queues; it does not publish. The head moves inside the worker, after
+        the graph and the package resources have been validated.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }, { $ref: "#/components/parameters/Repo" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublishRequest" }
+      responses:
+        "200":
+          description: The publication job.
+          content: { application/json: { schema: { $ref: "#/components/schemas/PublishAccepted" } } }
+        "404":
+          description: "`import_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: >-
+            `import_not_ready`: the import is `created`, `uploading`, `failed` or
+            `cancelled`, so no snapshot can come out of it. `queued` and `parsing`
+            are accepted; the job waits for them.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/snapshots:
+    get:
+      tags: [publication]
+      summary: Published snapshots and which one is serving. Members read.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One page of publications.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SnapshotList" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/snapshots/{snapshot_id}/activate:
+    post:
+      tags: [publication]
+      summary: Roll the serving head forward or back. Owners only.
+      description: >-
+        `reason` is required and is recorded in the audit log: a rollback
+        changes what every agent in the organisation reads. The graph is
+        re-validated before the head moves, including on reactivation.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: snapshot_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivateRequest" }
+      responses:
+        "200":
+          description: The activated snapshot.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ActivatedSnapshot" } } }
+        "404":
+          description: "`not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "`graph_cycle` or `missing_dependency`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/publications/{job_id}:
+    get:
+      tags: [publication]
+      summary: One publication job and the publication it produced.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The job and its publication.
+          content: { application/json: { schema: { $ref: "#/components/schemas/PublicationJob" } } }
+        "404":
+          description: "`not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/usage:
+    get:
+      tags: [usage]
+      summary: Usage aggregates, owner queue and adapter health.
+      description: >-
+        Every proportion carries its own numerator and denominator, and every
+        absent observation is null rather than zero: a revision nobody judged
+        has `feedback: null`, not five zeros, and a ratio with no denominator is
+        `helped_ratio: null`, not 0 %. A 200 on `/v1/use` moves no counter here.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/UsageWindowParam" }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: revision, in: query, schema: { type: string } }
+        - { name: harness, in: query, description: The event `producer`., schema: { type: string } }
+      responses:
+        "200":
+          description: Aggregates with numerators and denominators.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usage" }
+        "400":
+          description: "`invalid_request`. An unknown window or an over-long filter."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: "`forbidden`. Identical body for a non-member and for an unknown organisation."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/usage/export:
+    get:
+      tags: [usage]
+      summary: The same rows as CSV or JSON.
+      description: >-
+        Reproduces the counts, never the work: no prompt, no query, no file path
+        and no skill body appears in either format. The CSV column order is
+        pinned by API-CONTRACT §5.5; appending a column is additive, reordering
+        or removing one is a breaking change.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - { $ref: "#/components/parameters/UsageWindowParam" }
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv, json], default: csv }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: revision, in: query, schema: { type: string } }
+        - { name: harness, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsageExport" }
+            text/csv:
+              schema:
+                type: string
+                description: >-
+                  Header row then one line per skill revision, in the pinned
+                  column order. An empty cell is an absent observation.
+        "400":
+          description: "`invalid_request`. An unknown format or window."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: "`forbidden`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/usage/queue/{item_id}/decision:
+    post:
+      tags: [usage]
+      summary: Close one review item. Owners only.
+      description: >-
+        Records that a person looked and what they concluded. It changes nothing
+        about the skill: "the source changed" is an observation, "the skill is
+        wrong" is a judgment, and only the owner makes the second one (U9).
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/Repo" }
+        - name: item_id
+          in: path
+          required: true
+          description: >-
+            The uuid of an item the import worker raised, or the derived
+            identifier `<reason>:<skill_id>:<revision>` of an item this report
+            computed.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, reason]
+              properties:
+                idempotency_key: { type: string }
+                action: { $ref: "#/components/schemas/QueueAction" }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: The decided item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueueDecisionResult" }
+        "400":
+          description: "`invalid_request`, `idempotency_key_required`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: "`forbidden`. Deciding requires the owner role."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`not_found`. No open review item with that id in this repository."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`idempotency_payload_mismatch`, `idempotency_in_progress`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: gf_session
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: A `gf_` personal, installation or CI token.
+
+  parameters:
+    Org:
+      name: org
+      in: path
+      required: true
+      description: The organisation id (uuid) or slug.
+      schema: { type: string }
+    Repo:
+      name: repo
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Za-z0-9_.-]{1,64}$" }
+    ImportId:
+      name: import_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProposalId:
+      name: proposal_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ExportId:
+      name: export_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SkillId:
+      name: skill_id
+      in: path
+      required: true
+      description: A URN, URL-encoded when it is used as a path segment.
+      schema: { type: string }
+    RevisionId:
+      name: revision_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+    UsageWindowParam:
+      name: window
+      in: query
+      description: >-
+        The reporting period, relative to the watermark (the newest received_at
+        in the ledger) rather than to the reader's clock.
+      schema: { type: string, enum: ["7d", "30d", "90d"], default: "30d" }
+    Cursor:
+      name: cursor
+      in: query
+      description: The next_cursor of a previous page. Opaque and keyset-based, never an offset.
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000 }
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message, request_id]
+      properties:
+        error:
+          type: string
+          description: A stable snake_case code.
+        message:
+          type: string
+          description: One sentence for a person. Never contains a secret.
+        request_id: { type: string }
+        details:
+          type: object
+          description: Machine-readable context, such as a conflicting revision.
+
+    SchemaVersion:
+      const: mgmt-1
+
+    # -------------------------------------------------------------------------
+    # Usage and quality (API-CONTRACT §5.5). Every counter that can be absent is
+    # nullable on purpose: an unobserved thing is unknown, and unknown is not
+    # zero. See docs/SEARCH-USE-TELEMETRY.md §6.
+    # -------------------------------------------------------------------------
+
+    UsageWindow:
+      type: object
+      required: [from, to, watermark]
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        watermark:
+          type: string
+          format: date-time
+          description: The newest received_at in the ledger; the window is anchored on it.
+
+    UsageCoverage:
+      type: object
+      description: What this report cannot see, reported beside what it can.
+      required: [events_received, dropped_reported, task_ids_present]
+      properties:
+        events_received:
+          type: integer
+          description: Ledger rows of every type received inside the window.
+        dropped_reported:
+          type: integer
+          description: What the adapters said they dropped, from `telemetry_health`.
+        oldest_lag_s:
+          type: [integer, "null"]
+          description: Worst ingest lag the projection observed; null is unknown, not zero.
+        task_ids_present:
+          type: boolean
+          description: >-
+            Whether the window carries task identifiers at all. Without them the
+            episode-level measures are unavailable rather than zero.
+
+    FeedbackTotals:
+      type: object
+      required: [helped, hindered, mixed, not_applicable, unknown, n]
+      properties:
+        helped: { type: integer }
+        hindered: { type: integer }
+        mixed: { type: integer }
+        not_applicable: { type: integer }
+        unknown: { type: integer }
+        n:
+          type: integer
+          description: Judgments behind these counts, after corrections replaced what they corrected.
+
+    HelpedRatio:
+      type: object
+      description: >-
+        helped / (helped + hindered). There is no percentage field: below the
+        floor a reader gets counts, and a percentage alone cannot tell 1/1 from
+        200/200.
+      required: [numerator, denominator, small_sample]
+      properties:
+        numerator: { type: integer }
+        denominator: { type: integer }
+        small_sample:
+          type: boolean
+          description: True below 20 judgments. Twenty is an eligibility floor, not proof.
+
+    UsageTotals:
+      type: object
+      required:
+        [exposures, loads_verified, context_loaded, context_unknown,
+         use_reported, use_observed, use_episodes, exposures_expanded,
+         loads_unlinked]
+      properties:
+        exposures: { type: integer }
+        loads_verified: { type: integer }
+        context_loaded: { type: integer }
+        context_unknown:
+          type: integer
+          description: >-
+            Verified loads whose adapter could not confirm the bytes reached the
+            model's context. Not a failed load.
+        use_reported: { type: integer }
+        use_observed: { type: integer }
+        use_episodes:
+          type: integer
+          description: >-
+            Distinct (task, skill, revision) triples across reported and
+            observed application. Never the sum of the two.
+        exposures_expanded:
+          type: integer
+          description: >-
+            Exposures whose search_id also appears on a verified load of the
+            same skill: the card was followed by the body (contract 1.1.4).
+        loads_unlinked:
+          type: integer
+          description: >-
+            Verified loads that carried no search_id. Unknown provenance, not
+            "loaded without a card"; while this is non-zero, exposures minus
+            exposures_expanded is an upper bound on cards that sufficed.
+        feedback:
+          oneOf:
+            - { $ref: "#/components/schemas/FeedbackTotals" }
+            - { type: "null" }
+
+    UsageSkill:
+      type: object
+      required:
+        [skill_id, revision, scope, owner, harness, exposures, loads_verified,
+         context_loaded, context_unknown, use_reported, use_observed,
+         use_episodes, exposures_expanded, loads_unlinked, feedback,
+         helped_ratio, zero_loads]
+      properties:
+        skill_id: { type: string }
+        revision:
+          type: [string, "null"]
+          description: >-
+            The catalog revision this row is about. Events arriving under the
+            card revision (delivery path) and under the catalog revision (UI
+            feedback) are resolved to this one key, so one skill judged in the
+            UI and delivered to a harness is one row, not two.
+        card_revision:
+          type: [string, "null"]
+          description: The same revision's card identifier; null when the catalog does not know it.
+        content_sha256:
+          type: [string, "null"]
+          description: The same revision's content digest; null when the catalog does not know it.
+        scope:
+          type: [string, "null"]
+          description: From the skill's current revision in the catalog; null when the catalog does not know it.
+        owner: { type: [string, "null"] }
+        harness:
+          type: [string, "null"]
+          description: >-
+            The producer, when exactly one adapter contributed to this row.
+            Null when two did: no single answer exists and picking one would
+            attribute numbers to a client that did not report them.
+        exposures: { type: integer }
+        loads_verified: { type: integer }
+        context_loaded: { type: integer }
+        context_unknown: { type: integer }
+        use_reported: { type: integer }
+        use_observed: { type: integer }
+        use_episodes: { type: integer }
+        exposures_expanded:
+          type: integer
+          description: >-
+            Exposures of this skill whose search_id also appears on a verified
+            load of the same skill in the window (contract 1.1.4). Linked by
+            skill_id and search_id, not by revision.
+        loads_unlinked:
+          type: integer
+          description: >-
+            Verified loads with no search_id: unknown, never "without a card".
+        feedback:
+          oneOf:
+            - { $ref: "#/components/schemas/FeedbackTotals" }
+            - { type: "null" }
+        helped_ratio:
+          oneOf:
+            - { $ref: "#/components/schemas/HelpedRatio" }
+            - { type: "null" }
+        zero_loads:
+          type: boolean
+          description: No verified load in the window. Low usage is not poor usability.
+
+    QueueReason:
+      type: string
+      enum: [negative_feedback, source_changed, source_removed, zero_loads, missing_dependency]
+
+    QueueAction:
+      type: string
+      enum: [reviewed, fixed_in_git, no_change]
+
+    QueueItem:
+      type: object
+      required: [item_id, skill_id, revision, reason, since, evidence, decision]
+      properties:
+        item_id:
+          type: string
+          description: >-
+            A uuid for an item the import worker raised; the derived identifier
+            `<reason>:<skill_id>:<revision>` for one this report computed.
+        skill_id: { type: string }
+        revision: { type: [string, "null"] }
+        reason: { $ref: "#/components/schemas/QueueReason" }
+        since: { type: [string, "null"], format: date-time }
+        evidence: { type: [object, "null"] }
+        decision:
+          oneOf:
+            - type: object
+              required: [action, reason, at]
+              properties:
+                action: { $ref: "#/components/schemas/QueueAction" }
+                reason: { type: [string, "null"] }
+                at: { type: [string, "null"], format: date-time }
+            - { type: "null" }
+        source:
+          type: string
+          enum: [worker, computed]
+          description: Whether a worker wrote this item or this report derived it.
+
+    AdapterHealth:
+      type: object
+      description: An absent row is unknown, not health.
+      required: [harness]
+      properties:
+        harness: { type: string }
+        adapter_version: { type: [string, "null"] }
+        capabilities:
+          oneOf:
+            - { type: array, items: { type: string } }
+            - { type: "null" }
+        last_seen_at: { type: [string, "null"], format: date-time }
+        lag_s: { type: [integer, "null"] }
+        dropped: { type: [integer, "null"] }
+
+    Usage:
+      type: object
+      required: [schema_version, window, coverage, totals, skills, queue, health]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        window: { $ref: "#/components/schemas/UsageWindow" }
+        coverage:
+          oneOf:
+            - { $ref: "#/components/schemas/UsageCoverage" }
+            - { type: "null" }
+        totals: { $ref: "#/components/schemas/UsageTotals" }
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/UsageSkill" }
+        queue:
+          type: array
+          items: { $ref: "#/components/schemas/QueueItem" }
+        health:
+          oneOf:
+            - type: object
+              required: [adapters]
+              properties:
+                adapters:
+                  type: array
+                  items: { $ref: "#/components/schemas/AdapterHealth" }
+            - { type: "null" }
+        filters:
+          type: object
+          description: >-
+            The filters actually applied, keyed exactly as the query parameters
+            are, so an empty report is distinguishable from a report of an empty
+            filter. A parameter that was not given has no key; `window` carries
+            the window that was applied, including the default.
+          properties:
+            scope: { type: string }
+            skill_id: { type: string }
+            revision: { type: string }
+            harness: { type: string }
+            window: { type: string, enum: ["7d", "30d", "90d"] }
+
+    UsageExportRow:
+      type: object
+      description: >-
+        One export line. The property order is the pinned CSV column order; an
+        empty CSV cell is a null here.
+      required:
+        [skill_id, revision, scope, owner, harness, window_from, window_to,
+         exposures, loads_verified, context_loaded, context_unknown,
+         use_reported, use_observed, helped, hindered, mixed, not_applicable,
+         unknown, feedback_n, helped_numerator, helped_denominator,
+         small_sample, zero_loads, card_revision, content_sha256,
+         exposures_expanded, loads_unlinked]
+      properties:
+        skill_id: { type: string }
+        revision: { type: [string, "null"] }
+        scope: { type: [string, "null"] }
+        owner: { type: [string, "null"] }
+        harness: { type: [string, "null"] }
+        window_from: { type: string, format: date-time }
+        window_to: { type: string, format: date-time }
+        exposures: { type: integer }
+        loads_verified: { type: integer }
+        context_loaded: { type: integer }
+        context_unknown: { type: integer }
+        use_reported: { type: integer }
+        use_observed: { type: integer }
+        helped: { type: [integer, "null"] }
+        hindered: { type: [integer, "null"] }
+        mixed: { type: [integer, "null"] }
+        not_applicable: { type: [integer, "null"] }
+        unknown: { type: [integer, "null"] }
+        feedback_n: { type: [integer, "null"] }
+        helped_numerator: { type: [integer, "null"] }
+        helped_denominator: { type: [integer, "null"] }
+        small_sample: { type: [boolean, "null"] }
+        zero_loads: { type: boolean }
+        card_revision: { type: [string, "null"] }
+        content_sha256: { type: [string, "null"] }
+        exposures_expanded: { type: integer }
+        loads_unlinked: { type: integer }
+
+    UsageExport:
+      type: object
+      required: [schema_version, window, coverage, rows]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        window: { $ref: "#/components/schemas/UsageWindow" }
+        coverage:
+          oneOf:
+            - { $ref: "#/components/schemas/UsageCoverage" }
+            - { type: "null" }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/UsageExportRow" }
+
+    QueueDecisionResult:
+      type: object
+      required: [schema_version, item]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        item: { $ref: "#/components/schemas/QueueItem" }
+
+    ProviderId:
+      type: string
+      enum: [google, github]
+
+    Providers:
+      type: object
+      required: [schema_version, providers, mode]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        mode: { type: string, enum: [dev, workos] }
+        providers:
+          type: array
+          items:
+            type: object
+            required: [id, label, login_url]
+            properties:
+              id: { $ref: "#/components/schemas/ProviderId" }
+              label: { type: string }
+              login_url: { type: string }
+
+    DevSignIn:
+      type: object
+      required: [provider, subject, email]
+      properties:
+        provider: { $ref: "#/components/schemas/ProviderId" }
+        subject: { type: string }
+        email: { type: string }
+        name: { type: string }
+        state: { type: string }
+        return_to: { type: string }
+
+    Me:
+      type: object
+      required: [schema_version, user, identities, orgs, csrf_token, access, link_suggestions]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        user:
+          type: object
+          required: [id, email, name]
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: string }
+            name: { type: string }
+        identities:
+          type: array
+          items:
+            type: object
+            required: [provider, created_at]
+            properties:
+              provider: { type: string }
+              created_at: { type: string, format: date-time }
+        orgs:
+          type: array
+          items: { $ref: "#/components/schemas/OrgMembership" }
+        csrf_token:
+          type: string
+          description: Empty for a personal token, which does not need CSRF protection.
+        access:
+          type: object
+          required: [checked_at, valid_for_s]
+          properties:
+            checked_at: { type: string }
+            valid_for_s: { type: integer }
+        link_suggestions:
+          type: array
+          description: Providers where another account uses the same address. Never linked automatically.
+          items:
+            type: object
+            required: [provider]
+            properties:
+              provider: { type: string }
+
+    LinkStart:
+      type: object
+      required: [provider]
+      properties:
+        provider: { $ref: "#/components/schemas/ProviderId" }
+        return_to: { type: string }
+
+    LinkStarted:
+      type: object
+      required: [schema_version, login_url]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        login_url: { type: string }
+
+    DeviceAuthorization:
+      type: object
+      required: [schema_version, device_code, user_code, verification_uri, expires_in, interval]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        device_code: { type: string }
+        user_code: { type: string }
+        verification_uri: { type: string }
+        expires_in: { type: integer }
+        interval: { type: integer }
+
+    DeviceTokenRequest:
+      type: object
+      required: [device_code]
+      properties:
+        device_code: { type: string }
+
+    DeviceToken:
+      type: object
+      required: [schema_version, token, token_id, user, orgs]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        token:
+          type: string
+          description: A personal token with the `user` scope. Shown once.
+        token_id: { type: string, format: uuid }
+        user:
+          type: object
+          required: [id, email]
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: string }
+        orgs:
+          type: array
+          items: { $ref: "#/components/schemas/OrgMembership" }
+
+    DeviceDecisionRequest:
+      type: object
+      required: [user_code]
+      properties:
+        user_code: { type: string }
+
+    DeviceDecision:
+      type: object
+      required: [schema_version, user_code, state]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        user_code: { type: string }
+        state: { type: string, enum: [approved, denied] }
+
+    OrgMembership:
+      type: object
+      required: [org_id, slug, name, role]
+      properties:
+        org_id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+
+    Role:
+      type: string
+      enum: [owner, member]
+
+    CreateOrg:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        slug: { type: string, pattern: "^[a-z0-9-]{2,40}$" }
+        idempotency_key: { type: string }
+
+    OrgCreated:
+      type: object
+      required: [schema_version, org_id, slug, name, my_role]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        my_role: { $ref: "#/components/schemas/Role" }
+
+    OrgList:
+      type: object
+      required: [schema_version, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrgMembership" }
+
+    OrgDetail:
+      type: object
+      required: [schema_version, org_id, slug, name, my_role, created_at, counts]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        my_role: { $ref: "#/components/schemas/Role" }
+        created_at: { type: string, format: date-time }
+        counts:
+          type: object
+          required: [members, repos]
+          properties:
+            members: { type: integer }
+            repos: { type: integer }
+
+    MemberList:
+      type: object
+      required: [schema_version, org_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        items:
+          type: array
+          items:
+            type: object
+            required: [user_id, email, name, role, joined_at]
+            properties:
+              user_id: { type: string, format: uuid }
+              email: { type: string }
+              name: { type: string }
+              role: { $ref: "#/components/schemas/Role" }
+              joined_at: { type: string, format: date-time }
+
+    SetRole:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        idempotency_key: { type: string }
+
+    RoleChanged:
+      type: object
+      required: [schema_version, org_id, user_id, role]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        role: { $ref: "#/components/schemas/Role" }
+
+    CreateInvitation:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        idempotency_key: { type: string }
+
+    Invitation:
+      type: object
+      required: [schema_version, invitation_id, org_id, role, accept_url, expires_at]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        invitation_id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        role: { $ref: "#/components/schemas/Role" }
+        accept_url: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    InvitationAccepted:
+      type: object
+      required: [schema_version, org_id, role, joined]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        role: { $ref: "#/components/schemas/Role" }
+        joined: { const: true }
+
+    InstallationKind:
+      type: string
+      enum: [installation, ci]
+
+    CreateInstallation:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: "#/components/schemas/InstallationKind" }
+        repo_id: { type: string, pattern: "^[A-Za-z0-9_.-]{1,64}$" }
+        scopes:
+          type: array
+          items: { type: string, enum: [search, use, events, validate] }
+        harness: { type: string }
+        capabilities: { type: object }
+        idempotency_key: { type: string }
+
+    InstallationCreated:
+      type: object
+      required: [schema_version, installation_id, org_id, kind, name, repo_id, scopes, token]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        installation_id: { type: string, format: uuid }
+        org_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/InstallationKind" }
+        name: { type: string }
+        repo_id: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        token:
+          type: string
+          description: The only time the secret is returned.
+
+    Installation:
+      type: object
+      required: [installation_id, kind, name, repo_id, scopes, created_at]
+      properties:
+        installation_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/InstallationKind" }
+        name: { type: string }
+        repo_id: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        harness: { type: string }
+        adapter_version: { type: string }
+        capabilities: { type: [object, "null"] }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: [string, "null"], format: date-time }
+        revoked_at: { type: [string, "null"], format: date-time }
+
+    InstallationList:
+      type: object
+      required: [schema_version, org_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Installation" }
+
+    AuditPage:
+      type: object
+      required: [schema_version, org_id, items, next_cursor]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        next_cursor: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [at, actor, action, entity, request_id]
+            properties:
+              at: { type: string, format: date-time }
+              actor: { type: string }
+              action: { type: string }
+              entity: { type: string }
+              revision: { type: string }
+              request_id: { type: string }
+
+    Job:
+      type: object
+      description: One row of the API–worker queue.
+      required: [job_id, kind, state, attempts, generation]
+      properties:
+        job_id: { type: string, format: uuid }
+        kind: { type: string }
+        state: { type: string, enum: [queued, leased, done, failed, skipped, cancelled] }
+        attempts: { type: integer }
+        max_attempts: { type: integer }
+        generation: { type: integer }
+        error: { type: [string, "null"] }
+        cost: { type: [object, "null"] }
+        started_at: { type: [string, "null"], format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        abstentions:
+          type: array
+          maxItems: 20
+          description: >
+            Named refusals out of a proposal.generate result, so a client can tell a run that
+            correctly declined to consolidate from a run that quietly did nothing. Empty for
+            every other job kind; the full list stays in the job row.
+          items:
+            type: object
+            required: [reason, skills]
+            properties:
+              reason: { type: string }
+              skills: { type: array, items: { type: string } }
+              detail: { type: string }
+
+    # ---- Import ------------------------------------------------------------
+
+    CreateRepo:
+      type: object
+      required: [repo_id]
+      properties:
+        repo_id: { type: string, pattern: "^[A-Za-z0-9_.-]{1,64}$" }
+        name: { type: string }
+        git_host_url:
+          type: string
+          description: Base URL used to build `<git_host_url>/blob/<commit>/<path>` links.
+        idempotency_key: { type: string }
+      additionalProperties: false
+
+    Repo:
+      type: object
+      required: [repo_id, name, git_host_url]
+      properties:
+        repo_id: { type: string }
+        name: { type: string }
+        git_host_url: { type: string }
+        created_at: { type: [string, "null"], format: date-time }
+
+    RepoCreated:
+      allOf:
+        - $ref: "#/components/schemas/Repo"
+        - type: object
+          required: [schema_version, org_id, created]
+          properties:
+            schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+            org_id: { type: string, format: uuid }
+            created:
+              type: boolean
+              description: True when this call registered the repository, false when it already existed.
+
+    RepoList:
+      type: object
+      required: [schema_version, org_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        items: { type: array, items: { $ref: "#/components/schemas/Repo" } }
+        next_cursor: { type: [string, "null"] }
+
+    IdempotentRequest:
+      type: object
+      properties:
+        idempotency_key: { type: string }
+      additionalProperties: false
+
+    CreateImport:
+      type: object
+      required: [manifest]
+      properties:
+        idempotency_key: { type: string }
+        manifest:
+          type: object
+          description: A `guidefold-import-manifest-v1` document (API-CONTRACT §5.6).
+      additionalProperties: false
+
+    ImportState:
+      type: string
+      enum: [created, uploading, queued, parsing, ready, partial, failed, cancelled]
+
+    ImportLimits:
+      type: object
+      required: [max_blob_bytes, max_total_bytes, max_files]
+      properties:
+        max_blob_bytes: { type: integer }
+        max_total_bytes: { type: integer }
+        max_files: { type: integer }
+
+    ImportCreated:
+      type: object
+      required: [schema_version, import_id, state, missing_blobs]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        import_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ImportState" }
+        missing_blobs:
+          type: array
+          items: { type: string, pattern: "^[0-9a-f]{64}$" }
+        limits: { $ref: "#/components/schemas/ImportLimits" }
+        reused_import_id: { type: [string, "null"], format: uuid }
+
+    BlobStored:
+      type: object
+      required: [schema_version, sha256, size, stored]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        size: { type: integer }
+        stored:
+          type: boolean
+          description: True when this upload created the object; false when the organisation already held it.
+
+    ImportFile:
+      type: object
+      required: [path, sha256, size, kind, status]
+      properties:
+        path: { type: string }
+        sha256: { type: string }
+        size: { type: integer }
+        kind: { type: string, enum: [skill, document, config, resource] }
+        status: { type: string, enum: [pending, accepted, omitted, failed] }
+        reason: { type: [string, "null"] }
+        skill_id: { type: [string, "null"] }
+
+    ImportCounts:
+      type: object
+      required: [files, accepted, omitted, failed, new_blobs, reused_blobs, skills, documents]
+      properties:
+        files: { type: integer }
+        accepted: { type: integer }
+        omitted: { type: integer }
+        failed: { type: integer }
+        new_blobs: { type: integer }
+        reused_blobs: { type: integer }
+        skills: { type: integer }
+        documents: { type: integer }
+
+    ImportPublication:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [none, building, published, failed] }
+        snapshot_id: { type: [string, "null"] }
+        error: { type: [string, "null"] }
+
+    ImportStatus:
+      type: object
+      required: [import_id, state, complete, files, jobs]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        import_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ImportState" }
+        manifest_digest: { type: [string, "null"] }
+        commit: { type: [string, "null"] }
+        complete: { type: boolean }
+        publish: { type: boolean }
+        counts:
+          oneOf:
+            - { $ref: "#/components/schemas/ImportCounts" }
+            - { type: "null" }
+        files: { type: array, items: { $ref: "#/components/schemas/ImportFile" } }
+        files_truncated:
+          type: boolean
+          description: True when the file list was cut, including in the list view where it is never carried.
+        jobs: { type: array, items: { $ref: "#/components/schemas/Job" } }
+        publication:
+          oneOf:
+            - { $ref: "#/components/schemas/ImportPublication" }
+            - { type: "null" }
+        error: { type: [string, "null"] }
+        reused_import_id: { type: [string, "null"], format: uuid }
+        created_at: { type: [string, "null"], format: date-time }
+        updated_at: { type: [string, "null"], format: date-time }
+        finalized_at: { type: [string, "null"], format: date-time }
+
+    ImportList:
+      type: object
+      required: [schema_version, org_id, repo_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/ImportStatus" } }
+        next_cursor: { type: [string, "null"] }
+
+
+    # ---- Review and publication --------------------------------------------
+
+    ProposalKind:
+      type: string
+      enum: [extraction, enrichment, consolidation]
+
+    ProposalState:
+      type: string
+      enum: [draft, approved_for_export, awaiting_git, published, rejected, superseded]
+
+    GenerationLimits:
+      type: object
+      description: >-
+        The ceilings one generation run may not cross. `max_groups` and
+        `max_neighbours` are what keep consolidation away from an all-pairs pass
+        over the catalog (API-CONTRACT §8).
+      required: [max_files, max_bytes, max_tokens, max_groups, max_proposals_per_group, max_neighbours, max_calls, max_usd]
+      properties:
+        max_files: { type: integer }
+        max_bytes: { type: integer }
+        max_tokens: { type: integer }
+        max_groups: { type: integer }
+        max_proposals_per_group: { type: integer }
+        max_neighbours: { type: integer }
+        max_calls: { type: integer }
+        max_usd: { type: number }
+      additionalProperties: false
+
+    GenerationGroup:
+      type: object
+      description: One unit of generation work — the `ImportPlanGroup` DTO of API-CONTRACT §5.2.
+      required: [group_id, kind, scope, inputs]
+      properties:
+        group_id: { type: string }
+        kind: { $ref: "#/components/schemas/ProposalKind" }
+        scope: { type: string }
+        owner: { type: [string, "null"] }
+        inputs:
+          type: array
+          description: The paths or skill ids participating in this group; order is not significant.
+          items: { type: string }
+        n_inputs: { type: integer }
+        estimated_tokens:
+          type: [integer, "null"]
+          description: A byte-count proxy, not a tokeniser. JobCost after the fact is decisive.
+        estimated_calls: { type: integer }
+
+    GeneratorRecipe:
+      type: object
+      description: >-
+        `name`/`configured` are the plan's own view; `generator`/`version`/`model`
+        name the exact recipe the generation cache key is built from.
+      required: [name, configured, generator, version]
+      properties:
+        name: { type: string, enum: [none, deterministic, openai, anthropic] }
+        configured: { type: boolean }
+        generator: { type: string, enum: [none, deterministic, openai, anthropic] }
+        version: { type: string }
+        model: { type: [string, "null"] }
+
+    ImportPlan:
+      type: object
+      required: [schema_version, org_id, repo_id, import_id, generator, groups, limits]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        import_id: { type: string, format: uuid }
+        generator: { $ref: "#/components/schemas/GeneratorRecipe" }
+        groups: { type: array, items: { $ref: "#/components/schemas/GenerationGroup" } }
+        groups_skipped:
+          type: object
+          description: Per kind, how many scopes the max_groups ceiling left out.
+          additionalProperties: { type: integer }
+        limits: { $ref: "#/components/schemas/GenerationLimits" }
+        estimated_calls: { type: integer }
+        estimated_usd_max:
+          type: number
+          description: The ceiling the run will not cross, not a forecast.
+        profile:
+          type: string
+          enum: [default, one_shot]
+          description: >
+            The profile this plan ran under. one_shot raises only max_groups, to the number of
+            groups the plan found, so one call covers the whole import; every money ceiling is
+            unchanged and groups_skipped is zero.
+
+    GenerateRequest:
+      type: object
+      properties:
+        idempotency_key: { type: string }
+        kinds: { type: array, items: { $ref: "#/components/schemas/ProposalKind" } }
+        profile:
+          type: string
+          enum: [default, one_shot]
+          description: Absent means default. Raises only max_groups; see ImportPlan.profile.
+        limits:
+          type: object
+          description: May only lower the deployment's ceilings.
+          properties:
+            max_files: { type: integer }
+            max_bytes: { type: integer }
+            max_tokens: { type: integer }
+            max_groups: { type: integer }
+            max_proposals_per_group: { type: integer }
+            max_neighbours: { type: integer }
+            max_calls: { type: integer }
+            max_usd: { type: number }
+          additionalProperties: false
+      additionalProperties: false
+
+    GenerateAccepted:
+      allOf:
+        - { $ref: "#/components/schemas/ImportPlan" }
+        - type: object
+          required: [job_ids]
+          properties:
+            job_ids: { type: array, items: { type: string, format: uuid } }
+            plan:
+              type: object
+              properties:
+                groups: { type: array, items: { $ref: "#/components/schemas/GenerationGroup" } }
+                limits: { $ref: "#/components/schemas/GenerationLimits" }
+                groups_skipped: { type: object, additionalProperties: { type: integer } }
+
+    ProposalSummary:
+      type: object
+      required: [proposal_id, kind, state]
+      properties:
+        proposal_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ProposalKind" }
+        state: { $ref: "#/components/schemas/ProposalState" }
+        scope: { type: [string, "null"] }
+        owner: { type: [string, "null"] }
+        target_skill_id: { type: [string, "null"] }
+        path: { type: [string, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
+
+    ProposalList:
+      type: object
+      required: [schema_version, org_id, repo_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/ProposalSummary" } }
+        next_cursor: { type: [string, "null"] }
+
+    ProvenanceEntry:
+      type: object
+      description: >-
+        One candidate field and where it came from. A field with no `source_ref`
+        carries `needs_confirmation: true`; there is no third state.
+      required: [field, origin, needs_confirmation]
+      properties:
+        field: { type: string }
+        origin: { type: string, enum: [source, parsed, inferred, human] }
+        needs_confirmation: { type: boolean }
+        value_sha256: { type: [string, "null"] }
+        source_ref:
+          oneOf:
+            - type: object
+              required: [path]
+              properties:
+                path: { type: string }
+                sha256: { type: string }
+                line_from: { type: integer }
+                line_to: { type: integer }
+            - { type: "null" }
+
+    ProposalDetail:
+      type: object
+      required: [schema_version, org_id, repo_id, proposal_id, kind, state, path, candidate, provenance, relations, sources]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        proposal_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ProposalKind" }
+        state: { $ref: "#/components/schemas/ProposalState" }
+        scope: { type: [string, "null"] }
+        owner: { type: [string, "null"] }
+        target_skill_id: { type: [string, "null"] }
+        target_revision_id: { type: [string, "null"] }
+        path: { type: string }
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              sha256: { type: string }
+              commit: { type: string }
+              lines: { type: array, items: { type: integer } }
+        recipe:
+          type: object
+          description: The recipe this candidate was produced by, and part of its cache key.
+          required: [version, generator]
+          properties:
+            version: { type: string }
+            generator: { type: string, enum: [none, deterministic, openai, anthropic] }
+            model: { type: [string, "null"] }
+        candidate:
+          type: object
+          required: [path, sha256]
+          properties:
+            path: { type: string }
+            body: { type: [string, "null"] }
+            sha256: { type: string }
+            frontmatter: { type: [object, "null"] }
+        source_body:
+          type: [string, "null"]
+          description: The bytes the candidate would replace, or null when it creates a new package.
+        provenance: { type: array, items: { $ref: "#/components/schemas/ProvenanceEntry" } }
+        relations:
+          type: array
+          items:
+            type: object
+            required: [type, to]
+            description: >
+              Exactly one of `to`/`from` is non-empty. `to` is the far end of an edge leaving the
+              candidate (a consolidation's derived_from to each source); `from` is the far end of
+              one arriving at it (each source's proposed refines up to the shared element).
+            properties:
+              type: { type: string, enum: [derived_from, requires, refines, similar, conflicts_with] }
+              to: { type: string }
+              from: { type: [string, "null"] }
+        decision:
+          oneOf:
+            - type: object
+              properties:
+                decision_id: { type: string }
+                decision: { type: string, enum: [approve, edit, reject] }
+                reason: { type: string }
+                actor_user_id: { type: string }
+                expected_revision: { type: [string, "null"] }
+                result_revision_id: { type: [string, "null"] }
+                at: { type: string, format: date-time }
+            - { type: "null" }
+        expected_revision: { type: [string, "null"] }
+        cost: { type: [object, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
+        updated_at: { type: [string, "null"], format: date-time }
+
+    DecisionRequest:
+      type: object
+      required: [decision, reason]
+      properties:
+        idempotency_key: { type: string }
+        decision: { type: string, enum: [approve, edit, reject] }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+        candidate_body:
+          type: string
+          description: Required for `edit`; may change prose only.
+        expected_revision: { type: string }
+      additionalProperties: false
+
+    DecisionResult:
+      type: object
+      required: [schema_version, proposal_id, state]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        proposal_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ProposalState" }
+        revision_id: { type: [string, "null"] }
+        expected_revision: { type: [string, "null"] }
+
+    Export:
+      type: object
+      required: [schema_version, export_id, proposal_id, state, files, patch]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        export_id: { type: string, format: uuid }
+        proposal_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ProposalState" }
+        base_commit: { type: [string, "null"] }
+        files:
+          type: array
+          items:
+            type: object
+            required: [path, sha256, content]
+            properties:
+              path: { type: string }
+              sha256: { type: string }
+              content: { type: string }
+        patch:
+          type: string
+          description: A unified diff against the revision the proposal was approved from.
+
+    Publication:
+      type: object
+      description: >-
+        Where a proposal stands between approval and serving. `awaiting_git` is a
+        state, not a spinner: the change exists as a patch and nothing has
+        published it.
+      required: [schema_version, proposal_id, state]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        proposal_id: { type: string, format: uuid }
+        state: { type: string, enum: [awaiting_git, published, superseded] }
+        published_revision_id: { type: [string, "null"] }
+        import_id: { type: [string, "null"] }
+        snapshot_id: { type: [string, "null"] }
+
+    PublishRequest:
+      type: object
+      required: [import_id]
+      properties:
+        idempotency_key: { type: string }
+        import_id: { type: string, format: uuid }
+      additionalProperties: false
+
+    PublishAccepted:
+      type: object
+      required: [schema_version, job_id, import_id]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        job_id: { type: string, format: uuid }
+        import_id: { type: string, format: uuid }
+        state: { type: string }
+
+    Snapshot:
+      type: object
+      description: >-
+        One publication. `state` is the engine's vocabulary; `active` is the one
+        fact a rollback needs (API-CONTRACT §5.2 maps the two views).
+      required: [publication_id, state, active]
+      properties:
+        publication_id: { type: string, format: uuid }
+        snapshot_id: { type: [string, "null"] }
+        state: { type: string, enum: [building, validated, active, failed, superseded] }
+        active: { type: boolean }
+        import_id: { type: [string, "null"] }
+        job_id: { type: [string, "null"] }
+        commit: { type: [string, "null"] }
+        n_skills: { type: integer }
+        builder_sha256: { type: [string, "null"] }
+        validation: { type: [object, "null"] }
+        error: { type: [string, "null"] }
+        activated_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    SnapshotList:
+      type: object
+      required: [schema_version, org_id, repo_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/Snapshot" } }
+        next_cursor: { type: [string, "null"] }
+
+    ActivateRequest:
+      type: object
+      required: [reason]
+      properties:
+        idempotency_key: { type: string }
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Recorded in the audit log; a rollback is an owner decision like any other.
+      additionalProperties: false
+
+    ActivatedSnapshot:
+      type: object
+      required: [schema_version, snapshot]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        snapshot: { $ref: "#/components/schemas/Snapshot" }
+
+    PublicationJob:
+      type: object
+      required: [schema_version, job]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        job: { $ref: "#/components/schemas/Job" }
+        publication:
+          oneOf:
+            - { $ref: "#/components/schemas/Snapshot" }
+            - { type: "null" }
+
+    # ---- Knowledge ---------------------------------------------------------
+
+    SkillSummary:
+      type: object
+      required: [skill_id, name, description, scope, knowledge_layer, source_status, publication_status, path]
+      properties:
+        skill_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        scope: { type: string }
+        owner: { type: [string, "null"] }
+        source_layer: { type: [string, "null"] }
+        knowledge_layer: { type: string, enum: [atomic, task, abstract, unclassified] }
+        source_status: { type: string }
+        publication_status:
+          type: string
+          enum: [draft, approved_for_export, awaiting_git, published, needs_review, archived]
+        path: { type: string }
+        content_sha256: { type: [string, "null"] }
+        revision_id: { type: [string, "null"] }
+        card_revision:
+          type: [string, "null"]
+          description: >-
+            The card revision (gf.skills.skill_revision) the publication job
+            stored for this skill's current revision. Null until the revision
+            entered a snapshot. This is the only revision identifier the
+            delivery path and adapter telemetry carry.
+        package_digest: { type: [string, "null"] }
+        commit: { type: [string, "null"] }
+        updated_at: { type: [string, "null"], format: date-time }
+
+    FilterEcho:
+      type: object
+      required: [value, available]
+      properties:
+        value: { type: string }
+        available:
+          type: boolean
+          description: False means the filter was recognised and matched nothing — never a silent "All".
+
+    SkillPage:
+      type: object
+      required: [schema_version, org_id, repo_id, items, filters]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/SkillSummary" } }
+        next_cursor: { type: [string, "null"] }
+        snapshot_id: { type: [string, "null"] }
+        filters:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/FilterEcho" }
+
+    Facets:
+      type: object
+      required: [schema_version, field, values]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        field: { type: string }
+        values:
+          type: array
+          items:
+            type: object
+            required: [value, count]
+            properties:
+              value: { type: string }
+              count: { type: integer }
+        next_cursor: { type: [string, "null"] }
+
+    FacetLookup:
+      type: object
+      required: [schema_version, field, value, count, available]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        field: { type: string }
+        value: { type: string }
+        count: { type: integer }
+        available: { type: boolean }
+
+    RevisionRef:
+      type: object
+      required: [revision_id, content_sha256]
+      properties:
+        revision_id: { type: string }
+        content_sha256: { type: string }
+        card_revision:
+          type: [string, "null"]
+          description: Null until this revision entered a snapshot.
+        commit: { type: [string, "null"] }
+        import_id: { type: [string, "null"], format: uuid }
+        created_at: { type: [string, "null"], format: date-time }
+        source: { type: string, enum: [import, proposal] }
+
+    SkillDetail:
+      allOf:
+        - $ref: "#/components/schemas/SkillSummary"
+        - type: object
+          required: [schema_version, revisions]
+          properties:
+            schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+            org_id: { type: string, format: uuid }
+            repo_id: { type: string }
+            revisions: { type: array, items: { $ref: "#/components/schemas/RevisionRef" } }
+
+    SkillReference:
+      type: object
+      required: [path, sha256, size, type, required, available]
+      properties:
+        path: { type: string }
+        sha256: { type: string }
+        size: { type: integer }
+        type: { type: string }
+        required: { type: boolean }
+        available:
+          type: boolean
+          description: A required reference that is not available blocks publication.
+
+    RelationEdge:
+      type: object
+      required: [from, to, type]
+      properties:
+        from: { type: string }
+        to: { type: string }
+        type: { type: string, enum: [derived_from, requires, refines, similar, conflicts_with] }
+        provenance: { type: string }
+        revision: { type: string }
+
+    FeedbackEntry:
+      type: object
+      required: [judgment_id, verdict]
+      properties:
+        judgment_id: { type: string }
+        verdict: { type: string, enum: [helped, hindered, mixed, not_applicable, unknown] }
+        reason: { type: [string, "null"] }
+        source: { type: [string, "null"] }
+        task_id: { type: [string, "null"] }
+        occurred_at: { type: [string, "null"] }
+
+    Revision:
+      type: object
+      required: [schema_version, skill_id, revision_id, content_sha256, references, requires, refines, relations, feedback]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: string }
+        skill_id: { type: string }
+        revision_id: { type: string }
+        content_sha256: { type: string }
+        card_revision:
+          type: [string, "null"]
+          description: Null until this revision entered a snapshot.
+        body:
+          type: [string, "null"]
+          description: Null when the raw upload has expired; never another revision's text.
+        frontmatter: { type: [object, "null"] }
+        source:
+          type: object
+          required: [path]
+          properties:
+            path: { type: string }
+            commit: { type: [string, "null"] }
+            url: { type: [string, "null"] }
+        references: { type: array, items: { $ref: "#/components/schemas/SkillReference" } }
+        requires: { type: array, items: { type: string } }
+        refines: { type: array, items: { type: string } }
+        relations: { type: array, items: { $ref: "#/components/schemas/RelationEdge" } }
+        feedback: { type: array, items: { $ref: "#/components/schemas/FeedbackEntry" } }
+        provenance:
+          type: object
+          required: [origin]
+          properties:
+            origin: { type: string, enum: [source, parsed, inferred, human] }
+            import_id: { type: [string, "null"], format: uuid }
+            proposal_id: { type: [string, "null"], format: uuid }
+        publication_status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    CreateFeedback:
+      type: object
+      required: [verdict]
+      properties:
+        idempotency_key: { type: string }
+        verdict: { type: string, enum: [helped, hindered, mixed, not_applicable, unknown] }
+        reason: { type: string }
+        task_id: { type: string }
+      additionalProperties: false
+
+    Judgment:
+      type: object
+      required: [schema_version, judgment_id]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        judgment_id: { type: string }
+
+    MapChild:
+      type: object
+      required: [name, path, kind]
+      properties:
+        name: { type: string }
+        path: { type: string }
+        kind: { type: string, enum: [dir, skill, document] }
+        skill_id: { type: [string, "null"] }
+        count: { type: [integer, "null"] }
+
+    MapRepository:
+      type: object
+      required: [schema_version, path, children]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        path: { type: string }
+        children: { type: array, items: { $ref: "#/components/schemas/MapChild" } }
+        next_cursor: { type: [string, "null"] }
+
+    ScopeNode:
+      type: object
+      required: [id, paths, source, count]
+      properties:
+        id: { type: string }
+        owner: { type: [string, "null"] }
+        parent: { type: [string, "null"] }
+        paths: { type: array, items: { type: string } }
+        source: { type: string, enum: [guidefold_yaml, directory, codeowners, unknown] }
+        count: { type: integer }
+
+    MapScopes:
+      type: object
+      required: [schema_version, scopes, skills, unmapped]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        scope:
+          oneOf:
+            - { $ref: "#/components/schemas/ScopeNode" }
+            - { type: "null" }
+        scopes: { type: array, items: { $ref: "#/components/schemas/ScopeNode" } }
+        skills: { type: array, items: { $ref: "#/components/schemas/SkillSummary" } }
+        unmapped:
+          type: array
+          description: Skills whose scope is not a declared node. Named, never folded into the root.
+          items:
+            type: object
+            required: [scope, count]
+            properties:
+              scope: { type: string }
+              count: { type: integer }
+
+    MapLayers:
+      type: object
+      required: [schema_version, layers]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        layers:
+          type: array
+          items:
+            type: object
+            required: [layer, count]
+            properties:
+              layer: { type: string }
+              count: { type: integer }
+
+    Relations:
+      type: object
+      required: [schema_version, items, truncated]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        items: { type: array, items: { $ref: "#/components/schemas/RelationEdge" } }
+        next_cursor: { type: [string, "null"] }
+        truncated: { type: boolean }
+
+    ModulePage:
+      type: object
+      required: [schema_version, scope, paths, skills, reading_order, shared, documents]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        scope: { type: string }
+        owner: { type: [string, "null"] }
+        paths: { type: array, items: { type: string } }
+        skills: { type: array, items: { $ref: "#/components/schemas/SkillSummary" } }
+        reading_order:
+          type: array
+          description: Prerequisites first, by declared `requires` inside the scope.
+          items: { type: string }
+        shared:
+          type: array
+          description: Skills this module borrows from other scopes.
+          items:
+            type: object
+            required: [skill_id, used_by]
+            properties:
+              skill_id: { type: string }
+              used_by: { type: array, items: { type: string } }
+        documents:
+          type: array
+          items:
+            type: object
+            required: [path, kind]
+            properties:
+              path: { type: string }
+              kind: { type: string }
+
+security:
+  - sessionCookie: []
+  - bearerToken: []

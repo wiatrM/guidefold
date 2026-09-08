@@ -1,0 +1,7 @@
+interface:
+  display_name: "Generate Social Template"
+  short_description: "Build on-brand social SVG templates"
+  default_prompt: "Use $generate-social to create an approved platform-sized SVG from the active Brand Forge profile."
+policy:
+  allow_implicit_invocation: false
+

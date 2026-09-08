@@ -1,0 +1,6 @@
+interface:
+  display_name: "Run Unslopify Job"
+  short_description: "Orchestrate a fenced redesign job"
+  default_prompt: "Use $run-unslopify-job to execute this queued redesign through capture, research, build, review, repair, QA, and packaging."
+policy:
+  allow_implicit_invocation: true

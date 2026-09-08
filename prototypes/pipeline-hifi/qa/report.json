@@ -1,0 +1,600 @@
+{
+  "generatedAt": "2026-09-06T19:54:31.850Z",
+  "fixture": "Meridian fixture",
+  "origin": "http://127.0.0.1:4330",
+  "records": [
+    {
+      "view": "import",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:15.019Z"
+    },
+    {
+      "view": "map",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:22.014Z"
+    },
+    {
+      "view": "skill",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:24.248Z"
+    },
+    {
+      "view": "proposals",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:26.163Z"
+    },
+    {
+      "view": "usage",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:28.493Z"
+    },
+    {
+      "view": "organization",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:30.273Z"
+    },
+    {
+      "view": "import",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:32.556Z"
+    },
+    {
+      "view": "map",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:36.984Z"
+    },
+    {
+      "view": "skill",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:39.729Z"
+    },
+    {
+      "view": "proposals",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:41.572Z"
+    },
+    {
+      "view": "usage",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:43.866Z"
+    },
+    {
+      "view": "organization",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:46.018Z"
+    },
+    {
+      "view": "import",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:48.335Z"
+    },
+    {
+      "view": "map",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:52.417Z"
+    },
+    {
+      "view": "skill",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:57.790Z"
+    },
+    {
+      "view": "proposals",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:50:59.738Z"
+    },
+    {
+      "view": "usage",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:51:01.975Z"
+    },
+    {
+      "view": "organization",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:51:04.171Z"
+    },
+    {
+      "view": "library",
+      "width": 1280,
+      "errors": [],
+      "dimensions": {
+        "scroll": 1280,
+        "viewport": 1280
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:54:13.493Z"
+    },
+    {
+      "view": "library",
+      "width": 820,
+      "errors": [],
+      "dimensions": {
+        "scroll": 820,
+        "viewport": 820
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:54:16.047Z"
+    },
+    {
+      "view": "library",
+      "width": 390,
+      "errors": [],
+      "dimensions": {
+        "scroll": 390,
+        "viewport": 390
+      },
+      "violations": [],
+      "screenshotCapturedAt": "2026-09-06T19:54:18.532Z"
+    }
+  ],
+  "states": [
+    {
+      "view": "import",
+      "state": "empty",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 610,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "import",
+      "state": "loading",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 574,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "import",
+      "state": "partial",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 1816,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "import",
+      "state": "error",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 646,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "import",
+      "state": "degraded",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 1505,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "import",
+      "state": "restricted",
+      "heading": "IMPORT REPOSITORY SKILLS",
+      "bodyLength": 563,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "map",
+      "state": "empty",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 583,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "map",
+      "state": "loading",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 585,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "map",
+      "state": "partial",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 1840,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Select skill"
+      ]
+    },
+    {
+      "view": "map",
+      "state": "error",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 657,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "map",
+      "state": "degraded",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 2547,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Select skill"
+      ]
+    },
+    {
+      "view": "map",
+      "state": "restricted",
+      "heading": "REPOSITORY KNOWLEDGE MAP",
+      "bodyLength": 577,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "skill",
+      "state": "empty",
+      "heading": "SKILL REVISION",
+      "bodyLength": 582,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "skill",
+      "state": "loading",
+      "heading": "SKILL REVISION",
+      "bodyLength": 568,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "skill",
+      "state": "partial",
+      "heading": "SKILL REVISION",
+      "bodyLength": 5456,
+      "privateData": false,
+      "mutationsEnabled": [
+        ""
+      ]
+    },
+    {
+      "view": "skill",
+      "state": "error",
+      "heading": "SKILL REVISION",
+      "bodyLength": 640,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "skill",
+      "state": "degraded",
+      "heading": "SKILL REVISION",
+      "bodyLength": 5425,
+      "privateData": false,
+      "mutationsEnabled": [
+        ""
+      ]
+    },
+    {
+      "view": "skill",
+      "state": "restricted",
+      "heading": "SKILL REVISION",
+      "bodyLength": 558,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "proposals",
+      "state": "empty",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 637,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "proposals",
+      "state": "loading",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 587,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "proposals",
+      "state": "partial",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 2740,
+      "privateData": false,
+      "mutationsEnabled": [
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "view": "proposals",
+      "state": "error",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 653,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "proposals",
+      "state": "degraded",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 2697,
+      "privateData": false,
+      "mutationsEnabled": [
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "view": "proposals",
+      "state": "restricted",
+      "heading": "REVIEW A SKILL REVISION",
+      "bodyLength": 573,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "usage",
+      "state": "empty",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 621,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "usage",
+      "state": "loading",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 579,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "usage",
+      "state": "partial",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 3062,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Apply observation filters"
+      ]
+    },
+    {
+      "view": "usage",
+      "state": "error",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 651,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "usage",
+      "state": "degraded",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 3024,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Apply observation filters"
+      ]
+    },
+    {
+      "view": "usage",
+      "state": "restricted",
+      "heading": "USAGE & QUALITY",
+      "bodyLength": 559,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "empty",
+      "heading": "ORGANIZATION",
+      "bodyLength": 620,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "loading",
+      "heading": "ORGANIZATION",
+      "bodyLength": 587,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "partial",
+      "heading": "ORGANIZATION",
+      "bodyLength": 1784,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "error",
+      "heading": "ORGANIZATION",
+      "bodyLength": 659,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "degraded",
+      "heading": "ORGANIZATION",
+      "bodyLength": 1773,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "organization",
+      "state": "restricted",
+      "heading": "ORGANIZATION",
+      "bodyLength": 570,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "library",
+      "state": "empty",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 593,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "library",
+      "state": "loading",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 569,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "library",
+      "state": "partial",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 2293,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Apply filters"
+      ]
+    },
+    {
+      "view": "library",
+      "state": "error",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 641,
+      "privateData": false,
+      "mutationsEnabled": []
+    },
+    {
+      "view": "library",
+      "state": "degraded",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 3686,
+      "privateData": false,
+      "mutationsEnabled": [
+        "Apply filters"
+      ]
+    },
+    {
+      "view": "library",
+      "state": "restricted",
+      "heading": "SKILL LIBRARY",
+      "bodyLength": 557,
+      "privateData": false,
+      "mutationsEnabled": []
+    }
+  ]
+}

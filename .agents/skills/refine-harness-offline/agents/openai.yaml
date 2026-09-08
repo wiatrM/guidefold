@@ -1,0 +1,6 @@
+interface:
+  display_name: "Refine Harness Offline"
+  short_description: "Evaluate and promote harness improvements"
+  default_prompt: "Use $refine-harness-offline to redact and evaluate these HarnessCandidates against golden and holdout jobs."
+policy:
+  allow_implicit_invocation: false

@@ -1,5 +1,7 @@
 # Product focus
 
+> **Aktualna propozycja kierunku, 2026-09-06:** [PRODUCT-PIVOT](PRODUCT-PIVOT.md) i [oceny agentów](PIVOT-REVIEW.md). Poniższy dokument zachowuje wcześniejszą decyzję i historyczny scan konkurencji. Jego kategoryczne twierdzenia o braku nested discovery/metryk u vendorów nie są podstawą nowego pozycjonowania: [aktualne Claude Code](https://code.claude.com/docs/en/skills) opisuje nested skills, skill-doctor i ewaluacje. Nowy kierunek wymaga dowodu pełnego obiegu wiedzy u klienta.
+
 **Status:** Accepted · 2026-09-06 · product owner / product manager pass required by
 [ADR-0029](adr/ADR-0029-product-focus-hard-rules.md) rule 4 · binds `docs/MVP.md` §5 and
 [`docs/BACKLOG.md`](BACKLOG.md)
@@ -31,7 +33,7 @@ they wrote can be found at all.
 | **GitHub Copilot custom instructions** [2] | **yes, by glob** — `applyTo` frontmatter; `.github/copilot-instructions.md` always loaded. All matching layers merge into context; precedence is a hint, not a filter | no (Copilot coding agent separately reads `AGENTS.md`) | partial — per-response "References" names the file used, to that developer only; no aggregate view for a repo owner | no | no |
 | **OpenAI Codex `AGENTS.md`** [3] | **yes** — nested per directory, nearest file wins | **yes** — the cross-vendor convention's origin | no | no | no |
 | **Google Gemini CLI `GEMINI.md`** [4] | **yes** — hierarchical, but every applicable file is **concatenated** and sent each prompt | partial — `context.fileName` can point at `AGENTS.md` | partial — `/memory show` is local inspection only | no | no |
-| **Cursor / Cline / Windsurf rules** [5] | **yes, by glob** or `alwaysApply` / `model_decision` | no (all bridge via `AGENTS.md`) | partial — Cursor team analytics covers usage and audit-logs rule *edits*, not which rule fired; Cline and Windsurf are client-side only | no | no |
+| **Cursor / Cline / Windsurf (now Devin Desktop/Cascade)** [5] | **yes, by glob** or `alwaysApply` / `model_decision` | no (all bridge via `AGENTS.md`) | partial — Cursor team analytics covers usage and audit-logs rule *edits*, not which rule fired; Cline and Cascade are client-side only | no | no |
 | **`agents.md` convention** [6] | **yes** — nested, nearest wins, designed for monorepos | **yes** — ~22 listed adopters | no | no | no |
 | **Google Cloud Agent Registry** [7] | no — scoped by GCP project/location and `publisher`/`skillId` | partial — A2A/MCP protocols, but a GCP service | no per-skill usage on the registry resources | no — push-based via `gcloud`/REST, not a PR workflow | weak — valid frontmatter only; no CI pipeline shipped |
 | **MCP server registries** [8] | no — indexes servers, not repo-scoped guidance | **yes** | no | Docker's catalog: PR review plus automated test/scan before inclusion. Official registry: reactive denylisting | official registry: "unopinionated"; Docker: yes at submission |
@@ -39,8 +41,12 @@ they wrote can be found at all.
 | **Backstage catalog + TechDocs** [10] | **yes** — `catalog-info.yaml`, `backstage.io/managed-by-location`, co-located TechDocs | portal, not an agent mechanism; MCP bridges exist | no first-party; needs an analytics plugin | no in core | community — RoadieHQ entity-validator lints `catalog-info.yaml` in CI |
 | **Guidefold today** | **yes — by retrieval**, ≤ 4 ranked cards over the monorepo scope hierarchy, not concatenation [11] | partial — Claude Code hook and Copilot `find`/`load` templates exist; **neither demonstrated in a real session** (#81, #82) | on paper — ledger and per-skill report exist (PR #49, #58, #60); **never run on a real developer's data** (#91) | **yes** — per-PR collision report and trigger suggestions (PR #65); F5-in-`validate` pending (#86) | **yes** — `validate`; structured-corpus parity 0/243 (PR #67); E7.5 snapshot gate pending (#87) |
 
-**Scale limits the matrix does not fit.** Windsurf silently drops rules past 12 000 characters total
-across active rules [5]. Codex truncates `AGENTS.md` at 32 KiB by default, silently [3]. Gemini CLI
+**Scale limits the matrix does not fit.** Windsurf/Cascade (Windsurf folded into Devin Desktop during
+2026; row label kept, source already pointed at `docs.devin.ai`) caps each workspace rule file at
+12 000 characters and the global rules file at 6 000 — **per file, not an aggregate across active
+rules** (re-verified against [5] 2026-09-08; the source does not say what happens past the limit —
+truncation, rejection or something else is unstated, so "silently" is not carried over uncited).
+Codex truncates `AGENTS.md` at 32 KiB by default, silently [3]. Gemini CLI
 concatenates every applicable file on every prompt [4]. Claude Code's skill listing is capped at 1 %
 of the context window [1]. Every location-scoped competitor loads or concatenates matching files and
 then hits a wall. That wall is the market.

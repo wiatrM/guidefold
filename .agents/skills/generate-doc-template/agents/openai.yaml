@@ -1,0 +1,7 @@
+interface:
+  display_name: "Generate Document Template"
+  short_description: "Build branded document and slide templates"
+  default_prompt: "Use $generate-doc-template to create an approved SVG document template from the active Brand Forge profile."
+policy:
+  allow_implicit_invocation: false
+

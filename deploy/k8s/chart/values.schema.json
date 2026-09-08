@@ -13,6 +13,10 @@
     "developmentMode": {
       "type": "boolean"
     },
+    "auth": {
+      "type": "string",
+      "enum": ["workos", "dev"]
+    },
     "image": {
       "type": "string"
     },
@@ -275,6 +279,62 @@
         "ttlSecondsAfterFinished": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "generator": {
+          "type": "string",
+          "enum": [
+            "none",
+            "deterministic",
+            "openai",
+            "anthropic"
+          ]
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            }
+          }
+        },
+        "nodeSelector": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
         }
       }
     },

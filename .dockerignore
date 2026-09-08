@@ -6,6 +6,13 @@
 !tools/serve_spike/
 !tools/serve_spike/contracts/
 !tools/serve_spike/contracts/harness-service-v1.1.schema.json
+!tools/serve_spike/repository.py
+!tools/serve_spike/context.py
+!tools/serve_spike/server.py
+!tools/search_service/
+!tools/search_service/index.py
+!tools/worker/
+!tools/worker/build_tree.py
 !skills/
 !skills/guidefold/
 !skills/guidefold/scripts/

@@ -1,5 +1,7 @@
 # Backlog — offline mirror
 
+> **Propozycja rozszerzenia, 2026-09-06:** [PIVOT-BACKLOG](PIVOT-BACKLOG.md) zawiera P01–P15, mapowanie do poniższych epiców i wcześniejszy Pilot Core. Te ID nie są nowymi zadaniami GitHub. Ten plik nadal jest mirrorem historycznego backlogu GitHub; nie przepisano zadań zewnętrznych.
+
 **The GitHub issues are the source of truth** ([ADR-0029](adr/ADR-0029-product-focus-hard-rules.md)
 rule 4). This file is a copy so the repository can answer "what is next" without a network call.
 Regenerate it when the issue set changes materially; if the two disagree, the issues win.

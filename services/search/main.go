@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,12 +17,25 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/wiatrM/guidefold/services/search/internal/identity"
+	"github.com/wiatrM/guidefold/services/search/internal/importer"
+	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
+	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
+	"github.com/wiatrM/guidefold/services/search/internal/review"
+	"github.com/wiatrM/guidefold/services/search/internal/schema"
+	"github.com/wiatrM/guidefold/services/search/internal/usage"
+	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
 
 type App struct {
 	Store      *Store
 	Validator  *Validator
 	Token      string
+	Identity   *identity.Service
+	Management http.Handler
 	Slots      chan struct{}
 	EventSlots chan struct{}
 	Metrics    serviceMetrics
@@ -39,12 +52,12 @@ func uuid() string {
 	return s[:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:]
 }
 func elapsed(t time.Time) float64 { return float64(time.Since(t).Microseconds()) / 1000 }
-func (s *Store) searchResponse(ctx context.Context, p M) (M, error) {
-	return s.searchCaptured(ctx, p, nil)
+func (s *Store) searchResponse(ctx context.Context, tenant, repo string, p M) (M, error) {
+	return s.searchCaptured(ctx, tenant, repo, p, nil)
 }
-func (s *Store) searchCaptured(ctx context.Context, p M, capture *ShadowJob) (M, error) {
+func (s *Store) searchCaptured(ctx context.Context, tenant, repo string, p M, capture *ShadowJob) (M, error) {
 	start := time.Now()
-	c, e := s.catalog(ctx)
+	c, e := s.catalog(ctx, tenant, repo)
 	if e != nil {
 		return nil, e
 	}
@@ -64,7 +77,16 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 	if capture != nil && s.Dense == nil {
 		capture.Preparation = &SparsePreparation{Snapshot: c.ID, QueryDigest: hash([]byte(str(p["query"]))), Scopes: map[string]PreparedScope{}}
 	}
-	contextual := str(p["schema_version"]) == "1.1"
+	version := str(p["schema_version"])
+	contextual := version == "1.1" || version == schemaVersion12
+	// 1.2 lets a client pin the snapshot SEARCH answered from. A head that moved
+	// between SEARCH and USE is a conflict the client has to see, not a silently
+	// different catalog (API-CONTRACT §4.5).
+	if version == schemaVersion12 {
+		if want := str(p["search_snapshot"]); want != "" && want != c.ID {
+			return nil, fail(409, "snapshot_changed")
+		}
+	}
 	admissible := map[string]bool{}
 	eligible := map[string][]string{}
 	merged := map[string]Candidate{}
@@ -258,7 +280,7 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 		result["retrieval"] = M{"engine": "Guidefold BM25F + pgvector exact cosine + TEI GPU", "revision": s.backendName(), "index_revision": c.RouterIndexSHA, "encoder_id": s.Dense.ID, "dense": s.Dense.Mode, "fusion": "rrf-k60-top50-union-full-channel-ranks", "exact_legacy_ranking_parity": false, "quality_admitted": false}
 	}
 	if contextual {
-		result["schema_version"] = "1.1"
+		result["schema_version"] = version
 		result["context"] = contextualData
 		result["card_context"] = rendered
 	}
@@ -270,10 +292,16 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 		capture.Selected = compactCards(cards)
 		capture.SparseTimings = copyMetrics(stages)
 	}
+	// 1.2 only, and last: `ranked`, `cards`, `card_context` and every byte of the
+	// budget accounting are already final, so the family view cannot move a
+	// position or a number. A 1.1 response never reaches this line.
+	if version == schemaVersion12 {
+		s.decorateFamily12(ctx, c, ranked, cards)
+	}
 	return result, nil
 }
-func (s *Store) useResponse(ctx context.Context, p M) (M, error) {
-	c, e := s.catalog(ctx)
+func (s *Store) useResponse(ctx context.Context, tenant, repo string, p M) (M, error) {
+	c, e := s.catalog(ctx, tenant, repo)
 	if e != nil {
 		return nil, e
 	}
@@ -281,7 +309,13 @@ func (s *Store) useResponse(ctx context.Context, p M) (M, error) {
 	if e != nil {
 		return nil, e
 	}
-	contextual := str(p["schema_version"]) == "1.1"
+	version := str(p["schema_version"])
+	contextual := version == "1.1" || version == schemaVersion12
+	if version == schemaVersion12 {
+		if want := str(p["search_snapshot"]); want != "" && want != c.ID {
+			return nil, fail(409, "snapshot_changed")
+		}
+	}
 	id := str(p["skill_id"])
 	card, ok := c.Cards[id]
 	if !ok {
@@ -293,13 +327,15 @@ func (s *Store) useResponse(ctx context.Context, p M) (M, error) {
 	if str(card["status"]) != "active" {
 		return nil, fail(409, "skill_not_active")
 	}
+	reachable := map[string]bool{}
 	if contextual {
-		allowed := false
 		for _, node := range scopes {
 			a, _ := c.allowed(node, "")
-			allowed = allowed || a[id]
+			for u := range a {
+				reachable[u] = true
+			}
 		}
-		if !allowed {
+		if !reachable[id] {
 			return nil, fail(403, "skill_outside_resolved_scope")
 		}
 	}
@@ -338,8 +374,13 @@ func (s *Store) useResponse(ctx context.Context, p M) (M, error) {
 	}
 	result := M{"status": "hydrated", "execution_observed": false, "skill_id": id, "revision": c.Revisions[id], "search_id": p["search_id"], "search_id_verified": false, "current_state": card["status"], "snapshot": c.ID, "body": body, "checksum": hash([]byte(body))}
 	if contextual {
-		result["schema_version"] = "1.1"
+		result["schema_version"] = version
 		result["context"] = contextData
+	}
+	if version == schemaVersion12 {
+		if e := s.decorate12(ctx, c, p, result, id, reachable); e != nil {
+			return nil, e
+		}
 	}
 	return result, nil
 }
@@ -348,6 +389,11 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := 200
 	result := M{}
 	endpoint := strings.TrimPrefix(r.URL.Path, "/v1/")
+	if a.Management != nil && managementRequest(r) {
+		a.Management.ServeHTTP(w, r)
+		return
+	}
+	// contract-route: GET /metrics
 	if r.Method == http.MethodGet && r.URL.Path == "/metrics" {
 		a.serveMetrics(w)
 		return
@@ -434,16 +480,30 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		send()
 	}
+	// contract-route: GET /health/live
 	if r.Method == http.MethodGet && r.URL.Path == "/health/live" {
 		result = M{"live": true}
 		send()
 		return
 	}
+	// contract-route: GET /health/ready
 	if r.Method == http.MethodGet && r.URL.Path == "/health/ready" {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
-		c, e := a.Store.catalog(ctx)
+		c, e := a.Store.catalog(ctx, a.Store.Tenant, a.Store.Repo)
 		if e != nil {
+			// A tenant with no published snapshot yet (fresh import, nothing
+			// reviewed/published) is a real, valid state, not a failure: the
+			// management API (identity/import/knowledge/review/usage) does not
+			// read the catalog at all. Only the retrieval surface (SEARCH/USE)
+			// needs a snapshot, so report that surface as unconfigured instead
+			// of failing the probe and taking the whole pod out of rotation.
+			var api *APIError
+			if errors.As(e, &api) && api.Code == "snapshot_not_published" {
+				result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "retrieval": "not_configured", "api_schema_versions": []string{"legacy-unversioned", "1.1", "1.2"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load()}
+				send()
+				return
+			}
 			respondError(e)
 			return
 		}
@@ -453,7 +513,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
+		result = M{"ready": true, "backend": a.Store.backendName(), "runtime": "go", "pg_search_version": a.Store.Version, "snapshot": c.ID, "repository": M{"repo_id": c.Repo, "revision": c.Revision}, "policy_revision": c.PolicySHA, "n_skills": len(c.Cards), "router_index_revision": c.RouterIndexSHA, "api_schema_versions": []string{"legacy-unversioned", "1.1", "1.2"}, "database_search_calls": a.Store.Searches.Load(), "database_use_calls": a.Store.Uses.Load(), "body_cache": false, "python_runtime": false, "live_encode_calls": 0, "model_load_calls": 0, "production_iam": false}
 		if a.Store.Dense != nil {
 			result["encoder_id"] = a.Store.Dense.ID
 			result["encoder_batch_requests"] = a.Store.Dense.BatchRequests
@@ -466,16 +526,26 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send()
 		return
 	}
+	// The 1.2 package-resource route answers bytes, not JSON, so it is handled
+	// before the three JSON endpoints rather than by their envelope.
+	// contract-route: GET /v1/skills/{skill_id}/revisions/{revision}/resources/{path}
+	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/skills/") {
+		a.serveResource(w, r)
+		return
+	}
+	// The delivery surface an installation token reaches:
+	// contract-route: POST /v1/search
+	// contract-route: POST /v1/use
+	// contract-route: POST /v1/events:batch
 	if r.Method != http.MethodPost || (endpoint != "search" && endpoint != "use" && endpoint != "events:batch") {
 		status = 404
 		result = M{"error": "not_found"}
 		send()
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+a.Token)) != 1 {
-		status = 401
-		result = M{"error": "unauthorized"}
-		send()
+	principal, authErr := a.authenticate(r, endpoint)
+	if authErr != nil {
+		respondError(authErr)
 		return
 	}
 	// Bound uploads and JSON parsing as well as backend work. Authenticate first;
@@ -530,10 +600,23 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		result, e = a.Store.ingestEvents(ctx, batch)
+		tenant, e := a.resolveTenant(ctx, principal, r)
 		if e != nil {
 			respondError(e)
 			return
+		}
+		result, e = a.Store.ingestEvents(ctx, tenant, batch)
+		if e != nil {
+			respondError(e)
+			return
+		}
+		// The adapter-health projection is written from the events this batch
+		// actually accepted, for the organisation the principal proved — never
+		// for one the client claims. It is a diagnostic: if it fails, the
+		// observations are already in the ledger and the batch still succeeded.
+		if e := usage.RecordAdapterHealth(ctx, a.Store.Pool, tenant,
+			installationOf(principal), batch, result); e != nil {
+			slog.Warn("adapter_health_projection", "attempt_id", attempt, "error", e.Error())
 		}
 		send()
 		return
@@ -546,14 +629,24 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithDeadline(r.Context(), start.Add(time.Duration(integer(p, "deadline_ms", 1000))*time.Millisecond))
 	defer cancel()
 
+	tenant, e := a.resolveTenant(ctx, principal, r)
+	if e != nil {
+		respondError(e)
+		return
+	}
+	repo, e := a.resolveRepo(ctx, principal, r, p, tenant)
+	if e != nil {
+		respondError(e)
+		return
+	}
 	var shadowJob *ShadowJob
 	if endpoint == "search" {
 		if a.Store.Shadow != nil {
 			shadowJob = &ShadowJob{}
 		}
-		result, e = a.Store.searchCaptured(ctx, p, shadowJob)
+		result, e = a.Store.searchCaptured(ctx, tenant, repo, p, shadowJob)
 	} else {
-		result, e = a.Store.useResponse(ctx, p)
+		result, e = a.Store.useResponse(ctx, tenant, repo, p)
 	}
 	if e != nil {
 		respondError(e)
@@ -586,7 +679,7 @@ func run() error {
 	}
 	if command == "healthcheck" {
 		client := &http.Client{Timeout: 2 * time.Second}
-		r, e := client.Get("http://127.0.0.1:8080/health/ready")
+		r, e := client.Get(readyURL(listenAddress()))
 		if e != nil {
 			return e
 		}
@@ -613,7 +706,7 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha, SnapshotID: env("GUIDEFOLD_SNAPSHOT_ID", "")}
+	store := &Store{Pool: pool, Tenant: env("GUIDEFOLD_TENANT", "local"), Repo: env("GUIDEFOLD_REPO", "meridian"), PolicySHA: sha, SnapshotID: env("GUIDEFOLD_SNAPSHOT_ID", ""), catalogs: newCatalogCache(catalogCacheSize)}
 	store.LexicalEngine = env("GUIDEFOLD_LEXICAL_ENGINE", "router")
 	if store.LexicalEngine != "router" && store.LexicalEngine != "paradedb-experimental" {
 		return fmt.Errorf("invalid_lexical_engine")
@@ -625,7 +718,19 @@ func run() error {
 	ctx, done := context.WithTimeout(root, time.Duration(operatorSeconds)*time.Second)
 	defer done()
 	if command == "migrate" {
-		return migrate(ctx, pool)
+		password, e := secret(env("APP_PASSWORD_FILE", "/run/secrets/app_password"))
+		if e != nil {
+			return e
+		}
+		return schema.Migrate(ctx, pool, password)
+	}
+	store.Caps, e = schema.Detect(ctx, pool)
+	if e != nil {
+		return e
+	}
+	store.Version = store.Caps.PgSearch
+	if command == "worker" {
+		return runWorker(root, pool, store.Caps, sha)
 	}
 	if command == "publish" {
 		if len(os.Args) != 3 {
@@ -678,8 +783,10 @@ func run() error {
 	if command != "serve" {
 		return fmt.Errorf("unknown_command")
 	}
-	if e = pool.QueryRow(ctx, `SELECT extversion FROM pg_extension WHERE extname='pg_search'`).Scan(&store.Version); e != nil {
-		return e
+	// Plain PostgreSQL profile: the router engine needs no extension, so an
+	// absent pg_search is a reported state. The ParadeDB engine is not.
+	if store.LexicalEngine == "paradedb-experimental" && !store.Caps.HasPgSearch() {
+		return fmt.Errorf("paradedb_engine_requires_pg_search")
 	}
 	store.Dense, e = newDenseClient()
 	if e != nil {
@@ -720,7 +827,10 @@ func run() error {
 		return e
 	}
 	app := &App{Store: store, Validator: validator, Token: token, Slots: make(chan struct{}, 8), EventSlots: make(chan struct{}, 2)}
-	server := &http.Server{Addr: ":8080", Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 6 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	if e = mountManagement(app, pool); e != nil {
+		return e
+	}
+	server := &http.Server{Addr: listenAddress(), Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 6 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	errs := make(chan error, 1)
 	go func() { errs <- server.ListenAndServe() }()
 	slog.Info("listening", "address", server.Addr, "backend", store.backendName(), "runtime", "go")
@@ -742,4 +852,97 @@ func main() {
 		slog.Error("service_failed", "error", e.Error())
 		os.Exit(1)
 	}
+}
+
+// mountManagement builds the /api/ surface and the per-request identity the
+// delivery endpoints share with it.
+func mountManagement(app *App, pool *pgxpool.Pool) error {
+	cfg, e := identity.ConfigFromEnv()
+	if e != nil {
+		return e
+	}
+	if cfg.Mode == identity.ModeDev {
+		// Named explicitly, so this is a choice rather than a default -- but it
+		// is the choice that hands a session to whoever can reach the port, and
+		// an operator who made it by copying a compose file should see it said.
+		slog.Warn("development_sign_in_enabled",
+			"mode", cfg.Mode,
+			"detail", "GUIDEFOLD_AUTH=dev mounts /api/v1/auth/dev; anyone who can reach this port can sign in as any e-mail")
+	}
+	svc, e := identity.New(pool, cfg)
+	if e != nil {
+		return e
+	}
+	router := mgmt.New(mgmt.Options{Pool: pool, Resolve: svc.Resolve, OpenAPI: managementSpec})
+	svc.Register(router)
+	blobs := importer.NewBlobStore(pool)
+	importer.New(pool, blobs).Register(router)
+	// Feedback from the UI goes through the same validator and the same ledger
+	// as feedback from an adapter, so one rating is one observation whichever
+	// surface produced it (API-CONTRACT §7).
+	var sink knowledge.EventSink
+	if app.Store != nil {
+		sink = func(ctx context.Context, tenantID string, events []any) (map[string]any, error) {
+			out, e := app.Store.ingestEvents(ctx, tenantID, events)
+			return out, e
+		}
+	}
+	knowledge.New(pool, blobs, sink, env("GUIDEFOLD_ENVIRONMENT", "pilot")).Register(router)
+	usage.New(pool).Register(router)
+	reviewer, e := review.New(pool, blobs)
+	if e != nil {
+		return e
+	}
+	reviewer.Register(router)
+	app.Identity, app.Management = svc, router
+	return nil
+}
+
+// listenAddress is where `serve` binds and where `healthcheck` probes. Both read
+// the same variable, so a deployment that moves the port does not end up with a
+// health check pointing at the old one (tech-lead decision 16).
+func listenAddress() string { return env("GUIDEFOLD_LISTEN", ":8080") }
+
+// readyURL turns a listen address into the readiness URL to probe. A bare
+// ":8080" is a wildcard bind, which a client cannot connect to; loopback is the
+// address the container itself can always reach.
+func readyURL(addr string) string {
+	host, port, e := net.SplitHostPort(addr)
+	if e != nil {
+		return "http://" + addr + "/health/ready"
+	}
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		host = "127.0.0.1"
+	default:
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/health/ready"
+}
+
+// runWorker executes queued jobs. The handler registry is filled by
+// RegisterHandlers; a deployment without handlers is a configuration error
+// rather than a silent no-op, except under --once where an empty queue is a
+// normal exit.
+func runWorker(ctx context.Context, pool *pgxpool.Pool, caps schema.Capabilities, policySHA string) error {
+	once := false
+	for _, arg := range os.Args[2:] {
+		if arg == "--once" {
+			once = true
+			continue
+		}
+		return fmt.Errorf("unknown_worker_flag")
+	}
+	id := env("GUIDEFOLD_WORKER_ID", "")
+	if id == "" {
+		host, _ := os.Hostname()
+		id = host + "-" + uuid()
+	}
+	handlers, e := RegisterHandlers(pool, caps, policySHA)
+	if e != nil {
+		return e
+	}
+	return worker.Run(ctx, pool, id, handlers, worker.Options{Once: once})
 }

@@ -1,0 +1,6 @@
+interface:
+  display_name: "UI UX Pro Max"
+  short_description: "Generate evidence-backed UI design systems"
+  default_prompt: "Use $ui-ux-pro-max to query the pinned local design database and apply the result within the preservation contract."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Design Engineering"
+  short_description: "UI polish and component design philosophy"
+  default_prompt: "Use $emil-design-eng to raise the polish of this component."

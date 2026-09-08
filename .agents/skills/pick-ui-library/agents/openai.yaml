@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pick UI Library"
+  short_description: "Choose the right UI library for the job"
+  default_prompt: "Use $pick-ui-library to pick a library for this requirement."

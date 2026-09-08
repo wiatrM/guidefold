@@ -2,6 +2,8 @@
 
 Git-native skill CI for a monorepo.
 
+Working on Guidefold: start with [project instructions](AGENTS.md) and [documentation rules](docs/DOCUMENTATION-RULES.md). The [product pivot](docs/PRODUCT-PIVOT.md) describes proposed hosted behavior; implementation and validation status are separate.
+
 ## What problem this solves
 
 An agent working in a large monorepo does not know which of an organisation's rules,
@@ -34,7 +36,7 @@ before being written down here.
 cd examples/monorepo
 G=../../skills/guidefold/scripts/guidefold
 
-python3 $G validate                                    # 26 skills, 0 errors
+python3 $G validate                                    # validate the Meridian fixture
 python3 $G where                                        # hierarchy node for the current directory
 python3 $G find "add a kafka topic with 7 day retention" --scope forge.pipelines.streaming
 echo '{"cwd":"'$PWD'/platforms/atlas/identity/turnstile","prompt":"add an authorization check"}' \
@@ -44,11 +46,11 @@ python3 $G load urn:skill:meridian:atlas.identity.turnstile:postgres-auth
 
 `validate` is the CI gate; `where` and `find` are what an agent runs to orient itself and rank
 candidate skills; `hook` is what a Claude Code or Codex hook runs on every prompt; `load`
-downloads one skill's body into `.guidefold/cache/`. `skills/guidefold/SKILL.md` is the same
+prints the exact path to the resolved `SKILL.md`. Read that printed path; download caches use `GUIDEFOLD_CACHE` or `~/.cache/guidefold`. `skills/guidefold/SKILL.md` is the same
 workflow written for an agent to follow.
 
 Other implemented subcommands: `materialize [--check]`, `index`, `drift --base <ref>`,
-`publish --changed`, `prewarm`. `card` and `ui` are designed but not built yet — see Roadmap.
+`publish --changed`, `prewarm`. The hosted UI design is separate from CLI commands; see the reviewed [UI pipeline](docs/ui/pipeline/README.md).
 
 ### Onboarding a consumer repo
 
@@ -77,10 +79,15 @@ iff every check passed; `1` otherwise.
 
 ```
 guidefold/
-├── CLAUDE.md                     # instructions for an agent working in this repo
+├── AGENTS.md / CLAUDE.md         # instructions for agents working in this repo
+├── .agents/skills/               # project workflows; not the distributable bootstrap
 ├── CONTRIBUTING.md               # how to run the CLI, run tests, propose an ADR, send a PR
 ├── docs/
-│   ├── MVP.md                    # 8-week MVP: storage decision, epics, user stories, plan  ← start here
+│   ├── DOCUMENTATION-RULES.md    # choose the canonical document and maintain new files
+│   ├── PRODUCT-PIVOT.md          # proposed U1–U11 scope, requirements and acceptance criteria
+│   ├── PIVOT-ARCHITECTURE.md      # React + modular Go API + worker
+│   ├── PIVOT-BACKLOG.md / PIVOT-REVIEW.md # local stories and decisions
+│   ├── MVP.md                    # earlier roadmap and pivot entry point
 │   ├── DESIGN.md                 # design doc v0.3: 2k+ skill model, index, router pipeline, caching, lift, demo UI
 │   ├── KNOWLEDGE-DESIGN.md       # knowledge layer v0.1: lifecycle, gates, SkillPyramid induction, models
 │   ├── AGENT-SKILLS-RESEARCH.md  # research registry: papers, models, datasets behind the router design
@@ -88,7 +95,7 @@ guidefold/
 │   ├── ASSESSMENT.md             # verified facts about the Agent Registry API (what was actually tested)
 │   ├── archive/DESIGN-v0.2.md    # superseded design, kept for history
 │   ├── ui/                       # UI information architecture (IA.md), interaction principles and
-│   │                              # anti-slop gate (UX.md), visual system (UI.md) — for the future `guidefold ui`
+│   │                              # anti-slop rules (UX.md), visual system (UI.md), pipeline 00–08
 │   └── adr/                      # architecture decisions; see docs/adr/README.md for the status index
 ├── skills/guidefold/             # THE DISTRIBUTABLE UNIT — copied into a consumer monorepo
 │   ├── SKILL.md                  # bootstrap skill (find → load workflow for agents)
@@ -97,37 +104,19 @@ guidefold/
 ├── templates/
 │   ├── github-workflows-skills.yml   # consumer CI: validate / materialize --check / drift on PR, publish on main
 │   └── guidefold.example.yaml        # example hierarchy map
-├── examples/monorepo/            # "Meridian" playground: 17 nodes, 26 skills — fixture for demos and tests
+├── examples/monorepo/            # "Meridian" fixture: 17 declared nodes, 26 authored skills plus hierarchy index
 ├── examples/PLAYGROUND_SPEC.md   # how the playground was authored; use it to add nodes/skills consistently
-├── prototypes/, design-explorations/  # frozen visual-design references behind docs/ui/UI.md, not shipped code
-└── tests/                        # pytest suite (planned, see docs/MVP.md E0.1)
+├── prototypes/, design-explorations/  # source references and local UI prototypes; not evidence of hosted API delivery
+└── tests/                        # existing pytest suite; UI checks live with the UI artifacts
 ```
 
-## Status
+## Status and plan
 
-Design v0.3. The CLI works end to end against the local backend and against a GCP test
-registry (project `guidefold-test-b6a18a`) — see `docs/ASSESSMENT.md` for the verification log.
-MVP epics E0 and E1 are in progress. Full plan, scope and kill criteria:
-[`docs/MVP.md`](docs/MVP.md).
+The existing CLI and Go SEARCH/USE service have their own code, tests and dated verification records. See [service documentation](services/search/README.md) and [registry evidence](docs/ASSESSMENT.md); a proposed feature is not an implemented command.
 
-## Roadmap
+The current product proposal is a versioned organizational skill library: import source instructions, review changes, hand them back to Git, deliver revisions through harnesses, and distinguish delivery from evidence of usefulness. The [pivot](docs/PRODUCT-PIVOT.md), [architecture](docs/PIVOT-ARCHITECTURE.md), [backlog](docs/PIVOT-BACKLOG.md) and [review](docs/PIVOT-REVIEW.md) define the proposed scope and dependencies.
 
-The MVP (`docs/MVP.md`) is eight weeks across six epics:
-
-- **E0 — Foundation and hygiene** (week 1): CI baseline, `Router`/`Registry` split in the CLI,
-  this publication cleanup, `guidefold init`/`doctor`, ADR hygiene.
-- **E1 — Router 0.1** (weeks 1-3): task-aware ranking instead of directory-only, a golden query
-  set, an embedder bake-off, the immutable index artifact, the prompt-time hook pipeline.
-- **E2 — Serving without generated files** (weeks 2-4): no generated file committed, scope
-  cards rendered at session start, CI publishing a merged skill to the registry within 10
-  minutes.
-- **E3 — Promotion vertical** (weeks 3-6): `scan → propose → eval → promotion PR →
-  probationary serving`, with the decision log in one Postgres.
-- **E4 — Lifecycle and governance** (weeks 6-8): gates G1-G4 enforced in CI, probation scoring,
-  SkillPyramid induction, an append-only audit log.
-- **E5 — Demo UI** (weeks 7-8): the scope graph, a routing probe, a promotion feed — see
-  [`docs/ui/IA.md`](docs/ui/IA.md) (structure), [`docs/ui/UX.md`](docs/ui/UX.md) (interaction
-  principles and the anti-slop gate) and [`docs/ui/UI.md`](docs/ui/UI.md) (visual system).
+The [UI pipeline](docs/ui/pipeline/README.md) records actual stage status and QA for seven U4 views. Its Meridian fixture is a local simulation, not working OAuth, multi-org backend, Git publication or adapter telemetry. Historical epics remain in [MVP.md](docs/MVP.md); current UI work must not restore the former four-view promotion demo.
 
 ## Contributing
 

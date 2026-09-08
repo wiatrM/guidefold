@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Taste Frontend"
+  short_description: "Build distinctive anti-slop frontends"
+  default_prompt: "Use $design-taste-frontend to infer a distinctive design direction and build a polished, non-templated frontend."
