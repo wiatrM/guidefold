@@ -1,0 +1,27 @@
+# Engineering-only persistent vector-layout A/B. Shares the existing pinned TEI
+# worker; each named project gets a separate database volume and loopback API.
+services:
+  db:
+    cpus: 4
+    mem_limit: 2g
+  api:
+    cpus: 2
+    mem_limit: 512m
+    networks: [backend, encoder]
+    environment:
+      PGHOST: ${GUIDEFOLD_BENCH_DB_HOST:?isolated database hostname required}
+      GUIDEFOLD_RETRIEVAL_MODE: ${GUIDEFOLD_RETRIEVAL_MODE:-hybrid}
+      GUIDEFOLD_SHADOW: ${GUIDEFOLD_SHADOW:-false}
+      GUIDEFOLD_SHADOW_QUEUE_CAPACITY: "128"
+      GUIDEFOLD_EXPERIMENTAL_OUTPUT: ${GUIDEFOLD_EXPERIMENTAL_OUTPUT:-true}
+      GUIDEFOLD_TEI_URL: http://guidefold-search-gpu-tei-1:80
+      GUIDEFOLD_TEI_BATCH_REQUESTS: "1"
+      GUIDEFOLD_ENCODER_ID: ${GUIDEFOLD_ENCODER_ID:?pinned encoder identity required}
+  publish:
+    environment:
+      GUIDEFOLD_PUBLISH_ACTIVATE: "false"
+      GUIDEFOLD_ENCODER_ID: ${GUIDEFOLD_ENCODER_ID:?pinned encoder identity required}
+networks:
+  encoder:
+    external: true
+    name: guidefold-search-gpu_backend

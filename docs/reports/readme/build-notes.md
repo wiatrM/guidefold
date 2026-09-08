@@ -7,6 +7,8 @@ Inputs: README, services/search/README.md, HARNESS-SERVICE-CONTRACT, SEARCH-USE-
 Replaces: previous README prose. Does not replace the API contract or architecture decisions.
 Index: [README](../../../README.md).
 
+Related: [worktree integration and checks](integration-20260908.md).
+
 ## Copy audit
 Humanizer first pass and avoid-ai-writing second pass applied to README.
 Protected: product name, existing logo, demo URL, commands, paths, endpoint names and Apache-2.0 license.
