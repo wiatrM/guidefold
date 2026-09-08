@@ -132,3 +132,235 @@ Raw protocols and replay outputs:
 [set objective](../../../research/set-objective-transfer-2026-09-07/README.md),
 [LLM routing](../../../research/pyramid-routing-llm-2026-09-07/README.md),
 [progressive disclosure](../../../research/progressive-disclosure-execution-2026-09-07/README.md).
+
+## New primary hypothesis: unseen-repository contract transfer
+
+The semantic counterexample to PCL changes the paper axis. Exact provenance,
+branch quorum and source hashes can show where a sentence came from and when it
+is stale, but they cannot show that a parent abstraction preserves meaning.
+The main study therefore asks whether a structured procedure contract extracted
+from repositories `A` and `B` transfers to an unseen repository `C`, and whether
+that value survives a meaningful source change `C'`.
+
+The contract records scope-in/out, preconditions, obligations, exceptions and
+forbidden cases, operations, verifier, outputs and source references. Compare
+no-skill, source skills, free-text summary, PCL, structured contract, and
+contract plus contradiction checking/CEGAR under the same model, harness and
+execution budget. Freeze a lineage-aware split before generation and evaluate
+paired target executions with task success, harmful-load rate, field retention,
+useful abstention, repair cost, stale-load rate and token/latency cost.
+
+This is the new publication gate. PCL, K-PCL and CGSR are supporting mechanisms
+for provenance, freshness and sibling resolution; their synthetic or internal
+replays are not transfer evidence. A result is a breakthrough only if the
+contract arm improves paired execution on source-disjoint targets without
+increasing harmful loads, retains exceptions and remains useful after `C` drifts
+across multiple unrelated families. The complete protocol is in
+[URCT](../../../research/unseen-repo-contract-transfer-2026-09-08/README.md).
+
+## Candidate method: guarded signed-contract promotion
+
+The PCL polarity counterexample motivates a narrow kernel intervention. GSCM
+represents each extracted procedure as signed atoms with an explicit guard and
+promotes only the conservative meet shared by all child branches. It rejects
+opposite obligations under overlapping contexts, refuses to widen disjoint
+contexts, and keeps a narrower exception only when every branch supplies that
+exception. Its grounded mode requires non-empty source pointers on child atoms
+and carries those pointers into the parent. On the saved two-source counterexample, the provenance-only PCL
+accepts the polarity-reversed parent while GSCM returns `ASK`; control cases
+load a common obligation and a shared exception. The implementation and fresh
+process replay are in
+[`semantic-contract-meet`](../../../research/semantic-contract-meet-2026-09-08/README.md).
+
+This result is a conditional kernel property, not a semantic-entailment or
+product-utility result. Atom extraction and guard ontologies can be wrong, and
+the method is adjacent to contract-preserving compression, proof-carrying
+certificates and CEGAR prior art. We will call it a contribution only if the
+pre-registered URCT study shows source-disjoint execution transfer on unseen
+repositories with retained exceptions, reduced harmful loads and useful
+coverage after drift.
+
+As a kernel regression check, we exhaustively enumerated 4,096 two-child,
+one-atom combinations over the frozen guard/signature universe. An independent
+support oracle labelled 92 cases safe and 4,004 unsafe; GSCM produced 92
+`LOAD`s with zero false loads and zero false abstentions in that finite model.
+The comparison to a quorum-only baseline is hypothetical because all its
+evidence edges are assumed fresh. This experiment establishes only the finite
+algebra behavior; it says nothing about atom-extraction accuracy, target-repo
+transfer or developer outcomes.
+
+The target study also has an executable manifest guard: it checks the frozen
+`A/B/C/C'` roles, target drift, source/target lineage separation, source-ref
+leakage and equal model/budget across arms before any model call. The checked-in
+manifest is a schema fixture, not data or execution evidence.
+
+The related-work boundary is narrow. SkillOps already combines typed skill
+contracts with a hierarchical ecosystem graph, Formal Skill defines an
+executable JSON/runtime abstraction, and SkillGuard treats role-bearing drift
+as contract violation. GSCM should therefore be evaluated as a library-time
+source-grounded promotion gate with guarded exception preservation; it is not a
+new skill format, runtime or drift monitor. SkillResolve-Bench also already
+defines helpful/risky same-capability pairs and harmful-sibling evaluation, so
+the sibling-resolution component must be a baseline rather than a novelty
+claim.
+
+## Extraction-bridge stress test
+
+The kernel's conditional property does not imply that a language model emits
+sound atoms. To measure this gap, we ran a frozen local Qwen2.5-7B-Instruct
+pilot on 16 synthetic source pairs covering common obligations, disjoint
+guards, branch-local exceptions, shared exceptions, opposite polarity and
+irrelevant text. With the strict JSON interface, only 2 atom matches were
+correct against 34 labelled atoms, 11/16 responses failed to parse, and GSCM
+made 0/16 `LOAD`s (zero false `LOAD`s, nine false `ASK`s).
+
+A predeclared serialization ablation kept the same sources, checkpoint and
+greedy decoding but requested scalar tabular records. The model copied the
+literal `<TAB>` placeholder from the prompt, so the frozen strict score was
+again 0/16 `LOAD`. A separate post hoc transport diagnostic replacing that
+placeholder recovered 25/32 exact child contracts and 8/16 `LOAD`s, with zero
+false `LOAD`s and one false `ASK`; this is reported only as an interface
+diagnostic, not confirmatory evidence. A paired verifier-guided repair pass
+then produced 7/16 `LOAD`s but two false `LOAD`s by dropping branch-local
+exceptions, and its independent verifier failed the safety gate. The results
+show why a paper must separate serialization, semantic extraction and promotion
+safety. They do not establish a model or product breakthrough.
+
+The raw outputs, hashes, frozen prompts and failure status are preserved in
+[the v1 pilot](../../../research/gscm-qwen-extraction-2026-09-08/README.md),
+[the serialization follow-up](../../../research/gscm-qwen-extraction-v2-2026-09-08/README.md)
+and [the repair run](../../../research/gscm-qwen-cegar-2026-09-08/README.md).
+The next publication gate remains URCT: independent source-disjoint
+repositories, blinded semantic labels, paired target execution and drift
+outcomes. A safe kernel plus a weak extractor is a useful systems hypothesis,
+not evidence of end-user benefit.
+
+As a safety diagnostic, we replayed the repair with a monotone fallback that
+rejects any deletion from the first candidate, followed by a lexical exception
+risk gate. If source text contains `except`, `unless`, `exception` or an
+explicit `may/allowed to disable`, a `LOAD` requires branch-complete `forbid`
+atoms; otherwise it abstains. This replay produced 8/16 `LOAD`s, zero false
+`LOAD`s and one false `ASK` on the same synthetic cases. Both rules were
+selected after inspecting the failure and therefore are not confirmatory
+metrics. They motivate a pre-registered source-risk feature in URCT, where
+coverage and useful abstention can be evaluated on unseen repositories.
+
+A final pipe-format check removed the placeholder transport issue (three parse
+failures in 16 cases) but still produced two false `LOAD`s by omitting
+branch-local exceptions. In a shared-exception case the model narrowed the
+contract to `admin_request`, dropping the all-request obligation; GSCM accepted
+that narrower contract because its support check has no requested-scope input.
+This is a separate completeness failure from polarity or provenance. The next
+kernel revision therefore needs an explicit requested scope and a coverage
+certificate for every source obligation, with `ASK` on missing scope coverage.
+The v3 raw result is preserved in
+[the pipe check](../../../research/gscm-qwen-extraction-v3-2026-09-08/README.md).
+
+## Scope-complete PPACR oracle replay
+
+We implemented the requested-scope extension as a separate research artifact.
+SC-PPACR represents the proof target as `(mandatory requirement, requested
+scope)` obligations. It permits complementary cards to cover different
+obligations, while rejecting a narrower card, contradiction, partial label, or
+invalid source pointer at the load boundary. Five adversarial unit cases cover
+anchor preservation, disjoint-scope composition, narrow-scope rejection,
+contradiction/partial rejection, and invalid-line rejection.
+
+On the existing 12-case source-review packet, with one explicit `global` scope
+token and no model calls, the oracle policy produced 7/12 complete proof-valid
+bundles versus 6/12 for the earlier single-candidate ECCR policy and 2/12 fully
+supported prior top-1 cards. Unsupported or contradictory proof exposure was
+zero. The additional load used two complementary cards. Because the packet has
+no independent scope labels, this replay does not test natural-language scope
+extraction or source-disjoint transfer. It is a paired policy result that
+motivates, but cannot replace, URCT on unseen repositories with explicit scope
+labels and execution outcomes. Raw inputs, hashes, exact proof lines and an
+independent verifier are in
+[scope-complete-ppacr](../../../research/scope-complete-ppacr-2026-09-08/README.md).
+
+The paired difference from ECCR is +8.3 percentage points, with one positive
+discordant case and no negative discordant case. A deterministic 200,000-draw
+paired bootstrap gives a descriptive 95% interval of 0.0–25.0 points; the
+sample is therefore too small for a population-level improvement claim.
+
+As a kernel-only safety check, we enumerated 3,600 two-card combinations over
+three evidence labels, valid/invalid source pointers, contradiction flags, and
+five scope sets. Against an independent finite oracle, SC-PPACR had zero false
+loads and zero false abstentions; the earlier PPACR implementation produced
+862 false loads for narrower evidence because it lacked a requested-scope
+input. This establishes only conditional behavior of the finite gate. It does
+not validate natural-language scope extraction, repository transfer, or task
+execution, which remain the decisive URCT tests.
+
+## Real-source URCT inventory
+
+We froze 12 hash-addressed `SKILL.md` snapshots from three procedural
+families, arranged as source roles `A/B`, an unseen target `C`, and a
+controlled drift target `C'`. The inventory verifier passed snapshot hashes,
+role and lineage checks, the single semantic edit per family, and a nine-row
+lexical overlap audit (maximum 5-gram Jaccard 0.0). It is a reproducibility
+artifact and a harness input, not a model or execution result.
+
+The source-independence gate remains open. `A` and `B` in every family are
+under the same `cloudfloo` GitHub owner, so distinct repository URLs do not
+establish independent provenance. The paper must either replace those sources
+with unrelated owners or report this as a pre-registered pilot limitation.
+No URCT arm, target execution, or user outcome should be counted until blinded
+field adjudication and this gate are resolved. See the
+[inventory](../../../research/urct-real-skill-corpus-2026-09-08/README.md) and
+[verification output](../../../research/urct-real-skill-corpus-2026-09-08/corpus-verification.json).
+
+To make the pre-execution gate reviewable, we also froze six anonymized
+annotation packets with two blank reviewer forms and 15 fields per packet.
+The packet verifier confirms hash alignment and refuses to treat any filled
+label as present; it reports `model_calls_allowed=false`. This separates
+source adjudication from later arm execution and leaves the shared-owner
+limitation visible to reviewers.
+
+We then prepared a stronger URCT-2 corpus with six remote source repositories
+owned by six different GitHub accounts, pinned to path-level commits. Across
+three families, the integrity and owner-separation checks pass for 12
+snapshots, six `C/C'` cases, and a maximum 5-gram Jaccard overlap of 0.0. This
+is still a provenance screen rather than proof of independent authorship or
+semantic correctness. A matching six-case, two-reviewer blind annotation
+packet is frozen with all 15-field forms blank and model calls disabled. The
+paper must keep this as a pre-execution gate until adjudication and paired
+target execution are complete.
+
+### Recursive scope-aware proof lattice
+
+We extended the proof-carrying pyramid with an explicit requested-scope
+dimension. A parent reference can export only scope tokens covered by a fresh
+child proof; exact source spans, child commitments, branch quorum and distinct
+leaf spans remain mandatory. A finite replay of 22,500 variants over five scope
+declarations, three leaf states and structural faults loaded all 9 oracle-safe
+cases, with zero false loads and zero false abstentions. A compatibility PCL
+baseline without requested scope loaded 625 cases and produced 616 false loads.
+This establishes a conditional safety property of the recursive kernel. It does
+not establish natural-language extraction, retrieval quality or downstream
+execution, which remain the URCT-2 gates.
+
+URCT-2 additionally freezes the execution order and falsification rules in a
+separate protocol and exposes a fail-closed preflight. The current preflight
+returns `execution_allowed=false` because annotations and model/prompt locks
+are missing. This prevents an unregistered model run from being mistaken for
+confirmatory evidence.
+
+### Proof-aware functional routing
+
+We composed the recursive scope proof with a functional sibling gate. A
+retrieved candidate is eligible only if its proof is valid and covers every
+requested scope token, its family/repository/language/version/precondition
+contract matches, and an explicit verifier passes. Close candidates with
+different operation identities produce `ASK` rather than an unsupported
+choice. In an independently implemented finite oracle replay of 139,968
+two-candidate cases, the composed gate had zero false loads and zero false
+abstentions; a scope-blind compatibility gate disagreed in 5,016 cases and a
+rank-only policy in 137,418. This is a conditional contract-algebra result,
+not evidence of semantic extraction, retrieval improvement or task success.
+The implementation and digest-bound replay are in
+[proof-aware-functional-routing](../../../research/proof-aware-functional-routing-2026-09-08/README.md).
+An adapter smoke test also passes actual recursive-scope-PCL cards through the
+gate: a complete two-branch proof loads, a narrow root abstains, and a fresh
+lower-ranked card displaces a stale higher-ranked card. This validates the
+composition path only; it is not a semantic or end-task evaluation.

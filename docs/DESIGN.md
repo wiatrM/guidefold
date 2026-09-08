@@ -336,6 +336,11 @@ Evidence-ranked, per query. Deterministic given (prompt, cwd, index sha) and the
 
 **Router 0.1 (E0.2 + E1.1, shipped):** three collaborators — `Registry`/`LocalRegistry` (storage and transport only: `publish`/`download`/`search_scope`), an `Index` (cards, field-weighted BM25 postings with precomputed integer IDF, the `requires`/`refines`/`replaces`/`similar` graph — built in memory by `Index.build()` scanning the tree for `find`/`materialize`/`validate`, or loaded lazily from the on-disk artifact by `load_index_artifact()` for `hook`, E1.4, see §7/C1 in §9; both produce the same public attributes, so `Router` cannot tell them apart), and `Router` (constructed from an `Index`, depends on it and never on `Registry`). `Router` implements a subset of the stages below, integer-only end to end so identical (prompt, cwd) is byte-identical output: stage 2 as `policy_filter` (deprecated, visibility = own subtree ∪ ancestor chain, negative triggers — hard drops with a recorded reason, never demotions); stage 3 as `candidates` (BM25 top-N ∪ dense top-N, dense channel shipped at `w_dense=0` per ADR-0020 until the E1.3 bake-off); stages 4–5 collapsed into `score` (RRF k=60 fusion of the bm25/dense ranks, an additive `w_scope/(1+hops)` scope feature — a feature and filter, never the first sort key — then reverse PPR seeded from the scope-adjusted RRF score, fixed 20 iterations, fixed-point integers); stage 7 as `select` (7b only: `requires` closure depth ≤ 2 as hard membership counting toward the `k=4` cap; 7d only: final order general → specific by depth, ties by score then urn; abstain below `abstain_threshold`). Not yet built: 1b query rewrite, 6 listwise rerank, 7a coverage backfill / 7c family caps, 8 hydration budget shaping, 9 telemetry — all still describe the target design below.
 
+Nearest wins inside the policy stage (ADR-0037, 2026-09-08): when the same skill `name` is visible
+at more than one depth (a team copy and a service-level edit), only the copy closest to the requesting
+node survives; the others are recorded as `shadowed-by-nearer:<urn>` drops before ranking. Motivated
+by the conflicting-siblings run, where BM25F put the ancestor copy first in 24/24 cells.
+
 ```
 0  where(cwd) → scope chain [node … _root]; load global + org shard (cache C1)
 1  query understanding

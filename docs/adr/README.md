@@ -45,6 +45,8 @@ index was built from; the two must not drift.
 | [0034](ADR-0034-github-app-oauth-and-chrome-extension.md) | Server-side GitHub App import with a thin Chrome extension | Accepted | 2026-09-07 | amends ADR-0031 |
 | [0035](ADR-0035-knowledge-ascent-in-ci.md) | Knowledge ascent: a model writes abstract map/convention skills up the scope tree, gated, as a PR for the parent owner | Accepted | 2026-09-08 | amends ADR-0016; ADR-0031 §7 unchanged |
 | [0036](ADR-0036-github-app-ascent-without-customer-ci.md) | Knowledge ascent for a customer who installed the GitHub App, without editing their CI (webhook → `ascend.run` job → PR) | Proposed | 2026-09-08 | amends ADR-0035, ADR-0034; contract 1.2.0 precedes code |
+| [0037](ADR-0037-nearest-wins-for-same-name-skills.md) | Nearest wins: when the same skill name is visible at two depths, the policy filter keeps the copy closest to the requesting node | Accepted | 2026-09-08 | amends ADR-0022; local CLI only, service pending |
+| [0038](ADR-0038-subscription-byok-and-metered-ai.md) | Subscription with BYOK and a 10% gross margin on managed AI usage | Accepted | 2026-09-08 | governs PRODUCT-PIVOT §12a; no technical ADR superseded |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.
