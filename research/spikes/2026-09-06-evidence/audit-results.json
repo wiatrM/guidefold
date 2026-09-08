@@ -1,0 +1,479 @@
+{
+  "as_of": "2026-09-06",
+  "status": "exploratory post-hoc audit of saved historical reference; NOT model admission",
+  "commit": "dfe9e4d4d6eb1536d35ef89493aa2725215a25f1",
+  "sources": [
+    {
+      "path": "/home/mike/projects/guidefold/docs/reports/bakeoff/validation/skillretbench-r1-encoder.jsonl.gz",
+      "sha256": "a5a245f46950f7d3b0416f48a1f917cad3191cfca50b46b3039a47e26188fd97"
+    },
+    {
+      "path": "/home/mike/projects/guidefold/docs/reports/bakeoff/validation/corpora-manifest.json",
+      "sha256": "4f38ee8d6f7c4e9cde26da9d2b76e8d40eecab44b40899b8ecf9e167fc57d6dd"
+    },
+    {
+      "path": "/home/mike/.cache/guidefold/corpora/skillretbench/skillretbench_queries.json",
+      "sha256": "e8f28d42a0c059083bbb3e54982b30a33abd9f49242f16642a0031d79a1ce29f"
+    },
+    {
+      "path": "/home/mike/projects/guidefold/research/spikes/2026-09-06-evidence/audit.py",
+      "sha256": "978d4d55658d210fe123fe3d4b5e0824fdc05ae4f79a4109170bd01962d19857"
+    }
+  ],
+  "corpus_verification": {
+    "skillret": [],
+    "skillretbench": []
+  },
+  "seed": 20260906,
+  "bootstrap_resamples": 2000,
+  "unit": "query paired within scope; bootstrap ignores shared-skill clustering",
+  "definition": "Any-gold hit@1. All annotated gold must appear in injected first 4. No reply scores zero.",
+  "gold_cardinality": {
+    "1": 850,
+    "2": 60,
+    "3": 72,
+    "4": 53,
+    "5": 15,
+    "25": 200
+  },
+  "empty_gold_queries": 0,
+  "strata": {
+    "all_queries": 1250,
+    "card_budget_feasible": 1035,
+    "card_budget_impossible": 215,
+    "distractor": 300
+  },
+  "results": {
+    "node_root": {
+      "all_queries": {
+        "n": 1250,
+        "abstentions": {
+          "F0": 50,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 1250,
+          "baseline": 0.3648,
+          "encoder": 0.4488,
+          "delta_pp": 8.4,
+          "ci95_pp": [
+            5.76,
+            11.12
+          ],
+          "metric_increases": 193,
+          "metric_decreases": 88
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 1250,
+          "baseline": 0.36,
+          "encoder": 0.3712,
+          "delta_pp": 1.12,
+          "ci95_pp": [
+            -1.1199999999999999,
+            3.44
+          ],
+          "metric_increases": 111,
+          "metric_decreases": 97
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 1200,
+          "baseline": 0.375,
+          "encoder": 0.38166666666666665,
+          "delta_pp": 0.6666666666666666,
+          "ci95_pp": [
+            -1.6666666666666667,
+            3.0
+          ],
+          "metric_increases": 105,
+          "metric_decreases": 97
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.39666666666666667,
+          "encoder": 0.2966666666666667,
+          "delta_pp": -10.0,
+          "ci95_pp": [
+            -15.666666666666668,
+            -4.0
+          ],
+          "metric_increases": 25,
+          "metric_decreases": 55
+        }
+      },
+      "card_budget_feasible": {
+        "n": 1035,
+        "abstentions": {
+          "F0": 50,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 1035,
+          "baseline": 0.3932367149758454,
+          "encoder": 0.44154589371980674,
+          "delta_pp": 4.830917874396135,
+          "ci95_pp": [
+            2.1256038647342996,
+            7.632850241545894
+          ],
+          "metric_increases": 136,
+          "metric_decreases": 86
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 1035,
+          "baseline": 0.43478260869565216,
+          "encoder": 0.44830917874396137,
+          "delta_pp": 1.3526570048309179,
+          "ci95_pp": [
+            -1.2560386473429952,
+            4.154589371980676
+          ],
+          "metric_increases": 111,
+          "metric_decreases": 97
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 985,
+          "baseline": 0.45685279187817257,
+          "encoder": 0.4649746192893401,
+          "delta_pp": 0.8121827411167513,
+          "ci95_pp": [
+            -1.9289340101522845,
+            3.654822335025381
+          ],
+          "metric_increases": 105,
+          "metric_decreases": 97
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.39666666666666667,
+          "encoder": 0.2966666666666667,
+          "delta_pp": -10.0,
+          "ci95_pp": [
+            -15.666666666666668,
+            -4.0
+          ],
+          "metric_increases": 25,
+          "metric_decreases": 55
+        }
+      },
+      "card_budget_impossible": {
+        "n": 215,
+        "abstentions": {
+          "F0": 0,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 215,
+          "baseline": 0.22790697674418606,
+          "encoder": 0.48372093023255813,
+          "delta_pp": 25.58139534883721,
+          "ci95_pp": [
+            19.069767441860467,
+            31.16279069767442
+          ],
+          "metric_increases": 57,
+          "metric_decreases": 2
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 215,
+          "baseline": 0.0,
+          "encoder": 0.0,
+          "delta_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ],
+          "metric_increases": 0,
+          "metric_decreases": 0
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 215,
+          "baseline": 0.0,
+          "encoder": 0.0,
+          "delta_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ],
+          "metric_increases": 0,
+          "metric_decreases": 0
+        },
+        "labelled_distractor_exposure4": null
+      },
+      "distractor": {
+        "n": 300,
+        "abstentions": {
+          "F0": 0,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 300,
+          "baseline": 0.21333333333333335,
+          "encoder": 0.14,
+          "delta_pp": -7.333333333333333,
+          "ci95_pp": [
+            -11.333333333333332,
+            -3.3333333333333335
+          ],
+          "metric_increases": 8,
+          "metric_decreases": 30
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 300,
+          "baseline": 0.2833333333333333,
+          "encoder": 0.17333333333333334,
+          "delta_pp": -11.0,
+          "ci95_pp": [
+            -15.333333333333332,
+            -6.666666666666667
+          ],
+          "metric_increases": 7,
+          "metric_decreases": 40
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 300,
+          "baseline": 0.2833333333333333,
+          "encoder": 0.17333333333333334,
+          "delta_pp": -11.0,
+          "ci95_pp": [
+            -15.333333333333332,
+            -6.666666666666667
+          ],
+          "metric_increases": 7,
+          "metric_decreases": 40
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.39666666666666667,
+          "encoder": 0.2966666666666667,
+          "delta_pp": -10.0,
+          "ci95_pp": [
+            -15.666666666666668,
+            -4.0
+          ],
+          "metric_increases": 25,
+          "metric_decreases": 55
+        }
+      }
+    },
+    "node_scoped": {
+      "all_queries": {
+        "n": 1250,
+        "abstentions": {
+          "F0": 50,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 1250,
+          "baseline": 0.6744,
+          "encoder": 0.7544,
+          "delta_pp": 8.0,
+          "ci95_pp": [
+            6.0,
+            10.08
+          ],
+          "metric_increases": 142,
+          "metric_decreases": 42
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 1250,
+          "baseline": 0.5432,
+          "encoder": 0.5792,
+          "delta_pp": 3.6,
+          "ci95_pp": [
+            2.08,
+            5.12
+          ],
+          "metric_increases": 70,
+          "metric_decreases": 25
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 1200,
+          "baseline": 0.5658333333333333,
+          "encoder": 0.5841666666666666,
+          "delta_pp": 1.8333333333333333,
+          "ci95_pp": [
+            0.5,
+            3.25
+          ],
+          "metric_increases": 47,
+          "metric_decreases": 25
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.7433333333333333,
+          "encoder": 0.7366666666666667,
+          "delta_pp": -0.6666666666666666,
+          "ci95_pp": [
+            -3.6666666666666665,
+            2.0
+          ],
+          "metric_increases": 8,
+          "metric_decreases": 10
+        }
+      },
+      "card_budget_feasible": {
+        "n": 1035,
+        "abstentions": {
+          "F0": 50,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 1035,
+          "baseline": 0.659903381642512,
+          "encoder": 0.736231884057971,
+          "delta_pp": 7.632850241545894,
+          "ci95_pp": [
+            5.4106280193236715,
+            9.951690821256038
+          ],
+          "metric_increases": 115,
+          "metric_decreases": 36
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 1035,
+          "baseline": 0.6560386473429952,
+          "encoder": 0.6995169082125604,
+          "delta_pp": 4.3478260869565215,
+          "ci95_pp": [
+            2.5120772946859904,
+            6.086956521739131
+          ],
+          "metric_increases": 70,
+          "metric_decreases": 25
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 985,
+          "baseline": 0.6893401015228426,
+          "encoder": 0.7116751269035533,
+          "delta_pp": 2.233502538071066,
+          "ci95_pp": [
+            0.6091370558375634,
+            3.857868020304569
+          ],
+          "metric_increases": 47,
+          "metric_decreases": 25
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.7433333333333333,
+          "encoder": 0.7366666666666667,
+          "delta_pp": -0.6666666666666666,
+          "ci95_pp": [
+            -3.6666666666666665,
+            2.0
+          ],
+          "metric_increases": 8,
+          "metric_decreases": 10
+        }
+      },
+      "card_budget_impossible": {
+        "n": 215,
+        "abstentions": {
+          "F0": 0,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 215,
+          "baseline": 0.7441860465116279,
+          "encoder": 0.8418604651162791,
+          "delta_pp": 9.767441860465116,
+          "ci95_pp": [
+            4.651162790697675,
+            14.883720930232558
+          ],
+          "metric_increases": 27,
+          "metric_decreases": 6
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 215,
+          "baseline": 0.0,
+          "encoder": 0.0,
+          "delta_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ],
+          "metric_increases": 0,
+          "metric_decreases": 0
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 215,
+          "baseline": 0.0,
+          "encoder": 0.0,
+          "delta_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ],
+          "metric_increases": 0,
+          "metric_decreases": 0
+        },
+        "labelled_distractor_exposure4": null
+      },
+      "distractor": {
+        "n": 300,
+        "abstentions": {
+          "F0": 0,
+          "R1-encoder": 0
+        },
+        "hit1_all_queries": {
+          "n": 300,
+          "baseline": 0.5333333333333333,
+          "encoder": 0.58,
+          "delta_pp": 4.666666666666667,
+          "ci95_pp": [
+            0.6666666666666667,
+            8.666666666666668
+          ],
+          "metric_increases": 26,
+          "metric_decreases": 12
+        },
+        "all_gold_injected4_all_queries": {
+          "n": 300,
+          "baseline": 0.6866666666666666,
+          "encoder": 0.7166666666666667,
+          "delta_pp": 3.0,
+          "ci95_pp": [
+            -0.33333333333333337,
+            6.666666666666667
+          ],
+          "metric_increases": 18,
+          "metric_decreases": 9
+        },
+        "all_gold_injected4_both_answered": {
+          "n": 300,
+          "baseline": 0.6866666666666666,
+          "encoder": 0.7166666666666667,
+          "delta_pp": 3.0,
+          "ci95_pp": [
+            -0.33333333333333337,
+            6.666666666666667
+          ],
+          "metric_increases": 18,
+          "metric_decreases": 9
+        },
+        "labelled_distractor_exposure4": {
+          "n": 300,
+          "baseline": 0.7433333333333333,
+          "encoder": 0.7366666666666667,
+          "delta_pp": -0.6666666666666666,
+          "ci95_pp": [
+            -3.6666666666666665,
+            2.0
+          ],
+          "metric_increases": 8,
+          "metric_decreases": 10
+        }
+      }
+    }
+  },
+  "caveats": [
+    "Reference comparator is shipped F0; flat is an unadmitted experimental alternative.",
+    "node_scoped uses category from first gold label, not measured cwd.",
+    "Gold lists interpreted as AND by historical adapter; validate alternatives for paper.",
+    "No empty-gold cases: this corpus cannot validate NO_SKILL.",
+    "No causal ID/OOD or distillation claim follows from this corpus.",
+    "Post-hoc strata: no retrieval, tuning, or new configurations were run.",
+    "Historical aggregates may condition on answered queries; our headline includes all."
+  ]
+}

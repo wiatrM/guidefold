@@ -1,0 +1,150 @@
+{
+  "status": "Post-hoc hash sample from failed k=3 queries; descriptive inspection, not independent relevance annotation",
+  "eligible_failed_k3": 704,
+  "sample": [
+    {
+      "query_id": "q-train-023137",
+      "query": "I'm setting up a new local development environment on my Linux machine and want to mirror the MCP server configurations from my main Claude Code setup (which has `filesystem`, `github`, and a custom `slack` notifier) into my VS Code instance, but I only want to sync the `filesystem` and `github` servers to avoid cluttering VS Code with the slack notifier. Can you verify the config file paths for both tools on Linux, confirm the specific servers I want to move, and then update the VS Code configuration while preserving any existing servers I might already have there?",
+      "gold": [
+        {
+          "id": "0ec0f3f3-9f6d-4618-95d2-d17bb01d6fb9",
+          "name": "sync-mcp-config",
+          "description": "Synchronize MCP (Model Context Protocol) server settings across different Agent tools. Use when you want to copy, apply, or sync MCP settings between multiple Agent environments like Claude Code, VSCode, Claude Desktop, Codex, and Gemini CLI.",
+          "rank_top50": 1
+        },
+        {
+          "id": "00329bb7-8d1c-4d80-9dcb-d020ad62d09d",
+          "name": "docs-update",
+          "description": "Documentation update workflow. Use when modifying files in docs/ directory or any markdown files (*.md).",
+          "rank_top50": null
+        },
+        {
+          "id": "226bde50-2014-4e44-b52a-33a0fb3f7f36",
+          "name": "attacking-wireless-networks",
+          "description": "Attack WiFi networks using WPA/WPA2 cracking, WPS exploitation, Evil Twin attacks, deauthentication, and wireless reconnaissance. Use when pentesting wireless networks or performing WiFi security assessments.",
+          "rank_top50": null
+        }
+      ]
+    },
+    {
+      "query_id": "q-train-014157",
+      "query": "I'm refactoring a legacy payment processing module that currently lacks test coverage, and I need to safely extract a complex conditional logic block into a new strategy pattern while ensuring behavior is preserved. Please first analyze the existing code to identify all edge cases and error paths, then design a hypothesis-driven test suite using pytest fixtures and mocks to characterize the current behavior, and finally implement the refactoring with the new tests as a safety net.",
+      "gold": [
+        {
+          "id": "5bb87c3f-a6d2-4f98-a954-1762841985ec",
+          "name": "testing",
+          "description": "Testing patterns including pytest, unittest, mocking, fixtures, and test-driven development with extended thinking integration. Activate for test writing, coverage analysis, TDD, hypothesis-driven development, and quality assurance tasks.",
+          "rank_top50": 1
+        },
+        {
+          "id": "8f58ecd3-e79e-4f9f-be13-a8017a7c51b2",
+          "name": "qa-refactoring",
+          "description": "Safe refactoring for quality engineering: characterization tests, seam creation, incremental steps, contracts, and CI quality gates to preserve behavior while changing structure.",
+          "rank_top50": 3
+        },
+        {
+          "id": "c0c3713d-1e69-4f9d-9add-dd18dd43385a",
+          "name": "exercise-builder",
+          "description": "Creates hands-on student exercises and practice activities for learning prompt engineering. Use when the user asks to create student activities, practice exercises, or hands-on learning tasks. Generates exercises with examples, solutions, and differentiation.",
+          "rank_top50": null
+        }
+      ]
+    },
+    {
+      "query_id": "q-train-049486",
+      "query": "Set up a new Cloudflare Worker that streams text responses using the Llama 3.3 70B model, then update the project's `docs/ai-integration.md` to document the new `/api/chat` endpoint, including the required `wrangler.toml` binding configuration and the specific streaming response headers needed for the client.",
+      "gold": [
+        {
+          "id": "1513a26e-e888-4a91-969f-38bc0efc06a6",
+          "name": "code-documentation",
+          "description": "Updates project documentation in markdown files when requested. Use when the user asks to update, modify, or create project documentation such as README files, API docs, architecture docs, or other markdown documentation files.",
+          "rank_top50": null
+        },
+        {
+          "id": "f7115b8f-170e-4928-9da3-1c55ff395b3b",
+          "name": "cloudflare-workers-ai",
+          "description": "Cloudflare Workers AI essentials - text generation, embeddings, image generation, streaming. Trigger: When working with Workers AI, LLMs, text generation, embeddings, image generation.",
+          "rank_top50": 1
+        },
+        {
+          "id": "3f2cd0fb-bd66-4b02-85c8-de6fc4ae6de5",
+          "name": "report-template-generator",
+          "description": "Report Template Generator - Auto-activating skill for Data Analytics.\nTriggers on: report template generator, report template generator\nPart of the Data Analytics skill category.",
+          "rank_top50": null
+        }
+      ]
+    },
+    {
+      "query_id": "q-train-005381",
+      "query": "We're launching a new payment gateway service that combines a Python backend for transaction logic with a React dashboard for monitoring, and I need to set up a root-level `justfile` to orchestrate `dev-install` and `check-all` across both subprojects. Crucially, the Python API must implement robust idempotency for all payment mutations using a PostgreSQL-backed key table with atomic inserts and a scheduled cleanup job for expired keys, while also ensuring the project structure and CLI commands integrate seamlessly with our internal `faber` planner so that typing `faber:plan src/payments/**` correctly resolves to the payment module metadata without needing a linked issue.",
+      "gold": [
+        {
+          "id": "617eb5e7-5829-4301-ad74-999653d9ed3d",
+          "name": "configuring-polyglot-stack",
+          "description": "Polyglot project configuration - orchestrate multiple language subprojects with root justfile",
+          "rank_top50": null
+        },
+        {
+          "id": "fad81f2c-1513-4328-9be8-6df12fbbabcb",
+          "name": "idempotency-handling",
+          "description": "Idempotent API operations with idempotency keys, Redis caching, DB constraints. Use for payment systems, webhook retries, safe retries, or encountering duplicate processing, race conditions, key expiry errors.",
+          "rank_top50": 3
+        },
+        {
+          "id": "0528e514-a77c-4610-9d98-4939c0b01ab7",
+          "name": "target-matcher",
+          "description": "Matches targets against configured patterns for work-ID-free planning",
+          "rank_top50": null
+        }
+      ]
+    },
+    {
+      "query_id": "q-train-054470",
+      "query": "We're launching a new GhostSpeak companion agent on Telegram that needs to manage user task lists alongside their on-chain reputation; can you build a unified service layer that handles standard CRUD operations for todo items (including validation, timestamps, and batch deletion) while also exposing an ElizaOS action and provider to fetch a user's Ghost Score from the SDK, ensuring the agent can toggle task completion based on their reputation threshold?",
+      "gold": [
+        {
+          "id": "5b200a8c-9f08-4de6-8e82-263bc9b8ff4a",
+          "name": "crud-skill",
+          "description": "Implement Create, Read, Update, Delete operations for todo tasks. Use when building data management functionality.",
+          "rank_top50": null
+        },
+        {
+          "id": "5e0bd2f7-8cbc-45d5-809b-0cbfb170ddd7",
+          "name": "elizaos-expert-2026",
+          "description": "Expert ElizaOS plugin and agent development (January 2026). Use when (1) Building ElizaOS plugins, (2) Creating AI agent characters, (3) Implementing actions, providers, evaluators, (4) Integrating with AgentRuntime, (5) Building platform clients (Discord, Telegram), (6) Testing plugins, or any ElizaOS architecture questions.",
+          "rank_top50": 1
+        },
+        {
+          "id": "487e2b24-c065-44ff-a212-e704c6ef0abd",
+          "name": "modes",
+          "description": "Domain-specific development mode guidelines for UI, API, database, integration, migration, and specialized workflows. Each mode provides tailored principles, checklists, and patterns for different types of development work.",
+          "rank_top50": null
+        }
+      ]
+    },
+    {
+      "query_id": "q-train-021740",
+      "query": "Our PWA blog built with Hugo and Rust is failing Lighthouse audits with scores below 60 due to layout shifts, missing ARIA labels, and unoptimized assets; please refactor the HTML structure to include semantic landmarks and proper touch targets, optimize the service worker for caching, and then build and serve the site locally so we can verify the Core Web Vitals and accessibility improvements before deploying to GitHub Pages.",
+      "gold": [
+        {
+          "id": "2d60dcf2-33a4-4461-a926-400dbdb3a98d",
+          "name": "lighthouse-optimization",
+          "description": "Optimize web applications to achieve 95%+ Lighthouse scores across all categories. Use when optimizing performance, accessibility, best practices, or SEO for web applications.",
+          "rank_top50": 1
+        },
+        {
+          "id": "9d7f8915-2f7f-47c5-8fd1-2c93faf763dc",
+          "name": "hugo-builder",
+          "description": "Build, serve, and deploy the Hugo static site. Use when building the site, testing locally, checking for errors, or deploying to GitHub Pages.",
+          "rank_top50": 9
+        },
+        {
+          "id": "44ed4470-8691-4f89-801b-5fbfc536a4a8",
+          "name": "jira",
+          "description": "Use when the user mentions Jira issues (e.g., \"PROJ-123\"), asks about tickets, wants to create/view/update issues, check sprint status, or manage their Jira workflow. Triggers on keywords like \"jira\", \"issue\", \"ticket\", \"sprint\", \"backlog\", or issue key patterns.",
+          "rank_top50": null
+        }
+      ]
+    }
+  ]
+}
