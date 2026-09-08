@@ -308,24 +308,24 @@ func (r *remote) call(ctx context.Context, key, prompt string, attempt int) (str
 func (r *remote) request(prompt string) (map[string]any, func(string) map[string]string) {
 	if r.provider == NameAnthropic {
 		return map[string]any{
-			"model":      r.model,
-			"max_tokens": 4096,
-			"system":     systemPrompt,
-			"messages":   []any{map[string]any{"role": "user", "content": prompt}},
-		}, func(key string) map[string]string {
-			return map[string]string{"x-api-key": key, "anthropic-version": "2023-06-01"}
-		}
+				"model":      r.model,
+				"max_tokens": 4096,
+				"system":     systemPrompt,
+				"messages":   []any{map[string]any{"role": "user", "content": prompt}},
+			}, func(key string) map[string]string {
+				return map[string]string{"x-api-key": key, "anthropic-version": "2023-06-01"}
+			}
 	}
 	return map[string]any{
-		"model":           r.model,
-		"response_format": map[string]any{"type": "json_object"},
-		"messages": []any{
-			map[string]any{"role": "system", "content": systemPrompt},
-			map[string]any{"role": "user", "content": prompt},
-		},
-	}, func(key string) map[string]string {
-		return map[string]string{"Authorization": "Bearer " + key}
-	}
+			"model":           r.model,
+			"response_format": map[string]any{"type": "json_object"},
+			"messages": []any{
+				map[string]any{"role": "system", "content": systemPrompt},
+				map[string]any{"role": "user", "content": prompt},
+			},
+		}, func(key string) map[string]string {
+			return map[string]string{"Authorization": "Bearer " + key}
+		}
 }
 
 func (r *remote) readResponse(payload map[string]any) (string, int, int) {
