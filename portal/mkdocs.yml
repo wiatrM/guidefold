@@ -1,0 +1,56 @@
+# Self-hosted build of the same pages Mintlify reads (portal/docs.json). Both renderers read the
+# Markdown files in this directory; navigation is kept in sync by tests/test_portal.py.
+site_name: Guidefold
+site_description: Skills that live next to the code they describe, reach the agent that needs them, and climb the tree on their own.
+docs_dir: .
+site_dir: ../.portal-site
+use_directory_urls: true
+strict: true
+exclude_docs: |
+  Dockerfile
+  mkdocs.yml
+  docs.json
+  README.md
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Dark
+    - scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Light
+
+nav:
+  - Start here:
+      - What Guidefold is: index.md
+      - How it works: how-it-works.md
+      - Quickstart: quickstart.md
+  - Using it:
+      - Harnesses: harnesses.md
+      - Knowledge ascent: knowledge-ascent.md
+      - Telemetry and skill health: telemetry.md
+  - Behind it:
+      - Evidence: evidence.md
+      - Deploy: deploy.md
+      - Glossary: glossary.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

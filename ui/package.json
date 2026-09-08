@@ -13,7 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config playwright.live.config.ts",
     "test:visual": "node qa/compare-gallery.mjs",
-    "test:flow": "node qa/owner-flow.mjs",
+    "test:visual:update": "node qa/compare-gallery.mjs --update",
     "test:contracts": "node qa/check-contracts.mjs"
   },
   "dependencies": {
