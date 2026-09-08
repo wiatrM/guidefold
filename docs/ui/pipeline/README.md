@@ -1,5 +1,5 @@
 # Pipeline UI Guidefold
-Status: etapy 0–8 zamknięte, 0 otwartych P1/P2/P3, 2026-09-06. Indeks decyzji, implementacji i otwartych pytań.
+Status: etapy 0–8 zamknięte, 0 otwartych P1/P2/P3, 2026-09-06; 2026-09-08 właściciel usunął tryb fixture z ui/ (wyłącznie hostowane API, [ui/README](../../../ui/README.md)). Indeks decyzji, implementacji i otwartych pytań.
 Wejście: [reguły dokumentacji](../../DOCUMENTATION-RULES.md), [polecenie](../PIPELINE-PROMPT.md), [IA](../IA.md), [UX](../UX.md), [UI](../UI.md). Bieżący frontend: [ui](../../../ui/README.md).
 Zastępuje rozproszoną nawigację po etapach; nie zmienia PRD ani statusu ADR. Daty i liczby dotyczą przeglądów agentów, nie badań klientów.
 | Etap | Dokument | Data | Recenzenci / rundy | Zamknięte P1/P2 (unikalne) |
@@ -22,4 +22,4 @@ P3 surowego Markdown z etapu 5 zamknięto w 6. Szczegółowe znaleziska, źród�
 - Czy owner rozumie wpływ decyzji oraz różnicę eksport/published/loaded; czy to pomaga podczas incydentu? 01 Q5, 03 S4/S9, 05 §4.
 - Ile kosztuje cały obieg UI→Git→sync względem obecnej pracy, a ile aktywne review? 01 hipoteza, 03 S6, 05 §4; próg oszczędności ustalamy przed pilotem.
 Decyzja człowieka: dopuścić zakres i uczestników pilota oraz potwierdzić proponowane decyzje ADR-0031. U4 AC5 wymaga ≥4/5 prawdziwych osób niebędących autorami UI; AC2 wymaga pomiaru 10k/p95 w realnej sieci.
-Zmiany pozostają do przeglądu, bez commita. F1–F9 dotyczą fixture; backend, realne logowanie/Git i pomiary należą do F10–F21.
+Zmiany pozostają do przeglądu, bez commita. F1–F9 odebrano na fixture (zapis historyczny etapu 8); od 2026-09-08 ui/ nie ma trybu fixture i każdy widok czyta hostowane API, a testy przeglądarkowe chodzą na stubie API (`ui/e2e/stub.ts`) albo na realnej usłudze (`ui/e2e/live/`). Backend, realne logowanie/Git i pomiary należą do F10–F21.

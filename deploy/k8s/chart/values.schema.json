@@ -15,7 +15,10 @@
     },
     "auth": {
       "type": "string",
-      "enum": ["workos", "dev"]
+      "enum": [
+        "workos",
+        "dev"
+      ]
     },
     "image": {
       "type": "string"
@@ -362,6 +365,53 @@
     "operatorCredentialsSecret": {
       "type": "string",
       "minLength": 1
+    },
+    "portal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "host": {
+          "type": "string"
+        },
+        "tlsSecret": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "$schema": "http://json-schema.org/draft-07/schema#",

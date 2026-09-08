@@ -1,5 +1,5 @@
 # 7. Plan frontendu
-Status: plan po dwóch rundach, 2026-09-06; 0 otwartych P1/P2.
+Status: plan po dwóch rundach, 2026-09-06; 0 otwartych P1/P2. 2026-09-08: właściciel usunął adapter fixture z ui/; wzmianki o fixture poniżej opisują plan i odbiór F1–F9, nie bieżący kod (jedyny adapter to `ApiDataSource`, [ui/README](../../../ui/README.md)).
 Wejścia: [04](04-wireframes.md), [05](05-simulation.md), [06](06-ux-ui.md), [UI §5](../UI.md), [pivot U4](../../PRODUCT-PIVOT.md), [architektura](../../PIVOT-ARCHITECTURE.md), [ADR-0031](../../adr/ADR-0031-monorepo-to-managed-skill-library.md).
 Cel: port siedmiu tras do ui/ oraz podłączenie zatwierdzonych kontraktów. Etap 8 dostarcza bibliotekę i działający fixture; poniższy plan integracji nie deklaruje gotowego backendu.
 
@@ -23,12 +23,12 @@ Użycie sesji nie daje OAuth dostępu do kodu repo. W aplikacji nie ma WorkOS AP
 |---|---|
 | src/tokens, components | Tokeny i najwyżej 14 eksportów z UI §4; każdy index, CSS Module, test i story. |
 | src/routes, app | Formularze, lifecycle, nawigacja, per-route error/loading boundary oraz orkiestracja; bez drugiej biblioteki layoutów. |
-| src/domain, data | Obiekty i czyste porównania; oznaczony adapter Meridian. Produkcyjny build nie importuje całego fixture ani wszystkich body. |
+| src/domain, data | Obiekty i czyste funkcje; port `DataSource` z jednym adapterem API (od 2026-09-08; wcześniej dodatkowo oznaczony adapter Meridian). Produkcyjny build nie importuje danych przykładowych ani wszystkich body. |
 | src/api | Jeden klient, dekodery i cache RAM: namespace user/org/repo/policy i pełny klucz operacji/zasobu/query; bez kopiowania fetch do komponentów. |
 | src/test, e2e, qa | Setup testów, scenariusze, raporty i galeria developerska. Galeria nie jest ósmym widokiem produktu ani pozycją menu. |
 
-Czyste lineDiff/digest i typy nie importują fixture; adapter danych jest wstrzykiwany przy składaniu aplikacji. Produkcyjna granica API nie importuje danych Meridian.
-Hi-fi pozostaje niezależnym punktem odniesienia. Przed ekstrakcją zamrażamy źródła i obrazy galerii; ui nie importuje komponentów z prototypes/. Galerie obu projektów używają równych props i fixture.
+Czyste lineDiff i typy nie importują danych; adapter danych jest wstrzykiwany przy składaniu aplikacji. Produkcyjna granica API nie importuje danych Meridian.
+Hi-fi pozostaje niezależnym punktem odniesienia sprzed ekstrakcji; ui nie importuje komponentów z prototypes/. Od 2026-09-08 galeria ui renderuje wartości przykładowe z `ui/src/sample.ts`, a pixel diff porównuje ją z własnym zaakceptowanym baseline `ui/qa/baseline/` (08 §Tokeny).
 
 ## Granice danych
 Wiersze poniżej są projektowanymi kontraktami management API; ścieżki i DTO utrwalamy w OpenAPI przed integracją, nie udajemy istniejących endpointów.
@@ -50,7 +50,7 @@ Każda mutacja wiąże idempotency_key z tym samym payloadem i oczekiwaną rewiz
 GET może mieć najwyżej dwa ponowienia z backoff/Retry-After; mutacja po timeout najpierw odczytuje wynik po kluczu operacji. Brak potwierdzenia nie zmienia stanu na sukces.
 
 ## Offline i awarie
-Publiczny fixture działa lokalnie. Prywatne body, feedback i propozycje nie trafiają do localStorage, sessionStorage, service workera ani trwałego cache HTTP (Cache-Control: no-store).
+Prywatne body, feedback i propozycje nie trafiają do localStorage, sessionStorage, service workera ani trwałego cache HTTP (Cache-Control: no-store); od 2026-09-08 nie ma też publicznego trybu lokalnego.
 Produkcyjne degraded pozwala czytać snapshot RAM wyłącznie po świeżym potwierdzeniu membership/policy przez API, gdy niedostępna jest usługa danych. Bez łączności pozwalającej zweryfikować dostęp prywatny widok jest zasłonięty; nie obiecujemy offline pracy na danych klienta.
 U3 AC4 wymaga odwołania dostępu do 60 s. Projekt: potwierdzenie dostępu ważne maks. 45 s od rozpoczęcia requestu, odnowienie co 25 s z timeoutem 5 s; niepotwierdzone odnowienie nie przedłuża ważności. Deadline zasłania prywatny widok. Ukrycie karty zasłania dane, a wznowienie wymaga sprawdzenia przed odsłonięciem; API egzekwuje niezależnie własne odwołanie. To kontrakt Guidefold, nie SLA WorkOS.
 Wylogowanie, 401/403 lub zmiana user/org/policy czyści cache i prywatne szkice, anuluje requesty oraz odrzuca spóźnione odpowiedzi poprzedniej generacji. Brak sieci bez odmowy nie oznacza automatycznego wylogowania; UI zachowuje sesję, ale nie odsłania danych bez sprawdzenia.
@@ -78,7 +78,7 @@ Hi-fi ma 27 plików i główny chunk ~639 kB/172 kB gzip; to punkt kontroli ekst
 ## Testy i kroki
 Vitest: kontrakty komponentów, dekodery, konflikty rewizji, odpowiedź org A po przejściu do B oraz odwrócona kolejność filtrów/rewizji w jednej org. Playwright: właściciel import→źródło→edit/approve→dokładny eksport→Git→published, odmowa/member oraz utrata sieci.
 U4 AC3/AC4: sprawdzamy dokładny host/plik/commit linku Git oraz cały login→import→lista→review wyłącznie klawiaturą, w tym focus po zmianie stanu. Osobny test odwołuje membership przy bezczynnej stronie/ciepłym cache i po wznowieniu karty; odsłonięcie danych nie przekracza 60 s.
-Etap 8 sprawdza lokalny fixture i symulację Git. Osobny test integracyjny hostowanego MVP używa prawdziwego callbacku, testowego repo Git i potwierdzonego sync; nie zalicza go kliknięcie Simulate.
+Etap 8 sprawdził lokalny fixture i symulację Git (zapis historyczny; usunięte 2026-09-08). Osobny test integracyjny hostowanego MVP używa prawdziwego callbacku, testowego repo Git i potwierdzonego sync (`ui/e2e/live/`); testy na stubie API (`ui/e2e/stub.ts`) dowodzą okablowania, nie publikacji.
 CI: frozen lockfile→typecheck/build→Vitest→Playwright+axe dla 7 tras/galerii i ujawnionych formularzy→pixel diff niezależnej galerii; retry testu nie zamienia flaky w zielone. [Vitest](https://vitest.dev/guide/), [Playwright axe](https://playwright.dev/docs/accessibility-testing), odczyt 2026-09-06.
 Kroki to ≤1 dzień pracy frontendu każdy [założenie], po gotowych zależnościach; brak API lub przekroczenie kroku rozbija go przed kontynuacją. Nie jest to estymacja pracy backendu, auth ani workera.
 | Krok / nakład FE | Zależność | Gotowe |

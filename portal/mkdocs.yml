@@ -1,16 +1,11 @@
-# Self-hosted build of the same pages Mintlify reads (portal/docs.json). Both renderers read the
-# Markdown files in this directory; navigation is kept in sync by tests/test_portal.py.
+# Self-hosted build of the same pages Mintlify reads (portal/content/docs.json). Both renderers
+# read the Markdown files in portal/content; navigation is kept in sync by tests/test_portal.py.
 site_name: Guidefold
 site_description: Skills that live next to the code they describe, reach the agent that needs them, and climb the tree on their own.
-docs_dir: .
+docs_dir: content
 site_dir: ../.portal-site
 use_directory_urls: true
 strict: true
-exclude_docs: |
-  Dockerfile
-  mkdocs.yml
-  docs.json
-  README.md
 
 theme:
   name: material

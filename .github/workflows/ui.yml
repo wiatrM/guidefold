@@ -1,4 +1,4 @@
-name: UI fixture checks
+name: UI checks
 
 on:
   push:
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  fixture-ui:
+  ui:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -51,7 +51,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser accessibility, states and keyboard journey
         run: pnpm test:e2e
-      - name: Owner regression and independent visual comparison
+      - name: Independent visual comparison against ui/qa/baseline
         shell: bash
         run: |
           mkdir -p qa
@@ -68,16 +68,14 @@ jobs:
             sleep 0.5
           done
           test "$ready" = 1 || { cat qa/dev-server.log; exit 1; }
-          status=0
-          pnpm test:flow || status=1
-          # Read-only comparison: never regenerate the pre-extraction hifi baseline.
-          pnpm test:visual || status=1
-          exit "$status"
-      - name: Upload fixture QA evidence
+          # Read-only comparison against the committed baseline; `pnpm test:visual:update`
+          # regenerates it deliberately, never in CI.
+          pnpm test:visual
+      - name: Upload UI QA evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-fixture-qa
+          name: ui-qa
           path: |
             ui/qa/
             ui/test-results/

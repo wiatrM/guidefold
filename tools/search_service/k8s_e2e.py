@@ -306,6 +306,7 @@ def run(args):
         k("rollout", "status", "deployment/db", "--timeout=120s")
         base = {
             "developmentMode": True,
+            "auth": "dev",
             "image": IMAGE,
             "tenant": "test",
             "repository": "meridian",

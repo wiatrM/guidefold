@@ -97,3 +97,38 @@ A conditional oracle analysis exposed a severe apparent multi-skill ceiling: onl
 A structural audit of all 63,259 TRAIN queries and 127,190 qrels found no orphaned pairs, duplicate query IDs, duplicate qrel pairs, or name/ID/count mismatches. Structural consistency therefore does not resolve the semantic concern. The [dataset card](https://huggingface.co/datasets/ThakiCloud/SKILLRET/blob/main/README.md) states that version 1.1 semantically filters TEST while TRAIN remains byte-identical to version 1.0; we do not generalize these examples to TEST. A balanced, outcome-independent 120-query/240-pair review packet is prepared, with randomized skill order and full source texts. Its reviewer fields remain empty.
 
 The next empirical question is whether independently adjudicating required, optional, alternative, and irrelevant skills changes conclusions about sparse/dense/fusion rankings and four-card completeness. Do not automatically relabel positives missed by BM25. This is a candidate direction for further research, not a completed annotation study, a proven benchmark-wide defect, or an established novel contribution. The original frozen results remain available unchanged.
+
+## Fresh evidence addendum (8 September 2026)
+
+Subsequent source-disjoint and agent-driven controls sharpen the candidate
+contribution. A fixed-budget set selector improves Complete@4 by +2.90 pp on
+the 2,000-query internal source-family-disjoint confirmation
+(51.00% to 53.90%, paired bootstrap 95% CI [+1.80, +4.05]) and transfers to the
+pinned R3 multi-skill cohort (+7.72 pp versus dense). Exact global subset search
+is a negative control: its R3 development gain (+1.98 pp) transfers by -0.25 pp
+on source-disjoint data. LLM taxonomy routing is another negative control:
+reasoning improves over centroid routing at six broad categories, but remains
+16 pp below flat dense all-gold@20 and loses its edge at 18 finer categories.
+
+A separate context-loading track is also viable. In a 75-task/70-skill pilot,
+card-first progressive disclosure reaches 64.7% hard-task accuracy versus 69.1%
+with the full body, expands on 97.1% of hard tasks and 0% of easy tasks, and
+saves 86.3% of content tokens when the card is sufficient. The 9.3% blended
+saving is task-mix dependent; the task generator was mechanically leakage-gated
+but not independently adjudicated, and calls were single-pass with temperature
+unfixed. This is evidence for a calibration/context-cost mechanism, not a
+population or productivity result.
+
+The revised paper plan is to report the fixed-budget set-composition study and
+the progressive-disclosure mechanism as separate analyses with shared
+provenance, explicit negative controls and independent replay. A submission
+still requires temperature-pinned repeated trials, independent semantic QA,
+realistic traffic sampling, and paired skill-enabled/no-skill execution with
+safety and closure outcomes. The evidence supports an empirical retrieval or
+systems paper; it does not support a universal retrieval or agent-use
+breakthrough claim.
+
+Raw protocols and replay outputs:
+[set objective](../../../research/set-objective-transfer-2026-09-07/README.md),
+[LLM routing](../../../research/pyramid-routing-llm-2026-09-07/README.md),
+[progressive disclosure](../../../research/progressive-disclosure-execution-2026-09-07/README.md).

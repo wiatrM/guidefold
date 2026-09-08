@@ -5250,6 +5250,9 @@ HARNESS_HOOK_FILES = {
     "claude":  ("claude.settings.json", ".claude/settings.json"),
     "copilot": ("copilot.hooks.json",   ".github/hooks/guidefold.json"),
     "codex":   ("codex.hooks.json",     ".codex/hooks.json"),
+    # No template ships for Gemini CLI (it has no session hook); `install` reports it as skipped
+    # and relies on the materialized GEMINI.md/AGENTS.md cards instead.
+    "gemini":  ("gemini.hooks.json",    "GEMINI.md"),
 }
 
 
@@ -7790,7 +7793,9 @@ def cmd_status(a):
 
 # ----------------------------------------------------------------------- install / uninstall
 
-INSTALL_HARNESSES = ("claude", "copilot")
+# `gemini` has no hook: Gemini CLI reads GEMINI.md/AGENTS.md from disk, which `install` now
+# materializes, so the harness is installable even though nothing is wired into a settings file.
+INSTALL_HARNESSES = ("claude", "copilot", "gemini")
 ADAPTER_DEST_REL = ".agents/skills/guidefold"
 COPILOT_INSTRUCTIONS_REL = ".github/copilot-instructions.md"
 COPILOT_BLOCK_BEGIN = "<!-- guidefold:begin -->"
@@ -8118,6 +8123,21 @@ def cmd_install(a):
     _install_manifest_path(root).parent.mkdir(parents=True, exist_ok=True)
     _install_manifest_path(root).write_bytes(manifest_bytes)
     print(f"  package sha256: {package_sha}")
+    # One-shot delivery (ADR-0035 §8): the hook needs the index for this commit, and every
+    # harness that reads files instead of running a hook (Gemini, Codex, Copilot's applyTo)
+    # needs the materialized scope cards. Both are generated, gitignored, and idempotent, so
+    # `install` does them here instead of asking the developer to remember two more commands.
+    # Skipped, with a reason, when there is no guidefold.yaml yet or when asked not to.
+    if yaml_path.is_file() and not getattr(a, "no_materialize", False):
+        try:
+            cfg_full = load_map(root)
+            cfg_full.setdefault("registry", {})
+            cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
+            cmd_index(argparse.Namespace(check=False), root, cfg_full)
+        except SystemExit as exc:                      # a failed validate/build is reported, not hidden
+            print(f"  materialize/index: {exc}")
+    else:
+        print("  materialize/index: skipped (" + ("--no-materialize" if yaml_path.is_file() else "no guidefold.yaml yet") + ")")
     print("  next: `guidefold doctor`")
     sys.exit(0)
 
@@ -9147,6 +9167,8 @@ def main():
     ins = sub.add_parser("install", help="U5: install the portable adapter package + harness wiring (idempotent)")
     ins.add_argument("--harness", choices=list(INSTALL_HARNESSES), required=True)
     ins.add_argument("--dry-run", action="store_true")
+    ins.add_argument("--no-materialize", action="store_true",
+                     help="skip building the hook index and writing the scope cards after installing")
     _service_flags(ins)
     uns = sub.add_parser("uninstall", help="remove exactly what `install` wrote, and nothing else")
     uns.add_argument("--harness", choices=list(INSTALL_HARNESSES), required=True)

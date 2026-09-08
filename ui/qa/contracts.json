@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-08T08:35:41.049Z",
+  "capturedAt": "2026-09-08T08:51:53.523Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",

@@ -84,3 +84,15 @@ worker:
 job:
   timeoutSeconds: 1800
   ttlSecondsAfterFinished: 86400
+
+# The developer portal (portal/Dockerfile): static docs behind an unprivileged nginx, no
+# database, no credentials, no egress. Off by default; give it its own host when on.
+portal:
+  enabled: false
+  image: ""
+  replicas: 1
+  host: ""
+  tlsSecret: ""
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 128Mi}

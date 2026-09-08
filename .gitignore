@@ -73,3 +73,4 @@ research/
 # session-local tool scratch, never committed
 logs/
 .playwright-mcp/
+/.portal-site/

@@ -583,6 +583,11 @@ call `find`/`load` explicitly), and writes the `service:` block above. It record
 sha256, the harnesses installed, and `package_sha256`, the sha256 of the installed
 `scripts/guidefold` that `doctor` reports).
 
+- After writing, it builds the hook index for the current commit and materializes the scope
+  cards (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/instructions/*`), so one command wires
+  every delivery path (ADR-0035 §8); `--no-materialize` skips that, and a missing `guidefold.yaml`
+  is reported rather than failed. `--harness gemini` installs no hook (Gemini CLI has none) and
+  relies on those files alone.
 - Running it twice reports "nothing to do" and changes no byte.
 - A package file edited after installation is reported as `modified locally` and left alone.
 - `uninstall --harness H` removes only what the manifest records, and only where the current

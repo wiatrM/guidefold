@@ -1,11 +1,11 @@
 # 8. Biblioteka komponentów
-Status: etap zamknięty po dwóch rundach, 2026-09-06; testy komponentów/build, axe, 42 stany i 42 porównania obrazu zaliczone.
+Status: etap zamknięty po dwóch rundach, 2026-09-06; testy komponentów/build, axe, 42 stany i 42 porównania obrazu zaliczone. 2026-09-08: właściciel usunął tryb fixture z ui/ (sekcja „Usunięcie trybu fixture” poniżej); tabela dowodów odbioru pozostaje zapisem z 2026-09-06.
 Cel: wydzielenie React do ui/ bez zmiany zatwierdzonego wyglądu. Wejścia: [UI §4](../UI.md), [06](06-ux-ui.md), [07](07-frontend.md), [reguły](../../DOCUMENTATION-RULES.md).
-Zakres zastępowania: ui/ jest bieżącą implementacją fixture; pipeline-hifi pozostaje zamrożonym odniesieniem, nie drugim miejscem edycji.
+Zakres zastępowania: ui/ jest bieżącą implementacją (od 2026-09-08 wyłącznie na hostowanym API); pipeline-hifi pozostaje zamrożonym odniesieniem, nie drugim miejscem edycji.
 
 ## Układ i kontrakty
 [ui/src/components](../../../ui/src/components/) zawiera dokładnie 14 eksportów. Każdy katalog ma index.tsx, nazwany CSS Module, .test.tsx oraz standardowy plik CSF .stories.tsx.
-[Shared.tsx](../../../ui/src/Shared.tsx) tylko reeksportuje. [Galeria /__components](http://127.0.0.1:4331/__components) renderuje wszystkie 14 na tych samych props i Meridian fixture co zamrożona galeria hi-fi.
+[Shared.tsx](../../../ui/src/Shared.tsx) tylko reeksportuje. [Galeria /__components](http://127.0.0.1:4331/__components) renderowała wszystkie 14 na tych samych props i Meridian fixture co zamrożona galeria hi-fi; od 2026-09-08 props galerii i stories pochodzą z `ui/src/sample.ts` (wycinki plików examples/monorepo trzymane inline).
 Stories opisują scenariusze komponentu; galeria porównawcza ma stały zestaw props i nie wymaga osobnego runtime Storybook. Nie jest ósmą stroną produktu.
 Kontrolki dostają stan od trasy; komponent nie pobiera danych, nie autoryzuje ani nie udaje opublikowania rewizji. Nie tworzymy sześciu pustych wariantów każdego komponentu.
 
@@ -32,15 +32,17 @@ RouteState obsługuje sześć kontraktów tras z 07; nie dodaje rozmiarów, moty
 ## Kandydaci do osobnego pakietu
 ActionButton, Panel, StateBadge, RouteState, Tabs, Field, DataTable i MetricRow mogą być kandydatami do wspólnego pakietu UI, gdy drugi rzeczywisty konsument potwierdzi zgodne kontrakty. Dziś pozostają w ui/; sam ponowny import nie uzasadnia publikacji pakietu.
 BrandMark pozostaje przy marce. Urn, ProvenanceTrail, ScopeTree, SkillContent i SkillDiff opisują odczyt instrukcji/źródeł Guidefold; ewentualny pakiet domenowy wymaga drugiego konsumenta i jawnych zależności Router/Markdown/typy, a nie sztucznej uniwersalizacji.
-Routes, fixture adapter, formularz decyzji, lifecycle, sesja i eksport nie są kandydatami do biblioteki prezentacyjnej: zależą od konkretnego workflow i przyszłego Go API.
+Routes, adapter danych, formularz decyzji, lifecycle, sesja i eksport nie są kandydatami do biblioteki prezentacyjnej: zależą od konkretnego workflow i Go API.
 
 ## Granica tras i danych
 [app.tsx](../../../ui/src/app.tsx) składa siedem tras i stany; formularze, feedback, lifecycle, eksport i symulacja Git są w routes/. RouteErrorBoundary jest lokalną obsługą błędu trasy, nie elementem biblioteki.
-Błąd modułu pokazuje Reload view i zachowuje szkic publicznego fixture w bieżącej sesji. Publikacja/eksport nie zmieniają się optymistycznie.
-[data.ts](../../../ui/src/data.ts) tworzy wstrzykiwany FixtureAdapter bez importu JSON. [data/meridian.ts](../../../ui/src/data/meridian.ts) składa publiczny fixture w main; komponenty i czyste domain/diff, domain/skill nie zależą od danych demonstracyjnych.
-To adapter fixture, nie deklaracja zaimplementowanego OpenAPI ani adaptera sieciowego. F10–F21 z 07 pozostają zależne od Go/auth/worker, testowego Git i pilota.
-Publiczna symulacja zapisuje szkic w sessionStorage pod guidefold-ui-meridian-v1. Produkcyjnych prywatnych danych nie wolno podłączyć do tego magazynu; obowiązują RAM/cache/revocation z 07.
-Eksport jest dokładnym SKILL.md, nie pakietem closure 1.2. Simulate Git sync oznacza lokalny scenariusz; nie wywołuje GitHub ani rzeczywistego sync.
+Błąd modułu pokazuje Reload view; niewysłany tekst z RAM przepada i komunikat to mówi. Publikacja/eksport nie zmieniają się optymistycznie.
+Zapis odbioru z 2026-09-06: [data.ts] tworzył wstrzykiwany FixtureAdapter bez importu JSON, [data/meridian.ts] składał publiczny fixture w main, a publiczna symulacja zapisywała szkic w sessionStorage pod guidefold-ui-meridian-v1. Te pliki i ten magazyn nie istnieją od 2026-09-08 (sekcja poniżej); komponenty i czyste funkcje domain/ nadal nie zależą od żadnych danych demonstracyjnych.
+Eksport jest dokładnym SKILL.md, nie pakietem closure 1.2; `Published` wymaga potwierdzenia z `publication` API.
+
+## Usunięcie trybu fixture (2026-09-08, decyzja właściciela)
+Rozbieżność: zlecenie „UI wyłącznie na rzeczywistym wdrożeniu” vs 08 §Granica tras i danych „ui/ jest bieżącą implementacją fixture”. Decyzja: usunięto `FixtureDataSource`, `fixture.json`, adapter Meridian, symulację sessionStorage, symulowany ledger usage (`fixtureUsage.ts`), trasy fixture (Import/Organization/Library/Map/Skill/Proposals/Usage), przełącznik `?mode=` i copy o fixture/symulacji; `main.tsx` składa zawsze `ApiDataSource`. Dokument zastępowany: ten (§Granica tras i danych, tabela dowodów), [07](07-frontend.md), [UI §5](../UI.md), [UX §5](../UX.md), [ui/README](../../../ui/README.md); status: zaktualizowane w tej pracy. Konsekwencje: F1–F9 pozostają odebrane historycznie; sześć stanów per widok pochodzi z odpowiedzi API; galeria i stories czytają `ui/src/sample.ts`; pixel diff porównuje galerię z własnym baseline `ui/qa/baseline/` (45 obrazów, regeneracja zaakceptowana przez właściciela „Baseline ok”), a zamrożony hi-fi pozostaje zapisem sprzed ekstrakcji. `pnpm test:flow` usunięty; ścieżkę właściciela klawiaturą pokrywają `e2e/owner-keyboard.spec.ts` (stub) i `e2e/live/keyboard.spec.ts` (realne API). Do decyzji właściciela: nie.
+Dowody po usunięciu: `pnpm typecheck`, `pnpm build`, `pnpm test` (30 plików / 280 testów, wcześniej 31 / 288: testy fixture przepisane na `fakeSource`; nowe `domain/pyramidGraph.test.ts`), `pnpm test:contracts` (15 komponentów, 121 tokenów, reguła `data-boundary` obejmuje `src/data/` i `src/sample.ts`), `pnpm test:e2e` 33/33 na stubie (axe 7 widoków + galeria w 1280/820/390, sześć stanów × siedem widoków, filtry URL, ścieżka właściciela klawiaturą), `pnpm test:visual` 45/45. Poprawki znalezione przy przepinaniu testów: niekontrolowany `<select>` filtra Library tracił aktywną wartość, gdy fasety dotarły po pierwszym renderze (stabilny węzeł opcji); lejek pięciu miar Usage wystawał 4 px poza 820 px (token `--funnel-metric-columns` w breakpoint 1080 px na trzy kolumny). Nie zaliczamy przez to U4 AC2/AC5 ani pilota.
 
 ## Tokeny i niezależne porównanie
 Jedyny plik wartości w ui/src: [tokens/tokens.css](../../../ui/src/tokens/tokens.css); moduły używają var(). Hi-fi ma własny niezmieniany arkusz sprzed ekstrakcji.
@@ -51,7 +53,7 @@ Dodany przed freeze --gallery-width=1040px ogranicza długość wiersza wyłącz
 Porównanie galerii nie zastępuje zrzutów pełnych widoków, oceny copy ani pilota. Pełne widoki i wzorzec marki oceniono w 06; ekstrakcję sprawdzamy dodatkowo na działających trasach.
 
 ## Sprawdzenia
-Komendy z ui/: pnpm install --frozen-lockfile; pnpm build; pnpm test; pnpm test:contracts; pnpm test:e2e. Dla pnpm test:flow i pnpm test:visual uruchom wcześniej pnpm dev na 127.0.0.1:4331.
+Komendy z ui/: pnpm install --frozen-lockfile; pnpm build; pnpm test; pnpm test:contracts; pnpm test:e2e. Dla pnpm test:visual uruchom wcześniej pnpm dev na 127.0.0.1:4331 (pnpm test:flow usunięty 2026-09-08). Tabela poniżej to dowody odbioru z 2026-09-06 na fixture; bieżące wyniki w sekcji „Usunięcie trybu fixture”.
 | Kontrola / dowód | Wynik i granica |
 |---|---|
 | TypeScript + Vite build | PASS; główny chunk fixture około 640 kB / 173 kB gzip. Ostrzeżenie >500 kB jest jawne; brak dowodu budżetu produkcji i datasetu 10k. |

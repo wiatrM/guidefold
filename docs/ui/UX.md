@@ -36,7 +36,7 @@ Pobranie, context_loaded i outcome to różne poziomy dowodu. No observations/Un
 | Główna akcja | Wynika z obiektu i aktualnego etapu [IA §5](IA.md). Po eksporcie skrót prowadzi do dowodu publikacji; nie obiecuje ponownej decyzji. |
 | Import | Org/repo, zakres i manifest przed wysyłką. Wynik rozdziela przyjęte i pominięte pliki; niekompletny import nie udaje pełnego. |
 | Propozycja | Źródło i kandydat obok siebie na desktopie, kolejno na mobile. Podgląd Markdownu, dokładny surowy plik, diff oraz skok do formularza decyzji. |
-| Edycja fixture | Zmienia body; frontmatter, owner, scope i relacje zostają stałe. Eksport SKILL.md nie obiecuje zamknięcia pełnego pakietu zasobów. |
+| Edycja kandydata | Zmienia body; frontmatter, owner, scope i relacje zostają stałe. Eksport SKILL.md nie obiecuje zamknięcia pełnego pakietu zasobów. |
 | Odświeżenie | Nie zmieniamy treści pod kursorem podczas decyzji. Nowa rewizja wymaga jawnego ponownego odczytu przed zapisem. |
 | Błąd zapisu | Formularz zachowuje treść/powód i wskazuje, co nie zostało zapisane. Nie pokazuje powodzenia bez potwierdzenia. |
 | Członkostwo | Member może czytać i zgłaszać feedback. Import, decyzje i zmiany org wymagają ownera; ochrona ostatniego ownera ma komunikat przy operacji. |
@@ -44,7 +44,7 @@ Pobranie, context_loaded i outcome to różne poziomy dowodu. No observations/Un
 | Mobile | Wszystkie siedem widoków zachowuje działanie. Układ się składa; ważne dane i decyzje nie znikają za trybem „read-only mobile”. |
 
 Macierz empty/loading/partial/error/degraded/restricted dla każdego widoku: [etap 4 §5](pipeline/04-wireframes.md). Wygląd i testy hi-fi należą do etapu 6; kontrakty API i ważność cache do etapu 7.
-U4 AC2 wymaga pierwszej strony przy 10 tys. skilli z p95 ≤2 s w zadeklarowanej sieci pilota. Nie renderujemy całego grafu. Fixture 27 plików nie zalicza tego pomiaru.
+U4 AC2 wymaga pierwszej strony przy 10 tys. skilli z p95 ≤2 s w zadeklarowanej sieci pilota. Nie renderujemy całego grafu. Przykładowe 27 plików z etapów 4–6 nie zalicza tego pomiaru.
 
 ## 4. Dostępność
 
@@ -67,10 +67,10 @@ Wymagania, nie deklaracja ukończonego audytu:
 | Stan | Opisuj, co wiadomo i co można zrobić. Unknown jest pełnoprawnym wynikiem. |
 | Pochodzenie | Rewizja treści, commit, snapshot i digest paczki to odrębne pola. Nie wymyślaj numeru linii, jeżeli referencja nie ma zweryfikowanego mapowania. |
 | Treść wygenerowana | Oznacz ją w miejscu odczytu; pokaż dostępne źródła i metadane procesu. Nie wypełniaj nieznanego modelu lub recepty przykładową nazwą. |
-| Symulacja | Meridian fixture jest stale widoczny. Proposed CLI, Local simulation i Published (fixture) oddzielają projekt od działającej integracji. |
+| Dane przykładowe | Wyłącznie w makietach, hi-fi i galerii komponentów, zawsze podpisane. Od 2026-09-08 produkt nie ma trybu fixture ani symulacji: każdy widok czyta hostowane API, a nieznane pozostaje Unknown. |
 | Błąd | Nazwij nieudany krok, skutek i dostępne działanie. Bez wymyślonego retry, jeśli system nie potrafi go wykonać. |
 
-Etap 6 zapisuje inwentarz stringów i wynik czytania na głos. Fixture nie zawiera prawdziwych członków, zdarzeń użycia ani potwierdzonej instalacji adaptera.
+Etap 6 zapisuje inwentarz stringów i wynik czytania na głos. Dane przykładowe etapów 4–6 nie zawierały prawdziwych członków, zdarzeń użycia ani potwierdzonej instalacji adaptera.
 
 ## 6. Anti-slop
 
@@ -83,7 +83,7 @@ Te reguły dotyczą ekranów i dokumentów. Utrzymujemy język oraz geometrię [
 | Hero, slogan marketingowy, wyśrodkowany wielki nagłówek w produkcie | Nazwa widoku, identyfikacja obiektu i jego działanie. |
 | Karty albo metryki dodane dla symetrii | Tylko dostępne dane potrzebne do konkretnej decyzji. |
 | Wykres bez pytania, skali lub danych | Tekstowy dowód albo jawny brak obserwacji. |
-| Przykładowe firmy/ludzie/liczby udające produkcję | Dane rzeczywiste lub wyraźnie podpisany Meridian fixture. |
+| Przykładowe firmy/ludzie/liczby udające produkcję | Dane rzeczywiste; wartości przykładowe tylko w makietach i galerii, wyraźnie podpisane. |
 | Przełączniki motywu lub gęstości | Jeden graphite, stałe Balanced 40 px; mobile powiększa cele dotykowe. |
 | Automatyczne ruchy, confetti, pulsujące statusy | Ruch wyłącznie po zmianie stanu, z reduced motion. |
 | Nowy wariant komponentu bez potrzeby | Użycie istniejącego API; drugi wariant ma pisemne uzasadnienie. |

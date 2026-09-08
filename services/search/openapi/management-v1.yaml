@@ -57,6 +57,7 @@ paths:
               schema: { $ref: "#/components/schemas/Providers" }
 
   /api/v1/github/webhook:
+    x-status: planned
     post:
       tags: [github]
       summary: GitHub App webhook (ADR-0036). Verifies X-Hub-Signature-256; may enqueue one ascend.run job.
@@ -94,6 +95,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/orgs/{org}/github/installations:
+    x-status: planned
     get:
       tags: [github]
       summary: GitHub App installations registered for this organisation (ADR-0036).
@@ -109,6 +111,7 @@ paths:
                 items: { $ref: "#/components/schemas/GitHubInstallation" }
 
   /api/v1/orgs/{org}/github/installations/{installation_id}:
+    x-status: planned
     delete:
       tags: [github]
       summary: Forget a GitHub App installation (ADR-0036).

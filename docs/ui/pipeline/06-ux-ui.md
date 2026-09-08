@@ -6,7 +6,7 @@ Artefakt: [React/Vite hi-fi](../../../prototypes/pipeline-hifi/); [UI §1–4](.
 ## Zakres
 Siedem widoków U4: Import, Library, Map, Skill, Proposals, Usage & quality, Organization. Login i org to kroki Import; Members/Integrations to zakładki Organization.
 Dane: wyłącznie podpisany Meridian fixture z examples/monorepo, commit 88e404561a9f6994cd870743bf858b9b0a616126; 27 plików SKILL.md, 17 zadeklarowanych nodes, 125466 B.
-To lokalna symulacja: brak OAuth, API, zapisów repo, Git sync i telemetrii adaptera. Eksportuje się dokładny SKILL.md, bez dołączania zasobów referencyjnych.
+To lokalna symulacja: brak OAuth, API, zapisów repo, Git sync i telemetrii adaptera. Eksportuje się dokładny SKILL.md, bez dołączania zasobów referencyjnych. (Zapis etapu hi-fi; ui/ od 2026-09-08 nie ma symulacji i czyta wyłącznie hostowane API, [08](08-components.md).)
 Scenariusze ról w URL służą QA; uprawnienia produkcji musi egzekwować API. Dane importu nie są dowodem użyteczności.
 
 ## Wzorzec

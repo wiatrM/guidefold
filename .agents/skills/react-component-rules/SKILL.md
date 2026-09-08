@@ -14,9 +14,9 @@ Indeks: [AGENTS.md](../../../AGENTS.md). Zakres zastępowania: brak; skill jest 
 
 | Katalog | Może importować | Nie może |
 |---|---|---|
-| `ui/src/domain/` (diff, skill, typy) | nic z ui/ poza typami | `data/`, `routes/`, React, DOM, fixture |
-| `ui/src/components/` (14 katalogów) | `tokens/`, `domain/` typy | fixture, adaptery, fetch; komponent nie pobiera danych, nie autoryzuje, nie udaje publikacji |
-| `ui/src/data/`, `data.ts` | `domain/`, kontrakt adaptera | komponenty; fixture i API to osobne adaptery jednego kontraktu, wstrzykiwane w `main.tsx` |
+| `ui/src/domain/` (diff, typy) | nic z ui/ poza typami | `data/`, `routes/`, React, DOM |
+| `ui/src/components/` (15 katalogów) | `tokens/`, `domain/` typy | adaptery, fetch; komponent nie pobiera danych, nie autoryzuje, nie udaje publikacji |
+| `ui/src/data/` | `domain/`, kontrakt adaptera | komponenty; od 2026-09-08 jest jeden adapter, API (`apiSource`), wstrzykiwany w `main.tsx`; tryb fixture usunięto decyzją ownera |
 | `ui/src/routes/` | wszystko powyżej | drugi wariant komponentu „na miejscu”; formularze, lifecycle, eksport, sesja zostają tu |
 
 `Shared.tsx` tylko reeksportuje. Galeria `/__components` jest narzędziem developerskim poza nawigacją produktu; jej baseline nie importuje `ui/`.
@@ -35,7 +35,7 @@ ActionButton, BrandMark, Panel, StateBadge, RouteState, Tabs, ProvenanceTrail, S
 - Fetch w jednej warstwie: `AbortController`, numer aktywnego żądania odrzuca spóźnione odpowiedzi, klucz cache obejmuje operację, ID zasobu, rewizję, snapshot i znormalizowane filtry. GET maks. dwa ponowienia z backoff.
 - Dekodowanie payloadu na granicy (typy z OpenAPI + dekoder runtime); błąd dekodowania obsługuje granica trasy, nie komponent.
 - Mutacje: idempotency key + expected revision; 409 wymaga ponownego review; bez optymistycznego `published`.
-- Prywatne body, feedback i propozycje nie trafiają do localStorage/sessionStorage/service workera; `guidefold-ui-meridian-v1` jest tylko dla publicznego fixture.
+- Prywatne body, feedback i propozycje nie trafiają do localStorage/sessionStorage/service workera; szkic decyzji żyje wyłącznie w pamięci karty.
 
 ## Sprawdź przed zakończeniem
 
@@ -43,4 +43,4 @@ ActionButton, BrandMark, Panel, StateBadge, RouteState, Tabs, ProvenanceTrail, S
 2. Przy zmianie wyglądu: `pnpm dev`, potem `pnpm test:flow` i `pnpm test:visual`; baseline nie jest regenerowany, aby zaakceptować zmianę.
 3. `grep -rn '#[0-9a-fA-F]\{3,6\}' ui/src --include=*.css --include=*.tsx | grep -v tokens/tokens.css` zwraca nic.
 4. `ls ui/src/components | wc -l` daje 14 albo zmiana ma pisemny powód i aktualizację UI §4 i 08.
-5. `domain/` i `components/` nie importują `data/meridian` ani fixture JSON (`pnpm test:contracts` to sprawdza).
+5. `domain/` i `components/` nie importują `data/` ani `src/sample.ts` (przykłady galerii); `pnpm test:contracts` (reguła `data-boundary`) to sprawdza.

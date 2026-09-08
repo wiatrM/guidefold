@@ -1,5 +1,5 @@
 # Guidefold UI
-Status: fixture plus warstwa API, 2026-09-07. Siedem widoków U4 wydzielonych z zatwierdzonego hi-fi Industrial Surveyor; wszystkie siedem czyta hostowane API przez `DataSource`, a tryb fixture pozostaje bez zmian.
+Status: wyłącznie hostowane API, 2026-09-08 (decyzja właściciela; tryb fixture, symulacja sessionStorage i symulowany ledger usage usunięte). Siedem widoków U4 wydzielonych z zatwierdzonego hi-fi Industrial Surveyor; wszystkie siedem czyta hostowane API przez `DataSource`.
 Wejścia: [AGENTS](../AGENTS.md), [reguły dokumentacji](../docs/DOCUMENTATION-RULES.md), [etap 7](../docs/ui/pipeline/07-frontend.md), [etap 8](../docs/ui/pipeline/08-components.md). Zastępuje hi-fi jako miejsce dalszej pracy; zamrożony wzorzec pozostaje w prototypes/pipeline-hifi.
 
 ## Uruchomienie
@@ -11,19 +11,17 @@ pnpm dev
 ```
 Otwórz http://127.0.0.1:4331. Galeria komponentów: /__components, poza nawigacją produktu.
 
-## Tryb fixture i tryb API
-Bez zmiennej `VITE_GUIDEFOLD_API` aplikacja startuje w trybie fixture: dane pochodzą z `src/data/fixture.json`, a szkic scenariusza z sessionStorage. Nagłówek ma odznakę `Local simulation`.
-
-Tryb API wybiera `main.tsx`, gdy ustawiono `VITE_GUIDEFOLD_API` albo gdy adres startowy zawiera `?mode=api`; `?mode=fixture` zawsze wymusza fixture. Tryb czytany jest przy starcie aplikacji, więc zmiana parametru wymaga przeładowania strony.
+## Źródło danych: hostowane API
+Aplikacja ma jedno źródło danych: hostowane API zarządzania przez `ApiDataSource` (`src/data/apiSource.ts`). `main.tsx` składa je zawsze; nie ma trybu lokalnego, parametru `?mode=` ani danych przykładowych w bundlu poza galerią komponentów. Do 2026-09-07 istniał tryb fixture (Meridian z `src/data/fixture.json`, szkic w sessionStorage, odznaka `Local simulation`, symulowany ledger usage); właściciel usunął go 2026-09-08, żeby UI odpowiadał wyłącznie rzeczywistemu wdrożeniu.
 ```sh
 # to samo pochodzenie przez proxy dewelperskie (domyślne)
 pnpm dev            # /api i /v1 → http://127.0.0.1:8765
 # inne pochodzenie
 VITE_GUIDEFOLD_API=https://api.example.test pnpm dev
 ```
-W trybie API nagłówek pokazuje organizację z `/me` i repozytorium z adresu (`?org=`, `?repo=`), bez odznaki fixture. Organizacja spoza `/me.orgs` daje stan restricted bez żadnej informacji o jej treści.
+Nagłówek pokazuje organizację z `/me` i repozytorium z adresu (`?org=`, `?repo=`). Organizacja spoza `/me.orgs` daje stan restricted bez żadnej informacji o jej treści. Bez działającego API każdy widok pozostaje w stanie loading/error/restricted; to oczekiwane, nie regresja.
 
-### Pokrycie trybu API
+### Pokrycie operacji kontraktu
 | Widok | Operacje kontraktu | Uwagi |
 |---|---|---|
 | Import | `auth/providers`, `orgs`, `repos`, `imports`, `imports/{id}`, `imports/{id}/plan`, `imports/{id}/proposals:generate` | Polling statusu co 2 s do stanu terminalnego. Generowanie propozycji: plan (grupy, wejścia, szacunek kosztu, limity, generator) czytany przed startem, tylko dla ownera; `proposals:generate` otwiera jedno zadanie `proposal.generate` na rodzaj z własnym `Idempotency-Key`; osobny polling zadań generacji po `job_ids` (niezależny od pollingu statusu importu, który zatrzymuje się po pierwszym stanie terminalnym importu); `skipped`/`llm_not_configured` pokazywany jako uczciwy stan, nie błąd. |
@@ -38,26 +36,27 @@ Sześć stanów per trasa działa jak w [etapie 7](../docs/ui/pipeline/07-fronte
 
 ## Sprawdzenia
 ```sh
+pnpm typecheck
 pnpm build
 pnpm test
 pnpm test:contracts
 pnpm exec playwright install chromium
 pnpm test:e2e
-# Te dwie komendy wymagają działającego pnpm dev:
-pnpm test:flow
+# Wymaga działającego pnpm dev:
 pnpm test:visual
 ```
-Porównanie wizualne czyta niezależny baseline sprzed ekstrakcji i sprawdza SHA źródeł/obrazów. Nie regeneruj baseline, aby zaakceptować zmianę UI. Testy Playwright i wizualne używają publicznego Meridian fixture; nie dowodzą zachowania trybu API.
+`pnpm test:e2e` (`e2e/*.spec.ts`) uruchamia siedem widoków na stubie API `page.route('**/api/v1/**')` z `e2e/stub.ts`: małe dane przykładowe w kształtach z [API-CONTRACT](../docs/API-CONTRACT.md) plus scenariusze empty/loading/partial/error/degraded/restricted, logowanie → organizacja → repozytorium → import → biblioteka → skill → decyzja → eksport → usage wyłącznie klawiaturą, nieznane filtry URL, axe w 1280/820/390. Stub dowodzi okablowania UI, nie zachowania serwera Go; zachowanie na realnej usłudze sprawdza zestaw live poniżej.
+`pnpm test:visual` porównuje 15 komponentów galerii `/__components` w trzech szerokościach z zaakceptowanym baseline `qa/baseline/` (45 obrazów, manifest z SHA-256). Baseline pochodzi z tej galerii (od 2026-09-08, po zamianie danych galerii na wartości przykładowe z `src/sample.ts`; zamrożony hi-fi w `prototypes/pipeline-hifi/qa/baseline` pozostaje zapisem sprzed ekstrakcji i nie jest już celem porównania). `pnpm test:visual:update` regeneruje baseline wyłącznie po zaakceptowanej przez właściciela zmianie wyglądu, nigdy po to, żeby ukryć różnicę. Dawny `pnpm test:flow` (przebieg właściciela na fixture) został usunięty; tę ścieżkę pokrywają `e2e/owner-keyboard.spec.ts` na stubie i `e2e/live/keyboard.spec.ts` na realnym API.
 
 ## Zestaw live: siedem widoków na realnym API
 
-Status: opt-in, 2026-09-07. Cel: dowód, że tryb API działa przeciw uruchomionej usłudze Go z
-Postgresem, a nie tylko przeciw stubom `page.route` z `e2e/api-mode.spec.ts`. Wejścia: działający
+Status: opt-in, 2026-09-07. Cel: dowód, że aplikacja działa przeciw uruchomionej usłudze Go z
+Postgresem, a nie tylko przeciw stubowi `page.route` z `e2e/stub.ts`. Wejścia: działający
 stos z `tools/dev/stack.py`, zasiew z `stack.py seed`, zmienne `GUIDEFOLD_E2E_*`.
 
 Specyfikacje leżą w `e2e/live/` i mają własną konfigurację `playwright.live.config.ts` (projekt
 `live`, jeden worker, bo dzielą wiersze jednej organizacji). Zwykłe `pnpm test:e2e` ich nie zbiera
-(`testIgnore: '**/live/**'`), a zestaw live nie zbiera specyfikacji fixture.
+(`testIgnore: '**/live/**'`), a zestaw live nie zbiera specyfikacji na stubie.
 
 ```sh
 # z katalogu głównego repozytorium
@@ -94,10 +93,10 @@ w bazie zasiewu (decyzje, członków, importy), więc nie jest testem jednostkow
 
 ## Dalsza implementacja
 Komponenty edytuj w src/components, a wartości wyłącznie w src/tokens/tokens.css; bez dodatkowych literałów kolorów i wymiarów.
-Każdy z 14 komponentów ma CSS Module, testy kontraktu i stories CSF. Galeria podaje stałe, zgodne ze wzorcem props.
-Trasy odpowiadają za formularze, decyzje i nawigację. Dane wchodzą wyłącznie przez `DataSource` (`src/data/source.ts`): `FixtureDataSource` opakowuje adapter Meridian i symulację sessionStorage, `ApiDataSource` korzysta z `src/api/`.
+Każdy z 15 komponentów ma CSS Module, testy kontraktu i stories CSF. Galeria i stories podają stałe props z `src/sample.ts` (wycinki plików examples/monorepo trzymane inline; żaden komponent ani funkcja domenowa ich nie importuje, co sprawdza `pnpm test:contracts`).
+Trasy odpowiadają za formularze, decyzje i nawigację. Dane wchodzą wyłącznie przez port `DataSource` (`src/data/source.ts`); jedyną implementacją produkcyjną jest `ApiDataSource` z `src/api/`, a testy podstawiają `fakeSource` z `src/test/fakes.ts`.
 `src/api/` zawiera jeden klient fetch (generacja dostępu, numer żądania per zasób, retry GET ≤2 z Retry-After, `Idempotency-Key` i potwierdzenie mutacji po timeoucie), dekodery DTO, cache w RAM z namespace user/org/repo/policy oraz potwierdzanie dostępu (`/me` co najwyżej co 25 s, maskowanie danych starszych niż 45 s, 401/403 czyści cache i szkice). Prywatne dane nie trafiają do localStorage, sessionStorage ani cache HTTP.
-`src/routes/apiState.tsx` trzyma wspólny cykl życia tras API (`useAsync`, `ApiFailure`, notatki degraded/partial, klucz idempotencji szkicu, pobranie dokładnych bajtów). Nie jest to piętnasty komponent: biblioteka publiczna nadal ma 14 katalogów w `src/components`.
+`src/routes/apiState.tsx` trzyma wspólny cykl życia tras (`useAsync`, `ApiFailure`, notatki degraded/partial, klucz idempotencji szkicu, pobranie dokładnych bajtów). Nie jest to komponent biblioteki.
 Kontrakt DTO i dziedziny zamknięte są w `src/api/decoders.ts` i muszą zgadzać się z [API-CONTRACT](../docs/API-CONTRACT.md) §5–§6; nieznana wartość dziedziny to błąd dekodowania na granicy trasy, nie ciche podstawienie.
-`e2e/api-mode.spec.ts` uruchamia siedem widoków w trybie API na stubie `page.route('**/api/v1/**')` z danych fixture (logowanie → filtry → skill → decyzja → eksport → kolejka usage, ścieżka klawiaturowa i axe), plus plan → generowanie propozycji → uczciwy stan skipped, zakładkę Audit z paginacją kursorem i sugestię łączenia tożsamości z rzeczywistym przekierowaniem przeglądarki na `login_url`. Stub dowodzi okablowania UI, nie zachowania serwera Go.
-Eksport w trybie fixture to pobranie SKILL.md; w trybie API `export` zwraca pliki i patch, a `Published` wymaga potwierdzenia z `publication`. Simulate Git sync nie dowodzi rzeczywistej publikacji ani dostarczenia do adaptera.
+`e2e/api-mode.spec.ts` dokłada na tym samym stubie plan → generowanie propozycji → uczciwy stan skipped, zakładkę Audit z paginacją kursorem i sugestię łączenia tożsamości z rzeczywistym przekierowaniem przeglądarki na `login_url`.
+`export` zwraca pliki i patch, a `Published` wymaga potwierdzenia z `publication`; nic w UI nie symuluje synchronizacji Git ani dostarczenia do adaptera.

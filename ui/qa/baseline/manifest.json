@@ -1,0 +1,276 @@
+{
+  "capturedAt": "2026-09-08T08:48:49.045Z",
+  "purpose": "Accepted capture of the ui component gallery (/__components, sample values from src/sample.ts). Regenerate only to accept a reviewed visual change.",
+  "records": [
+    {
+      "name": "ActionButton",
+      "width": 1280,
+      "file": "ActionButton-1280.png",
+      "sha256": "9b99a18cdbd7ede687eaf7c438243391e4124562e698744e1e6c731d0b4af006"
+    },
+    {
+      "name": "BrandMark",
+      "width": 1280,
+      "file": "BrandMark-1280.png",
+      "sha256": "62c9b4b32e3a17b82431ee612346a13c479fb572c5b58fb0dca1e936ed650ac0"
+    },
+    {
+      "name": "Panel",
+      "width": 1280,
+      "file": "Panel-1280.png",
+      "sha256": "f4a9bdf346ac5cb43df85eea9e0f62b0d2017fb6d479472c035b76318b14b1ab"
+    },
+    {
+      "name": "StateBadge",
+      "width": 1280,
+      "file": "StateBadge-1280.png",
+      "sha256": "e72dd0bd7e98a79cdcab6b1dd9b9fc1c1016dfe4c52aeb4e00db162d502a7ace"
+    },
+    {
+      "name": "RouteState",
+      "width": 1280,
+      "file": "RouteState-1280.png",
+      "sha256": "8bc0019509a38199ebd4452c7420044dabaf00e2565bb719cba1efa3b9089594"
+    },
+    {
+      "name": "Tabs",
+      "width": 1280,
+      "file": "Tabs-1280.png",
+      "sha256": "4e6fba900b741b63419302ce0d4be31d6e6746f6db718b0d6f2957ac70f05243"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 1280,
+      "file": "ProvenanceTrail-1280.png",
+      "sha256": "60e3494cd47fd15e832e2c639f2136dd214e5b8d22397a96f2e75cb11b0c9e23"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 1280,
+      "file": "ScopeTree-1280.png",
+      "sha256": "50cbc61095fa0c8fc27b18a829f87b1ac591129878c9cafe52681cbfaa23ebc2"
+    },
+    {
+      "name": "DataTable",
+      "width": 1280,
+      "file": "DataTable-1280.png",
+      "sha256": "837abf2cf83cb6c33ce45e20e10b2d21be5c10c3e003f0a25db499338b364c32"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 1280,
+      "file": "SkillDiff-1280.png",
+      "sha256": "f88cf81f7dfb65e4c23278b21e4420e8c1d727f5c9462e73b850d101ab2afbad"
+    },
+    {
+      "name": "MetricRow",
+      "width": 1280,
+      "file": "MetricRow-1280.png",
+      "sha256": "5407bcf3140953700bf161fc55d28f047223916ef3bc1fb4ead324c16c54d0b5"
+    },
+    {
+      "name": "Urn",
+      "width": 1280,
+      "file": "Urn-1280.png",
+      "sha256": "1cb3a19022c9ef24b46b0f9843d338330ce4d4210e10ee8705bf17975f336899"
+    },
+    {
+      "name": "SkillContent",
+      "width": 1280,
+      "file": "SkillContent-1280.png",
+      "sha256": "552a0a4043b8210c200d9ec123c01b259725af3e9bfe4b139cadf8203512d0fe"
+    },
+    {
+      "name": "Field",
+      "width": 1280,
+      "file": "Field-1280.png",
+      "sha256": "5e2088d22980b7ee4c831675258f9be27fa5c5ee194770c35cd53b4286c206ed"
+    },
+    {
+      "name": "PyramidChart",
+      "width": 1280,
+      "file": "PyramidChart-1280.png",
+      "sha256": "e95d121a04160ee8408aa7c27bf71894cb27162f9a55d781e8e10267f31da907"
+    },
+    {
+      "name": "ActionButton",
+      "width": 820,
+      "file": "ActionButton-820.png",
+      "sha256": "23909f591477bd0abb6d1eeb57162c98d2d66eac6eeb9ed6ab009633c4b11cce"
+    },
+    {
+      "name": "BrandMark",
+      "width": 820,
+      "file": "BrandMark-820.png",
+      "sha256": "df4ec62de168b45f2d31cc187ae9b3ac5b5c7ef14bfe9f88c321c6f3dde759c4"
+    },
+    {
+      "name": "Panel",
+      "width": 820,
+      "file": "Panel-820.png",
+      "sha256": "8932139255b37b33e296d34c58b5e7a3cdb659cc094d0d690577ae74c656ea3d"
+    },
+    {
+      "name": "StateBadge",
+      "width": 820,
+      "file": "StateBadge-820.png",
+      "sha256": "a0e23816884ee59e29f66c3b42a25f24890628b4669999716dfe5d3449f632b0"
+    },
+    {
+      "name": "RouteState",
+      "width": 820,
+      "file": "RouteState-820.png",
+      "sha256": "03c19dc9d85b03cf1be93ff31659a8c368b8c4af7efb45c3291ed6cbf16145e0"
+    },
+    {
+      "name": "Tabs",
+      "width": 820,
+      "file": "Tabs-820.png",
+      "sha256": "7da715678638c91030e9ed19be65c17d93631665c146c7a8c1d09c9066bfe92f"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 820,
+      "file": "ProvenanceTrail-820.png",
+      "sha256": "9926e0ef61982ba78b0e99b8db4a0d64aad7e9e0d8e96d53fa33aea3cc5d01db"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 820,
+      "file": "ScopeTree-820.png",
+      "sha256": "0adc0541be2b9b9fc433cf69d6772e52eee897fd2df8c901b421e691dcab246c"
+    },
+    {
+      "name": "DataTable",
+      "width": 820,
+      "file": "DataTable-820.png",
+      "sha256": "bf43834d188a7f4b419dc3c4cf706316e782753621de9ff9c608acdd4efea688"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 820,
+      "file": "SkillDiff-820.png",
+      "sha256": "dc026d74d786e0c0296489ce342526a5d8f6c5234fcdc69c431edc7877933a1d"
+    },
+    {
+      "name": "MetricRow",
+      "width": 820,
+      "file": "MetricRow-820.png",
+      "sha256": "b1f9e52ac5c3eb2841b6fb00fd4df95c4c8d87c7d7db875d96fdf7a1a051be39"
+    },
+    {
+      "name": "Urn",
+      "width": 820,
+      "file": "Urn-820.png",
+      "sha256": "01f40b11b091b1ebf93770cbb1a9b038d380689ba5cb08bbfcf11eed5c5a24ad"
+    },
+    {
+      "name": "SkillContent",
+      "width": 820,
+      "file": "SkillContent-820.png",
+      "sha256": "ced98337d550da933c02fb4e336d76749398bf34422f03245c0aaf2334a5a15b"
+    },
+    {
+      "name": "Field",
+      "width": 820,
+      "file": "Field-820.png",
+      "sha256": "529c2fe67007786b19ab3ed0cdd9a82534bd93da7785e21c7c9a39013ee66ff2"
+    },
+    {
+      "name": "PyramidChart",
+      "width": 820,
+      "file": "PyramidChart-820.png",
+      "sha256": "1cc5b49e28eac3810602144bbc7d1c374f36d9c267de0f4cd589774447dfe3f2"
+    },
+    {
+      "name": "ActionButton",
+      "width": 390,
+      "file": "ActionButton-390.png",
+      "sha256": "7380070e715fb2721e1eb092b45e6a2b3520b7006632953041a1dfe5692fadc6"
+    },
+    {
+      "name": "BrandMark",
+      "width": 390,
+      "file": "BrandMark-390.png",
+      "sha256": "f242464763e4112c3565f1194ff8868daa6589e4bc55eb27c52804ed3c0fa251"
+    },
+    {
+      "name": "Panel",
+      "width": 390,
+      "file": "Panel-390.png",
+      "sha256": "a34721447fdb5c989a611527a6de4631c85df33ab1a8d4cf2323b9d85327bb38"
+    },
+    {
+      "name": "StateBadge",
+      "width": 390,
+      "file": "StateBadge-390.png",
+      "sha256": "3a0cc3dd79c41b1d5ea199664b90b23fc7da642ecc48cddba9f6bb3e90be51d4"
+    },
+    {
+      "name": "RouteState",
+      "width": 390,
+      "file": "RouteState-390.png",
+      "sha256": "bd8fed82c8c20ae681e8ace5a148195665fdbe43e40c391b0822bf83970338d2"
+    },
+    {
+      "name": "Tabs",
+      "width": 390,
+      "file": "Tabs-390.png",
+      "sha256": "479c141bebf71af69e42845b743fae485e357e8d60dc03d2138b159bf0c14717"
+    },
+    {
+      "name": "ProvenanceTrail",
+      "width": 390,
+      "file": "ProvenanceTrail-390.png",
+      "sha256": "213f0580436c6e8598d3f3de7044967b8a2330984271a7ff75d4d923f5427590"
+    },
+    {
+      "name": "ScopeTree",
+      "width": 390,
+      "file": "ScopeTree-390.png",
+      "sha256": "70a64738a78d46734e7b9a07a9d162317be538aebec83c254c9403dd9f67c8e1"
+    },
+    {
+      "name": "DataTable",
+      "width": 390,
+      "file": "DataTable-390.png",
+      "sha256": "5a3861df9a7c496f29badf490305fa171c2f011b8fa861c41ac800c960795576"
+    },
+    {
+      "name": "SkillDiff",
+      "width": 390,
+      "file": "SkillDiff-390.png",
+      "sha256": "84c35c0cd0277808aa0c8aee99c7e012c4e9f895be122394a99fdb00224619ba"
+    },
+    {
+      "name": "MetricRow",
+      "width": 390,
+      "file": "MetricRow-390.png",
+      "sha256": "9efd5f20eccb7b819a0dc5f4882a6d85b652dd9a4a3697057542ab27ca1b8bfa"
+    },
+    {
+      "name": "Urn",
+      "width": 390,
+      "file": "Urn-390.png",
+      "sha256": "8d9ae5468b93cc6586595c3b34d73f9f86576e74fedd88d9d306aa6c75e16f56"
+    },
+    {
+      "name": "SkillContent",
+      "width": 390,
+      "file": "SkillContent-390.png",
+      "sha256": "3795b6c5ff18aca19a095f7092103080b6b7903eb1a60d23167acf72a8f752ab"
+    },
+    {
+      "name": "Field",
+      "width": 390,
+      "file": "Field-390.png",
+      "sha256": "20e5e6fdc2ae5b80fd77a4f2039180bac72bad7bbe5a4684454de73d13be91ed"
+    },
+    {
+      "name": "PyramidChart",
+      "width": 390,
+      "file": "PyramidChart-390.png",
+      "sha256": "a2df38f57764f3725e83f659ddd2a2ddb866f29d686e5062f93ac21604f46378"
+    }
+  ]
+}

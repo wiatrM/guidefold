@@ -1,6 +1,6 @@
 ---
 name: guidefold-ui-workflow
-description: Design, implement and verify Guidefold hosted U4 screens using the reviewed UI pipeline, source prototype and Meridian fixture. Use for Guidefold IA, UX, visual system, React components and UI QA; not for unrelated frontend work.
+description: Design, implement and verify Guidefold hosted U4 screens using the reviewed UI pipeline, the source prototype and the hosted API. Use for Guidefold IA, UX, visual system, React components and UI QA; not for unrelated frontend work.
 ---
 
 # Workflow hosted UI Guidefold
@@ -22,7 +22,7 @@ Przy lokalnej zmianie gotowego ekranu ustal dotknięte decyzje i zależności; p
 
 ## Zachowaj ustalone granice
 
-Jedynym wzorcem wizualnym jest [industrial-surveyor](../../../prototypes/industrial-surveyor/DESIGN.md), jego obraz źródłowy i tokeny. Dane makiet i prototypów pochodzą z `examples/monorepo/` i mają widoczne oznaczenie Meridian fixture. Nie przenoś przykładowych twierdzeń ani starych ekranów wzorca do zakresu produktu.
+Jedynym wzorcem wizualnym jest [industrial-surveyor](../../../prototypes/industrial-surveyor/DESIGN.md), jego obraz źródłowy i tokeny. Dane makiet i zamrożonych prototypów pochodzą z `examples/monorepo/` i mają widoczne oznaczenie Meridian; implementacja w `ui/` od 2026-09-08 czyta wyłącznie hostowane API (tryb fixture usunięto decyzją ownera), a galeria komponentów używa `src/sample.ts`. Nie przenoś przykładowych twierdzeń ani starych ekranów wzorca do zakresu produktu.
 
 Siedem widoków U4, ich nawigacja, znaczenie stanów i granice danych wynikają z aktualnych IA/UX/UI i etapów. Nie dodawaj ustawień lub ekranów w celu uniknięcia decyzji projektowej. Dokumenty pisz po polsku, a stringi UI oraz nazwy plików, tokenów i komponentów po angielsku.
 
@@ -31,9 +31,9 @@ Siedem widoków U4, ich nawigacja, znaczenie stanów i granice danych wynikają 
 - Dokument etapu ma najwyżej 120 linii, brief 40, końcowy indeks 30; sekcja Przegląd najwyżej 6 linii. Liczby znalezisk i zamknięcie P1/P2 muszą wynikać z wykonanych recenzji.
 - Dla makiet/symulacji stosuj zadania, stany i dostęp do renderowanego HTML określone w etapach 4–5. Nie przedstawiaj symulacji jako pilota U4 z prawdziwymi ludźmi.
 - Dla hi-fi i komponentów sprawdź wymagane viewporty, stany, klawiaturę, kontrast i axe. Porównuj z rzeczywistym źródłem; pixel diff w etapie 8 wymaga niezależnego obrazu hi-fi sprzed ekstrakcji.
-- Dla implementacji wybierz build i testy z planu etapu 7 oraz aktualnych skryptów pakietu. Sprawdź kontrakty komponentów etapu 8; udane testy fixture nie dowodzą budżetu 10 tys. skilli.
+- Dla implementacji wybierz build i testy z planu etapu 7 oraz aktualnych skryptów pakietu. Sprawdź kontrakty komponentów etapu 8; udane testy na zamockowanym API nie dowodzą budżetu 10 tys. skilli.
 - Nowe artefakty i raporty połącz z właściwym dokumentem etapu, a nowe dokumenty z indeksem zgodnie z DOCUMENTATION-RULES. Zachowaj pytania do ludzi i jawnie opisane ograniczenia pomiarów.
 
-Bieżącą implementację fixture edytuj w `ui/`, a nie w zamrożonym `prototypes/pipeline-hifi/`. Komendy i kontrakty: [ui/README](../../../ui/README.md) oraz [08-components](../../../docs/ui/pipeline/08-components.md). Sprawdzaj build, test, test:contracts, test:e2e i dotknięty zakres flow/visual z package.json; nie regeneruj baseline, aby ukryć różnicę. Prywatne API, logowanie i rzeczywisty Git nadal wymagają integracji z planu 07.
+Bieżącą implementację edytuj w `ui/`, a nie w zamrożonym `prototypes/pipeline-hifi/`. Komendy i kontrakty: [ui/README](../../../ui/README.md) oraz [08-components](../../../docs/ui/pipeline/08-components.md). Sprawdzaj build, test, test:contracts, test:e2e i test:visual z package.json; `test:visual:update` regeneruje baseline wyłącznie świadomie, nigdy żeby ukryć różnicę. Prywatne API, logowanie i rzeczywisty Git nadal wymagają integracji z planu 07.
 
-Instrukcje tego skilla służą autorom UI. Nie eksportuj ich do dystrybuowanego `skills/guidefold/` ani do skilli fixture.
+Instrukcje tego skilla służą autorom UI. Nie eksportuj ich do dystrybuowanego `skills/guidefold/`.
