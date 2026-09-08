@@ -390,3 +390,240 @@ nie potwierdził pierwszej propozycji wartości: konkatenacja nie traci przy 100
 applicable set pod nearest-wins zmieścił się w limicie 32 KiB w 178/183 komórkach; retrieval
 CLI był 61/61 top-1 na każdym rozmiarze. Drugi przebieg wymaga filleru na ścieżce przodków i
 scoringu bez nagrody za cytowanie.
+
+## Aktualizacja: Guarded Signed-Contract Meet, 8 września 2026
+
+Zaimplementowałem mały, deterministyczny kernel **Guarded Signed-Contract Meet
+(GSCM)**, który odpowiada na konkretną lukę PCL: świeże i niezależne cytaty nie
+wykrywają odwrócenia polaryzacji. Kontrakt przechowuje podpisane atomy
+`(key,value,mode,guard)`, a promocja jest przecięciem atomów obecnych w każdej
+gałęzi. Ontologia guardów zna implikacje i rozłączność; bez wspólnego kontekstu
+wynik to `ASK`. Sprzeczne obowiązki oraz wyjątek występujący tylko w jednej
+gałęzi również blokują `LOAD`.
+
+W trybie grounded kernel wymaga niepustych `support_refs` i przenosi wskaźniki
+źródeł do karty nadrzędnej; dokładność linii i rewizji nadal weryfikuje PCL.
+
+Niezależny replay odtwarza wcześniejszy kontrprzykład: PCL zwraca `VALID` dla
+zdania „always disable”, mimo że źródła wymagają pozostawienia uwierzytelniania
+włączonego; GSCM zwraca `ASK`. Ten sam replay ładuje bezpieczny wspólny atom i
+zachowuje wyjątek obecny w obu gałęziach. To jest warunkowa własność kernela przy
+założeniu poprawnego ekstraktora atomów i ontologii, nie dowód rozumienia
+języka naturalnego ani wynik na realnych zadaniach.
+
+Kod, testy, wynik oraz założenia są w
+[semantic-contract-meet](../../../research/semantic-contract-meet-2026-09-08/README.md).
+GSCM trafia do URCT jako ramię structured-contract; przed jakimkolwiek claimem
+publikacyjnym trzeba zamrozić ekstrakcję, wykonać source-disjoint transfer na
+`A/B→C→C'` i porównać harmful loads oraz użyteczne abstencje.
+
+Dodatkowa macierz symboliczna objęła 4 096 kombinacji dwóch jednowęzłowych
+kontraktów i propozycji (cztery podpisy, cztery guardy). Niezależny oracle
+wsparcia oznaczył 92 przypadki bezpieczne i 4 004 niebezpieczne; GSCM załadował
+dokładnie 92, z zerem false-load i zerem false-abstention względem tego oracle.
+„Baseline” 4 004 to hipotetyczny gate quorum-only, nie pomiar PCL na korpusie.
+Macierz sprawdza regresję algebry, nie jakość ekstrakcji języka naturalnego.
+
+Przygotowałem też strażnika zamrożenia URCT: waliduje role `A/B/C/C'`, różne
+rewizje celu, brak wspólnej linii pochodzenia, brak targetu w source refs oraz
+wspólny model i budżet wszystkich ramion. Fixture manifestu ma hash
+`da7814980e3ed217bb5a8cec334053eea3a92d7b9b823293f00c40e72eca784b`; nie jest
+jeszcze korpusem ani uruchomieniem modelu.
+
+Uzupełniłem też granicę prior art. **SkillOps** ([arXiv:2605.13716](https://arxiv.org/abs/2605.13716))
+ma już typowany kontrakt i hierarchiczny graf utrzymania, **Formal Skill**
+([arXiv:2605.19604](https://arxiv.org/abs/2605.19604)) opisuje wykonywalny JSON i
+stan runtime, a **SkillGuard** ([arXiv:2605.10990](https://arxiv.org/abs/2605.10990))
+traktuje drift jako naruszenie kontraktu. GSCM nie jest więc nowym formatem
+skilla, runtime'em ani monitorem driftu; kandydat pozostaje wąską regułą
+source-grounded, cross-branch promotion z zachowaniem wyjątków.
+
+Świeży skan ujawnił dodatkową granicę: **SkillResolve-Bench**
+([arXiv:2606.10388](https://arxiv.org/abs/2606.10388)) publikuje już korpus
+helpful/risky siblingów, harmful-sibling rate i wybór reprezentanta zależny od
+zapytania. CGSR nie może być zgłaszany jako nowa metoda rozwiązywania
+same-capability ambiguity. W URCT trzeba porównać HSR i functional top-1 z
+SkillResolve, a odrębny claim ograniczyć do source-grounded contract/proof oraz
+reakcji na `C→C'` drift.
+
+Projekt drugiego przebiegu delivery-vs-concatenation pozostaje `DRAFT` w
+[`PROTOCOL-v2`](../../../research/delivery-vs-concatenation-2026-09-08/PROTOCOL-v2.md):
+nie wykonałem jego wywołań modelu ani nie zaksięgowałem kosztu. Najpierw musi
+zostać zamrożony przed pomiarem M1/M2; obecne wyniki GSCM nie zależą od tego
+przebiegu.
+
+## Aktualizacja: lokalny most ekstrakcji Qwen → GSCM, 8 września 2026
+
+Uruchomiłem na RTX 4090 zamrożony pilot `Qwen2.5-7B-Instruct` na 16 ręcznie
+zapisanych parach źródeł. To nie jest korpus repozytoriów ani test produktu;
+celem było sprawdzenie brakującego mostu między tekstem a podpisanymi atomami.
+
+Pierwszy, ścisły interfejs JSON dał `true_positive=2`, `false_positive=7`,
+`false_negative=32`, tylko 3/32 dokładnych kontraktów potomnych i 11/16 błędów
+parsowania. GSCM załadował 0/16 przypadków i nie miał fałszywego `LOAD`, ale
+odrzucił wszystkie 9 oczekiwanych przypadków wspólnej reguły. Wynik jest
+negatywnym sygnałem dla swobodnego JSON-u, nie dla samego kernela.
+
+Druga, zamrożona ablacją forma tabulatorowa ujawniła, że model literalnie
+kopiował znacznik `<TAB>`. Ścisły wynik pozostał 0/16 `LOAD`; osobny, jawnie
+post hoc opisany transport diagnostic po zamianie tego znacznika na tabulator
+odzyskał 25/32 dokładnych kontraktów, 8/16 `LOAD`, 1 fałszywe `ASK` i 0
+fałszywych `LOAD`. Nie traktuję tych liczb jako wyniku potwierdzającego, bo
+transformacja została wybrana po obejrzeniu surowych odpowiedzi.
+
+Następny parowany przebieg podał Qwenowi źródła, pierwszy kandydat i powód
+abstencji, bez etykiet gold. Repair podniósł liczbę `LOAD` do 7/16, lecz
+przepuścił dwa lokalne wyjątki jako fałszywe `LOAD` i miał 4/16 błędów
+parsowania. Niezależny verifier zapisał status `FAIL`. To zamyka prostą
+hipotezę „drugi odczyt modelu wystarczy”: repair nie może sam zmieniać
+abstencji, a produkcyjna ścieżka musi wymagać źródłowych wskaźników i zachowania
+wyjątków.
+
+Artefakty i hashe są w
+[Qwen v1](../../../research/gscm-qwen-extraction-2026-09-08/README.md),
+[format ablation](../../../research/gscm-qwen-extraction-v2-2026-09-08/README.md)
+i [paired repair](../../../research/gscm-qwen-cegar-2026-09-08/README.md).
+Wniosek naukowy na dziś jest precyzyjny: macierz 4 096 przypadków potwierdza
+algebrę GSCM, ale ekstrakcja naturalnego tekstu jest dominującym ryzykiem; nie
+mamy jeszcze przełomu ani podstaw do claimu publikacyjnego. Następnym testem
+pozostaje URCT na niezależnych repozytoriach, z ludzką adjudykacją i wykonaniem.
+
+Post hoc replay dodał jeszcze dwie zasady ochronne: repair nie może usuwać
+atomów pierwszego kandydata, a słowa sygnalizujące wyjątek (`except`, `unless`,
+`may disable`) wymagają reprezentacji `forbid` w każdej gałęzi albo wymuszają
+`ASK`. Na zapisanym przebiegu dało to 8/16 `LOAD`, 0 fałszywych `LOAD` i 1
+fałszywe `ASK`. To obiecujący safety envelope, ale reguły zostały wybrane po
+obserwacji porażki i nie są jeszcze wynikiem głównego protokołu; mogą też
+przepuszczać wyjątki wyrażone innymi słowami.
+
+Ostatni pipe-format check potwierdził rozdzielenie transportu od semantyki:
+3/16 odpowiedzi miały błąd parsowania, lecz nadal wystąpiły 2 fałszywe
+`LOAD` (oba przez pominięcie lokalnego wyjątku), a wspólny wyjątek został
+zawężony do `admin_request`, tracąc regułę dla wszystkich requestów. To
+ujawnia brak osobnego wymagania **scope completeness**: bez jawnego celu zakresu
+GSCM może z punktu widzenia wsparcia załadować zbyt wąski kontrakt. Następna
+wersja metody musi przechowywać żądany zakres, listę wyjątków i coverage proof
+oraz odrzucać kontrakty, które nie pokrywają wszystkich obowiązków źródeł.
+Wynik pipe checku (`gscm_load=8/16`, `false_load=2`) i surowe odpowiedzi są w
+[v3](../../../research/gscm-qwen-extraction-v3-2026-09-08/README.md).
+
+## Aktualizacja: scope-complete PPACR, 8 września 2026
+
+Zamknąłem wskazaną przez pipe check lukę jako wariant badawczy
+**Scope-Complete PPACR (SC-PPACR)**. Obowiązek nie jest już pojedynczym
+`requirement`, lecz parą `(requirement, requested_scope)`. Karta może dołożyć
+się do pokrycia innej karty, ale dowód z węższego zakresu nie zamyka żądania
+globalnego. Sprzeczne i częściowe dowody oraz nieważne linie nadal wymuszają
+`ASK`.
+
+Na tym samym, wcześniej zamrożonym pakiecie 12 przypadków, z recenzją źródłową
+jako oracle i bez nowego wywołania modelu, SC-PPACR zwrócił 7/12 kompletnych
+bundle `LOAD` przy zerze nieobsługiwanych elementów dowodu. ECCR, który wybierał
+jedną kartę, miał 6/12; wcześniejszy top-1 miał 2/12 w pełni wspartych kart.
+Jeden dodatkowy przypadek wynika z komplementarnego połączenia dwóch kart.
+To jest sygnał polityki oracle na małej próbce, nie dowód automatycznej
+ekstrakcji, wykonania zadania ani produktywności.
+
+Różnica względem ECCR to +8,3 pp, ale tylko jeden z 12 przypadków jest
+rozbieżny na korzyść SC-PPACR. Deterministyczny bootstrap parowany (200 000
+losowań) daje przedział 0,0–25,0 pp, więc wynik jest zbyt nieprecyzyjny na
+claim populacyjny.
+
+Zakres nie jest jeszcze zmierzony na języku naturalnym: pakiet nie ma
+niezależnych etykiet scope, więc replay użył jednego tokenu `global`. Osobne
+testy adwersarialne pokazały odrzucenie karty `admin` dla żądania globalnego
+i bezpieczne pokrycie przez dwa rozłączne scope'y. Następny bramkujący test
+pozostaje URCT `A/B→C→C'`, z etykietami zakresu, niezależną adjudykacją i
+parowanym wykonaniem. Artefakty są w
+[SC-PPACR](../../../research/scope-complete-ppacr-2026-09-08/README.md).
+
+Niezależna macierz skończona objęła 3 600 dwu-kartowych kombinacji etykiet,
+ważności linii, sprzeczności i pięciu wariantów scope. SC-PPACR miał 0
+false-load i 0 false-ask względem osobnego oracle; stary PPACR miał 862
+false-load na węższych kartach. To dowód warunkowy poprawności osi zakresu w
+małym modelu, a nie dowód rozumienia języka ani wartości produktu.
+
+## Aktualizacja: realny inwentarz URCT, 8 września 2026
+
+Zamroziłem pierwszy korpus z rzeczywistych plików `SKILL.md`: trzy rodziny
+(architektura, bezpieczeństwo, testy), role `A/B/C/C'`, 12 snapshotów i sześć
+parowanych przypadków. Każdy snapshot ma hash SHA-256, obserwowaną rewizję,
+ścieżkę źródła i kontrolowaną zmianę `C→C'`; niezależny verifier sprawdził
+integralność, relacje ról, drift oraz dziewięć porównań 5-gramowych (maksymalny
+Jaccard 0,0). To przygotowuje wejście do URCT, ale nie jest jeszcze wynikiem
+retrievalu ani wykonania.
+
+Korpus nie przechodzi jeszcze bramki niezależności: źródła `A` i `B` we
+wszystkich rodzinach są publikowane pod tym samym właścicielem GitHub
+`cloudfloo`. Różne URL-e i zerowy overlap leksykalny nie dowodzą niezależnego
+autorstwa. Weryfikator raportuje więc `integrity=PASS`,
+`independence_gate=NOT_PASSED`; przed claimem publikacyjnym trzeba wymienić
+parę źródeł albo jawnie prerejestrować to ograniczenie. Nadal nie wykonano
+model calls, target-task execution ani oceny użytkownika. Artefakty są w
+[real-skill corpus](../../../research/urct-real-skill-corpus-2026-09-08/README.md)
+i [corpus-verification.json](../../../research/urct-real-skill-corpus-2026-09-08/corpus-verification.json).
+
+Wygenerowałem również sześć ślepych pakietów adnotacji, po dwa puste formularze
+na pakiet i 15 pól kontraktu. Verifier sprawdza zgodność snapshotów z manifestem
+i wymusza `model_calls_allowed=false`; wyniki nie mogą zostać użyte jako
+confirmatory, dopóki dwóch oceniających nie wypełni formularzy niezależnie i
+nie zachowa się zapis rozbieżności. Pakiet jest w
+[annotation_packet](../../../research/urct-real-skill-corpus-2026-09-08/annotation_packet/ANNOTATOR-INSTRUCTIONS.md).
+
+Żeby usunąć główną wadę pochodzenia, przygotowałem drugi korpus URCT z sześciu
+repozytoriów i sześciu różnych właścicieli GitHub: `alonbaron`, `tylerpayne`,
+`sivolko`, `rampstackco`, `shunta-sato` i `wshobson`. Każdy zdalny plik jest
+przypięty do commita, a verifier potwierdził 12 snapshotów, sześć przypadków,
+niezmieniony drift `C→C'` i maksymalny overlap 5-gramów 0,0. W tej wersji
+`independence_gate=PASS`, ale pozostaje to tylko ekran pochodzenia; nie dowodzi
+braku wspólnych szablonów ani jakości semantycznej.
+
+Dla URCT-2 wygenerowałem analogiczny ślepy pakiet adnotacji (6 × 15 pól × 2
+recenzentów), z `model_calls_allowed=false`. To jest obecnie najsilniejsza
+ścieżka do testu transferu; nadal nie ma wyniku modelu, wykonania zadania ani
+claimu przełomu.
+[URCT-2](../../../research/urct-independent-skill-corpus-2026-09-08/README.md)
+
+Protokół URCT-2 i fail-closed `execution_gate.py` zamrażają kolejność sześciu
+ramion, metryki, falsyfikację i wymaganie wspólnego modelu/budżetu. Aktualny
+preflight zwraca `execution_allowed=false` z powodów `annotations_not_completed`
+i `model_lock_missing`; nie ma więc niejawnego przejścia z inwentarza do
+eksperymentu.
+
+## Aktualizacja: rekurencyjny scope-PCL, 8 września 2026
+
+Połączyłem bramkę `(requirement, requested_scope)` z rekurencyjnym claim lattice
+drzewa piramidy. Każdy child reference eksportuje tylko zakres potwierdzony
+przez świeży claim potomny; brakujący lub szerszy scope, zmiana commitu, brak
+dziecka albo brak quorum propaguje `ASK` do korzenia. Commit obejmuje tekst
+claimu, scope, świadectwa, referencje i progi, więc prezentacyjna proza nie
+może rozszerzyć kernela.
+
+Niezależny replay 22 500 wariantów (5 deklaracji scope × 3 stany liścia × 2
+usterki strukturalne) dał 9 przypadków bezpiecznych. Nowy verifier załadował
+dokładnie 9: **0 false-load, 0 false-ask**. Zgodny baseline starego PCL,
+który ignoruje requested scope, załadował 625 i przepuścił **616 false-load**.
+To jest wynik skończonego kernela z oracle, nie dowód ekstrakcji przez LLM,
+retrievalu ani poprawy pracy developera. [Artefakt recursive-scope-pcl](../../../research/recursive-scope-pcl-2026-09-08/README.md).
+
+## Aktualizacja: proof-aware functional routing, 8 września 2026
+
+Połączyłem recursive scope-PCL z bramką funkcjonalnych siblingów w jeden etap
+przed `ALLOW`/`/use`. Kandydat musi mieć świeży proof pokrywający każdy token
+`requested_scope`, zgodny kontrakt rodziny/repozytorium/języka/wersji i jawny
+wynik weryfikatora `pass`; bliskie siblingi o różnych operacjach kończą się
+`ASK`. Ranking pozostaje kolejnością propozycji, a nie wyjątkiem od tych
+warunków.
+
+Niezależna macierz 139 968 przypadków (trzy zakresy, sześć stanów proofu,
+warianty repo/wersji/weryfikacji/operacji) dała **0 false-positive i 0
+false-negative** względem osobnego oracle. Gate bez osi scope miał 5 016
+rozbieżnych false-positive i 70 false-negative, a rank-only 137 418
+false-positive. Jest to warunkowy wynik skończonej algebry kontraktów; nie
+mierzy ekstrakcji LLM, recallu ani wykonania zadania. [PFR](../../../research/proof-aware-functional-routing-2026-09-08/README.md).
+
+Ścieżka integracyjna została dodatkowo uruchomiona na faktycznych kartach
+recursive-scope-PCL: poprawny proof dwóch gałęzi przechodzi, wąski root daje
+`ASK`, a świeży kandydat wygrywa ze stale kartą o wyższym score. To sprawdza
+złożenie obu kerneli, ale nadal nie zastępuje adnotacji semantycznych ani testu
+wykonania URCT-2.

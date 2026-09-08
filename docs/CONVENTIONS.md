@@ -211,6 +211,16 @@ If a paragraph is true for the parent scope, it belongs in a parent-scope skill 
 
 Set `metadata.status: deprecated` and add `metadata.replaced_by: <urn>`. CI publishes one final revision and the index marks it; delete the directory in the next release.
 
+### 7a. Overriding a parent rule: nearest wins
+
+To change a team-level rule for one service, copy the skill into the service's `.agents/skills/`
+under the **same `name`** and edit it. At that service the CLI's policy filter keeps only the copy
+closest to the requesting node and records the parent's copy as a drop with reason
+`shadowed-by-nearer:<urn>`; sibling services still see the parent's copy. Nothing needs to be
+deprecated. Decided in [ADR-0037](adr/ADR-0037-nearest-wins-for-same-name-skills.md) after the
+2026-09-08 conflicting-siblings run, where the ranker put the parent copy first in 24 of 24 cells.
+The hosted service does not apply this rule yet.
+
 ## 8. What CI checks (`guidefold validate`)
 
 1. `SKILL.md` exists, frontmatter parses, `name` == directory name.

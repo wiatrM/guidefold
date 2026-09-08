@@ -1625,7 +1625,7 @@ class Router:
     def policy_filter(self, node: str, query: str = "", include_deprecated: bool = False):
         visible = self._visible_nodes(node)
         qtoks = set(tokenize(query))
-        kept, drops = [], []
+        kept, drops, kept_node = [], [], {}
         # Iterates the cheap header (urn, node, status, has_negative_triggers) rather than
         # `self.index.cards.items()` -- the latter would materialise (json.loads) every single
         # card's full body just to read `status`/`node`/`negative_triggers`, which is exactly the
@@ -1645,6 +1645,24 @@ class Router:
             if hit_neg is not None:
                 drops.append((u, f"negative-trigger:{hit_neg}")); continue
             kept.append(u)
+            kept_node[u] = cnode
+        # Nearest wins (ADR-0037, E2 run 2026-09-08): when the same skill *name* is visible at
+        # more than one depth (a team-level copy and a service-level edit), only the copy closest
+        # to `node` survives. Before this, BM25F ranked the ancestor copy first in 24/24 conflict
+        # cells and the agent applied its values 23/24 times. Visible nodes are ancestors-or-self
+        # of `node`, so "closest" is simply the deepest node.
+        nearest = {}
+        for u in kept:
+            name = u.rsplit(":", 1)[-1]
+            depth = 0 if kept_node[u] == "_root" else kept_node[u].count(".") + 1
+            if name not in nearest or depth > nearest[name][0]:
+                nearest[name] = (depth, u)
+        winners = {u for _, u in nearest.values()}
+        shadowed = [u for u in kept if u not in winners]
+        if shadowed:
+            for u in shadowed:
+                drops.append((u, f"shadowed-by-nearer:{nearest[u.rsplit(':', 1)[-1]][1]}"))
+            kept = [u for u in kept if u in winners]
         return kept, drops
 
     # ---- candidates: field-weighted BM25 + dense channel, fused later by RRF ----
