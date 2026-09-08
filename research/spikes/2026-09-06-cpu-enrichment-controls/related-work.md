@@ -1,0 +1,10 @@
+# CPU follow-up: related work and scope of claims
+
+Sources checked on 2026-09-06. These methods motivate controls; their reported improvements are not outcomes of our skill experiment.
+
+- [Promptagator, ICLR 2023](https://openreview.net/pdf?id=gmL46YMpu2J) introduced a document-to-query, consistency filtering and dense retriever training workflow. Round-trip filtering is established prior work. Our fixed original sparse index is a different validator; we are not reproducing its trained dense filter.
+- [RaDeR, EMNLP 2025](https://aclanthology.org/2025.emnlp-main.1011.pdf) includes a BM25 round-trip filter for its lexical query training subset. This prevents a claim that using BM25 for round-trip query checks is a new method. [Official implementation](https://github.com/debrup-61/rader).
+- [Doc2Query--](https://arxiv.org/abs/2301.03266) studies filtering generated queries before sparse indexing. [Official PyTerrier implementation](https://github.com/terrierteam/pyterrier_doc2query) separates query generation, relevance scoring and threshold-based filtering. Its example Electra cutoff comes from MS MARCO and is not a threshold for our domain or our source-rank proxy.
+- [Study on LLMs for Promptagator-Style Dense Retriever Training, CIKM 2025](https://arxiv.org/html/2510.02241v1) evaluates open generators from 1B to 14B on seven BEIR tasks. Some 3B generators are competitive with larger alternatives; the study omits round-trip filtering. This is evidence for testing cheaper generators when compute returns, not evidence that filtering can never help, nor that a 3B model is optimal for skills. [Official code linked by the paper](https://github.com/mit-ll/promptodile).
+
+Our potentially useful empirical contribution is a controlled application to bounded multi-skill delivery: unchanged production routing, paired generated/extractive and matched-removal controls, first versus companion gold retrieval, complete-set delivery, and rare-effect/dependence checks. Neither metadata expansion nor the source retrieval filter is claimed as novel. A publishable result needs a clearer finding and external/real-task evaluation.

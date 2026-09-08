@@ -1,0 +1,2966 @@
+{
+  "kind": "structural_development_diagnostic_not_quality_evidence",
+  "python": "3.12.3",
+  "git_revision": "dfe9e4d4d6eb1536d35ef89493aa2725215a25f1",
+  "cli_sha256": "7fae2cba8c54db6e1abacba21d38690cb053dfcfc2d6d142c770e9ee6faf41cb",
+  "weights": {
+    "field.name": 6,
+    "field.description": 4,
+    "field.digest": 3,
+    "field.triggers": 5,
+    "field.body": 2,
+    "w_scope": 200,
+    "w_ppr": 250,
+    "w_dense": 0,
+    "edge.requires": 100,
+    "edge.refines": 60,
+    "edge.replaces": 40,
+    "edge.similar": 30,
+    "abstain_threshold": 1200,
+    "ppr_mode": "closure",
+    "closure_decay_num": 1,
+    "closure_decay_den": 2,
+    "abstain_mode": "magnitude",
+    "abstain_margin_threshold": 1200,
+    "compose_mode": "off",
+    "compose_tau_pct": 20,
+    "compose_coverage": true
+  },
+  "single_leg_rrf_rank1_score": 17189,
+  "by_category": {
+    "multi_skill": {
+      "n": 66,
+      "abstained": 0,
+      "top_score": {
+        "n": 66,
+        "min": 17266,
+        "p50": 17418,
+        "p95": 17439,
+        "max": 17445
+      },
+      "nonempty_below_threshold": 0
+    },
+    "no_applicable": {
+      "n": 44,
+      "abstained": 0,
+      "top_score": {
+        "n": 44,
+        "min": 17250,
+        "p50": 17309,
+        "p95": 17438,
+        "max": 17447
+      },
+      "nonempty_below_threshold": 0
+    },
+    "sibling_ambiguity": {
+      "n": 66,
+      "abstained": 0,
+      "top_score": {
+        "n": 66,
+        "min": 17266,
+        "p50": 17422,
+        "p95": 17445,
+        "max": 17453
+      },
+      "nonempty_below_threshold": 0
+    },
+    "simple": {
+      "n": 22,
+      "abstained": 0,
+      "top_score": {
+        "n": 22,
+        "min": 17277,
+        "p50": 17422,
+        "p95": 17440,
+        "max": 17447
+      },
+      "nonempty_below_threshold": 0
+    },
+    "stale_adversarial": {
+      "n": 22,
+      "abstained": 0,
+      "top_score": {
+        "n": 22,
+        "min": 17256,
+        "p50": 17332,
+        "p95": 17440,
+        "max": 17447
+      },
+      "nonempty_below_threshold": 0
+    }
+  },
+  "cases": [
+    {
+      "id": "multi-001",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-002",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-003",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17412,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "multi-004",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "multi-005",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-006",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions"
+      ]
+    },
+    {
+      "id": "multi-007",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "multi-008",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-009",
+      "category": "multi_skill",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "multi-010",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "multi-011",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17310,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-012",
+      "category": "multi_skill",
+      "scored_n": 6,
+      "top_score": 17319,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "multi-013",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17321,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-014",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-015",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17310,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-016",
+      "category": "multi_skill",
+      "scored_n": 6,
+      "top_score": 17432,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "multi-017",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17292,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-018",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "multi-019",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-020",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-021",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-022",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-023",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-024",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "multi-025",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "multi-026",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "multi-027",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "multi-028",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "multi-029",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "multi-030",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "multi-031",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17439,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-032",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17340,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "multi-033",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17433,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "multi-034",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17290,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-035",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17340,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-036",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17433,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-037",
+      "category": "multi_skill",
+      "scored_n": 12,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-038",
+      "category": "multi_skill",
+      "scored_n": 12,
+      "top_score": 17311,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "multi-039",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17440,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-040",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "multi-041",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17340,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "multi-042",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "multi-043",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "multi-044",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-045",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-046",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-047",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17332,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-048",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17304,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-049",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-050",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-051",
+      "category": "multi_skill",
+      "scored_n": 11,
+      "top_score": 17313,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-052",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17347,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-053",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-054",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-055",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "multi-056",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17284,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing"
+      ]
+    },
+    {
+      "id": "multi-057",
+      "category": "multi_skill",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "multi-058",
+      "category": "multi_skill",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "multi-059",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17344,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-060",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-061",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-062",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17444,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-063",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17344,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-064",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17445,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-065",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17344,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "multi-066",
+      "category": "multi_skill",
+      "scored_n": 7,
+      "top_score": 17292,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-001",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "sib-002",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "sib-003",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17437,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "sib-004",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17447,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "sib-005",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "sib-006",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17447,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "sib-007",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-008",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-009",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-010",
+      "category": "sibling_ambiguity",
+      "scored_n": 6,
+      "top_score": 17453,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-011",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-012",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17445,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-013",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17439,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-014",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17432,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-015",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-016",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17336,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-017",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-018",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:relay:terraform-conventions"
+      ]
+    },
+    {
+      "id": "sib-019",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-020",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-021",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-022",
+      "category": "sibling_ambiguity",
+      "scored_n": 11,
+      "top_score": 17424,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "sib-023",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "sib-024",
+      "category": "sibling_ambiguity",
+      "scored_n": 11,
+      "top_score": 17424,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "sib-025",
+      "category": "sibling_ambiguity",
+      "scored_n": 11,
+      "top_score": 17424,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "sib-026",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "sib-027",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "sib-028",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17444,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-029",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17439,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-030",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17445,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-031",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "sib-032",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "sib-033",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "sib-034",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17421,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-035",
+      "category": "sibling_ambiguity",
+      "scored_n": 9,
+      "top_score": 17432,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "sib-036",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "sib-037",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17421,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "sib-038",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "sib-039",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "sib-040",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "sib-041",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17421,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "sib-042",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "sib-043",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17410,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions"
+      ]
+    },
+    {
+      "id": "sib-044",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17412,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-045",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17310,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-046",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17412,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-047",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-048",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17410,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-049",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "sib-050",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17445,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-051",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-052",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "sib-053",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "sib-054",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-055",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-056",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "sib-057",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "sib-058",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17409,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "sib-059",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "sib-060",
+      "category": "sibling_ambiguity",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:relay:terraform-conventions"
+      ]
+    },
+    {
+      "id": "sib-061",
+      "category": "sibling_ambiguity",
+      "scored_n": 12,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-062",
+      "category": "sibling_ambiguity",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "sib-063",
+      "category": "sibling_ambiguity",
+      "scored_n": 12,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "sib-064",
+      "category": "sibling_ambiguity",
+      "scored_n": 12,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "sib-065",
+      "category": "sibling_ambiguity",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "sib-066",
+      "category": "sibling_ambiguity",
+      "scored_n": 12,
+      "top_score": 17327,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "noapp-001",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17411,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "noapp-002",
+      "category": "no_applicable",
+      "scored_n": 8,
+      "top_score": 17287,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "noapp-003",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17410,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "noapp-004",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17284,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-005",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17292,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "noapp-006",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "noapp-007",
+      "category": "no_applicable",
+      "scored_n": 12,
+      "top_score": 17322,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "noapp-008",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17421,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "noapp-009",
+      "category": "no_applicable",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "noapp-010",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:monorepo-conventions"
+      ]
+    },
+    {
+      "id": "noapp-011",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "noapp-012",
+      "category": "no_applicable",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "noapp-013",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17300,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "noapp-014",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17292,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production"
+      ]
+    },
+    {
+      "id": "noapp-015",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "noapp-016",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "noapp-017",
+      "category": "no_applicable",
+      "scored_n": 6,
+      "top_score": 17282,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-018",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17250,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "noapp-019",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "noapp-020",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "noapp-021",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-022",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17309,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production"
+      ]
+    },
+    {
+      "id": "noapp-023",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17300,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-024",
+      "category": "no_applicable",
+      "scored_n": 8,
+      "top_score": 17287,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "noapp-025",
+      "category": "no_applicable",
+      "scored_n": 23,
+      "top_score": 17415,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "noapp-026",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17292,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "noapp-027",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:security.audit:audit-logging",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-028",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "noapp-029",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "noapp-030",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17447,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "noapp-031",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17305,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "noapp-032",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production"
+      ]
+    },
+    {
+      "id": "noapp-033",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "noapp-034",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17306,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "noapp-035",
+      "category": "no_applicable",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "noapp-036",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "noapp-037",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "noapp-038",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "noapp-039",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "noapp-040",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "noapp-041",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17347,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "noapp-042",
+      "category": "no_applicable",
+      "scored_n": 25,
+      "top_score": 17306,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "noapp-043",
+      "category": "no_applicable",
+      "scored_n": 9,
+      "top_score": 17318,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "noapp-044",
+      "category": "no_applicable",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:security.audit:audit-logging"
+      ]
+    },
+    {
+      "id": "stale-001",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17318,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-002",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17440,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "stale-003",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17432,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-004",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-005",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17331,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-006",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17284,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-007",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17433,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "stale-008",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17332,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-009",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-010",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17332,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-011",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17433,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "id": "stale-012",
+      "category": "stale_adversarial",
+      "scored_n": 8,
+      "top_score": 17304,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "stale-013",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17268,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "stale-014",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "stale-015",
+      "category": "stale_adversarial",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process"
+      ]
+    },
+    {
+      "id": "stale-016",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17439,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "stale-017",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17447,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "stale-018",
+      "category": "stale_adversarial",
+      "scored_n": 7,
+      "top_score": 17326,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "stale-019",
+      "category": "stale_adversarial",
+      "scored_n": 25,
+      "top_score": 17256,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "stale-020",
+      "category": "stale_adversarial",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "stale-021",
+      "category": "stale_adversarial",
+      "scored_n": 8,
+      "top_score": 17321,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "stale-022",
+      "category": "stale_adversarial",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "simple-001",
+      "category": "simple",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process"
+      ]
+    },
+    {
+      "id": "simple-002",
+      "category": "simple",
+      "scored_n": 9,
+      "top_score": 17418,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "simple-003",
+      "category": "simple",
+      "scored_n": 9,
+      "top_score": 17440,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "simple-004",
+      "category": "simple",
+      "scored_n": 25,
+      "top_score": 17421,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "simple-005",
+      "category": "simple",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "simple-006",
+      "category": "simple",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "simple-007",
+      "category": "simple",
+      "scored_n": 25,
+      "top_score": 17400,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "urn:skill:meridian:atlas.identity:rbac-policies"
+      ]
+    },
+    {
+      "id": "simple-008",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "simple-009",
+      "category": "simple",
+      "scored_n": 7,
+      "top_score": 17310,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy"
+      ]
+    },
+    {
+      "id": "simple-010",
+      "category": "simple",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay:terraform-conventions",
+        "urn:skill:meridian:relay.k8s:helm-conventions"
+      ]
+    },
+    {
+      "id": "simple-011",
+      "category": "simple",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:security-baseline",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:shared:shared-lib-versioning"
+      ]
+    },
+    {
+      "id": "simple-012",
+      "category": "simple",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage"
+      ]
+    },
+    {
+      "id": "simple-013",
+      "category": "simple",
+      "scored_n": 12,
+      "top_score": 17277,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "simple-014",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "urn:skill:meridian:atlas.geo:map-tile-serving"
+      ]
+    },
+    {
+      "id": "simple-015",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "id": "simple-016",
+      "category": "simple",
+      "scored_n": 7,
+      "top_score": 17426,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "id": "simple-017",
+      "category": "simple",
+      "scored_n": 9,
+      "top_score": 17433,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    },
+    {
+      "id": "simple-018",
+      "category": "simple",
+      "scored_n": 11,
+      "top_score": 17424,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions"
+      ]
+    },
+    {
+      "id": "simple-019",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17438,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:_root:adr-process",
+        "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "urn:skill:meridian:forge.ontology:object-type-migrations"
+      ]
+    },
+    {
+      "id": "simple-020",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:_root:monorepo-conventions",
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "urn:skill:meridian:forge.ontology:ontology-modeling"
+      ]
+    },
+    {
+      "id": "simple-021",
+      "category": "simple",
+      "scored_n": 9,
+      "top_score": 17447,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    },
+    {
+      "id": "simple-022",
+      "category": "simple",
+      "scored_n": 8,
+      "top_score": 17422,
+      "selected": [
+        "urn:skill:meridian:forge:dataset-conventions",
+        "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion"
+      ]
+    }
+  ],
+  "synthetic_probes": [
+    {
+      "query": "zzzxqvvvqqq",
+      "scored_n": 0,
+      "top_score": null,
+      "selected": []
+    },
+    {
+      "query": "zzzxqvvvqqq api",
+      "scored_n": 9,
+      "top_score": 17333,
+      "selected": [
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:shared:shared-lib-versioning",
+        "urn:skill:meridian:atlas.graph:link-analysis-api"
+      ]
+    },
+    {
+      "query": "zzzxqvvvqqq deployment",
+      "scored_n": 5,
+      "top_score": 17315,
+      "selected": [
+        "urn:skill:meridian:_root:postgres-production",
+        "urn:skill:meridian:atlas.identity:rbac-policies",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook"
+      ]
+    },
+    {
+      "query": "Write a rhyming sonnet about a cat called API.",
+      "scored_n": 25,
+      "top_score": 17305,
+      "selected": [
+        "urn:skill:meridian:security:classification-labels",
+        "urn:skill:meridian:atlas:atlas-api-conventions",
+        "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "urn:skill:meridian:atlas.geo:geospatial-indexing"
+      ]
+    },
+    {
+      "query": "Translate the word deployment into a love poem.",
+      "scored_n": 25,
+      "top_score": 17266,
+      "selected": [
+        "urn:skill:meridian:_root:release-process",
+        "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "urn:skill:meridian:relay.k8s:helm-conventions",
+        "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
+      ]
+    }
+  ],
+  "hydration": {
+    "body_bytes": {
+      "n": 26,
+      "min": 2246,
+      "p50": 4658,
+      "p95": 5170,
+      "max": 5540
+    },
+    "heading_count": {
+      "n": 26,
+      "min": 6,
+      "p50": 6,
+      "p95": 6,
+      "max": 6
+    },
+    "fits_use_byte_proxy_budget": {
+      "1024": 0,
+      "4096": 1,
+      "16384": 26
+    },
+    "bodies": [
+      {
+        "urn": "urn:skill:meridian:_root:adr-process",
+        "utf8_bytes": 4280,
+        "markdown_atx_heading_count": 6,
+        "sha256": "c00f4a8a0705b17a433b0345a39675879bb558a368a7aa9fd016e00cb83fcda1"
+      },
+      {
+        "urn": "urn:skill:meridian:_root:monorepo-conventions",
+        "utf8_bytes": 4731,
+        "markdown_atx_heading_count": 6,
+        "sha256": "5a8ec84b3508a6c94180bd744b6c21daebb6d7db1d4204d0eac84d450fe0983c"
+      },
+      {
+        "urn": "urn:skill:meridian:_root:postgres-production",
+        "utf8_bytes": 4658,
+        "markdown_atx_heading_count": 6,
+        "sha256": "c56277e2cec69ae0d74d6253b3041b37eb9254c356acdd5936dddb1fd14f39fd"
+      },
+      {
+        "urn": "urn:skill:meridian:_root:release-process",
+        "utf8_bytes": 4605,
+        "markdown_atx_heading_count": 6,
+        "sha256": "719d369cd34cd7b23bb860caa465b9800ebca930fffb004aafe540934117c9a0"
+      },
+      {
+        "urn": "urn:skill:meridian:_root:security-baseline",
+        "utf8_bytes": 4704,
+        "markdown_atx_heading_count": 6,
+        "sha256": "36affc4ac62cd581c4d8f8e7ad6d10f5184243b42a30fb29d80a64ca81ff051c"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.geo:geospatial-indexing",
+        "utf8_bytes": 4985,
+        "markdown_atx_heading_count": 6,
+        "sha256": "8f3f9d62c046e8763b5cad457747ba7c98d754cb8b204808828eed71b5f81bae"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.geo:map-tile-serving",
+        "utf8_bytes": 4747,
+        "markdown_atx_heading_count": 6,
+        "sha256": "fea4670e514d8c68097a9b0459bc761ffa370331d78474d28eae4cd8e9fe2947"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.graph:link-analysis-api",
+        "utf8_bytes": 4818,
+        "markdown_atx_heading_count": 6,
+        "sha256": "cbfb6b252621b034f1508c65be87aa9366ec992276dc8aafbf5111c7c96e4ad7"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.identity.turnstile:postgres-auth",
+        "utf8_bytes": 5540,
+        "markdown_atx_heading_count": 6,
+        "sha256": "0f506e5c5bd354754b4ab4244c6992d2819e5266dc10717b97eef693442b214b"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook",
+        "utf8_bytes": 5170,
+        "markdown_atx_heading_count": 6,
+        "sha256": "c1341346a8c30e570c684a6bba037ff5eaea94f4ec619f055007ed1a256b3cd5"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.identity:legacy-session-auth",
+        "utf8_bytes": 2246,
+        "markdown_atx_heading_count": 6,
+        "sha256": "5b683b9b2f7d5497ca35c023adf55becd0e26c42d661a228cdd1c724261fa115"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas.identity:rbac-policies",
+        "utf8_bytes": 4373,
+        "markdown_atx_heading_count": 6,
+        "sha256": "5793295c6a2e44bfadd4c9e5b7090a9ea32a152cecf8f8dd00816c0f3a97cd75"
+      },
+      {
+        "urn": "urn:skill:meridian:atlas:atlas-api-conventions",
+        "utf8_bytes": 4722,
+        "markdown_atx_heading_count": 6,
+        "sha256": "9dfc7ca7dc9acb1a96cb3610b8d43f4e63ef639c0fdc7ab03c565f26a352418f"
+      },
+      {
+        "urn": "urn:skill:meridian:forge.ontology:object-type-migrations",
+        "utf8_bytes": 4719,
+        "markdown_atx_heading_count": 6,
+        "sha256": "8a52bf8735600162c3c71737fff00162fa15e93247f4a9c638f3346b5bb637a3"
+      },
+      {
+        "urn": "urn:skill:meridian:forge.ontology:ontology-modeling",
+        "utf8_bytes": 4684,
+        "markdown_atx_heading_count": 6,
+        "sha256": "c9799afada33b6f05a6268cd326219dce8179b12538b93b70bed887a17036d47"
+      },
+      {
+        "urn": "urn:skill:meridian:forge.pipelines.streaming:kafka-ingestion",
+        "utf8_bytes": 5018,
+        "markdown_atx_heading_count": 6,
+        "sha256": "fc1ab52ecac4802718cbca0e3b0cd6550a1d2f5e57023de515060adb787f45a2"
+      },
+      {
+        "urn": "urn:skill:meridian:forge.pipelines:pipeline-testing",
+        "utf8_bytes": 4265,
+        "markdown_atx_heading_count": 6,
+        "sha256": "34262f9542a0bbe1f16ebb1672eea1a011b122a1dab5b9a30da320d2003f9e55"
+      },
+      {
+        "urn": "urn:skill:meridian:forge.pipelines:spark-pipeline-conventions",
+        "utf8_bytes": 4384,
+        "markdown_atx_heading_count": 6,
+        "sha256": "7798003397b4e97f6141432a2e45cef59bac9f6bb44524ebfc1d9f580f18f311"
+      },
+      {
+        "urn": "urn:skill:meridian:forge:dataset-conventions",
+        "utf8_bytes": 4538,
+        "markdown_atx_heading_count": 6,
+        "sha256": "8ba74e5d5b634cd377a687089396af5f6a20d04d7f8115c102201119baeb2be4"
+      },
+      {
+        "urn": "urn:skill:meridian:relay.edge:air-gapped-deploy",
+        "utf8_bytes": 5049,
+        "markdown_atx_heading_count": 6,
+        "sha256": "164e57d6e23dfa8dfc3498187b6d6d1b06dc926697aef7aad587df0437e58bc1"
+      },
+      {
+        "urn": "urn:skill:meridian:relay.k8s:helm-conventions",
+        "utf8_bytes": 4643,
+        "markdown_atx_heading_count": 6,
+        "sha256": "298542b6e68eec3bfbee2a90edc4cd1898020110a72b3da16ca194d9da29825c"
+      },
+      {
+        "urn": "urn:skill:meridian:relay:terraform-conventions",
+        "utf8_bytes": 4310,
+        "markdown_atx_heading_count": 6,
+        "sha256": "efeff7a9898b2e80db27a6621313d9028c644c5b0543ec55df859668cf5b923e"
+      },
+      {
+        "urn": "urn:skill:meridian:security.audit:audit-logging",
+        "utf8_bytes": 4772,
+        "markdown_atx_heading_count": 6,
+        "sha256": "b4fc7a2e986e6dfb4cc4b8e5f37031b53d3037afb5116bcb3e4be46e00092bd2"
+      },
+      {
+        "urn": "urn:skill:meridian:security:classification-labels",
+        "utf8_bytes": 4486,
+        "markdown_atx_heading_count": 6,
+        "sha256": "12e069b9d8dead036040d73ff3a0e2c86d4cc140aa36322c4bed27872a2ff623"
+      },
+      {
+        "urn": "urn:skill:meridian:shared.auth-sdk:auth-sdk-usage",
+        "utf8_bytes": 4566,
+        "markdown_atx_heading_count": 6,
+        "sha256": "5a63afec0ca51ab2b0057a075f2941dd6e7af673cb228e6262dbd71320e7ed43"
+      },
+      {
+        "urn": "urn:skill:meridian:shared:shared-lib-versioning",
+        "utf8_bytes": 4341,
+        "markdown_atx_heading_count": 6,
+        "sha256": "3730d4a7f225c3a9427e5019582131755dc7cd796c459f5dee5620e5955dd503"
+      }
+    ],
+    "limitation": "Byte proxy only. No tokenizer, section relevance, HTTP latency or task utility measured."
+  }
+}

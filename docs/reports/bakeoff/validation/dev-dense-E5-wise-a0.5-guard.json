@@ -1,0 +1,83 @@
+{
+ "note": "Post-hoc diagnostic (recorded as such in the report): did E1 learn our generator's query\ndistribution, or did training damage the encoder? E0 vs E1 on (a) 1,000 composite queries \u2014 same\ngenerator, same style, NEVER seen by E1 (E1 trained on per-skill rows only) \u2014 and (b) 1,000 of E1's\nown per-skill training queries (memorisation check). CPU-only so it can run beside E2 training.\nSkill vectors: the dev_dense int8 caches already produced for E0 and E1 (same order asserted).",
+ "base": "E0",
+ "candidate": "E5-wise-a0.5",
+ "prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+ "n_per_kind": 1000,
+ "seed": 20260906,
+ "skill_vectors": {
+  "E0": "dev_dense int8 cache",
+  "E5-wise-a0.5": "dev_dense int8 cache"
+ },
+ "results": {
+  "per_skill_train/hit1": {
+   "base": 0.577,
+   "cand": 0.675,
+   "delta_pp": 9.8,
+   "ci95_pp": [
+    7.8,
+    11.899999999999999
+   ],
+   "n": 1000
+  },
+  "per_skill_train/recall10": {
+   "base": 0.824,
+   "cand": 0.928,
+   "delta_pp": 10.4,
+   "ci95_pp": [
+    8.7,
+    12.3
+   ],
+   "n": 1000
+  },
+  "per_skill_train/all_gold4": {
+   "base": 0.738,
+   "cand": 0.854,
+   "delta_pp": 11.600000000000001,
+   "ci95_pp": [
+    9.700000000000001,
+    13.600000000000001
+   ],
+   "n": 1000
+  },
+  "composite_unseen/hit1": {
+   "base": 0.869,
+   "cand": 0.868,
+   "delta_pp": -0.1,
+   "ci95_pp": [
+    -2.1,
+    2.1
+   ],
+   "n": 1000
+  },
+  "composite_unseen/recall10": {
+   "base": 0.8006666666666666,
+   "cand": 0.7751666666666667,
+   "delta_pp": -2.55,
+   "ci95_pp": [
+    -3.616666666666667,
+    -1.55
+   ],
+   "n": 1000
+  },
+  "composite_unseen/all_gold4": {
+   "base": 0.379,
+   "cand": 0.335,
+   "delta_pp": -4.3999999999999995,
+   "ci95_pp": [
+    -6.7,
+    -2.1
+   ],
+   "n": 1000
+  }
+ },
+ "guard": {
+  "rule": "v2.8 \u00a74c rule 1: recall@10 on unseen same-generator composite: delta >= 0 and CI low > -2pp",
+  "delta_pp": -2.55,
+  "ci95_pp": [
+   -3.616666666666667,
+   -1.55
+  ],
+  "pass": false
+ }
+}

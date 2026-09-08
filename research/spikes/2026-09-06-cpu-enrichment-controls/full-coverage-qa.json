@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "skills_text_verified": 10123,
+  "ranking_rows_recomputed": 4096,
+  "metric_cells": 20480,
+  "bootstrap_repetitions_recomputed": 5000,
+  "full_pipeline_parity_queries": 64,
+  "gpu_used": false,
+  "qa_sha256": "065c1cad1d49de8ae5395e4f1f865b49069ffefe45a9a0243879bb665e4cd10a"
+}
