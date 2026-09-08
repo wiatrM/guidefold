@@ -1,0 +1,68 @@
+{
+ "note": "Post-hoc diagnostic (recorded as such in the report): did E1 learn our generator's query\ndistribution, or did training damage the encoder? E0 vs E1 on (a) 1,000 composite queries \u2014 same\ngenerator, same style, NEVER seen by E1 (E1 trained on per-skill rows only) \u2014 and (b) 1,000 of E1's\nown per-skill training queries (memorisation check). CPU-only so it can run beside E2 training.\nSkill vectors: the dev_dense int8 caches already produced for E0 and E1 (same order asserted).",
+ "prompt": "Instruct: a skill search query, retrieve relevant skills that match the query\nQuery: ",
+ "n_per_kind": 1000,
+ "seed": 20260906,
+ "results": {
+  "per_skill_train/hit1": {
+   "E0": 0.577,
+   "E1": 0.722,
+   "delta_pp": 14.499999999999998,
+   "ci95_pp": [
+    11.7975,
+    16.8025
+   ],
+   "n": 1000
+  },
+  "per_skill_train/recall10": {
+   "E0": 0.824,
+   "E1": 0.952,
+   "delta_pp": 12.8,
+   "ci95_pp": [
+    10.9,
+    15.0
+   ],
+   "n": 1000
+  },
+  "per_skill_train/all_gold4": {
+   "E0": 0.738,
+   "E1": 0.892,
+   "delta_pp": 15.4,
+   "ci95_pp": [
+    13.200000000000001,
+    17.9
+   ],
+   "n": 1000
+  },
+  "composite_unseen/hit1": {
+   "E0": 0.869,
+   "E1": 0.825,
+   "delta_pp": -4.3999999999999995,
+   "ci95_pp": [
+    -7.000000000000001,
+    -1.6975000000000025
+   ],
+   "n": 1000
+  },
+  "composite_unseen/recall10": {
+   "E0": 0.8006666666666666,
+   "E1": 0.6958333333333333,
+   "delta_pp": -10.483333333333334,
+   "ci95_pp": [
+    -11.95,
+    -9.082916666666668
+   ],
+   "n": 1000
+  },
+  "composite_unseen/all_gold4": {
+   "E0": 0.379,
+   "E1": 0.229,
+   "delta_pp": -15.0,
+   "ci95_pp": [
+    -17.8025,
+    -12.3975
+   ],
+   "n": 1000
+  }
+ }
+}
