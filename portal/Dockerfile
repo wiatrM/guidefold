@@ -13,5 +13,9 @@ RUN cd /src/portal && mkdocs build --strict && test -f /src/.portal-site/index.h
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY --from=build /src/.portal-site/ /usr/share/nginx/html/
+# Correct directory-redirect Location headers behind ingress — see the file's own
+# comment. Without this, e.g. /evidence -> /evidence/ redirects to a port nothing
+# outside the cluster can reach.
+COPY portal/nginx-absolute-redirect-off.conf /etc/nginx/conf.d/absolute-redirect-off.conf
 # nginx-unprivileged listens on 8080 as uid 101; nothing here needs more.
 EXPOSE 8080
