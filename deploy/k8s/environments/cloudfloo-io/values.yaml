@@ -52,8 +52,20 @@ worker:
   generator: deterministic # det-1: no network, no LLM key required for this pilot
 
 ingress:
-  enabled: true
+  enabled: false # the API isn't meaningfully public yet (no WorkOS wired); the portal
+                  # owns guidefold.cloudfloo.io below. Flip this on with a different host
+                  # (e.g. api.guidefold.cloudfloo.io) once WorkOS + the GitHub App backend
+                  # are real — the API stays reachable inside the cluster regardless.
   className: nginx # matches the cluster's ingress-nginx controller
+  host: ""
+  tlsSecret: ""
+
+# The developer portal: static docs, no backend dependency, ready today. It owns the
+# domain until the API has something real to serve publicly.
+portal:
+  enabled: true
+  image: "" # TODO: pin from publish-images.yml's `portal` job
+  replicas: 1
   host: guidefold.cloudfloo.io
   tlsSecret: "" # HTTP only for now — the owner is adding DNS + TLS separately
 

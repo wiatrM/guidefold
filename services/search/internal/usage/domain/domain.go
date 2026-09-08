@@ -203,13 +203,13 @@ func HelpedRatio(f Feedback) *Ratio {
 
 // Totals is the sum over the rows the filter selected.
 type Totals struct {
-	Exposures      int       `json:"exposures"`
-	LoadsVerified  int       `json:"loads_verified"`
-	ContextLoaded  int       `json:"context_loaded"`
-	ContextUnknown int       `json:"context_unknown"`
-	UseReported    int       `json:"use_reported"`
-	UseObserved    int       `json:"use_observed"`
-	UseEpisodes    int       `json:"use_episodes"`
+	Exposures      int `json:"exposures"`
+	LoadsVerified  int `json:"loads_verified"`
+	ContextLoaded  int `json:"context_loaded"`
+	ContextUnknown int `json:"context_unknown"`
+	UseReported    int `json:"use_reported"`
+	UseObserved    int `json:"use_observed"`
+	UseEpisodes    int `json:"use_episodes"`
 	// ExposuresExpanded and LoadsUnlinked (contract 1.1.4) say whether the
 	// card was enough. See Skill for the definitions.
 	ExposuresExpanded int       `json:"exposures_expanded"`
@@ -223,18 +223,18 @@ type Skill struct {
 	Revision *string `json:"revision"`
 	// CardRevision and ContentSHA256 are the same revision's other two names,
 	// or nil when the catalog does not know this revision at all.
-	CardRevision   *string   `json:"card_revision"`
-	ContentSHA256  *string   `json:"content_sha256"`
-	Scope          *string   `json:"scope"`
-	Owner          *string   `json:"owner"`
-	Harness        *string   `json:"harness"`
-	Exposures      int       `json:"exposures"`
-	LoadsVerified  int       `json:"loads_verified"`
-	ContextLoaded  int       `json:"context_loaded"`
-	ContextUnknown int       `json:"context_unknown"`
-	UseReported    int       `json:"use_reported"`
-	UseObserved    int       `json:"use_observed"`
-	UseEpisodes    int       `json:"use_episodes"`
+	CardRevision   *string `json:"card_revision"`
+	ContentSHA256  *string `json:"content_sha256"`
+	Scope          *string `json:"scope"`
+	Owner          *string `json:"owner"`
+	Harness        *string `json:"harness"`
+	Exposures      int     `json:"exposures"`
+	LoadsVerified  int     `json:"loads_verified"`
+	ContextLoaded  int     `json:"context_loaded"`
+	ContextUnknown int     `json:"context_unknown"`
+	UseReported    int     `json:"use_reported"`
+	UseObserved    int     `json:"use_observed"`
+	UseEpisodes    int     `json:"use_episodes"`
 	// ExposuresExpanded counts exposures whose search_id also appears on a
 	// verified load of the same skill in the window: the card was followed by
 	// the body. Linked by skill_id and search_id, not by revision, because the

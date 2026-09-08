@@ -1,17 +1,18 @@
 name: Publish images
 
-# Builds and pushes the API and worker images to GHCR on every push to main
-# that touches services/search. This is the only place these images are
+# Builds and pushes the API, worker and portal images to GHCR on every push to
+# main that touches their inputs. This is the only place these images are
 # built: there is no usable self-hosted runner for this repository (checked
 # against the deploy cluster's runner registration — zero runners scoped to
 # this repo) and no local Docker in the dev environment, so GitHub-hosted
 # runners + GHCR is the realistic path. See deploy/k8s/environments/*/README.md
-# for how a release picks up the digest this job produces.
+# for how a release picks up the digests these jobs produce.
 on:
   push:
     branches: [main]
     paths:
       - services/search/**
+      - portal/**
       - .github/workflows/publish-images.yml
   workflow_dispatch: {}
 
@@ -23,9 +24,10 @@ env:
   REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-search
   WORKER_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-worker
+  PORTAL_IMAGE: ghcr.io/${{ github.repository_owner }}/guidefold-portal
 
 jobs:
-  publish:
+  api-and-worker:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -71,3 +73,37 @@ jobs:
           echo "- Worker: \`${{ env.WORKER_IMAGE }}@${{ steps.push-worker.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Pin these digests into the environment's Helm values (image / worker.image) — the chart refuses an unpinned production image." >> "$GITHUB_STEP_SUMMARY"
+
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      portal_digest: ${{ steps.push-portal.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push portal image
+        id: push-portal
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: portal/Dockerfile
+          push: true
+          tags: |
+            ${{ env.PORTAL_IMAGE }}:${{ github.sha }}
+            ${{ env.PORTAL_IMAGE }}:latest
+
+      - name: Summary
+        run: |
+          echo "### Published portal image" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Portal: \`${{ env.PORTAL_IMAGE }}@${{ steps.push-portal.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin this digest into the environment's Helm values (portal.image)." >> "$GITHUB_STEP_SUMMARY"
