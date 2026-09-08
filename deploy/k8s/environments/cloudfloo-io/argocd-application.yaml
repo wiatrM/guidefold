@@ -72,8 +72,14 @@ spec:
           replicas: 1
           generator: deterministic
         ingress:
-          enabled: true
+          enabled: false
           className: nginx
+          host: ""
+          tlsSecret: ""
+        portal:
+          enabled: true
+          image: "" # TODO: pin from publish-images.yml's `portal` job before first sync
+          replicas: 1
           host: guidefold.cloudfloo.io
           tlsSecret: ""
         networkPolicy:
