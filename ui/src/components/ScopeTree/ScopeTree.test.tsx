@@ -11,24 +11,24 @@ const nodes:TreeNode[]=[{id:'root',label:'Repository',children:[
 ]}];
 describe('ScopeTree',()=>{
  it('opens the selected ancestor path and names the selected leaf',()=>{
-  const {container}=render(<MemoryRouter><ScopeTree label="Repository scopes" selected="auth" nodes={nodes}/></MemoryRouter>);
+  render(<MemoryRouter><ScopeTree label="Repository scopes" selected="auth" nodes={nodes}/></MemoryRouter>);
   const group=screen.getByRole('group',{name:'Repository scopes'});
   expect(within(group).getByRole('link',{name:'postgres-auth'})).toHaveAttribute('aria-current','true');
-  const branches=Array.from(container.querySelectorAll('details'));
-  expect(branches.map(branch=>branch.open)).toEqual([true,true,false]);
+  expect(screen.getByRole('button',{name:/Repository/})).toHaveAttribute('aria-expanded','true');
+  expect(screen.getByRole('button',{name:/Platform/})).toHaveAttribute('aria-expanded','true');
+  expect(screen.getByRole('button',{name:/Delivery/})).toHaveAttribute('aria-expanded','false');
   expect(screen.getByText('meridian.platform')).toBeInTheDocument();
   expect(screen.getByRole('link',{name:'postgres-auth'})).toHaveAttribute('href','/skill?skill=auth');
  });
- it('keeps native disclosure reversible without assigning a false tree widget role',async()=>{
+ it('keeps the Base UI collapsible reversible without assigning a false tree widget role',async()=>{
   const user=userEvent.setup();
   const {container}=render(<MemoryRouter><ScopeTree label="Repository scopes" nodes={nodes}/></MemoryRouter>);
-  const summary=screen.getByText('Repository').closest('summary')!;
-  const branch=summary.parentElement as HTMLDetailsElement;
-  expect(branch.open).toBe(true);
-  await user.click(summary);
-  expect(branch.open).toBe(false);
-  await user.click(summary);
-  expect(branch.open).toBe(true);
+  const trigger=screen.getByRole('button',{name:/Repository/});
+  expect(trigger).toHaveAttribute('aria-expanded','true');
+  await user.click(trigger);
+  expect(trigger).toHaveAttribute('aria-expanded','false');
+  await user.click(trigger);
+  expect(trigger).toHaveAttribute('aria-expanded','true');
   expect(container.querySelector('[role=tree]')).toBeNull();
  });
 
@@ -38,13 +38,12 @@ describe('ScopeTree',()=>{
    {id:'a',label:'Source A',href:'/a'},{id:'b',label:'Source B',href:'/b'}
   ]}]}];
   const {rerender}=render(<MemoryRouter><ScopeTree label="Sources" selected="a" nodes={siblings}/></MemoryRouter>);
-  const summary=screen.getByText('Platform').closest('summary')!;
-  const branch=summary.parentElement as HTMLDetailsElement;
-  await user.click(summary);expect(branch.open).toBe(false);
+  const trigger=screen.getByRole('button',{name:/Platform/});
+  await user.click(trigger);expect(trigger).toHaveAttribute('aria-expanded','false');
   rerender(<MemoryRouter><ScopeTree label="Sources" selected="b" nodes={siblings}/></MemoryRouter>);
-  expect(branch.open).toBe(true);
+  expect(trigger).toHaveAttribute('aria-expanded','true');
   expect(screen.getByRole('link',{name:'Source B'})).toHaveAttribute('aria-current','true');
-  await user.click(summary);expect(branch.open).toBe(false);
+  await user.click(trigger);expect(trigger).toHaveAttribute('aria-expanded','false');
  });
  it('renders an unavailable leaf as text without inventing navigation',()=>{
   render(<MemoryRouter><ScopeTree label="Unmapped scope" nodes={[{id:'unmapped',label:'Unmapped',detail:'No declared node'}]}/></MemoryRouter>);

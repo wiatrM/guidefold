@@ -6,12 +6,17 @@
 /* Both the leaf row and every folder summary reserve a left border at the (invisible against the
    panel ground) --graphite-900 baseline, so gaining the teal "selected" marker never shifts the
    row's content — a real token stands in for "no border yet", never a bare transparent literal. */
-.tree summary{display:list-item;min-height:var(--row-height);padding:var(--space-2);cursor:pointer;overflow-wrap:anywhere;border-left:var(--border-width) solid var(--graphite-900);}
+.branchTrigger{display:flex;align-items:center;gap:var(--space-2);width:var(--full);min-height:var(--row-height);padding:var(--space-2);cursor:pointer;overflow-wrap:anywhere;border:var(--zero);border-left:var(--border-width) solid var(--graphite-900);border-radius:var(--radius-small);background:var(--transparent);color:var(--stone-100);font:inherit;text-align:left;transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease);}
+@media(hover:hover){.branchTrigger:hover,.treeLeaf:hover{background:var(--graphite-850);}}
 /* Folder icon stays muted (it is navigation chrome); the file icon reads brighter so a leaf is
    visually distinct from a folder at a glance, not just by which element happens to be clickable. */
-.tree summary svg{vertical-align:middle;margin-right:var(--space-2);color:var(--stone-300);}
-.tree summary small{display:block;color:var(--stone-300);font-size:var(--font-size-small);}
-.treeLeaf{display:flex;align-items:flex-start;gap:var(--space-2);flex-wrap:wrap;min-height:var(--row-height);padding:var(--space-2);border-left:var(--border-width) solid var(--graphite-900);}
+.branchTrigger svg{flex:none;color:var(--stone-300);}
+.branchTrigger small{display:block;color:var(--stone-300);font-size:var(--font-size-small);}
+.branchCaret{transition:transform var(--duration-menu) var(--ease-out);}
+.branch[data-open]>.branchTrigger>.branchCaret{transform:rotate(var(--quarter-turn));}
+.branchPanel{transform-origin:top;transition:opacity var(--duration-menu) var(--ease-out),transform var(--duration-menu) var(--ease-out);}
+.branchPanel[data-starting-style],.branchPanel[data-ending-style]{opacity:var(--zero);transform:translateY(calc(var(--space-1) * -1));}
+.treeLeaf{display:flex;align-items:flex-start;gap:var(--space-2);flex-wrap:wrap;min-height:var(--row-height);padding:var(--space-2);border-left:var(--border-width) solid var(--graphite-900);border-radius:var(--radius-small);transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease);}
 .treeLeaf>a,.treeLeaf>span{overflow-wrap:anywhere;}
 .treeLeaf svg{flex:none;color:var(--stone-100);}
 .treeLeaf small{color:var(--stone-300);font-size:var(--font-size-small);overflow-wrap:anywhere;}
@@ -21,4 +26,5 @@
 .treeLeaf [aria-current=true]{color:var(--system-ink);font-weight:var(--weight-semibold);}
 /* Ancestor folders of the selected leaf: the same structural marker down the open path, so the
    selection reads as "here" beyond just being auto-expanded. */
-.tree details:has([aria-current=true])>summary{background:var(--graphite-800);border-left-color:var(--survey-teal);}
+.branch[data-selected-path]>.branchTrigger{background:var(--graphite-800);border-left-color:var(--survey-teal);}
+@media(prefers-reduced-motion:reduce){.branchCaret,.branchPanel{transition-duration:var(--duration-reduced);}.branchPanel[data-starting-style],.branchPanel[data-ending-style]{transform:none;}}

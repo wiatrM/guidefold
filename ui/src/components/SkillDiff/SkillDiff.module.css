@@ -1,6 +1,6 @@
 .diffQuiet{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;color:var(--stone-300);}
 .diff>p{font-size:var(--font-size-small);color:var(--stone-300);}
-.diff pre{margin:var(--zero);white-space:pre-wrap;overflow-wrap:anywhere;max-width:var(--full);font:var(--font-size-code)/var(--line-height-body) var(--font-mono);}
+.diff pre{margin:var(--zero);padding:var(--space-2);white-space:pre-wrap;overflow-wrap:anywhere;max-width:var(--full);border:var(--border-width) solid var(--line-strong);border-radius:var(--radius);background:var(--graphite-950);box-shadow:var(--shadow-control);font:var(--font-size-code)/var(--line-height-body) var(--font-mono);}
 .diff pre>span{display:block;white-space:pre-wrap;}
 .diffAdded{background:var(--system-wash);color:var(--stone-100);}
 .diffRemoved{background:var(--human-wash);color:var(--stone-100);}

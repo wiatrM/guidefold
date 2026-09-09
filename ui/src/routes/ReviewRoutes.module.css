@@ -3,8 +3,8 @@
 .summaryHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); min-width: var(--zero); }
 .summaryHeading > * { min-width: var(--zero); }
 .summary p, .stageContent p, .queueEmpty p { margin: var(--zero); }
-.eyebrow { font-family: var(--font-display); font-size: var(--font-size-small); color: var(--stone-300); text-transform: uppercase; }
-.name { font-family: var(--font-display); font-size: var(--font-size-title); margin: var(--zero); text-transform: uppercase; overflow-wrap: anywhere; }
+.eyebrow { font-family: var(--font-display); font-size: var(--font-size-small); color: var(--stone-300); }
+.name { font-family: var(--font-display); font-size: var(--font-size-title); margin: var(--zero); overflow-wrap: anywhere; }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding-block: var(--space-3); min-width: var(--zero); }
 .actions a, .jumpLink { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); overflow-wrap: anywhere; }
 .jumpLink { color: var(--safety-orange); }
@@ -67,7 +67,7 @@
 .contextChart { display: grid; gap: var(--space-2); min-width: var(--zero); padding-bottom: var(--space-3); border-bottom: var(--border-width) solid var(--line); }
 .chartLegend { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
 .feedbackChart { display: grid; gap: var(--space-2); min-width: var(--zero); padding-top: var(--space-3); border-top: var(--border-width) solid var(--line); }
-.feedbackChart svg { width: var(--full); height: var(--space-3); display: block; }
+.feedbackChart svg.recharts-surface { width: var(--full); height: var(--full); display: block; }
 .feedbackLegend { display: flex; flex-wrap: wrap; gap: var(--space-3); list-style: none; margin: var(--zero); padding: var(--zero); font-size: var(--font-size-small); }
 .feedbackLegend li { display: flex; align-items: center; gap: var(--space-1); }
 .legendSwatch { display: inline-block; width: var(--space-2); height: var(--space-2); flex: none; border: var(--border-width) solid var(--line-strong); }
@@ -75,6 +75,7 @@
 .legendSwatchHindered { background: var(--warning); }
 .legendSwatchMixed { background: var(--steel); }
 .legendSwatchNotApplicable { background: var(--stone-300); }
+.legendSwatchUnknown { background: var(--series-3); }
 
 /* Usage · Skill health: a gate is a badge plus its reason; the funnel is four numbers, not a chart.
    Cells carry a minimum width so the auto-layout table never squeezes a column into one word per line. */

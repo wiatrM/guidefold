@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-08T08:51:53.523Z",
+  "capturedAt": "2026-09-09T19:54:41.514Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
     "components": 15,
-    "cssFiles": 23,
-    "tokens": 121,
-    "productionFilesTraversed": 34,
+    "cssFiles": 25,
+    "tokens": 284,
+    "productionFilesTraversed": 42,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -232,6 +232,10 @@
       "specifier": "react"
     },
     {
+      "file": "src/components/PyramidChart/index.tsx",
+      "specifier": "./SchemaFlow"
+    },
+    {
       "file": "src/domain/pyramidGraph.ts",
       "specifier": "../api/decoders"
     },
@@ -245,6 +249,188 @@
     }
   ],
   "inlineStyles": [],
+  "reviewedInlineStyles": [
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 369,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 429,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 451,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 668,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 691,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 705,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 716,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 729,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 744,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 763,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 793,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 800,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "line": 811,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 326,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 363,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 466,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 649,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 662,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 676,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 686,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 699,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "line": 830,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/pie-chart.tsx",
+      "line": 91,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 180,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 202,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 215,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 219,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 234,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 262,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 276,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "line": 292,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "line": 146,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "line": 150,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "line": 154,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "line": 163,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "line": 180,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    }
+  ],
   "diagnostics": [],
   "limits": [
     "Source check only; build, Vitest, keyboard behavior, axe and independent pixel comparison run separately.",

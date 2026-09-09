@@ -142,6 +142,20 @@ describe('Library route, filters and paging', () => {
 });
 
 describe('Library route, rows', () => {
+  test('a favorite is an accessible badge action and stays saved for this account and repository', async () => {
+    const key = 'guidefold-favorites-v1:u1:meridian:monorepo';
+    localStorage.removeItem(key);
+    const view = renderApi(ApiLibraryRoute, facets);
+    const add = await screen.findByRole('button', { name: 'Add pipeline-testing to favorites' });
+    await userEvent.click(add);
+    expect(add).toHaveAttribute('aria-pressed', 'true');
+    expect(JSON.parse(localStorage.getItem(key) ?? '[]')).toContain('urn:skill:meridian:forge.pipelines:pipeline-testing');
+    view.unmount();
+    renderApi(ApiLibraryRoute, facets);
+    expect(await screen.findByRole('button', { name: 'Remove pipeline-testing from favorites' })).toHaveAttribute('aria-pressed', 'true');
+    localStorage.removeItem(key);
+  });
+
   test('publication status is a labelled badge whose tone follows the state; colour never stands alone', async () => {
     renderApi(ApiLibraryRoute, fakeSource({
       listSkills: async () => page({ items: [summary('published-one', { publication_status: 'published' }), summary('review-one', { publication_status: 'needs_review' }), summary('draft-one')] }),

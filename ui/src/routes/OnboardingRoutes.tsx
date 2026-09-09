@@ -369,7 +369,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     {signedIn && <OwnerNote role={role} />}
     {formError && <p className={styles.feedback} role="alert">{formError}</p>}
 
-    {step === 'login' && <Panel title="Sign in" eyebrow="01 / Identity" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+    {step === 'login' && <Panel title="Sign in" eyebrow="Identity" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
       {providers.phase === 'loading' && <RouteState state="loading" title="Reading providers" description="Asking the API which identity providers are configured." />}
       {providers.phase === 'error' && providers.error && <ApiFailure error={providers.error} onRetry={providers.reload} retryLabel="Retry the provider list" />}
       {providers.phase === 'ready' && (providers.value?.providers.length
@@ -381,7 +381,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     </Panel>}
 
     {step === 'organization' && <div className={styles.asideColumns}>
-      <Panel title="Your organizations" eyebrow="02 / Organization" icon={<Buildings weight="regular" aria-hidden="true" />}>
+      <Panel title="Your organizations" eyebrow="Organization" icon={<Buildings weight="regular" aria-hidden="true" />}>
         {orgs.phase === 'loading' && <RouteState state="loading" title="Reading organizations" description="Waiting for the membership list." />}
         {orgs.phase === 'error' && orgs.error && <ApiFailure error={orgs.error} onRetry={orgs.reload} retryLabel="Retry the organization list" />}
         {orgs.phase === 'ready' && (orgs.value?.length
@@ -400,7 +400,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     </div>}
 
     {step === 'preview' && <div className={styles.asideColumns}>
-      <Panel title="Repositories" eyebrow="03 / Repository" icon={<FileCode weight="regular" aria-hidden="true" />}>
+      <Panel title="Repositories" eyebrow="Repository" icon={<FileCode weight="regular" aria-hidden="true" />}>
         {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
         {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
         {repos.phase === 'ready' && (repos.value?.length

@@ -9,7 +9,7 @@ const bands = [
   ]},
   {key: 'task' as const, label: 'Task', description: 'Reusable capabilities and workflows', items: [
     {id: 'migration-plan', label: 'migration-plan'},
-    {id: 'object-type-migrations', label: 'object-type-migrations', detail: 'forge.ontology · ontology-team'},
+    {id: 'object-type-migrations', label: 'object-type-migrations', detail: 'forge.ontology, ontology-team'},
     {id: 'type-mapper', label: 'type-mapper'},
   ]},
   {key: 'atomic' as const, label: 'Atomic', description: 'Concrete, executable elements', items: [

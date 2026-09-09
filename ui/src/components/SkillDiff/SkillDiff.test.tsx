@@ -16,7 +16,7 @@ describe('SkillDiff',()=>{
   expect(diff.textContent).toContain('+ cache 60\n');
   expect(diff.textContent).toContain('  before\n');
   expect(diff.textContent).toContain('  after\n');
-  expect(screen.getByText('+ Added lines · − Removed lines')).toBeInTheDocument();
+  expect(screen.getByText('Added lines (+), removed lines (−)')).toBeInTheDocument();
   expect(diff).toHaveAttribute('tabindex','0');
  });
  it('treats source text as text, including markup, and detects a final newline change',()=>{

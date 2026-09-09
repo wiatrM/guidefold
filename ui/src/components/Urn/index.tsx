@@ -16,5 +16,5 @@ export function Urn({value}:{value:string}){
    if(request===operation.current)setResult({value:copiedValue,message:'Copy unavailable. Select the identifier text.'});
   }
  }
- return <div className={css.urn}><code>{value}</code><button type="button" onClick={copy} aria-label="Copy identifier" title="Copy identifier">{notice==='Copied identifier'?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}</button><span className={css.copyNotice} role="status">{notice}</span></div>;
+ return <div className={css.urn} data-slot="input-group"><code>{value}</code><button type="button" onClick={copy} aria-label="Copy identifier" title="Copy identifier" data-slot="input-group-button">{notice==='Copied identifier'?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}</button><span className={css.copyNotice} role="status">{notice}</span></div>;
 }

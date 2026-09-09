@@ -12,6 +12,8 @@ import {
 import type {ExportPayload, FeedbackTotals, HelpedRatio, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
 import type {Params, View} from '../domain';
 import styles from './ReviewRoutes.module.css';
+import {BarChart as SpectrumBarChart} from '../components/spectrumui/charts/bar-chart';
+import {PieChart as SpectrumPieChart} from '../components/spectrumui/charts/pie-chart';
 
 // ---------------------------------------------------------------------------
 // Usage · Skill health: gates, recommendation, ranking and a per-skill funnel.
@@ -585,102 +587,50 @@ const DELIVERY_CHART_LIMIT = 8;
  * sample); the aggregate chart applies the same floor instead of inventing its own threshold. */
 const FEEDBACK_SMALL_SAMPLE = 20;
 
-/** Horizontal bar per skill: a neutral track sized to its exposures, a teal fill sized to its
- * verified loads on the same scale, so length compares skills and fill compares delivery within
- * one. Plain inline SVG (no charting library); every bar carries its exact counts as text next
- * to it, and the full numbers stay in the "Per skill" table below for anyone who wants every row. */
-// SVG marks below set `fill`/`stroke` as plain presentation attributes (not the `style` prop),
-// each one always a `var(--token)` string from tokens.css — never a hex value or an invented size.
+/** Spectrum renderers use the same source values as the exact text below them. */
 function DeliveryChart({skills}: {skills: UsageSkill[]}) {
-  const ranked = [...skills].sort((a, b) => b.exposures - a.exposures).slice(0, DELIVERY_CHART_LIMIT);
-  const max = Math.max(0, ...ranked.map(item => item.exposures));
-  if (max === 0) return null;
+  const ranked = [...skills].sort((a,b) => b.exposures-a.exposures).slice(0,DELIVERY_CHART_LIMIT);
+  if (!ranked.some(item => item.exposures > 0 || item.loads_verified > 0)) return null;
   return <div className={styles.deliveryChart} role="group" aria-label="Exposures and verified loads per skill, top skills by exposures">
-    <div className={styles.deliveryAxis}><span>0</span><span>{formatNumber(max)} exposures · scale max</span></div>
-    <ul className={styles.deliveryRows}>{ranked.map(item => {
-      const trackPct = (item.exposures / max) * 100;
-      const fillPct = (Math.min(item.loads_verified, item.exposures) / max) * 100;
-      return <li key={item.skill_id + ':' + (item.revision ?? '')} className={styles.deliveryRow}>
-        <span className={styles.deliveryLabel}>{item.skill_id}</span>
-        <span className={styles.deliveryBarLine}>
-          <svg className={styles.deliveryBar} viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-            <rect x={0} y={0} width={100} height={10} fill="var(--graphite-800)" />
-            <rect x={0} y={0} width={trackPct} height={10} fill="var(--line-strong)" />
-            <rect x={0} y={0} width={fillPct} height={10} fill="var(--survey-teal)" />
-          </svg>
-          <span className={styles.deliveryValue}>{formatNumber(item.loads_verified)} of {formatNumber(item.exposures)} verified</span>
-        </span>
-      </li>;
-    })}</ul>
+    <h3>Exposures and verified loads</h3>
+    <SpectrumBarChart layout="horizontal" data={ranked.map((item,index)=>({category:String(index+1),first:item.exposures,second:item.loads_verified}))} series={[{label:'Exposed',color:'var(--steel)'},{label:'Verified loads',color:'var(--survey-teal)'}]}/>
+    <ol className={styles.deliveryRows}>{ranked.map(item=><li key={item.skill_id+':'+(item.revision??'')} className={styles.deliveryRow}><span className={styles.deliveryLabel}>{item.skill_id}</span><span className={styles.deliveryValue}>{formatNumber(item.loads_verified)} of {formatNumber(item.exposures)} verified</span></li>)}</ol>
+    <p className={styles.chartLegend}>Counts per skill, in list order. Loads and exposures are independent observations; a load can be recorded without an exposure.</p>
   </div>;
 }
 
-/** Feedback verdicts as one proportioned stacked bar plus a label/count legend. Colours reuse the
- * verdict tones already established for `StateBadge` elsewhere (helped=system, hindered=warning,
- * mixed/not_applicable=neutral) so the chart does not invent a second meaning for an existing hue. */
 const feedbackSegments = [
-  {key: 'helped', label: 'Helped', fill: 'var(--survey-teal)', swatch: 'legendSwatchHelped'},
-  {key: 'hindered', label: 'Hindered', fill: 'var(--warning)', swatch: 'legendSwatchHindered'},
-  {key: 'mixed', label: 'Mixed', fill: 'var(--steel)', swatch: 'legendSwatchMixed'},
-  {key: 'not_applicable', label: 'Not applicable', fill: 'var(--stone-300)', swatch: 'legendSwatchNotApplicable'},
+  {key:'helped',label:'Helped',fill:'var(--survey-teal)',swatch:'legendSwatchHelped'},
+  {key:'hindered',label:'Hindered',fill:'var(--warning)',swatch:'legendSwatchHindered'},
+  {key:'mixed',label:'Mixed',fill:'var(--steel)',swatch:'legendSwatchMixed'},
+  {key:'not_applicable',label:'Not applicable',fill:'var(--stone-300)',swatch:'legendSwatchNotApplicable'},
+  {key:'unknown',label:'Unknown',fill:'var(--series-3)',swatch:'legendSwatchUnknown'},
 ] as const;
 
-/** Usage · context confirmation chart: verified loads split into confirmed context and
- * unknown context outcome. The denominator is the verified-load count, so an unknown
- * outcome is never rendered as a failed load. The per-row text is the accessible exact
- * representation; the SVG is only the compact comparison aid. */
 function ContextChart({skills}: {skills: UsageSkill[]}) {
-  const ranked = [...skills]
-    .filter(item => item.loads_verified > 0)
-    .sort((a, b) => b.loads_verified - a.loads_verified)
-    .slice(0, DELIVERY_CHART_LIMIT);
-  const max = Math.max(0, ...ranked.map(item => item.loads_verified));
-  if (max === 0) return null;
+  const ranked=[...skills].filter(item=>item.loads_verified>0).sort((a,b)=>b.loads_verified-a.loads_verified).slice(0,DELIVERY_CHART_LIMIT);
+  if (!ranked.length) return null;
   return <div className={styles.contextChart} role="group" aria-label="Verified loads split into confirmed and unknown context outcome, top skills by verified loads">
-    <div className={styles.deliveryAxis}><span>0</span><span>{formatNumber(max)} verified loads · scale max</span></div>
-    <ul className={styles.deliveryRows}>{ranked.map(item => {
-      const loaded = Math.min(Math.max(item.context_loaded, 0), item.loads_verified);
-      const unknownOutcome = Math.min(Math.max(item.context_unknown, 0), Math.max(item.loads_verified - loaded, 0));
-      const loadedPct = (loaded / max) * 100;
-      const unknownPct = (unknownOutcome / max) * 100;
-      return <li key={item.skill_id + ':' + (item.revision ?? '')} className={styles.deliveryRow}>
-        <span className={styles.deliveryLabel}>{item.skill_id}</span>
-        <span className={styles.deliveryBarLine}>
-          <svg className={styles.deliveryBar} viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-            <rect x={0} y={0} width={100} height={10} fill="var(--graphite-800)" />
-            <rect x={0} y={0} width={unknownPct} height={10} fill="var(--line-strong)" />
-            <rect x={0} y={0} width={loadedPct} height={10} fill="var(--survey-teal)" />
-          </svg>
-          <span className={styles.deliveryValue}>{formatNumber(loaded)} confirmed · {formatNumber(unknownOutcome)} unknown of {formatNumber(item.loads_verified)}</span>
-        </span>
-      </li>;
-    })}</ul>
+    <h3>Context confirmation</h3>
+    <SpectrumBarChart layout="horizontal" stackType="stacked" data={ranked.map((item,index)=>({category:String(index+1),first:item.context_loaded,second:item.context_unknown}))} series={[{label:'Confirmed',color:'var(--survey-teal)'},{label:'Unknown',color:'var(--steel)'}]}/>
+    <ol className={styles.deliveryRows}>{ranked.map(item=><li key={item.skill_id+':'+(item.revision??'')} className={styles.deliveryRow}><span className={styles.deliveryLabel}>{item.skill_id}</span><span className={styles.deliveryValue}>{formatNumber(item.context_loaded)} confirmed · {formatNumber(item.context_unknown)} unknown of {formatNumber(item.loads_verified)}</span></li>)}</ol>
     <p className={styles.chartLegend}><strong>Confirmed</strong> means the adapter reported that the card reached model context. <strong>Unknown</strong> means no confirmation was available; it is not a failure.</p>
   </div>;
 }
 
 function FeedbackChart({feedback}: {feedback: FeedbackTotals}) {
-  const counted = feedbackSegments.map(segment => ({...segment, value: feedback[segment.key]}));
-  const total = counted.reduce((sum, segment) => sum + segment.value, 0);
-  if (total === 0) return null;
-  let cursor = 0;
-  const bars = counted.filter(segment => segment.value > 0).map(segment => {
-    const width = (segment.value / total) * 100;
-    const bar = {...segment, x: cursor, width};
-    cursor += width;
-    return bar;
-  });
+  const counted=feedbackSegments.map(segment=>({...segment,value:feedback[segment.key]}));
+  const total=feedback.n;
+  const valid=counted.every(segment=>Number.isFinite(segment.value)&&segment.value>=0)&&counted.reduce((sum,segment)=>sum+segment.value,0)===total;
+  if(valid&&total===0)return null;
   return <div className={styles.feedbackChart}>
-    <svg viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label={`Feedback verdicts out of ${total} assessments: ${counted.map(segment => `${segment.label} ${segment.value}`).join(', ')}`}>
-      {bars.map(bar => <rect key={bar.key} x={bar.x} y={0} width={bar.width} height={10} fill={bar.fill} stroke="var(--graphite-900)" strokeWidth={0.4} />)}
-    </svg>
-    <ul className={styles.feedbackLegend}>{counted.map(segment => <li key={segment.key}>
-      <span className={[styles.legendSwatch, styles[segment.swatch]].join(' ')} aria-hidden="true" />
-      <span>{segment.label}</span><strong>{formatNumber(segment.value)}</strong>
-    </li>)}</ul>
-    <p className={styles.muted}>{total < FEEDBACK_SMALL_SAMPLE
-      ? `${formatNumber(total)} assessments; no rate is reported below ${FEEDBACK_SMALL_SAMPLE}.`
-      : `${formatNumber(total)} assessments recorded.`}</p>
+    <h3>Feedback verdicts</h3>
+    {!valid&&<p role="status">The verdict counts do not match the assessment total. Showing the reported counts without a chart.</p>}
+    {valid&&<div role="img" aria-label={`Feedback verdicts out of ${total} assessments: ${counted.map(segment=>`${segment.label} ${segment.value}`).join(', ')}`}>
+      <SpectrumPieChart innerRadius={62} showLegend={false} data={counted.filter(segment=>segment.value>0).map(segment=>({name:segment.label,value:segment.value,fill:segment.fill}))}/>
+    </div>}
+    <ul className={styles.feedbackLegend}>{counted.map(segment=><li key={segment.key}><span className={[styles.legendSwatch,styles[segment.swatch]].join(' ')} aria-hidden="true"/><span>{segment.label}</span><strong>{formatNumber(segment.value)}</strong></li>)}</ul>
+    <p className={styles.muted}>{total<FEEDBACK_SMALL_SAMPLE?`${formatNumber(total)} assessments; no rate is reported below ${FEEDBACK_SMALL_SAMPLE}.`:`${formatNumber(total)} assessments recorded.`}</p>
   </div>;
 }
 

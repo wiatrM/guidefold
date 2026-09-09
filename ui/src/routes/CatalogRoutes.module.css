@@ -11,6 +11,19 @@
 .muted { display: block; color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
 .identifier { overflow-wrap: anywhere; }
 .skillCell { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; }
+.contextTarget { min-width: var(--zero); }
+.favoriteButton { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--control-height); padding: var(--space-1) var(--space-2); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius-small); background: var(--graphite-850); color: var(--stone-300); font: inherit; font-size: var(--font-size-small); cursor: pointer; box-shadow: var(--shadow-control); transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), transform var(--duration) var(--ease); }
+.favoriteButton[aria-pressed=true] { border-color: var(--survey-teal); background: var(--system-wash); color: var(--system-ink); }
+.favoriteButton:active { transform: scale(var(--press-scale)); }
+.favoriteButton svg { width: var(--icon-size-small); height: var(--icon-size-small); }
+.panelActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.contextPositioner { z-index: var(--layer-menu); outline: none; }
+.contextMenu { min-width: var(--context-menu-width); padding: var(--space-2); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius); background: var(--graphite-850); box-shadow: var(--shadow-raised); transform-origin: var(--transform-origin); transition: opacity var(--duration-menu) var(--ease-out), transform var(--duration-menu) var(--ease-out); }
+.contextMenu[data-starting-style], .contextMenu[data-ending-style] { opacity: var(--zero); transform: translateY(calc(var(--space-1) * -1)) scale(var(--press-scale)); }
+.contextItem { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); padding: var(--space-2); border-radius: var(--radius-small); color: var(--stone-100); text-decoration: none; cursor: pointer; outline: none; }
+.contextItem[data-highlighted] { background: var(--graphite-700); }
+.contextItem svg { flex: none; width: var(--icon-size); height: var(--icon-size); color: var(--stone-300); }
+.contextSeparator { height: var(--border-width); margin: var(--space-2) var(--zero); background: var(--line-strong); }
 .skillName { display: inline-flex; align-items: center; min-height: var(--control-height); font-weight: var(--weight-semibold); }
 .sourceDetails { flex: 1; min-width: var(--source-disclosure-width); color: var(--stone-300); font-size: var(--font-size-small); }
 .sourceDetails summary { min-height: var(--control-height); display: list-item; align-content: center; cursor: pointer; }
@@ -76,11 +89,15 @@
 .hashCell code { font-size: var(--font-size-small); }
 .choices { display: grid; gap: var(--space-2); border: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
 .choices legend { padding: var(--zero); margin-bottom: var(--space-2); font-weight: var(--weight-medium); }
-.choice { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); min-height: var(--touch-height); border: var(--border-width) solid var(--line-strong); background: var(--graphite-950); cursor: pointer; }
+.choice { position: relative; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); min-height: var(--touch-height); border: var(--border-width) solid var(--line-strong); background: var(--graphite-950); cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--survey-teal); background: var(--graphite-800); }
-.choice input { width: var(--icon-size); height: var(--icon-size); min-height: var(--zero); margin: var(--zero); flex: none; accent-color: var(--survey-teal); }
+.choice input { position: absolute; width: var(--focus-width); height: var(--focus-width); min-height: var(--zero); margin: var(--zero); opacity: var(--zero); }
+.choice > svg { flex: none; width: var(--icon-size-large); height: var(--icon-size-large); color: var(--stone-300); }
+.choice:has(input:checked) > svg { color: var(--system-ink); }
+.choice:has(input:focus-visible) { outline: var(--focus-width) solid var(--survey-teal); outline-offset: var(--focus-offset); }
 .choice span { font-weight: var(--weight-medium); }
 .choice small { display: block; color: var(--stone-300); font-size: var(--font-size-small); font-weight: var(--weight-normal); margin-top: var(--space-1); }
+@media(prefers-reduced-motion:reduce){.contextMenu,.favoriteButton{transition-duration:var(--duration-reduced);}.contextMenu[data-starting-style],.contextMenu[data-ending-style]{transform:none;}}
 
 /* Map · Pyramid axis: labelled bands (Abstract/Task/Atomic/Unclassified), typographic hierarchy
    only — no graph canvas (IA §4). */

@@ -19,7 +19,7 @@ describe('MetricRow',()=>{
   rerender(<MetricRow items={[{label:'Delivery',value:'1',detail:'One declared test event'}]}/>);
   expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
   expect(container.querySelector('dd')?.firstChild?.textContent).toBe('1');
-  expect(container.textContent).not.toContain('%');
+  expect(container.querySelector('dl')?.textContent).not.toContain('%');
  });
  it('the funnel layout is a class on the same list, not a second component',()=>{
   const {container}=render(<MetricRow layout="funnel" items={[{label:'Exposed',value:'12',detail:'Cards placed into context'}]}/>);

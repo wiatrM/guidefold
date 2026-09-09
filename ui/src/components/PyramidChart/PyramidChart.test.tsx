@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import {describe, it, expect, vi} from 'vitest';
 import {PyramidChart} from './index';
 
+// Browser tests cover the real layout engine; this suite covers Graph/List composition.
+vi.mock('./SchemaFlow', () => ({SchemaFlow: () => <div role="region" aria-label="Skill hierarchy"/>}));
+
 const bands = [
   {key: 'abstract' as const, label: 'Abstract', description: 'Concepts and domain knowledge', items: [{id: 'data-migration', label: 'Data Migration'}]},
   {key: 'task' as const, label: 'Task', description: 'Reusable capabilities and workflows', items: [{id: 'object-type-migrations', label: 'object-type-migrations', detail: 'forge.ontology'}]},
@@ -11,10 +14,11 @@ const bands = [
 const edges = [{from: 'object-type-migrations', to: 'data-migration'}, {from: 'object-type-migrations', to: 'unknown-node'}];
 
 describe('PyramidChart', () => {
-  it('renders every band label and its declared skills as buttons, in band order', () => {
+  it('renders every band label and its declared skills in list mode', async () => {
     render(<PyramidChart bands={bands} edges={edges} />);
+    await userEvent.click(screen.getByRole('button', {name:'List'}));
     const buttons = screen.getAllByRole('button');
-    expect(buttons.map(button => button.textContent)).toEqual(['Data Migration', 'object-type-migrations']);
+    expect(buttons.map(button => button.textContent)).toEqual(['Graph', 'List', 'Data Migration', 'object-type-migrations']);
     expect(screen.getByText('Abstract')).toBeInTheDocument();
     expect(screen.getByText('Concepts and domain knowledge')).toBeInTheDocument();
   });
@@ -27,6 +31,7 @@ describe('PyramidChart', () => {
   it('marks the selected node with aria-current and calls onSelect with its id', async () => {
     const onSelect = vi.fn();
     render(<PyramidChart bands={bands} edges={edges} selectedId="object-type-migrations" onSelect={onSelect} />);
+    await userEvent.click(screen.getByRole('button', {name:'List'}));
     const selected = screen.getByRole('button', {name: 'object-type-migrations'});
     expect(selected).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('button', {name: 'Data Migration'})).not.toHaveAttribute('aria-current');
@@ -34,11 +39,12 @@ describe('PyramidChart', () => {
     expect(onSelect).toHaveBeenCalledWith('data-migration');
   });
 
-  it('draws a connector only for edges whose both ends are on the chart, and hides the connector layer from the accessibility tree', () => {
-    const {container} = render(<PyramidChart bands={bands} edges={edges} />);
-    const svg = container.querySelector('svg');
-    expect(svg).toHaveAttribute('aria-hidden', 'true');
-    // The 'unknown-node' edge target is not a node on this chart and must not produce a dangling line.
-    expect(container.querySelectorAll('line')).toHaveLength(1);
+  it('starts in graph mode and can return to it after reading the list', async () => {
+    render(<PyramidChart bands={bands} edges={edges} />);
+    expect(await screen.findByRole('region', {name:'Skill hierarchy'})).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', {name:'List'}));
+    expect(screen.queryByRole('region', {name:'Skill hierarchy'})).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', {name:'Graph'}));
+    expect(await screen.findByRole('region', {name:'Skill hierarchy'})).toBeInTheDocument();
   });
 });

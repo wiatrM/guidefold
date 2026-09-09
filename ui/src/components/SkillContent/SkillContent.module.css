@@ -2,7 +2,7 @@
 .markdown h3,.markdown h4,.markdown h5,.markdown h6{font-family:var(--font-display);font-weight:var(--weight-semibold);font-size:var(--font-size-section);margin:var(--space-4) var(--zero) var(--space-2);color:var(--stone-100);}
 .markdown>:first-child{margin-top:var(--zero);}
 .markdown p,.markdown li{line-height:var(--line-height-body);}
-.markdown pre{max-width:var(--full);padding:var(--space-3);border:var(--border-width) solid var(--line-strong);background:var(--graphite-950);white-space:pre-wrap;overflow-wrap:anywhere;}
+.markdown pre{max-width:var(--full);padding:var(--space-3);border:var(--border-width) solid var(--line-strong);border-radius:var(--radius);background:var(--graphite-950);box-shadow:var(--shadow-control);white-space:pre-wrap;overflow-wrap:anywhere;}
 .markdown code{font-size:var(--font-size-code);}
 .markdown li+li{margin-top:var(--space-2);}
 .markdown ul,.markdown ol{padding-left:var(--space-4);}

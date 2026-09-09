@@ -31,6 +31,16 @@ const report = (over: Partial<Usage> = {}): Usage => ({
 });
 
 describe('Usage route, hosted API, six states', () => {
+  test('unknown-only feedback remains an observed assessment, not an empty chart', async () => {
+    renderApi(ApiUsageRoute, fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:0,hindered:0,mixed:0,not_applicable:0,unknown:3,n:3}}})}));
+    expect(await screen.findByRole('img',{name:/Feedback verdicts out of 3 assessments.*Unknown 3/})).toBeInTheDocument();
+    expect(screen.getByText('3 assessments; no rate is reported below 20.')).toBeInTheDocument();
+  });
+  test('inconsistent feedback totals show counts and a warning, not a misleading pie',async()=>{
+    renderApi(ApiUsageRoute,fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:1,hindered:0,mixed:0,not_applicable:0,unknown:0,n:0}}})}));
+    expect(await screen.findByText(/The verdict counts do not match/)).toBeInTheDocument();
+    expect(screen.queryByRole('img',{name:/Feedback verdicts/})).not.toBeInTheDocument();
+  });
   test('Empty: no events read as No observations, never a zero rate', async () => {
     renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => empty }));
     expect((await screen.findAllByText('No observations')).length).toBeGreaterThanOrEqual(1);
@@ -249,11 +259,13 @@ describe('Usage route, delivery and feedback charts', () => {
     expect(await screen.findByText('30 of 60 verified')).toBeInTheDocument();
     expect(screen.getByText('14 of 20 verified')).toBeInTheDocument();
     expect(screen.getByText('0 of 40 verified')).toBeInTheDocument();
-    expect(deliveryChart.querySelectorAll('svg rect').length).toBeGreaterThan(0);
+    // Recharts needs browser layout; exact counts remain testable without layout.
+    expect(deliveryChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
     // Feedback chart: real counts in the legend, small-sample honesty preserved (18 < 20).
     const feedbackChart = screen.getByRole('img', { name: /Feedback verdicts/ });
-    expect(feedbackChart.querySelectorAll('rect').length).toBe(3); // helped, hindered, mixed — not_applicable is 0, so no zero-width segment
-    const feedbackSection = feedbackChart.closest('div')!;
+    expect(feedbackChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
+    expect(feedbackChart).toHaveAccessibleName(/18 assessments/);
+    const feedbackSection = feedbackChart.parentElement!;
     expect(within(feedbackSection).getByText('Helped')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('Hindered')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('18 assessments; no rate is reported below 20.')).toBeInTheDocument();

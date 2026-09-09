@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import App from './app';
@@ -8,6 +8,8 @@ import { ApiClient, ApiError } from './api/client';
 import { createApiDataSource } from './data/apiSource';
 import { fakeResponse, fakeSource } from './test/fakes';
 import type { Me } from './api/decoders';
+// Layout, zoom and reduced motion are covered by schema-navigation browser tests.
+vi.mock('./components/PyramidChart/SchemaFlow',()=>({SchemaFlow:()=> <div role="region" aria-label="Skill hierarchy"/>}));
 
 const me: Me = {
   user: { id: 'u1', email: 'ada@example.com', name: 'Ada' },
@@ -35,7 +37,7 @@ describe('shell composition', () => {
     </MemoryRouter>);
     expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
     expect(screen.getByText(/^Hosted API\./)).toBeInTheDocument();
-    expect(document.title).toBe('Import · Guidefold');
+    expect(document.title).toBe('Import | Guidefold');
   });
 
   test('the shell shows the organisation from /me and the repository from the URL', async () => {
@@ -46,9 +48,29 @@ describe('shell composition', () => {
         <App source={fakeSource({ listOrgs: async () => [{ org_id: 'o1', slug: 'meridian', name: 'Meridian Data', my_role: 'owner', created_at: null, counts: null }] })} />
       </AccessProvider>
     </MemoryRouter>);
-    expect(await screen.findByText('meridian / monorepo')).toBeInTheDocument();
+    expect(await screen.findAllByText('meridian')).not.toHaveLength(0);
+    expect(screen.getAllByText('monorepo')).not.toHaveLength(0);
     expect(screen.getByText('Meridian Data')).toBeInTheDocument();
-    expect(screen.getByText('Owner · organization role')).toBeInTheDocument();
+    expect(screen.getAllByText('Owner')).not.toHaveLength(0);
+    expect(within(screen.getByRole('complementary')).getByRole('button', { name: 'Open profile menu' })).toBeInTheDocument();
+  });
+
+  test('the grouped sidebar folds without turning Skill into a global destination', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/import?org=meridian&repo=monorepo&step=organization']}>
+      <AccessProvider controller={controller}>
+        <App source={fakeSource({ listOrgs: async () => [] })} />
+      </AccessProvider>
+    </MemoryRouter>);
+    const rail = screen.getByRole('complementary');
+    const navigation = within(rail).getByRole('navigation', { name: 'Main navigation' });
+    expect(within(navigation).getByText('Workspace')).toBeInTheDocument();
+    expect(within(navigation).getByText('Knowledge')).toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Skill' })).not.toBeInTheDocument();
+    const fold = within(rail).getByRole('button', { name: 'Collapse sidebar' });
+    await userEvent.click(fold);
+    expect(within(rail).getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('switching organisation never leaves the previous organisation content on screen', async () => {

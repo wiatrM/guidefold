@@ -6,13 +6,14 @@ import {readFile,writeFile,readdir,stat} from 'node:fs/promises';
 import {resolve,dirname,relative,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {API} from '../node_modules/typescript/dist/api/sync/api.js';
 import {SyntaxKind as K} from '../node_modules/typescript/dist/ast/index.js';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),src=resolve(root,'src');
 const tokenFile=resolve(src,'tokens/tokens.css');
 const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart'];
-const diagnostics=[],components=[],imports=new Map(),inlineStyles=[];
+const diagnostics=[],components=[],imports=new Map(),inlineStyles=[],reviewedInlineStyles=[];
 const pathLabel=p=>relative(root,p).replaceAll('\\','/');
 const issue=(file,line,rule,message)=>diagnostics.push({file:pathLabel(file),line,rule,message});
 const lineAt=(text,offset)=>text.slice(0,offset).split('\n').length;
@@ -23,6 +24,13 @@ files.sort();
 const texts=new Map(await Promise.all(files.filter(p=>/\.(?:css|tsx?)$/.test(p)).map(async p=>[p,await readFile(p,'utf8')])));
 const cssFiles=[...texts.keys()].filter(p=>p.endsWith('.css'));
 const tokens=new Set([...texts.get(tokenFile).matchAll(/(--[\w-]+)\s*:/g)].map(m=>m[1]));
+const registry=JSON.parse(await readFile(resolve(root,'qa/spectrum-registry.json'),'utf8'));
+const reviewedGeometry=new Set();
+for(const item of registry.components){
+ const file=resolve(root,item.file),source=await readFile(file);
+ if(createHash('sha256').update(source).digest('hex')!==item.sha256)issue(file,1,'registry-review','Spectrum source changed: re-review adaptations and update the explicit provenance hash.');
+ else if(item.allowInlineGeometry)reviewedGeometry.add(file);
+}
 
 // Parse declarations independently of selectors, quoted strings, nested blocks and
 // function arguments. Build/typecheck handles syntax validity; this reads values.
@@ -106,7 +114,10 @@ for(const file of cssFiles){
   if(literalIssues('width',m[0]).length)issue(file,lineAt(text,m.index),'token-media','Literal responsive boundary must live in src/tokens/tokens.css: '+m[0].trim());
  }
 }
-const dirs=(await readdir(resolve(src,'components'),{withFileTypes:true})).filter(d=>d.isDirectory()).map(d=>d.name).sort();
+// Owner-authorized registry sources are separate from the 15 stable product APIs.
+// Their source remains in the AST/token scan; runtime behavior is browser-tested.
+const registryDirs=new Set(['spectrumui','ui']);
+const dirs=(await readdir(resolve(src,'components'),{withFileTypes:true})).filter(d=>d.isDirectory()&&!registryDirs.has(d.name)).map(d=>d.name).sort();
 if(dirs.length!==15)issue(resolve(src,'components'),1,'component-count','Expected exactly 15 public component directories; found '+dirs.length);
 for(const name of dirs)if(!expected.includes(name))issue(resolve(src,'components',name),1,'component-name','Unexpected public component '+name);
 for(const name of expected){
@@ -135,7 +146,9 @@ try{
    }
    if(node.kind===K.CallExpression&&[K.ImportKeyword].includes(node.expression?.kind)&&node.arguments?.[0]?.text)
     dependencies.push({specifier:node.arguments[0].text,typeOnly:false,line:lineAt(text,node.getStart(sf))});
-   if(node.kind===K.JsxAttribute&&node.name?.getText()==='style'){
+   if(node.kind===K.JsxAttribute&&node.name?.getText()==='style'&&reviewedGeometry.has(file))
+    reviewedInlineStyles.push({file:pathLabel(file),line:lineAt(text,node.getStart(sf)),reason:'Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json'});
+   if(node.kind===K.JsxAttribute&&node.name?.getText()==='style'&&!reviewedGeometry.has(file)){
     const expression=node.initializer?.expression;
     const line=lineAt(text,node.getStart(sf));
     if(expression?.kind!==K.ObjectLiteralExpression)issue(file,line,'inline-style','A nonliteral style object needs an auditable local declaration; move visual values to CSS tokens.');
@@ -170,8 +183,8 @@ try{
  }
 }finally{snapshot.dispose();api.close();}
 async function resolveModule(file,specifier){
- if(!specifier.startsWith('.'))return null;
- const target=resolve(dirname(file),specifier);
+ if(!specifier.startsWith('.')&&!specifier.startsWith('@/'))return null;
+ const target=specifier.startsWith('@/')?resolve(src,specifier.slice(2)):resolve(dirname(file),specifier);
  for(const candidate of [target,target+'.ts',target+'.tsx',resolve(target,'index.ts'),resolve(target,'index.tsx')]){
   try{if((await stat(candidate)).isFile())return candidate;}catch{}
  }return null;
@@ -196,7 +209,7 @@ const report={
  dataBoundary:'The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.',
  result:diagnostics.length?'failed':'passed',
  totals:{components:components.length,cssFiles:cssFiles.length,tokens:tokens.size,productionFilesTraversed:traversed.size,inlineProperties: inlineStyles.length,diagnostics:diagnostics.length},
- components,typeOnlyEdges,inlineStyles,diagnostics,
+ components,typeOnlyEdges,inlineStyles,reviewedInlineStyles,diagnostics,
  limits:[
   'Source check only; build, Vitest, keyboard behavior, axe and independent pixel comparison run separately.',
   'Type-only imports are erased and allowed; external package internals are outside this authored-source boundary.',
