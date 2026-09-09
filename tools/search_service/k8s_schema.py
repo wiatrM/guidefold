@@ -19,6 +19,7 @@ def main():
         "tenant": "schema",
         "repository": "fixture",
         "snapshotID": "repository:" + "b" * 64,
+        "publicURL": "https://guidefold.example.test",
         "database": {
             "host": "postgres.internal",
             "networkPeers": [{"ipBlock": {"cidr": "10.20.0.0/24"}}],
