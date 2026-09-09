@@ -1,3 +1,26 @@
 test-results/
 playwright-report/
 qa/dev-server.log
+
+# Local test and QA artefacts
+.vitest/
+test-results-spectrum/
+qa/verify/
+qa/film/
+qa/review/
+qa/playwright-report.json
+qa/landing-flow-report.json
+"undefined:"/
+
+# Generated media sources. The web-ready assets under public/assets/landing are
+# committed; the multi-megabyte renders and reference stills they came from are not.
+design/landing/scenes/*.png
+design/landing/scenes/prev-*.jpg
+design/landing/scenes/*.job.json
+design/landing/imagegen/*.png
+design/landing/imagegen/*.job.json
+design/landing/video/*.mp4
+design/landing/video/frames/
+design/landing/video/*.json
+
+design/landing/**/*.err

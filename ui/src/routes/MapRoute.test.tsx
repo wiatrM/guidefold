@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import type { MapRepository, MapScopes, ModulePage, Relations, SkillPage } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
+vi.mock('../components/PyramidChart/SchemaFlow',()=>({SchemaFlow:()=> <div role="region" aria-label="Skill hierarchy"/>}));
 
 const root: MapRepository = {
   path: '', next_cursor: null,
@@ -137,6 +138,7 @@ describe('Map route, three axes', () => {
       listSkills: async () => familyPage,
       getRelations: async (_target, query) => query.type === 'refines' ? familyRefines : relations,
     }), 'tab=pyramid&scope=forge.ontology');
+    await userEvent.click(await screen.findByRole('button', { name: 'List' }));
     expect(await screen.findByRole('button', { name: 'object-type-migrations' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'schema-evolution' })).toBeInTheDocument();
     expect(screen.getByText('Text alternative: refines relationships within forge.ontology')).toBeInTheDocument();

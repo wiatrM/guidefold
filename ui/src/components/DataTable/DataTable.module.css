@@ -1,6 +1,6 @@
-.tableRegion{width:var(--full);max-width:var(--full);overflow-x:auto;}
+.tableRegion{width:var(--full);max-width:var(--full);overflow-x:auto;border:var(--border-width) solid var(--line-strong);border-radius:var(--radius);background:var(--graphite-900);box-shadow:var(--shadow-card);}
 .table{min-width:var(--table-min-width);width:var(--full);border-collapse:collapse;table-layout:auto;text-align:left;font-size:var(--font-size-small);}
-.table caption{text-align:left;color:var(--stone-300);padding:var(--zero) var(--zero) var(--space-2);}
+.table caption{text-align:left;color:var(--stone-300);padding:var(--space-2);}
 .table th,.table td{height:var(--row-height);padding:var(--space-2);border-bottom:var(--border-width) solid var(--line);vertical-align:top;overflow-wrap:normal;}
 .table th{color:var(--stone-300);font-weight:var(--weight-semibold);background:var(--graphite-850);}
 .table tbody tr:hover{background:var(--graphite-800);}

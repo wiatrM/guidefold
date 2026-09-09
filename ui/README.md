@@ -1,5 +1,5 @@
 # Guidefold UI
-Status: wyłącznie hostowane API, 2026-09-08 (decyzja właściciela; tryb fixture, symulacja sessionStorage i symulowany ledger usage usunięte). Siedem widoków U4 wydzielonych z zatwierdzonego hi-fi Industrial Surveyor; wszystkie siedem czyta hostowane API przez `DataSource`.
+Status: publiczny landing z waitlistą oraz panel przez hostowane API, 2026-09-08. Siedem widoków U4 wydzielonych z zatwierdzonego hi-fi Industrial Surveyor; wszystkie siedem czyta hostowane API przez `DataSource`. Publiczne `/` nie uruchamia sesji panelu. Kierunek, konsultacje i dowody: [landing DESIGN](../docs/reports/landing/DESIGN.md), [QA](../docs/reports/landing/build-notes.md).
 Wejścia: [AGENTS](../AGENTS.md), [reguły dokumentacji](../docs/DOCUMENTATION-RULES.md), [etap 7](../docs/ui/pipeline/07-frontend.md), [etap 8](../docs/ui/pipeline/08-components.md). Zastępuje hi-fi jako miejsce dalszej pracy; zamrożony wzorzec pozostaje w prototypes/pipeline-hifi.
 
 ## Uruchomienie
@@ -12,7 +12,7 @@ pnpm dev
 Otwórz http://127.0.0.1:4331. Galeria komponentów: /__components, poza nawigacją produktu.
 
 ## Źródło danych: hostowane API
-Aplikacja ma jedno źródło danych: hostowane API zarządzania przez `ApiDataSource` (`src/data/apiSource.ts`). `main.tsx` składa je zawsze; nie ma trybu lokalnego, parametru `?mode=` ani danych przykładowych w bundlu poza galerią komponentów. Do 2026-09-07 istniał tryb fixture (Meridian z `src/data/fixture.json`, szkic w sessionStorage, odznaka `Local simulation`, symulowany ledger usage); właściciel usunął go 2026-09-08, żeby UI odpowiadał wyłącznie rzeczywistemu wdrożeniu.
+Panel ma jedno źródło danych: hostowane API zarządzania przez `ApiDataSource` (`src/data/apiSource.ts`). `main.tsx` składa je wyłącznie dla tras panelu; nie ma trybu lokalnego, parametru `?mode=` ani danych przykładowych w bundlu poza galerią komponentów. Landing korzysta z osobnego publicznego adaptera `src/data/waitlist.ts` i kontraktu [API §4.0](../docs/API-CONTRACT.md#40-publiczna-lista-oczekujących-adr-0039). Wymaga działającego backendu, migracji i workera; sukces nie jest symulowany w przeglądarce. Konfiguracja Resend: [moduł waitlist](../services/search/internal/waitlist/README.md).
 ```sh
 # to samo pochodzenie przez proxy dewelperskie (domyślne)
 pnpm dev            # /api i /v1 → http://127.0.0.1:8765

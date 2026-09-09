@@ -105,7 +105,7 @@ const importPlan = () => ({
   generator: { name: 'none', configured: false, generator: 'none', version: 'det-1', model: null },
 });
 
-const usageReport = (scenario: Scenario, state: StubState) => scenario === 'empty' ? {
+export const usageReport = (scenario: Scenario, state: StubState) => scenario === 'empty' ? {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false },
   totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, feedback: null },

@@ -31,7 +31,7 @@ test('revealed proposal bodies and the mobile menu remain accessible', async ({ 
   await expect(page.locator('main [aria-busy=true]')).toHaveCount(0);
   await page.getByText('Read the source body', { exact: true }).click();
   await page.getByText('Read the candidate body', { exact: true }).click();
-  await page.locator('details').filter({ has: page.locator('summary').filter({ hasText: 'Navigate ·' }) }).locator('summary').click();
+  await page.getByRole('button', {name:'Menu',exact:true}).click();
   expect(await axeViolations(page)).toEqual([]);
   expect(await noHorizontalScroll(page)).toBe(true);
 });

@@ -1,12 +1,14 @@
-import {useEffect, useState, type FormEvent} from 'react';
+import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowLeft, ArrowSquareOut, ChatText, DownloadSimple, FileText, FolderSimple, Funnel, GitBranch, LinkSimple, Stack, TreeStructure} from '@phosphor-icons/react';
+import {ContextMenu} from '@base-ui/react/context-menu';
+import {toast} from 'sonner';
+import {ArrowLeft, ArrowSquareOut, ChatText, CopySimple, DownloadSimple, FileText, FolderSimple, Funnel, GitBranch, LinkSimple, Prohibit, Scales, Stack, Star, ThumbsDown, ThumbsUp, TreeStructure} from '@phosphor-icons/react';
 import {ActionButton, DataTable, Field, Panel, ProvenanceTrail, PyramidChart, RouteState, ScopeTree, SkillContent, StateBadge, Tabs, Urn} from '../Shared';
 import {
   ApiFailure, DegradedNotice, PartialNotice, RepositoryRequired, asApiError, cleared, downloadText,
   readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
-import type {FeedbackEntry, MapChild} from '../api/decoders';
+import type {FeedbackEntry, MapChild, SkillSummary} from '../api/decoders';
 import type {SkillQuery} from '../data/source';
 import type {View} from '../domain';
 import {pyramidGraphBands, pyramidGraphEdges, hasAnyClassification, type PyramidLayer} from '../domain/pyramidGraph';
@@ -24,6 +26,58 @@ type MapAxis = 'repository' | 'scopes' | 'pyramid';
 const axes: MapAxis[] = ['repository', 'scopes', 'pyramid'];
 const originView = (ctx: {params: URLSearchParams}): View => ['map', 'library', 'proposals', 'usage'].includes(ctx.params.get('from') || '') ? ctx.params.get('from') as View : 'library';
 const originNames: Partial<Record<View, string>> = {map: 'Map', library: 'Library', proposals: 'Proposals', usage: 'Usage & quality'};
+
+function favoritesKey(ctx: ApiProps['ctx']) {
+  return ['guidefold-favorites-v1', ctx.me?.user.id ?? 'unknown', ctx.org ?? 'unknown', ctx.repo ?? 'unknown'].join(':');
+}
+function readFavorites(key: string) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? '[]');
+    return new Set<string>(Array.isArray(value) ? value.filter(item => typeof item === 'string') : []);
+  } catch { return new Set<string>(); }
+}
+function useFavorites(ctx: ApiProps['ctx']) {
+  const key = favoritesKey(ctx);
+  const [favorites, setFavorites] = useState<Set<string>>(() => readFavorites(key));
+  useEffect(() => setFavorites(readFavorites(key)), [key]);
+  const toggle = (skillId: string, name: string) => {
+    const next = readFavorites(key), adding = !next.has(skillId);
+    adding ? next.add(skillId) : next.delete(skillId);
+    try {
+      window.localStorage.setItem(key, JSON.stringify([...next]));
+      toast.success(adding ? 'Added to favorites' : 'Removed from favorites', {description: name});
+      setFavorites(next);
+    } catch {
+      toast.error('Favorite was not saved', {description: 'Browser storage is unavailable.'});
+    }
+  };
+  return {favorites, toggle};
+}
+
+function FavoriteToggle({active,name,onToggle}:{active:boolean;name:string;onToggle:()=>void}) {
+  return <button type="button" className={styles.favoriteButton} data-slot="badge" aria-pressed={active} aria-label={(active ? 'Remove ' : 'Add ') + name + (active ? ' from favorites' : ' to favorites')} onClick={onToggle}>
+    <Star weight={active ? 'fill' : 'regular'} aria-hidden="true"/><span>{active ? 'Favorite' : 'Add favorite'}</span>
+  </button>;
+}
+
+function SkillContextActions({item,href,favorite,onToggle,children}:{item:SkillSummary;href:string;favorite:boolean;onToggle:()=>void;children:ReactNode}) {
+  const copyUrn = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(item.skill_id);
+      toast.success('Skill URN copied');
+    } catch { toast.error('Could not copy the skill URN'); }
+  };
+  return <ContextMenu.Root>
+    <ContextMenu.Trigger className={styles.contextTarget}>{children}</ContextMenu.Trigger>
+    <ContextMenu.Portal><ContextMenu.Positioner className={styles.contextPositioner}><ContextMenu.Popup className={styles.contextMenu}>
+      <ContextMenu.Item className={styles.contextItem} render={<Link to={href}/>}><ArrowSquareOut aria-hidden="true"/>Open skill</ContextMenu.Item>
+      <ContextMenu.Item className={styles.contextItem} onClick={onToggle}><Star weight={favorite ? 'fill' : 'regular'} aria-hidden="true"/>{favorite ? 'Remove from favorites' : 'Add to favorites'}</ContextMenu.Item>
+      <ContextMenu.Separator className={styles.contextSeparator}/>
+      <ContextMenu.Item className={styles.contextItem} onClick={()=>{void copyUrn();}}><CopySimple aria-hidden="true"/>Copy skill URN</ContextMenu.Item>
+    </ContextMenu.Popup></ContextMenu.Positioner></ContextMenu.Portal>
+  </ContextMenu.Root>;
+}
 
 // ---------------------------------------------------------------------------
 // Hosted API routes (F13, F14, F15).
@@ -64,6 +118,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
     ready && chosen.length > 0,
   );
   const [trail, setTrail] = useState<string[]>([]);
+  const {favorites, toggle: toggleFavorite} = useFavorites(ctx);
   const result = page.value;
   const failedRefresh = page.phase === 'error' && Boolean(result);
   const degraded = readOnly(ctx, failedRefresh);
@@ -140,16 +195,17 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
       </div>
       {result.items.length ? <>
         <DataTable caption="Skill summaries matching the current filters" headings={['Skill / source path', 'Scope', 'Owner from source', 'Source layer', 'Publication']}>
-          {result.items.map(item => <tr key={item.skill_id}>
-            <td><div className={styles.skillCell}>
-              <Link className={styles.skillName} to={ctx.href('skill', {skill: item.skill_id, revision: item.revision_id, tab: 'content', from: 'library', return_tab: null})}>{item.name}</Link>
+          {result.items.map(item => {const skillHref=ctx.href('skill', {skill: item.skill_id, revision: item.revision_id, tab: 'content', from: 'library', return_tab: null});const favorite=favorites.has(item.skill_id);return <tr key={item.skill_id}>
+            <td><SkillContextActions item={item} href={skillHref} favorite={favorite} onToggle={()=>toggleFavorite(item.skill_id,item.name)}><div className={styles.skillCell}>
+              <Link className={styles.skillName} to={skillHref}>{item.name}</Link>
+              <FavoriteToggle active={favorite} name={item.name} onToggle={()=>toggleFavorite(item.skill_id,item.name)}/>
               <details className={styles.sourceDetails}><summary>Source details</summary><p>{item.description}</p><code>{item.path}</code></details>
-            </div></td>
+            </div></SkillContextActions></td>
             <td><span className={styles.identifier}>{item.scope}</span></td>
             <td>{unknown(item.owner)}</td>
             <td>{unknown(item.source_layer)}<span className={styles.muted}>Knowledge layer: {item.knowledge_layer ?? 'Unknown'}</span></td>
             <td><StateBadge tone={item.publication_status === 'published' ? 'system' : item.publication_status === 'needs_review' ? 'warning' : 'neutral'}>{item.publication_status}</StateBadge></td>
-          </tr>)}
+          </tr>;})}
         </DataTable>
         <div className={styles.pager}>
           <ActionButton onClick={openPrevious} disabled={trail.length === 0}>Previous page</ActionButton>
@@ -297,13 +353,13 @@ export function ApiMapRoute({ctx}: ApiProps) {
             {scopes.value.scope ? <dl className={styles.scopeMeta}>
               <div><dt>Scope</dt><dd>{scopes.value.scope.id}</dd></div>
               <div><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
-              <div><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path}>{path}</code>) : 'Unknown — no path mapping declared.'}</dd></div>
+              <div><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path}>{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
               <div><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
             {scopes.value.children.length ? <ul className={styles.relationList}>
               {scopes.value.children.map(child => <li key={child.id}>
                 <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null})}>{child.id}</Link>
-                <span className={styles.muted}>{child.skills} skills · owner {unknown(child.owner)}</span>
+                <span className={styles.muted}>{child.skills} skills, owner {unknown(child.owner)}</span>
               </li>)}
             </ul> : <p className={styles.muted}>No child scope is declared here.</p>}
             {scopes.value.skills.length > 0 && <ul className={styles.relationList}>
@@ -364,12 +420,12 @@ export function ApiMapRoute({ctx}: ApiProps) {
   </div>;
 }
 
-const skillTabs = ['content', 'source', 'dependencies', 'feedback'];
+const skillTabs = ['content', 'revisions', 'source', 'dependencies', 'feedback'];
 const verdicts = [
-  {value: 'helped', label: 'Helped', detail: 'The instruction changed what I did, for the better.'},
-  {value: 'hindered', label: 'Hindered', detail: 'The instruction cost time or led the task astray.'},
-  {value: 'mixed', label: 'Mixed', detail: 'Partly useful, partly wrong for this task.'},
-  {value: 'not_applicable', label: 'Not applicable', detail: 'The instruction did not apply to this task.'},
+  {value: 'helped', label: 'Helped', detail: 'The instruction changed what I did, for the better.', icon: ThumbsUp},
+  {value: 'mixed', label: 'Mixed', detail: 'Partly useful, partly wrong for this task.', icon: Scales},
+  {value: 'hindered', label: 'Hindered', detail: 'The instruction cost time or led the task astray.', icon: ThumbsDown},
+  {value: 'not_applicable', label: 'Not applicable', detail: 'The instruction did not apply to this task.', icon: Prohibit},
 ];
 
 function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId: string; revisionId: string; existing: FeedbackEntry[]}) {
@@ -394,9 +450,11 @@ function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId
         {verdict, reason: text, task_id: taskId.trim() || undefined},
         stableKey('feedback', skillId, revisionId, verdict, text, taskId.trim()));
       setJudgment(result.judgment_id);
+      toast.success('Assessment recorded', {description: 'Judgment ' + result.judgment_id});
     } catch (failure) {
       const problem = asApiError(failure);
       setError(problem.denied ? 'This organization is not readable with your current membership. Nothing was recorded.' : 'The assessment was not recorded (' + problem.code + '). Your text is unchanged.');
+      toast.error('Assessment was not recorded', {description: problem.code});
     } finally {setBusy(false);}
   }
 
@@ -405,12 +463,12 @@ function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId
       <p className={styles.muted}>An assessment is attached to this exact revision. Members and owners may both record one.</p>
       {blocked && <p className={styles.muted}>Membership could not be reconfirmed, so nothing can be recorded right now.</p>}
       <form id="skill-feedback" className={styles.stack} onSubmit={send}>
-        <fieldset className={styles.choices} disabled={blocked || busy}>
+        <fieldset className={styles.choices} disabled={blocked || busy} data-slot="rating">
           <legend>Verdict</legend>
-          {verdicts.map(item => <label key={item.value} className={styles.choice}>
+          {verdicts.map(item => {const Icon=item.icon;return <label key={item.value} className={styles.choice}>
             <input type="radio" name="verdict" value={item.value} checked={verdict === item.value} onChange={() => setVerdict(item.value)} />
-            <span>{item.label}<small>{item.detail}</small></span>
-          </label>)}
+            <Icon weight={verdict===item.value?'fill':'regular'} aria-hidden="true"/><span>{item.label}<small>{item.detail}</small></span>
+          </label>;})}
         </fieldset>
         <Field id="feedback-reason" label="What happened" hint="Name the task and the part of the instruction that mattered." error={error || undefined}>
           <textarea id="feedback-reason" name="reason" rows={5} required value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked || busy} aria-invalid={Boolean(error)} />
@@ -443,6 +501,7 @@ export function ApiSkillRoute({ctx}: ApiProps) {
   const from = originView(ctx);
   const [raw, setRaw] = useState<{bytes: number; ready: boolean} | null>(null);
   const [rawError, setRawError] = useState('');
+  const {favorites, toggle: toggleFavorite} = useFavorites(ctx);
   const detail = useAsync(() => source.getSkill(target, skillId ?? ''), 'skill:' + org + '/' + repo + ':' + skillId, ready && Boolean(skillId));
   const revisionId = requested ?? detail.value?.revision_id ?? null;
   const revision = useAsync(() => source.getRevision(target, skillId ?? '', revisionId ?? ''), 'revision:' + org + '/' + repo + ':' + skillId + ':' + revisionId, ready && Boolean(skillId && revisionId));
@@ -506,7 +565,7 @@ export function ApiSkillRoute({ctx}: ApiProps) {
     {!body && revision.phase === 'loading' && <RouteState state="loading" title="Reading this revision" description="Waiting for the exact stored bytes of the selected revision." />}
     {requiredMissing.length > 0 && <PartialNotice>{requiredMissing.length + ' required package resources are missing from this revision. Publication stays blocked until they are present.'}</PartialNotice>}
     <Panel title={skill.name} eyebrow="Immutable revision" icon={<FileText weight="regular" aria-hidden="true" />}
-      action={<StateBadge tone={skill.publication_status === 'published' ? 'system' : skill.publication_status === 'needs_review' ? 'warning' : 'neutral'}>{skill.publication_status}</StateBadge>}>
+      action={<div className={styles.panelActions}><FavoriteToggle active={favorites.has(skill.skill_id)} name={skill.name} onToggle={()=>toggleFavorite(skill.skill_id,skill.name)}/><StateBadge tone={skill.publication_status === 'published' ? 'system' : skill.publication_status === 'needs_review' ? 'warning' : 'neutral'}>{skill.publication_status}</StateBadge></div>}>
       <div className={styles.panelBody}>
         <p className={styles.description}>{skill.description}</p>
         {generated && <p className={styles.notice} role="status"><StateBadge tone="warning">Generated</StateBadge>This revision was inferred by a generator, not taken from the source file. Read the proposal that produced it before relying on it.</p>}
@@ -527,9 +586,20 @@ export function ApiSkillRoute({ctx}: ApiProps) {
       </div>
     </Panel>
     <Tabs label="Skill sections" current={tab} items={[
-      {id: 'content', label: 'Content'}, {id: 'source', label: 'Source & scope'},
+      {id: 'content', label: 'Content'}, {id: 'revisions', label: 'Revisions'}, {id: 'source', label: 'Source & scope'},
       {id: 'dependencies', label: 'Dependencies'}, {id: 'feedback', label: 'Feedback'},
     ].map(item => ({...item, href: ctx.href('skill', {skill: skillId, revision: requested, tab: item.id})}))} />
+
+    {tab === 'revisions' && <Panel title="Revision history" eyebrow="Immutable revisions" icon={<FileText weight="regular" aria-hidden="true" />}>
+      {skill.revisions.length > 0 ? <DataTable caption="Revisions stored for this skill" headings={['Revision', 'Commit', 'Origin', 'Created']}>
+        {skill.revisions.map(entry => <tr key={entry.revision_id}>
+          <th scope="row" className={styles.hashCell}><Link to={ctx.href('skill', {skill: skillId, revision: entry.revision_id, tab: 'content'})}><code>{entry.revision_id}</code></Link></th>
+          <td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td>
+          <td>{unknown(entry.source)}</td>
+          <td>{unknown(entry.created_at)}</td>
+        </tr>)}
+      </DataTable> : <p className={styles.muted}>No stored revision is available for this skill.</p>}
+    </Panel>}
 
     {tab === 'content' && <Panel title="Body" eyebrow="Exact stored revision" icon={<FileText weight="regular" aria-hidden="true" />}>
       {body?.body

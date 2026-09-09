@@ -1,0 +1,697 @@
+{
+  "$comment": "Guidefold landing redesign. Direction only. The writer implements; this file never edits ui/src.",
+  "page": "https://guidefold.cloudfloo.io/ (ui/src/routes/Landing.tsx)",
+  "date": "2026-09-09",
+  "mode": "overhaul",
+  "modeRationale": "Owner verdict: the page carries far too much information and explains it in an over-complicated way. Structure, motion and component set are replaced. All protected content (waitlist form and its flows, privacy answer, pricing facts, availability statements, GitHub and /docs links, the YouTube demo) is carried over verbatim in substance. This is an overhaul with content preserved, not a greenfield rewrite and not a preserve pass.",
+
+  "visualThesis": "A survey chart of a folded paper map, on graphite. One continuous cinematic field runs behind the whole page: a topographic contour plane and a dashed survey grid that drift as you scroll, with the hero's ambient loop at the top of it. The page itself is a quiet reading surface laid on that field: graphite ground, stone and ivory type, teal for system state, orange for the one place a human decides. Backgrounds move; text never does. Every interface transition is a shadcn-style 150-200ms fade or slide that confirms an action and then gets out of the way. The page answers one question at a time, in the order WHY, HOW, VALUE, and then asks for the email.",
+
+  "dials": {
+    "DESIGN_VARIANCE": {
+      "value": 4,
+      "label": "Balanced / Modern",
+      "evidence": "Audience is platform teams, tech leads and developers evaluating a Git-native instruction tool (docs/PRODUCT-PIVOT.md §1: 'Pierwszy klient to platform team albo tech lead'). ui-ux-pro-max returned category 'Developer Tool / IDE' at variance 4. A higher variance conflicts with the owner's restraint verdict; a lower one loses the one piece of art direction the product actually owns (the folded-map material world)."
+    },
+    "MOTION_INTENSITY": {
+      "value": 3,
+      "label": "Restrained",
+      "evidence": "Owner: current animations are 'wrong and not in the style of shadcn components'. One ambient background loop plus data-state driven UI transitions only. No scroll-jacking, no scrubbed film, no per-word entrance, no beams, no shine sweeps, no autoplaying demo timelines. Existing tokens already sit in this range (--duration:120ms, --duration-menu:180ms, --duration-drawer:240ms)."
+    },
+    "VISUAL_DENSITY": {
+      "value": 3,
+      "label": "Open",
+      "evidence": "The single owner instruction is 'far too much information'. The current page ships a 3D pyramid scene, a schema flow canvas, two autoplaying feature demos, a workbench, a film figure and a four-question FAQ. The redesign keeps seven sections and one interactive panel. ui-ux-pro-max suggested density 4 with a Bento grid; rejected, see uiUxProMaxEvidence."
+    }
+  },
+
+  "typography": {
+    "decision": "Reuse the installed families and the landing scale in ui/src/tokens/tokens.css. Do not add a font, do not fetch Google Fonts, do not introduce a second scale.",
+    "display": "--font-display (Instrument Sans) for h1 and h2",
+    "body": "--font-body (Manrope) for lede, body, labels",
+    "mono": "--font-mono (JetBrains Mono) for paths, URNs, code and the instruction reader source tab",
+    "scale": {
+      "h1": "--landing-title: clamp(38px, 4.5vw, 64px), --landing-title-leading 1.08, --tracking-title -.02em",
+      "h2": "--landing-heading: clamp(28px, 3vw, 38px), leading 1.15",
+      "lede": "--landing-lede 18px (16px at <=720px), line-height 1.6",
+      "body": "--landing-body 16px, line-height --line-height-body 1.6",
+      "small": "--font-size-small 12px for captions, fixture labels and legal lines",
+      "measure": "--landing-copy-width 48ch for lede and body columns; never exceed 68ch"
+    },
+    "rules": [
+      "One h1 on the page. Section headings are h2. The FAQ triggers stay h3 inside the collapsible, as today.",
+      "Heading weight --weight-semibold, body --weight-normal. Do not use --weight-bold on display type at this size.",
+      "All-caps eyebrow labels use --tracking-label .14em at --font-size-small and are optional; a section is allowed to have no eyebrow."
+    ]
+  },
+
+  "color": {
+    "decision": "The existing token palette is authoritative. Do not introduce a second palette. The ui-ux-pro-max colour set (#22C55E / #0F172A / #1E293B) is rejected.",
+    "ground": "--graphite-950 #07090c page ground, --graphite-900 #0c1014 section ground, --graphite-850 #11161b raised surface, --graphite-800 #171d23 inset",
+    "ink": "--stone-100 #eef1f3 primary text, --stone-300 #a3adb6 secondary text, --steel #5f6c77 tertiary and disabled",
+    "warm": "--landing-ivory #efe3d0 for the hero headline only, to tie the type to the paper material",
+    "accent": "--survey-teal #3fb8b1 for selected/active state, focus ring and the single primary action; --safety-orange #ff7a3d used sparsely for the human-review moment (owner review) and the footer art wash",
+    "lines": "--line, --line-strong, --line-hover as today. 1px --border-width. No glows, no coloured shadows.",
+    "contrastTargets": "Body text on --graphite-900 >= 4.5:1. Hero headline over video >= 7:1 measured against the brightest frame of the loop inside the copy-safe field, enforced by the scrim underlay, not by luck."
+  },
+
+  "material": {
+    "decision": "Flat graphite surfaces separated by 1px lines and the existing inset highlight shadows. Paper and stone appear only as photographic or video material, never as a CSS texture on a UI panel.",
+    "surfaces": [
+      "Page: --graphite-950",
+      "Section band: --graphite-900",
+      "Panel (instruction reader, form, FAQ item): --graphite-850, 1px --line-strong, --landing-radius 8px, --shadow-card",
+      "Hero media: full-bleed video/poster with a left-to-right scrim (--landing-hero-scrim) as the copy underlay"
+    ],
+    "prohibited": "Glassmorphism, blur backdrops on content panels, gradient-filled buttons, beam borders, animated shine edges, coloured drop shadows, 3D transforms on content."
+  },
+
+  "grid": {
+    "container": "--landing-width 1400px, --landing-gutter clamp(20px,4vw,64px)",
+    "columns": "12-column mental model, expressed with the existing custom properties: --landing-hero-columns for the hero, --landing-mechanism-columns (minmax(0,.8fr) minmax(0,1.2fr)) for HOW, a 3-up grid for VALUE, single column for WHY and the FAQ.",
+    "rhythm": "--landing-section-padding 64px desktop / 48px mobile between sections; --space-4 (24px) between a heading and its body; --space-3 (16px) inside a panel.",
+    "breakpoints": "1080px and 720px, matching the existing token media queries. No new breakpoint."
+  },
+
+  "imagery": {
+    "decision": "Three sources, in this order of authority: (1) the owned Industrial Surveyor demo assets, used as the continuous cinematic background field; (2) four keyframes generated with GPT Images 2 in that same material world; (3) one Seedance 2.5 ambient loop generated from keyframe 1. No stock, no new illustration, no icon-set expansion beyond the installed Phosphor icons.",
+    "assetPaletteVsUiPalette": "The demo world was authored against prototypes/industrial-surveyor/DESIGN.md: Graphite #0F1418, Stone #E6E8EA, Survey Teal #2BA6A0, Safety Orange #FF6A28, Steel #677681, Warning #EFAD3F, Signal Red #E24A4A. Those hexes are the GENERATION palette and must appear verbatim in every image and video prompt so the assets match each other and the existing intro clip. They are NOT a second UI palette: ui/src/tokens/tokens.css (--graphite-900 #0c1014, --stone-100 #eef1f3, --survey-teal #3fb8b1, --safety-orange #ff7a3d) remains authoritative for every pixel the browser paints. The two sets are within a few percent of each other in HSL, so a generated plane sits on the token ground without a visible seam; the writer must not retune tokens toward the asset hexes.",
+    "reuse": [
+      "prototypes/industrial-surveyor/public/assets/industrial-surveyor/guidefold-intro.mp4 (1920x1080, 24fps, 5.042s, HEVC+AAC, owned) -> transcoded by the owner to /assets/landing/intro.mp4 (H.264), /assets/landing/intro.webm, /assets/landing/intro-poster.webp (last frame). Placement: the HOW section mechanism figure, not the hero. See heroMediaDecision.",
+      "prototypes/.../topographic-route-bg.png (2048x1024, very dark navy field, faint teal contour rings, dashed survey grid, copy-safe everywhere) -> copy to /assets/landing/topo-plane.webp. Placement: global fixed background plane L1 behind the whole page.",
+      "prototypes/.../survey-grid-pattern.png (1254x1254 tileable dashed survey grid) -> copy to /assets/landing/survey-grid.webp. Placement: global fixed background plane L2, tiled.",
+      "/assets/guidefold-mark-web.webp - wordmark lockup in nav and footer",
+      "/assets/guidefold-paper-fold-film.webp - the demo dialog trigger cover",
+      "/assets/harness-integration.png - kept behind a disclosure in HOW, not inline"
+    ],
+    "generate": [
+      "hero-keyframe (GPT Images 2) - the hero still and the Seedance start_image",
+      "plane-why, plane-how, plane-value (GPT Images 2) - per-section depth planes",
+      "hero-loop (Seedance 2.5 via Higgsfield, omni_reference) - the one paid video slot"
+    ],
+    "drop": [
+      "/assets/guidefold-stone-hero-v1.webp and /assets/guidefold-stone-close-v1.webp as page art. Reason: they are 3:2 stone renders from an earlier exploration; the Industrial Surveyor world is now the page's material truth and mixing the two reads as two brands. guidefold-stone-close-v1 may stay as the footer wash at --landing-footer-art-opacity .65 ONLY if the writer finds the seam invisible against plane-value; otherwise the footer uses the topo plane like every other band.",
+      "The 2048x1024 topo plane must not be stretched to fill a 16:9 box; it is background-size: cover with background-position: center."
+    ],
+    "iconRule": "Phosphor, regular weight, --icon-size 18px, decorative icons aria-hidden. Icons label an action or a state; they never decorate a heading."
+  },
+
+  "heroMediaDecision": {
+    "decision": "The hero is the generated ambient loop (hero-keyframe still -> hero-loop.mp4). guidefold-intro.mp4 is NOT the hero background; it is the HOW section's mechanism figure, played once on entering view and held on its last frame.",
+    "evidence": "Frames extracted from guidefold-intro.mp4 at 0s, 2s and 5s (ffmpeg, this session). At the resolved frame the isometric G mark occupies approximately x 35% to 65% and y 16% to 80% of the 1920x1080 frame, dead centre, with the orange route and its arrow terminating near x 63%, y 47%. The empty dark field to the left of the mark is only ~33% of the frame wide. A hero with a 55% copy-safe field on the left cannot be cut from that framing without translating the video ~14% to the right, which pushes the route arrow toward the frame edge and off the visible box entirely at 390x844. The clip is also a resolved shot, not a loop; archetypes.md forbids pretending a resolved shot loops.",
+    "whyHOWisTheRightPlacement": "The clip literally animates the product's mechanism: a flat folded strip unfolds into the mark, then a route with two waypoints draws itself from source to destination. That is the HOW sentence in pictures. In a bounded 16:9 panel beside the mechanism copy, its centred composition is correct rather than a problem, contrast is trivially satisfied with no scrim, and the mobile stack is natural.",
+    "ifTheOwnerOverrides": "If the owner insists the intro opens the hero, the single change is: hero archetype becomes 'Bottom-anchored product composition', the hero copy-safe field moves from 'left 55%' to 'bottom 40%', hero-keyframe is regenerated with the focal fold upper-centre instead of right-of-centre, and the intro plays once at full bleed then cross-fades over 400ms into hero-loop at its held last frame. Nothing else in this brief changes. Do not ship the left-copy hero with the intro clip behind it; the frame measurements above say it will not fit."
+  },
+
+  "motionGrammar": {
+    "primaryIdea": "One continuous cinematic field behind the page. It drifts with scroll and carries the hero's ambient loop at the top. Everything in front of it is either static text or a shadcn state change. Backgrounds move; text never does.",
+    "layers": {
+      "ambient": "Hero video loop only. Owned by the media element, not by React state. Paused when hidden, off-screen, reduced-motion or Save-Data.",
+      "entrance": "One bounded entrance on first paint: hero eyebrow, h1, lede, actions fade in with a 2px rise, 200ms --ease-out, stagger 40ms, total <= 120ms of stagger (within the 30-80ms-per-item bar). Nothing below the fold has an entrance animation.",
+      "scroll": "Scroll-linked, but only on background planes and one SVG route. Never on copy, never on a control, never pinned. Each section publishes a normalized in-view progress p in [0,1] as a CSS custom property --p; every scroll-driven value is a pure function of --p, which makes reverse scrolling exact by construction. Amplitudes are capped at +/-20px per layer (40px total travel), well inside the 40px ceiling. Only transform and opacity are animated. There is no scroll-jacking, no pinning, no scrub-locked video, no section that becomes unreadable at any p.",
+      "ui": "data-state driven: opacity 0->1 with scale .95->1 for dialogs and panels, 150-200ms --ease-out; collapsible height animation on the FAQ, 200ms; tabs indicator slide 180ms; hover 150ms colour only (gated by @media (hover:hover) and (pointer:fine)); press --press-scale .98; focus ring 0ms."
+    },
+    "scrollEngine": {
+      "progressFormula": "p = clamp((viewportHeight - rect.top) / (viewportHeight + rect.height), 0, 1). p is 0 the instant the section's top edge reaches the bottom of the viewport and 1 the instant its bottom edge leaves the top. It is a pure function of geometry, so it is identical scrolling up and down.",
+      "implementation": "One module-level sampler for the whole page: a single passive scroll listener plus a single resize listener, both of which only schedule; one requestAnimationFrame that reads each registered section's cached rect and writes --p with element.style.setProperty. Sections register and unregister through one IntersectionObserver so off-screen sections cost nothing. No React state is set per frame. No component owns a listener. Cleanup cancels the frame and disconnects the observer.",
+      "consumption": "All movement is expressed in CSS: transform: translate3d(0, calc((var(--p) - .5) * var(--amp)), 0). --amp is per-layer and never exceeds 40px. Opacity ramps use calc() on --p with clamp().",
+      "reducedMotionAndSaveData": "The sampler is never started. --p is set once to .5 on every section, so every plane renders at its mid state and the page is a correct static composition. This is the same code path as JS-disabled, where the CSS default value of --p is .5."
+    },
+    "tokensToUse": [
+      "--duration 120ms (hover, colour, focus visuals)",
+      "--duration-menu 180ms (tabs indicator, dialog backdrop)",
+      "--duration-drawer 240ms (dialog popup, collapsible panel)",
+      "--ease-out cubic-bezier(.23,1,.32,1)",
+      "--duration-reduced 80ms",
+      "--press-scale .98"
+    ],
+    "tokensToRetire": [
+      "--landing-reveal-duration 650ms - above the 300ms bar",
+      "--landing-card-duration 500ms - above the bar",
+      "--landing-stagger-1..5 (70/140/210/280/350ms) - stagger chain exceeds the 300ms cap at step 5",
+      "--landing-fold-duration 900ms, --landing-fold-scale, --landing-fold-hover - fold-film choreography removed",
+      "--duration-shine 900ms, --shine-gradient, --shine-width/--shine-start/--shine-travel - shine sweeps removed",
+      "--landing-preview-period 3600ms - autoplaying feature demos removed"
+    ],
+    "stateModel": ["entrance", "mediaReady", "mediaFailed", "menuOpen (mobile nav, if kept)", "dialogOpen", "faqOpen", "activeTab"],
+    "cap": "No animated value may exist outside that state set. No component owns its own interval timer."
+  },
+
+  "conversionStory": {
+    "premise": "Your coding agent can read the repo, but a rule written for one service is wrong advice for the next one. README.md line 3 and 'The problem'.",
+    "proof": "The instruction reader shows a real SKILL.md from the bundled Meridian fixture, labelled as a fixture. The recorded YouTube demo shows the workflow end to end. No invented metrics, no customer logos, no testimonial.",
+    "mechanism": "Rules live in Git beside the code; a hook resolves the scope of the current folder, ranks what that scope can see, and hands the agent at most four short cards; the agent loads the full text of the one or two it needs. portal/content/how-it-works.md.",
+    "trust": "Open source today, hosted planned, priced in the open. Availability and pricing statements are stated on the page rather than hidden, and the privacy answer explains exactly what happens to the email address.",
+    "action": "Join the waitlist (primary, one field plus consent). Secondary paths: play the demo, read the docs, run the open-source quickstart on GitHub."
+  },
+
+  "hero": {
+    "choice": "loop video",
+    "archetype": "Ambient loop with copy-safe field",
+    "rationale": "The owner is producing a Higgsfield ambient background loop in the folded-map / stone / graphite-teal material world in parallel. The page carries the message; the loop supplies atmosphere only. This is the archetype named in direct-motion-site-prompts/resources/archetypes.md for exactly that division of labour.",
+    "fallbackIfVideoNeverArrives": "The hero keyframe still (/assets/landing/hero-poster.webp, generated by GPT Images 2 before the video and delivered independently of it) at full bleed with the same scrim, over the global topo and grid planes which continue to drift with scroll. If the keyframe is also missing, the hero falls back to the global topo plane on --graphite-950 with the scrim removed; the headline contrast is then trivially satisfied. No WebGL, no canvas, no CSS-generated 'ambient' substitute: the owned topo plane already supplies the atmosphere."
+  },
+
+  "sectionSequence": [
+    {
+      "order": 1,
+      "id": "hero",
+      "question": "What is this and why should I care, in one breath",
+      "layoutFamily": "A - full-bleed ambient media with a left copy-safe field",
+      "content": "Eyebrow (optional), h1, lede, two actions, one trust line. Nothing else. No stats row, no logo wall, no product screenshot.",
+      "components": ["HeroMedia", "Button (default) 'Join the waitlist'", "DemoDialog trigger 'Play demo'"],
+      "notes": "Copy-safe field is the left 55% on desktop, full width lower-two-thirds on mobile. The workbench/LandingWorkbench is removed from the hero."
+    },
+    {
+      "order": 2,
+      "id": "why",
+      "question": "WHY we built it",
+      "layoutFamily": "B - single-column editorial statement, max 60ch, no cards",
+      "content": "h2, then one sentence that is the whole answer, then at most two supporting sentences. No list, no icons, no diagram.",
+      "components": ["SectionHeading", "Prose"],
+      "notes": "This section must be readable in under fifteen seconds. If it grows a third paragraph, cut it."
+    },
+    {
+      "order": 3,
+      "id": "how-it-works",
+      "question": "HOW it works",
+      "layoutFamily": "C - asymmetric split: copy column plus one interactive panel",
+      "content": "h2, one answer sentence, the intro clip as the mechanism figure, three short mechanism beats as plain labelled lines (not a stepper, not a canvas, not a numbered walkthrough widget), the scroll-drawn route rule beneath them, one disclosure holding the integration diagram, and the simplified instruction reader panel.",
+      "components": ["SectionHeading", "IntroFigure (video, plays once on enter, holds last frame)", "MechanismList (static, 3 items)", "RouteRule (inline SVG, stroke drawn by --p)", "InstructionReader (Tabs + SkillContent)", "Disclosure (native details) for /assets/harness-integration.png"],
+      "notes": "Keeps the id 'how-it-works' so the existing nav anchor still resolves. The reader is the only interactive element below the fold. Desktop layout: copy column left (--landing-mechanism-columns .8fr), figure column right holding the intro panel above the instruction reader. The intro clip is the one place the brand mark animates; it never appears twice on the page."
+    },
+    {
+      "order": 4,
+      "id": "value",
+      "question": "VALUE: what a platform team, a tech lead and developers get day to day",
+      "layoutFamily": "D - 3-up role grid, equal cards, stacks at 720px",
+      "content": "h2, one answer sentence, then exactly three role blocks: platform team, rule owner / tech lead, developers. Each block is a role label, a one-line promise and one concrete detail.",
+      "components": ["SectionHeading", "RoleCard x3"],
+      "notes": "Three because the audience has three named roles, not for rhythm. Do not add a fourth to balance the grid."
+    },
+    {
+      "order": 5,
+      "id": "availability",
+      "question": "Can I use it now, and what will it cost",
+      "layoutFamily": "E - inline two-statement band with a rule between them",
+      "content": "The two protected availability statements, plus the open-source quickstart link and the docs link.",
+      "components": ["AvailabilityBand", "text link to GitHub #quickstart", "text link to /docs/"],
+      "notes": "Protected: 'Open source today.' and 'Paid hosting is planned.'"
+    },
+    {
+      "order": 6,
+      "id": "waitlist",
+      "question": "How do I stay informed",
+      "layoutFamily": "F - split: short heading column plus the form column",
+      "content": "h2, one line of context, the waitlist form verbatim, including the signup note, label, placeholder, consent text, honeypot, success state and every error string.",
+      "components": ["WaitlistForm (unchanged behaviour)"],
+      "notes": "Form markup, ids, aria wiring, abort/timeout behaviour and copy are protected. Restyle only."
+    },
+    {
+      "order": 7,
+      "id": "questions",
+      "question": "The things a buyer checks before giving an email",
+      "layoutFamily": "G - disclosure list, all closed on load",
+      "content": "h2 'Before you join' and the four existing questions with their answers verbatim.",
+      "components": ["Collapsible x4 (@base-ui/react/collapsible)"],
+      "notes": "This is the resolution of the one conflict between the owner's verdict and the preservation contract: the pricing and privacy answers are preserved word for word but are not spent in the reading order, because every panel is closed on load and the deep links still expand."
+    },
+    {
+      "order": 8,
+      "id": "footer",
+      "question": "Where else can I go",
+      "layoutFamily": "E - band, reused",
+      "content": "Wordmark, one line, four link groups as today, the availability line and the Cloudfloo credit. The oversized display wordmark is kept at --landing-footer-wordmark; it is type, not motion.",
+      "components": ["LandingFooter (kept, de-animated)"],
+      "notes": "GitHub, /docs/, #privacy and mailto links are protected."
+    }
+  ],
+  "layoutFamilyCount": 7,
+  "sectionCount": 7,
+  "sectionCountNote": "Seven content sections plus header and footer. The owner's simplification instruction and the preservation contract together consume every slot; there is no room and no reason to pad toward eight.",
+
+  "states": {
+    "desktop": ">=1081px. Hero is a full-bleed media band, copy in the left 55%, actions inline. HOW is an asymmetric split. VALUE is 3-up. Waitlist is a 2-column split with the form row inline (--landing-form-columns).",
+    "tablet": "721-1080px. Hero copy drops below the media focal point but stays inside the scrim; HOW and the waitlist collapse to one column; VALUE stays 3-up until 720px if the cards keep a 32ch measure, otherwise 2-up.",
+    "mobile": "<=720px. Hero media is cropped with object-position 70% center so the focal fold stays visible while the copy occupies the lower field; actions stack full width at --touch-height 44px; VALUE stacks; the instruction reader keeps the tabs but drops the rule sidebar; the FAQ is unchanged.",
+    "loading": "Poster paints first with the same composition as the first video frame. The video element is only mounted after the poster has decoded and the section is in view. The instruction reader shows the existing 'Loading instruction…' role=status fallback. The form shows the existing 'Saving…' loading label on the submit button.",
+    "error": "Video decoder error, CORS failure or a media source that never becomes ready sets mediaFailed and leaves the poster in place; the video element is removed. A missing poster hides itself via onError (the pattern already used on the hero art image) and the hero falls back to the flat ground. Form errors keep the existing role=alert messages and preserve the typed input.",
+    "reducedMotion": "prefers-reduced-motion: reduce. No video is downloaded or played; the poster is the hero. Entrance opacity/rise removed; content is at its final state on first paint. Collapsible, dialog and tab transitions collapse to --duration-reduced 80ms opacity only, no scale, no height animation. Hover and press transforms removed. This is a complete static page, not a slower one.",
+    "saveData": "navigator.connection.saveData === true. Identical to reduced-motion for media: poster only, no video request, no CSS ambient drift. UI transitions stay at their normal 150-200ms because they cost no bandwidth.",
+    "noJs": "Every section renders from the base DOM. The FAQ answers, the mechanism beats, the availability statements and the footer links are present without JavaScript. The instruction reader degrades to its default tab content; the demo dialog trigger degrades to a plain link to the YouTube URL."
+  },
+
+  "uiUxProMaxEvidence": {
+    "tool": "/home/mike/projects/unslopify/.agents/skills/ui-ux-pro-max/scripts/search.py (bundled, offline, no --persist, no install)",
+    "queries": [
+      {
+        "kind": "design-system",
+        "command": "python3 scripts/search.py \"developer tool instruction library for coding agents platform teams tech leads developers precise calm engineering\" --design-system --variance 4 --density 4 -p \"guidefold-landing\" --json",
+        "motionFlag": "deliberately not passed, per resources/workflow.md (upstream motion results include GSAP; this repository uses Motion)",
+        "result": {
+          "category": "Developer Tool / IDE",
+          "pattern": "Bento Grid Showcase - sections: 1. Hero, 2. Bento Grid (Key Features), 3. Detail Cards, 4. Tech Specs, 5. CTA; CTA placement: Floating Action Button or Bottom of Grid",
+          "style": "SaaS Mobile (High-Tech Boutique), type Mobile, performance Excellent, accessibility WCAG AA, light_mode Full, dark_mode Partial",
+          "effects": "spring animations (mass:1 damping:15 stiffness:120); gradient buttons (0052FF->4D7CFF); scale press 0.96->1.0 with haptics; floating FAB with gentle bobbing; glassmorphism BlurView navigation bars; staggered fade-in entrance (Y:20->0 + opacity:0->1); pulsing status dot; layout transitions",
+          "colors": "primary #1E293B, accent #22C55E, background #0F172A, foreground #F8FAFC, muted #272F42, border #475569, ring #1E293B, cta #22C55E",
+          "typography": "heading JetBrains Mono, body IBM Plex Sans, google_fonts_url provided",
+          "spacing_scale": "xs 4 / sm 8 / md 16 / lg 24 / xl 32 / 2xl 48 / 3xl 64",
+          "anti_patterns": "Light mode default + Slow performance",
+          "decision_rules": "must_have: documentation",
+          "severity": "HIGH",
+          "motion_snippet": "{} (empty, because --motion was not passed)"
+        }
+      },
+      {
+        "kind": "focused",
+        "command": "python3 scripts/search.py \"developer tool landing clarity hierarchy\" --domain ux --max-results 8",
+        "result": "4 results: heading clarity (clear size/weight difference vs body), breadcrumbs (only for 3+ levels of depth), sequential heading hierarchy h1->h2->h3 for screen readers, consistent modular font-size scale.",
+        "yield": "thin but usable; three of the four apply directly."
+      },
+      {
+        "kind": "focused",
+        "command": "python3 scripts/search.py \"developer tool landing page hero conversion\" --domain landing --max-results 8",
+        "result": "8 patterns returned: AI Personalization Landing, Funnel (3-Step Conversion), Scroll-Triggered Storytelling, Pricing Page + CTA, Trust & Authority + Conversion, Before-After Transformation, Comparison Table Focus, Lead Magnet + Form.",
+        "yield": "thin. No returned pattern matches a WHY/HOW/VALUE explanation page for an open-source developer tool with a waitlist. Two supplied usable fragments (see accepted)."
+      }
+    ],
+    "zeroResultQueries": [],
+    "accepted": [
+      {
+        "recommendation": "Spacing scale 4 / 8 / 16 / 24 / 32 / 48 / 64",
+        "reason": "It is bit-for-bit the existing --space-1..--space-7 in ui/src/tokens/tokens.css, so applying it changes nothing and confirms the current rhythm is standard."
+      },
+      {
+        "recommendation": "Category match 'Developer Tool / IDE' and decision rule must_have: documentation",
+        "reason": "The /docs/ link is already protected and stays in the header and footer; the section sequence keeps a documentation path from both the HOW section and the availability band."
+      },
+      {
+        "recommendation": "Mono + humanist-sans pairing for a developer tool",
+        "reason": "Satisfied by the installed --font-mono JetBrains Mono (identical to the recommendation) plus --font-body Manrope and --font-display Instrument Sans. The concept is accepted; the specific IBM Plex Sans and its google_fonts_url are rejected below."
+      },
+      {
+        "recommendation": "Dark ground rather than light-mode default (anti_pattern: 'Light mode default')",
+        "reason": "Confirms the existing color-scheme:dark and the graphite token set."
+      },
+      {
+        "recommendation": "Staggered fade-in entrance, Y:20->0 + opacity:0->1",
+        "reason": "Accepted only as the hero entrance shape, and reduced: Y:2px, opacity 0->1, 200ms, 40ms stagger, applied once above the fold. The 20px travel and the below-fold repetition are rejected."
+      },
+      {
+        "recommendation": "Lead Magnet + Form pattern: form fields <= 3 for best conversion; clean surface; visible submission progress",
+        "reason": "The protected waitlist form already has exactly one visible field plus a consent checkbox and already shows a 'Saving…' loading state. Confirms no field may be added."
+      },
+      {
+        "recommendation": "Trust & Authority: transparent pricing, low-friction form",
+        "reason": "Supports keeping the pricing answer and the availability statements on the page rather than moving them off it, which is also what the preservation contract requires."
+      },
+      {
+        "recommendation": "UX: clear size/weight difference between headings and body; sequential h1->h2->h3; consistent modular scale",
+        "reason": "Applied in the typography section: one h1, h2 per section, h3 only inside the FAQ triggers, and a fixed clamp scale."
+      }
+    ],
+    "rejected": [
+      {
+        "recommendation": "Bento Grid Showcase section order (Hero, Bento Grid, Detail Cards, Tech Specs, CTA)",
+        "conflict": "Owner verdict (binding): the page must answer WHY, then HOW, then VALUE. A bento grid of feature tiles is the 'too much information' failure mode being removed."
+      },
+      {
+        "recommendation": "Floating Action Button, gently bobbing",
+        "conflict": "Mobile-app pattern; a perpetual bobbing decoration is the opposite of the owner's restraint verdict and the shadcn motion vocabulary."
+      },
+      {
+        "recommendation": "Glassmorphism BlurView navigation bars",
+        "conflict": "Material system prohibits blur backdrops on content chrome; contrast over the hero loop must be guaranteed by a deterministic scrim, not by a blur."
+      },
+      {
+        "recommendation": "Gradient buttons 0052FF -> 4D7CFF",
+        "conflict": "shadcn button.tsx already installed at ui/src/components/ui/button.tsx uses flat variant backgrounds; the brand has no blue and the owner asked for shadcn-style components."
+      },
+      {
+        "recommendation": "Spring animations, mass:1 damping:15 stiffness:120, and haptic press 0.96",
+        "conflict": "Owner: 'spring-free or gentle springs'. The page uses ease-out cubic-bezier only, and press uses the existing --press-scale .98, not .96."
+      },
+      {
+        "recommendation": "Colour set primary #1E293B, accent/cta #22C55E, background #0F172A, foreground #F8FAFC, border #475569",
+        "conflict": "Instruction: do not invent a second palette. ui/src/tokens/tokens.css is authoritative (--graphite-*, --stone-*, --survey-teal, --safety-orange). Introducing #22C55E would also break the teal/orange state semantics used across the product UI."
+      },
+      {
+        "recommendation": "IBM Plex Sans body font via the returned google_fonts_url",
+        "conflict": "No new dependency and no network fetch during a job; Manrope and Instrument Sans are already loaded."
+      },
+      {
+        "recommendation": "Pulsing status dot on section badges",
+        "conflict": "A perpetual animation carrying no information. Prohibited by the motion grammar."
+      },
+      {
+        "recommendation": "AI Personalization Landing (dynamic hero per segment)",
+        "conflict": "Requires analytics segmentation the product does not have and would fabricate a capability. Also unverifiable."
+      },
+      {
+        "recommendation": "Scroll-Triggered Storytelling (chapters, progress indicator, 'narrative increases time-on-page 3x')",
+        "conflict": "Owner explicitly rejects scroll-jacking; the claim is unsourced for this product; and chaptered narrative is the over-complication being removed."
+      },
+      {
+        "recommendation": "Before-After Transformation ('45% higher conversion') and Comparison Table Focus ('35% higher conversion', you vs competitors)",
+        "conflict": "Both require competitor or outcome claims that no line of README.md or docs/PRODUCT-PIVOT.md supports. README is explicit that 'Proposed behavior, code and real pilot evidence are different things'."
+      },
+      {
+        "recommendation": "Funnel (3-Step Conversion) with step colours Red/Orange/Green and mini-CTAs per step",
+        "conflict": "A three-step coloured funnel is a six-step-walkthrough in disguise, and colour-as-sole-meaning fails the product's own accessibility rule (docs/PRODUCT-PIVOT.md §7: 'kolor nie jest jedyną informacją')."
+      },
+      {
+        "recommendation": "light_mode: Full",
+        "conflict": "tokens.css declares color-scheme:dark and every landing token is tuned for the graphite ground. A light theme is out of scope."
+      }
+    ],
+    "conflictsWithHigherAuthority": "The database's severity: HIGH product match is a mobile SaaS style. Per resources/workflow.md the authority order puts the preservation contract and the customer brief above search results, so the style block is recorded and mostly rejected. Only the spacing scale, the dark-ground anti-pattern, the type-pairing concept and a reduced form of the entrance stagger survive."
+  },
+
+  "motionPromptPacket": {
+    "referenceBasis": {
+      "primaryId": "006 (Foldcraft, direct-motion-site-prompts/resources/corpus-index.md)",
+      "secondaryMechanic": "002 (AI builder) - poster-first delivery state and a restrained entrance cascade. One job only: media readiness and first paint. It introduces no second visual thesis.",
+      "borrowedMechanics": [
+        "006: dark near-void ground with a single bright focal object, so the copy field can stay unlit",
+        "006: large empty copy field on one side, left-aligned top and bottom copy",
+        "006: explicit object-position control so the focal object survives the mobile crop",
+        "006: locked wide camera with slow cyclical subject motion rather than camera travel",
+        "002: centred low-detail region reserved for type, no readable UI or circuitry in frame",
+        "002: poster state that is the same composition as the first video frame",
+        "002: entrance cascade limited to the hero, not repeated down the page"
+      ],
+      "rejectedMechanics": [
+        "006 orange fish schooling inside a water portal - a literal subject that is not this product's material world; replaced by a folded paper map over stone",
+        "007 oversized absolute headline words framing action footage - the copy here must read as a sentence, not as three placed words",
+        "001 scroll-linked depth planes - owner prohibits scroll choreography on this page",
+        "004 marquee behind a cutout - no marquee anywhere on the page",
+        "003 glass utility cards over the plate - glassmorphism is prohibited by the material system",
+        "Scroll film / scrubbed video - explicitly out; an ambient loop must not be converted into a scrubbed film (archetypes.md 'Combination rule')"
+      ]
+    },
+    "archetype": "Ambient loop with copy-safe field",
+    "archetypeRuling": "One archetype for the page, per archetypes.md 'Combination rule'. The scroll-driven depth planes over the rest of the page are a SECONDARY MECHANIC, not a second archetype: they are one continuous background field in the same material world that never becomes a chaptered story, never pins a section, never carries required information, and never introduces a second visual thesis. 'Layered still-scene scroll story' was considered and rejected as the primary archetype because that archetype requires discrete spatial chapters with enter/hold/exit segments, and chaptered scroll narrative is precisely the over-explanation the owner is cutting.",
+    "composition": {
+      "layerOrder": [
+        "L0 (back, global, fixed): --graphite-950 flat ground, always painted, so a missing asset never shows white",
+        "L1 (global, fixed): topo-plane.webp (from topographic-route-bg.png), background-size cover, background-position center, opacity .32, filter saturate(.85), drifts with page scroll, amplitude 16px",
+        "L2 (global, fixed): survey-grid.webp tiled at 512px, opacity .10, drifts with page scroll, amplitude 40px (nearer layer, larger travel)",
+        "L3 (per section, absolute): the generated section plane (plane-why / plane-how / plane-value), opacity ramped by --p, amplitude 20px. Absent in the hero, which has its own media instead.",
+        "L4 (hero only): hero-poster.webp, object-fit cover, object-position 62% 50% desktop / 74% 50% mobile",
+        "L5 (hero only): hero-loop video, same box, same object-position, opacity 0 until canplay then 1 over 240ms; never mounted on mediaFailed, reduced-motion or Save-Data",
+        "L6: scrim underlay - --landing-hero-scrim, a left-to-right graphite gradient from rgba(7,9,12,.94) at x=0 to rgba(7,9,12,.06) at x=68%; on mobile a bottom-up gradient from rgba(7,9,12,.94) at y=100% to rgba(7,9,12,.10) at y=44%. Sections below the hero use a flat rgba(12,16,20,.72) band instead of a gradient.",
+        "L7 (front): content - eyebrow, h1, lede, actions, section copy, panels, form, FAQ - plus the media pause control if the loop is playing. Nothing at L7 ever moves with scroll."
+      ],
+      "focalRegion": {
+        "desktop": "right 40% of the frame, vertically centred between 26% and 74% height; the folded ridge apex sits at approximately x=74%, y=46%",
+        "mobile": "upper 46% of the frame after the 74% 50% crop; the ridge apex must remain inside the visible box at 390x844"
+      },
+      "copySafeRegion": {
+        "desktop": "left edge to x=55%, from y=16% to y=84%. No high-frequency detail, no specular highlight and no luminance above 22% inside this box in any frame of the loop.",
+        "mobile": "full width, from y=50% to y=96%. Same luminance ceiling."
+      },
+      "typographyRelation": "In front of the media, on the scrim, never behind or split around the subject. The headline never overlaps the focal object."
+    },
+    "motion": {
+      "states": ["entrance", "progress (--p per section, 0..1)", "mediaReady", "mediaFailed", "introPlayed", "prefersReducedMotion", "saveData", "documentHidden", "inViewport", "userPaused", "dialogOpen", "faqOpen", "activeTab"],
+      "scrollChoreography": {
+        "sharedRule": "Every entry below is a pure function of that section's --p. Reverse behaviour is therefore exact and needs no separate specification. Copy layers have amplitude 0 in every section. No section is pinned or sticky. No value uses easing over scroll; the mapping is linear in --p with clamped ramps, because an eased scroll mapping feels like lag on a trackpad.",
+        "hero": {
+          "layers": "L1 topo -16px, L2 grid -40px, L4/L5 hero media -12px (a slight settle, so the media does not feel glued to the viewport), L6 scrim 0, L7 copy 0",
+          "mapping": "translateY = (p - .5) * -amp. Hero media additionally ramps opacity 1 -> .55 across p 0.55 -> 1.0 so the headline of the WHY section below is never fighting a bright plate.",
+          "sticky": "none",
+          "mobile": "amplitudes halved (topo -8px, grid -20px, media -6px). The hero media box height is fixed at 68vh so the ramp cannot cause a reflow."
+        },
+        "why": {
+          "layers": "plane-why L3 (amp 20px, opacity 0 -> .42 across p 0.10 -> 0.45, then hold), L1/L2 continue globally, copy 0",
+          "mapping": "plane-why translateY = (p - .5) * -20px; opacity = clamp((p - .10) / .35, 0, 1) * .42",
+          "extra": "A single 1px teal keyline (--survey-teal at 18% alpha) draws across the section's top edge: scaleX from .2 to 1, transform-origin left, mapped to clamp((p - .05)/.25, 0, 1). It is decoration, it carries no state, and it is invisible under reduced motion because it renders at its p=.5 value, which is scaleX 1.",
+          "sticky": "none",
+          "mobile": "amp 12px; the keyline is removed (it reads as a glitch at narrow widths)."
+        },
+        "how": {
+          "layers": "plane-how L3 (amp 20px, opacity 0 -> .38), the intro video figure, the RouteRule SVG, copy 0",
+          "mapping": "plane-how translateY = (p - .5) * -20px; opacity = clamp((p - .10)/.35, 0, 1) * .38",
+          "routeRule": "An inline SVG polyline in --safety-orange, 2px, following a shallow left-to-right survey route with two circular waypoints, sitting directly under the three mechanism beats. stroke-dasharray is the path length L; stroke-dashoffset = L * (1 - q) where q = clamp((p - .18) / .44, 0, 1). Each waypoint's opacity is a step of q at .38 and .78. This is the only scroll-driven element that carries a hint of meaning, and it is redundant with the text beside it, so losing it costs nothing.",
+          "routeRuleStaticOverride": "IMPORTANT: q at the default --p of .5 evaluates to .727, i.e. a route drawn only 73% of the way, which reads as broken rather than as a resting state. The static state is therefore an EXPLICIT OVERRIDE, not a consequence of --p: under prefers-reduced-motion, under Save-Data if the sampler is disabled, and with JavaScript off, the route rule sets q = 1 (stroke-dashoffset 0, both waypoints at full opacity) so it is fully drawn. Implement this as a CSS rule inside the reduced-motion media query and as the element's default attribute value, not as arithmetic on --p. This is the one place in the page where the static state is not simply the --p = .5 evaluation, and it is called out because the writer would otherwise implement the formula literally.",
+          "introVideo": "Not scroll-scrubbed. It plays once at normal speed when the figure first reaches 40% visibility (IntersectionObserver, threshold .4, disconnect after firing), then holds its final frame. It has no loop attribute. It is muted, playsInline, preload='none', with poster=intro-poster.webp so the resolved mark is what the user sees before and after playback. A visible 'Replay' text button re-runs it; that button is the only control.",
+          "sticky": "none",
+          "mobile": "plane amp 12px; the route rule keeps its full draw because it is short; the intro figure stacks above the mechanism beats at 16:9 full width."
+        },
+        "value": {
+          "layers": "plane-value L3 (amp 20px, opacity 0 -> .34), three role cards, copy 0",
+          "mapping": "plane-value translateY = (p - .5) * -20px; opacity = clamp((p - .10)/.35, 0, 1) * .34",
+          "cards": "The three role cards do NOT animate in. They are static. Rationale: find-animation-opportunities' frequency and function gate - this is information-dense content the visitor is reading, and moving it for style hinders. The only differentiation is a 1px border that brightens from --line to --line-hover on hover, 150ms.",
+          "sticky": "none",
+          "mobile": "amp 12px; cards stack."
+        },
+        "availabilityWaitlistQuestionsFooter": {
+          "layers": "global L1/L2 only; no per-section plane",
+          "mapping": "The global planes keep drifting, which is what makes the field feel continuous rather than four decorated boxes. Nothing local moves.",
+          "rationale": "These are the sections where the visitor is reading pricing, typing an email, or opening a legal answer. Nothing behind them may compete."
+        }
+      },
+      "beats": [
+        "entrance / on first paint, no trigger delay: eyebrow opacity 0->1 and translateY 2px->0, 200ms --ease-out, delay 0ms. Terminal state opacity 1, translateY 0. Interruption: any keyboard focus jumps the whole stack to its terminal state immediately.",
+        "entrance / h1: same transform, 200ms --ease-out, delay 40ms.",
+        "entrance / lede: same, delay 80ms.",
+        "entrance / actions row: same, delay 120ms. Total entrance stagger 120ms, well under the 300ms cap; total entrance duration 320ms.",
+        "mediaReady / on video canplay: video opacity 0->1, 240ms --duration-drawer --ease-out, poster stays mounted underneath and is never removed. Terminal state: video visible, poster hidden from AT (aria-hidden) but still painted.",
+        "ambient / for the life of the section: the video loops. No JS drives it. Interruption: pause on documentHidden (visibilitychange), pause when the hero leaves the viewport (IntersectionObserver, threshold 0), pause on userPaused.",
+        "mediaFailed / on error or on a stalled load beyond 8s: video element unmounted, poster remains, no message shown to the user, one console-free silent degrade. Terminal state is identical to the reduced-motion state.",
+        "ui / dialog open (demo player): backdrop opacity 0->1 180ms --duration-menu; popup opacity 0->1 and scale .95->1, 200ms --ease-out. Close is the same values reversed at 150ms. Interruption: Escape and backdrop click both close; the iframe is unmounted on close so the video stops.",
+        "ui / collapsible (FAQ): height 0 <-> --collapsible-panel-height plus opacity, 200ms --ease-out. Interruption: a second toggle mid-animation reverses from the current height, it does not restart.",
+        "ui / tabs indicator (instruction reader): transform translateX and width to the active tab, 180ms --duration-menu --ease-out. No fade of the panel content beyond 120ms opacity.",
+        "ui / hover on buttons and links: background and border colour only, 150ms. No lift, no shadow growth, no scale up.",
+        "ui / press: scale --press-scale .98, 120ms, on pointer only; keyboard activation does not scale."
+      ],
+      "interruption": "Resize invalidates the cached rects and recomputes --p on the next frame; it never restarts the loop, the intro or the entrance, because every value is a function of geometry rather than of elapsed time. Breakpoint crossings at 720px and 1080px reassign object-position, scrim direction and amplitudes through CSS only. Opening the demo dialog pauses the hero loop and resumes it on close. Changing prefers-reduced-motion at runtime tears the video down through the same path as mediaFailed and stops the scroll sampler, leaving --p at .5. Fast scrolling cannot desynchronise anything: there is no timeline to fall behind, only a value read from the current rect."
+    },
+    "media": {
+      "route": "still-first, then image-to-video loop. Four GPT Images 2 keyframes are generated first; keyframe 1 is both the hero poster and the Seedance 2.5 start_image. The video is an enhancement layered over a page that is already complete without it.",
+      "existingEvidence": "prototypes/industrial-surveyor/public/assets/industrial-surveyor/ - guidefold-intro.mp4 (1920x1080, 24fps, 5.042s, hevc + aac, 3.3 MB, owned, inspected this session via ffprobe and three extracted frames), topographic-route-bg.png (2048x1024, 2.5 MB, owned), survey-grid-pattern.png (1254x1254, 1.4 MB, owned), guidefold-mark.png (1024x1024, owned). Visual rules in prototypes/industrial-surveyor/DESIGN.md. The design reference board is design-explorations/guidefold-folded-map-3x3/06-industrial-surveyor.png. All Guidefold-owned; no third-party rights question. No existing asset is an aspect-correct 16:9 hero keyframe with a 55% left copy-safe field, which is what justifies generation.",
+      "delivery": "16:9, 1920x1080, 10s, 24fps, silent (generate_audio false, and any residual audio track is stripped at transcode), H.264 MP4 plus a VP9 WebM, target <= 3.5 MB for the MP4. The owned intro clip is delivered separately at H.264 MP4 + WebM + a last-frame WebP poster and must have its AAC track stripped.",
+      "fallback": "Hero: /assets/landing/hero-poster.webp (keyframe 1), always served, painted first, never removed. Below it the global topo plane on --graphite-950. HOW figure: /assets/landing/intro-poster.webp, the resolved final frame, which is a complete composition on its own. Section planes: if a generated plane is missing, that section falls back to the global topo plane alone; the page is still correct."
+    },
+    "responsive": "Real recomposition, not a scaled-down desktop. Desktop (>=1081): hero copy left inside the 55% copy-safe field, focal fold right, horizontal scrim, actions inline; HOW is copy-left / figure-right; VALUE is 3-up. Tablet (721-1080): the hero media band shortens to 62vh, the scrim becomes bottom-up, the copy sits in the lower half, actions stay inline; HOW collapses to one column with the intro figure first; VALUE stays 3-up while the cards hold a 32ch measure, otherwise 2-up. Mobile (<=720): hero media crops to object-position 74% 50% so the ridge apex stays in frame, band is 68vh, copy occupies the bottom 46%, both actions become full-width stacked controls at 44px, the pause control moves to the top-right of the media band, all scroll amplitudes are halved, the WHY keyline is removed, and the section planes drop to opacity .28 because a small viewport magnifies texture.",
+    "reducedMotion": "Complete static state. No video element is created and no video byte is requested, for either the hero loop or the intro clip. Posters are the images. The scroll sampler never starts; --p is .5 everywhere, so every plane sits at its mid position and mid opacity and the route rule is fully drawn. The entrance transforms and opacities are removed, not shortened, so the page is fully composed on first paint. Dialog, collapsible and tabs transitions reduce to an 80ms opacity change (--duration-reduced) with no scale and no height animation. Hover and press transforms are removed. No pause control is rendered, because nothing is playing. This is a page a person can read, not a slower version of the animated one.",
+    "saveData": "navigator.connection?.saveData true: identical media behaviour to reduced motion (posters only, zero video bytes). The scroll sampler DOES still run, because it costs no bandwidth and it is what makes the page feel like the product rather than a document; if the writer measures it above 1ms per frame on a mid-range Android, it is disabled here too and --p goes to .5. UI transitions are unchanged. The instruction reader still lazy-loads on interaction; the integration diagram stays behind its disclosure at loading=lazy.",
+    "acceptance": [
+      "At 1440x900, 768x1024, 390x844 and 360x800, the hero headline and lede sit entirely inside the declared copy-safe field and measure >= 7:1 contrast against the brightest frame of the loop sampled inside that field.",
+      "The fold apex is visible in all four viewports; no crop removes the focal object.",
+      "The poster composition is pixel-comparable to video frame 0: same subject position, same crop, same light direction. A poster that changes the composition is a rejection.",
+      "The loop seam is not visible: play the clip through the wrap point ten times and observe no jump in subject position, no luminance step and no direction reversal. A first/last pixel diff alone is not sufficient evidence.",
+      "With prefers-reduced-motion: reduce set before load, DevTools network shows zero requests for hero-loop.mp4 or .webm.",
+      "With Save-Data on, same result.",
+      "Blocking the media URL leaves a correct page: poster visible, no layout shift, no error text, CLS contribution 0.",
+      "Tab order is nav, skip link target, hero actions, section content, form, FAQ, footer, and matches the DOM order regardless of z-order.",
+      "Switching to another browser tab pauses the loop; returning resumes it. Scrolling the hero out of view pauses it.",
+      "Opening the demo dialog pauses the loop and unmounting the dialog stops the YouTube iframe.",
+      "No animation on the page exceeds 300ms except the deliberate 240ms media cross-in, and no stagger chain exceeds 120ms total.",
+      "Scroll: at every scroll position, in every section, all body text sits at >= 4.5:1 against whatever the planes render behind it at that --p. Sample p = 0, .25, .5, .75, 1 in each section.",
+      "Scroll: scrolling down to the footer and back to the top returns every plane to its exact initial transform and opacity. Any drift means a value is not a pure function of --p and is a defect.",
+      "Scroll: no layer's translateY exceeds 40px of total travel at any breakpoint, and no scroll-driven property other than transform and opacity exists on the page.",
+      "Scroll: with the page scrolled fast from top to bottom, the Performance panel shows no layout or paint entries attributable to the sampler, and the long-task count is zero.",
+      "Scroll: exactly one scroll listener and one resize listener exist on the page (verify with getEventListeners(window) in DevTools).",
+      "Intro clip: it plays once, does not loop, and its final frame equals intro-poster.webp. Scrolling past it and back does not replay it; the Replay button does.",
+      "Intro clip: no audio track is present in the delivered file (ffprobe shows no audio stream).",
+      "Reduced motion: the sampler is never installed, --p is .5 on every section, and the route rule is fully drawn on first paint."
+    ]
+  },
+
+  "preservationMap": [
+    {
+      "protected": "Waitlist form: signup note 'Paid hosting is planned. Sign up for availability updates.', label 'Your email', placeholder 'you@company.com', submit 'Join the waitlist', loading label 'Saving…', consent text 'Email me about hosted Guidefold. Unsubscribe anytime. Privacy', honeypot field, maxLength 254, aria-describedby wiring",
+      "component": "WaitlistForm in the waitlist section (behaviour unchanged from ui/src/routes/Landing.tsx)",
+      "acceptanceCheck": "Every string above appears verbatim in the rendered DOM; the form still has exactly one visible text input plus one required checkbox; #waitlist-email, #waitlist-consent, #waitlist-error ids unchanged; the honeypot remains aria-hidden with tabIndex -1; submit aborts after 12000ms as today."
+    },
+    {
+      "protected": "Waitlist success state: 'Check your inbox to confirm.', 'New signups receive one confirmation email. Repeat requests do not send another message. Already confirmed? You’re all set.', 'Missing the email? Contact hello@cloudfloo.io.'",
+      "component": "WaitlistForm success branch, role=status, focus moved to it on success",
+      "acceptanceCheck": "Submitting successfully renders all three strings verbatim and moves focus to the status region."
+    },
+    {
+      "protected": "Confirm and unsubscribe flows: titles 'Confirm your email' / 'Leave the waitlist', bodies 'Confirm that you want updates about hosted Guidefold.' / 'Stop receiving hosted Guidefold updates.', results 'You’re on the hosted Guidefold waitlist. We’ll email you about availability.' / 'You’ve been unsubscribed from the Guidefold waitlist.', buttons 'Confirm email' / 'Unsubscribe', link 'Back to Guidefold'",
+      "component": "EmailAction route branch (?confirm= / ?unsubscribe=), rendered instead of the marketing sections",
+      "acceptanceCheck": "Visiting /?confirm=TOKEN and /?unsubscribe=TOKEN renders the EmailAction view with all strings verbatim, replaces the URL with '/', and never renders the hero video."
+    },
+    {
+      "protected": "All four error strings: 'Too many attempts. Please try again in an hour.', 'Please check your email and consent, then try again.', 'This link is invalid or expired. Contact hello@cloudfloo.io for help.', 'We could not confirm the request. Please try again. Your input is still here.'",
+      "component": "message() in the waitlist module",
+      "acceptanceCheck": "Each WaitlistError kind still maps to its exact string, rendered in a role=alert element, with the typed email retained."
+    },
+    {
+      "protected": "Privacy FAQ answer (question id 'privacy', trigger 'How is my email used?') including the Resend sentence, the 30-day and 365-day deletion schedule, the deduplication-hash sentence and the YouTube paragraph",
+      "component": "Collapsible id='privacy' in the questions section",
+      "acceptanceCheck": "All three paragraphs present verbatim in the DOM on load (panel closed); the trigger text unchanged; the anchor #privacy still opens the panel when navigated to or when the consent link is clicked; mailto:hello@cloudfloo.io link intact."
+    },
+    {
+      "protected": "Pricing facts (question id 'question-2', trigger 'What will hosting cost?'): $99 per organisation per month excluding taxes; own model key and CI means paying those providers directly; managed-AI prepaid budget where $9 of provider usage costs $10; no unlimited AI allowance; Enterprise SSO not included; hosted runner pricing and quotas specified before purchase",
+      "component": "Collapsible id='question-2'",
+      "acceptanceCheck": "Both paragraphs present verbatim in the DOM; no figure rounded, restated or moved into a pricing card; panel closed on load; #question-2 deep link expands it."
+    },
+    {
+      "protected": "Availability FAQ (question id 'question-1', 'Is Guidefold available now?') and harness FAQ (id 'question-3', 'Which coding tools can I use?') with its link to the GitHub integration anchor",
+      "component": "Collapsible id='question-1' and id='question-3'",
+      "acceptanceCheck": "Answers verbatim; the question-3 link still points at https://github.com/wiatrM/guidefold#coding-harness-to-instruction-delivery."
+    },
+    {
+      "protected": "Availability statements 'Open source today.' (with 'CLI and retrieval service.') and 'Paid hosting is planned.'",
+      "component": "AvailabilityBand section 5, plus the form signup note and the footer line 'Open-source tools. Hosted service planned.'",
+      "acceptanceCheck": "Both phrases appear as visible text in the availability band; the footer line is unchanged; neither is softened, merged or moved into a tooltip."
+    },
+    {
+      "protected": "GitHub links: repository root https://github.com/wiatrM/guidefold, #quickstart, #coding-harness-to-instruction-delivery, and the fixture SKILL.md blob URL used by the instruction reader",
+      "component": "Header nav, HOW section text link, availability band, footer 'Open source' group, instruction reader 'Open the original file'",
+      "acceptanceCheck": "All five URLs resolve to the same targets as today; external links keep target=_blank rel=noreferrer where they have it today."
+    },
+    {
+      "protected": "/docs/ link",
+      "component": "Header nav 'Docs' and footer 'Documentation'",
+      "acceptanceCheck": "Both anchors point at /docs/ and are reachable by keyboard."
+    },
+    {
+      "protected": "The recorded demo at https://www.youtube.com/watch?v=e350wBr1W8c stays as the 'Play demo' action",
+      "component": "DemoDialog (Dialog.Root, youtube-nocookie embed, iframe mounted only while open) triggered from the hero secondary action; 'Watch on YouTube' external link retained inside the dialog",
+      "acceptanceCheck": "The hero has a visible control labelled 'Play demo'; activating it opens the dialog and mounts the nocookie iframe; closing unmounts it; no YouTube request is made before the dialog opens; the plain YouTube link is present as a fallback."
+    },
+    {
+      "protected": "Document title 'Guidefold | Team instructions for coding agents' and the skip link 'Skip to content'",
+      "component": "Landing route effect and the skip anchor",
+      "acceptanceCheck": "Title string unchanged; skip link is the first focusable element and targets #main."
+    },
+    {
+      "protected": "The instruction excerpt used by the reader is a verbatim repository excerpt from the Meridian fixture and is labelled as a fixture",
+      "component": "InstructionReader, fed by the existing exported `instruction` constant",
+      "acceptanceCheck": "The four bullet lines are unchanged; a visible label states it is a Meridian example and not a live run."
+    }
+  ],
+
+  "prohibitedPatterns": [
+    {
+      "pattern": "3D pyramid scene (LandingPyramid.tsx, MaterialPyramid.tsx, pyramidThree.ts, --material-pyramid-* and --pyramid-* tokens)",
+      "verdict": "remove",
+      "reason": "Named by the owner. It is a 680px-tall explanation of an internal knowledge model that no visitor asked about before understanding WHY. It answers none of the three questions."
+    },
+    {
+      "pattern": "Schema flow canvas (SchemaFlow, pipelineCards, pipelineLinks, pipelineDescriptions) with its four-button step group",
+      "verdict": "remove",
+      "reason": "A four-step interactive walkthrough of an illustrative workflow. This is the over-complication being cut; the same mechanism is now three plain sentences in HOW, and the integration diagram stays behind a disclosure for anyone who wants it."
+    },
+    {
+      "pattern": "Autoplaying feature demos (FeatureDemos, ScopeDemo, ReviewDemo, usePreviewTimeline with its 3600ms interval)",
+      "verdict": "remove",
+      "reason": "Two self-advancing three-stage timelines competing for attention below the fold, each with its own play/pause control. Perpetual motion carrying information the visitor did not request."
+    },
+    {
+      "pattern": "BeamCard, BeamSearch, use-beam-motion (spectrumui)",
+      "verdict": "remove from the landing page",
+      "reason": "Animated beam borders are exactly the non-shadcn motion the owner rejected. The instruction reader is respecified on a plain --graphite-850 surface with a 1px --line-strong border. The components stay in the repository for the product UI; the landing page stops importing them."
+    },
+    {
+      "pattern": "shineEdge spans, --shine-gradient, --shine-width, --shine-start, --shine-travel, --duration-shine 900ms",
+      "verdict": "remove",
+      "reason": "Owner named shine sweeps. A 900ms travelling highlight is outside the 150-300ms bar and carries no state."
+    },
+    {
+      "pattern": "use-typewriter.ts and any typewriter effect",
+      "verdict": "remove from the landing page",
+      "reason": "Named by the owner. It also delays the readability of the thing it types."
+    },
+    {
+      "pattern": "TextReveal per-word masked entrance in the h1 (LandingMotion.tsx, data-order={i*4+j}, --landing-stagger-1..5)",
+      "verdict": "remove",
+      "reason": "It is the least obvious offender and the most costly: at two lines it staggers up to 350ms before the headline is fully readable, and the mask breaks text selection and copy. Replaced by one opacity plus 2px rise on the whole h1 at 200ms."
+    },
+    {
+      "pattern": "Reveal-on-scroll section wrapper (Reveal in LandingMotion.tsx, --landing-reveal-duration 650ms)",
+      "verdict": "remove",
+      "reason": "650ms is above the bar, and gating content on IntersectionObserver means a fast scroller reads a half-faded page. Sections are visible in the base DOM."
+    },
+    {
+      "pattern": "HeroAtmosphere WebGL contour shader",
+      "verdict": "remove, but reuse its gating logic",
+      "reason": "A decorative fragment shader compiled 1.2s after paint is a second ambient idea competing with the hero loop, and it costs a GL context on every visit. Delete the component. Keep its structure as the reference implementation for the video gating: matchMedia('(prefers-reduced-motion: reduce)') with a 'change' listener, document visibilitychange pause, IntersectionObserver pause, contextlost/error teardown, and a DPR clamp. The writer should mirror that shape for the <video>, not reinvent it."
+    },
+    {
+      "pattern": "Fold-film choreography (--landing-fold-duration 900ms, --landing-fold-scale 1.07, --landing-fold-hover 1.025) and the large film figure",
+      "verdict": "remove the choreography, keep the demo",
+      "reason": "A 900ms scaling fold on hover is neither shadcn nor useful. The demo survives as a compact 'Play demo' action in the hero that opens the existing dialog."
+    },
+    {
+      "pattern": "MorphButton (spectrumui/morph-button.tsx) as the page's button",
+      "verdict": "replace",
+      "reason": "The page currently mixes MorphButton and the shadcn cva Button. 'In the style of shadcn components' means one button: ui/src/components/ui/button.tsx with buttonVariants. The loading state the form needs is expressed with the existing disabled + 'Saving…' label and aria-busy, not with a morphing control."
+    },
+    {
+      "pattern": "Six-step or four-step walkthroughs of any kind, --steps-columns based step grids on the landing page",
+      "verdict": "remove",
+      "reason": "Owner verdict on over-explanation. HOW gets three sentences, not a stepper."
+    },
+    {
+      "pattern": "Interactive instruction reader (LandingWorkbench.tsx)",
+      "verdict": "KEEP, in reduced form",
+      "reason": "Judged against the brief: it is the only element on the page that shows the actual thing being sold - a real SKILL.md - and it directly serves HOW. It survives only if it is simplified. Keep: the Tabs (Read instruction / Markdown source) with the sliding indicator, SkillContent, the CodeBlock source view, the 'Repository source' badge, the fixture label and the 'Open the original file' link. Remove: the BeamCard frame, the BeamSearch filter input, the five-rule sidebar with its search-and-select behaviour, the keyboard/pointer data attributes, and the workbench caption. Result is one bordered panel with two tabs and one document. If the writer cannot make it that simple, cut it entirely and leave HOW as prose."
+    },
+    {
+      "pattern": "Any new dependency, font fetch, GSAP, Lottie, icon library, or WebGL",
+      "verdict": "prohibited",
+      "reason": "Stack is fixed: React 19, Vite, TypeScript, CSS modules with tokens, @base-ui/react, motion, Phosphor, the shadcn button, Tailwind 4."
+    },
+    {
+      "pattern": "Scroll-jacking, scroll-scrubbed video, pinned or sticky sections, scroll progress indicators, marquees, counters, pulsing dots, testimonial carousels, logo walls, fabricated metrics",
+      "verdict": "prohibited",
+      "reason": "Owner restraint verdict plus the factual-fidelity rule. Note the distinction that governs this page: scroll-linked drift on BACKGROUND PLANES at <=40px, capped, reversible and information-free, is the approved cinematic mechanic. Taking control of the scroll, scrubbing a video timeline, pinning a section, or moving text is not. No customer logos or testimonials exist; inventing them would violate README's own standard that a screenshot does not establish that a feature has shipped."
+    },
+    {
+      "pattern": "Animating copy, cards, form fields or controls on scroll",
+      "verdict": "prohibited",
+      "reason": "find-animation-opportunities' function gate: content the visitor is reading or acting on must not move for style. Only L1, L2, L3 and the decorative route rule respond to scroll."
+    },
+    {
+      "pattern": "Treating the Industrial Surveyor asset hexes (#0F1418, #E6E8EA, #2BA6A0, #FF6A28) as UI tokens",
+      "verdict": "prohibited",
+      "reason": "They are the generation palette for prompts. ui/src/tokens/tokens.css stays authoritative for rendered UI. Retuning tokens toward the asset hexes would change every product screen that shares them."
+    }
+  ],
+
+  "removedUnverifiedClaims": [
+    {
+      "text": "Opt-in proof checks withhold instructions when the required evidence fails.",
+      "location": "current hero lede, ui/src/routes/Landing.tsx",
+      "disposition": "removed",
+      "reason": "unverified. No line in README.md, portal/content/index.md, portal/content/how-it-works.md or docs/PRODUCT-PIVOT.md §1-3 describes an opt-in proof check that withholds instructions. It is not on the protected list. It is cut rather than reworded."
+    },
+    {
+      "text": "Task-sized knowledge, traced to its source.",
+      "location": "current hero lede",
+      "disposition": "replaced",
+      "reason": "Defensible in substance (cards plus provenance) but abstract. Replaced by the README opening line, which says the same thing in plain words and is directly citable."
+    },
+    {
+      "text": "97% of the time / 75 tasks across 70 real rules",
+      "location": "portal/content/how-it-works.md",
+      "disposition": "not used on the landing page",
+      "reason": "It is sourced, but it is a fixture measurement, and the page cannot carry the qualifier at hero scale without becoming the thing the owner is cutting. Using the number without its qualifier would violate the factual-fidelity rule. It stays in the docs where its caveat lives."
+    }
+  ],
+
+  "performanceBudget": {
+    "lcp": "<= 2.0s on a 4G profile. The LCP element is the hero poster; it is preloaded with fetchpriority=high. The video is never the LCP element.",
+    "cls": "< 0.02. The media band has a fixed aspect-ratio box (--landing-video-ratio 16/9 on desktop, an explicit height on mobile) so the poster-to-video swap shifts nothing.",
+    "transfer": "Poster <= 180 KB WebP. MP4 <= 3.5 MB, requested only after the poster decodes and only when motion is allowed. Total landing JS delta must not increase: removing LandingPyramid, pyramidThree, SchemaFlow, BeamCard, BeamSearch, MorphButton and HeroAtmosphere should reduce it materially.",
+    "mainThread": "Exactly one requestAnimationFrame loop on the page (the scroll sampler), scheduled only while at least one observed section is in view, and doing nothing but reading cached rects and writing CSS custom properties. Budget: under 1ms per frame on a mid-range Android. No WebGL context, no interval timer, no per-frame React state, no ResizeObserver except the one the tabs indicator needs.",
+    "backgroundPlanes": "topo-plane.webp <= 220 KB, survey-grid.webp <= 60 KB (tiled, so it must be small), each generated section plane <= 200 KB WebP. Total background imagery <= 700 KB, all loading=lazy except the topo plane, which is part of the first view. Planes use will-change: transform only while their section is in view.",
+    "intro": "intro.mp4 <= 1.6 MB after H.264 transcode (the 3.3 MB HEVC source is not shipped), preload='none', requested only when the figure reaches 40% visibility. intro-poster.webp <= 120 KB.",
+    "lazy": "SkillContent and CodeBlock stay lazy. The integration diagram is loading=lazy behind a disclosure. The YouTube iframe mounts only while the dialog is open."
+  },
+
+  "openQuestions": [
+    "DEVIATION FROM AN OWNER SUGGESTION, with evidence: the owner proposed guidefold-intro.mp4 as the hero's resolved opening shot. Extracted frames show the G mark centred at x 35-65%, leaving only a 33%-wide dark field on the left, which cannot host the 55% copy-safe hero the owner also specified. The clip is placed in the HOW section instead. The exact one-line override is recorded under heroMediaDecision.ifTheOwnerOverrides.",
+    "The hero loop does not exist yet, and neither do the four keyframes. Everything in this brief is written so the page is correct and complete with the owned assets alone; the generated media is an enhancement, not a dependency.",
+    "estimatedMaxCostCents in asset-plan.json rests on a stated assumption about the credit-to-currency rate, which is unverified. The hard cap is expressed in credits, which is the unit the gateway quote actually returns. Acceptance probability for the folded-map subject is marked benchmark_required rather than guessed.",
+    "GPT Images 2 renders 3:2 (1536x1024), not 16:9. Every image slot therefore specifies generation at 1536x1024 followed by a centred vertical crop to 1920x1080, and every copy-safe region is stated as it must hold AFTER that crop. Unverified whether the tool can emit 16:9 directly; the crop step is the safe assumption.",
+    "The transcoded paths /assets/landing/intro.mp4, intro.webm and intro-poster.webp are assumed to exist per the owner's message. The writer must verify them and fall back to the poster alone if they do not.",
+    "Whether /import (footer 'Sign in') should remain in the footer is a product decision outside this brief; it is left as today."
+  ]
+}

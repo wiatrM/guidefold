@@ -1,33 +1,213 @@
 :root {
+ --spectrum-series-6:var(--stone-300); --spectrum-track:var(--line-strong);
+ --spectrum-chart-1:var(--survey-teal); --spectrum-chart-2:var(--steel); --spectrum-chart-3:var(--warning); --spectrum-chart-4:var(--stone-300); --spectrum-chart-5:var(--series-3);
+ --spectrum-chart-surface:var(--graphite-900); --spectrum-chart-up:var(--survey-teal); --spectrum-chart-down:var(--warning);
+ --spectrum-series-1:var(--survey-teal); --spectrum-series-2:var(--steel); --spectrum-series-3:var(--warning); --spectrum-series-4:var(--stone-300); --spectrum-series-5:var(--series-3);
+ --spectrum-chart-height:320px;
+ /* Base UI replaces this fallback with the measured open panel height. */
+ --collapsible-panel-height:0px;
+ --flow-height:460px; --flow-node-width:280px; --flow-field-width:88px; --flow-radius:12px;
  color-scheme:dark;
  --graphite-950:#07090c; --graphite-900:#0c1014; --graphite-850:#11161b; --graphite-800:#171d23; --graphite-700:#232b33;
  --stone-100:#eef1f3; --stone-300:#a3adb6; --steel:#5f6c77;
  --survey-teal:#3fb8b1; --survey-teal-dim:#15413f; --safety-orange:#ff7a3d; --warning:#e4b04a; --signal-red:#e05555;
- --line:rgba(163,173,182,.12); --line-strong:rgba(163,173,182,.22); --grid-line:rgba(163,173,182,.08);
+ --line:rgba(163,173,182,.12); --line-strong:rgba(163,173,182,.22); --line-hover:rgba(163,173,182,.38); --grid-line:rgba(163,173,182,.08);
  --system-ink:#8ad3ce; --human-ink:#ffa073; --warning-ink:#efcb80; --error-ink:#f09393;
  --system-wash:rgba(63,184,177,.1); --human-wash:rgba(255,122,61,.1); --warning-wash:rgba(228,176,74,.1); --error-wash:rgba(224,85,85,.1);
  --series-1:#3fb8b1; --series-2:#7f93a8; --series-3:#4f6f8f; --series-4:#c9d3db; --series-highlight:#ff7a3d;
- --shadow-raised:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px -16px rgba(0,0,0,.7);
- --gallery-width:1040px; --control-border:rgba(163,173,182,.28); --layer-skip:100; --skip-hidden-offset:-200%; --zero:0; --full:100%; --viewport:100vh;
+ --shadow-control:0 1px 0 rgba(255,255,255,.04) inset; --shadow-card:0 1px 0 rgba(255,255,255,.025) inset,0 12px 28px -24px rgba(0,0,0,.92); --shadow-selected:0 -2px 0 rgba(63,184,177,.7) inset; --shadow-raised:0 1px 0 rgba(255,255,255,.03) inset,0 18px 48px -24px rgba(0,0,0,.88); --overlay:rgba(2,5,8,.72); --shine-gradient:linear-gradient(90deg,transparent,var(--survey-teal),transparent);
+ --gallery-width:1040px; --control-border:rgba(163,173,182,.28); --layer-skip:100; --layer-menu:80; --layer-sheet:70; --layer-header:60; --skip-hidden-offset:-200%; --sheet-offscreen:-100%; --zero:0; --full:100%; --viewport:100dvh; --transparent:transparent;
  --font-body:"Manrope",system-ui,sans-serif; --font-display:"Instrument Sans",system-ui,sans-serif; --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
- --font-size-body:14px; --font-size-small:12px; --font-size-code:12px; --font-size-section:20px; --font-size-title:32px; --font-size-display:40px; --font-size-metric:28px;
- --line-height-body:1.6; --line-height-heading:1.1; --weight-normal:400; --weight-medium:500; --weight-semibold:600; --weight-bold:700;
+ --font-size-body:14px; --font-size-small:12px; --font-size-code:12px; --font-size-section:20px; --font-size-title:32px; --font-size-display:40px; --font-size-metric:28px; --font-size-brand:20px; --font-size-navigation-label:10px;
+ --line-height-body:1.6; --line-height-heading:1.15; --line-height-compact:1.35; --line-height-solid:1; --weight-normal:400; --weight-medium:500; --weight-semibold:600; --weight-bold:700;
  --tracking-label:.14em; --tracking-title:-.02em;
  --space-1:4px; --space-2:8px; --space-3:16px; --space-4:24px; --space-5:32px; --space-6:48px; --space-7:64px;
  --border-width:1px; --focus-width:2px; --focus-offset:3px; --radius:6px; --radius-small:4px;
- --table-min-width:640px; --table-first-column:240px; --source-disclosure-width:112px; --row-height:40px; --control-height:40px; --touch-height:44px; --icon-size:18px; --icon-size-large:24px; --brand-size:40px;
- --desktop-display:block; --mobile-display:none; --rail-padding:24px 16px; --context-padding:16px 0; --rail-width:216px; --rail-height:100vh; --rail-position:sticky; --rail-top:0; --rail-columns:1fr;
- --shell-columns:var(--rail-width) minmax(0,1fr); --page-padding:24px; --topbar-height:56px;
+ --table-min-width:640px; --table-first-column:240px; --source-disclosure-width:112px; --row-height:40px; --control-height:40px; --touch-height:44px; --icon-size:18px; --icon-size-small:14px; --icon-size-large:24px; --brand-size:40px; --brand-size-compact:28px; --avatar-size:32px;
+ --desktop-display:flex; --mobile-display:none; --rail-padding:8px 12px 12px; --context-padding:16px 0; --rail-width:264px; --rail-width-collapsed:64px; --rail-height:100dvh; --rail-position:sticky; --rail-top:0; --rail-columns:1fr;
+ --shell-columns:var(--rail-width) minmax(0,1fr); --shell-collapsed-columns:var(--rail-width-collapsed) minmax(0,1fr); --page-padding:32px; --topbar-height:56px; --content-max-width:1480px; --account-menu-width:240px; --context-menu-width:224px; --sheet-width:320px; --navigation-indicator-width:2px; --navigation-arrow-opacity:.45; --caret-turn:-90deg; --quarter-turn:90deg; --transform-origin:center bottom;
  --two-columns:repeat(2,minmax(0,1fr)); --aside-columns:minmax(0,1.8fr) minmax(0,1fr); --filter-form-columns:minmax(0,1fr) auto; --filter-form-areas:"search search" "filters actions"; --filter-columns:repeat(4,minmax(0,1fr)); --field-columns:repeat(3,minmax(0,1fr)); --steps-columns:repeat(4,minmax(0,1fr));
  --metric-columns:repeat(3,minmax(0,1fr)); --form-width:560px; --reading-width:80ch; --source-width:40ch;
  --min-page-width:320px; --text-area-height:160px; --body-editor-height:360px; --scroll-offset:24px; --raw-max-height:400px;
- --grid-tile:660px; --chart-height:280px; --telemetry-chart-height:220px; --chart-dot-size:.55px; --chart-grid-size:12px; --chart-tooltip-width:120px; --chart-tooltip-height:40px; --chart-sweep-width:33%; --chart-sweep-angle:90deg; --chart-sweep-color:rgba(255,255,255,.12); --chart-shimmer-0:42%; --chart-shimmer-1:68%; --chart-shimmer-2:51%; --chart-shimmer-3:79%; --chart-shimmer-4:46%; --chart-shimmer-5:88%; --chart-shimmer-6:57%; --chart-shimmer-7:73%; --transparent:transparent; --duration:120ms; --ease:ease-out; --disabled-opacity:.65;
+ --grid-tile:660px; --chart-height:280px; --telemetry-chart-height:220px; --chart-dot-size:.55px; --chart-grid-size:12px; --chart-tooltip-width:120px; --chart-tooltip-height:40px; --chart-sweep-width:33%; --chart-sweep-angle:90deg; --chart-sweep-color:rgba(255,255,255,.12); --chart-shimmer-0:42%; --chart-shimmer-1:68%; --chart-shimmer-2:51%; --chart-shimmer-3:79%; --chart-shimmer-4:46%; --chart-shimmer-5:88%; --chart-shimmer-6:57%; --chart-shimmer-7:73%; --transparent:transparent; --shine-width:96px; --shine-start:-96px; --shine-travel:calc(100vw + var(--shine-width)); --duration:120ms; --duration-menu:180ms; --duration-drawer:240ms; --duration-shine:900ms; --duration-reduced:80ms; --ease:ease-out; --ease-out:cubic-bezier(.23,1,.32,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --disabled-opacity:.65; --press-scale:.98;
  --spectrum-chart-1:var(--survey-teal); --spectrum-chart-2:var(--safety-orange); --spectrum-chart-3:var(--warning); --spectrum-chart-4:var(--series-3); --spectrum-chart-5:var(--stone-300); --spectrum-chart-surface:var(--graphite-850);
  --rail-border:var(--border-width) solid var(--line-strong); --rail-bottom:none;
  --delivery-bar-align:center; --delivery-bar-direction:row; --delivery-bar-flex:1 1 auto; --delivery-value-wrap:nowrap; --delivery-value-overflow:normal;
  --funnel-metric-columns:repeat(5,minmax(0,1fr));
  --layer-abstract-ink:#b39ddb; --layer-abstract-wash:rgba(179,157,219,.12); --layer-task-ink:#f0b429; --layer-task-wash:rgba(240,180,41,.12);
 }
-@media(max-width:1080px){:root{--transparent:transparent;--funnel-metric-columns:repeat(3,minmax(0,1fr));--filter-form-columns:minmax(0,1fr);--filter-form-areas:"search" "filters" "actions";--rail-width:184px;--two-columns:minmax(0,1fr);--aside-columns:minmax(0,1fr);--filter-columns:repeat(2,minmax(0,1fr));--field-columns:repeat(2,minmax(0,1fr));--steps-columns:repeat(2,minmax(0,1fr));--metric-columns:repeat(2,minmax(0,1fr));}}
-@media(max-width:720px){:root{--transparent:transparent;--desktop-display:none;--mobile-display:block;--rail-padding:16px;--context-padding:8px 0;--shell-columns:minmax(0,1fr);--rail-height:auto;--rail-position:static;--rail-columns:repeat(2,minmax(0,1fr));--page-padding:16px;--filter-columns:minmax(0,1fr);--field-columns:minmax(0,1fr);--steps-columns:minmax(0,1fr);--metric-columns:minmax(0,1fr);--rail-border:none;--rail-bottom:var(--border-width) solid var(--line-strong);--control-height:44px;--font-size-title:28px;--scroll-offset:16px;--delivery-bar-align:flex-start;--delivery-bar-direction:column;--delivery-bar-flex:none;--delivery-value-wrap:normal;--delivery-value-overflow:anywhere;--funnel-metric-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:1080px){:root{--funnel-metric-columns:repeat(3,minmax(0,1fr));--filter-form-columns:minmax(0,1fr);--filter-form-areas:"search" "filters" "actions";--rail-width:224px;--page-padding:24px;--two-columns:minmax(0,1fr);--aside-columns:minmax(0,1fr);--filter-columns:repeat(2,minmax(0,1fr));--field-columns:repeat(2,minmax(0,1fr));--steps-columns:repeat(2,minmax(0,1fr));--metric-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){:root{--transparent:transparent;--desktop-display:none;--mobile-display:flex;--rail-padding:16px;--context-padding:8px 0;--shell-columns:minmax(0,1fr);--shell-collapsed-columns:minmax(0,1fr);--rail-height:auto;--rail-position:static;--rail-columns:repeat(2,minmax(0,1fr));--page-padding:16px;--filter-columns:minmax(0,1fr);--field-columns:minmax(0,1fr);--steps-columns:minmax(0,1fr);--metric-columns:minmax(0,1fr);--rail-border:none;--rail-bottom:var(--border-width) solid var(--line-strong);--control-height:44px;--font-size-title:28px;--scroll-offset:16px;--delivery-bar-align:flex-start;--delivery-bar-direction:column;--delivery-bar-flex:none;--delivery-value-wrap:normal;--delivery-value-overflow:anywhere;--funnel-metric-columns:repeat(2,minmax(0,1fr));}}
 @media(prefers-reduced-motion:reduce){:root{--transparent:transparent;--duration:0ms;}}
+
+/* ---------------------------------------------------------------------------
+ * Landing v2 - WHY / HOW / VALUE.
+ * `--p` is the shared scroll progress written by src/routes/landing/scroll.ts.
+ * It rests at .5, which is the static composition: with JavaScript off, under
+ * reduced motion and before the first frame the page is already correct.
+ * ------------------------------------------------------------------------- */
+:root{
+ --p:.5;
+ --amp-topo:16px; --amp-grid:40px; --amp-plane:20px; --amp-hero-media:12px;
+ --plane-opacity-why:.42; --plane-opacity-how:.38; --plane-opacity-value:.34;
+
+ --landing-width:1400px;
+ --landing-gutter:clamp(20px,4vw,64px);
+ --landing-body:16px;
+ --landing-brand:24px;
+ --landing-mark-size:38px;
+ --landing-radius:8px;
+ --landing-pixel:1px;
+ --landing-offscreen:-10000px;
+ --half:50%;
+ --negative-half:-50%;
+ /* Base UI Tabs.Indicator writes these on the element. */
+ --active-tab-left:0px; --active-tab-width:0px; --active-tab-top:0px; --active-tab-height:0px;
+ --landing-video-ratio:16/9;
+
+ --landing-nav-height:80px;
+ --landing-film-opacity:.62;
+ --landing-film-scrim:linear-gradient(90deg,rgba(7,9,12,.88) 0%,rgba(7,9,12,.66) 42%,rgba(7,9,12,.44) 100%),linear-gradient(180deg,rgba(7,9,12,.46) 0%,rgba(7,9,12,.68) 55%,rgba(7,9,12,.9) 100%);
+ --landing-scope-width-0:100%;
+ --landing-scope-width-1:82%;
+ --landing-scope-width-2:64%;
+ --landing-scope-width-3:46%;
+ --landing-scope-indent:20px;
+ --landing-scope-bar:3px;
+ --landing-scope-bar-fill:linear-gradient(90deg,var(--survey-teal),rgba(63,184,177,.14));
+ --landing-scope-bar-opacity:.7;
+ --landing-nav-display:flex;
+ --landing-nav-wrap:nowrap;
+ --landing-nav-basis:auto;
+ --landing-nav-pad:0px;
+ --landing-nav-gap:24px;
+ --landing-nav-font:14px;
+ --landing-nav-ground:rgba(7,9,12,.92);
+
+ --landing-section-padding:64px;
+ --landing-title:clamp(38px,4.5vw,64px);
+ --landing-title-leading:1.08;
+ --landing-heading:clamp(28px,3vw,38px);
+ --landing-heading-leading:1.15;
+ --landing-lede:18px;
+ --landing-copy-width:48ch;
+ --landing-measure:60ch;
+ --landing-ivory:#efe3d0;
+
+ --landing-topo-opacity:.32;
+ --landing-topo-saturate:.85;
+ --landing-grid-opacity:.1;
+ --landing-grid-tile:512px;
+ --landing-field-inset:-48px;
+ --landing-media-inset:-24px;
+
+ --landing-media-band:78vh;
+ --landing-hero-min:520px;
+ --landing-hero-object:62% 50%;
+ --landing-hero-copy-width:55%;
+ --landing-hero-copy-align:center;
+ --landing-hero-items:flex-start;
+ --landing-action-columns:repeat(2,max-content);
+ --landing-how-copy-column:1;
+ --landing-how-figure-column:2;
+ --landing-how-rows:min-content 1fr;
+ --landing-how-intro-row:1;
+ --landing-how-figure-row:1/span 2;
+ --landing-how-detail-row:2;
+ --landing-hero-padding:48px;
+ --landing-hero-scrim:linear-gradient(90deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.78) 30%,rgba(7,9,12,.06) 68%,rgba(7,9,12,.06) 100%);
+ --landing-control:48px;
+ --landing-control-inset:16px;
+ --landing-control-top:auto;
+ --landing-control-bottom:16px;
+
+ --landing-mechanism-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-value-columns:repeat(3,minmax(0,1fr));
+ --landing-availability-columns:repeat(2,minmax(0,1fr));
+ --landing-availability-rule:var(--border-width) solid var(--line-strong);
+ --landing-availability-rule-top:none;
+ --landing-band-padding:48px;
+ --landing-band-ground:rgba(12,16,20,.72);
+ --landing-keyline-display:block;
+ --landing-waitlist-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-waitlist-padding:48px;
+ --landing-form-columns:minmax(0,1fr) max-content;
+ --landing-question-width:900px;
+
+ --landing-reader-height:340px;
+ --landing-tab-indicator:2px;
+
+ --landing-rule-length:560;
+ --landing-rule-width:2px;
+ --landing-rule-height:64px;
+
+ --landing-dialog-width:min(1100px,calc(100vw - 32px));
+ --landing-dialog-height:calc(100dvh - 64px);
+ --landing-dialog-scale:.95;
+ --layer-dialog:90;
+
+ --landing-footer-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));
+ --landing-footer-wordmark:clamp(60px,8vw,96px);
+
+ --landing-enter-rise:2px;
+ --landing-enter-duration:200ms;
+ --landing-enter-delay-1:0ms;
+ --landing-enter-delay-2:40ms;
+ --landing-enter-delay-3:80ms;
+ --landing-enter-delay-4:120ms;
+}
+@media(max-width:1080px){:root{
+ --landing-media-band:62vh;
+ --landing-hero-copy-width:100%;
+ --landing-hero-copy-align:flex-end;
+ --landing-hero-scrim:linear-gradient(0deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.84) 26%,rgba(7,9,12,.12) 56%,rgba(7,9,12,.06) 100%);
+ --landing-mechanism-columns:minmax(0,1fr);
+ --landing-how-copy-column:1;
+ --landing-how-figure-column:1;
+ --landing-how-rows:none;
+ --landing-how-intro-row:auto;
+ --landing-how-figure-row:auto;
+ --landing-how-detail-row:auto;
+ --landing-value-columns:repeat(2,minmax(0,1fr));
+ --landing-waitlist-columns:minmax(0,1fr);
+ --landing-hero-padding:32px;
+ --landing-nav-gap:16px;
+}}
+@media(max-width:720px){:root{
+ --landing-film-opacity:.5;
+ --landing-film-scrim:linear-gradient(180deg,rgba(7,9,12,.72) 0%,rgba(7,9,12,.82) 55%,rgba(7,9,12,.92) 100%);
+ --landing-scope-width-1:100%;
+ --landing-scope-width-2:100%;
+ --landing-scope-width-3:100%;
+ --landing-scope-indent:8px;
+ --amp-topo:8px; --amp-grid:20px; --amp-plane:12px; --amp-hero-media:6px;
+ --plane-opacity-why:.28; --plane-opacity-how:.28; --plane-opacity-value:.28;
+ --landing-media-band:68vh;
+ --landing-hero-min:420px;
+ --landing-hero-object:74% 50%;
+ --landing-hero-padding:24px;
+ --landing-hero-items:stretch;
+ --landing-action-columns:minmax(0,1fr);
+ --landing-nav-wrap:wrap;
+ --landing-nav-basis:100%;
+ --landing-nav-pad:8px;
+ --landing-nav-height:56px;
+ --landing-nav-font:12px;
+ --landing-nav-gap:8px;
+ --landing-brand:20px;
+ --landing-mark-size:28px;
+ --landing-lede:16px;
+ --landing-section-padding:48px;
+ --landing-value-columns:minmax(0,1fr);
+ --landing-availability-columns:minmax(0,1fr);
+ --landing-availability-rule:none;
+ --landing-availability-rule-top:var(--border-width) solid var(--line-strong);
+ --landing-band-padding:32px;
+ --landing-keyline-display:none;
+ --landing-waitlist-padding:24px;
+ --landing-form-columns:minmax(0,1fr);
+ --landing-reader-height:280px;
+ --landing-control-top:16px;
+ --landing-control-bottom:auto;
+ --landing-footer-columns:repeat(2,minmax(0,1fr));
+}}

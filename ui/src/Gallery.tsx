@@ -26,5 +26,5 @@ export function ComponentGallery(){
   {key:'atomic',label:'Atomic',description:'Concrete, executable elements',items:others.map(s=>({id:s.id,label:s.name}))},
  ]} edges={[{from:skill.id,to:'parent'},...others.map(s=>({from:s.id,to:skill.id}))]}/>}
  ];
- return <main className={css.gallery} id="component-gallery"><header><h1>Component gallery</h1><p>Sample values from examples/monorepo · component scenarios only. No product observations.</p><p>{sampleRepo} · source commit <code>{sampleCommit}</code></p></header>{cases.map(c=><section key={c.name} className={css.case} data-component={c.name} aria-labelledby={'case-'+c.name}><h2 id={'case-'+c.name}>{c.name}</h2><div>{c.content}</div></section>)}</main>;
+ return <main className={css.gallery} id="component-gallery"><header><h1>Component gallery</h1><p>Sample values from examples/monorepo. Component scenarios only. No product observations.</p><p>{sampleRepo}, source commit <code>{sampleCommit}</code></p></header>{cases.map(c=><section key={c.name} className={css.case} data-component={c.name} aria-labelledby={'case-'+c.name}><h2 id={'case-'+c.name}>{c.name}</h2><div>{c.content}</div></section>)}</main>;
 }

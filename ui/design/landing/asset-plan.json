@@ -1,0 +1,240 @@
+{
+  "$comment": "Guidefold landing asset plan. Still-first: four GPT Images 2 keyframes, then exactly one paid video slot (alpha rule). Nothing here authorizes a call; the gateway quotes and the operator approves.",
+  "page": "guidefold landing",
+  "date": "2026-09-09",
+  "alphaRule": "Exactly one paid video slot on this page. It is `hero-loop`. No second video is planned, budgeted or permitted.",
+
+  "paletteForAllPrompts": {
+    "graphite": "#0F1418",
+    "graphiteDeep": "#081014",
+    "stone": "#E6E8EA",
+    "steel": "#677681",
+    "surveyTeal": "#2BA6A0",
+    "safetyOrange": "#FF6A28",
+    "note": "Source: prototypes/industrial-surveyor/DESIGN.md. Teal describes the system, orange marks a human decision, so orange appears exactly once per composition as a single route line and never as ambient colour. These hexes govern generation only; the browser paints ui/src/tokens/tokens.css."
+  },
+
+  "materialWorld": "An overhead surveyor's table. Cream folded paper maps (#E6E8EA) with fine printed contour lines, creased along visible fold seams, resting on a near-black graphite field (#0F1418) marked with a faint dashed survey grid and thin teal contour rings (#2BA6A0). One continuous orange route line (#FF6A28) with small circular waypoints travels across the paper. Flat, slightly elevated three-quarter or overhead light. No people, no hands, no text, no logos, no UI, no screens.",
+
+  "reference": {
+    "owned": [
+      "prototypes/industrial-surveyor/public/assets/industrial-surveyor/guidefold-intro.mp4 (inspected: 1920x1080, 24fps, 5.042s, hevc+aac)",
+      "prototypes/industrial-surveyor/public/assets/industrial-surveyor/topographic-route-bg.png (2048x1024)",
+      "prototypes/industrial-surveyor/public/assets/industrial-surveyor/survey-grid-pattern.png (1254x1254)",
+      "design-explorations/guidefold-folded-map-3x3/06-industrial-surveyor.png (design reference board)"
+    ],
+    "rights": "All Guidefold-owned, generated for this project. No third-party licence question.",
+    "styleAnchor": "Every generated asset must look like it came off the same table as guidefold-intro.mp4: same paper cream, same contour line weight, same dashed grid pitch, same single orange route."
+  },
+
+  "images": [
+    {
+      "id": "hero-keyframe",
+      "kind": "image",
+      "provider": "imagegen",
+      "tool": "GPT Images 2 via the Codex image_gen tool",
+      "purpose": "The hero still. Served always as /assets/landing/hero-poster.webp, and used as the Seedance 2.5 start_image. The page is complete with this alone.",
+      "generateAt": "1536x1024 (3:2, the tool's native landscape size)",
+      "targetWidth": 1920,
+      "targetHeight": 1080,
+      "aspectRatio": "16:9",
+      "postProcess": "Centred vertical crop from 3:2 to 16:9 (keep the full width, trim 96px equivalent from top and bottom proportionally), then resize to 1920x1080 and encode to WebP q80, target <= 180 KB. The copy-safe region below is stated as it must hold AFTER this crop.",
+      "copySafeRegion": "Left 55% of the final 16:9 frame, from y=16% to y=84%. Inside that box: flat graphite field only, no paper edge, no contour ring brighter than 12% luminance, no orange, no specular highlight. Measured maximum luminance inside the box: 22%.",
+      "focalRegion": "Right 40%, ridge apex at approximately x=74%, y=46%.",
+      "prompt": "Overhead three-quarter view of a surveyor's table in near-darkness. The left 55% of the frame is an almost empty deep graphite field (#0F1418) with only the faintest dashed survey grid and one or two very dim teal contour rings (#2BA6A0), nothing brighter than a whisper. The right 40% holds a single large cream folded paper map (#E6E8EA) with fine printed topographic contour lines, creased along three visible fold seams so it stands in low relief like a ridge, its highest fold apex sitting slightly right of centre and just above the vertical middle. A single continuous orange route line (#FF6A28), 3px equivalent, travels across the paper from its lower left toward the upper right and ends in a small circular waypoint. Cool low-angle light from the upper right, soft falloff into the left of the frame, matte paper, no gloss. Flat technical illustration crossed with a still-life photograph: precise, calm, engineering. Palette limited to #0F1418, #081014, #E6E8EA, #677681, #2BA6A0 and one accent of #FF6A28.",
+      "negativePrompt": "text, letters, numbers, typography, watermark, logo, brand mark, the letter G, user interface, screens, buttons, charts, hands, people, faces, blue, purple, magenta, neon, glow, lens flare, bloom, heavy vignette, bokeh, glassmorphism, gradient mesh, 3D render sheen, plastic, clutter on the left side of the frame, bright objects in the left half, multiple orange lines, orange used as ambient colour, busy texture behind the copy area",
+      "placeholderPath": "/assets/landing/hero-poster.webp",
+      "outputPath": "/assets/landing/hero-poster.webp",
+      "isSeedanceStartImage": true,
+      "startImageRationale": "Chosen over the intro clip's last frame. The last frame is the isometric G mark dead centre, which is a logo lockup, not an ambient field; animating it would produce a moving logo behind the headline, and its centred mass cannot host a 55% left copy-safe field. This keyframe is composed for the copy from the start, so the loop inherits a correct composition rather than being cropped into one. Continuity with the mark is carried by the nav wordmark and by the intro clip in the HOW section, so the hero does not need to repeat it.",
+      "acceptance": [
+        "After the 16:9 crop, no pixel inside the copy-safe box exceeds 22% luminance.",
+        "The ridge apex remains inside the frame when the image is cropped to object-position 74% 50% at a 390x844 viewport.",
+        "Exactly one orange route line is present, with at most two waypoints.",
+        "No text-like marks, no G shape, no UI elements anywhere in the frame."
+      ]
+    },
+    {
+      "id": "plane-why",
+      "kind": "image",
+      "provider": "imagegen",
+      "tool": "GPT Images 2 via the Codex image_gen tool",
+      "purpose": "Depth plane behind the WHY section. Renders at opacity .42 over the global topo plane, drifting 20px with scroll.",
+      "generateAt": "1536x1024",
+      "targetWidth": 1920,
+      "targetHeight": 1080,
+      "aspectRatio": "16:9",
+      "postProcess": "Centred vertical crop to 16:9, resize to 1920x1080, WebP q78, target <= 200 KB.",
+      "copySafeRegion": "The entire frame. This plane sits behind body copy at 42% opacity, so it must have no region that would drop text below 4.5:1. Nothing in it may exceed 30% luminance, and it must contain no hard edge longer than a third of the frame width.",
+      "prompt": "A near-black graphite field (#0F1418) seen from directly overhead, covered edge to edge in an even scatter of cream paper fragments (#E6E8EA) at low opacity, as if a dozen separate small maps were laid out on the same table at different angles and none of them agree. Each fragment carries a few fine contour lines. They overlap slightly and none dominates. A faint dashed survey grid (#677681, very dim) runs beneath everything. One thin teal contour ring (#2BA6A0) crosses the lower third. No orange. Even, flat, diffuse light with no hotspot and no shadow direction. Very low contrast overall, matte, quiet, almost a texture rather than a scene.",
+      "negativePrompt": "text, letters, numbers, watermark, logo, the letter G, UI, screens, hands, people, orange, red, blue, purple, neon, glow, bloom, lens flare, strong highlight, hotspot, hard shadow, high contrast, a single dominant object, centred composition, vignette, noise grain heavier than film base",
+      "placeholderPath": "/assets/landing/topo-plane.webp",
+      "outputPath": "/assets/landing/plane-why.webp",
+      "acceptance": [
+        "Maximum luminance anywhere in the frame is <= 30%.",
+        "At 42% opacity over --graphite-950, body text in --stone-100 measures >= 4.5:1 at every point of the section.",
+        "The image tiles visually with plane-how and plane-value: same paper cream, same contour weight, same grid pitch."
+      ]
+    },
+    {
+      "id": "plane-how",
+      "kind": "image",
+      "provider": "imagegen",
+      "tool": "GPT Images 2 via the Codex image_gen tool",
+      "purpose": "Depth plane behind the HOW section. Renders at opacity .38, drifting 20px with scroll.",
+      "generateAt": "1536x1024",
+      "targetWidth": 1920,
+      "targetHeight": 1080,
+      "aspectRatio": "16:9",
+      "postProcess": "Centred vertical crop to 16:9, resize to 1920x1080, WebP q78, target <= 200 KB.",
+      "copySafeRegion": "The entire frame, same rule as plane-why: maximum 30% luminance, no hard edge longer than a third of the frame width.",
+      "prompt": "A near-black graphite field (#0F1418) seen from directly overhead. A single long cream paper strip (#E6E8EA) runs from the left edge to the right edge across the vertical middle, folded into regular accordion pleats so it reads as a continuous ridge line, printed with fine contour lines. A faint dashed survey grid (#677681, very dim) runs beneath it. Two dim teal registration ticks (#2BA6A0) sit near the strip, one left of centre and one right of centre. No orange. Even flat diffuse light, no hotspot, no cast shadow, very low contrast, matte, almost a texture.",
+      "negativePrompt": "text, letters, numbers, watermark, logo, the letter G, UI, screens, hands, people, orange, red, blue, purple, neon, glow, bloom, lens flare, strong highlight, hard shadow, high contrast, perspective vanishing point, 3D render sheen, vignette",
+      "placeholderPath": "/assets/landing/topo-plane.webp",
+      "outputPath": "/assets/landing/plane-how.webp",
+      "acceptance": [
+        "Maximum luminance <= 30%.",
+        "The horizontal strip does not sit where the mechanism copy will land; it must read as a band behind the lower half of the section at 1440x900.",
+        "Consistent paper cream and contour weight with plane-why and plane-value."
+      ]
+    },
+    {
+      "id": "plane-value",
+      "kind": "image",
+      "provider": "imagegen",
+      "tool": "GPT Images 2 via the Codex image_gen tool",
+      "purpose": "Depth plane behind the VALUE section. Renders at opacity .34, drifting 20px with scroll.",
+      "generateAt": "1536x1024",
+      "targetWidth": 1920,
+      "targetHeight": 1080,
+      "aspectRatio": "16:9",
+      "postProcess": "Centred vertical crop to 16:9, resize to 1920x1080, WebP q78, target <= 200 KB.",
+      "copySafeRegion": "The entire frame, same rule: maximum 30% luminance, and additionally no feature may align with the three-column card gutters in a way that reads as a border.",
+      "prompt": "A near-black graphite field (#0F1418) seen from directly overhead. Three separate cream paper maps (#E6E8EA) of similar size lie side by side across the frame, evenly spaced, each folded once and printed with fine contour lines, each turned to a slightly different angle. A faint dashed survey grid (#677681, very dim) runs beneath all three. One thin continuous orange route line (#FF6A28) passes across all three sheets from the left edge to the right edge, touching each one, with a small circular waypoint on each sheet. Even flat diffuse light, no hotspot, very low contrast, matte.",
+      "negativePrompt": "text, letters, numbers, watermark, logo, the letter G, UI, screens, hands, people, red, blue, purple, neon, glow, bloom, lens flare, strong highlight, hard shadow, high contrast, more than one orange line, orange used as fill or ambient colour, vignette, 3D render sheen",
+      "placeholderPath": "/assets/landing/topo-plane.webp",
+      "outputPath": "/assets/landing/plane-value.webp",
+      "acceptance": [
+        "Maximum luminance <= 30% outside the orange line, which may reach 55% because it is thin and never sits under text.",
+        "Exactly three paper sheets and exactly one orange line.",
+        "The orange line does not run through the vertical centre of any card's text block at 1440x900."
+      ]
+    }
+  ],
+
+  "videos": [
+    {
+      "id": "hero-loop",
+      "kind": "video",
+      "provider": "higgsfield",
+      "jobType": "seedance_2_5",
+      "mode": "omni_reference",
+      "placement": "hero-background",
+      "params": {
+        "aspect_ratio": "16:9",
+        "duration": 10,
+        "resolution": "1080p",
+        "generate_audio": false,
+        "start_image": "/assets/landing/hero-poster.webp (the hero-keyframe slot above)",
+        "image_references": [
+          "/assets/landing/hero-poster.webp (composition and palette lock)",
+          "design-explorations/guidefold-folded-map-3x3/06-industrial-surveyor.png (material and palette reference)",
+          "prototypes/industrial-surveyor/public/assets/industrial-surveyor/topographic-route-bg.png (contour and grid texture reference)"
+        ]
+      },
+      "targetWidth": 1920,
+      "targetHeight": 1080,
+      "aspectRatio": "16:9",
+      "duration": "10s",
+      "fps": 24,
+      "audio": "silent. generate_audio is false; any residual track is stripped at transcode and the delivered files must contain no audio stream.",
+      "loopOrResolve": {
+        "decision": "LOOP",
+        "reason": "It sits behind the headline for as long as the visitor stays in the hero. A resolved shot would end and then either freeze, which reads as a stall, or hard-cut back to frame 0, which is the seam archetypes.md warns about. The prompt therefore asks for a cyclical motion whose final state is the initial state.",
+        "howTheLoopIsAchieved": "The only moving elements are cyclical by construction: a slow lateral light sweep that completes one full pass in exactly 10s and returns to its start position, and a slow breathing of the teal contour rings on the same 10s period. The paper, the folds and the orange route do not move at all, which removes the usual source of loop drift.",
+        "ifTheSeamIsVisible": "Trim deterministically to the nearest matching frame pair and cross-dissolve the last 12 frames over the first 12 in post. Do not regenerate for a seam; regenerate only for a failed acceptance check with renewed budget approval."
+      },
+      "prompt": "Hold the reference composition exactly: deep graphite field across the left 55%, one large cream folded paper map with printed contour lines in the right 40%, ridge apex slightly right of centre, one orange route line ending in a circular waypoint. Nothing may move, drift, deform or re-fold. Camera locked: no pan, zoom, parallax or shake. The only motion is light. 00:00.000 rest state, cool light from upper right grazing the folds. 00:00.350 a soft specular sweep starts at the paper's right edge and travels slowly left, brightening each crease as it passes and leaving it unchanged. 00:02.200 it reaches the ridge apex; teal contour rings in the dark left field brighten almost imperceptibly, then settle. 00:04.400 it crosses the middle folds and fades; a dimmer teal pulse starts in the far left field. 00:07.050 it dissolves at the paper's left edge; the orange waypoint brightens very slightly once, then returns. 00:09.350 all light returns to the exact 00:00.000 rest state, ready to repeat with no visible seam. Matte paper, no gloss, no bloom. Precise, calm, engineering. Palette strictly #0F1418, #081014, #E6E8EA, #677681, #2BA6A0 and one accent of #FF6A28.",
+      "negativePrompt": "text, letters, numbers, typography, watermark, logo, brand mark, the letter G, user interface, screens, charts, hands, people, faces, animals, camera movement, pan, zoom, dolly, orbit, handheld shake, parallax, cuts, jump cuts, scene change, morphing, paper unfolding or re-folding, shape drift, geometry change, new objects appearing, flicker, strobe, colour shift over time, blue, purple, magenta, neon, glow, bloom, lens flare, heavy vignette, bokeh, smoke, particles, dust motes, rain, water, fire, glassmorphism, 3D render sheen, plastic, anything bright entering the left 55% of the frame, a second orange line, orange spreading as ambient colour",
+      "requiredCapabilities": [
+        "image-to-video",
+        "multi-image-reference",
+        "1080p",
+        "silent-output",
+        "native-loop",
+        "poster-required",
+        "reduced-motion-static",
+        "save-data-static",
+        "protected-elements-composited-after-generation"
+      ],
+      "protectedElementsNote": "No protected element is ever generated. The wordmark, headline, lede, buttons, form and every link are DOM elements composited over this video by the browser. The generated frame must contain no text and no mark of any kind.",
+      "placeholderPath": "/assets/landing/hero-poster.webp",
+      "outputPath": "/assets/landing/hero-loop.mp4",
+      "additionalOutputs": ["/assets/landing/hero-loop.webm (VP9, optional second source)"],
+      "estimatedMaxCostCents": 200,
+      "costAssumption": "UNVERIFIED currency conversion. The quoted rate is in credits: 10s 1080p = 20 credits, 10s 720p = 15 credits, 5s 1080p = 10 credits, against an account balance of 515 credits. Those figures were quoted for the pinned kling3_0_turbo job type; the seedance_2_5 rate is not quoted and may differ. The HARD CAP for this slot is 20 credits. estimatedMaxCostCents 200 assumes 1 credit is about US$0.10, which is an assumption, not a quote. The gateway's live quote governs; reject on price drift.",
+      "escalationPolicy": "Draft first at 720p (15 credits) to verify the motion take, since the only acceptance risks are camera drift and paper deformation and both are visible at 720p. Spend the 1080p tier only on an accepted draft. Do not exceed one accepted 1080p render. If the draft shows camera movement or paper deformation twice in a row, stop and ship the keyframe still; the page is complete without the video.",
+      "acceptanceProbability": "benchmark_required. No Unslopify ledger entry exists for seedance_2_5 on a locked-composition ambient plate, so no number is asserted.",
+      "authorization": "requires job approval metadata and UNSLOPIFY_PAID_ASSET_APPROVED=1. The shaper does not authorize; the media runner generates after operator approval.",
+      "fallback": {
+        "primary": "/assets/landing/hero-poster.webp at full bleed with the same scrim. This is the default state of the page, not a degraded one.",
+        "secondary": "The global topo plane on --graphite-950 with the scrim removed.",
+        "gates": "Never requested under prefers-reduced-motion: reduce or navigator.connection.saveData. Removed on decoder error, CORS failure, or a load that has not reached canplay within 8s.",
+        "noCodeSubstitute": "There is no CSS-generated 'ambient' replacement. The owned topo plane already supplies the atmosphere; inventing a gradient animation to stand in for a missing video would add a second visual idea."
+      },
+      "beatSheet": [
+        {"t": "00:00.000", "beat": "rest state, matches the final frame exactly"},
+        {"t": "00:00.350", "beat": "specular sweep begins at the paper's right edge and starts travelling left"},
+        {"t": "00:02.200", "beat": "sweep reaches the ridge apex; teal contour rings brighten slightly and settle"},
+        {"t": "00:04.400", "beat": "sweep crosses the middle folds and begins to fade; a dimmer teal pulse starts in the far left field"},
+        {"t": "00:07.050", "beat": "sweep dissolves at the paper's left edge; the orange waypoint brightens once, then returns"},
+        {"t": "00:09.350", "beat": "all light returns to the 00:00.000 rest state"},
+        {"t": "00:10.000", "beat": "loop point; frame 240 must be indistinguishable from frame 0"}
+      ],
+      "acceptance": [
+        "Measured delivery is 10s +/- 0.1s, 1920x1080, 24fps, H.264, and contains no audio stream (ffprobe).",
+        "Frame 0 and the final frame are indistinguishable to the eye, and playing the loop through the wrap point ten times shows no jump in the paper's position, no luminance step and no direction reversal in the sweep.",
+        "The paper's fold geometry is identical in every frame: overlay frame 0 and frame 120 and confirm the fold seams register.",
+        "The camera has not moved: a fixed reference point at the paper's lower-left corner stays within 2px across the whole clip.",
+        "No frame contains text, a letterform, a logo or a UI element.",
+        "Inside the declared copy-safe box (left 55%, y 16-84%) no frame exceeds 22% luminance, sampled at 0s, 2.5s, 5s, 7.5s and 9.9s.",
+        "The poster (hero-keyframe) and frame 0 are the same composition: same subject position, same crop, same light direction. A poster that changes the composition is a rejection.",
+        "Exactly one orange element is visible at any time.",
+        "File size <= 3.5 MB for the MP4."
+      ]
+    }
+  ],
+
+  "stillFirstOption": {
+    "decision": "This plan IS still-first. The four images are generated, delivered and shipped independently of the video, and the page is designed to be complete with them alone. The video is generated last, from image 1, and only after the still is accepted.",
+    "ifTheVideoIsCancelled": "Nothing needs redesigning. Ship the hero keyframe as a full-bleed still under the same scrim, keep the three section planes and their scroll drift, keep the intro clip in HOW, and delete the video element and its gates. The result is a complete cinematic page with zero paid video spend.",
+    "keyframeImagePrompt": "See the hero-keyframe slot above; that prompt is both the poster prompt and the Seedance start_image prompt. There is deliberately not a second, different keyframe prompt: one composition governs the still and the loop."
+  },
+
+  "transcodeTasks": [
+    {
+      "source": "prototypes/industrial-surveyor/public/assets/industrial-surveyor/guidefold-intro.mp4",
+      "outputs": ["/assets/landing/intro.mp4 (H.264, no audio, <= 1.6 MB)", "/assets/landing/intro.webm (VP9, no audio)", "/assets/landing/intro-poster.webp (last frame, <= 120 KB)"],
+      "note": "Owner-supplied; assumed to exist. The source is HEVC 10-bit with an AAC track, which Safari will play and Chrome on many machines will not, so the H.264 transcode is required, not optional. Strip audio with -an."
+    },
+    {
+      "source": "prototypes/industrial-surveyor/public/assets/industrial-surveyor/topographic-route-bg.png",
+      "outputs": ["/assets/landing/topo-plane.webp (2048x1024, q78, <= 220 KB)"],
+      "note": "Global background plane L1."
+    },
+    {
+      "source": "prototypes/industrial-surveyor/public/assets/industrial-surveyor/survey-grid-pattern.png",
+      "outputs": ["/assets/landing/survey-grid.webp (512x512 tile derived from the 1254x1254 source, q75, <= 60 KB)"],
+      "note": "Global background plane L2, tiled. Must be cut so that it tiles seamlessly at 512px; verify the seam before shipping."
+    }
+  ],
+
+  "budgetSummary": {
+    "paidVideoSlots": 1,
+    "paidVideoHardCapCredits": 20,
+    "generatedImageSlots": 4,
+    "imageCostNote": "GPT Images 2 via the Codex image_gen tool is not part of the Higgsfield credit budget. Cost is not quoted here; it is a separate, small, non-video line.",
+    "reusedOwnedAssets": 4,
+    "totalNewPaidVideoSpendIfCancelled": 0
+  }
+}

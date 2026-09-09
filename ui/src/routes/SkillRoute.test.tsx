@@ -71,6 +71,20 @@ describe('Skill route, hosted API, six states', () => {
 });
 
 describe('Skill route, revision, source and feedback', () => {
+  test('the rating keeps the evidence verdict domain instead of inventing a star score', async () => {
+    renderApi(ApiSkillRoute, source(), 'skill=urn:a&tab=feedback');
+    const verdict = await screen.findByRole('group', { name: 'Verdict' });
+    expect(verdict).toHaveAttribute('data-slot', 'rating');
+    expect(within(verdict).getAllByRole('radio').map(input => input.getAttribute('value'))).toEqual(['helped', 'mixed', 'hindered', 'not_applicable']);
+  });
+
+  test('the Revisions section lists immutable editions without adding a new route', async () => {
+    renderApi(ApiSkillRoute, source(), 'skill=urn:a&tab=revisions');
+    expect(await screen.findByRole('heading', { name: 'Revision history' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Revisions stored for this skill' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'rev-current' })).toHaveAttribute('href', expect.stringContaining('revision=rev-current'));
+  });
+
   test('the source link carries the exact host, file and commit', async () => {
     renderApi(ApiSkillRoute, source(), 'skill=urn:a&tab=source');
     const link = await screen.findByRole('link', { name: /Open exact source revision/ });

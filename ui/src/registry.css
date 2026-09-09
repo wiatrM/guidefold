@@ -1,0 +1,6 @@
+/* Spectrum registry utilities only: intentionally no Tailwind Preflight reset. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" source(none);
+@source "./components/spectrumui";
+@source "./components/ui";
+@custom-variant dark (&:where(.dark, .dark *));

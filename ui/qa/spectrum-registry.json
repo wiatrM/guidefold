@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-09-09",
+  "license": "Apache-2.0 (Spectrum components), MIT (shadcn/ui Button); see public/licenses/spectrum-ui.txt and shadcn-ui.txt",
+  "scope": "Explicit owner-authorized Spectrum sources; CSS computed from data and measured DOM coordinates stays inline. Authored product CSS, imports and public component contracts remain checked. Any source edit invalidates the hash and requires review.",
+  "components": [
+    {
+      "file": "src/components/ui/button.tsx",
+      "sha256": "d321f83520e6ffd1db6cba664ae580a379d70acc7f34991578d2a546b62446b1",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/button.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/blocks/ai-assistants/code-block.tsx",
+      "sha256": "4844ca9281817981d49ac6fa3c501310f05c3a080c45819e40f5cbca77a490bd",
+      "source": "https://ui.spectrumhq.in/r/code-block.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/beam-card.tsx",
+      "sha256": "8c63f941828913b5d75e9fee2c703d14e6b4f1d2d3af6d0d546e1c8763667743",
+      "source": "https://ui.spectrumhq.in/r/beam-card.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/beam-search.tsx",
+      "sha256": "6abf7efb7d1b82fdf1957600f603e555144b7fc4ffc6d6fe63e637bfdd9251d6",
+      "source": "https://ui.spectrumhq.in/r/beam-search.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/use-beam-motion.ts",
+      "sha256": "fa17e976c697ff28f99878d751ed06ee28a2eafc4febbb8eae196f14c14604bd",
+      "source": null,
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/use-surface-theme.ts",
+      "sha256": "8cfc2817387ad961a813ee1d833524cc58a91c3fbf88758929b9d017fda8494f",
+      "source": "https://ui.spectrumhq.in/r/beam-card.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/morph-button.tsx",
+      "sha256": "227fc2cb737a6ced5574754a69a6d784bd42bf9a57c48685b34e7eba2666ec9e",
+      "source": "https://ui.spectrumhq.in/r/morph-button.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/use-typewriter.ts",
+      "sha256": "1d5bfd0e09ffacaf7e40dd3b61b9fa40821d3915f8d90858e2f85d3d6a19d2f6",
+      "source": "https://ui.spectrumhq.in/r/tree-nav.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/tree-nav.tsx",
+      "sha256": "f01c1bf88aa3e384ee65773912faeb49d14b36708f001593fe57da04345f6a54",
+      "source": "https://ui.spectrumhq.in/r/tree-nav.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-engine.tsx",
+      "sha256": "f3b8ae03b64efc0c024de49bd1e435e87ba32f59d8aa455c205e43a021f35304",
+      "source": "https://ui.spectrumhq.in/r/stat-cards.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/charts/chart-kit.tsx",
+      "sha256": "82d55d9dd6e105b083dd44e1f38968ed091e373cdb9b67741f5af1005df82499",
+      "source": "https://ui.spectrumhq.in/r/bar-chart.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/charts/stat-cards.tsx",
+      "sha256": "ec3987e303c8857f157210f75d433cb0272e153b2e13689f74c3f58b8d6c356e",
+      "source": "https://ui.spectrumhq.in/r/stat-cards.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/charts/bar-chart.tsx",
+      "sha256": "447888a35a4f5c5dcd7b6050c54200d373311c1d0761bb728cd2c890000ca9b0",
+      "source": "https://ui.spectrumhq.in/r/bar-chart.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/charts/pie-chart.tsx",
+      "sha256": "722bb77570d29ea858bbaa9ffdd5c03983a7be491ee615e1653d0a40d06a3509",
+      "source": "https://ui.spectrumhq.in/r/pie-chart.json",
+      "allowInlineGeometry": true
+    }
+  ]
+}
