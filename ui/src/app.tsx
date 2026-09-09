@@ -6,7 +6,9 @@ import {useAccess,useAccessController} from './api/access';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
+const ApiInvitationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiInvitationRoute})));
 const ApiOrganizationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiOrganizationRoute})));
+const DemoRoute=lazy(()=>import('./routes/DemoRoute').then(m=>({default:m.DemoRoute})));
 const ApiLibraryRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiLibraryRoute})));
 const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiMapRoute})));
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
@@ -50,12 +52,14 @@ function Shell({view,href,pathname,railContext,topbar,eyebrow,pageFoot,children}
 /** Hosted composition. Organisation and repository come from /me and the URL. */
 function ApiApp({source}:{source:DataSource}){
  const location=useLocation(),navigate=useNavigate();
+ if(location.pathname.replace(/^\//,'').replace(/\/$/,'')==='demo')return <Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>;
  const access=useAccess(),controller=useAccessController();
  const params=new URLSearchParams(location.search);
  const name=location.pathname.replace(/^\//,'').replace(/\/$/,'');
  const view=views.includes(name as View)?name as View:'import';
  const requestedOrg=params.get('org'),repo=params.get('repo');
  const me=access.me;
+ const invitationToken=location.pathname.match(/^\/invitations\/([^/]+)\/accept\/?$/)?.[1] ?? null;
  const membership=me?(requestedOrg?me.orgs.find(o=>o.slug===requestedOrg||o.org_id===requestedOrg)??null:me.orgs[0]??null):null;
  const foreign=Boolean(requestedOrg&&me&&!membership);
  const org=membership?.slug??null;
@@ -67,7 +71,14 @@ function ApiApp({source}:{source:DataSource}){
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
- if(!views.includes(name as View))return <Navigate to="/import" replace/>;
+ if(!views.includes(name as View) && !invitationToken)return <Navigate to="/import" replace/>;
+ if(invitationToken)return <Shell view="import" href={href} pathname={location.pathname}
+  railContext="Invitation" topbar={<span>Guidefold</span>} eyebrow="Invitation"
+  pageFoot="Invitation links are one-time capabilities. Membership changes are confirmed by the API.">
+  <RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading invitation" description="Preparing the invitation screen."/>}><ApiInvitationRoute
+   source={source} access={access} me={me} token={decodeURIComponent(invitationToken)} onRecheck={() => controller?.check(true) ?? Promise.resolve()}
+   onAccepted={orgID => navigate('/import?step=organization&org=' + encodeURIComponent(orgID))}/></Suspense></RouteErrorBoundary>
+ </Shell>;
  const masked=foreign||access.status!=='confirmed';
  const ctx:ApiRouteContext={source,access,me,org,repo,role:membership?.role??null,params,view,href,go:(target,changes)=>navigate(href(target,changes)),recheckAccess:controller?(()=>controller.check(true)):undefined};
  const Content=apiRoute[view];
@@ -80,6 +91,7 @@ function ApiApp({source}:{source:DataSource}){
  // Import stays reachable after a denial: it is where signing in again happens.
  :access.status==='denied'?(view==='import'?<RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading view" description="Preparing the requested view."/>}><ApiImportRoute ctx={ctx}/></Suspense></RouteErrorBoundary>:<RouteState state="restricted" title="Access unavailable" description="The session was refused or revoked. Cached data, drafts and in-flight requests were dropped. Sign in again to continue." action={<ActionButton href={href('import',{step:'login'})}>Sign in again</ActionButton>}/>)
  :access.status==='checking'?<RouteState state="loading" title="Confirming access" description="Checking membership before anything is shown."/>
+ :access.status==='offline'&&!access.me&&view==='import'?<RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading view" description="Preparing the requested view."/>}><ApiImportRoute ctx={ctx}/></Suspense></RouteErrorBoundary>
  :access.status!=='confirmed'?<RouteState state="restricted" title="Access not reconfirmed" description="Membership was last confirmed more than 45 seconds ago, so organization data stays hidden. This is not a statement about your permissions." action={<ActionButton onClick={()=>{void controller?.check(true);}}>Check access now</ActionButton>}/>
  // Keyed by organisation and repository: a switch remounts the view, so no row, tree branch or
  // filter prepared for the previous organisation survives into the next one.

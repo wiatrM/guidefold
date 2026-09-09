@@ -82,11 +82,10 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
      kubectl create secret generic guidefold-workos -n guidefold \
        --from-literal=api-key="<the real WorkOS API key>"
      ```
-     and set `WORKOS_API_KEY_FILE=/run/workos/api-key` (mounted from that secret) —
-     `values.yaml` in this directory does not yet wire this mount in; it's the one
-     piece still to add once the secret exists, since the chart's `api.yaml`
-     currently has no WorkOS volume mount at all (only `credentialsSecret` and
-     `operatorCredentialsSecret` are mounted today).
+     The chart mounts this secret at `/run/workos/api-key` and sets
+     `WORKOS_API_KEY_FILE` automatically. Set `workos.clientID` in this values
+     file (or in the ArgoCD Application) before syncing; keep the API key only
+     in the Kubernetes Secret.
 
 4. **Pinned image digests** (done — 2026-09-08, `publish-images.yml` on
    `fix/ghcr-lowercase-owner`, dispatched directly rather than waiting for a
@@ -128,13 +127,10 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    `migrate` — pass `--set portal.enabled=false` for one-off Job releases or
    you'll get a stray duplicate portal Deployment.
 
-   Result: `guidefold-portal` and `guidefold-worker` pods Running; `guidefold`
-   (api) pods correctly CrashLoopBackOff with `workos_requires_api_key_and_client_id`
-   — expected, not a bug: `auth: workos` with no WorkOS secret wired yet (see
-   step 3's still-open WorkOS mount). Harmless to leave crash-looping until
-   WorkOS is wired — **except** that step 10 below routes `/api` and `/v1` to
-   it, so once the UI is live, every API call it makes will 503 until this is
-   fixed. That's expected too, not a new failure — see step 10.
+   Result: `guidefold-portal` and `guidefold-worker` pods should be Running. The
+   API becomes Ready only after `workos.clientID` and the `guidefold-workos`
+   Secret from step 3 are present; otherwise Helm fails validation before an
+   unusable serving release is applied.
 
 7. **Apply the ArgoCD Application** (not yet done — the live release above was
    installed directly with `helm install`, bypassing GitOps for speed):
@@ -195,11 +191,9 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
     - Build/deploy is the same `helm install`-then-`upgrade` pattern as
       before, with a new `ui` job in `publish-images.yml`; `ui.image` follows
       the same "TODO: pin from the run's Summary" placeholder pattern.
-    - **Still true after this step**: the API is still `auth: workos` with no
-      WorkOS secret (step 3), so the UI's app shell loads but every
-      `/api/v1/...` call — including the one on load that checks whether
-      you're signed in — gets a 503 from an all-unready backend. Real
-      login/import through the UI needs step 3's WorkOS piece finished first.
+    - The UI's app shell renders the sign-in route even while the API is
+      temporarily unavailable, but real login/import requires the serving API
+      to pass WorkOS validation and reach Ready.
 
 ## What this does not cover
 
@@ -208,7 +202,7 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
   trigger) — confirmed absent from the code in this pass, not merely unverified.
   ADR-0034 is an accepted design, not a built feature; this deploy stands up the
   infrastructure it will eventually run on, not the feature.
-- The WorkOS secret mount (`WORKOS_API_KEY_FILE`) — the chart doesn't wire this
-  volume in yet (see step 3); add it alongside building the GitHub App backend.
+- The WorkOS provider project setup and secret creation remain operator steps;
+  the chart wiring and validation are now included here.
 - Raising `instances`/replica counts for real production load — this sizing is
   deliberately pilot-scale.

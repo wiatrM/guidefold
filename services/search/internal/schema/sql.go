@@ -150,6 +150,42 @@ CREATE TABLE IF NOT EXISTS gfm.memberships (
  PRIMARY KEY(org_id,user_id)
 );
 CREATE INDEX IF NOT EXISTS memberships_user ON gfm.memberships(user_id);
+CREATE TABLE IF NOT EXISTS gfm.teams (
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ team_id uuid NOT NULL,
+ name text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,team_id),
+ UNIQUE(team_id),
+ UNIQUE(org_id,name)
+);
+CREATE INDEX IF NOT EXISTS teams_org ON gfm.teams(org_id);
+CREATE TABLE IF NOT EXISTS gfm.team_members (
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ team_id uuid NOT NULL,
+ user_id uuid NOT NULL REFERENCES gfm.users(user_id) ON DELETE CASCADE,
+ PRIMARY KEY(org_id,team_id,user_id),
+ FOREIGN KEY(org_id,team_id) REFERENCES gfm.teams(org_id,team_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS team_members_user ON gfm.team_members(user_id);
+CREATE TABLE IF NOT EXISTS gfm.github_installations (
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ installation_id bigint NOT NULL,
+ account text NOT NULL,
+ repositories jsonb NOT NULL DEFAULT '[]',
+ suspended_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,installation_id),
+ UNIQUE(installation_id)
+);
+CREATE INDEX IF NOT EXISTS github_installations_org ON gfm.github_installations(org_id);
+CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
+ delivery_id text PRIMARY KEY,
+ payload_sha256 text NOT NULL,
+ received_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS github_deliveries_received ON gfm.github_deliveries(received_at);
 CREATE TABLE IF NOT EXISTS gfm.repos (
  org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
  repo_id text NOT NULL,
@@ -158,6 +194,39 @@ CREATE TABLE IF NOT EXISTS gfm.repos (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(org_id,repo_id)
 );
+-- Optional repository policy. An empty ACL keeps the existing organization
+-- membership behavior; once an owner adds one entry, non-owners need an
+-- explicit row for every management and delivery operation.
+CREATE TABLE IF NOT EXISTS gfm.repo_members (
+ org_id uuid NOT NULL,
+ repo_id text NOT NULL,
+ user_id uuid NOT NULL REFERENCES gfm.users(user_id) ON DELETE CASCADE,
+ access text NOT NULL CHECK(access IN ('read','write')),
+ created_by uuid REFERENCES gfm.users(user_id),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,repo_id,user_id),
+ FOREIGN KEY(org_id,repo_id) REFERENCES gfm.repos(org_id,repo_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS repo_members_user ON gfm.repo_members(user_id);
+CREATE TABLE IF NOT EXISTS gfm.repo_acl_policies (
+ org_id uuid NOT NULL,
+ repo_id text NOT NULL,
+ enabled boolean NOT NULL DEFAULT true,
+ created_by uuid REFERENCES gfm.users(user_id),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,repo_id),
+ FOREIGN KEY(org_id,repo_id) REFERENCES gfm.repos(org_id,repo_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS gfm.repo_reviewers (
+ org_id uuid NOT NULL,
+ repo_id text NOT NULL,
+ user_id uuid NOT NULL REFERENCES gfm.users(user_id) ON DELETE CASCADE,
+ assigned_by uuid REFERENCES gfm.users(user_id),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,repo_id,user_id),
+ FOREIGN KEY(org_id,repo_id) REFERENCES gfm.repos(org_id,repo_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS repo_reviewers_user ON gfm.repo_reviewers(user_id);
 CREATE TABLE IF NOT EXISTS gfm.invitations (
  org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
  invitation_id uuid NOT NULL,

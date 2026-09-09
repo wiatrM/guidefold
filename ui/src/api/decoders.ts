@@ -105,6 +105,9 @@ export const authProviders = object<AuthProviders>({
 export interface IdentityLinkStart { login_url: string }
 export const identityLinkStart = object<IdentityLinkStart>({ login_url: str });
 
+export interface Profile { user: { id: string; email: string; name: string } }
+export const profile = object<Profile>({ user: object({ id: str, email: str, name: str }) });
+
 export interface DeviceApproval { user_code: string; state: 'approved' | 'denied' | 'pending' | 'expired'; expires_at: string | null }
 export const deviceApproval = object<DeviceApproval>({
   user_code: fallback(str, ''),
@@ -144,11 +147,30 @@ export const member = object<Member>({
 export const memberList: Decoder<Member[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(member)(value, path) : field('items', arrayOf(member))(value, path);
 
+export interface TeamMember { user_id: string; email: string; name: string }
+export const teamMember = object<TeamMember>({ user_id: str, email: str, name: str });
+export interface Team { team_id: string; name: string; created_at: string; members: TeamMember[] }
+export const team = object<Team>({ team_id: str, name: str, created_at: str, members: listOf(teamMember) });
+export const teamList: Decoder<Team[]> = value => field('items', arrayOf(team))(value);
+
 export interface Invitation { invitation_id: string; accept_url: string; expires_at: string | null; email: string | null; role: Role | null }
 export const invitation = object<Invitation>({
   invitation_id: str, accept_url: str, expires_at: nullable(str),
   email: nullable(str), role: nullable(oneOf(roles)),
 });
+
+export interface InvitationAccepted { org_id: string; role: Role; joined: boolean }
+export const invitationAccepted = object<InvitationAccepted>({
+  org_id: str, role: oneOf(roles), joined: bool,
+});
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+export interface InvitationLifecycle { invitation_id: string; email: string; role: Role; status: InvitationStatus; created_at: string; expires_at: string; accepted_at: string | null; revoked_at: string | null }
+export const invitationLifecycle = object<InvitationLifecycle>({
+  invitation_id: str, email: str, role: oneOf(roles), status: oneOf(['pending', 'accepted', 'expired', 'revoked'] as const),
+  created_at: str, expires_at: str, accepted_at: nullable(str), revoked_at: nullable(str),
+});
+export const invitationLifecycleList: Decoder<InvitationLifecycle[]> = value => field('items', arrayOf(invitationLifecycle))(value);
 
 export interface Installation {
   installation_id: string; name: string; repo_id: string | null;
@@ -166,6 +188,17 @@ export const installation = object<Installation>({
 });
 export const installationList: Decoder<Installation[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(installation)(value, path) : field('items', arrayOf(installation))(value, path);
+
+export interface GitHubInstallation {
+  installation_id: number; account: string; repositories: { full_name: string; repo_id: string | null }[];
+  suspended: boolean; created_at: string | null; updated_at: string | null;
+}
+export const githubInstallation = object<GitHubInstallation>({
+  installation_id: num, account: str,
+  repositories: listOf(object({ full_name: str, repo_id: nullable(str) })),
+  suspended: bool, created_at: nullable(str), updated_at: nullable(str),
+});
+export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
 export interface AuditEntry { at: string; actor: string | null; action: string; entity: string | null; revision: string | null; request_id: string | null }
 export const auditEntry = object<AuditEntry>({
@@ -193,6 +226,19 @@ export const repo = object<Repo>({
 });
 export const repoList: Decoder<Repo[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(repo)(value, path) : field('items', arrayOf(repo))(value, path);
+
+export type RepoAccessLevel = 'read' | 'write';
+export interface RepoAccess { user_id: string; email: string; name: string | null; access: RepoAccessLevel; created_at: string | null }
+export const repoAccess = object<RepoAccess>({
+  user_id: str, email: str, name: nullable(str), access: oneOf(['read', 'write'] as const), created_at: nullable(str),
+});
+export const repoAccessList: Decoder<RepoAccess[]> = (value, path = '') =>
+  Array.isArray(value) ? arrayOf(repoAccess)(value, path) : field('items', arrayOf(repoAccess))(value, path);
+
+export interface Reviewer { user_id: string; email: string; name: string | null; assigned_at: string | null }
+export const reviewer = object<Reviewer>({ user_id: str, email: str, name: nullable(str), assigned_at: nullable(str) });
+export const reviewerList: Decoder<Reviewer[]> = (value, path = '') =>
+  Array.isArray(value) ? arrayOf(reviewer)(value, path) : field('items', arrayOf(reviewer))(value, path);
 
 export interface ImportLimits { max_blob_bytes: number; max_total_bytes: number; max_files: number }
 export const importLimits = object<ImportLimits>({

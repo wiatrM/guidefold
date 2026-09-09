@@ -1,0 +1,30 @@
+.frame { display: flex; flex-direction: column; width: var(--full); min-width: var(--zero); height: var(--chart-height); overflow: hidden; color: var(--stone-300); font-size: var(--font-size-small); }
+.chartVars { color: var(--stone-300); }
+.surface { position: relative; min-width: var(--zero); min-height: var(--zero); flex: 1 1 auto; overflow: hidden; }
+.plotDots { position: absolute; inset: var(--zero); pointer-events: none; opacity: .22; background-image: radial-gradient(circle, currentColor var(--chart-dot-size), var(--transparent) var(--chart-dot-size)); background-size: var(--chart-grid-size) var(--chart-grid-size); }
+.plotInner { position: relative; height: var(--full); min-width: var(--zero); min-height: var(--zero); overflow: hidden; }
+.legend { display: flex; justify-content: flex-end; gap: var(--space-3); list-style: none; margin: var(--zero) var(--zero) var(--space-2); padding: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
+.legendItem { display: flex; align-items: center; gap: var(--space-1); }
+.legendSwatch { display: inline-block; width: var(--space-2); height: var(--space-2); flex: none; border-radius: var(--radius-small); border: var(--border-width) solid var(--line-strong); }
+.legendSwatch0 { background: var(--spectrum-chart-1); }
+.legendSwatch1 { background: var(--spectrum-chart-2); }
+.legendSwatch2 { background: var(--spectrum-chart-3); }
+.legendSwatch3 { background: var(--spectrum-chart-4); }
+.legendSwatch4 { background: var(--spectrum-chart-5); }
+.tooltipPlaceholder { display: block; width: var(--chart-tooltip-width); height: var(--chart-tooltip-height); visibility: hidden; }
+.tooltip { min-width: var(--chart-tooltip-width); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius); background: var(--graphite-900); padding: var(--space-2) var(--space-3); box-shadow: var(--shadow-raised); font-size: var(--font-size-small); }
+.tooltipTitle { margin: var(--zero) var(--zero) var(--space-1); color: var(--stone-100); font-weight: var(--weight-medium); }
+.tooltipList { display: grid; gap: var(--space-1); list-style: none; margin: var(--zero); padding: var(--zero); }
+.tooltipList li { display: flex; align-items: center; gap: var(--space-1); }
+.tooltipList strong { margin-inline-start: auto; color: var(--stone-100); font-family: var(--font-mono); }
+.loading { position: relative; display: flex; align-items: flex-end; gap: var(--space-2); height: var(--full); overflow: hidden; padding: var(--space-4) var(--space-2); }
+.loadingBar { flex: 1 1 0; border-radius: var(--radius-small); background: var(--graphite-700); }
+.loadingBar0 { height: var(--chart-shimmer-0); }
+.loadingBar1 { height: var(--chart-shimmer-1); }
+.loadingBar2 { height: var(--chart-shimmer-2); }
+.loadingBar3 { height: var(--chart-shimmer-3); }
+.loadingBar4 { height: var(--chart-shimmer-4); }
+.loadingBar5 { height: var(--chart-shimmer-5); }
+.loadingBar6 { height: var(--chart-shimmer-6); }
+.loadingBar7 { height: var(--chart-shimmer-7); }
+.loadingSweep { position: absolute; inset-block: var(--zero); width: var(--chart-sweep-width); background: linear-gradient(var(--chart-sweep-angle), var(--transparent), var(--chart-sweep-color), var(--transparent)); }

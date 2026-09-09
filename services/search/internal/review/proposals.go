@@ -238,7 +238,7 @@ type decisionRequest struct {
 // revision with `origin: human`, and the audit log gets its entry. A decision
 // that half-applied would leave a revision nobody chose.
 func (s *Service) handleDecision(c *mgmt.Context) error {
-	rc, e := s.authorize(c, mgmt.RoleOwner)
+	rc, e := s.authorizeReviewer(c)
 	if e != nil {
 		return e
 	}

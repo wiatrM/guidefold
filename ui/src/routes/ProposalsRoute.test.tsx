@@ -240,6 +240,21 @@ describe('Proposals route, detail presentation', () => {
     expect(within(row).getByText('platforms/atlas/SKILL.md')).toBeInTheDocument();
   });
 
+  test('selected proposals open a comparison without applying any decision', async () => {
+    const second = detail({ proposal_id: 'p-2', kind: 'consolidation', candidate: { ...detail().candidate, path: 'platforms/atlas/combined.md', body: '# combined\n' } });
+    const source = base({
+      listProposals: async () => ({ ...list, items: [...list.items, { ...list.items[0], proposal_id: 'p-2', kind: 'consolidation' as const, path: 'platforms/atlas/combined.md' }] }),
+      getProposal: async (_target: unknown, id: string) => id === 'p-2' ? second : detail(),
+    });
+    renderApi(ApiProposalsRoute, source);
+    await userEvent.click(await screen.findByLabelText('Select proposal p-1'));
+    await userEvent.click(screen.getByLabelText('Select proposal p-2'));
+    expect(await screen.findByText('Compare selected proposals')).toBeInTheDocument();
+    expect(screen.getByText('# combined')).toBeInTheDocument();
+    expect(screen.getAllByText('pending').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/never approves or rejects automatically/)).toBeInTheDocument();
+  });
+
   test('the decision choice cards declare a hover treatment', () => {
     // jsdom does not compute :hover pseudo-class styles, so this reads the authored CSS
     // directly rather than simulating a hover and inspecting getComputedStyle.

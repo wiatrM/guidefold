@@ -6,9 +6,10 @@
  */
 import type {
   AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, ExportPayload, Facets, FacetLookup,
-  ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, Judgment, MapLayers, MapRepository, MapScopes,
+  ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
-  ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
+  ProposalLimits, Profile, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
+  Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
 } from '../api/decoders';
 import type { Session } from '../domain';
 
@@ -56,26 +57,44 @@ export interface DataSource {
   decideDevice(userCode: string, approve: boolean, idempotencyKey: string): Promise<DeviceApproval>;
   /** `POST /me/identities/link/start` (contract §4.1). Never auto-linked: the operator picks the provider. */
   startIdentityLink(provider: string, idempotencyKey: string): Promise<LoginRedirect>;
+  updateProfile(name: string, idempotencyKey: string): Promise<Profile>;
 
   // Organizations -----------------------------------------------------------
   listOrgs(): Promise<Org[]>;
   getOrg(org: string): Promise<Org>;
   createOrg(input: { name: string; slug: string }, idempotencyKey: string): Promise<Org>;
   listMembers(org: string): Promise<Member[]>;
+  listTeams(org: string): Promise<Team[]>;
+  createTeam(org: string, name: string, idempotencyKey: string): Promise<Team>;
+  addTeamMember(org: string, teamId: string, userId: string, idempotencyKey: string): Promise<void>;
+  removeTeamMember(org: string, teamId: string, userId: string, idempotencyKey: string): Promise<void>;
   inviteMember(org: string, input: { email: string; role: Role }, idempotencyKey: string): Promise<Invitation>;
+  listInvitations(org: string): Promise<InvitationLifecycle[]>;
+  revokeInvitation(org: string, invitationId: string, idempotencyKey: string): Promise<void>;
+  acceptInvitation(token: string, idempotencyKey: string): Promise<InvitationAccepted>;
   changeMemberRole(org: string, userId: string, role: Role, idempotencyKey: string): Promise<Member>;
   removeMember(org: string, userId: string, idempotencyKey: string): Promise<void>;
   listInstallations(org: string): Promise<Installation[]>;
   createInstallation(org: string, input: { name: string; repo_id?: string | null; scopes: string[]; harness?: string | null }, idempotencyKey: string): Promise<Installation>;
   revokeInstallation(org: string, installationId: string, idempotencyKey: string): Promise<void>;
+  listGitHubInstallations(org: string): Promise<GitHubInstallation[]>;
+  deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void>;
   /** `GET {org_base}/audit`, owner only (contract §4.1). */
   getAudit(org: string, cursor?: string): Promise<AuditPage>;
 
   // Repositories and import -------------------------------------------------
   listRepos(org: string): Promise<Repo[]>;
   createRepo(org: string, input: { repo_id: string; name?: string | null; git_host_url?: string | null }, idempotencyKey: string): Promise<Repo>;
+  listRepoAccess(target: OrgRepo): Promise<RepoAccess[]>;
+  setRepoAccess(target: OrgRepo, userId: string, access: RepoAccessLevel, idempotencyKey: string): Promise<RepoAccess>;
+  removeRepoAccess(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;
+  listReviewers(target: OrgRepo): Promise<Reviewer[]>;
+  assignReviewer(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;
+  removeReviewer(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;
   listImports(target: OrgRepo, cursor?: string): Promise<ImportStatus[]>;
   createImport(target: OrgRepo, manifest: unknown, idempotencyKey: string): Promise<ImportCreated>;
+  uploadImportBlob(target: OrgRepo, importId: string, sha256: string, bytes: Uint8Array): Promise<void>;
+  finalizeImport(target: OrgRepo, importId: string, idempotencyKey: string): Promise<ImportStatus>;
   getImport(target: OrgRepo, importId: string): Promise<ImportStatus>;
   cancelImport(target: OrgRepo, importId: string, idempotencyKey: string): Promise<void>;
   /** `GET {repo_base}/imports/{id}/plan`: estimate before any generation starts (contract §4.2). */
