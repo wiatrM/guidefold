@@ -144,6 +144,14 @@ func (s *Service) authorize(c *mgmt.Context, min mgmt.Role) (*repoContext, error
 	return &repoContext{Org: org, Repo: repo, RepoID: repo.ID}, nil
 }
 
+func (s *Service) authorizeReviewer(c *mgmt.Context) (*repoContext, error) {
+	org, repo, e := c.AuthorizeReviewerRepo("org", "repo")
+	if e != nil {
+		return nil, e
+	}
+	return &repoContext{Org: org, Repo: repo, RepoID: repo.ID}, nil
+}
+
 func (s *Service) tx(ctx context.Context) (pgx.Tx, error) {
 	return s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
 }

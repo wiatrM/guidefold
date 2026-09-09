@@ -233,6 +233,16 @@ The hosted service does not apply this rule yet.
 8. `metadata.kind` is one of the 5 families; `metadata.layer` is one of `org`/`platform`/`team` (when present — see §4a).
 9. `refines` never points at a skill in a deeper node than the skill itself (child refines parent, not the reverse).
 
+### 8a. Procedure contract (`guidefold procedure`, S20)
+
+Runbooks that are intended to be executed declare five level-two headings: `Inputs`, `Outputs`,
+`Preconditions`, `Steps` and `Verification`. `Steps` must contain at least one ordered action
+(`1.`/`1)` or `Step 1`). The command is a deterministic review aid and emits JSON when requested.
+An owner may add scalar `metadata.verifier` pointing to a file inside the repository; `--run`
+executes it locally with a 30-second timeout. Hosted workers never execute that file, and a
+passing contract or verifier exit is evidence of the check only, not proof that a production task
+succeeded.
+
 ## 9. Generated files (do not edit by hand)
 
 `guidefold materialize` produces, for every node in `guidefold.yaml`:

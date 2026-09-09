@@ -26,7 +26,7 @@ type exportRequest struct {
 // handleExport turns an approved candidate into a patch against the revision it
 // was approved from.
 func (s *Service) handleExport(c *mgmt.Context) error {
-	rc, e := s.authorize(c, mgmt.RoleOwner)
+	rc, e := s.authorizeReviewer(c)
 	if e != nil {
 		return e
 	}

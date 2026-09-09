@@ -215,6 +215,25 @@ def test_copilot_install_writes_the_explicit_find_load_section_and_removes_it_ag
     assert not (root / ".github/hooks/guidefold.json").exists()
 
 
+def test_gemini_install_is_explicit_and_uninstall_is_reversible(gf, tmp_path, monkeypatch, capsys):
+    root = _consumer(tmp_path)
+    monkeypatch.chdir(root)
+    assert _run(gf.cmd_install, _args(harness="gemini", api="https://api.example",
+                                      org="acme", repo="monorepo")) == 0
+    capsys.readouterr()
+    manifest = json.loads((root / ".agents/skills/guidefold/INSTALL-MANIFEST.json").read_text())
+    assert manifest["harnesses"] == ["gemini"]
+    assert (root / "GEMINI.md").is_file()
+    # Gemini reads the generated scope card; it has no context hook to wire.
+    assert not (root / ".github/hooks/guidefold.json").exists()
+    assert _run(gf.cmd_uninstall, _args(harness="gemini")) == 0
+    capsys.readouterr()
+    assert not (root / ".agents/skills/guidefold").exists()
+    # Materialized scope cards are shared generated artifacts and are intentionally preserved;
+    # uninstall removes only the adapter-owned package and harness wiring.
+    assert (root / "GEMINI.md").is_file()
+
+
 def test_installing_both_harnesses_keeps_the_package_until_the_last_uninstall(
         gf, tmp_path, monkeypatch, capsys):
     root = _consumer(tmp_path)

@@ -197,6 +197,47 @@ func (c *Context) AuthorizeRepo(orgParam, repoParam string, min Role) (*Org, *Re
 	if e != nil {
 		return nil, nil, Internal(e)
 	}
+	// Repository ACLs are opt-in. Owners retain access to administer the
+	// policy; members are admitted only when the repository has no ACL rows or
+	// when their user is explicitly listed. The check lives here so every
+	// importer, knowledge, review and usage endpoint gets the same isolation.
+	if org.Role != "owner" {
+		var restricted, allowed bool
+		if e = c.router.opts.Pool.QueryRow(c.Ctx(), `SELECT
+		 (EXISTS(SELECT 1 FROM gfm.repo_acl_policies WHERE org_id=$1::uuid AND repo_id=$2 AND enabled)
+		  OR EXISTS(SELECT 1 FROM gfm.repo_members WHERE org_id=$1::uuid AND repo_id=$2)),
+ EXISTS(SELECT 1 FROM gfm.repo_members WHERE org_id=$1::uuid AND repo_id=$2 AND user_id=$3::uuid)`,
+			org.ID, repo.ID, c.Principal.UserID).Scan(&restricted, &allowed); e != nil {
+			return nil, nil, Internal(e)
+		}
+		if restricted && !allowed {
+			return nil, nil, Forbidden()
+		}
+	}
+	return org, repo, nil
+}
+
+// AuthorizeReviewerRepo is the narrow permission used for proposal decisions
+// and exports. An assigned reviewer may review a repository without gaining
+// organization administration or publication rights. Owners remain reviewers
+// implicitly, and the normal repository ACL is checked first.
+func (c *Context) AuthorizeReviewerRepo(orgParam, repoParam string) (*Org, *Repo, error) {
+	org, repo, err := c.AuthorizeRepo(orgParam, repoParam, RoleAny)
+	if err != nil {
+		return nil, nil, err
+	}
+	if org.Role == "owner" {
+		return org, repo, nil
+	}
+	var assigned bool
+	if err := c.router.opts.Pool.QueryRow(c.Ctx(), `SELECT EXISTS(
+ SELECT 1 FROM gfm.repo_reviewers WHERE org_id=$1::uuid AND repo_id=$2 AND user_id=$3::uuid)`,
+		org.ID, repo.ID, c.Principal.UserID).Scan(&assigned); err != nil {
+		return nil, nil, Internal(err)
+	}
+	if !assigned {
+		return nil, nil, Fail(http.StatusForbidden, "forbidden", "This action requires an assigned reviewer or owner role.")
+	}
 	return org, repo, nil
 }
 

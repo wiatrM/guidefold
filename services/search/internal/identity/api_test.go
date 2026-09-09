@@ -2,6 +2,10 @@ package identity_test
 
 import (
 	"bytes"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -136,6 +140,25 @@ func (c *client) userID(t *testing.T) string {
 	}
 	id, _ := c.user["id"].(string)
 	return id
+}
+
+func TestProfileUpdatePersistsDisplayName(t *testing.T) {
+	h := newHarness(t)
+	c := h.signIn(t, "google", "profile-user", "profile@example.test", "Old Name")
+	status, body, _ := c.call(t, call{method: http.MethodPatch, path: "/api/v1/me/profile",
+		body: map[string]any{"name": "Ada Lovelace"}, key: "profile-1"})
+	if status != http.StatusOK || body["user"].(map[string]any)["name"] != "Ada Lovelace" {
+		t.Fatalf("profile update: %d %v", status, body)
+	}
+	me := c.refresh(t)
+	if me["user"].(map[string]any)["name"] != "Ada Lovelace" {
+		t.Fatalf("profile was not persisted: %v", me)
+	}
+	status, body, _ = c.call(t, call{method: http.MethodPatch, path: "/api/v1/me/profile",
+		body: map[string]any{"name": ""}, key: "profile-empty"})
+	if status != http.StatusBadRequest || body["error"] != "invalid_profile" {
+		t.Fatalf("empty profile name was accepted: %d %v", status, body)
+	}
 }
 
 type call struct {
@@ -360,7 +383,15 @@ func TestOrganisationMembershipLifecycle(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("invite: %d %v", status, invitation)
 	}
+	status, list, _ := owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/acme/invitations"})
+	if status != http.StatusOK || len(list["items"].([]any)) != 1 || list["items"].([]any)[0].(map[string]any)["status"] != "pending" {
+		t.Fatalf("invitation lifecycle list: %d %v", status, list)
+	}
 	acceptPath := mustURL(t, invitation["accept_url"].(string)).Path
+	status, _, header := h.newClient().call(t, call{method: http.MethodGet, path: acceptPath})
+	if status != http.StatusFound || header.Get("Location") != "http://127.0.0.1/invitations/"+strings.TrimSuffix(strings.TrimPrefix(acceptPath, "/api/v1/invitations/"), "/accept")+"/accept" {
+		t.Fatalf("invitation landing: %d location=%q", status, header.Get("Location"))
+	}
 
 	member := h.signIn(t, "github", "mem", "member@example.test", "Member")
 	status, body, _ = member.call(t, call{method: http.MethodPost, path: acceptPath, key: "accept-1"})
@@ -370,6 +401,25 @@ func TestOrganisationMembershipLifecycle(t *testing.T) {
 	if status, body, _ = member.call(t, call{method: http.MethodPost, path: acceptPath,
 		key: "accept-2"}); status != 409 {
 		t.Fatalf("an invitation was accepted twice: %d %v", status, body)
+	}
+	status, second, _ := owner.call(t, call{method: http.MethodPost,
+		path: "/api/v1/orgs/acme/invitations",
+		body: map[string]any{"email": "revoked@example.test", "role": "member"}, key: "inv-revoke"})
+	if status != http.StatusCreated {
+		t.Fatalf("second invite: %d %v", status, second)
+	}
+	status, _, _ = owner.call(t, call{method: http.MethodDelete,
+		path: "/api/v1/orgs/acme/invitations/" + second["invitation_id"].(string), key: "revoke-1"})
+	if status != http.StatusNoContent {
+		t.Fatalf("revoke invitation: %d", status)
+	}
+	status, list, _ = owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/acme/invitations"})
+	if status != http.StatusOK {
+		t.Fatalf("lifecycle after revoke: %d %v", status, list)
+	}
+	items := list["items"].([]any)
+	if items[0].(map[string]any)["status"] != "revoked" {
+		t.Fatalf("revoked invitation status: %v", items[0])
 	}
 
 	status, body, _ = owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/acme/members"})
@@ -417,6 +467,127 @@ func TestOrganisationMembershipLifecycle(t *testing.T) {
 	}
 	if status, _, _ = owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/acme"}); status != 403 {
 		t.Fatalf("a removed owner still reads the organisation: %d", status)
+	}
+}
+
+func TestTeamGroupingLifecycle(t *testing.T) {
+	h := newHarness(t)
+	owner := h.signIn(t, "google", "team-owner", "team-owner@example.test", "Owner")
+	owner.createOrg(t, "teams", "Teams")
+	status, created, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/teams/teams", body: map[string]any{"name": "Platform"}, key: "team-1"})
+	if status != http.StatusCreated {
+		t.Fatalf("create team: %d %v", status, created)
+	}
+	teamID := created["team_id"].(string)
+	member := h.signIn(t, "github", "team-member", "team-member@example.test", "Member")
+	inviteStatus, invitation, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/teams/invitations", body: map[string]any{"email": "team-member@example.test", "role": "member"}, key: "team-invite"})
+	if inviteStatus != http.StatusCreated {
+		t.Fatalf("invite team member: %d %v", inviteStatus, invitation)
+	}
+	acceptPath := mustURL(t, invitation["accept_url"].(string)).Path
+	if status, _, _ := member.call(t, call{method: http.MethodPost, path: acceptPath, key: "team-accept"}); status != http.StatusOK {
+		t.Fatalf("accept team invitation: %d", status)
+	}
+	userID := member.userID(t)
+	if status, _, _ := owner.call(t, call{method: http.MethodPut, path: "/api/v1/orgs/teams/teams/" + teamID + "/members/" + userID, key: "team-add"}); status != http.StatusNoContent {
+		t.Fatalf("add team member: %d", status)
+	}
+	status, listed, _ := member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/teams/teams"})
+	if status != http.StatusOK || len(listed["items"].([]any)) != 1 {
+		t.Fatalf("list teams: %d %v", status, listed)
+	}
+	team := listed["items"].([]any)[0].(map[string]any)
+	if len(team["members"].([]any)) != 1 || team["members"].([]any)[0].(map[string]any)["user_id"] != userID {
+		t.Fatalf("team member missing: %v", team)
+	}
+	if status, _, _ := member.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/teams/teams", body: map[string]any{"name": "Nope"}, key: "team-deny"}); status != http.StatusForbidden {
+		t.Fatalf("member created a team: %d", status)
+	}
+	if status, _, _ := owner.call(t, call{method: http.MethodDelete, path: "/api/v1/orgs/teams/teams/" + teamID + "/members/" + userID, key: "team-remove"}); status != http.StatusNoContent {
+		t.Fatalf("remove team member: %d", status)
+	}
+}
+
+func TestRepositoryACLAndReviewerAssignmentAreScoped(t *testing.T) {
+	h := newHarness(t)
+	owner := h.signIn(t, "google", "repo-acl-owner", "repo-acl-owner@example.test", "Owner")
+	owner.createOrg(t, "repo-acl", "Repo ACL")
+	if status, _, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/repo-acl/repos", body: map[string]any{"repo_id": "monorepo"}, key: "repo-create"}); status != http.StatusCreated {
+		t.Fatalf("create repo: %d", status)
+	}
+	member := h.signIn(t, "github", "repo-acl-member", "repo-acl-member@example.test", "Member")
+	_, invitation, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/repo-acl/invitations", body: map[string]any{"email": "repo-acl-member@example.test", "role": "member"}, key: "repo-acl-invite"})
+	accept := invitation["accept_url"].(string)
+	acceptURL, err := url.Parse(accept)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := member.call(t, call{method: http.MethodPost, path: acceptURL.RequestURI(), key: "repo-acl-accept"}); status != http.StatusOK {
+		t.Fatalf("accept: %d", status)
+	}
+	userID := member.userID(t)
+	path := "/api/v1/orgs/repo-acl/repos/monorepo/access/" + userID
+	if status, _, _ := owner.call(t, call{method: http.MethodPut, path: path, body: map[string]any{"access": "read"}, key: "repo-acl-grant"}); status != http.StatusOK {
+		t.Fatalf("grant access: %d", status)
+	}
+	if status, _, _ := member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/repo-acl/repos/monorepo/imports"}); status != http.StatusOK {
+		t.Fatalf("explicit read access was denied: %d", status)
+	}
+	if status, _, _ := owner.call(t, call{method: http.MethodPut, path: "/api/v1/orgs/repo-acl/repos/monorepo/reviewers/" + userID, key: "repo-reviewer"}); status != http.StatusNoContent {
+		t.Fatalf("assign reviewer: %d", status)
+	}
+	status, reviewers, _ := owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/repo-acl/repos/monorepo/reviewers"})
+	if status != http.StatusOK || len(reviewers["items"].([]any)) != 1 {
+		t.Fatalf("reviewer list: %d %v", status, reviewers)
+	}
+	if status, _, _ := owner.call(t, call{method: http.MethodDelete, path: path, key: "repo-acl-revoke"}); status != http.StatusNoContent {
+		t.Fatalf("revoke access: %d", status)
+	}
+	if status, listed, _ := member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/repo-acl/repos"}); status != http.StatusOK || len(listed["items"].([]any)) != 0 {
+		t.Fatalf("revoked member still saw the repository in the list: %d %v", status, listed)
+	}
+	if status, _, _ := member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/repo-acl/repos/monorepo/imports"}); status != http.StatusForbidden {
+		t.Fatalf("revoked member retained repository access: %d", status)
+	}
+}
+
+func TestGitHubInstallationWebhookIsVerifiedAndScoped(t *testing.T) {
+	h := newHarnessWith(t, identity.Config{Mode: identity.ModeDev, PublicURL: "http://127.0.0.1", InsecureCookies: true, GitHubWebhookSecret: "secret"})
+	owner := h.signIn(t, "google", "github-owner", "github-owner@example.test", "Owner")
+	owner.createOrg(t, "github-org", "GitHub Org")
+	body := []byte(`{"action":"created","organization":{"login":"github-org"},"installation":{"id":123,"account":{"login":"acme"},"repositories":[{"full_name":"acme/repo"}]}}`)
+	sum := hmac.New(sha256.New, []byte("secret"))
+	_, _ = sum.Write(body)
+	status, result, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
+		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-1", "X-Hub-Signature-256": "sha256=" + hex.EncodeToString(sum.Sum(nil)),
+	}})
+	if status != http.StatusAccepted || result["accepted"] != true {
+		t.Fatalf("webhook: %d %v", status, result)
+	}
+	jobID, ok := result["job_id"].(string)
+	if !ok || jobID == "" {
+		t.Fatalf("webhook did not enqueue an ascend job: %v", result)
+	}
+	var kind, state string
+	if err := h.pool.QueryRow(context.Background(), `SELECT kind,state FROM gfm.jobs WHERE job_id=$1::uuid`, jobID).Scan(&kind, &state); err != nil || kind != "ascend.run" || state != "queued" {
+		t.Fatalf("webhook job: kind=%q state=%q err=%v", kind, state, err)
+	}
+	if status, result, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
+		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-1", "X-Hub-Signature-256": "sha256=" + hex.EncodeToString(sum.Sum(nil)),
+	}}); status != http.StatusAccepted || result["reason"] != "duplicate_delivery" {
+		t.Fatalf("duplicate webhook was processed twice: %d %v", status, result)
+	}
+	status, listed, _ := owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/github-org/github/installations"})
+	if status != http.StatusOK || len(listed["items"].([]any)) != 1 {
+		t.Fatalf("installations: %d %v", status, listed)
+	}
+	if status, body, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
+		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-2", "X-Hub-Signature-256": "sha256=bad",
+	}}); status != http.StatusUnauthorized || body["error"] != "invalid_webhook_signature" {
+		t.Fatalf("bad signature accepted: %d %v", status, body)
+	}
+	if status, _, _ := owner.call(t, call{method: http.MethodDelete, path: "/api/v1/orgs/github-org/github/installations/123", key: "github-delete"}); status != http.StatusNoContent {
+		t.Fatalf("delete installation: %d", status)
 	}
 }
 

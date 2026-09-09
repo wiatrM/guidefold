@@ -330,6 +330,39 @@ func (s *Service) handleMe(c *mgmt.Context) error {
 	})
 }
 
+type profileRequest struct {
+	Name           string `json:"name"`
+	IdempotencyKey string `json:"idempotency_key"`
+}
+
+// handleUpdateProfile changes only the display name owned by Guidefold. Email
+// and provider identities remain provider-managed; linking an identity still
+// requires the explicit OAuth flow exposed by /me/identities/link/start.
+func (s *Service) handleUpdateProfile(c *mgmt.Context) error {
+	if c.Principal == nil || !c.Principal.IsUser() {
+		return mgmt.Unauthenticated("Sign in before editing your profile.")
+	}
+	var req profileRequest
+	if err := c.Decode(&req); err != nil {
+		return err
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || len(req.Name) > 120 {
+		return mgmt.Invalid("invalid_profile", "Name must contain 1 to 120 characters.")
+	}
+	var email string
+	if err := s.pool.QueryRow(c.Ctx(), `UPDATE gfm.users SET name=$2 WHERE user_id=$1::uuid RETURNING email`, c.Principal.UserID, req.Name).Scan(&email); err != nil {
+		if err == pgx.ErrNoRows {
+			return mgmt.Unauthenticated("This account is no longer available.")
+		}
+		return mgmt.Internal(err)
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"schema_version": mgmt.SchemaVersion,
+		"user":           map[string]any{"id": c.Principal.UserID, "email": email, "name": req.Name},
+	})
+}
+
 func (s *Service) identitiesOf(ctx context.Context, userID string) ([]meIdentity, error) {
 	rows, e := s.pool.Query(ctx,
 		`SELECT provider,created_at FROM gfm.identities WHERE user_id=$1::uuid ORDER BY provider`, userID)

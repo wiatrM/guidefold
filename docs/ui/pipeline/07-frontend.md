@@ -8,7 +8,7 @@ Cel: port siedmiu tras do ui/ oraz podłączenie zatwierdzonych kontraktów. Eta
 |---|---|
 | Runtime | React 19.2.8, TypeScript 7.0.2, Vite 8.2.2; wersje już budują hi-fi. Node 22.14.0, pnpm 10.30.3; piny i lockfile w każdym pakiecie. |
 | Routing | React Router DOM 7.18.3, BrowserRouter; siedem tras, query z filtrami/osią/skill/revision. Statyczny host ma fallback do index.html; /api nigdy nie trafia do tego fallbacku. |
-| Style | CSS Modules, lokalne fonty, Phosphor regular; bez biblioteki komponentów. ui/src/tokens/tokens.css jest jedynym miejscem wartości kolorów i rozmiarów w ui/src. |
+| Style | CSS Modules, lokalne fonty, Phosphor regular; Spectrum UI Charts registry dla telemetry charts. ui/src/tokens/tokens.css jest jedynym miejscem wartości kolorów i rozmiarów w ui/src. |
 | Stan | URL dla nawigacji, formularz lokalny dla szkicu, jedna warstwa fetch z AbortController, generacją dostępu oraz numerem żądania zasobu; bez globalnego Redux i bez przechowywania sekretów w JS. |
 | Kontrakt | Typy z wersjonowanego OpenAPI Go; dekodowanie payloadów w granicy API przed renderem. Fixture adapter spełnia ten sam interfejs, bez podszywania się pod sieć. |
 | Markdown | react-markdown 10.1.0, bez raw HTML i automatycznego pobierania obrazów ze źródeł. Eksport porównuje dokładne bajty, nie HTML podglądu. |
@@ -17,6 +17,15 @@ Cel: port siedmiu tras do ui/ oraz podłączenie zatwierdzonych kontraktów. Eta
 Go API pozostaje modularne, worker osobnym procesem; jeden Postgres i GCS. UI nie uruchamia LLM/buildera i nie wprowadza BFF w NestJS ani mikroserwisu dla widoku.
 AuthKit: redirect Google/GitHub przez Go, callback i odświeżanie sesji w Go; cookie HttpOnly/Secure/SameSite oraz ochrona CSRF dla zmian. Guidefold sprawdza aktualne membership przy każdym request, niezależnie od claimu organizacji. [WorkOS sessions](https://workos.com/docs/authkit/sessions), odczyt 2026-09-06.
 Użycie sesji nie daje OAuth dostępu do kodu repo. W aplikacji nie ma WorkOS API key, refresh tokena ani administracyjnego klucza SEARCH/USE.
+
+## Spectrum Charts inventory
+
+| Route/file | Previous renderer | Spectrum registry item | Data contract | Evidence |
+|---|---|---|---|---|
+| Usage → delivery/context, `src/components/MetricRow/SpectrumTelemetryChart.tsx` | Local dependency-free SVG bars | [`@spectrumui/bar-chart`](https://ui.spectrumhq.in/charts/bar) | `{month, desktop, mobile}` rows; text list keeps exact counts | Registry source adapted to CSS Modules/tokens; Vitest adapter test |
+| Usage → feedback, same adapter | Local stacked SVG | [`@spectrumui/pie-chart`](https://ui.spectrumhq.in/charts/pie) via `DonutPieChart` | `{name, value}` non-zero verdict slices; full verdict list remains textual | Registry source adapted to CSS Modules/tokens; Vitest adapter test |
+
+All telemetry visualizations route through the registry adapters above. Empty and unknown states are rendered as explicit text and unknown is never coerced into a failure.
 
 ## Układ ui/
 | Katalog | Odpowiedzialność |

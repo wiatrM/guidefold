@@ -50,6 +50,10 @@ spec:
       values: |
         tenant: cloudfloo
         repository: guidefold
+        publicURL: https://guidefold.cloudfloo.io
+        workos:
+          clientID: ""
+          secretName: guidefold-workos
         database:
           host: guidefold-postgres-rw.guidefold.svc.cluster.local
           name: guidefold

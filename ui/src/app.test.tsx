@@ -158,6 +158,32 @@ describe('shell composition', () => {
     expect(screen.getByText('Access unavailable')).toBeInTheDocument();
   });
 
+  test('an anonymous user can reach sign-in when the API is temporarily unavailable', async () => {
+    const controller = new AccessController({
+      fetchMe: async () => { throw new ApiError({ status: 503, code: 'database_unavailable', message: 'temporarily unavailable' }); },
+      onDenied: vi.fn(),
+    });
+    await controller.check(true);
+    const source = fakeSource({ getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'google', label: 'Google', login_url: '/api/v1/auth/login/google' }] }) });
+    render(<MemoryRouter initialEntries={['/import']}>
+      <AccessProvider controller={controller}><App source={source} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();
+  });
+
+  test('an authenticated user can accept an invitation from its browser landing page', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const acceptInvitation = vi.fn(async () => ({ org_id: 'o2', role: 'member' as const, joined: true }));
+    const source = fakeSource({ acceptInvitation });
+    render(<MemoryRouter initialEntries={['/invitations/invite-token/accept']}>
+      <AccessProvider controller={controller}><App source={source} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByText('ada@example.com')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
+    await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith('invite-token', expect.stringMatching(/^accept-invitation:/)));
+  });
+
   test('an unconfirmed session masks the view instead of revealing stale data', async () => {
     let clock = 1_000_000;
     let answered = false;

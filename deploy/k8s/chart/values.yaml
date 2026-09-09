@@ -6,6 +6,12 @@ developmentMode: false
 # e-mail, so it is refused outside developmentMode; the service has no default
 # and refuses to start if this is empty.
 auth: workos # workos | dev
+publicURL: "" # absolute browser origin used by OAuth callbacks (required for WorkOS)
+workos:
+  clientID: "" # WorkOS client id; secret stays in workos.secretName
+  secretName: guidefold-workos # key: api-key
+github:
+  webhookSecretName: "" # optional GitHub App webhook secret; key: webhook-secret
 image: "" # registry/image@sha256:... (Go runtime)
 artifactImage: "" # same runtime with /input/snapshot.json and optional embeddings.json
 imagePullPolicy: IfNotPresent

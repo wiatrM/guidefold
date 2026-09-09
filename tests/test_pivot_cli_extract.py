@@ -441,6 +441,13 @@ def test_the_ci_template_runs_extract_without_personal():
     assert "import" in ci and "generate" in ci
 
 
+def test_the_ci_template_exports_ascend_as_a_reviewable_pull_request():
+    ci = (Path(__file__).resolve().parents[1] / "templates" / "ci.yml").read_text(encoding="utf-8")
+    assert "peter-evans/create-pull-request@v6" in ci
+    assert "guidefold/ascend-pr-${{ github.event.pull_request.number }}" in ci
+    assert "GUIDEFOLD_ASCEND_API_KEY" in ci
+
+
 def test_extract_is_registered_and_reachable(gf):
     assert hasattr(gf, "cmd_extract")
     source = Path(gf.__file__).read_text(encoding="utf-8")
