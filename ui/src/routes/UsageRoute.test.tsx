@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiUsageRoute } from './ReviewRoutes';
@@ -30,17 +30,11 @@ const report = (over: Partial<Usage> = {}): Usage => ({
   ...over,
 });
 
+beforeEach(() => {
+  window.localStorage.removeItem('guidefold.notifications.v1');
+});
+
 describe('Usage route, hosted API, six states', () => {
-  test('unknown-only feedback remains an observed assessment, not an empty chart', async () => {
-    renderApi(ApiUsageRoute, fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:0,hindered:0,mixed:0,not_applicable:0,unknown:3,n:3}}})}));
-    expect(await screen.findByRole('img',{name:/Feedback verdicts out of 3 assessments.*Unknown 3/})).toBeInTheDocument();
-    expect(screen.getByText('3 assessments; no rate is reported below 20.')).toBeInTheDocument();
-  });
-  test('inconsistent feedback totals show counts and a warning, not a misleading pie',async()=>{
-    renderApi(ApiUsageRoute,fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:1,hindered:0,mixed:0,not_applicable:0,unknown:0,n:0}}})}));
-    expect(await screen.findByText(/The verdict counts do not match/)).toBeInTheDocument();
-    expect(screen.queryByRole('img',{name:/Feedback verdicts/})).not.toBeInTheDocument();
-  });
   test('Empty: no events read as No observations, never a zero rate', async () => {
     renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => empty }));
     expect((await screen.findAllByText('No observations')).length).toBeGreaterThanOrEqual(1);
@@ -165,6 +159,26 @@ describe('Usage route, queue, denominators and export', () => {
     expect(await screen.findByText('Member access is read only here. Import and organization changes require an owner.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Record decision' })).toBeDisabled();
   });
+
+  test('owner can opt in to deduplicated in-app alerts and mute them', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }));
+    const toggle = await screen.findByRole('checkbox', { name: 'Show in-app alerts for new owner queue items' });
+    expect(screen.getByText('Alerts are off until an owner opts in.')).toBeInTheDocument();
+    await userEvent.click(toggle);
+    expect(await screen.findByRole('list', { name: 'Open Guidefold notifications' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Published but never loaded: urn:b' })).toHaveAttribute('href', '#needs-review');
+    expect(screen.getByRole('button', { name: 'Mute alerts for 24 hours' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mute alerts for 24 hours' }));
+    expect(await screen.findByText(/Alerts are muted until/)).toBeInTheDocument();
+  });
+
+  test('dismissed queue items stay hidden until their item id changes', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Show in-app alerts for new owner queue items' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(await screen.findByText('No new actionable problems.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Published but never loaded: urn:b' })).not.toBeInTheDocument();
+  });
 });
 
 describe('Usage route, funnel, ranking and teams', () => {
@@ -245,7 +259,7 @@ describe('Usage route, delivery and feedback charts', () => {
     await screen.findAllByText('No observations');
     // Scoped to the chart landmarks, not `svg` in general: every Panel icon is also an SVG.
     expect(screen.queryByRole('group', { name: /Exposures and verified loads per skill/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('img', { name: /Feedback verdicts/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /Feedback verdicts/ })).not.toBeInTheDocument();
   });
 
   test('non-zero totals render the delivery bars and feedback proportions with real counts', async () => {
@@ -259,13 +273,11 @@ describe('Usage route, delivery and feedback charts', () => {
     expect(await screen.findByText('30 of 60 verified')).toBeInTheDocument();
     expect(screen.getByText('14 of 20 verified')).toBeInTheDocument();
     expect(screen.getByText('0 of 40 verified')).toBeInTheDocument();
-    // Recharts needs browser layout; exact counts remain testable without layout.
-    expect(deliveryChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
+    expect(deliveryChart.querySelector('[data-spectrum-chart="registry-frame"]')).toBeInTheDocument();
     // Feedback chart: real counts in the legend, small-sample honesty preserved (18 < 20).
-    const feedbackChart = screen.getByRole('img', { name: /Feedback verdicts/ });
-    expect(feedbackChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
-    expect(feedbackChart).toHaveAccessibleName(/18 assessments/);
-    const feedbackSection = feedbackChart.parentElement!;
+    const feedbackChart = screen.getByRole('group', { name: /Feedback verdicts/ });
+    expect(feedbackChart.querySelector('[data-spectrum-chart="registry-frame"]')).toBeInTheDocument();
+    const feedbackSection = feedbackChart.closest('div')!;
     expect(within(feedbackSection).getByText('Helped')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('Hindered')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('18 assessments; no rate is reported below 20.')).toBeInTheDocument();

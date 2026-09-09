@@ -72,12 +72,13 @@ var InstallationScopes = []string{"search", "use", "events"}
 
 // Config is the resolved deployment configuration.
 type Config struct {
-	Mode            string // dev|workos
-	PublicURL       string // absolute base URL used to build redirect URIs
-	InsecureCookies bool   // local http development only
-	WorkOSAPIKey    string
-	WorkOSClientID  string
-	WorkOSBase      string // API endpoint base; a test points this at httptest
+	Mode                string // dev|workos
+	PublicURL           string // absolute base URL used to build redirect URIs
+	InsecureCookies     bool   // local http development only
+	WorkOSAPIKey        string
+	WorkOSClientID      string
+	WorkOSBase          string // API endpoint base; a test points this at httptest
+	GitHubWebhookSecret string
 }
 
 // Service holds the identity endpoints and the principal resolver.
@@ -126,6 +127,13 @@ func ConfigFromEnv() (Config, error) {
 		InsecureCookies: os.Getenv("GUIDEFOLD_INSECURE_COOKIES") == "true",
 		WorkOSClientID:  os.Getenv("WORKOS_CLIENT_ID"),
 		WorkOSBase:      os.Getenv("WORKOS_API_BASE"),
+	}
+	if path := os.Getenv("GITHUB_WEBHOOK_SECRET_FILE"); path != "" {
+		b, e := os.ReadFile(path)
+		if e != nil {
+			return cfg, fmt.Errorf("github_webhook_secret_unreadable: %w", e)
+		}
+		cfg.GitHubWebhookSecret = strings.TrimSpace(string(b))
 	}
 	if cfg.Mode == "" {
 		return cfg, fmt.Errorf("auth_mode_required: set GUIDEFOLD_AUTH to %q or %q", ModeWorkOS, ModeDev)

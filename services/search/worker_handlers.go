@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
@@ -47,6 +51,20 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	build := review.NewPublishWorker(pool, blobs, importer.NewPythonBuilder(), publisher, "")
 	for kind, h := range build.Handlers() {
 		handlers[kind] = h
+	}
+	// The webhook persists a durable ascend intent even when the GitHub App REST
+	// credentials are intentionally absent from a development worker. Keeping
+	// the job visible prevents a delivery from being reported as complete while
+	// giving operators an explicit terminal reason until the connector is enabled.
+	handlers["ascend.run"] = func(_ context.Context, task *worker.Task) error {
+		if len(task.Job.Payload) == 0 {
+			return worker.Permanent(fmt.Errorf("ascend.run payload is empty"))
+		}
+		var event map[string]any
+		if err := json.Unmarshal(task.Job.Payload, &event); err != nil {
+			return worker.Permanent(fmt.Errorf("decode ascend.run payload: %w", err))
+		}
+		return worker.Skipped("github_app_connector_not_configured")
 	}
 	return handlers, nil
 }

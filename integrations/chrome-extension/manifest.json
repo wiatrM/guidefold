@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Guidefold context",
+  "description": "Open the current GitHub repository in Guidefold without storing credentials.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open in Guidefold"
+  },
+  "permissions": ["activeTab"]
+}

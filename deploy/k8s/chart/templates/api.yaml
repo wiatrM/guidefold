@@ -53,6 +53,12 @@ spec:
             - {name: PGUSER, value: {{ .Values.database.user | quote }}}
             - {name: PG_PASSWORD_FILE, value: /run/credentials/app-password}
             - {name: GUIDEFOLD_TOKEN_FILE, value: /run/credentials/api-token}
+            {{- if eq .Values.auth "workos" }}
+            - {name: WORKOS_API_KEY_FILE, value: /run/workos/api-key}
+            {{- end }}
+            {{- if .Values.github.webhookSecretName }}
+            - {name: GITHUB_WEBHOOK_SECRET_FILE, value: /run/github/webhook-secret}
+            {{- end }}
           ports: [{name: http, containerPort: 8080}]
           startupProbe:
             httpGet: {path: /health/live, port: http}
@@ -73,6 +79,12 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - {name: credentials, mountPath: /run/credentials, readOnly: true}
+            {{- if eq .Values.auth "workos" }}
+            - {name: workos, mountPath: /run/workos, readOnly: true}
+            {{- end }}
+            {{- if .Values.github.webhookSecretName }}
+            - {name: github, mountPath: /run/github, readOnly: true}
+            {{- end }}
             - {name: tmp, mountPath: /tmp}
             {{- include "gf.tlsMount" . | nindent 12 }}
       volumes:
@@ -83,6 +95,22 @@ spec:
             items:
               - {key: app-password, path: app-password}
               - {key: api-token, path: api-token}
+        {{- if eq .Values.auth "workos" }}
+        - name: workos
+          secret:
+            secretName: {{ .Values.workos.secretName }}
+            defaultMode: 0440
+            items:
+              - {key: api-key, path: api-key}
+        {{- end }}
+        {{- if .Values.github.webhookSecretName }}
+        - name: github
+          secret:
+            secretName: {{ .Values.github.webhookSecretName }}
+            defaultMode: 0440
+            items:
+              - {key: webhook-secret, path: webhook-secret}
+        {{- end }}
         - {name: tmp, emptyDir: {sizeLimit: 32Mi}}
         {{- include "gf.tlsVolume" . | nindent 8 }}
 ---

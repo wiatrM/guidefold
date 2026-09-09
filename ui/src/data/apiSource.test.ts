@@ -165,6 +165,48 @@ describe('revocation', () => {
 });
 
 describe('idempotency and confirmation through the source', () => {
+  test('repository access and reviewer operations use scoped paths and idempotency', async () => {
+    const seen: { method: string; url: string; body: string | undefined; key: string | undefined }[] = [];
+    const { source } = harness(async (url, init) => {
+      const request = init as RequestInit;
+      seen.push({ method: request.method ?? 'GET', url: String(url), body: request.body as string | undefined, key: (request.headers as Record<string, string>)['Idempotency-Key'] });
+      if ((request.method ?? 'GET') === 'GET' && String(url).endsWith('/access')) return fakeResponse({ items: [{ user_id: 'u2', email: 'dev@example.com', name: 'Dev', access: 'read', created_at: null }] });
+      if ((request.method ?? 'GET') === 'GET') return fakeResponse({ items: [{ user_id: 'u2', email: 'dev@example.com', name: 'Dev', assigned_at: null }] });
+      if ((request.method ?? 'GET') === 'PUT' && String(url).includes('/access/')) return fakeResponse({ user_id: 'u2', email: 'dev@example.com', name: 'Dev', access: 'write', created_at: null });
+      return fakeResponse({ ok: true });
+    });
+    const target = { org: 'acme', repo: 'payments' };
+    expect((await source.listRepoAccess(target))[0].access).toBe('read');
+    expect((await source.setRepoAccess(target, 'u2', 'write', 'access:1')).access).toBe('write');
+    await source.removeRepoAccess(target, 'u2', 'access:2');
+    expect((await source.listReviewers(target))[0].user_id).toBe('u2');
+    await source.assignReviewer(target, 'u2', 'reviewer:1');
+    await source.removeReviewer(target, 'u2', 'reviewer:2');
+    expect(seen.map(item => item.method + ' ' + new URL(item.url).pathname)).toEqual([
+      'GET /api/v1/orgs/acme/repos/payments/access',
+      'PUT /api/v1/orgs/acme/repos/payments/access/u2',
+      'DELETE /api/v1/orgs/acme/repos/payments/access/u2',
+      'GET /api/v1/orgs/acme/repos/payments/reviewers',
+      'PUT /api/v1/orgs/acme/repos/payments/reviewers/u2',
+      'DELETE /api/v1/orgs/acme/repos/payments/reviewers/u2',
+    ]);
+    expect(seen[1].key).toBe('access:1');
+    expect(JSON.parse(seen[1].body ?? '{}')).toEqual({ access: 'write' });
+  });
+
+  test('local package blob upload uses raw bytes and the finalizer decodes status', async () => {
+    const seen: { body: unknown; contentType: string | undefined }[] = [];
+    const { source } = harness(async (_url, init) => {
+      seen.push({ body: (init as RequestInit).body, contentType: ((init as RequestInit).headers as Record<string, string>)['Content-Type'] });
+      return fakeResponse({ import_id: 'i1', state: 'queued', manifest_digest: null, commit: null, complete: true, publish: true, counts: null, files: [], files_truncated: false, jobs: [], publication: null, error: null, reused_import_id: null, created_at: null, updated_at: null, finalized_at: null });
+    });
+    await source.uploadImportBlob({ org: 'org-a', repo: 'monorepo' }, 'i1', 'a'.repeat(64), new Uint8Array([1, 2, 3]));
+    await source.finalizeImport({ org: 'org-a', repo: 'monorepo' }, 'i1', 'finalize:i1');
+    expect(seen[0].contentType).toBe('application/octet-stream');
+    expect(seen[0].body).toBeInstanceOf(Uint8Array);
+    expect(seen[1].contentType).toBe('application/json');
+  });
+
   test('creating an organisation reuses one key across the replay', async () => {
     const keys: (string | undefined)[] = [];
     let attempt = 0;

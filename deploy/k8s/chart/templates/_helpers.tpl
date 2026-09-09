@@ -12,6 +12,11 @@ app.kubernetes.io/instance: {{ include "gf.name" . }}
 {{- if and (ne .Values.workload "migrate") (empty .Values.snapshotID) }}{{ fail "snapshotID is required; serving must never follow a mutable head" }}{{ end -}}
 {{- if and (eq .Values.workload "publish") (empty .Values.artifactImage) }}{{ fail "publish requires artifactImage" }}{{ end -}}
 {{- if not (has .Values.auth (list "workos" "dev")) }}{{ fail "auth must be workos or dev" }}{{ end -}}
+{{- if and (eq .Values.auth "workos") (not .Values.developmentMode) (eq .Values.workload "serve") }}
+  {{- if empty .Values.publicURL }}{{ fail "publicURL is required for WorkOS callbacks" }}{{ end -}}
+  {{- if empty .Values.workos.clientID }}{{ fail "workos.clientID is required when auth=workos" }}{{ end -}}
+  {{- if empty .Values.workos.secretName }}{{ fail "workos.secretName is required when auth=workos" }}{{ end -}}
+{{- end -}}
 {{- if not .Values.developmentMode -}}
   {{- if eq .Values.auth "dev" }}{{ fail "auth=dev mounts a sign-in form that mints a session for any e-mail; it is only allowed with developmentMode" }}{{ end -}}
   {{- if not (regexMatch "@sha256:[0-9a-f]{64}$" .Values.image) }}{{ fail "production image must be pinned by digest" }}{{ end -}}

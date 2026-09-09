@@ -214,6 +214,8 @@ def helm_values():
         "tenant": "tenant",
         "repository": "repo",
         "snapshotID": "repository:" + "c" * 64,
+        "publicURL": "https://guidefold.example.test",
+        "workos": {"clientID": "client_test", "secretName": "guidefold-workos"},
         "database": {
             "host": "db.internal",
             "networkPeers": [{"ipBlock": {"cidr": "10.20.0.0/24"}}],

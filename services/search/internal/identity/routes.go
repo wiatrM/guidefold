@@ -14,6 +14,7 @@ import (
 // to repeat.
 func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodGet, "/api/v1/auth/providers", s.handleProviders, mgmt.Public())
+	r.Handle(http.MethodPost, "/api/v1/github/webhook", s.handleGitHubWebhook, mgmt.Public(), mgmt.NoCSRF())
 	r.Handle(http.MethodGet, "/api/v1/auth/login/{provider}", s.handleLogin, mgmt.Public())
 	// The development sign-in form mints a session for any e-mail submitted to
 	// it. It is not merely gated inside the handler: in any mode but dev the
@@ -26,6 +27,7 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodPost, "/api/v1/auth/logout", s.handleLogout)
 
 	r.Handle(http.MethodGet, "/api/v1/me", s.handleMe)
+	r.Handle(http.MethodPatch, "/api/v1/me/profile", s.handleUpdateProfile, mgmt.Idempotent())
 	r.Handle(http.MethodPost, "/api/v1/me/identities/link/start", s.handleLinkStart)
 
 	r.Handle(http.MethodPost, "/api/v1/auth/device", s.handleDeviceStart, mgmt.Public(), mgmt.NoCSRF())
@@ -37,9 +39,21 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodGet, "/api/v1/orgs", s.handleListOrgs)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}", s.handleGetOrg)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/members", s.handleListMembers)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/teams", s.handleListTeams)
+	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/teams", s.handleCreateTeam, mgmt.Idempotent())
+	r.Handle(http.MethodPut, "/api/v1/orgs/{org}/teams/{team_id}/members/{user_id}", s.handleAddTeamMember, mgmt.Idempotent())
+	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/teams/{team_id}/members/{user_id}", s.handleRemoveTeamMember, mgmt.Idempotent())
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/github/installations", s.handleListGitHubInstallations)
+	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/github/installations/{installation_id}", s.handleDeleteGitHubInstallation, mgmt.Idempotent())
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/invitations", s.handleListInvitations)
+	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/invitations/{invitation_id}", s.handleRevokeInvitation, mgmt.Idempotent())
 	r.Handle(http.MethodPatch, "/api/v1/orgs/{org}/members/{user_id}", s.handleSetRole, mgmt.Idempotent())
 	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/members/{user_id}", s.handleRemoveMember, mgmt.Idempotent())
 	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/invitations", s.handleInvite, mgmt.Idempotent())
+	// Invitation links are safe to open in a browser. GET only hands the
+	// capability to the hosted acceptance screen; membership changes still
+	// require the authenticated, CSRF-protected POST below.
+	r.Handle(http.MethodGet, "/api/v1/invitations/{token}/accept", s.handleInvitationLanding, mgmt.Public())
 	r.Handle(http.MethodPost, "/api/v1/invitations/{token}/accept", s.handleAcceptInvitation,
 		mgmt.Idempotent())
 
@@ -49,4 +63,10 @@ func (s *Service) Register(r *mgmt.Router) {
 		s.handleRevokeInstallation, mgmt.Idempotent())
 
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/audit", s.handleAudit)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/access", s.handleListRepoAccess)
+	r.Handle(http.MethodPut, "/api/v1/orgs/{org}/repos/{repo}/access/{user_id}", s.handlePutRepoAccess, mgmt.Idempotent())
+	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/repos/{repo}/access/{user_id}", s.handleDeleteRepoAccess, mgmt.Idempotent())
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/reviewers", s.handleListReviewers)
+	r.Handle(http.MethodPut, "/api/v1/orgs/{org}/repos/{repo}/reviewers/{user_id}", s.handlePutReviewer, mgmt.Idempotent())
+	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/repos/{repo}/reviewers/{user_id}", s.handleDeleteReviewer, mgmt.Idempotent())
 }

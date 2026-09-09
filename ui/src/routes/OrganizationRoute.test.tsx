@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ApiOrganizationRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
-import type { AuditPage, Installation, Member } from '../api/decoders';
+import type { AuditPage, Installation, InvitationLifecycle, Member } from '../api/decoders';
 import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
@@ -34,6 +34,31 @@ function renderRoute(source: DataSource, search = '', over: Partial<ApiRouteCont
 }
 
 describe('Organization route, members', () => {
+  test('a user can update the Guidefold display name and recheck the session', async () => {
+    const updateProfile = vi.fn(async (name: string) => ({ user: { id: 'u1', email: 'ada@example.com', name } }));
+    const recheckAccess = vi.fn(async () => {});
+    renderRoute(fakeSource({ listMembers: async () => owners, updateProfile }), '', { recheckAccess });
+    const input = await screen.findByLabelText('Display name');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Ada Lovelace');
+    await userEvent.click(screen.getByRole('button', { name: 'Save profile' }));
+    expect(updateProfile).toHaveBeenCalledWith('Ada Lovelace', 'profile:u1:Ada Lovelace');
+    expect(recheckAccess).toHaveBeenCalled();
+    expect(await screen.findByText('Profile name saved.')).toBeInTheDocument();
+  });
+
+  test('owners can see invitation lifecycle and revoke a pending link', async () => {
+    const invitations: InvitationLifecycle[] = [{ invitation_id: 'i1', email: 'bob@example.com', role: 'member', status: 'pending', created_at: '2026-01-01T00:00:00Z', expires_at: '2026-01-15T00:00:00Z', accepted_at: null, revoked_at: null }];
+    const listInvitations = vi.fn(async () => invitations);
+    const revokeInvitation = vi.fn(async () => {});
+    renderRoute(fakeSource({ listMembers: async () => owners, listInvitations, revokeInvitation }));
+    const row = (await screen.findByText('bob@example.com')).closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Revoke' }));
+    expect(revokeInvitation).toHaveBeenCalledWith('meridian', 'i1', 'revoke-invitation:meridian:i1');
+    await waitFor(() => expect(listInvitations.mock.calls.length).toBeGreaterThan(1));
+    expect(await screen.findByText('Invitation for bob@example.com was revoked.')).toBeInTheDocument();
+  });
+
   test('the last-owner 409 is shown inline on that row and nothing is claimed as removed', async () => {
     const source = fakeSource({
       listMembers: async () => owners,

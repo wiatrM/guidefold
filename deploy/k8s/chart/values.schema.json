@@ -20,6 +20,30 @@
         "dev"
       ]
     },
+    "publicURL": {
+      "type": "string"
+    },
+    "workos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientID": {
+          "type": "string"
+        },
+        "secretName": {
+          "type": "string"
+        }
+      }
+    },
+    "github": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "webhookSecretName": {
+          "type": "string"
+        }
+      }
+    },
     "image": {
       "type": "string"
     },

@@ -11,6 +11,8 @@ data:
   GUIDEFOLD_REPO: {{ .Values.repository | quote }}
   GUIDEFOLD_SNAPSHOT_ID: {{ .Values.snapshotID | quote }}
   GUIDEFOLD_AUTH: {{ .Values.auth | quote }}
+  GUIDEFOLD_PUBLIC_URL: {{ .Values.publicURL | quote }}
+  WORKOS_CLIENT_ID: {{ .Values.workos.clientID | quote }}
   GUIDEFOLD_LEXICAL_ENGINE: router
   GUIDEFOLD_RETRIEVAL_MODE: sparse
   GUIDEFOLD_EXPERIMENTAL_OUTPUT: "false"

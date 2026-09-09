@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -139,11 +140,77 @@ describe('Import route, sign in and context', () => {
     expect(screen.queryByText(/Local simulation/)).not.toBeInTheDocument();
   });
 
+  test('the browser package path hashes selected files, uploads missing blobs and finalizes once', async () => {
+    // jsdom does not expose SubtleCrypto, while the hosted browser path uses the
+    // Web Crypto API in real browsers. Keep this contract test on the same API.
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+    const createImport = vi.fn(async (_target: unknown, manifest: any) => ({ import_id: 'browser-import', state: 'created' as const, missing_blobs: [manifest.files[0].sha256], limits: null, reused_import_id: null }));
+    const uploadImportBlob = vi.fn(async () => {});
+    const finalizeImport = vi.fn(async () => status({ import_id: 'browser-import', state: 'queued' }));
+    const go = vi.fn();
+    const source = fakeSource({ listRepos: async () => [], createImport, uploadImportBlob, finalizeImport });
+    renderRoute(source, 'step=preview', { go });
+    const input = await screen.findByLabelText('Files');
+    const file = new File(['# Auth\n'], 'SKILL.md', { type: 'text/markdown' });
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => new TextEncoder().encode('# Auth\n').buffer });
+    await userEvent.upload(input, file);
+    expect(await screen.findByText('1 file(s) selected.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Import selected files' }));
+    await waitFor(() => expect(createImport).toHaveBeenCalledTimes(1));
+    expect(uploadImportBlob).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'browser-import', expect.stringMatching(/^[0-9a-f]{64}$/), expect.any(Uint8Array));
+    expect(finalizeImport).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'browser-import', 'browser-finalize:browser-import');
+    expect(go).toHaveBeenCalledWith('import', { step: 'result', import_id: 'browser-import' });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test('an owner can register a repository before using the browser package path', async () => {
+    const createRepo = vi.fn(async () => ({ repo_id: 'local-repo', name: null, git_host_url: null, created_at: null, created: true }));
+    const go = vi.fn();
+    renderRoute(fakeSource({ listRepos: async () => [], createRepo }), 'step=preview', { repo: null, go });
+    await userEvent.type(await screen.findByLabelText('Repository id'), 'local-repo');
+    await userEvent.click(screen.getByRole('button', { name: 'Register repository' }));
+    await waitFor(() => expect(createRepo).toHaveBeenCalledWith('meridian', { repo_id: 'local-repo', git_host_url: null }, 'create-repo:meridian:local-repo'));
+    expect(go).toHaveBeenCalledWith('import', { repo: 'local-repo', step: 'result' });
+  });
+
+  test('the browser package path rejects obvious secret files before upload', async () => {
+    const createImport = vi.fn();
+    renderRoute(fakeSource({ listRepos: async () => [], createImport }), 'step=preview');
+    const input = await screen.findByLabelText('Files');
+    const file = new File(['TOKEN=secret\n'], '.env', { type: 'text/plain' });
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => new TextEncoder().encode('TOKEN=secret\n').buffer });
+    await userEvent.upload(input, file);
+    await userEvent.click(screen.getByRole('button', { name: 'Import selected files' }));
+    expect(await screen.findByText('sensitive file rejected: .env')).toBeInTheDocument();
+    expect(createImport).not.toHaveBeenCalled();
+  });
+
   test('a member sees the read-only notice and no repository form', async () => {
     const source = fakeSource({ listRepos: async () => [] });
     renderRoute(source, 'step=preview', { role: 'member' });
     expect(await screen.findByText('Member access is read only here. Import and organization changes require an owner.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Repository id')).not.toBeInTheDocument();
+  });
+
+  test('an owner can grant repository access and assign a reviewer', async () => {
+    const setRepoAccess = vi.fn(async () => ({ user_id: 'u2', email: 'dev@example.com', name: 'Dev', access: 'write' as const, created_at: null }));
+    const assignReviewer = vi.fn(async () => {});
+    const source = fakeSource({
+      listRepos: async () => [{ repo_id: 'monorepo', name: null, git_host_url: null, created_at: null, created: false }],
+      listMembers: async () => [{ user_id: 'u2', email: 'dev@example.com', name: 'Dev', role: 'member' as const, joined_at: null }],
+      listRepoAccess: async () => [], listReviewers: async () => [], setRepoAccess, assignReviewer,
+    });
+    renderRoute(source, 'step=preview');
+    await userEvent.selectOptions(await screen.findByLabelText('Member'), 'u2');
+    await userEvent.selectOptions(screen.getByLabelText('Access level'), 'write');
+    await userEvent.click(screen.getByRole('button', { name: 'Save repository access' }));
+    await waitFor(() => expect(setRepoAccess).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'u2', 'write', expect.stringContaining('repo-access:')));
+    await userEvent.selectOptions(screen.getByLabelText('Reviewer'), 'u2');
+    await userEvent.click(screen.getByRole('button', { name: 'Assign reviewer' }));
+    await waitFor(() => expect(assignReviewer).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'u2', expect.stringContaining('repo-reviewer:')));
   });
 
   test('polling stops on a terminal state and is cancelled on unmount', async () => {
