@@ -22,3 +22,5 @@ design/landing/imagegen/*.job.json
 design/landing/video/*.mp4
 design/landing/video/frames/
 design/landing/video/*.json
+
+design/landing/**/*.err
