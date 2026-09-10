@@ -21,10 +21,22 @@ worker 1/1, portal 1/1. Root, presentation, docs and auth providers return HTTP
 200; unauthenticated `/api/v1/me` returns 401. Both API healthchecks pass.
 All 36 presentation files match the approved local assets by SHA256.
 
-Registered the production callback with WorkOS (`201`). GoogleOAuth and
-GitHubOAuth authorization still return WorkOS `404`; the hosted AuthKit screen
-currently offers only SSO. Full sign-in is not verified and requires configuring
-those production OAuth providers. Do not report full login as working yet.
+Production OAuth configuration completed in the owner's Chrome session:
+- WorkOS application renamed `Guidefold`; production callback registered.
+- GitHub OAuth app `3848743`, client `Ov23liUWApzMhqtGhKAw`, is enabled in
+  WorkOS with only `user:email`. GitHub's consent screen was reached; Chrome
+  blocked the return navigation with `ERR_BLOCKED_BY_CLIENT`, so the full GitHub
+  round-trip remains unverified.
+- Google Cloud project `guidefold-production` (`950015343797`), OAuth client
+  `950015343797-3h2ek43ummij87i4pqg194ua2mm2g9if.apps.googleusercontent.com`,
+  is enabled in WorkOS with email/profile scopes. A real Google sign-in completed
+  and opened the authenticated Guidefold import screen as the owner.
+- Google publishing status remains `Testing`, with the owner's account added.
+  Public publication is blocked until the application branding includes a full
+  account-data privacy policy; the landing page's newsletter disclosure is not
+  an adequate substitute. No production-wide Google login claim is made.
+OAuth client secrets were transferred directly between the provider panels and
+WorkOS; they are not stored in this repository.
 
 Ingress access explicitly allows the `ingress` namespace's nginx controller.
 API-only public TCP/443 egress permits the WorkOS code exchange; private and
