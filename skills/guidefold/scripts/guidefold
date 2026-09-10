@@ -4,9 +4,9 @@
 Subcommands
   where                     print hierarchy node for cwd (from guidefold.yaml)
   find "<task>" --scope N   task-aware ranked search (Router 0.1) + URN-prefix filter for N
-  load <urn>                download default revision into <cache_root>/skills/<urn>/<rev>/
+  load <urn>                download default revision into <cache_root>/skills/<urn>/<rev>/;
+                             --delivery-policy proof_gated uses service USE 1.2 and fails closed
   validate                  CI: enforce CONVENTIONS.md on all skills
-  procedure <SKILL.md>      verify a runbook has explicit inputs, outputs, steps and checks
   drift --base <ref>        CI: code diff ∩ metadata.references → report
   report --base <ref>       CI/PR: deterministic change report between <ref> and the working tree —
                              skill/scope/relation/resource diff, structure errors (cycle, missing
@@ -406,6 +406,29 @@ def frontmatter(skill_md: Path) -> dict:
     m = FM.match(skill_md.read_text(encoding="utf-8"))
     return yaml.safe_load(m.group(1)) if m else {}
 
+def ranking_body(skill_md: Path) -> str:
+    """Return retriever text while excluding structured source provenance.
+
+    ``source_proof`` is checked after candidate selection. Indexing its schema, claims or source
+    paths would make provenance a hidden ranking feature and let an otherwise identical card move
+    merely because an owner added evidence. Other frontmatter remains indexed for compatibility.
+    """
+    raw = skill_md.read_text(encoding="utf-8", errors="ignore")
+    match = FM.match(raw)
+    if not match:
+        return raw
+    kept = []
+    skipping = False
+    for line in match.group(1).splitlines(keepends=True):
+        if not skipping and re.match(r"^source_proof\s*:", line):
+            skipping = True
+            continue
+        if skipping and re.match(r"^[^\s#][^:]*:", line):
+            skipping = False
+        if not skipping:
+            kept.append(line)
+    return raw[:match.start(1)] + "".join(kept) + raw[match.end(1):]
+
 def md_list(md: dict, key: str) -> list:
     """metadata.<key> is a comma-separated string (Agent Registry rejects non-scalar metadata, ADR-0010);
     YAML lists are still parsed so validate can report them. Splits on commas AND whitespace, which
@@ -628,7 +651,7 @@ class Index:
             name = d.name
             u = urn(cfg, node, name)
             md = fm.get("metadata") or {}
-            body = (d / "SKILL.md").read_text(errors="ignore")
+            body = ranking_body(d / "SKILL.md")
             cards[u] = {
                 "urn": u, "node": node, "name": name,
                 "description": str(fm.get("description", "")),
@@ -644,6 +667,13 @@ class Index:
                 "owner": md.get("owner"),
                 "_body": body,
             }
+            # `source_proof` lives at the frontmatter root rather than under
+            # `metadata`: registry metadata is intentionally scalar, while a
+            # proof is a bounded structured record.  Keep it out of every
+            # ranking field and carry it into the immutable service snapshot
+            # as `proof`; the Go delivery gate is the only reader.
+            if "source_proof" in fm:
+                cards[u]["proof"] = fm["source_proof"]
         return cls.from_cards(cards, cfg["nodes"], weights=(cfg.get("router") or {}).get("weights"),
                                word_vectors=word_vectors)
 
@@ -653,7 +683,8 @@ class Index:
         unit tests to construct small, hand-controlled fixtures (policy filter, BM25, RRF, PPR,
         dense, closure, abstention, ordering) without a filesystem tree. Each card must carry at
         least the keys `Index.build` produces (urn/node/name/description/digest/triggers/
-        negative_triggers/requires/refines/status/replaced_by/_body)."""
+        negative_triggers/requires/refines/status/replaced_by/_body); an optional `proof`
+        record is carried through unchanged and is never a ranking signal."""
         w = {**cls.DEFAULT_WEIGHTS, **(weights or {})}
         idx = cls(dict(cards), dict(nodes), w)
         idx._build_graph()
@@ -1115,7 +1146,7 @@ class _LazyCards:
         off, length = self._offsets[d]
         raw = bytes(self._mm[off:off + length]) if self._mm is not None else b"{}"
         row = json.loads(raw)
-        return {
+        card = {
             "urn": row["urn"], "node": row["node"], "name": row["name"],
             "description": row["description"], "digest": row.get("digest", ""),
             "triggers": row.get("triggers", []), "negative_triggers": row.get("negative_triggers", []),
@@ -1126,6 +1157,9 @@ class _LazyCards:
             "kind": row.get("kind"), "layer": row.get("layer"), "owner": row.get("owner"),
             "_body": "",   # never read by Router; BM25 is already baked into postings.bin
         }
+        if row.get("proof") is not None:
+            card["proof"] = row["proof"]
+        return card
 
     def get(self, u, default=None):
         d = self._urn_to_doc.get(u)
@@ -1237,6 +1271,8 @@ def _serialize_artifact_files(idx: Index) -> dict:
             "status": c.get("status", "active"), "replaced_by": c.get("replaced_by"),
             "kind": c.get("kind"), "layer": c.get("layer"), "owner": c.get("owner"),
         }
+        if c.get("proof") is not None:
+            row["proof"] = c["proof"]
         line = json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
         cards_idx += struct.pack("<II", running_offset, len(line))
         running_offset += len(line)
@@ -2165,6 +2201,7 @@ class _RemoteSearchResult:
         self.body = None
         self.error = None   # "timeout"/"connection"/"invalid_response" -- set on transport failure
         self.conn = None
+        self.phase = None   # "connect", "request", or "read"; used to classify timeouts
 
 
 def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
@@ -2177,10 +2214,18 @@ def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
         conn = conn_cls(host, port, timeout=max(timeout_s, 0.001))
         result.conn = conn
         body = json.dumps(payload).encode("utf-8")
+        # Connect explicitly so a timeout while the endpoint is unreachable is reported as a
+        # connection failure.  HTTPConnection.request() otherwise combines connect and write,
+        # which makes a refused/unroutable endpoint indistinguishable from a slow response on
+        # platforms where the kernel drops SYNs instead of returning ECONNREFUSED.
+        result.phase = "connect"
+        conn.connect()
+        result.phase = "request"
         conn.request("POST", path or "/", body=body, headers={
             "Content-Type": "application/json", "Content-Length": str(len(body)),
             "Authorization": "Bearer " + token,
         })
+        result.phase = "read"
         resp = conn.getresponse()
         raw = resp.read()
         result.status = resp.status
@@ -2194,7 +2239,7 @@ def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
         except Exception:
             pass
     except TimeoutError:
-        result.error = "timeout"
+        result.error = "connection" if result.phase == "connect" else "timeout"
     except Exception:
         # Any other transport-layer failure (refused, reset, DNS, TLS, or the socket being
         # force-closed out from under this thread by _abandon_remote below) is reported the same
@@ -2350,10 +2395,15 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
                        "deadline_ms": search_cfg["deadline_ms"], "request_id": search_id,
                        "budget": {"max_cards": k}}
             timeout_s = search_cfg["deadline_ms"] / 1000.0
+            # Leave a small handoff margin for the worker to publish its transport error before
+            # the caller's monotonic deadline expires.  Without it, a platform that reports an
+            # unreachable local port as a kernel-level connect timeout can race the deadline and
+            # get mislabeled as the caller abandoning a slow response.
+            transport_timeout_s = max(timeout_s - min(0.05, timeout_s * 0.25), 0.001)
             remote_thread = threading.Thread(
                 target=_remote_call,
                 args=(scheme, host, port, prefix + "/v1/search", search_cfg["token"], payload,
-                      timeout_s, remote_result),
+                      transport_timeout_s, remote_result),
                 daemon=True)
             remote_thread.start()
         except Exception:
@@ -2806,19 +2856,27 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     except Exception:
         pass  # telemetry must never fail or block the command it instruments (see block docstring)
 
-def _use_via_service(search_cfg: dict, skill_id: str, revision: str):
-    """Blocking POST /v1/use (contract 1.1) -- no local race/fallback exists for USE (unlike
-    SEARCH, ADR-0023 Sec3): an exact urn@revision either hydrates from the configured service or
-    it doesn't; there is no local equivalent of "this server's revision" to fall back to. Returns
-    (body_dict_or_None, degradation_reason_or_None) using the same failure vocabulary as SEARCH."""
+def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
+                     delivery_policy: str = "legacy"):
+    """Blocking POST /v1/use -- no local race/fallback exists for USE (unlike SEARCH, ADR-0023
+    Sec3): an exact urn@revision either hydrates from the configured service or it doesn't. The
+    legacy path sends contract 1.1 unchanged. ``proof_gated`` opts into contract 1.2 and returns
+    ``"ask"`` as the reason when the service deliberately abstains; that is a valid response,
+    not a transport failure, and the caller must never cache its body."""
     import threading
     result = _RemoteSearchResult()
     try:
         scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
     except Exception:
         return None, "config"
-    payload = {"schema_version": "1.1", "skill_id": skill_id, "revision": revision,
+    if delivery_policy not in ("legacy", "proof_gated"):
+        return None, "config"
+    proof_gated = delivery_policy == "proof_gated"
+    payload = {"schema_version": "1.2" if proof_gated else "1.1",
+               "skill_id": skill_id, "revision": revision,
                "deadline_ms": search_cfg["deadline_ms"], "request_id": _new_id()}
+    if proof_gated:
+        payload["delivery_policy"] = "proof_gated"
     timeout_s = search_cfg["deadline_ms"] / 1000.0
     t = threading.Thread(target=_remote_call,
                           args=(scheme, host, port, prefix + "/v1/use", search_cfg["token"],
@@ -2834,16 +2892,131 @@ def _use_via_service(search_cfg: dict, skill_id: str, revision: str):
     if status is None or body is None:
         return None, "invalid_response"
     if status == 200:
-        if not (isinstance(body, dict) and body.get("schema_version") == "1.1"
+        expected_schema = "1.2" if proof_gated else "1.1"
+        if not (isinstance(body, dict) and body.get("schema_version") == expected_schema
                 and isinstance(body.get("body"), str) and isinstance(body.get("checksum"), str)
                 and body.get("skill_id") == skill_id and body.get("revision") == revision):
             return None, "invalid_response"
+        if proof_gated:
+            delivery = body.get("delivery")
+            if not isinstance(delivery, dict) or delivery.get("action") not in ("LOAD", "ASK"):
+                return None, "invalid_response"
+            proof_reasons = {
+                "source_proof_complete", "proof_missing", "proof_schema_invalid",
+                "proof_identity_mismatch", "proof_snapshot_mismatch", "proof_revision_mismatch",
+                "proof_body_hash_mismatch", "proof_scope_incomplete", "proof_claim_incomplete",
+                "proof_conflict", "closure_incomplete", "proof_source_ref_invalid",
+                "proof_recursive_invalid",
+                "proof_source_unavailable", "proof_source_hash_mismatch", "proof_source_line_range",
+            }
+            action, reason = delivery.get("action"), delivery.get("reason")
+            if reason not in proof_reasons or not isinstance(delivery.get("missing"), list) or len(delivery["missing"]) > 32 or not isinstance(delivery.get("provenance"), dict):
+                return None, "invalid_response"
+            if action == "LOAD" and reason != "source_proof_complete":
+                return None, "invalid_response"
+            if action == "ASK" and reason == "source_proof_complete":
+                return None, "invalid_response"
+            for item in delivery["missing"]:
+                if (not isinstance(item, dict) or not isinstance(item.get("requirement"), str)
+                        or not item["requirement"].strip() or len(item["requirement"]) > 128
+                        or not isinstance(item.get("reason"), str) or not item["reason"].strip()
+                        or len(item["reason"]) > 256):
+                    return None, "invalid_response"
+            # ASK is fail-closed at the wire boundary too. A server that labels a response ASK
+            # while returning bytes is not a safe proof-gated peer.
+            if action == "ASK" and (body.get("body") != "" or body.get("status") != "ask"):
+                return None, "invalid_response"
+            if action == "LOAD" and body.get("status") != "hydrated":
+                return None, "invalid_response"
+            return body, "ask" if action == "ASK" else None
         return body, None
     if status in (401, 403):
         return None, "auth"
     if 400 <= status < 500:
         return None, "http_4xx"
     return None, "http_5xx"
+
+
+def _download_service_resource(search_cfg: dict, resource: dict):
+    """Fetch one 1.2 package resource and verify its content address.
+
+    Resource URLs are service-issued relative paths. The client never follows a
+    host supplied by the response, and it checks both the declared digest and
+    the optional response digest before a caller can write bytes to the cache.
+    """
+    import http.client
+    import urllib.parse
+    try:
+        url = resource.get("url")
+        expected = resource.get("sha256")
+        size = resource.get("size")
+        if (not isinstance(url, str) or not url.startswith("/") or "\x00" in url
+                or not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected)
+                or type(size) is not int or size < 0 or size > 64 * 1024 * 1024):
+            return None, "invalid_response"
+        parsed_url = urllib.parse.urlsplit(url)
+        # USE is the only endpoint allowed to mint package URLs. Keep the
+        # follow-up request on the resource route and reject query/fragment
+        # tricks before attaching the configured service prefix or bearer.
+        if (parsed_url.scheme or parsed_url.netloc or parsed_url.query or parsed_url.fragment
+                or not parsed_url.path.startswith("/v1/skills/")
+                or ".." in parsed_url.path.split("/")):
+            return None, "invalid_response"
+        scheme, host, port, prefix = _parse_search_url(search_cfg["url"])
+        path = (prefix + parsed_url.path) if prefix else parsed_url.path
+        if parsed_url.query:
+            path += "?" + parsed_url.query
+        conn_cls = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
+        conn = conn_cls(host, port, timeout=max(search_cfg["deadline_ms"] / 1000.0, 0.001))
+        try:
+            conn.connect()
+            conn.request("GET", path, headers={"Authorization": "Bearer " + search_cfg["token"]})
+            response = conn.getresponse()
+            if response.status != 200:
+                response.read(1024)
+                return None, "http_4xx" if 400 <= response.status < 500 else "http_5xx"
+            data = response.read(64 * 1024 * 1024 + 1)
+            if len(data) > 64 * 1024 * 1024 or len(data) != size:
+                return None, "resource_size_mismatch"
+            if _sha256_bytes(data) != expected:
+                return None, "resource_hash_mismatch"
+            header_sha = response.getheader("X-Content-SHA256")
+            if header_sha is not None and header_sha != expected:
+                return None, "resource_hash_mismatch"
+            return data, None
+        finally:
+            conn.close()
+    except TimeoutError:
+        return None, "timeout"
+    except Exception:
+        return None, "connection"
+
+
+def _fetch_service_resources(search_cfg: dict, body: dict):
+    """Download all resources from a validated 1.2 USE response before caching anything."""
+    resources = body.get("resources")
+    if resources is None:
+        return [], None
+    if not isinstance(resources, list) or len(resources) > 64:
+        return None, "invalid_response"
+    out = []
+    seen_paths = set()
+    for resource in resources:
+        if not isinstance(resource, dict):
+            return None, "invalid_response"
+        rel = resource.get("path")
+        if (not isinstance(resource.get("required"), bool)
+                or not isinstance(rel, str) or not rel or rel.lower() == "skill.md" or rel.startswith("/") or "\\" in rel
+                or "\x00" in rel or any(part in ("", ".", "..") for part in rel.split("/"))):
+            return None, "invalid_response"
+        if rel in seen_paths:
+            return None, "invalid_response"
+        seen_paths.add(rel)
+        data, reason = _download_service_resource(search_cfg, resource)
+        if data is None:
+            return None, reason
+        out.append((rel, data))
+    return out, None
 
 def cmd_load(a, root, cfg):
     # E6.4: skill_load_requested/skill_load_completed bracket the exact same operations this
@@ -2854,6 +3027,12 @@ def cmd_load(a, root, cfg):
     load_id = _new_id()
     t0 = time.perf_counter()
     search_cfg = resolve_search_config(cfg, profile="interactive")
+    delivery_policy = getattr(a, "delivery_policy", "legacy") or "legacy"
+    if delivery_policy not in ("legacy", "proof_gated"):
+        sys.exit(f"guidefold: unsupported delivery policy {delivery_policy!r}")
+    if delivery_policy == "proof_gated" and search_cfg["backend"] != "service":
+        sys.exit("guidefold: --delivery-policy proof_gated requires search.backend: service; "
+                 "the local backend has no source-proof gate")
     # Contract 1.1.4: the search that exposed this skill's card, if a recent `find`/`hook` in this
     # root did (and, when both sides know a session, the same one). None is "unknown", as before.
     linked_search = _recall_exposure_search(root, a.urn.partition("@")[0],
@@ -2872,7 +3051,7 @@ def cmd_load(a, root, cfg):
             "load_id": load_id, "skill_id": urn_part, "revision": revision_part, "source": "service",
             "use_id": None, "search_id": linked_search,
         })
-        body, reason = _use_via_service(search_cfg, urn_part, revision_part)
+        body, reason = _use_via_service(search_cfg, urn_part, revision_part, delivery_policy)
         if body is None:
             _emit_telemetry(root, "skill_load_completed", {
                 "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
@@ -2880,6 +3059,23 @@ def cmd_load(a, root, cfg):
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
             sys.exit(f"guidefold: service USE failed ({reason}) for {a.urn}")
+        if delivery_policy == "proof_gated" and reason == "ask":
+            delivery = body.get("delivery") if isinstance(body, dict) else {}
+            missing = delivery.get("missing") if isinstance(delivery, dict) else []
+            requirements = []
+            if isinstance(missing, list):
+                for item in missing[:8]:
+                    if isinstance(item, dict) and isinstance(item.get("requirement"), str):
+                        requirements.append(item["requirement"])
+            detail = ", ".join(requirements)
+            if detail:
+                detail = f"; missing: {detail}"
+            _emit_telemetry(root, "skill_load_completed", {
+                "load_id": load_id, "status": "denied", "cache_source": "service", "bytes": 0,
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+                "closure_status": "unresolved", "skill_id": urn_part, "revision": revision_part, **link,
+            })
+            sys.exit(f"guidefold: service ASK for {a.urn} ({delivery.get('reason', 'proof_incomplete')}){detail}")
         import hashlib
         checksum_ok = hashlib.sha256(body["body"].encode("utf-8")).hexdigest() == body.get("checksum")
         if not checksum_ok:
@@ -2889,10 +3085,35 @@ def cmd_load(a, root, cfg):
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
             sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use")
+        resources, resource_reason = _fetch_service_resources(search_cfg, body)
+        if resources is None:
+            _emit_telemetry(root, "skill_load_completed", {
+                "load_id": load_id, "status": "error", "cache_source": "service", "bytes": 0,
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+                "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
+            })
+            sys.exit(f"guidefold: service resource fetch failed ({resource_reason}) for {a.urn}")
         dest = skill_cache_dir(urn_part, revision_part)
+        dest_root = dest.resolve()
+        resource_targets = []
+        for rel, data in resources:
+            target = (dest / Path(*rel.split("/"))).resolve()
+            if target != dest_root and dest_root not in target.parents:
+                _emit_telemetry(root, "skill_load_completed", {
+                    "load_id": load_id, "status": "error", "cache_source": "service", "bytes": 0,
+                    "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
+                    "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
+                })
+                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use")
+            resource_targets.append((target, data))
+        # Validate every target before creating the directory or writing SKILL.md. A malformed
+        # manifest must leave no half-populated revision in the cache.
         dest.mkdir(parents=True, exist_ok=True)
         (dest / "SKILL.md").write_text(body["body"], encoding="utf-8")
-        bytes_loaded = len(body["body"].encode("utf-8"))
+        for target, data in resource_targets:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        bytes_loaded = len(body["body"].encode("utf-8")) + sum(len(data) for _, data in resources)
         _emit_telemetry(root, "skill_load_completed", {
             "load_id": load_id, "status": "ok", "cache_source": "service", "bytes": bytes_loaded,
             "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
@@ -3340,72 +3561,6 @@ def cmd_validate(a, root, cfg):
         print("ERROR", e)
     print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
     sys.exit(1 if errors else 0)
-
-def cmd_procedure(a, root, cfg):
-    """S20: deterministic procedure contract and optional, explicit local verifier run.
-
-    The hosted worker never executes client code.  An owner may opt into ``--run`` locally
-    after the structural checks pass; the verifier path is resolved inside the repository and
-    receives no network or secret injection from Guidefold.
-    """
-    raw = Path(a.skill)
-    skill_md = (root / raw).resolve() if not raw.is_absolute() else raw.resolve()
-    try:
-        skill_md.relative_to(root.resolve())
-    except ValueError:
-        print("ERROR procedure path must stay inside the repository")
-        sys.exit(2)
-    if not skill_md.is_file() or skill_md.name != "SKILL.md":
-        print(f"ERROR procedure file not found: {a.skill}")
-        sys.exit(2)
-    text = skill_md.read_text(encoding="utf-8")
-    fm = frontmatter(skill_md)
-    body = FM.sub("", text, count=1) if FM.match(text) else text
-    headings = {m.group(1).strip().lower() for m in re.finditer(r"^#{2,3}\s+(.+?)\s*$", body, re.M)}
-    required = ("inputs", "outputs", "preconditions", "steps", "verification")
-    missing = [h for h in required if h not in headings]
-    steps = re.findall(r"^\s*(?:\d+[.)]|step\s+\d+)\s+.+$", body, re.I | re.M)
-    errors = [f"missing section: {h}" for h in missing]
-    if not steps:
-        errors.append("steps section must contain at least one ordered step")
-    md = fm.get("metadata") or {}
-    verifier_value = str(md.get("verifier", "")).strip()
-    verifier = None
-    if verifier_value:
-        verifier = (root / verifier_value).resolve()
-        try:
-            verifier.relative_to(root.resolve())
-        except ValueError:
-            errors.append("metadata.verifier must stay inside the repository")
-            verifier = None
-        if verifier is not None and not verifier.is_file():
-            errors.append(f"metadata.verifier not found: {verifier_value}")
-    if getattr(a, "run", False) and verifier is None:
-        errors.append("--run requires metadata.verifier pointing to a file")
-    result = {"schema": "guidefold-procedure-verification-v1", "skill": str(skill_md.relative_to(root)),
-              "sections": sorted(headings), "step_count": len(steps), "verifier": verifier_value or None,
-              "status": "failed" if errors else "passed", "errors": errors}
-    if not errors and getattr(a, "run", False):
-        command = [sys.executable, str(verifier)] if verifier.suffix == ".py" else [str(verifier)]
-        try:
-            completed = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=30)
-            result["verifier_exit_code"] = completed.returncode
-            result["verifier_output"] = (completed.stdout + completed.stderr)[-4000:]
-            if completed.returncode != 0:
-                result["status"] = "failed"
-                result["errors"].append(f"verifier exited {completed.returncode}")
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            result["status"] = "failed"
-            result["errors"].append(f"verifier could not complete: {exc}")
-    if getattr(a, "json", False):
-        print(json.dumps(result, indent=2, sort_keys=True))
-    else:
-        print(f"guidefold procedure: {result['status']} ({result['step_count']} ordered step(s))")
-        for error in result["errors"]:
-            print("ERROR", error)
-        if result.get("verifier_exit_code") is not None:
-            print(f"verifier exit: {result['verifier_exit_code']}")
-    sys.exit(0 if result["status"] == "passed" else 1)
 
 def _validate_errors(root, cfg):
     """Core CONVENTIONS.md enforcement, split out of cmd_validate so `doctor` can reuse it
@@ -8674,6 +8829,8 @@ ASCEND_DEFAULT_MODEL = "anthropic/claude-sonnet-4.5"
 ASCEND_API_KEY_ENV = "GUIDEFOLD_ASCEND_API_KEY"
 ASCEND_MAX_FILE_LINES = 80
 ASCEND_MAX_BODY_LINES = 60
+ASCEND_MAX_PROOF_CLAIMS = 8
+ASCEND_MAX_PROOF_REFS = 16
 ASCEND_MAX_DEPTH = 6
 ASCEND_KINDS = ("map", "convention")
 ASCEND_MARKER = "guidefold-ascend"
@@ -8733,25 +8890,119 @@ def _ascend_children(cfg: dict, node: str) -> list:
     return sorted(n for n in cfg["nodes"] if n.startswith(prefix) and "." not in n[len(prefix):])
 
 def _ascend_skill_records(root: Path, cfg: dict) -> dict:
-    """urn -> {node, name, description, digest, owner, path, body, generated_by, fingerprint}."""
+    """urn -> skill facts plus immutable file hash/line count for proof drafting."""
     out = {}
     for d, node, fm in all_skills(root, cfg):
         md = fm.get("metadata") or {}
-        text = (d / "SKILL.md").read_text(encoding="utf-8")
-        body = text.split("\n---\n", 1)[1] if text.startswith("---\n") and "\n---\n" in text else text
+        skill_path = d / "SKILL.md"
+        raw = skill_path.read_bytes()
+        text = raw.decode("utf-8")
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        body = normalized.split("\n---\n", 1)[1] if normalized.startswith("---\n") and "\n---\n" in normalized else normalized
         out[urn(cfg, node, d.name)] = {
             "urn": urn(cfg, node, d.name), "node": node, "name": d.name,
             "description": str(fm.get("description") or ""), "digest": str(md.get("digest") or "").strip(),
-            "owner": str(md.get("owner") or ""), "path": rel(root, d / "SKILL.md"), "body": body,
+            "owner": str(md.get("owner") or ""), "path": rel(root, skill_path), "body": body,
+            "file_sha256": _sha256_bytes(raw),
+            "line_count": len(normalized.splitlines()),
+            "status": str(md.get("status") or "active"),
+            "negative_triggers": str(md.get("negative_triggers") or ""),
             "generated_by": str(md.get("generated_by") or ""), "kind": str(md.get("ascend_kind") or ""),
             "fingerprint": str(md.get("ascend_fingerprint") or ""),
             "decided": tuple(k.strip() for k in str(md.get("ascend_kinds_decided") or "").split(",") if k.strip()),
+            "source_proof": fm.get("source_proof") if isinstance(fm.get("source_proof"), dict) else None,
         }
     return out
 
 def _ascend_card(rec: dict) -> dict:
-    return {"urn": rec["urn"], "scope": rec["node"], "name": rec["name"],
+    card = {"urn": rec["urn"], "scope": rec["node"], "name": rec["name"],
             "description": rec["description"], "digest": rec["digest"], "owner": rec["owner"]}
+    proof = rec.get("source_proof")
+    if isinstance(proof, dict) and proof.get("verified") is True:
+        claims = proof.get("claims") if isinstance(proof.get("claims"), list) else []
+        ids = sorted(str(c.get("id")) for c in claims if isinstance(c, dict) and str(c.get("id") or ""))
+        if ids:
+            card["verified_claims"] = ids
+    return card
+
+def _ascend_proof_json(value) -> bytes:
+    """Match Go's proofClaimDigest serialization (sorted keys, Python spacing)."""
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False,
+                      separators=(", ", ": ")).encode("utf-8")
+
+def _ascend_proof_claim_digest(claim: dict):
+    """Compute the stable digest used by production Go for a child claim."""
+    if not isinstance(claim, dict) or not str(claim.get("id") or "").strip():
+        return None
+    status = str(claim.get("status") or "").strip()
+    if status not in {"supported", "partial", "uncertain", "unsupported"}:
+        return None
+    out = {"id": str(claim["id"]), "status": status, "source_refs": [], "claim_refs": []}
+    if "text" in claim:
+        if not isinstance(claim["text"], str):
+            return None
+        out["text"] = claim["text"]
+    raw_sources = claim.get("source_refs", [])
+    if not isinstance(raw_sources, list):
+        return None
+    for ref in raw_sources:
+        if not isinstance(ref, dict):
+            return None
+        try:
+            out["source_refs"].append({
+                "path": str(ref["path"]), "sha256": str(ref["sha256"]),
+                "line_from": int(ref["line_from"]), "line_to": int(ref["line_to"]),
+            })
+        except (KeyError, TypeError, ValueError):
+            return None
+    raw_children = claim.get("claim_refs", [])
+    if not isinstance(raw_children, list):
+        return None
+    for ref in raw_children:
+        if not isinstance(ref, dict):
+            return None
+        try:
+            out["claim_refs"].append({
+                "skill_id": str(ref["skill_id"]), "revision": str(ref["revision"]),
+                "claim_id": str(ref["claim_id"]), "claim_digest": str(ref["claim_digest"]),
+                "commitment": str(ref["commitment"]),
+            })
+        except (KeyError, TypeError, ValueError):
+            return None
+    return _sha256_bytes(_ascend_proof_json(out))
+
+def _ascend_proof_commitment(proof: dict):
+    """Compute the lower-card commitment consumed by Go's recursive verifier."""
+    if not isinstance(proof, dict) or not isinstance(proof.get("claims"), list):
+        return None
+    rows = []
+    for claim in proof["claims"]:
+        digest = _ascend_proof_claim_digest(claim)
+        if digest is None:
+            return None
+        rows.append({"id": str(claim.get("id") or ""), "digest": digest})
+    rows.sort(key=lambda row: row["id"])
+    return _sha256_bytes(_ascend_proof_json(rows))
+
+def _ascend_child_claim_ref(records: dict, source: str, claim_id: str):
+    """Return a canonical recursive pointer only for a verified child proof."""
+    record = records.get(source) or {}
+    proof = record.get("source_proof")
+    if not isinstance(proof, dict) or proof.get("verified") is not True:
+        return None
+    claims = proof.get("claims")
+    if not isinstance(claims, list):
+        return None
+    child = next((c for c in claims if isinstance(c, dict) and str(c.get("id")) == claim_id), None)
+    if child is None or child.get("status") != "supported":
+        return None
+    digest = _ascend_proof_claim_digest(child)
+    commitment = _ascend_proof_commitment(proof)
+    revision = str(proof.get("revision") or "")
+    if digest is None or commitment is None or not revision or revision == "pending":
+        return None
+    return {"skill_id": source, "revision": revision, "claim_id": claim_id,
+            "claim_digest": digest, "commitment": commitment}
 
 def _ascend_fingerprint(cards: list, changed_bodies: dict) -> str:
     import hashlib
@@ -8810,7 +9061,8 @@ no_change with the reason. Keep each body under 60 lines. Answer with ONE JSON o
 {"results":[{"kind":"map"|"convention","action":"no_change"|"create"|"edit","reason":"...",\
 "skill":{"name":"<kebab-case>","description":"<one sentence, no scope prefix>","digest":"<2-3 sentences>",\
 "triggers":"<comma-separated phrases an agent might ask>","body":"<markdown>",\
-"claims":[{"text":"<one claim from the body>","sources":["urn:skill:..."]}]}}]}
+"claims":[{"text":"<one claim from the body>","sources":["urn:skill:..."],\
+"child_claims":[{"source":"urn:skill:...","claim_id":"<verified child claim id>"}]}]}}]}
 Omit "skill" when action is no_change."""
 
 def _ascend_prompt(cfg: dict, node: str, records: dict, changed: dict, existing: dict) -> str:
@@ -8860,17 +9112,45 @@ def _ascend_gate(cfg: dict, node: str, kind: str, skill: dict, records: dict, ex
     if len(re.findall(r"(?m)^\s*\d+[.)]\s", body)) >= 3:
         reasons.append("numbered steps: a digest carries no procedures")
     known = set(records)
-    claims = skill.get("claims") or []
+    raw_claims = skill.get("claims")
+    claims = raw_claims if isinstance(raw_claims, list) else []
+    if raw_claims is not None and not isinstance(raw_claims, list):
+        reasons.append("claims must be an array")
     if not claims:
         reasons.append("no claims with sources")
+    if len(claims) > ASCEND_MAX_PROOF_CLAIMS:
+        reasons.append(f"too many claims for bounded provenance ({ASCEND_MAX_PROOF_CLAIMS} maximum)")
     for c in claims:
-        srcs = c.get("sources") if isinstance(c, dict) else None
-        if not srcs:
-            reasons.append(f"claim without sources: {str(c)[:60]}")
+        if not isinstance(c, dict):
+            reasons.append(f"claim is not an object: {str(c)[:60]}")
             continue
+        srcs = c.get("sources") or []
+        child_rows = c.get("child_claims") or []
+        if not isinstance(srcs, list) or not isinstance(child_rows, list):
+            reasons.append(f"claim sources and child_claims must be arrays: {str(c)[:60]}")
+            continue
+        if not srcs and not child_rows:
+            reasons.append(f"claim without sources: {str(c)[:60]}")
+        if len(srcs) > ASCEND_MAX_PROOF_REFS or len(child_rows) > ASCEND_MAX_PROOF_REFS:
+            reasons.append(f"too many source refs in claim ({ASCEND_MAX_PROOF_REFS} maximum)")
         for s in srcs:
-            if s not in known or s == existing_urn:
+            if not isinstance(s, str) or s not in known or s == existing_urn:
                 reasons.append(f"claim cites a source not in context: {s}")
+        cited_records = [records[s] for s in srcs if isinstance(s, str) and s in records and s != existing_urn]
+        if any(r.get("status") == "deprecated" for r in cited_records):
+            reasons.append("claim cites a deprecated source; manual review required")
+        for child in child_rows:
+            if not isinstance(child, dict):
+                reasons.append("child_claims entries must be objects")
+                continue
+            source = str(child.get("source") or "")
+            claim_id = str(child.get("claim_id") or "")
+            if not source or source not in known or source == existing_urn or not claim_id:
+                reasons.append(f"child claim is not a known lower-card claim: {source}:{claim_id}")
+                continue
+            pointer = _ascend_child_claim_ref(records, source, claim_id)
+            if pointer is None:
+                reasons.append(f"child claim is not verified and content-addressed: {source}:{claim_id}")
     for u in re.findall(r"urn:skill:[A-Za-z0-9_.:-]+", body):
         if u not in known or u == existing_urn:
             reasons.append(f"body names an unknown skill: {u}")
@@ -8888,7 +9168,7 @@ def _ascend_gate(cfg: dict, node: str, kind: str, skill: dict, records: dict, ex
     return (not reasons), reasons
 
 def _ascend_render(cfg: dict, node: str, kind: str, skill: dict, sources: list, fingerprint: str,
-                   decided: tuple = ASCEND_KINDS) -> str:
+                   records: dict = None, decided: tuple = ASCEND_KINDS) -> str:
     spec = cfg["nodes"].get(node) or {}
     tag = cfg["publisher"] if node == "_root" else node.replace(".", "/")
     desc = str(skill.get("description") or "").strip().replace("\n", " ")
@@ -8916,6 +9196,55 @@ def _ascend_render(cfg: dict, node: str, kind: str, skill: dict, sources: list, 
     ]
     for line in str(skill.get("digest") or "").strip().splitlines() or [""]:
         fm.append("    " + line.strip())
+    # LLM ascent is a synthesis step, not a source verifier.  Persist a visible, provisional
+    # proof record so the generated card can travel through the normal snapshot/import path,
+    # while making proof-gated delivery fail closed until an importer or owner supplies exact
+    # source line ranges, snapshot/revision and a verified body hash.  `source_urns` is a
+    # reviewer aid; the delivery contract only treats `source_refs` as evidence.
+    fm.extend([
+        "source_proof:",
+        "  schema: source-proof-v1",
+        "  verified: false",
+        "  status: pending_review",
+        "  snapshot: pending",
+        "  revision: pending",
+        f"  skill_id: {q(urn(cfg, node, skill['name']))}",
+        f"  scopes: [{q(node)}]",
+        "  claims:",
+    ])
+    claims = skill.get("claims") if isinstance(skill.get("claims"), list) else []
+    claim_rows = []
+    for i, claim in enumerate(claims, 1):
+        if not isinstance(claim, dict):
+            continue
+        claim_sources = sorted({str(s) for s in (claim.get("sources") or []) if str(s)})
+        child_rows = claim.get("child_claims") if isinstance(claim.get("child_claims"), list) else []
+        claim_rows.append((f"claim-{i:03d}", str(claim.get("text") or "").strip(), claim_sources, child_rows))
+    if not claim_rows:
+        fm.append("    []")
+    else:
+        for claim_id, claim_text, claim_sources, child_rows in claim_rows:
+            refs = []
+            for source in claim_sources:
+                record = (records or {}).get(source) or {}
+                if record.get("path") and record.get("file_sha256") and record.get("line_count"):
+                    refs.append({"path": record["path"], "sha256": record["file_sha256"],
+                                 "line_from": 1, "line_to": record["line_count"]})
+            child_refs = []
+            for child in child_rows:
+                if isinstance(child, dict):
+                    pointer = _ascend_child_claim_ref(records, str(child.get("source") or ""),
+                                                      str(child.get("claim_id") or ""))
+                    if pointer is not None:
+                        child_refs.append(pointer)
+            fm.extend([
+                f"    - id: {q(claim_id)}",
+                f"      text: {q(claim_text)}",
+                "      status: uncertain",
+                f"      source_urns: {json.dumps(claim_sources, ensure_ascii=False)}",
+                f"      source_refs: {json.dumps(refs, ensure_ascii=False, sort_keys=True)}",
+                f"      claim_refs: {json.dumps(child_refs, ensure_ascii=False, sort_keys=True)}",
+            ])
     fm.append("---")
     body = str(skill.get("body") or "").strip()
     text = "\n".join(fm) + "\n" + body + "\n"
@@ -9045,7 +9374,7 @@ def cmd_ascend(a, root, cfg):
                 level["results"].append(item)
                 continue
             sources = sorted({s for c in skill.get("claims", []) for s in (c.get("sources") or [])})
-            text = _ascend_render(cfg, node, kind, skill, sources, fingerprint, kinds)
+            text = _ascend_render(cfg, node, kind, skill, sources, fingerprint, records, kinds)
             dest = node_dir(root, cfg, node) / ".agents" / "skills" / skill["name"] / "SKILL.md"
             before = dest.read_text(encoding="utf-8") if dest.exists() else None
             if before == text:
@@ -9135,16 +9464,15 @@ def main():
                         "instead of only its SHA-256 hash (default: hash only -- prompts can "
                         "carry proprietary detail)")
     l = sub.add_parser("load"); l.add_argument("urn")
+    l.add_argument("--delivery-policy", choices=("legacy", "proof_gated"), default="legacy",
+                   help="USE delivery policy; proof_gated requires search.backend: service and "
+                        "abstains without complete source proof (default: legacy)")
     va = sub.add_parser("validate")
     va.add_argument("--suggest", action="store_true",
                      help="F5: also print deterministic triggers/negative_triggers suggestions "
                           "for every skill missing one, mined from the SKILL.md body -- never "
                           "written to a file. Default validate output is unaffected.")
     va.add_argument("--json", action="store_true", help="with --suggest, machine-readable output")
-    proc = sub.add_parser("procedure", help="S20: verify explicit runbook sections and an optional local verifier")
-    proc.add_argument("skill", metavar="SKILL.md", help="path to the procedure SKILL.md inside this repository")
-    proc.add_argument("--run", action="store_true", help="run metadata.verifier locally after structural checks")
-    proc.add_argument("--json", action="store_true")
     ev = sub.add_parser("eval", help="E7.5: run --queries through the product path and report ranking/injection metrics; optionally gate on a regression vs --baseline")
     ev.add_argument("--queries", required=True, help="golden-format directory or single .yaml/.yml file (tests/golden/README.md schema), or a single .jsonl file of unlabelled {query, node} objects")
     ev.add_argument("--k", type=int, default=4, help="injection cap for completeness@k/all_required@k/distractor_rate@k and Router.select's k (default 4, matching K_CARDS)")
