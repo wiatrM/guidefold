@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "test": "TestE2SourceBackedSnapshotsThroughHTTP",
+  "targets": 4,
+  "passed": 4,
+  "load_action": "LOAD",
+  "load_reason": "source_proof_complete",
+  "source_manifest_sha256": "47a145923f1fb256a2d6c03f9a117fbbde9fe99a6ec1d0d419bc9b0c7fa1f3ec",
+  "source_replay": "/tmp/guidefold-urct-replay-next",
+  "claims": [
+    "source_bytes_survive_publication_and_http_delivery",
+    "service_verifies_source_hash_and_range"
+  ],
+  "not_claimed": [
+    "task_success",
+    "human_semantic_usefulness",
+    "harmful_mutation_zero_through_http",
+    "natural_hierarchy_transfer"
+  ]
+}
