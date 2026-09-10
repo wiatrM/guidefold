@@ -15,6 +15,7 @@ Zakres zastępowania: brak; ten plik nie zmienia treści dokumentów, do któryc
 | [scoring-sheet.template.csv](scoring-sheet.template.csv) | Schemat arkusza ocen zadań (11 kolumn), z nagłówkiem `protocol_sha256`. |
 | [QUALITY-GATE-EVALUATOR.md](QUALITY-GATE-EVALUATOR.md) | Mechaniczna bramka E2 + task success; `unknown` i brak dowodu kończą się `inconclusive`. |
 | `tools/pilot/verify_annotation_packet.py` | Waliduje ślepy pakiet dwóch recenzentów przed i po etykietowaniu; sprawdza hashe, zakresy linii i zgodność, bez rozstrzygania sporów. |
+| `tools/pilot/run_agent_tasks.py` | Uruchamia Pi w izolowanym workspace z ukrytym verifierem, zapisuje task success oraz SEARCH/USE/ASK i rozdziela porażkę zadania od błędu harnessu. |
 | [PIVOT-RUBRIC](PIVOT-RUBRIC.md) | Rubryka U11 z etykietami R/Q/P, progi go/no-go i to, czego syntetyczny run nie dowodzi. |
 
 ## Narzędzia

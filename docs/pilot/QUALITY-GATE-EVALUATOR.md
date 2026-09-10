@@ -81,3 +81,28 @@ model calls disabled throughout annotation.
 The hidden-verifier runner leaves useful-delivery and task-level harmful-load fields unknown,
 because a verifier cannot observe delivery usefulness or E2 safety. Those fields must come from
 telemetry or E2 labels; the quality gate preserves null for missing observations.
+
+## Pi execution runner
+
+For an end-to-end agent trial, use `tools/pilot/run_agent_tasks.py`. It copies each source workspace
+to a temporary directory, enables Pi's `read,bash,edit,write,ls` tools, and runs the verifier from a
+separate evaluator root after Pi exits. The task bank is never sent to Pi. Verifier argv entries may
+contain the literal `{workspace}`, which is replaced with the isolated workspace path; keep verifier
+files outside the source workspace so they remain hidden.
+
+```bash
+python3 tools/pilot/run_agent_tasks.py \
+  --tasks evaluator/task-bank.jsonl \
+  --workspace-root evaluator/workspaces \
+  --evaluator-root evaluator/verifiers \
+  --output .guidefold/checks/pilot-map-gate \
+  --arm 'map+gate' \
+  --guidefold-skill skills/guidefold/SKILL.md \
+  --token-file .guidefold/compose/secrets/api_token \
+  --delivery-policy proof_gated
+```
+
+The emitted `agent-results.jsonl` can be passed to `quality_gate.py`. Agent failures, verifier
+timeouts and malformed output become `unknown` with `harness_error`; a non-zero verifier exit is a
+task `failure`. SEARCH/USE/ASK counts come from the redacted Go bridge trace and are never inferred
+from the final answer.
