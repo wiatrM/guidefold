@@ -75,7 +75,7 @@ portal:
 # The UI still renders its sign-in route during a transient API outage.
 ui:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627"
+  image: "ghcr.io/wiatrm/guidefold-ui@sha256:4b4c345b924fd93328b41497eadb9c07d113b73b6112de89eab44ecba4b0b628"
   replicas: 2
 
 networkPolicy:

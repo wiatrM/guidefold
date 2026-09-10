@@ -1,6 +1,43 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## ArgoCD adoption and the why/how/value landing — 2026-09-09 (current)
+## Pinned-reveal landing, image built and pushed locally — 2026-09-10 (current)
+
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:4b4c345b924fd93328b41497eadb9c07d113b73b6112de89eab44ecba4b0b628`,
+built locally with Docker (now available in this environment) from
+`landing-fixes-2` at commit `8487708`, merged to main as PR #133 (`62091ec`).
+Pushed to GHCR directly; not built by `publish-images.yml`, so there is no
+CI artifact digest to cross-check against — the value above is read back
+from the deployed `Deployment/guidefold-ui`, not copied from a workflow log.
+
+Scope: the `why` and `value` sections now pin in the viewport while their
+content reveals, released once the reveal settles; a shadcn-style scroll cue
+hints the page continues; the background film is fully opaque with the poster
+retired once it starts, instead of sitting underneath at partial opacity.
+Full detail in the landing-fixes-2 commits.
+
+While this branch was in flight, a separate session fixed the API's
+CrashLoopBackOff by supplying `workos.clientID`, `publicURL` and the
+`guidefold-workos` secret, and repointed `Application/guidefold`'s
+`targetRevision` at a commit on `codex/release-presentation-20260910`
+(`7b0958c`) — off the tag this file previously pinned to, and off `main`.
+That fix is real and verified (`/api/v1/me` now returns 401, not 503; all
+pods 1/1). This deploy did not touch that: the live `ui.image` was updated
+with a `kubectl patch` against the Application actually running in the
+cluster, changing only that one field, confirmed by a structural diff of
+the full values block before and after. `values.yaml` in this directory is
+updated to match so it stays the readable record, but it no longer matches
+`argocd-application.yaml`'s `targetRevision`, which still names the old tag.
+Reconciling `targetRevision` onto a shared, permanent ref is the other
+session's fix to land, not this one's to redo mid-flight.
+
+Verified against production: root, entry bundle 200; axe 0 violations; 0
+horizontal overflow at 390/1440; scroll-to-playhead mapping 0/2.5/5.0/7.5/10.0s
+forward and a quarter-frame-accurate reverse; reduced motion serves 0 video
+requests. Rollback image: `sha256:4359c65505d766caa75068cb91424162a2149846bc00f504876a4a0bb5ae035c`
+(the digest running immediately before this change).
+
+
+## ArgoCD adoption and the why/how/value landing — 2026-09-09 (previous)
 
 The release is now managed by ArgoCD. `Application/guidefold` in namespace
 `argocd` under its own `AppProject`, automated sync with prune and selfHeal,
