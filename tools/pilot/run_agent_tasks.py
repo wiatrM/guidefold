@@ -226,7 +226,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                 task_file.write_text(task["query"] + "\n", encoding="utf-8")
                 prompt = (f"You are executing task {task_id} in the isolated workspace {workspace}. "
                           f"Read {task_file}. You MUST use the native Go Guidefold bridge. Run this "
-                          f"SEARCH command first: python3 {args.bridge} search --strategy flat "
+                          f"SEARCH command first: python3 {args.bridge} search --strategy {args.strategy} "
                           f"--query-file {task_file} --nodes-file {args.nodes_file}. Then run USE for "
                           f"every selected card with delivery policy "
                           f"{args.delivery_policy}. If USE returns delivery.action=ASK, do not use "
@@ -262,7 +262,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                     expanded_verifier = [item.replace("{workspace}", str(workspace)) for item in verifier]
                     status, verifier_error, verifier_exit, verifier_stdout, verifier_stderr, verifier_ms = _run_verifier(
                         expanded_verifier, evaluator_root, verifier_timeout)
-                row = {"task_id": task_id, "arm": args.arm, "outcome": status,
+                row = {"task_id": task_id, "arm": args.arm, "strategy": args.strategy, "outcome": status,
                        "terminal_status": "completed" if not verifier_error else "harness_error",
                        "harness_error": verifier_error, "agent_exit_code": agent_exit,
                        "verifier_exit_code": verifier_exit, "verifier_sha256": verifier_sha,
@@ -286,6 +286,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="directory containing hidden verifiers; never copied into Pi workspace")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--arm", required=True)
+    parser.add_argument("--strategy", choices=("flat", "top_down", "beam_top_down", "beam_rrf", "bottom_up"),
+                        default="flat")
     parser.add_argument("--guidefold-skill", type=Path, required=True)
     parser.add_argument("--token-file", type=Path, required=True)
     parser.add_argument("--bridge", type=Path, required=True,

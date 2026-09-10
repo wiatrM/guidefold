@@ -16,7 +16,7 @@ spec.loader.exec_module(runner)
 def _args(tasks, root, evaluator_root, output, fake_pi, skill, token):
     return type("Args", (), {
         "tasks": tasks, "workspace_root": root, "evaluator_root": evaluator_root,
-        "output": output, "arm": "map+gate",
+        "output": output, "arm": "map+gate", "strategy": "flat",
         "guidefold_skill": skill, "token_file": token, "url": "http://127.0.0.1:8765",
         "bridge": Path("bridge.py"), "nodes_file": Path("nodes.json"),
         "pi_bin": f"{sys.executable} {fake_pi}", "provider": None, "model": None,
