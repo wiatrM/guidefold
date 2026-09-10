@@ -176,6 +176,8 @@ def _arm_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "harness_errors": sum(_harness_error(row) for row in rows),
         "search_requests": _sum_metric(rows, "search_requests", "search_count"),
+        "search_results": _sum_metric(rows, "search_results"),
+        "search_errors": _sum_metric(rows, "search_errors"),
         "use_requests": _sum_metric(rows, "use_requests", "skill_load_requests", "use_count"),
         "ask_count": _sum_metric(rows, "ask_count", "asks"),
         "input_tokens": _sum_metric(rows, "input_tokens"),

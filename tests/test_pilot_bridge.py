@@ -65,6 +65,7 @@ def test_hierarchical_search_merges_scoped_calls_and_redacts_trace(tmp_path, mon
         trace_text = trace.read_text(encoding="utf-8")
         assert "secret-token" not in trace_text and "do the task" not in trace_text
         assert '"path":"/v1/search"' in trace_text
+        assert '"result_count":1' in trace_text
     finally:
         server.shutdown(); thread.join(timeout=2); server.server_close()
 

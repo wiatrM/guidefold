@@ -64,6 +64,8 @@ def test_agent_runner_scores_verifier_and_trace(tmp_path, monkeypatch):
     assert row["outcome"] == "success"
     assert row["harness_error"] is False
     assert row["search_requests"] == 1
+    assert row["search_results"] is None
+    assert row["search_errors"] == 0
     assert row["use_requests"] == 1
     assert row["ask_count"] == 1
     assert row["useful_delivery"] is None

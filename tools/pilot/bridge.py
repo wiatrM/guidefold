@@ -96,6 +96,7 @@ def _request(base: str, token: str, endpoint: str, payload: dict[str, Any], trac
         "search_id": body.get("search_id"),
         "action": (body.get("delivery") or {}).get("action") if isinstance(body.get("delivery"), dict) else None,
         "body_chars": len(str(body.get("body") or "")) if endpoint == "/v1/use" and status == 200 else 0,
+        "result_count": len(body.get("cards", [])) if endpoint == "/v1/search" and isinstance(body.get("cards"), list) else 0,
     })
     return status, body, elapsed
 

@@ -121,7 +121,7 @@ def _parse_final(stdout: str) -> tuple[dict[str, Any], bool]:
 
 
 def _trace_metrics(path: Path) -> dict[str, Any]:
-    metrics = {"search_requests": 0, "use_requests": 0, "ask_count": 0,
+    metrics = {"search_requests": 0, "search_results": None, "search_errors": 0, "use_requests": 0, "ask_count": 0,
                "loaded_body_chars": 0, "trace_elapsed_ms": 0.0, "trace_rows": 0}
     if not path.is_file():
         return metrics
@@ -136,6 +136,10 @@ def _trace_metrics(path: Path) -> dict[str, Any]:
         endpoint = row.get("path")
         if endpoint == "/v1/search":
             metrics["search_requests"] += 1
+            if isinstance(row.get("result_count"), (int, float)) and not isinstance(row.get("result_count"), bool):
+                metrics["search_results"] = (metrics["search_results"] or 0) + int(row["result_count"])
+            if "status" in row and row.get("status") != 200:
+                metrics["search_errors"] += 1
         elif endpoint == "/v1/use":
             metrics["use_requests"] += 1
             if str(row.get("action") or "").upper() == "ASK":

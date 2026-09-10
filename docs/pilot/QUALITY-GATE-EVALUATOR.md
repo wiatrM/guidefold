@@ -31,8 +31,9 @@ The report contains per-arm task success, unknowns, harmful-load Wilson upper bo
 coverage, the best non-gated baseline and the paired success delta. It also reports the number of
 E2 trigger cases, correct `ASK`s, harmful loads and stale/conflict deliveries.
 When task rows carry execution telemetry (directly or under `telemetry`), the same per-arm report
-also aggregates harness errors, SEARCH/USE/ASK counts, input/output tokens, tool calls and elapsed
-time. An unobserved metric is `null`; an observed zero remains zero.
+also aggregates harness errors, SEARCH calls, returned search results, search errors, USE/ASK
+counts, input/output tokens, tool calls and elapsed time. An unobserved metric is `null`; an
+observed zero remains zero.
 
 The reported checks are deliberately the pre-registered publication gate:
 

@@ -92,6 +92,8 @@ def test_quality_gate_reports_execution_telemetry_and_preserves_missing_as_unkno
     assert execution == {
         "harness_errors": 1,
         "search_requests": 2,
+        "search_results": None,
+        "search_errors": None,
         "use_requests": 1,
         "ask_count": 1,
         "input_tokens": 100,
