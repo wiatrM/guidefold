@@ -40,6 +40,29 @@ func skillFile(name, owner string, requires []string, body string) string {
 		" for the publication tests.\"\nmetadata:\n" + meta + "---\n\n# " + name + "\n\n" + body + "\n"
 }
 
+func proofSkillFile(name, owner, skillID, sourceSHA string) string {
+	raw := skillFile(name, owner, nil, "The last hop of a three-hop chain.")
+	proof := fmt.Sprintf(`source_proof:
+  schema: source-proof-v1
+  verified: true
+  snapshot: pending
+  skill_id: %s
+  revision: pending
+  body_sha256: pending
+  scopes:
+    - _root
+  claims:
+    - id: operation
+      status: supported
+      source_refs:
+        - path: references/policy.md
+          sha256: %s
+          line_from: 1
+          line_to: 3
+`, skillID, sourceSHA)
+	return strings.Replace(raw, "---\n\n# "+name, proof+"---\n\n# "+name, 1)
+}
+
 func urn(node, name string) string { return "urn:skill:meridian:" + node + ":" + name }
 
 // fixtureCommit is the commit pivottest.Manifest stamps on every scan, and
@@ -740,6 +763,256 @@ func TestUse12Closure(t *testing.T) {
 			t.Fatalf("a matching search_snapshot must be accepted: %d %v", status, out)
 		}
 	})
+}
+
+func TestUse12ProofGatedAbstainsWithoutPublishedProof(t *testing.T) {
+	e := newPubEnv(t)
+	e.publishImport(t, "pub-proof-ask")
+	snapshot := e.head(t)
+	revisions := e.revisions(t, snapshot)
+	skill := urn("_root", "chain-1")
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-ask",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		skill, revisions[skill], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "ASK" || str(delivery["reason"]) != "proof_missing" {
+		t.Fatalf("a card without proof must abstain: %v", delivery)
+	}
+	if str(out["status"]) != "ask" || str(out["body"]) != "" {
+		t.Fatalf("ASK must be fail-closed at the wire boundary: %v", out)
+	}
+	if strings.Contains(fmt.Sprint(delivery["provenance"]), "Run the verifier") {
+		t.Fatal("ASK provenance must not contain the skill body")
+	}
+}
+
+func TestUse12ProofGatedFetchesAndVerifiesSourceBytes(t *testing.T) {
+	e := newPubEnv(t)
+	skill := urn("_root", "chain-3")
+	resource := "# Policy\n\nThe rule.\n"
+	writeFile(t, e.tree, ".agents/skills/chain-3/references/policy.md", resource)
+	writeFile(t, e.tree, ".agents/skills/chain-3/SKILL.md",
+		proofSkillFile("chain-3", "platform-engineering", skill, hash([]byte(resource))))
+	e.publishImport(t, "pub-proof-load")
+	revisions := e.revisions(t, e.head(t))
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-load",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		skill, revisions[skill], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "LOAD" || str(delivery["reason"]) != "source_proof_complete" {
+		t.Fatalf("available source bytes should permit LOAD: %v", delivery)
+	}
+	if str(out["status"]) != "hydrated" || str(out["body"]) == "" {
+		t.Fatalf("a verified source must deliver the body: %v", out)
+	}
+}
+
+func TestUse12ProofGatedResolvesPublishedChildSkillSource(t *testing.T) {
+	e := newPubEnv(t)
+	childPath := ".agents/skills/chain-3/SKILL.md"
+	child, err := os.ReadFile(filepath.Join(e.tree, filepath.FromSlash(childPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := urn("_root", "abstract-map")
+	raw := skillFile("abstract-map", "platform-engineering", nil,
+		"The abstract map records the invariant supported by the child skill.")
+	proof := fmt.Sprintf(`source_proof:
+  schema: source-proof-v1
+  verified: true
+  snapshot: pending
+  skill_id: %s
+  revision: pending
+  body_sha256: pending
+  scopes:
+    - _root
+  claims:
+    - id: child-invariant
+      status: supported
+      source_refs:
+        - path: %s
+          sha256: %s
+          line_from: 1
+          line_to: %d
+`, parent, childPath, hash(child), strings.Count(string(child), "\n")+1)
+	raw = strings.Replace(raw, "---\n\n# abstract-map", proof+"---\n\n# abstract-map", 1)
+	writeFile(t, e.tree, ".agents/skills/abstract-map/SKILL.md", raw)
+	e.publishImport(t, "pub-proof-child-source")
+	revisions := e.revisions(t, e.head(t))
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-child-source",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		parent, revisions[parent], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "LOAD" || str(delivery["reason"]) != "source_proof_complete" {
+		t.Fatalf("a published child SKILL.md should satisfy an abstract proof: %v", delivery)
+	}
+}
+
+func TestUse12ProofGatedResolvesRecursivePublishedClaimAndRejectsChildDrift(t *testing.T) {
+	e := newPubEnv(t)
+	child := urn("atlas.graph", "recursive-child")
+	resource := "# Recursive policy\n\nThe child rule.\n"
+	childDir := "platforms/atlas/graph/.agents/skills/recursive-child"
+	writeFile(t, e.tree, childDir+"/references/policy.md", resource)
+	childFile := proofSkillFile("recursive-child", "platform-engineering", child, hash([]byte(resource)))
+	childFile = strings.Replace(childFile, "    - _root", "    - atlas.graph", 1)
+	writeFile(t, e.tree, childDir+"/SKILL.md", childFile)
+	// Publish the child first so the parent pointer can be constructed from the
+	// immutable revision, claim digest and commitment the service actually sees.
+	e.publishImport(t, "pub-proof-recursive-child")
+	firstCatalog, err := e.app.Store.catalog(context.Background(), e.orgID, "meridian")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childCard := firstCatalog.Cards[child]
+	if childCard == nil {
+		t.Fatalf("child card was not published: %s", child)
+	}
+	childProof := obj(childCard["proof"])
+	childClaims := arr(childProof["claims"])
+	if len(childClaims) != 1 {
+		t.Fatalf("expected one child proof claim, got %v", childClaims)
+	}
+	childClaim := obj(childClaims[0])
+	childDigest, ok := proofClaimDigest(childClaim)
+	if !ok {
+		t.Fatal("could not compute child claim digest")
+	}
+	childCommitment, ok := proofCommitment(childProof)
+	if !ok {
+		t.Fatal("could not compute child proof commitment")
+	}
+	childRevision := firstCatalog.Revisions[child]
+	parent := urn("_root", "recursive-parent")
+	raw := skillFile("recursive-parent", "platform-engineering", nil,
+		"The parent card exposes the child operation through a source-grounded claim.")
+	proof := fmt.Sprintf(`source_proof:
+  schema: source-proof-v1
+  verified: true
+  snapshot: pending
+  skill_id: %s
+  revision: pending
+  body_sha256: pending
+  scopes:
+    - _root
+  claims:
+    - id: parent-operation
+      status: supported
+      claim_refs:
+        - skill_id: %s
+          revision: %s
+          claim_id: operation
+          claim_digest: %s
+          commitment: %s
+`, parent, child, childRevision, childDigest, childCommitment)
+	raw = strings.Replace(raw, "---\n\n# recursive-parent", proof+"---\n\n# recursive-parent", 1)
+	writeFile(t, e.tree, ".agents/skills/recursive-parent/SKILL.md", raw)
+	e.publishImport(t, "pub-proof-recursive-parent")
+	snapshot := e.head(t)
+	revisions := e.revisions(t, snapshot)
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-recursive-load",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		parent, revisions[parent], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("recursive proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "LOAD" || str(delivery["reason"]) != "source_proof_complete" {
+		t.Fatalf("a fresh recursive proof should load: %v", delivery)
+	}
+	if str(out["body"]) == "" {
+		t.Fatal("a fresh recursive proof must deliver the parent body")
+	}
+
+	// Change only the child body. The parent retains its old child revision in
+	// claim_refs; after publication the immutable recursive edge must fail closed.
+	driftChild := proofSkillFile("recursive-child", "platform-engineering", child, hash([]byte(resource)))
+	driftChild = strings.Replace(driftChild, "    - _root", "    - atlas.graph", 1)
+	driftChild += "\nThe child revision now carries a changed body.\n"
+	writeFile(t, e.tree, childDir+"/SKILL.md", driftChild)
+	e.publishImport(t, "pub-proof-recursive-child-drift")
+	driftSnapshot := e.head(t)
+	driftRevisions := e.revisions(t, driftSnapshot)
+	driftBody := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-recursive-drift",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		parent, driftRevisions[parent], fixtureCommit)
+	status, out = e.post(t, "/v1/use", driftBody)
+	if status != 200 {
+		t.Fatalf("recursive drift proof-gated use: %d %v", status, out)
+	}
+	delivery = obj(out["delivery"])
+	if str(delivery["action"]) != "ASK" || str(delivery["reason"]) != "proof_recursive_invalid" {
+		t.Fatalf("child revision drift must abstain recursively: %v", delivery)
+	}
+	if str(out["status"]) != "ask" || str(out["body"]) != "" {
+		t.Fatalf("recursive ASK must be fail-closed: %v", out)
+	}
+}
+
+func TestUse12ProofGatedAsksWhenCitedSourceBlobIsUnavailable(t *testing.T) {
+	e := newPubEnv(t)
+	skill := urn("_root", "chain-3")
+	if err := os.Remove(filepath.Join(e.tree, ".agents/skills/chain-3/references/policy.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, e.tree, ".agents/skills/chain-3/SKILL.md",
+		proofSkillFile("chain-3", "platform-engineering", skill, strings.Repeat("a", 64)))
+	e.publishImport(t, "pub-proof-source-missing")
+	revisions := e.revisions(t, e.head(t))
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-source-missing",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		skill, revisions[skill], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "ASK" || str(delivery["reason"]) != "proof_source_unavailable" {
+		t.Fatalf("missing source bytes must abstain: %v", delivery)
+	}
+	if str(out["status"]) != "ask" || str(out["body"]) != "" {
+		t.Fatalf("source abstention must be fail-closed: %v", out)
+	}
+}
+
+func TestUse12ProofGatedAsksWhenCitedSourceManifestHashDiffers(t *testing.T) {
+	e := newPubEnv(t)
+	skill := urn("_root", "chain-3")
+	writeFile(t, e.tree, ".agents/skills/chain-3/SKILL.md",
+		proofSkillFile("chain-3", "platform-engineering", skill, strings.Repeat("a", 64)))
+	e.publishImport(t, "pub-proof-source-hash-mismatch")
+	revisions := e.revisions(t, e.head(t))
+	body := fmt.Sprintf(`{"schema_version":"1.2","request_id":"req-proof-source-hash-mismatch",
+ "skill_id":%q,"revision":%q,"delivery_policy":"proof_gated",
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`,
+		skill, revisions[skill], fixtureCommit)
+	status, out := e.post(t, "/v1/use", body)
+	if status != 200 {
+		t.Fatalf("proof-gated use: %d %v", status, out)
+	}
+	delivery := obj(out["delivery"])
+	if str(delivery["action"]) != "ASK" || str(delivery["reason"]) != "proof_source_hash_mismatch" {
+		t.Fatalf("manifest/source hash mismatch must abstain: %v", delivery)
+	}
 }
 
 // Gate 2 (U1.7, U5.5): the resource manifest and the bytes behind it.

@@ -8,7 +8,7 @@ owner verdict → `design/landing/DESIGN.md` → `design-brief.json` → craft s
 
 ## Reading order
 
-`hero → why → how-it-works → value → availability → waitlist → questions → footer`.
+`hero → why → how-it-works → value → research-results → availability → waitlist → questions → footer`.
 One `h1`, one `h2` per section, `h3` only inside the FAQ triggers. Semantic DOM order
 equals visual order equals tab order at every breakpoint; nothing is reordered with CSS
 `order`.
@@ -18,6 +18,7 @@ equals visual order equals tab order at every breakpoint; nothing is reordered w
 | File | Job |
 |---|---|
 | `index.tsx` | Page composition, the `?confirm=` / `?unsubscribe=` branch, the FAQ `Collapsible` wrapper |
+| `ResearchEvidence.tsx` | Dated R22 benchmark comparison, limitations, and Pi r3 delivery trace; existing Spectrum bar chart is loaded on intersection |
 | `landing.module.css` | The whole page's styling. Values are tokens; no literal dimension, colour or breakpoint lives here |
 | `scroll.ts` | The single scroll sampler: one rAF, one passive `scroll`, one `resize`, one `IntersectionObserver` |
 | `FilmBackdrop.tsx` | Poster-first page-wide film, playhead tied to scroll progress |

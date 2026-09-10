@@ -1,0 +1,501 @@
+{
+  "date": "2026-09-10",
+  "run": "sra-external-pyramid-2026-09-10-r22",
+  "status": "exploratory_offline_retrieval",
+  "skills": 26262,
+  "queries": 5400,
+  "leaves": 28,
+  "rates": {
+    "flat": {
+      "hit1": 36.22222222222222,
+      "recall10": 56.68919753086426,
+      "complete4": 42.31481481481482,
+      "all_gold50": 65.29629629629629
+    },
+    "full_pyramid": {
+      "hit1": 36.22222222222222,
+      "recall10": 65.21635802469125,
+      "complete4": 47.18518518518518,
+      "all_gold50": 75.66666666666667
+    },
+    "examples_only": {
+      "hit1": 36.22222222222222,
+      "recall10": 61.38796296296304,
+      "complete4": 43.29629629629629,
+      "all_gold50": 72.77777777777777
+    },
+    "scope_name": {
+      "hit1": 36.22222222222222,
+      "recall10": 49.396296296296384,
+      "complete4": 28.314814814814817,
+      "all_gold50": 64.20370370370371
+    },
+    "card_metadata": {
+      "hit1": 36.22222222222222,
+      "recall10": 57.77006172839516,
+      "complete4": 43.0,
+      "all_gold50": 72.22222222222221
+    },
+    "popular": {
+      "hit1": 36.22222222222222,
+      "recall10": 30.866358024691053,
+      "complete4": 26.574074074074073,
+      "all_gold50": 63.83333333333333
+    },
+    "random": {
+      "hit1": 36.22222222222222,
+      "recall10": 46.459259259259554,
+      "complete4": 27.111111111111114,
+      "all_gold50": 62.81481481481481
+    }
+  },
+  "vs_flat": {
+    "hit1": {
+      "delta_pp": 0.0,
+      "ci95_pp": [
+        0.0,
+        0.0
+      ],
+      "wins": 0,
+      "losses": 0,
+      "ties": 5400,
+      "n": 5400,
+      "seed": 20260910,
+      "draws": 10000
+    },
+    "recall10": {
+      "delta_pp": 8.52716049382716,
+      "ci95_pp": [
+        7.46079475308642,
+        9.595401234567904
+      ],
+      "wins": 950,
+      "losses": 403,
+      "ties": 4047,
+      "n": 5400,
+      "seed": 20260911,
+      "draws": 10000
+    },
+    "complete4": {
+      "delta_pp": 4.87037037037037,
+      "ci95_pp": [
+        3.833333333333333,
+        5.907407407407407
+      ],
+      "wins": 551,
+      "losses": 288,
+      "ties": 4561,
+      "n": 5400,
+      "seed": 20260912,
+      "draws": 10000
+    },
+    "all_gold50": {
+      "delta_pp": 10.37037037037037,
+      "ci95_pp": [
+        9.444444444444445,
+        11.296296296296296
+      ],
+      "wins": 630,
+      "losses": 70,
+      "ties": 4700,
+      "n": 5400,
+      "seed": 20260913,
+      "draws": 10000
+    }
+  },
+  "vs_metadata": {
+    "hit1": {
+      "delta_pp": 0.0,
+      "ci95_pp": [
+        0.0,
+        0.0
+      ],
+      "wins": 0,
+      "losses": 0,
+      "ties": 5400,
+      "n": 5400,
+      "seed": 20260930,
+      "draws": 10000
+    },
+    "recall10": {
+      "delta_pp": 7.446296296296297,
+      "ci95_pp": [
+        6.466358024691359,
+        8.438896604938272
+      ],
+      "wins": 842,
+      "losses": 317,
+      "ties": 4241,
+      "n": 5400,
+      "seed": 20260931,
+      "draws": 10000
+    },
+    "complete4": {
+      "delta_pp": 4.185185185185185,
+      "ci95_pp": [
+        3.314814814814815,
+        5.055555555555555
+      ],
+      "wins": 406,
+      "losses": 180,
+      "ties": 4814,
+      "n": 5400,
+      "seed": 20260932,
+      "draws": 10000
+    },
+    "all_gold50": {
+      "delta_pp": 3.4444444444444446,
+      "ci95_pp": [
+        2.5925925925925926,
+        4.296296296296296
+      ],
+      "wins": 376,
+      "losses": 190,
+      "ties": 4834,
+      "n": 5400,
+      "seed": 20260933,
+      "draws": 10000
+    }
+  },
+  "datasets": {
+    "bigcodebench": {
+      "n": 1140,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": 7.4385964912280835,
+          "full_vs_metadata_pp": 12.425438596491233
+        },
+        "complete4": {
+          "full_vs_flat_pp": 2.017543859649122,
+          "full_vs_metadata_pp": 3.421052631578947
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": 11.929824561403512,
+          "full_vs_metadata_pp": 3.2456140350877236
+        }
+      }
+    },
+    "champ": {
+      "n": 223,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": -8.66965620328849,
+          "full_vs_metadata_pp": 5.1345291479820645
+        },
+        "complete4": {
+          "full_vs_flat_pp": -5.829596412556054,
+          "full_vs_metadata_pp": 1.793721973094173
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": -2.6905829596412523,
+          "full_vs_metadata_pp": 1.7937219730941645
+        }
+      }
+    },
+    "logicbench": {
+      "n": 760,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": 10.921052631578949,
+          "full_vs_metadata_pp": 4.078947368421054
+        },
+        "complete4": {
+          "full_vs_flat_pp": 8.157894736842106,
+          "full_vs_metadata_pp": 4.999999999999999
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": 16.84210526315789,
+          "full_vs_metadata_pp": -3.157894736842104
+        }
+      }
+    },
+    "medcalcbench": {
+      "n": 1100,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": 1.6363636363636358,
+          "full_vs_metadata_pp": -0.181818181818183
+        },
+        "complete4": {
+          "full_vs_flat_pp": 1.0000000000000009,
+          "full_vs_metadata_pp": 0.8181818181818179
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": 4.3636363636363695,
+          "full_vs_metadata_pp": 0.909090909090915
+        }
+      }
+    },
+    "theoremqa": {
+      "n": 747,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": -6.291834002677376,
+          "full_vs_metadata_pp": 1.4725568942436373
+        },
+        "complete4": {
+          "full_vs_flat_pp": -12.182061579651949,
+          "full_vs_metadata_pp": -0.8032128514056214
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": -0.40160642570281624,
+          "full_vs_metadata_pp": 0.2677376171351997
+        }
+      }
+    },
+    "toolqa": {
+      "n": 1430,
+      "metrics": {
+        "recall10": {
+          "full_vs_flat_pp": 23.84615384615385,
+          "full_vs_metadata_pp": 14.615384615384619
+        },
+        "complete4": {
+          "full_vs_flat_pp": 18.95104895104895,
+          "full_vs_metadata_pp": 9.93006993006993
+        },
+        "all_gold50": {
+          "full_vs_flat_pp": 17.97202797202797,
+          "full_vs_metadata_pp": 10.979020979020982
+        }
+      }
+    }
+  },
+  "macro": {
+    "recall10": {
+      "mean_pp": 4.813446066559775,
+      "ci95_pp": [
+        -3.4746700473900023,
+        13.934379443098535
+      ],
+      "n_datasets": 6,
+      "seed": 20260910,
+      "draws": 100000
+    },
+    "complete4": {
+      "mean_pp": 2.019138259222029,
+      "ci95_pp": [
+        -5.536314402444965,
+        10.164479124529853
+      ],
+      "n_datasets": 6,
+      "seed": 20260910,
+      "draws": 100000
+    },
+    "all_gold50": {
+      "mean_pp": 8.002567462480279,
+      "ci95_pp": [
+        1.5995188799770375,
+        14.320287899235268
+      ],
+      "n_datasets": 6,
+      "seed": 20260910,
+      "draws": 100000
+    }
+  },
+  "method": {
+    "encoder": "Qwen3-Embedding-0.6B",
+    "map_model": "Qwen2.5-7B-Instruct",
+    "map_fit": "map_only",
+    "root_candidates": 50,
+    "extra_scopes": 2,
+    "local_candidates_per_scope": 10,
+    "corpus_prefix_groups": 7,
+    "clusters_per_group": 4,
+    "source_cards_per_leaf_cap": 12,
+    "source_cards_total": 263,
+    "source_cards_per_leaf": {
+      "bigcodebench.cluster-00": 12,
+      "bigcodebench.cluster-01": 12,
+      "bigcodebench.cluster-02": 12,
+      "bigcodebench.cluster-03": 12,
+      "champ.cluster-00": 12,
+      "champ.cluster-01": 12,
+      "champ.cluster-02": 12,
+      "champ.cluster-03": 12,
+      "logicbench.cluster-00": 7,
+      "logicbench.cluster-01": 2,
+      "logicbench.cluster-02": 3,
+      "logicbench.cluster-03": 7,
+      "medcalcbench.cluster-00": 12,
+      "medcalcbench.cluster-01": 11,
+      "medcalcbench.cluster-02": 12,
+      "medcalcbench.cluster-03": 3,
+      "theoremqa.cluster-00": 12,
+      "theoremqa.cluster-01": 12,
+      "theoremqa.cluster-02": 12,
+      "theoremqa.cluster-03": 12,
+      "toolqa.cluster-00": 4,
+      "toolqa.cluster-01": 4,
+      "toolqa.cluster-02": 4,
+      "toolqa.cluster-03": 2,
+      "web.cluster-00": 12,
+      "web.cluster-01": 12,
+      "web.cluster-02": 12,
+      "web.cluster-03": 12
+    },
+    "root_rank_one_preserved": true,
+    "labels_used_for_selection": false
+  },
+  "post_hoc_mechanism_audit": {
+    "status": "post_hoc_retained_output_audit",
+    "full_pyramid": {
+      "n": 5400,
+      "counts": {
+        "promoted_gold": 540,
+        "outside_top50_gold": 561,
+        "lost_gold": 461,
+        "complete_losses": 288,
+        "complete_wins": 551,
+        "complete_wins_gold_already_in_top50": 351,
+        "complete_wins_need_outside_top50": 200
+      },
+      "recall_decomposition_pp": {
+        "promoted": 6.075617283950601,
+        "recovered": 7.910802469135782,
+        "lost": 5.459259259259256
+      },
+      "recall_delta_pp": 8.52716049382716,
+      "flat_web_share_top10": 0.5986111111111111,
+      "arm_web_share_top10": 0.19637037037037036
+    },
+    "gold_set_cluster_bootstrap": {
+      "flat": {
+        "recall10": {
+          "groups": 1113,
+          "queries": 5400,
+          "delta_pp": 8.52716049382716,
+          "ci95_pp": [
+            3.6416539205414504,
+            14.101119914340947
+          ],
+          "resampling_unit": "dataset and exact annotated skill set",
+          "estimand": "query-weighted mean, resampled cluster sums / cluster sizes",
+          "draws": 10000,
+          "seed": 20260910,
+          "limitation": "partial control for reused labels, not proof of independent clusters"
+        },
+        "complete4": {
+          "groups": 1113,
+          "queries": 5400,
+          "delta_pp": 4.87037037037037,
+          "ci95_pp": [
+            0.8332961972667856,
+            9.393649871591045
+          ],
+          "resampling_unit": "dataset and exact annotated skill set",
+          "estimand": "query-weighted mean, resampled cluster sums / cluster sizes",
+          "draws": 10000,
+          "seed": 20260910,
+          "limitation": "partial control for reused labels, not proof of independent clusters"
+        }
+      },
+      "card_metadata": {
+        "recall10": {
+          "groups": 1113,
+          "queries": 5400,
+          "delta_pp": 7.446296296296297,
+          "ci95_pp": [
+            2.867620928727772,
+            13.066698031980572
+          ],
+          "resampling_unit": "dataset and exact annotated skill set",
+          "estimand": "query-weighted mean, resampled cluster sums / cluster sizes",
+          "draws": 10000,
+          "seed": 20260910,
+          "limitation": "partial control for reused labels, not proof of independent clusters"
+        },
+        "complete4": {
+          "groups": 1113,
+          "queries": 5400,
+          "delta_pp": 4.185185185185185,
+          "ci95_pp": [
+            0.5183969867039124,
+            8.666903706980738
+          ],
+          "resampling_unit": "dataset and exact annotated skill set",
+          "estimand": "query-weighted mean, resampled cluster sums / cluster sizes",
+          "draws": 10000,
+          "seed": 20260910,
+          "limitation": "partial control for reused labels, not proof of independent clusters"
+        }
+      }
+    },
+    "unique_annotated_skills": 636,
+    "prefix_skills": {
+      "bigcodebench": 139,
+      "champ": 89,
+      "logicbench": 19,
+      "medcalcbench": 55,
+      "theoremqa": 320,
+      "toolqa": 14,
+      "web": 25626
+    },
+    "annotated_web_skills": 0,
+    "scope_selection_check": {
+      "checked": 21600,
+      "substantive_mismatches": [],
+      "numerical_tie_differences": [],
+      "implementation": "independent stdlib TF-IDF, map-only vocabulary"
+    },
+    "interpretation_boundary": "Descriptive decomposition, not a causal ablation. Scope checks use query text only; annotations enter attribution and uncertainty analysis after selection."
+  },
+  "pi": {
+    "sessions": 1,
+    "searches": 3,
+    "uses": 2,
+    "asks": 2,
+    "body_chars": 0,
+    "used_skills": 0,
+    "selected_skills": 2,
+    "gold_overlap": 0,
+    "task_execution_measured": false,
+    "instructions": "explicit bootstrap skill plus mandatory benchmark SEARCH/USE/ASK prompt",
+    "run": "pi-hierarchical-harness-2026-09-10-pi-r3"
+  },
+  "limitations": [
+    "Offline benchmark retrieval, not task completion or user productivity.",
+    "Positive pooled mean; CHAMP and TheoremQA regress versus flat.",
+    "Bootstrap across six datasets includes zero for recall and completeness.",
+    "Hierarchy uses benchmark corpus prefixes, not real monorepo scopes.",
+    "Only 636 distinct skills occur in gold sets; 25,626 web skills are unlabelled distractors.",
+    "Queries reuse gold sets; post-hoc grouped intervals remain positive but do not resolve cross-domain uncertainty.",
+    "Map-only replay is exploratory; this public corpus was already exposed.",
+    "Full pyramid and metadata arms share the extra search budget; flat uses less search.",
+    "Hit@1 is fixed by preserving the original first result.",
+    "Pi r3 is a single explicitly instructed ASK case; selected gold overlap is zero.",
+    "No semantic correctness guarantee follows from validated source identifiers."
+  ],
+  "sources": {
+    "report": {
+      "path": "research/sra-external-pyramid-2026-09-08/r22-retrieval-maponly-report.json",
+      "sha256": "766e3eeb17fda7a89d9240661ef9afc9a12bd7bf98362c430e49ece648fdfe75"
+    },
+    "map": {
+      "path": "research/sra-external-pyramid-2026-09-08/r22-map/generated-map.json",
+      "sha256": "46e4aad21660cac1200aa76f23a399eb40b669673e3096d447e599ab73061d26"
+    },
+    "mechanism_audit": {
+      "path": "research/sra-external-pyramid-2026-09-08/r22-mechanism-audit.json",
+      "sha256": "7283e02aebc6dfd44fa8817adf96e604943871bca11fc0a100879a7706e5244d"
+    },
+    "pi_result": {
+      "path": ".guidefold/checks/pi-hierarchical-harness-2026-09-10-pi-r3/pi-results.jsonl",
+      "sha256": "18664ab35eea6fda56bd1700f675e463c7535d8344c96bdda90df0d2ce89baec"
+    }
+  },
+  "verification": {
+    "retained_ranking_metrics_recomputed": 37800,
+    "source_ranking_replay": {
+      "status": "PASS",
+      "queries": 5400,
+      "arms_checked": 32400,
+      "n_skills": 26262,
+      "leaves": 28,
+      "report_sha256": "766e3eeb17fda7a89d9240661ef9afc9a12bd7bf98362c430e49ece648fdfe75",
+      "map_sha256": "46e4aad21660cac1200aa76f23a399eb40b669673e3096d447e599ab73061d26",
+      "labels_used_for_selection": false
+    },
+    "scope": "independent arithmetic recheck of retained rankings plus source hash checks"
+  }
+}

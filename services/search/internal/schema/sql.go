@@ -351,7 +351,7 @@ INSERT INTO gf.schema_version VALUES (9) ON CONFLICT DO NOTHING;
 const grantsSQL = `
 GRANT USAGE ON SCHEMA gf TO guidefold_api;
 GRANT SELECT ON ALL TABLES IN SCHEMA gf TO guidefold_api;
-GRANT INSERT ON gf.events,gf.search_shadow TO guidefold_api;
+GRANT INSERT ON gf.events,gf.search_shadow,gf.training_examples TO guidefold_api;
 GRANT USAGE ON SCHEMA gfm TO guidefold_api;
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA gfm TO guidefold_api;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA gfm TO guidefold_api;

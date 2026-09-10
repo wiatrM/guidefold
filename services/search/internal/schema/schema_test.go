@@ -26,7 +26,7 @@ func TestMigrateRunsOnPlainPostgres(t *testing.T) {
 		t.Fatalf("pg_search reported as %q rather than %q", caps.PgSearch, schema.PgSearchAbsent)
 	}
 	for _, table := range []string{"gf.snapshots", "gf.skills", "gf.heads", "gf.router_indexes",
-		"gf.router_terms", "gf.events", "gf.search_shadow",
+		"gf.router_terms", "gf.events", "gf.search_shadow", "gf.training_examples",
 		"gfm.users", "gfm.identities", "gfm.orgs", "gfm.memberships", "gfm.repos",
 		"gfm.invitations", "gfm.sessions", "gfm.tokens", "gfm.device_codes",
 		"gfm.auth_states", "gfm.audit", "gfm.idempotency", "gfm.jobs"} {
@@ -107,6 +107,8 @@ func TestApiRolePrivileges(t *testing.T) {
 	check("gf.events", "INSERT", true)
 	check("gf.events", "DELETE", false)
 	check("gf.search_shadow", "INSERT", true)
+	check("gf.training_examples", "INSERT", true)
+	check("gf.training_examples", "DELETE", false)
 	for _, table := range []string{"gfm.orgs", "gfm.memberships", "gfm.tokens", "gfm.jobs",
 		"gfm.idempotency", "gfm.audit"} {
 		for _, privilege := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {

@@ -26,6 +26,13 @@ Keep these distinct: returned result, injected card, requested load, completed l
 reported application, observed invocation, and assessed outcome. A rendered card is
 an exposure; even observed invocation does not prove correct procedural execution.
 
+Redacted PBSD learning signals are a separate projection in `gf.training_examples`.
+They may contain immutable provenance, proof predicates, `LOAD`/`ASK`, model/router/
+policy revisions, token/tool/time counters and reviewer outcome labels. They do not
+contain raw prompts, skill bodies, repository code, bearer tokens or email. Dataset
+splits `{dev|calibration|test}` are repository/source-family based; TEST is sealed
+from training. Missing labels and outcomes remain unknown, never negative examples.
+
 The journey is not always linear: explicit USE may have no SEARCH; a cached revision
 may be reused without another download; a task may SEARCH several times; one USE
 may expand into several dependencies. Record explicit links, not nearest timestamps.

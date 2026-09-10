@@ -339,6 +339,11 @@ func publishBundleInto(ctx context.Context, tx pgx.Tx, raw []byte, o publishOpti
 	if o.SnapshotPin != "" && o.SnapshotPin != id {
 		return zero, fmt.Errorf("snapshot_pin_mismatch")
 	}
+	// Generated proof records carry explicit placeholders until the publisher
+	// knows the immutable snapshot and card revision. Bind those values before
+	// the catalog is written. The envelope digest remains the import artifact's
+	// integrity check; the proof fields are delivery metadata derived from it.
+	bindAllProofPlaceholders(cards, id)
 	check := &Catalog{Nodes: nodes, Cards: map[string]M{}}
 	for _, u := range keys(cards) {
 		card := obj(cards[u])
@@ -382,7 +387,7 @@ func publishBundleInto(ctx context.Context, tx pgx.Tx, raw []byte, o publishOpti
 			}
 			body := str(card["_body"])
 			searchText := strings.Join([]string{str(card["name"]), str(card["description"]), str(card["digest"]), strings.Join(stringList(card["triggers"]), " "), body}, "\n")
-			values = append(values, []any{o.Tenant, o.Repo, id, u, hash(pythonJSON(card, false)), str(card["node"]), text(card, "status", "active"), json.RawMessage(canonical(metadata)), []byte(body), strings.ReplaceAll(searchText, "\x00", " ")})
+			values = append(values, []any{o.Tenant, o.Repo, id, u, cardRevision(card), str(card["node"]), text(card, "status", "active"), json.RawMessage(canonical(metadata)), []byte(body), strings.ReplaceAll(searchText, "\x00", " ")})
 		}
 		_, e = tx.CopyFrom(ctx, pgx.Identifier{"gf", "skills"}, []string{"tenant", "repo", "snapshot_id", "urn", "skill_revision", "node", "status", "metadata", "body", "search_text"}, pgx.CopyFromRows(values))
 		if e != nil {

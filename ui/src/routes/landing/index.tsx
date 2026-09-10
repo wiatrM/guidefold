@@ -10,6 +10,7 @@ import {RouteRule} from './RouteRule';
 import {ScopePyramid} from './ScopePyramid';
 import {WaitlistForm,EmailAction} from './WaitlistForm';
 import {LandingFooter} from './Footer';
+import {ResearchEvidence} from './ResearchEvidence';
 import {ScrollCue} from './ScrollCue';
 import {useSectionProgress,useTrackProgress} from './scroll';
 import {github} from './instruction';
@@ -161,6 +162,8 @@ export default function Landing(){
      </article>)}</div>
     </section>
    </div>
+
+   <ResearchEvidence/>
 
    <section className={css.availability} aria-label="Product availability">
     <div className={css.availabilityStatements}>
