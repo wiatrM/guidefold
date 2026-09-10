@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,7 +30,7 @@ class _Handler(BaseHTTPRequestHandler):
                     "ranked": [{"skill_id": f"skill-{self.search_count}", "score": 10 if self.search_count == 1 else 100}],
                     "card_context": "card", "context": {"delivery_status": "complete"}}
         elif self.path == "/v1/use":
-            body = {"status": "ask", "delivery": {"action": "ASK"}, "body": "", "missing": ["proof_conflict"]}
+            body = {"status": "ask", "delivery": {"action": "ASK", "reason": "proof_conflict"}, "body": "", "missing": ["proof_conflict"]}
         else:
             self.send_response(404); self.end_headers(); return
         encoded = json.dumps(body).encode()
@@ -75,12 +76,16 @@ def test_use_reports_ask_without_body(tmp_path, monkeypatch, capsys):
     try:
         nodes = tmp_path / "nodes.json"; nodes.write_text(json.dumps({"repo_id": "repo", "revision": "rev", "cwd": "."}), encoding="utf-8")
         token = tmp_path / "token"; token.write_text("secret-token", encoding="utf-8")
+        trace_path = tmp_path / "trace.jsonl"
+        monkeypatch.setenv("GUIDEFOLD_TRACE_FILE", str(trace_path))
         monkeypatch.setenv("GUIDEFOLD_TASK_ID", "task-2")
         code = bridge.main(["--url", f"http://127.0.0.1:{server.server_port}", "--token-file", str(token), "--nodes-file", str(nodes), "use", "--skill-id", "skill-1", "--revision", "rev-1"])
         assert code == 0
         output = json.loads(capsys.readouterr().out)
         assert output["action"] == "ASK" and output["body"] == ""
         assert _Handler.requests[-1][1]["delivery_policy"] == "proof_gated"
+        trace = trace_path.read_text(encoding="utf-8")
+        assert '"reason":"proof_conflict"' in trace
     finally:
         server.shutdown(); thread.join(timeout=2); server.server_close()
 

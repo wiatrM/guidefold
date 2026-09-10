@@ -162,7 +162,7 @@ def _parse_final(stdout: str) -> tuple[dict[str, Any], bool]:
 
 def _trace_metrics(path: Path) -> dict[str, Any]:
     metrics = {"search_requests": 0, "search_results": None, "search_errors": 0, "use_requests": 0, "ask_count": 0,
-               "loaded_body_chars": 0, "trace_elapsed_ms": 0.0, "trace_rows": 0}
+               "ask_reasons": {}, "loaded_body_chars": 0, "trace_elapsed_ms": 0.0, "trace_rows": 0}
     if not path.is_file():
         return metrics
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -184,6 +184,9 @@ def _trace_metrics(path: Path) -> dict[str, Any]:
             metrics["use_requests"] += 1
             if str(row.get("action") or "").upper() == "ASK":
                 metrics["ask_count"] += 1
+                reason = str(row.get("reason") or "unknown")
+                reasons = metrics["ask_reasons"]
+                reasons[reason] = reasons.get(reason, 0) + 1
             body_chars = row.get("body_chars")
             if isinstance(body_chars, (int, float)) and not isinstance(body_chars, bool):
                 metrics["loaded_body_chars"] += body_chars

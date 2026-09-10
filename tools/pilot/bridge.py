@@ -88,13 +88,16 @@ def _request(base: str, token: str, endpoint: str, payload: dict[str, Any], trac
     elapsed = (time.perf_counter() - started) * 1000
     if not isinstance(body, dict):
         body = {"error": "invalid_json_response"}
+    delivery = body.get("delivery") if isinstance(body.get("delivery"), dict) else {}
     _trace(trace, {
         "path": endpoint,
         "status": status,
         "elapsed_ms": round(elapsed, 3),
         "request_id": request_id,
         "search_id": body.get("search_id"),
-        "action": (body.get("delivery") or {}).get("action") if isinstance(body.get("delivery"), dict) else None,
+        "action": delivery.get("action"),
+        "reason": delivery.get("reason") or body.get("reason"),
+        "missing_count": len(body.get("missing", [])) if isinstance(body.get("missing"), list) else None,
         "body_chars": len(str(body.get("body") or "")) if endpoint == "/v1/use" and status == 200 else 0,
         "result_count": len(body.get("cards", [])) if endpoint == "/v1/search" and isinstance(body.get("cards"), list) else 0,
     })

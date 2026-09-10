@@ -1133,7 +1133,9 @@ parsed only after the agent exits and are never included in the agent prompt; pl
 verifiers remain valid and keep the measurements `unknown`. This closes the instrumentation
 gap needed for the useful-coverage part of the quality gate without treating task success or
 body length as a proxy for semantic usefulness. A focused regression suite covers both labelled
-and unlabelled verifier output.
+and unlabelled verifier output. Trace rows now also retain the machine-readable `ASK` reason,
+and the scorecard aggregates those reasons per arm; this makes missing proof, scope denial and
+revision drift visible in the organization telemetry instead of collapsing them into one count.
 
 ### 5.32 Source-backed E2 through the Go HTTP path
 

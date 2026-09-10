@@ -105,6 +105,24 @@ def _sum_metric(rows: Iterable[dict[str, Any]], *names: str) -> int | float | No
     return sum(observed) if observed else None
 
 
+def _sum_counts(rows: Iterable[dict[str, Any]], name: str) -> dict[str, int]:
+    """Aggregate optional categorical telemetry while preserving an empty map."""
+    totals: dict[str, int] = {}
+    for row in rows:
+        candidates = [row]
+        telemetry = row.get("telemetry")
+        if isinstance(telemetry, dict):
+            candidates.append(telemetry)
+        for candidate in candidates:
+            values = candidate.get(name)
+            if not isinstance(values, dict):
+                continue
+            for key, value in values.items():
+                if isinstance(key, str) and isinstance(value, (int, float)) and not isinstance(value, bool):
+                    totals[key] = totals.get(key, 0) + int(value)
+    return totals
+
+
 def _harness_error(row: dict[str, Any]) -> bool:
     if _bool(row, "harness_error", "harness_failed"):
         return True
@@ -203,6 +221,7 @@ def _arm_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "search_errors": _sum_metric(rows, "search_errors"),
         "use_requests": _sum_metric(rows, "use_requests", "skill_load_requests", "use_count"),
         "ask_count": _sum_metric(rows, "ask_count", "asks"),
+        "ask_reasons": _sum_counts(rows, "ask_reasons"),
         "input_tokens": _sum_metric(rows, "input_tokens"),
         "output_tokens": _sum_metric(rows, "output_tokens"),
         "tool_calls": _sum_metric(rows, "tool_calls"),
