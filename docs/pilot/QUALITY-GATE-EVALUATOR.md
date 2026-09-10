@@ -1,0 +1,51 @@
+# End-to-end quality-gate evaluator
+
+`tools/pilot/quality_gate.py` is the mechanical pre-check for the proof-gated hierarchy
+experiment. It consumes task-level replay rows and, separately, E2 delivery decisions. It does
+not turn a retrieval hit into a task success and it never turns `unknown` into either success or
+failure.
+
+## Input
+
+The task file may be JSONL, a JSON list, or `{ "rows": [...] }`. Each row represents one complete
+`(task_id, arm)` attempt and should contain:
+
+```json
+{"task_id":"repo-c-017", "arm":"map+gate+evolution", "outcome":"success",
+ "useful_delivery":true, "harmful_load":false}
+```
+
+Allowed outcomes are `success`, `failure` and `unknown`. The evaluator reports unknown coverage
+separately and marks the overall result `inconclusive` when the candidate has unknown outcomes or
+the required baseline/E2 evidence is absent.
+
+The optional E2 file has one row per designed trigger. `harmful:true` marks a conflict, stale,
+or out-of-scope case; `actual_action` is `LOAD` or `ASK`; `expected_action` is normally `ASK`.
+Loading a harmful row is counted as a harmful delivery even when the task itself would otherwise
+pass.
+
+## Report and decision rule
+
+The report contains per-arm task success, unknowns, harmful-load Wilson upper bound, useful
+coverage, the best non-gated baseline and the paired success delta. It also reports the number of
+E2 trigger cases, correct `ASK`s, harmful loads and stale/conflict deliveries.
+
+The reported checks are deliberately the pre-registered publication gate:
+
+* candidate task success is no more than five percentage points below the best non-gated arm;
+* useful coverage is at least 90% of that baseline;
+* the two-sided 95% Wilson upper bound for harmful E2 loads is at most 5%;
+* no designed stale or conflicting case delivered a body.
+
+The command exits `0` only for `pass`; `fail` and `inconclusive` exit `2`, so CI cannot mistake
+missing evidence for a passing experiment.
+
+```bash
+python3 tools/pilot/quality_gate.py \
+  --tasks path/to/task-replay.jsonl \
+  --e2 path/to/e2-decisions.jsonl
+```
+
+This evaluator is an analysis guard, not a substitute for the frozen protocol, hidden verifiers,
+or two independent human judgements where deterministic acceptance is impossible. Freeze the task
+bank, repository snapshots, model, harness, prompts, map, policy and seeds before collecting rows.

@@ -1013,3 +1013,7 @@ frozen protocol and no execution has started.
 ### 5.22 E2 proof-gate regression matrix
 
 The tracked [E2 matrix](reports/bakeoff/E2-PROOF-GATE-MATRIX-2026-09-10.md) is the next executable quality gate for the conflict and revision boundary. On a synthetic sibling catalog, the production proof gate produced two safe `LOAD` decisions and six fail-closed `ASK` decisions for conflict, deprecated status, scope mismatch, revision drift, body tampering and incomplete closure. This is regression evidence (R/Q), not pilot evidence: it contains no model, real repository or task evaluator. The next meaningful result is the same matrix on real monorepo snapshots plus the frozen paired-task harness, where task success, harness errors, SEARCH/USE/ASK, tokens, latency and unknown coverage are measured together.
+
+### 5.23 End-to-end quality-gate evaluator
+
+The new [`quality_gate.py`](../tools/pilot/quality_gate.py) evaluator joins task-level replay rows with a separate E2 decision file. It reports task success, unknown coverage, useful delivery, harmful-load Wilson bounds and paired candidate/baseline deltas. It requires conflict/revision trigger cases and known candidate outcomes before it can return `pass`; missing evidence returns `inconclusive`, while a loaded stale/conflicting body returns `fail`. The implementation and regression cases are documented in [`QUALITY-GATE-EVALUATOR.md`](pilot/QUALITY-GATE-EVALUATOR.md). This is instrumentation and a decision guard, not new experiment evidence; the real E2 and frozen paired-task replay remain outstanding.

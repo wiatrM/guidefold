@@ -13,6 +13,7 @@ Zakres zastępowania: brak; ten plik nie zmienia treści dokumentów, do któryc
 | [E6.7-PROTOCOL](E6.7-PROTOCOL.md) | Zamrożony pre-registered protokół pilota E6.7 (H1–H3, warunki A–D, stop rules). Zmienia się tylko przez datowany addendum po zamrożeniu (§11). |
 | [task-bank.template.yaml](task-bank.template.yaml) | Schemat zadań pilota i `frozen.task_bank_sha256`. |
 | [scoring-sheet.template.csv](scoring-sheet.template.csv) | Schemat arkusza ocen zadań (11 kolumn), z nagłówkiem `protocol_sha256`. |
+| [QUALITY-GATE-EVALUATOR.md](QUALITY-GATE-EVALUATOR.md) | Mechaniczna bramka E2 + task success; `unknown` i brak dowodu kończą się `inconclusive`. |
 | [PIVOT-RUBRIC](PIVOT-RUBRIC.md) | Rubryka U11 z etykietami R/Q/P, progi go/no-go i to, czego syntetyczny run nie dowodzi. |
 
 ## Narzędzia
