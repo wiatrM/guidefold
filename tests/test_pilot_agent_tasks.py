@@ -86,3 +86,24 @@ def test_agent_runner_rejects_workspace_escape_without_running_verifier(tmp_path
     assert rows[0]["outcome"] == "unknown"
     assert rows[0]["harness_error"] is True
     assert rows[0]["terminal_status"] == "workspace_missing_or_outside_root"
+
+
+def test_agent_runner_keeps_verifier_failure_distinct_from_harness_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "_auth_available", lambda: True)
+    root = tmp_path / "workspaces"
+    source = root / "task-1"
+    source.mkdir(parents=True)
+    evaluator = tmp_path / "evaluator"
+    evaluator.mkdir()
+    (evaluator / "verify.py").write_text("raise SystemExit(7)\n", encoding="utf-8")
+    tasks = tmp_path / "tasks.json"
+    tasks.write_text(json.dumps([{
+        "task_id": "task-1", "query": "create the answer file", "workspace": "task-1",
+        "verifier": ["python3", "verify.py", "{workspace}"],
+    }]), encoding="utf-8")
+    fake = tmp_path / "fake_pi.py"
+    _fake_pi(fake)
+    rows = runner.run(_args(tasks, root, evaluator, tmp_path / "out", fake, tmp_path / "skill.md", tmp_path / "token"))
+    assert rows[0]["outcome"] == "failure"
+    assert rows[0]["harness_error"] is False
+    assert rows[0]["verifier_exit_code"] == 7
