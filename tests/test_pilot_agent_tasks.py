@@ -72,6 +72,11 @@ def test_agent_runner_scores_verifier_and_trace(tmp_path, monkeypatch):
     assert row["input_tokens"] == 11
     assert row["output_tokens"] == 7
     assert row["token_samples"] == 1
+    assert len(row["run_manifest_sha256"]) == 64
+    assert len(row["prompt_sha256"]) == 64
+    manifest = json.loads((tmp_path / "out" / "run-manifest.json").read_text(encoding="utf-8"))
+    assert manifest["task_bank_sha256"] == row["task_bank_sha256"]
+    assert manifest["manifest_sha256"] == row["run_manifest_sha256"]
 
 
 def test_agent_runner_accepts_single_task_json_object(tmp_path, monkeypatch):
@@ -92,6 +97,34 @@ def test_agent_runner_accepts_single_task_json_object(tmp_path, monkeypatch):
     rows = runner.run(_args(tasks, root, evaluator, tmp_path / "out", fake, tmp_path / "skill.md", tmp_path / "token"))
     assert len(rows) == 1
     assert rows[0]["outcome"] == "success"
+
+
+def test_agent_runner_rejects_resume_with_changed_configuration(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "_auth_available", lambda: True)
+    root = tmp_path / "workspaces"
+    source = root / "task-1"
+    source.mkdir(parents=True)
+    evaluator = tmp_path / "evaluator"
+    evaluator.mkdir()
+    (evaluator / "verify.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+    tasks = tmp_path / "tasks.json"
+    tasks.write_text(json.dumps([{
+        "task_id": "task-1", "query": "x", "workspace": "task-1",
+        "verifier": ["python3", "verify.py", "{workspace}"],
+    }]), encoding="utf-8")
+    fake = tmp_path / "fake_pi.py"
+    _fake_pi(fake)
+    output = tmp_path / "out"
+    runner.run(_args(tasks, root, evaluator, output, fake, tmp_path / "skill.md", tmp_path / "token"))
+    args = _args(tasks, root, evaluator, output, fake, tmp_path / "skill.md", tmp_path / "token")
+    args.resume = True
+    args.strategy = "top_down"
+    try:
+        runner.run(args)
+    except SystemExit as exc:
+        assert "does not match" in str(exc)
+    else:
+        raise AssertionError("resume must reject changed run configuration")
 
 
 def test_agent_runner_rejects_workspace_escape_without_running_verifier(tmp_path, monkeypatch):

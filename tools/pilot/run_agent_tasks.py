@@ -66,6 +66,13 @@ def _load_tasks(path: Path) -> tuple[list[dict[str, Any]], str]:
     return value, hashlib.sha256(raw).hexdigest()
 
 
+def _sha256_file(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def _auth_available() -> bool:
     if any(os.environ.get(name) for name in (
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN", "GOOGLE_API_KEY",
@@ -240,6 +247,31 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
     results_path = output / "agent-results.jsonl"
     if results_path.exists() and not args.resume:
         raise SystemExit(f"{results_path} exists; use --resume or another --output")
+    manifest = {
+        "schema": "guidefold-pilot-run-1",
+        "task_bank_sha256": bank_sha,
+        "guidefold_skill_sha256": _sha256_file(args.guidefold_skill),
+        "bridge_sha256": _sha256_file(args.bridge),
+        "nodes_sha256": _sha256_file(args.nodes_file),
+        "pi_command": command,
+        "provider": args.provider,
+        "model": args.model,
+        "strategy": args.strategy,
+        "delivery_policy": args.delivery_policy,
+        "timeout_seconds": args.timeout,
+    }
+    manifest_text = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    manifest_sha = hashlib.sha256(manifest_text.encode("utf-8")).hexdigest()
+    manifest_path = output / "run-manifest.json"
+    if args.resume and manifest_path.exists():
+        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+        existing_text = json.dumps({k: v for k, v in existing.items() if k != "manifest_sha256"},
+                                   ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if hashlib.sha256(existing_text.encode("utf-8")).hexdigest() != manifest_sha:
+            raise SystemExit(f"{manifest_path} does not match the resumed run configuration")
+    elif not args.resume or not manifest_path.exists():
+        manifest_path.write_text(json.dumps({**manifest, "manifest_sha256": manifest_sha},
+                                             ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     done: dict[str, dict[str, Any]] = {}
     if args.resume:
         for line in results_path.read_text(encoding="utf-8").splitlines() if results_path.exists() else []:
@@ -280,6 +312,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                           "tests. Do not inspect parent directories, evaluator files, task banks, "
                           "labels or secrets. Finish with one JSON object containing "
                           "selected_skill_ids, used_skill_ids and a short answer.\n\nTASK:\n" + task["query"])
+                prompt_sha = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
                 env = {k: v for k, v in os.environ.items() if k in {
                     "HOME", "PATH", "LANG", "LC_ALL", "PI_CODING_AGENT_DIR", "PI_PACKAGE_DIR",
                     "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN", "GOOGLE_API_KEY",
@@ -311,6 +344,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                     status, verifier_error, verifier_exit, verifier_stdout, verifier_stderr, verifier_ms = _run_verifier(
                         expanded_verifier, evaluator_root, verifier_timeout)
                 row = {"task_id": task_id, "arm": args.arm, "strategy": args.strategy, "outcome": status,
+                       "run_manifest_sha256": manifest_sha, "prompt_sha256": prompt_sha,
                        "terminal_status": "completed" if not verifier_error else "harness_error",
                        "harness_error": verifier_error, "agent_exit_code": agent_exit,
                        "verifier_exit_code": verifier_exit, "verifier_sha256": verifier_sha,
