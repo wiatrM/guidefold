@@ -12,6 +12,10 @@ def test_source_disjoint_manifest_is_prepared_and_owner_disjoint():
     assert len(manifest["families"]) == 2
     assert len(manifest["records"]) == 8
     assert len(manifest["cases"]) == 4
+    for row in manifest["records"]:
+        if row["role"] == "C_prime":
+            assert "stop if the check is not green" in row["drift"]["append_text"]
+            assert row["drift"]["before_sha256"] != row["drift"]["after_sha256"]
     for family in manifest["families"]:
         owners = {
             row["source_owner"]
