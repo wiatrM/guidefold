@@ -1134,3 +1134,18 @@ verifiers remain valid and keep the measurements `unknown`. This closes the inst
 gap needed for the useful-coverage part of the quality gate without treating task success or
 body length as a proxy for semantic usefulness. A focused regression suite covers both labelled
 and unlabelled verifier output.
+
+### 5.32 Source-backed E2 through the Go HTTP path
+
+An opt-in integration test now takes the fresh engineering and documentation C/C′ snapshots,
+publishes their bytes through the real import/parse/build worker, and calls the production
+`USE 1.2` handler with `delivery_policy: proof_gated`. The replay passed **4/4** targets:
+each returned `delivery.action=LOAD`, `reason=source_proof_complete`, `status=hydrated` and a
+non-empty body. The service itself verified the cited source hash and range. The test skips
+only when its external snapshot directory is not supplied; with the variable set, missing
+PyYAML or PostgreSQL is a failure, not a pass.
+
+This closes the gap between the source-backed evaluator and the actual Go delivery path for
+the safe current-proof case. It still does not replace the harmful-mutation matrix, human
+semantic labels or end-to-end task evaluation. Reproduction details are in
+[`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).
