@@ -718,7 +718,7 @@ function shareText(numerator: number, denominator: number, smallSample: boolean)
 }
 
 /** ISO timestamp to its calendar day; an absent bound stays Unknown. */
-function formatDay(iso: string | null): string {
+export function formatDay(iso: string | null): string {
   if (!iso) return 'Unknown';
   const day = iso.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : iso;
@@ -833,12 +833,13 @@ function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
   </Panel>;
 }
 
-function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
+export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
   const taskObserved = metrics.tasks_observed && metrics.tasks_finished > 0;
   const safetyObserved = metrics.use_requests > 0 || metrics.ask_count > 0 || metrics.harness_errors > 0;
   const retrievalObserved = metrics.search_requests > 0 || metrics.use_requests > 0 || metrics.search_results > 0;
   const averageLatency = metrics.latency_samples > 0 ? Math.round(metrics.latency_ms / metrics.latency_samples) : null;
-  const costObserved = metrics.cost_observed || averageLatency !== null;
+  const costObserved = metrics.cost_observed;
+  const timeObserved = averageLatency !== null;
 
   return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<Pulse aria-hidden="true" />}>
     <MetricRow items={[
@@ -865,12 +866,15 @@ function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
       },
       {
         label: 'Cost and time',
-        value: costObserved
-          ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' + (averageLatency !== null ? ' · ' + formatNumber(averageLatency) + ' ms avg' : '')
+        value: costObserved || timeObserved
+          ? (costObserved ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' : 'Unknown tokens')
+            + (timeObserved ? ' · ' + formatNumber(averageLatency!) + ' ms avg' : '')
           : 'Unknown',
-        detail: costObserved
-          ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
-            + (metrics.latency_samples > 0 ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : '')
+        detail: costObserved || timeObserved
+          ? (costObserved
+            ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
+            : 'No token measurement in this window')
+            + (timeObserved ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : ' · No latency measurement in this window')
           : 'No token or latency measurements in this window',
       },
     ]} />

@@ -69,6 +69,16 @@ describe('Usage route, hosted API, six states', () => {
     expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
   });
 
+  test('scorecards keep unmeasured tokens Unknown when only latency is observed', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report({ totals: {
+      ...report().totals,
+      metrics: { ...noMetrics, latency_ms: 600, latency_samples: 2 },
+    } }) }));
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('Unknown tokens · 300 ms avg')).toBeInTheDocument();
+    expect(scorecards.getByText(/No token measurement in this window/)).toBeInTheDocument();
+  });
+
   test('Loading: no number is shown before the report arrives', () => {
     renderApi(ApiUsageRoute, fakeSource({ getUsage: () => new Promise(() => {}) }));
     expect(screen.getByText('Reading the usage report')).toBeInTheDocument();
