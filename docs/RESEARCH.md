@@ -1107,3 +1107,20 @@ The quality gate remains `inconclusive` because E2 conflict/revision cases and i
 useful/harmful delivery labels are absent, and the bank has only four trivial tasks. The frozen
 inputs and report are in
 [`research/e6-feasibility-20260911/README.md`](../research/e6-feasibility-20260911/README.md).
+
+### 5.30 Source-backed E2 delivery matrix
+
+On 2026-09-11, the proof-gated policy was replayed against the fresh, hash-verified
+engineering and documentation C/C′ snapshots. Each of the four targets contributed 19
+harmful mutations covering conflict, deprecation, scope, stale revision, tampering,
+incomplete closure and sibling transfer, plus one safe complete-proof case. The candidate
+returned `ASK` for all 76 harmful cases and `LOAD` for all four safe cases; the flat exposure
+control returned `LOAD` for all 76 harmful cases. The one-sided Wilson 95% upper bound for
+harmful delivery is 4.81%, and stale/conflicting body delivery is zero.
+
+This is source-backed deterministic R/Q evidence for the delivery boundary, not a human
+semantic judgment, natural-hierarchy transfer result or task-success claim. The combined
+task scorecard therefore remains `inconclusive` because the four-task Pi bank has no useful-
+delivery labels and both arms score 3/4. Reproduce it from
+[`research/e2-source-backed-20260911/README.md`](../research/e2-source-backed-20260911/README.md);
+the runner rejects any snapshot whose digest differs from the frozen manifest.
