@@ -1,85 +1,137 @@
-# Helm values for the guidefold.cloudfloo.io pilot deployment (ADR-0034 deployment
-# target). Digests below are from the first real publish-images.yml run
-# (2026-09-08) and match what's actually live in the `guidefold` namespace —
-# update them here whenever services/search or portal/ changes and a new image
-# is published (Actions → Publish images → latest run → Summary).
-#
-# See README.md in this directory for the full apply sequence (Postgres, secrets,
-# migrate, serve, ArgoCD Application) — this file alone is not a complete deployment.
-
-tenant: cloudfloo    # legacy Store default (services/search/store.go); the
-repository: guidefold # multi-tenant mgmt/import/review API resolves org/repo per
-                       # request instead and does not read these two fields.
-publicURL: https://guidefold.cloudfloo.io
-workos:
-  clientID: "" # fill from the WorkOS project; never commit the API key
-  secretName: guidefold-workos
-
+# Production release verified 2026-09-10. Secret values live only in Kubernetes.
+artifactImage: ''
+auth: workos
+autoscaling:
+  cpuUtilization: 70
+  enabled: true
+  inflightMetric: ''
+  inflightTarget: '4'
+  maxReplicas: 3
+  minReplicas: 2
+credentialsSecret: guidefold-credentials
 database:
+  adminUser: postgres
+  connectionBudget: 128
   host: guidefold-postgres-rw.guidefold.svc.cluster.local
   name: guidefold
-  sslMode: verify-full
-  tlsSecret: guidefold-postgres-ca # CNPG's own auto-issued cluster CA secret (see
-                                    # postgres-cluster.yaml) — has the required ca.crt key.
   networkPeers:
-    - podSelector:
-        matchLabels: {cnpg.io/cluster: guidefold-postgres}
-  connectionBudget: 128
+  - podSelector:
+      matchLabels:
+        cnpg.io/cluster: guidefold-postgres
+  port: 5432
   reservedConnections: 16
-
-image: "ghcr.io/wiatrm/guidefold-search@sha256:cbcc19478240567dcf848f621bedbcb06595133b32d7907840cbbe8af7520702"
-
-# No published snapshot exists yet for this tenant/repo (nothing has been imported
-# and published through the pivot flow). "unpublished" is a real, non-empty
-# placeholder, not a workaround: gf.validate requires a non-empty snapshotID so a
-# fresh deploy can never silently follow gf.heads' mutable head (ADR-0030). Because
-# it matches no row in gf.snapshots, /health/ready reports
-# {"ready": true, "retrieval": "not_configured"} instead of failing (main.go) — the
-# management/import/review API is fully up; only SEARCH/USE retrieval is unconfigured
-# until the first snapshot is published. Replace with the real snapshot id at that point.
-snapshotID: unpublished
-
-replicas: 2
-autoscaling:
-  minReplicas: 2
-  maxReplicas: 3 # small pilot; raise together with connectionBudget if traffic grows
-
-worker:
-  enabled: true
-  image: "ghcr.io/wiatrm/guidefold-worker@sha256:09b89b02de57c73224135c6ac8d8206491a5cfd10e33940dbfceadf5145ca28a"
+  sslMode: verify-full
+  tlsSecret: guidefold-postgres-ca
+  user: guidefold_api
+developmentMode: false
+gpu:
+  autoscaling:
+    enabled: false
+    maxReplicas: 2
+    minReplicas: 1
+    queueMetric: ''
+    queueTarget: '4'
+  batchRequests: 1
+  enabled: false
+  encoderID: ''
+  image: ''
+  nodeSelector:
+    kubernetes.io/arch: amd64
   replicas: 1
-  generator: deterministic # det-1: no network, no LLM key required for this pilot
-
-# Shared by ingress.yaml (/api, /v1 -> api), portal.yaml (/docs -> portal) and
-# ui.yaml (/ -> ui) — one host, one Ingress object per component, nginx-ingress
-# merges them by path specificity regardless of declaration order. ingress.enabled
-# gates only the api path rule, but the UI calls /api and /v1 same-origin
-# (ui/src/api/client.ts), so this has to be true whenever ui.enabled is — a UI
-# with no working API path is just a static shell that can never sign in.
+  resources:
+    limits:
+      cpu: '2'
+      memory: 4Gi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: '1'
+      memory: 2Gi
+      nvidia.com/gpu: 1
+  tolerations: []
+image: ghcr.io/wiatrm/guidefold-search@sha256:c18c9b58d10f4b79c24e7e09b6d038c7aa35769768c15c99ef0769d0136cd2cc
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
 ingress:
+  annotations: {}
+  className: nginx
   enabled: true
-  className: nginx # matches the cluster's ingress-nginx controller
   host: guidefold.cloudfloo.io
-  tlsSecret: "" # HTTP only for now — the owner is adding DNS + TLS separately
-
-# The developer portal: static docs, no backend dependency. Served at /docs — the
-# hosted UI (below) owns the domain root.
+  tlsSecret: ''
+job:
+  timeoutSeconds: 1800
+  ttlSecondsAfterFinished: 86400
+metrics:
+  additionalLabels: {}
+  serviceMonitor: false
+networkPolicy:
+  clientPeers:
+  - podSelector:
+      matchLabels:
+        guidefold.client: 'true'
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/name: ingress-nginx
+  enabled: true
+nodeSelector: {}
+operatorCredentialsSecret: guidefold-operator-credentials
 portal:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b"
+  image: ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b
   replicas: 1
-
-# The hosted U4 React app: real login/import/catalog/review screens. Served at /.
-# The serving API requires the WorkOS client ID and `guidefold-workos` Secret
-# described in README.md step 3; Helm validates both before a release is applied.
-# The UI still renders its sign-in route during a transient API outage.
+  resources:
+    limits:
+      cpu: 250m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+publicURL: https://guidefold.cloudfloo.io
+replicas: 2
+repository: guidefold
+resources:
+  limits:
+    cpu: '2'
+    ephemeral-storage: 256Mi
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    ephemeral-storage: 64Mi
+    memory: 512Mi
+snapshotID: unpublished
+tenant: cloudfloo
+tolerations: []
 ui:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627"
+  image: ghcr.io/wiatrm/guidefold-ui@sha256:4359c65505d766caa75068cb91424162a2149846bc00f504876a4a0bb5ae035c
   replicas: 2
-
-networkPolicy:
+  resources:
+    limits:
+      cpu: 250m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+worker:
   enabled: true
-  clientPeers:
-    - podSelector:
-        matchLabels: {guidefold.client: "true"}
+  generator: deterministic
+  image: ghcr.io/wiatrm/guidefold-worker@sha256:5f290555275cb5480ae96f1130ba166a8f9bb1701af025b034521a1dedbd12c4
+  nodeSelector: {}
+  replicas: 1
+  resources:
+    limits:
+      cpu: '1'
+      ephemeral-storage: 512Mi
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      ephemeral-storage: 64Mi
+      memory: 256Mi
+  tolerations: []
+workload: serve
+workos:
+  clientID: client_01M1XXZE942EDFDYZBW55X6ME1
+  secretName: guidefold-workos

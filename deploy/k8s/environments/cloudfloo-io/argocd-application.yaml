@@ -1,22 +1,3 @@
-# ArgoCD AppProject + Application for guidefold.cloudfloo.io.
-#
-# targetRevision is the tag deploy-cloudfloo-chart-r12, not main. The chart on
-# main carries the OAuth guard added in #130: it renders WORKOS_CLIENT_ID and
-# GUIDEFOLD_PUBLIC_URL into the ConfigMap and fails template rendering when
-# workos.clientID is empty. This environment has no WorkOS client id and no
-# guidefold-workos secret, which is also why the API container has been in
-# CrashLoopBackOff on workos_requires_api_key_and_client_id. On top of that the
-# live ConfigMap is immutable, so a render that adds keys cannot be applied in
-# place. The tag pins the chart revision the live release was built from; its
-# render is byte-identical to the live manifest apart from the UI image.
-#
-# Moving this back to main needs three things, in order: a real workos.clientID
-# and publicURL in the values, the guidefold-workos secret created in the
-# namespace, and the immutable ConfigMap deleted so it can be recreated.
-#
-# The values below are the release's own computed values, read back from the
-# cluster, with only ui.image advanced. Verified by rendering the tagged chart
-# locally: the diff against the live manifest is one line, the UI image.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -25,13 +6,14 @@ metadata:
 spec:
   description: Guidefold pilot deployment (guidefold.cloudfloo.io)
   sourceRepos:
-    - https://github.com/wiatrM/guidefold.git
+  - https://github.com/wiatrM/guidefold.git
   destinations:
-    - namespace: guidefold
-      server: https://kubernetes.default.svc
+  - namespace: guidefold
+    server: https://kubernetes.default.svc
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
-    - {group: "*", kind: "*"}
+  - group: '*'
+    kind: '*'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -43,136 +25,48 @@ metadata:
 spec:
   project: guidefold
   source:
-    repoURL: https://github.com/wiatrM/guidefold.git
-    targetRevision: deploy-cloudfloo-chart-r12
-    path: deploy/k8s/chart
     helm:
-      values: |
-        artifactImage: ''
-        auth: workos
-        autoscaling:
-          cpuUtilization: 70
-          enabled: true
-          inflightMetric: ''
-          inflightTarget: '4'
-          maxReplicas: 3
-          minReplicas: 2
-        credentialsSecret: guidefold-credentials
-        database:
-          adminUser: postgres
-          connectionBudget: 128
-          host: guidefold-postgres-rw.guidefold.svc.cluster.local
-          name: guidefold
-          networkPeers:
-          - podSelector:
-              matchLabels:
-                cnpg.io/cluster: guidefold-postgres
-          port: 5432
-          reservedConnections: 16
-          sslMode: verify-full
-          tlsSecret: guidefold-postgres-ca
-          user: guidefold_api
-        developmentMode: false
-        gpu:
-          autoscaling:
-            enabled: false
-            maxReplicas: 2
-            minReplicas: 1
-            queueMetric: ''
-            queueTarget: '4'
-          batchRequests: 1
-          enabled: false
-          encoderID: ''
-          image: ''
-          nodeSelector:
-            kubernetes.io/arch: amd64
-          replicas: 1
-          resources:
-            limits:
-              cpu: '2'
-              memory: 4Gi
-              nvidia.com/gpu: 1
-            requests:
-              cpu: '1'
-              memory: 2Gi
-              nvidia.com/gpu: 1
-          tolerations: []
-        image: ghcr.io/wiatrm/guidefold-search@sha256:cbcc19478240567dcf848f621bedbcb06595133b32d7907840cbbe8af7520702
-        imagePullPolicy: IfNotPresent
-        imagePullSecrets: []
-        ingress:
-          annotations: {}
-          className: nginx
-          enabled: true
-          host: guidefold.cloudfloo.io
-          tlsSecret: ''
-        job:
-          timeoutSeconds: 1800
-          ttlSecondsAfterFinished: 86400
-        metrics:
-          additionalLabels: {}
-          serviceMonitor: false
-        networkPolicy:
-          clientPeers:
-          - podSelector:
-              matchLabels:
-                guidefold.client: 'true'
-          enabled: true
-        nodeSelector: {}
-        operatorCredentialsSecret: guidefold-operator-credentials
-        portal:
-          enabled: true
-          image: ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b
-          replicas: 1
-          resources:
-            limits:
-              cpu: 250m
-              memory: 128Mi
-            requests:
-              cpu: 50m
-              memory: 64Mi
-        replicas: 2
-        repository: guidefold
-        resources:
-          limits:
-            cpu: '2'
-            ephemeral-storage: 256Mi
-            memory: 2Gi
-          requests:
-            cpu: 500m
-            ephemeral-storage: 64Mi
-            memory: 512Mi
-        snapshotID: unpublished
-        tenant: cloudfloo
-        tolerations: []
-        ui:
-          enabled: true
-          image: ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627
-          replicas: 2
-          resources:
-            limits:
-              cpu: 250m
-              memory: 128Mi
-            requests:
-              cpu: 50m
-              memory: 64Mi
-        worker:
-          enabled: true
-          generator: deterministic
-          image: ghcr.io/wiatrm/guidefold-worker@sha256:09b89b02de57c73224135c6ac8d8206491a5cfd10e33940dbfceadf5145ca28a
-          nodeSelector: {}
-          replicas: 1
-          resources:
-            limits:
-              cpu: '1'
-              ephemeral-storage: 512Mi
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              ephemeral-storage: 64Mi
-              memory: 256Mi
-          tolerations: []
-        workload: serve
+      values: "artifactImage: ''\nauth: workos\nautoscaling:\n  cpuUtilization: 70\n\
+        \  enabled: true\n  inflightMetric: ''\n  inflightTarget: '4'\n  maxReplicas:\
+        \ 3\n  minReplicas: 2\ncredentialsSecret: guidefold-credentials\ndatabase:\n\
+        \  adminUser: postgres\n  connectionBudget: 128\n  host: guidefold-postgres-rw.guidefold.svc.cluster.local\n\
+        \  name: guidefold\n  networkPeers:\n  - podSelector:\n      matchLabels:\n\
+        \        cnpg.io/cluster: guidefold-postgres\n  port: 5432\n  reservedConnections:\
+        \ 16\n  sslMode: verify-full\n  tlsSecret: guidefold-postgres-ca\n  user:\
+        \ guidefold_api\ndevelopmentMode: false\ngpu:\n  autoscaling:\n    enabled:\
+        \ false\n    maxReplicas: 2\n    minReplicas: 1\n    queueMetric: ''\n   \
+        \ queueTarget: '4'\n  batchRequests: 1\n  enabled: false\n  encoderID: ''\n\
+        \  image: ''\n  nodeSelector:\n    kubernetes.io/arch: amd64\n  replicas:\
+        \ 1\n  resources:\n    limits:\n      cpu: '2'\n      memory: 4Gi\n      nvidia.com/gpu:\
+        \ 1\n    requests:\n      cpu: '1'\n      memory: 2Gi\n      nvidia.com/gpu:\
+        \ 1\n  tolerations: []\nimage: ghcr.io/wiatrm/guidefold-search@sha256:c18c9b58d10f4b79c24e7e09b6d038c7aa35769768c15c99ef0769d0136cd2cc\n\
+        imagePullPolicy: IfNotPresent\nimagePullSecrets: []\ningress:\n  annotations:\
+        \ {}\n  className: nginx\n  enabled: true\n  host: guidefold.cloudfloo.io\n\
+        \  tlsSecret: ''\njob:\n  timeoutSeconds: 1800\n  ttlSecondsAfterFinished:\
+        \ 86400\nmetrics:\n  additionalLabels: {}\n  serviceMonitor: false\nnetworkPolicy:\n\
+        \  clientPeers:\n  - podSelector:\n      matchLabels:\n        guidefold.client:\
+        \ 'true'\n  - namespaceSelector:\n      matchLabels:\n        kubernetes.io/metadata.name:\
+        \ ingress\n    podSelector:\n      matchLabels:\n        app.kubernetes.io/component:\
+        \ controller\n        app.kubernetes.io/name: ingress-nginx\n  enabled: true\n\
+        nodeSelector: {}\noperatorCredentialsSecret: guidefold-operator-credentials\n\
+        portal:\n  enabled: true\n  image: ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b\n\
+        \  replicas: 1\n  resources:\n    limits:\n      cpu: 250m\n      memory:\
+        \ 128Mi\n    requests:\n      cpu: 50m\n      memory: 64Mi\npublicURL: https://guidefold.cloudfloo.io\n\
+        replicas: 2\nrepository: guidefold\nresources:\n  limits:\n    cpu: '2'\n\
+        \    ephemeral-storage: 256Mi\n    memory: 2Gi\n  requests:\n    cpu: 500m\n\
+        \    ephemeral-storage: 64Mi\n    memory: 512Mi\nsnapshotID: unpublished\n\
+        tenant: cloudfloo\ntolerations: []\nui:\n  enabled: true\n  image: ghcr.io/wiatrm/guidefold-ui@sha256:4359c65505d766caa75068cb91424162a2149846bc00f504876a4a0bb5ae035c\n\
+        \  replicas: 2\n  resources:\n    limits:\n      cpu: 250m\n      memory:\
+        \ 128Mi\n    requests:\n      cpu: 50m\n      memory: 64Mi\nworker:\n  enabled:\
+        \ true\n  generator: deterministic\n  image: ghcr.io/wiatrm/guidefold-worker@sha256:5f290555275cb5480ae96f1130ba166a8f9bb1701af025b034521a1dedbd12c4\n\
+        \  nodeSelector: {}\n  replicas: 1\n  resources:\n    limits:\n      cpu:\
+        \ '1'\n      ephemeral-storage: 512Mi\n      memory: 1Gi\n    requests:\n\
+        \      cpu: 250m\n      ephemeral-storage: 64Mi\n      memory: 256Mi\n  tolerations:\
+        \ []\nworkload: serve\nworkos:\n  clientID: client_01M1XXZE942EDFDYZBW55X6ME1\n\
+        \  secretName: guidefold-workos\n"
+    path: deploy/k8s/chart
+    repoURL: https://github.com/wiatrM/guidefold.git
+    targetRevision: 7b0958cfe8511ddbe86eaae6d62200749ade774c
   destination:
     server: https://kubernetes.default.svc
     namespace: guidefold
@@ -180,7 +74,13 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    syncOptions: [CreateNamespace=true, PrunePropagationPolicy=foreground, PruneLast=true]
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
     retry:
       limit: 5
-      backoff: {duration: 5s, factor: 2, maxDuration: 3m}
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
