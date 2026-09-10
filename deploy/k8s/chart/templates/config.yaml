@@ -2,25 +2,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "gf.name" . }}
+  name: {{ include "gf.configName" . }}
   labels:
     {{- include "gf.labels" . | nindent 4 }}
 immutable: true
 data:
-  GUIDEFOLD_TENANT: {{ .Values.tenant | quote }}
-  GUIDEFOLD_REPO: {{ .Values.repository | quote }}
-  GUIDEFOLD_SNAPSHOT_ID: {{ .Values.snapshotID | quote }}
-  GUIDEFOLD_AUTH: {{ .Values.auth | quote }}
-  GUIDEFOLD_PUBLIC_URL: {{ .Values.publicURL | quote }}
-  WORKOS_CLIENT_ID: {{ .Values.workos.clientID | quote }}
-  GUIDEFOLD_LEXICAL_ENGINE: router
-  GUIDEFOLD_RETRIEVAL_MODE: sparse
-  GUIDEFOLD_EXPERIMENTAL_OUTPUT: "false"
-  GUIDEFOLD_SHADOW: {{ .Values.gpu.enabled | quote }}
-  GUIDEFOLD_ENCODER_ID: {{ .Values.gpu.encoderID | quote }}
-  GUIDEFOLD_TEI_URL: http://{{ include "gf.name" . }}-tei:8080
-  GUIDEFOLD_TEI_BATCH_REQUESTS: {{ .Values.gpu.batchRequests | quote }}
-  GUIDEFOLD_OPERATOR_TIMEOUT_SECONDS: {{ .Values.job.timeoutSeconds | quote }}
+  {{- include "gf.configData" . | nindent 2 }}
 ---
 apiVersion: v1
 kind: ServiceAccount

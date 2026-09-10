@@ -422,3 +422,26 @@ def test_chart_worker_disabled_by_default_leaves_no_worker_resources(
     assert not any(
         d["metadata"]["name"] == "gf-release-worker" for d in docs if d.get("metadata")
     )
+
+
+def test_auth_change_versions_immutable_config_and_rolls_consumers(tmp_path, helm_values):
+    def configuration(values):
+        result = render(tmp_path, values)
+        assert result.returncode == 0, result.stderr
+        docs = [d for d in yaml.safe_load_all(result.stdout) if d]
+        config = next(d for d in docs if d["kind"] == "ConfigMap")
+        for doc in docs:
+            if doc["kind"] not in ("Deployment", "Job"):
+                continue
+            for container in doc["spec"]["template"]["spec"]["containers"]:
+                for source in container.get("envFrom", []):
+                    if "configMapRef" in source:
+                        assert source["configMapRef"]["name"] == config["metadata"]["name"]
+        return config
+    before = configuration(helm_values)
+    changed = deepcopy(helm_values)
+    changed["workos"]["clientID"] = "client_production"
+    after = configuration(changed)
+    assert before["metadata"]["name"] != after["metadata"]["name"]
+    assert after["data"]["WORKOS_CLIENT_ID"] == "client_production"
+    assert after["immutable"] is True

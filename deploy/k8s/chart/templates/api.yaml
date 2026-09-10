@@ -47,7 +47,7 @@ spec:
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           securityContext:
             {{- include "gf.containerSecurity" . | nindent 12 }}
-          envFrom: [{configMapRef: {name: {{ include "gf.name" . }}}}]
+          envFrom: [{configMapRef: {name: {{ include "gf.configName" . }}}}]
           env:
             {{- include "gf.dbEnv" . | nindent 12 }}
             - {name: PGUSER, value: {{ .Values.database.user | quote }}}

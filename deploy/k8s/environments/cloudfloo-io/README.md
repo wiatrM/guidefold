@@ -1,5 +1,26 @@
 # guidefold.cloudfloo.io — deployment runbook
 
+## Presentation and production authentication — 2026-09-10
+
+Owner requested deployment of the latest main plus the approved presentation.
+The presentation is served by the UI image at `/prezentacja/`, with local fonts,
+PlantUML diagrams and infographics. Runtime assets have a SHA256 manifest.
+
+WorkOS production credentials are stored only in Secret `guidefold-workos`;
+production client ID is `client_01M1XXZE942EDFDYZBW55X6ME1`, with public URL
+`https://guidefold.cloudfloo.io`. Never commit the API key. The callback URL is
+`https://guidefold.cloudfloo.io/api/v1/auth/callback`.
+
+Immutable ConfigMaps now use a content-derived name, shared by API, worker and
+operator references. Deleting and recreating the same immutable name left the
+node supplying stale environment values; changing the name also rolls consumers.
+The API build context now includes the required contract 1.2 schema.
+
+Checks: 321 UI tests, UI contracts and build; Go vet/tests; chart release tests.
+The deployment worktree keeps image digests, rendered manifests, migration result
+and rollback inputs under `reports/` (not committed). A database dump was saved
+outside the repository before the migration.
+
 ## ArgoCD adoption and the why/how/value landing — 2026-09-09 (current)
 
 The release is now managed by ArgoCD. `Application/guidefold` in namespace

@@ -77,3 +77,24 @@ capabilities: {drop: [ALL]}
   secret: {secretName: {{ .Values.database.tlsSecret | quote }}, defaultMode: 0440}
 {{- end }}
 {{- end -}}
+
+{{/* Immutable configs need new names; kubelet may cache deleted immutable maps. */}}
+{{- define "gf.configName" -}}
+{{ include "gf.name" . }}-{{ include "gf.configData" . | sha256sum | trunc 8 }}
+{{- end -}}
+{{- define "gf.configData" -}}
+GUIDEFOLD_TENANT: {{ .Values.tenant | quote }}
+GUIDEFOLD_REPO: {{ .Values.repository | quote }}
+GUIDEFOLD_SNAPSHOT_ID: {{ .Values.snapshotID | quote }}
+GUIDEFOLD_AUTH: {{ .Values.auth | quote }}
+GUIDEFOLD_PUBLIC_URL: {{ .Values.publicURL | quote }}
+WORKOS_CLIENT_ID: {{ .Values.workos.clientID | quote }}
+GUIDEFOLD_LEXICAL_ENGINE: router
+GUIDEFOLD_RETRIEVAL_MODE: sparse
+GUIDEFOLD_EXPERIMENTAL_OUTPUT: "false"
+GUIDEFOLD_SHADOW: {{ .Values.gpu.enabled | quote }}
+GUIDEFOLD_ENCODER_ID: {{ .Values.gpu.encoderID | quote }}
+GUIDEFOLD_TEI_URL: http://{{ include "gf.name" . }}-tei:8080
+GUIDEFOLD_TEI_BATCH_REQUESTS: {{ .Values.gpu.batchRequests | quote }}
+GUIDEFOLD_OPERATOR_TIMEOUT_SECONDS: {{ .Values.job.timeoutSeconds | quote }}
+{{- end -}}
