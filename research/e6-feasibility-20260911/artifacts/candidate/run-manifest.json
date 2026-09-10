@@ -1,0 +1,28 @@
+{
+  "schema": "guidefold-pilot-run-1",
+  "task_bank_sha256": "6829608759a735d241d69e3592eb8adc54661d38446df31ca92488c2708484a0",
+  "guidefold_skill_sha256": "c1e97b9efd0f027666a4da352e514e2a51afcd7e2f99bdc0f9955e4737bbd2d5",
+  "bridge_sha256": "a632b3a2a38585cbcf38a7914947d1bf75194a284420fc717c1bd377265de85b",
+  "nodes_sha256": "c6cf1116be7659d4cdd4bc2da4de829339043a5837697d5b5b1de74fff7e8006",
+  "pi_command": [
+    "npx",
+    "--yes",
+    "@earendil-works/pi-coding-agent",
+    "--mode",
+    "json",
+    "--no-session",
+    "--no-skills",
+    "--no-context-files",
+    "--tools",
+    "read,bash,edit,write,ls",
+    "--skill",
+    "/tmp/guidefold-e2-current/skills/guidefold/SKILL.md",
+    "-p"
+  ],
+  "provider": null,
+  "model": null,
+  "strategy": "top_down",
+  "delivery_policy": "proof_gated",
+  "timeout_seconds": 120.0,
+  "manifest_sha256": "1e460c1a65f3d48d330d550617425ffea6b1bd841b44360f5087ebbebc062b94"
+}
