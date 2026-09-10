@@ -44,7 +44,7 @@
 }
 
 /* --------------------------------------------------------------------- hero */
-.hero{position:relative;isolation:isolate;display:flex;align-items:var(--landing-hero-copy-align);height:var(--landing-media-band);min-height:var(--landing-hero-min);margin-top:var(--space-5);border-radius:var(--landing-radius);overflow:hidden;}
+.hero{position:relative;isolation:isolate;display:flex;align-items:var(--landing-hero-copy-align);min-height:max(var(--landing-media-band),var(--landing-hero-min));margin-top:var(--space-5);border-radius:var(--landing-radius);overflow:hidden;}
 .heroMedia{position:absolute;inset:var(--landing-media-inset) var(--zero);z-index:-2;transform:translate3d(var(--zero),calc((var(--p) - .5) * var(--amp-hero-media)),var(--zero));opacity:calc(1 - clamp(0,(var(--p) - .55)/.45,1) * .45);}
 .heroPoster,.heroVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-hero-object);}
 .heroVideo{opacity:0;transition:opacity var(--duration-drawer) var(--ease-out);}
@@ -247,3 +247,6 @@
 /* The hero's own scrim would draw a vertical seam across a full-viewport film, so the
    film layer carries the darkening for every section once it is running. */
 :global(html[data-film="on"]) .heroScrim{opacity:var(--zero);}
+/* The still is the poster for the film, not a layer under it: once the film paints,
+   the still is removed so two images never blend into each other. */
+:global(html[data-film="on"]) .filmPoster{opacity:var(--zero);}

@@ -18,6 +18,29 @@ For hosted UI, use `docs/ui/IA.md`, `UX.md`, `UI.md` and the relevant entry in
 Decisions are recorded in `docs/adr/`. `docs/ASSESSMENT.md` records dated registry API evidence;
 verify time-sensitive claims before relying on them.
 
+## Positioning: what we sell
+
+Owner decision, 2026-09-09. Binding on every piece of marketing copy, the
+landing page, the README intro and any deck. Full version:
+[guidefold-positioning](.agents/skills/guidefold-positioning/SKILL.md).
+
+We do not sell "team rules right where agents work". That is generic and says
+nothing. We sell the problem a large organisation has:
+
+- roughly **30,000 skills** across many repositories and a monorepo, in many
+  folders, every team writing its own,
+- **duplication** of the same rule in several places,
+- no **management**: nobody can see the whole set,
+- **extraction of knowledge into the organisation's pyramid**, from the specific
+  up to the general.
+
+Guidefold solves and automates that: the **search and USE** service, **harness
+integration**, and **automatic CI**.
+
+A reader has five seconds to learn the pain and what we solve. The rest of the
+text is secondary. The landing page runs in one column, hero first; the
+two-column layout was rejected by the owner.
+
 ## Layout
 
 | Path | What |

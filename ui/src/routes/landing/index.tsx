@@ -77,9 +77,9 @@ export default function Landing(){
    <section ref={hero} className={css.hero} aria-labelledby="hero-title">
     <div className={css.heroScrim} aria-hidden="true"/>
     <div className={css.heroCopy}>
-     <p className={css.eyebrow}>Instruction library for coding agents</p>
-     <h1 id="hero-title">Team rules. Right where agents work.</h1>
-     <p className={css.lede}>Your coding agent can read the repo. Give it the instructions that apply to the code it's changing.</p>
+     <p className={css.eyebrow}>Skill retrieval for large organisations</p>
+     <h1 id="hero-title">Thirty thousand skills. Nobody knows which four the agent should read.</h1>
+     <p className={css.lede}>Every team writes its own, in its own repo and its own folders. They duplicate each other, nobody manages the set, and the knowledge never climbs from one service up to the organisation. Guidefold does that climb for you and serves the result to your agent.</p>
      <div id="demo" className={css.heroActions}>
       <a data-slot="button" className={buttonVariants({className:css.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
       <DemoDialog onOpenChange={setDemoOpen}/>
@@ -92,25 +92,28 @@ export default function Landing(){
     <div className={[css.plane,css.planeWhy].join(' ')} aria-hidden="true"/>
     <span className={css.keyline} aria-hidden="true"/>
     <div className={css.copy}>
-     <h2 id="why-title">Why we built it</h2>
-     <p className={css.answer}>A rule for the payments service shouldn't become advice for every task in the monorepo.</p>
-     <p>Put everything into the agent's starting context and that distinction gets hard to keep. Write a separate instruction file for each coding tool and you have another set of copies going stale.</p>
-     <p>Big organisations have many teams and many rules. An agent cannot read all of it at once, so it guesses, reads the wrong file, or reads nothing.</p>
+     <h2 id="why-title">Three problems, and you already have all three</h2>
+     <p className={css.answer}>At organisation scale, skills stop being documents and start being a data problem.</p>
+     <dl className={css.beats}>
+      <div><dt>Duplication</dt><dd>The same rule written five times, five ways, in five repositories. Each copy drifts. None of them is wrong enough for anyone to delete.</dd></div>
+      <div><dt>No management</dt><dd>Nobody can see the whole set. Nobody can say which skills exist, who owns them, or what an agent will actually be shown when it opens a folder.</dd></div>
+      <div><dt>No extraction</dt><dd>Knowledge stays stuck at the level it was written. What is true for one service never climbs to the component, the platform, or the company, so the general rule gets rewritten instead of found.</dd></div>
+     </dl>
     </div>
    </section>
 
    <section ref={how} id="how-it-works" className={css.how} aria-labelledby="how-title">
     <div className={[css.plane,css.planeHow].join(' ')} aria-hidden="true"/>
     <div className={css.howIntro}>
-     <h2 id="how-title">How it works</h2>
-     <p className={css.answer}>Rules live in Git next to the code they describe, and Guidefold hands the agent only the few that apply where it is working.</p>
+     <h2 id="how-title">What Guidefold does about it</h2>
+     <p className={css.answer}>It builds the pyramid, from the specific up to the general, and then automates the three things you would otherwise do by hand.</p>
     </div>
     <div className={css.howFigure}><IntroFigure/><InstructionReader/></div>
     <div className={css.howDetail}>
      <dl className={css.beats}>
-      <div><dt>Beside the code</dt><dd>A rule is a folder with one <code>SKILL.md</code>, under <code>.agents/skills/</code> inside the scope it belongs to. Git is the only source of truth.</dd></div>
-      <div><dt>Selected by task and place</dt><dd>A hook finds the scope of the current folder, ranks every rule that scope can see, and prints at most four short cards, general first.</dd></div>
-      <div><dt>Loaded on demand</dt><dd>The agent reads the full text of the one or two it needs.</dd></div>
+      <div><dt>Search and USE</dt><dd>Every skill is extracted into a short abstract and placed at a level of your organisation. Retrieval ranks the abstracts that level can see with field-aware integer BM25F, scored per field rather than over one blob of text, and returns at most four cards, general first. USE then pins an exact revision and returns the full body, unchanged.</dd></div>
+      <div><dt>Wired into your harness</dt><dd>A hook plugs the service into the coding tool your team already uses, so the right skills arrive on their own. Nothing to paste into a prompt, nothing to remember.</dd></div>
+      <div><dt>Automatic CI</dt><dd>Every pull request that touches a skill gets checked on the way in: what changed, what now collides, what an agent would see afterwards. The pyramid stays true instead of rotting.</dd></div>
      </dl>
      <RouteRule/>
      <ScopePyramid/>
@@ -126,7 +129,7 @@ export default function Landing(){
     <div className={[css.plane,css.planeValue].join(' ')} aria-hidden="true"/>
     <div className={css.copy}>
      <h2 id="value-title">What your team gets</h2>
-     <p className={css.answer}>Day to day: a platform team gets one place to keep the rules, an owner gets a review step before anything reaches an agent, and a developer gets the right instruction without asking for it.</p>
+     <p className={css.answer}>Nobody has to remember anything. The platform team keeps the rules in one place, the owner sees what changed before an agent ever reads it, and the developer just works.</p>
     </div>
     <div className={css.roles}>{roles.map(item=><article key={item.role} className={css.roleCard}>
      <p className={css.roleLabel}>{item.role}</p>
@@ -137,8 +140,8 @@ export default function Landing(){
 
    <section className={css.availability} aria-label="Product availability">
     <div className={css.availabilityStatements}>
-     <p><strong>Open source today.</strong> CLI and retrieval service.</p>
-     <p><strong>Paid hosting is planned.</strong> Sign up for availability updates.</p>
+     <p><strong>Open source today.</strong> The CLI and the retrieval service, yours to run.</p>
+     <p><strong>Hosting is planned.</strong> Not ready yet. We will tell you when it is.</p>
     </div>
     <div className={css.availabilityLinks}>
      <a className={css.textLink} href={github+'#quickstart'}>Try the open-source version <ArrowUpRight aria-hidden="true"/></a>
@@ -147,16 +150,16 @@ export default function Landing(){
    </section>
 
    <section className={css.waitlist} aria-labelledby="waitlist-title">
-    <div className={css.waitlistCopy}><h2 id="waitlist-title">Get availability updates</h2><p>One email when hosted Guidefold is ready. Nothing else.</p></div>
+    <div className={css.waitlistCopy}><h2 id="waitlist-title">Want to know when hosting is ready?</h2><p>One email, on the day it opens. That is the whole list.</p></div>
     <WaitlistForm/>
    </section>
 
    <section className={css.questions} aria-labelledby="questions-title">
-    <h2 id="questions-title">Before you join</h2>
+    <h2 id="questions-title">Things you are probably wondering</h2>
     <div className={css.questionList}>
-     <Question id="question-1" title="Is Guidefold available now?"><p>The CLI and retrieval service are open source. Paid hosting is planned. Joining the waitlist gets you availability updates, not a hosted account or a guaranteed launch date.</p></Question>
+     <Question id="question-1" title="Can I use it today?"><p>The CLI and the retrieval service are open source, so yes, if you run them yourself. Hosting is planned and not open. Joining the list gets you one email about availability, not an account and not a launch date.</p></Question>
      <Question id="question-2" title="What will hosting cost?"><p>The planned subscription is $99 per organisation per month, excluding taxes. With your own model key and CI, you pay those providers directly.</p><p>The planned managed-AI option adds a separate prepaid budget: $9 of provider usage costs $10. There is no unlimited AI allowance. Enterprise SSO is not included; hosted runner pricing and quotas will be specified before purchase.</p></Question>
-     <Question id="question-3" title="Which coding tools can I use?"><p>The repository includes adapters for tools such as Claude Code, Codex and Copilot. Tool capabilities differ. Check the <a href={github+'#coding-harness-to-instruction-delivery'}>integration documentation</a> for the current support and limitations.</p></Question>
+     <Question id="question-3" title="Does it work with the tool my team already uses?"><p>The repository includes adapters for tools such as Claude Code, Codex and Copilot. Tool capabilities differ. Check the <a href={github+'#coding-harness-to-instruction-delivery'}>integration documentation</a> for the current support and limitations.</p></Question>
      <Question id="privacy" title="How is my email used?"><p>We store your email and consent in Guidefold’s database for hosted availability updates. Resend handles confirmation email delivery. We do not add you to unrelated mailing lists.</p><p>Confirm your address using the link we send. You can unsubscribe using the link in your email or ask <a href="mailto:hello@cloudfloo.io">hello@cloudfloo.io</a> to remove your signup. Unconfirmed signups are scheduled for deletion after 30 days. Confirmed and unsubscribed records are scheduled for deletion 365 days after signup. Unsubscribing removes your email immediately; a deduplication hash is retained until deletion to prevent repeat signup from restarting mail.</p><p>The demo connects to YouTube only when played. Its cover illustration is served by Guidefold. Email confirmation links do not load the demo.</p></Question>
     </div>
    </section>
