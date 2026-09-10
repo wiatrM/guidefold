@@ -372,6 +372,9 @@ export async function enter(page: Page, target: Locator) {
 
 export async function axeViolations(page: Page) {
   await page.evaluate(() => document.fonts.ready);
+  // Route headings animate in on every hosted view. Let the first paint settle
+  // before axe samples contrast, otherwise it can inspect a transparent frame.
+  await page.waitForTimeout(250);
   await page.addScriptTag({ path: path.resolve('node_modules/axe-core/axe.min.js') });
   return page.evaluate(async () => {
     const result = await (window as unknown as { axe: { run: (root: Document, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } })

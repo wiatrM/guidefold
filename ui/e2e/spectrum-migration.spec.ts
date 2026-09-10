@@ -11,7 +11,7 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
   await expect(page.locator('main [aria-busy=true]')).toHaveCount(0);
   await expect(page.locator('main h1')).toBeVisible();
   if(view==='usage'){
-   const charts=page.locator('.spectrum-charts .recharts-surface');
+   const charts=page.locator('[data-spectrum-chart="registry-frame"] .recharts-surface');
    await expect(charts.first()).toBeVisible();
    for(const chart of await charts.all()){
     const box=await chart.boundingBox();
