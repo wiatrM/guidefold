@@ -35,17 +35,17 @@ const roles=[
  {
   role:'Platform teams',
   promise:'One command installs the adapter for your harness and wires the hook.',
-  detail:'Works across a monorepo and more than one coding tool; the repository ships adapters for tools such as Claude Code, Codex and Copilot, and their capabilities differ.',
+  detail:'One place for rules across the monorepo and the coding tools your teams already use.',
  },
  {
   role:'Rule owners and tech leads',
   promise:'Every pull request that touches a rule gets a report before merge: what changed, what collides, what an agent would now see.',
-  detail:'You also get usage numbers per rule: how often it was shown, how often the agent opened the full text, whether people said it helped.',
+  detail:'See what changed, what collides, and what the agent will receive before merge.',
  },
  {
   role:'Developers',
   promise:'The agent starts with the rules for the folder it is in.',
-  detail:'Nothing to paste into a prompt, nothing to remember. At most four cards, general first, and the full text only when it is needed.',
+  detail:'The agent gets at most four cards, general rules first, then loads full text only when needed.',
  },
 ];
 
@@ -100,9 +100,9 @@ export default function Landing(){
     <span className={css.keyline} aria-hidden="true"/>
     <div className={css.copy}>
      <h2 id="why-title">Why we built it</h2>
-     <p className={css.answer}>A rule for the payments service shouldn't become advice for every task in the monorepo.</p>
-     <p>Put everything into the agent's starting context and that distinction gets hard to keep. Write a separate instruction file for each coding tool and you have another set of copies going stale.</p>
-     <p>Big organisations have many teams and many rules. An agent cannot read all of it at once, so it guesses, reads the wrong file, or reads nothing.</p>
+     <p className={css.answer}>A service rule should not become advice for the whole company.</p>
+     <p>Copies drift. Owners cannot see the full set. A useful fix in one team stays there.</p>
+     <p>Guidefold gives reusable rules a path from service → team → organisation.</p>
     </div>
    </section>
 
