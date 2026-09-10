@@ -233,7 +233,8 @@ def _output_metrics(stdout: str) -> dict[str, Any]:
 def _unknown(task_id: str, arm: str, reason: str, bank_sha: str, verifier_sha: str = "") -> dict[str, Any]:
     return {"task_id": task_id, "arm": arm, "outcome": "unknown", "terminal_status": reason,
             "harness_error": True, "task_bank_sha256": bank_sha, "verifier_sha256": verifier_sha,
-            "useful_delivery": None, "harmful_load": None, "elapsed_ms": None}
+            "useful_delivery": None, "harmful_load": None, "stale_conflict_delivery": None,
+            "elapsed_ms": None}
 
 
 def _safe_relative(root: Path, relative: str) -> Path | None:
