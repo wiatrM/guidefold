@@ -77,6 +77,18 @@ func TestExecutionMetricsKeepUnknownOutcomesAndCountRoutingSignals(t *testing.T)
 	}
 }
 
+func TestExecutionMetricsTreatTimeoutAsHarnessError(t *testing.T) {
+	report := aggregate(t, []domain.Event{
+		event("task_finished", time.Minute, "t-timeout", map[string]any{
+			"task_id": "task-timeout", "outcome": "unknown", "terminal_status": "timeout",
+		}),
+	}, nil, domain.Filter{})
+	metrics := report.Totals.Metrics
+	if metrics.TasksUnknown != 1 || metrics.HarnessErrors != 1 {
+		t.Fatalf("timeout must remain unknown while counting as harness error: %+v", metrics)
+	}
+}
+
 func TestHelpedRatioIsAbsentRatherThanZeroWhenNothingWasJudgedEitherWay(t *testing.T) {
 	if r := domain.HelpedRatio(domain.Feedback{Mixed: 4, Unknown: 9, N: 13}); r != nil {
 		t.Fatalf("mixed and unknown are not a denominator: %v", r)

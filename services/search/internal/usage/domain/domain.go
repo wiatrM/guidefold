@@ -614,7 +614,7 @@ func updateMetrics(m *ExecutionMetrics, e Event) {
 			m.TasksUnknown++
 		}
 		status := strings.ToLower(e.Str("terminal_status"))
-		if strings.Contains(status, "harness") || strings.Contains(status, "error") {
+		if strings.Contains(status, "harness") || strings.Contains(status, "error") || strings.Contains(status, "timeout") {
 			m.HarnessErrors++
 		}
 		addMetricInt(e, "input_tokens", &m.InputTokens, &m.CostObserved)
