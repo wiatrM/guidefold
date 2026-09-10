@@ -1,5 +1,46 @@
 # guidefold.cloudfloo.io — deployment runbook
 
+## Presentation and production authentication — 2026-09-10
+
+Owner requested deployment of the latest main plus the approved presentation.
+The presentation is served by the UI image at `/prezentacja/`, with local fonts,
+PlantUML diagrams and infographics. Runtime assets have a SHA256 manifest.
+
+WorkOS production credentials are stored only in Secret `guidefold-workos`;
+production client ID is `client_01M1XXZE942EDFDYZBW55X6ME1`, with public URL
+`https://guidefold.cloudfloo.io`. Never commit the API key. The callback URL is
+`https://guidefold.cloudfloo.io/api/v1/auth/callback`.
+
+Immutable ConfigMaps now use a content-derived name, shared by API, worker and
+operator references. Deleting and recreating the same immutable name left the
+node supplying stale environment values; changing the name also rolls consumers.
+The API build context now includes the required contract 1.2 schema.
+
+Production verification: ArgoCD `Synced` / `Healthy`; API 2/2, UI 2/2,
+worker 1/1, portal 1/1. Root, presentation, docs and auth providers return HTTP
+200; unauthenticated `/api/v1/me` returns 401. Both API healthchecks pass.
+All 36 presentation files match the approved local assets by SHA256.
+
+Registered the production callback with WorkOS (`201`). GoogleOAuth and
+GitHubOAuth authorization still return WorkOS `404`; the hosted AuthKit screen
+currently offers only SSO. Full sign-in is not verified and requires configuring
+those production OAuth providers. Do not report full login as working yet.
+
+Ingress access explicitly allows the `ingress` namespace's nginx controller.
+API-only public TCP/443 egress permits the WorkOS code exchange; private and
+metadata networks are excluded (standard Kubernetes policies cannot filter FQDNs).
+
+Deployed immutable images:
+- UI: `sha256:4359c65505d766caa75068cb91424162a2149846bc00f504876a4a0bb5ae035c`
+- API: `sha256:c18c9b58d10f4b79c24e7e09b6d038c7aa35769768c15c99ef0769d0136cd2cc`
+- Worker: `sha256:5f290555275cb5480ae96f1130ba166a8f9bb1701af025b034521a1dedbd12c4`
+Chart revision: `7b0958cfe8511ddbe86eaae6d62200749ade774c`.
+
+Checks: 321 UI tests, UI contracts and build; Go vet/tests; 28 chart release tests.
+The deployment worktree keeps image digests, rendered manifests, migration result
+and rollback inputs under `reports/` (not committed). A database dump was saved
+outside the repository before the migration.
+
 ## ArgoCD adoption and the why/how/value landing — 2026-09-09 (current)
 
 The release is now managed by ArgoCD. `Application/guidefold` in namespace

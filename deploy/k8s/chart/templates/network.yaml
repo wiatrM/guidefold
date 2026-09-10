@@ -37,3 +37,25 @@ spec:
       ports: [{protocol: TCP, port: 8080}]
     {{- end }}
 {{- end }}
+
+{{- if and .Values.networkPolicy.enabled (eq .Values.auth "workos") (eq .Values.workload "serve") }}
+---
+# AuthKit exchanges require HTTPS to WorkOS. Standard NetworkPolicy cannot match
+# DNS names; allow public HTTPS only for API pods, excluding private networks.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "gf.name" . }}-auth-https
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "gf.labels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8]
+      ports: [{protocol: TCP, port: 443}]
+{{- end }}

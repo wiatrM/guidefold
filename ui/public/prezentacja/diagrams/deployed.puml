@@ -1,0 +1,50 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor #152324
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 18
+skinparam defaultFontColor #EDF4F3
+skinparam shadowing false
+skinparam roundCorner 18
+skinparam ArrowColor #66D9C8
+skinparam ArrowFontColor #B5D6D0
+skinparam ArrowFontSize 15
+skinparam rectangleBackgroundColor #203B38
+skinparam rectangleBorderColor #68BCAD
+skinparam componentBackgroundColor #203B38
+skinparam componentBorderColor #68BCAD
+skinparam databaseBackgroundColor #203B38
+skinparam databaseBorderColor #68BCAD
+skinparam noteBackgroundColor #3C3025
+skinparam noteBorderColor #E7A16C
+skinparam noteFontColor #FFE2C5
+skinparam sequenceParticipantBackgroundColor #203B38
+skinparam sequenceParticipantBorderColor #68BCAD
+skinparam sequenceParticipantFontColor #EDF4F3
+skinparam sequenceLifeLineBorderColor #55736E
+skinparam sequenceGroupBorderColor #E7A16C
+skinparam sequenceGroupHeaderFontColor #FFE2C5
+skinparam sequenceGroupBodyBackgroundColor #152324
+skinparam sequenceGroupBackgroundColor #24332F
+skinparam sequenceMessageAlign center
+hide footbox
+autonumber
+participant "Kolejka zadań" as Q
+participant "Program agenta\nna serwerze" as A
+participant "Guidefold API" as G
+participant "Model + narzędzia" as M
+Q -> A : Zadanie do wykonania
+A -> G : SEARCH: zadanie + zakres\ntoken instalacji
+G --> A : Kandydaci + wersje
+A -> M : Wybór instrukcji\nwedług polityki agenta
+M --> A : Wybrany identyfikator
+A -> G : USE: dokładna rewizja\n+ opcjonalny proof_gated
+alt LOAD
+G --> A : Instrukcja
+A -> M : Wykonaj pracę z tą instrukcją
+else ASK / konflikt wersji
+G --> A : Powód odmowy / 409
+A -> A : Wyjaśnienie lub ponowny SEARCH
+end
+
+@enduml
