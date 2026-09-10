@@ -10,6 +10,7 @@ import {RouteRule} from './RouteRule';
 import {ScopePyramid} from './ScopePyramid';
 import {WaitlistForm,EmailAction} from './WaitlistForm';
 import {LandingFooter} from './Footer';
+import {ResearchEvidence} from './ResearchEvidence';
 import {useSectionProgress} from './scroll';
 import {github} from './instruction';
 import css from './landing.module.css';
@@ -85,6 +86,7 @@ export default function Landing(){
       <DemoDialog onOpenChange={setDemoOpen}/>
      </div>
      <p className={css.trust}>Open source today. The hosted service is planned.</p>
+     <a className={css.textLink} href="#research-results">New research: +8.53 pp Recall@10 on SRA-Bench <ArrowRight aria-hidden="true"/></a>
     </div>
    </section>
 
@@ -134,6 +136,8 @@ export default function Landing(){
      <p className={css.roleDetail}>{item.detail}</p>
     </article>)}</div>
    </section>
+
+   <ResearchEvidence/>
 
    <section className={css.availability} aria-label="Product availability">
     <div className={css.availabilityStatements}>

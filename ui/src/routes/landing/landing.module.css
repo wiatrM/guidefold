@@ -136,6 +136,22 @@
 @media(hover:hover) and (pointer:fine){.roleCard:hover{border-color:var(--line-hover);}}
 
 /* ------------------------------------------------------------- availability */
+.research{position:relative;padding:var(--landing-section-padding) var(--zero);border-top:var(--border-width) solid var(--line-strong);}
+.researchFigure{margin:var(--space-5) var(--zero);}
+.researchFigure figcaption{color:var(--stone-100);font-weight:var(--weight-semibold);}
+.researchChart{min-height:var(--landing-reader-height);margin:var(--space-3) var(--zero);}
+.researchTable{width:var(--full);border-collapse:collapse;font-size:var(--font-size-small);font-variant-numeric:tabular-nums;}
+.researchTable caption{text-align:left;color:var(--stone-300);padding:var(--space-3) var(--zero);}
+.researchTable th,.researchTable td{padding:var(--space-3) var(--space-1);border-bottom:var(--border-width) solid var(--line);text-align:right;}
+.researchTable th:first-child{text-align:left;}
+.researchTable th{color:var(--stone-100);}
+.researchFinding{max-width:var(--landing-measure);margin:var(--space-5) var(--zero);}
+.researchFinding p{margin:var(--space-3) var(--zero);}
+.page .researchNote{color:var(--stone-300);font-size:var(--font-size-small);margin-top:var(--space-3);}
+.researchDetails{border-block:var(--border-width) solid var(--line-strong);padding:var(--space-2) var(--zero);}
+.researchDetails summary{min-height:var(--touch-height);align-content:center;color:var(--stone-100);cursor:pointer;}
+.researchDetails p{max-width:var(--landing-measure);margin:var(--space-3) var(--zero);}
+.researchTrace{white-space:pre-wrap;overflow-wrap:anywhere;padding:var(--space-4);border-left:var(--border-width) solid var(--survey-teal);background:var(--graphite-850);font:var(--font-size-code)/var(--line-height-body) var(--font-mono);color:var(--stone-100);}
 .availability{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--landing-band-padding) var(--space-4);border-radius:var(--landing-radius);background:var(--landing-band-ground);}
 .availabilityStatements{display:grid;grid-template-columns:var(--landing-availability-columns);gap:var(--space-4);}
 .availabilityStatements p{margin:var(--zero);padding-right:var(--space-4);color:var(--stone-300);}

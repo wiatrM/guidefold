@@ -91,6 +91,29 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 	eligible := map[string][]string{}
 	merged := map[string]Candidate{}
 	dropCount := 0
+	allowedByScope := map[string]map[string]bool{}
+	dropsByScope := map[string]int{}
+	for _, node := range scopes {
+		var allowed map[string]bool
+		var drops int
+		if prepared != nil {
+			allowed, drops = prepared.Scopes[node].allowed(c), prepared.Scopes[node].Drops
+		} else {
+			allowed, drops = c.allowed(node, str(p["query"]))
+		}
+		dropCount += drops
+		allowedByScope[node] = allowed
+		dropsByScope[node] = drops
+		for u := range allowed {
+			admissible[u] = true
+		}
+	}
+	// Apply same-name shadowing across the complete resolved context before
+	// lexical, dense, or fused retrieval. This prevents a shallower copy from
+	// re-entering when more than one scope is resolved.
+	winners, shadowDrops := c.nearestWins(admissible)
+	dropCount += shadowDrops
+	admissible = winners
 	type encodedQuery struct {
 		vector []float32
 		ms     float64
@@ -111,16 +134,9 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 	policyMS, searchMS, scoreMS := float64(0), float64(0), float64(0)
 	for _, node := range scopes {
 		stage := time.Now()
-		var allowed map[string]bool
-		var drops int
-		if prepared != nil {
-			allowed, drops = prepared.Scopes[node].allowed(c), prepared.Scopes[node].Drops
-		} else {
-			allowed, drops = c.allowed(node, str(p["query"]))
-		}
-		dropCount += drops
+		allowed := intersectAllowed(allowedByScope[node], winners)
+		drops := dropsByScope[node]
 		for u := range allowed {
-			admissible[u] = true
 			eligible[u] = append(eligible[u], node)
 		}
 		policyMS += elapsed(stage)
@@ -129,7 +145,7 @@ func (s *Store) searchCatalog(ctx context.Context, c *Catalog, p M, stages M, ca
 		if s.Dense != nil {
 			if s.Dense.Mode == "hybrid" {
 				if prepared != nil {
-					candidates = prepared.Scopes[node].Top
+					candidates = filterCandidates(prepared.Scopes[node].Top, allowed)
 				} else {
 					candidates, e = s.routerCandidates(ctx, c, str(p["query"]), allowed, 0)
 				}
@@ -380,6 +396,56 @@ func (s *Store) useResponse(ctx context.Context, tenant, repo string, p M) (M, e
 	if version == schemaVersion12 {
 		if e := s.decorate12(ctx, c, p, result, id, reachable); e != nil {
 			return nil, e
+		}
+		if policy, present := p["delivery_policy"]; present {
+			if str(policy) == "proof_gated" {
+				appendContext(contextData, "used_fields", "delivery_policy")
+				closureStatus := "unknown"
+				if closure := obj(result["closure"]); closure != nil {
+					closureStatus = str(closure["status"])
+				}
+				// Recursive proof edges are checked against child bytes from this
+				// immutable catalog. Bodies are intentionally not kept in the catalog
+				// metadata cache, so load each referenced revision through the same
+				// tenant/repo/snapshot-bound store method used for the requested card.
+				childBodies := map[string]string{}
+				childBodyErrors := map[string]error{}
+				loadChildBody := func(skillID, revision string) (string, error) {
+					if cached, ok := childBodies[skillID+"\x00"+revision]; ok {
+						return cached, childBodyErrors[skillID+"\x00"+revision]
+					}
+					key := skillID + "\x00" + revision
+					childBody, loadErr := s.body(ctx, c, skillID, revision)
+					childBodies[key] = childBody
+					childBodyErrors[key] = loadErr
+					return childBody, loadErr
+				}
+				delivery := proofGateWithLoader(c, id, body, scopes, closureStatus, loadChildBody)
+				if str(delivery["action"]) == "LOAD" {
+					// Structural proof metadata is not enough by itself: the exact
+					// content-addressed source bytes must still be present in this
+					// organisation's blob store and contain the claimed line range.
+					// Keep this check after closure and before exposing body bytes.
+					_, sourceReason := s.verifyProofSourceBytesWithLoader(ctx, c, id, body, loadChildBody)
+					if sourceReason != "" {
+						delivery["action"] = "ASK"
+						delivery["reason"] = sourceReason
+						delivery["missing"] = proofMissing("source_data", "the cited source bytes are unavailable or do not contain the claimed range")
+					}
+				}
+				result["delivery"] = delivery
+				if str(delivery["action"]) == "ASK" {
+					// An abstention must be safe even for an adapter that only
+					// understands the ordinary body field. Keep the original bytes
+					// only in the redacted provenance digest and return an empty body.
+					result["status"] = "ask"
+					result["body"] = ""
+					result["checksum"] = hash([]byte(""))
+					contextData["body_bytes"] = 0
+					contextData["delivery_status"] = "ask"
+					contextData["delivery_reason"] = delivery["reason"]
+				}
+			}
 		}
 	}
 	return result, nil

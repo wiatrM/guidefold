@@ -205,6 +205,61 @@ def test_parse_search_url_defaults_port_by_scheme(gf):
     assert gf._parse_search_url("https://host") == ("https", "host", 443, "")
 
 
+def test_download_service_resource_checks_bytes_and_digest(gf):
+    resource = b"source bytes\n"
+    digest = hashlib.sha256(resource).hexdigest()
+    port = _find_free_port()
+
+    class ResourceHandler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            assert self.path == "/v1/skills/u/revisions/r/resources/references%2Fsource.md"
+            assert self.headers.get("Authorization") == "Bearer t"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(resource)))
+            self.send_header("X-Content-SHA256", digest)
+            self.end_headers()
+            self.wfile.write(resource)
+
+        def log_message(self, *a):
+            pass
+
+    server = _Server(("127.0.0.1", port), ResourceHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        cfg = {"url": f"http://127.0.0.1:{port}", "deadline_ms": 2000, "token": "t"}
+        data, reason = gf._download_service_resource(cfg, {
+            "url": "/v1/skills/u/revisions/r/resources/references%2Fsource.md",
+            "sha256": digest, "size": len(resource)})
+        assert data == resource and reason is None
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(3)
+
+
+def test_download_service_resource_rejects_redirected_or_query_urls(gf):
+    digest = hashlib.sha256(b"x").hexdigest()
+    cfg = {"url": "http://127.0.0.1:1", "deadline_ms": 2000, "token": "t"}
+    for url in (
+        "https://evil.example/v1/skills/u/revisions/r/resources/x",
+        "/v1/search?query=secret",
+        "/other-endpoint",
+    ):
+        data, reason = gf._download_service_resource(cfg, {
+            "url": url, "sha256": digest, "size": 1})
+        assert data is None and reason == "invalid_response"
+
+
+def test_fetch_service_resources_rejects_skill_body_overwrite(gf):
+    digest = hashlib.sha256(b"x").hexdigest()
+    cfg = {"url": "http://127.0.0.1:1", "deadline_ms": 2000, "token": "t"}
+    data, reason = gf._fetch_service_resources(cfg, {"resources": [{
+        "path": "skill.md", "url": "/v1/skills/u/revisions/r/resources/skill.md",
+        "sha256": digest, "size": 1, "required": True}]})
+    assert data is None and reason == "invalid_response"
+
+
 # ---------------------------------------------------------------- backend: local opens no socket
 
 def test_backend_local_never_constructs_a_socket(gf, monkeypatch, tmp_path):
@@ -540,6 +595,52 @@ def _use_ok(skill_id, revision, body_text, request_id="req-use-1"):
     return responder
 
 
+def _use_proof_ask(skill_id, revision, request_id="req-proof-ask"):
+    """Minimal valid USE 1.2 abstention: the body is empty and provenance is bounded."""
+    def responder(path, payload, headers):
+        if path == "/v1/use":
+            return 200, {
+                "schema_version": "1.2", "request_id": request_id, "skill_id": skill_id,
+                "revision": revision, "status": "ask", "body": "",
+                "checksum": hashlib.sha256(b"").hexdigest(), "context": {},
+                "execution_observed": False, "search_id_verified": False,
+                "delivery": {
+                    "action": "ASK", "reason": "proof_missing",
+                    "missing": [{"requirement": "source_proof", "reason": "no proof"}],
+                    "provenance": {"schema": "source-proof-v1", "snapshot": "snap",
+                                   "skill_id": skill_id, "revision": revision,
+                                   "body_sha256": "0" * 64, "scopes": [], "claims": []},
+                },
+            }
+        return 404, {"error": "not_found"}
+    return responder
+
+
+def _use_proof_load(skill_id, revision, body_text, request_id="req-proof-load"):
+    checksum = hashlib.sha256(body_text.encode("utf-8")).hexdigest()
+
+    def responder(path, payload, headers):
+        if path == "/v1/use":
+            return 200, {
+                "schema_version": "1.2", "request_id": request_id, "skill_id": skill_id,
+                "revision": revision, "status": "hydrated", "body": body_text,
+                "checksum": checksum, "context": {},
+                "execution_observed": False, "search_id_verified": False,
+                "delivery": {
+                    "action": "LOAD", "reason": "source_proof_complete", "missing": [],
+                    "provenance": {"schema": "source-proof-v1", "snapshot": "snap",
+                                   "skill_id": skill_id, "revision": revision,
+                                   "body_sha256": checksum, "scopes": ["_root"],
+                                   "claims": [{"id": "body", "status": "supported",
+                                               "source_refs": [{"path": "SKILL.md",
+                                                                "sha256": checksum,
+                                                                "line_from": 1, "line_to": 1}]}]},
+                },
+            }
+        return 404, {"error": "not_found"}
+    return responder
+
+
 def test_use_via_service_happy_path_returns_body_and_checksum(gf):
     with running_service(_use_ok("urn:skill:m:n:x", "rev-9", "# Title\nbody\n")) as (url, ctrl):
         search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
@@ -560,6 +661,41 @@ def test_use_via_service_auth_failure_reports_auth_reason(gf):
         body, reason = gf._use_via_service(search_cfg, "urn:skill:m:n:x", "rev-9")
     assert body is None
     assert reason == "auth"
+
+
+def test_use_via_service_proof_gated_sends_12_and_returns_ask(gf):
+    skill_id, revision = "urn:skill:m:n:x", "rev-9"
+    with running_service(_use_proof_ask(skill_id, revision)) as (url, ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        body, reason = gf._use_via_service(search_cfg, skill_id, revision, "proof_gated")
+    assert reason == "ask"
+    assert body["delivery"]["action"] == "ASK"
+    assert ctrl.requests[0]["payload"]["schema_version"] == "1.2"
+    assert ctrl.requests[0]["payload"]["delivery_policy"] == "proof_gated"
+
+
+def test_use_via_service_proof_gated_rejects_inconsistent_load(gf):
+    skill_id, revision = "urn:skill:m:n:x", "rev-9"
+
+    def responder(path, payload, headers):
+        if path == "/v1/use":
+            return 200, {
+                "schema_version": "1.2", "request_id": "r", "skill_id": skill_id,
+                "revision": revision, "status": "ask", "body": "must not cache",
+                "checksum": "0" * 64, "delivery": {
+                    "action": "LOAD", "reason": "source_proof_complete", "missing": [],
+                    "provenance": {},
+                },
+            }
+        return 404, {"error": "not_found"}
+
+    with running_service(responder) as (url, _ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        body, reason = gf._use_via_service(search_cfg, skill_id, revision, "proof_gated")
+    assert body is None
+    assert reason == "invalid_response"
 
 
 # ------------------------------------------------------------------------------------- cmd_load service branch
@@ -607,6 +743,75 @@ def test_cmd_load_service_checksum_mismatch_refuses(gf, tmp_path, monkeypatch):
         with pytest.raises(SystemExit) as exc:
             gf.cmd_load(a, root, cfg)
     assert "checksum" in str(exc.value)
+
+
+def test_cmd_load_proof_gated_ask_does_not_write_cache(gf, tmp_path, monkeypatch):
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(cache))
+    root = tmp_path / "repo"
+    root.mkdir()
+    skill_id, revision = "urn:skill:m:n:x", "rev-9"
+    with running_service(_use_proof_ask(skill_id, revision)) as (url, ctrl):
+        cfg = {"search": {"backend": "service", "url": url}}
+        a = type("Args", (), {"urn": skill_id + "@" + revision,
+                               "delivery_policy": "proof_gated"})()
+        with pytest.raises(SystemExit) as exc:
+            gf.cmd_load(a, root, cfg)
+    assert "ASK" in str(exc.value)
+    assert "proof_missing" in str(exc.value)
+    assert not list(cache.rglob("SKILL.md"))
+    assert ctrl.requests[0]["payload"]["schema_version"] == "1.2"
+    completed = [e for e in _spool_events(root) if e["event_type"] == "skill_load_completed"]
+    assert completed and completed[0]["status"] == "denied"
+
+
+def test_cmd_load_proof_gated_load_writes_verified_body(gf, tmp_path, monkeypatch):
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    root = tmp_path / "repo"
+    root.mkdir()
+    skill_id, revision, body_text = "urn:skill:m:n:x", "rev-9", "# A proven skill\n"
+    with running_service(_use_proof_load(skill_id, revision, body_text)) as (url, ctrl):
+        cfg = {"search": {"backend": "service", "url": url}}
+        a = type("Args", (), {"urn": skill_id + "@" + revision,
+                               "delivery_policy": "proof_gated"})()
+        gf.cmd_load(a, root, cfg)
+    assert ctrl.requests[0]["payload"]["delivery_policy"] == "proof_gated"
+    cached = list((tmp_path / "cache").rglob("SKILL.md"))
+    assert len(cached) == 1 and cached[0].read_text(encoding="utf-8") == body_text
+    completed = [e for e in _spool_events(root) if e["event_type"] == "skill_load_completed"]
+    assert completed and completed[0]["status"] == "ok" and completed[0]["bytes"] == len(body_text.encode())
+
+
+def test_cmd_load_proof_gated_writes_verified_package_resources(gf, tmp_path, monkeypatch):
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    root = tmp_path / "repo"
+    root.mkdir()
+    skill_id, revision, body_text = "urn:skill:m:n:x", "rev-9", "# Proven package\n"
+    resource = b"# Source reference\n"
+    with running_service(_use_proof_load(skill_id, revision, body_text)) as (url, _ctrl):
+        monkeypatch.setattr(gf, "_fetch_service_resources",
+                            lambda cfg, body: ([('references/policy.md', resource)], None))
+        cfg = {"search": {"backend": "service", "url": url}}
+        a = type("Args", (), {"urn": skill_id + "@" + revision,
+                               "delivery_policy": "proof_gated"})()
+        gf.cmd_load(a, root, cfg)
+    cached = list((tmp_path / "cache").rglob("SKILL.md"))
+    assert len(cached) == 1
+    assert cached[0].read_text(encoding="utf-8") == body_text
+    assert (cached[0].parent / "references" / "policy.md").read_bytes() == resource
+
+
+def test_cmd_load_proof_gated_rejects_local_backend(gf, tmp_path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    cfg = {"search": {"backend": "local"}}
+    a = type("Args", (), {"urn": "urn:skill:m:n:x@rev-9", "delivery_policy": "proof_gated"})()
+    with pytest.raises(SystemExit) as exc:
+        gf.cmd_load(a, root, cfg)
+    assert "requires search.backend: service" in str(exc.value)
 
 
 # ------------------------------------------------------------------------------------------ py_compile
