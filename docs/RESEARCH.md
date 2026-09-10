@@ -1017,3 +1017,16 @@ The tracked [E2 matrix](reports/bakeoff/E2-PROOF-GATE-MATRIX-2026-09-10.md) is t
 ### 5.23 End-to-end quality-gate evaluator
 
 The new [`quality_gate.py`](../tools/pilot/quality_gate.py) evaluator joins task-level replay rows with a separate E2 decision file. It reports task success, unknown coverage, useful delivery, harmful-load Wilson bounds and paired candidate/baseline deltas. It requires conflict/revision trigger cases and known candidate outcomes before it can return `pass`; missing evidence returns `inconclusive`, while a loaded stale/conflicting body returns `fail`. The implementation and regression cases are documented in [`QUALITY-GATE-EVALUATOR.md`](pilot/QUALITY-GATE-EVALUATOR.md). This is instrumentation and a decision guard, not new experiment evidence; the real E2 and frozen paired-task replay remain outstanding.
+
+### 5.24 Source-disjoint URCT preparation
+
+The [source-disjoint URCT manifest](reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json)
+and [preparation report](reports/bakeoff/SOURCE-DISJOINT-URCT-2026-09-10.md) replace the earlier
+same-owner input as a candidate corpus for the held-out hierarchy study. It contains two families,
+eight hash-addressed public-repository snapshots and four C/C′ cases; A, B and C have distinct
+GitHub owners within each family, and an independent hash check passed. The replay helper
+[`fetch_source_disjoint_urct.py`](../tools/pilot/fetch_source_disjoint_urct.py) rebuilt all eight
+records from the pinned public commits with matching hashes. It is still
+`PREPARED_NOT_ANNOTATED`: C′ is a controlled drift derivative, both reviewer forms are pending,
+and no model, retrieval or task execution has been run. The corpus therefore removes one
+independence flaw but does not yet open the publication gate.
