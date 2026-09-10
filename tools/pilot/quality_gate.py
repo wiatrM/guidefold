@@ -35,7 +35,12 @@ def _rows(path: Path) -> list[dict[str, Any]]:
     except json.JSONDecodeError:
         value = [json.loads(line) for line in text.splitlines() if line.strip()]
     if isinstance(value, dict):
-        value = value.get("rows") or value.get("events") or []
+        # A JSONL file with one row is valid JSON too.  Keep that row instead
+        # of mistaking it for the optional {"rows": [...]} wrapper.
+        if any(key in value for key in ("task_id", "task", "arm", "strategy", "condition")):
+            value = [value]
+        else:
+            value = value.get("rows") or value.get("events") or []
     if not isinstance(value, list) or any(not isinstance(row, dict) for row in value):
         raise ValueError(f"{path}: expected a JSON list, wrapped rows/events, or JSONL")
     return value

@@ -27,6 +27,13 @@ def test_gate_requires_real_e2_and_preserves_unknowns():
     assert "E2 conflict/revision trigger cases" in report["missing_evidence"]
 
 
+def test_rows_accepts_a_single_json_object_jsonl_file(tmp_path):
+    path = tmp_path / "one-row.jsonl"
+    path.write_text('{"task_id":"t1","arm":"flat","outcome":"success"}\n', encoding="utf-8")
+    rows = quality_gate._rows(path)
+    assert rows == [{"task_id": "t1", "arm": "flat", "outcome": "success"}]
+
+
 def test_gate_passes_only_with_zero_harmful_trigger_deliveries_and_coverage():
     rows = []
     for i in range(100):
