@@ -1031,6 +1031,12 @@ records from the pinned public commits with matching hashes. It is still
 and no model, retrieval or task execution has been run. The corpus therefore removes one
 independence flaw but does not yet open the publication gate.
 
+Fresh replay `urct-fetch-e5e4bdd-2026-09-10T21:54:09+02:00` ran in the Docker/WSL workspace with
+new clone caches and returned `PASS`, records `8/8`, with every digest equal to the manifest.
+Command: `python3 tools/pilot/fetch_source_disjoint_urct.py --manifest
+docs/reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json --output
+/tmp/guidefold-urct-replay-e5e4bdd --repo-cache /tmp/guidefold-urct-cache-e5e4bdd`.
+
 ### 5.25 Annotation integrity gate
 
 The new [`verify_annotation_packet.py`](../tools/pilot/verify_annotation_packet.py) adds the
