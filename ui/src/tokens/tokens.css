@@ -65,7 +65,7 @@
  --active-tab-left:0px; --active-tab-width:0px; --active-tab-top:0px; --active-tab-height:0px;
  --landing-video-ratio:16/9;
 
- --landing-nav-height:80px;
+ --landing-nav-height:80px; --landing-nav-columns:auto minmax(0,1fr) auto; --landing-nav-blur:14px;
  --landing-nav-live-height:var(--landing-nav-height);
  --landing-track-height:190vh;
  --landing-reveal-rise:28px;
@@ -198,6 +198,7 @@
  --landing-nav-pad:8px;
  --landing-nav-height:56px;
  --landing-nav-font:12px;
+ --landing-nav-columns:minmax(0,1fr) auto;
  --landing-nav-gap:8px;
  --landing-brand:20px;
  --landing-mark-size:28px;

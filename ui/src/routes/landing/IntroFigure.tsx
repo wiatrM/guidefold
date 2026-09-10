@@ -64,7 +64,7 @@ export function IntroFigure(){
     :<img className={css.introVideo} src="/assets/landing/intro-poster.webp" alt="" width="1920" height="1080" loading="lazy" onError={event=>{event.currentTarget.hidden=true;}}/>}
   </div>
   <figcaption className={css.introCaption}>
-   <span>A folded map, a route, two waypoints. That is the whole idea.</span>
+   <span>Find the scope. Show short cards. Load the full rule.</span>
    {shown&&<button type="button" className={css.replay} onClick={replay}><ArrowClockwise aria-hidden="true"/>Replay</button>}
   </figcaption>
  </figure>;
