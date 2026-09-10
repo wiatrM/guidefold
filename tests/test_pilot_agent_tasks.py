@@ -165,3 +165,15 @@ def test_agent_runner_keeps_verifier_failure_distinct_from_harness_error(tmp_pat
     assert rows[0]["outcome"] == "failure"
     assert rows[0]["harness_error"] is False
     assert rows[0]["verifier_exit_code"] == 7
+
+
+def test_verifier_fingerprint_changes_when_hidden_script_changes(tmp_path):
+    evaluator = tmp_path / "evaluator"
+    evaluator.mkdir()
+    script = evaluator / "verify.py"
+    script.write_text("print('one')\n", encoding="utf-8")
+    argv = ["python3", "verify.py", "{workspace}"]
+    first = runner._verifier_sha256(argv, evaluator)
+    script.write_text("print('two')\n", encoding="utf-8")
+    second = runner._verifier_sha256(argv, evaluator)
+    assert first != second

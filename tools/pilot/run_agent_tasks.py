@@ -73,6 +73,34 @@ def _sha256_file(path: Path) -> str | None:
         return None
 
 
+def _verifier_sha256(verifier: list[str], evaluator_root: Path) -> str:
+    """Fingerprint verifier argv and any evaluator files it names.
+
+    Hashing only argv lets an evaluator script change while a replay appears
+    unchanged. Relative file arguments under the hidden evaluator root are
+    therefore included byte-for-byte; absolute paths are included when they
+    resolve inside that root.
+    """
+    digest = hashlib.sha256()
+    digest.update(json.dumps(verifier, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    root = evaluator_root.resolve()
+    for item in verifier:
+        if item == "{workspace}" or item.startswith("-"):
+            continue
+        candidate = Path(item)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        try:
+            candidate = candidate.resolve()
+            candidate.relative_to(root)
+        except (OSError, ValueError):
+            continue
+        if candidate.is_file():
+            digest.update(str(candidate.relative_to(root)).encode("utf-8"))
+            digest.update(candidate.read_bytes())
+    return digest.hexdigest()
+
+
 def _auth_available() -> bool:
     if any(os.environ.get(name) for name in (
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN", "GOOGLE_API_KEY",
@@ -289,7 +317,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                 continue
             source = _safe_relative(root, str(task["workspace"]))
             verifier = [str(x) for x in task["verifier"]]
-            verifier_sha = hashlib.sha256(json.dumps(verifier, separators=(",", ":")).encode()).hexdigest()
+            verifier_sha = _verifier_sha256(verifier, evaluator_root)
             if source is None or not source.is_dir():
                 row = _unknown(task_id, args.arm, "workspace_missing_or_outside_root", bank_sha, verifier_sha)
                 results.write(json.dumps(row, ensure_ascii=False) + "\n"); results.flush(); continue
