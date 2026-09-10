@@ -170,7 +170,12 @@ def main():
     print('Prepared',len(cases),'queries,',len(cards),'documents',flush=True)
     env=dict(os.environ,GUIDEFOLD_REPO=repo,GUIDEFOLD_LEXICAL_ENGINE='router')
     def compose(*a):subprocess.run(['docker','compose',*a],cwd=ROOT,env=env,check=True,stdout=subprocess.DEVNULL)
-    compose('--profile','tools','run','--rm','publish','publish','/input/parity-snapshot.json')
+    # `dev.py deploy` has already completed the migration and keeps the DB/API
+    # stack alive. Re-starting the one-shot migrate dependency here races with
+    # the running API after the graph checks and can fail before parity begins.
+    # Publish still connects to the already healthy DB; only its dependency
+    # startup is suppressed.
+    compose('--profile','tools','run','--rm','--no-deps','publish','publish','/input/parity-snapshot.json')
     compose('up','-d','--wait','api')
     url='http://127.0.0.1:'+os.environ.get('GUIDEFOLD_PORT','8765')
     token=(ROOT/'.guidefold/compose/secrets/api_token').read_text().strip()
