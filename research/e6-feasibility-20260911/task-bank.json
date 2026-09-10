@@ -1,0 +1,42 @@
+[
+  {
+    "task_id": "t01",
+    "query": "Create answer.txt containing exactly one line: GUIDEfold feasibility task one OK. Use Guidefold SEARCH first and USE any relevant result; if delivery returns ASK, continue safely and still complete the file.",
+    "workspace": "t01",
+    "verifier": [
+      "python3",
+      "verify.py",
+      "{workspace}"
+    ]
+  },
+  {
+    "task_id": "t02",
+    "query": "Edit settings.json so feature_enabled is true and preserve owner as platform. Use Guidefold SEARCH first and USE a relevant result; if delivery returns ASK, continue safely.",
+    "workspace": "t02",
+    "verifier": [
+      "python3",
+      "verify.py",
+      "{workspace}"
+    ]
+  },
+  {
+    "task_id": "t03",
+    "query": "Update notes.md by adding a second-level heading Release checklist and one checklist item - [ ] run tests, while preserving the existing text. Use Guidefold SEARCH first and USE a relevant result; if delivery returns ASK, continue safely.",
+    "workspace": "t03",
+    "verifier": [
+      "python3",
+      "verify.py",
+      "{workspace}"
+    ]
+  },
+  {
+    "task_id": "t04",
+    "query": "Update config.yaml by replacing healthcheck: absent with healthcheck: /health and preserve service: api. Use Guidefold SEARCH first and USE a relevant result; if delivery returns ASK, continue safely.",
+    "workspace": "t04",
+    "verifier": [
+      "python3",
+      "verify.py",
+      "{workspace}"
+    ]
+  }
+]

@@ -1091,3 +1091,19 @@ generated from the fresh snapshot directory rather than silently checked into th
 the manifest, generator, and verifier are the reproducible source of truth. The next meaningful
 step is for two independent human reviewers to fill the blank forms, followed by adjudication
 of disagreements. No model call may occur before that step.
+
+### 5.29 Four-task Pi feasibility replay
+
+The first shared-bank end-to-end feasibility replay ran four isolated hidden-verifier tasks in
+both `map+gate+evolution`/`top_down`/`proof_gated` and `flat`/`flat`/`legacy`. After correcting a
+fixture newline and repeating the full bank, both arms scored **3/4 (75%)** with no harness
+errors. The candidate made 12 SEARCH and 16 USE calls, all 16 ending in `ASK` with zero body
+characters; the legacy control made 4 SEARCH and 17 USE calls and exposed 457,275 body
+characters. The one failed task was the same in both arms: the agent omitted a required final
+period, so the hidden verifier correctly rejected it. Paired success delta was 0 pp.
+
+This is a useful execution and delivery-boundary signal, not a quality or publication claim.
+The quality gate remains `inconclusive` because E2 conflict/revision cases and independent
+useful/harmful delivery labels are absent, and the bank has only four trivial tasks. The frozen
+inputs and report are in
+[`research/e6-feasibility-20260911/README.md`](../research/e6-feasibility-20260911/README.md).
