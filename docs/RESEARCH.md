@@ -1076,3 +1076,18 @@ through the corrected evaluator reports one candidate attempt, task success `1/1
 errors, `SEARCH=1`, `USE=4`, `ASK=4`, 34,282 ms and zero delivered body characters. Useful
 delivery and harmful-load remain unknown for that deliberately trivial task, so this correction
 improves accounting integrity but adds no task-quality claim.
+
+### 5.28 Fresh source replay and annotation-packet regeneration
+
+On 2026-09-10 a clean-cache replay of the source-disjoint manifest fetched the eight pinned
+public blobs (two families, A/B/C/C′) and reproduced every manifest digest. The new
+[`make_annotation_packet.py`](../tools/pilot/make_annotation_packet.py) then generated four
+blank C/C′ packets (one current and one drift target per family), each with two independent
+reviewer forms and six canonical fields. `verify_annotation_packet.py --mode blank` returned
+`BLANK_PACKET_VALID`, `packet_count=4`, with `model_calls_allowed=false`.
+
+This is a preparation result, not a semantic label or task outcome. The packet is deliberately
+generated from the fresh snapshot directory rather than silently checked into the source corpus;
+the manifest, generator, and verifier are the reproducible source of truth. The next meaningful
+step is for two independent human reviewers to fill the blank forms, followed by adjudication
+of disagreements. No model call may occur before that step.
