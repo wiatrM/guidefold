@@ -39,6 +39,24 @@ that a production workload will have a zero harmful-load rate. A flat concatenat
 would expose the selected candidate bytes by construction, which is why it is retained as
 the harmful-load control for the real E2 run.
 
+## Ablation control
+
+The same fixture also runs the six named policy arms required by the research protocol:
+
+| Arm | Harmful body deliveries | ASK |
+|---|---:|---:|
+| `flat` | 3 | 0 |
+| `navigate` | 1 | 0 |
+| `graph` | 3 | 0 |
+| `map` (stale pointer) | 1 | 0 |
+| `map+gate` | 0 | 1 |
+| `map+gate+evolution` | 0 | 0 |
+
+This confirms the intended mechanism in the fixture: navigation, graph and map can still
+expose an old or out-of-scope candidate; the gate changes that exposure into `ASK`, and
+evolution can replace the stale map pointer with the current revision. These counts are
+synthetic regression controls, not an estimate of real-world error rates.
+
 ## What this unlocks
 
 The service boundary is now protected by a repeatable regression test for conflict, scope,

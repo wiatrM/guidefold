@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -140,5 +141,92 @@ func TestE2ProofGatedDeliveryMatrix(t *testing.T) {
 	}
 	if flatHarmful != 6 || gatedHarmful != 0 {
 		t.Fatalf("E2 safety summary: flat harmful=%d, proof-gated harmful=%d", flatHarmful, gatedHarmful)
+	}
+}
+
+type e2ArmResult struct {
+	name         string
+	selected     []string
+	harmfulLoads int
+	askCount     int
+}
+
+func e2VisibleInScope(c *Catalog, id, requested string) bool {
+	node := str(c.Cards[id]["node"])
+	return node == requested || strings.HasPrefix(node, requested+".") || strings.HasPrefix(requested, node+".")
+}
+
+func e2HarmfulCandidate(c *Catalog, id, requested string) bool {
+	card := c.Cards[id]
+	if card == nil || str(card["status"]) != "active" || !e2VisibleInScope(c, id, requested) {
+		return true
+	}
+	proof := obj(card["proof"])
+	conflicts, _ := proof["conflicts"].([]any)
+	return len(conflicts) > 0
+}
+
+func e2RunArm(c *Catalog, name string, selected []string, gated, evolved bool) e2ArmResult {
+	result := e2ArmResult{name: name, selected: selected}
+	requested := "platform.api.auth"
+	for _, id := range selected {
+		if !gated {
+			if e2HarmfulCandidate(c, id, requested) {
+				result.harmfulLoads++
+			}
+			continue
+		}
+		if evolved && id == "urn:guidefold:e2:auth-v1" {
+			// Evolution replaces the stale map pointer with the current sibling
+			// before delivery. The old pointer is never silently hydrated.
+			id = "urn:guidefold:e2:auth-v2"
+		}
+		card := c.Cards[id]
+		if card == nil {
+			result.askCount++
+			continue
+		}
+		body := str(card["_body"])
+		decision := e2Delivery(c, id, body, c.Revisions[id], []string{requested}, "complete")
+		if str(decision["action"]) == "LOAD" {
+			if e2HarmfulCandidate(c, id, requested) {
+				result.harmfulLoads++
+			}
+		} else {
+			result.askCount++
+		}
+	}
+	return result
+}
+
+func TestE2AblationArmsKeepTheSafetyBoundaryVisible(t *testing.T) {
+	c := e2Catalog()
+	v1 := "urn:guidefold:e2:auth-v1"
+	v2 := "urn:guidefold:e2:auth-v2"
+	deprecated := "urn:guidefold:e2:auth-deprecated"
+	narrow := "urn:guidefold:e2:auth-narrow"
+	db := "urn:guidefold:e2:db"
+	// Every arm receives the same snapshot and candidate pool. Only the
+	// selection policy and proof gate differ; there are no model calls.
+	arms := []e2ArmResult{
+		e2RunArm(c, "flat", []string{v1, v2, deprecated, narrow, db}, false, false),
+		e2RunArm(c, "navigate", []string{v1, v2}, false, false),
+		e2RunArm(c, "graph", []string{v1, v2, deprecated, narrow, db}, false, false),
+		e2RunArm(c, "map", []string{v1}, false, false),
+		e2RunArm(c, "map+gate", []string{v1}, true, false),
+		e2RunArm(c, "map+gate+evolution", []string{v1}, true, true),
+	}
+	wantHarmful := map[string]int{"flat": 3, "navigate": 1, "graph": 3, "map": 1, "map+gate": 0, "map+gate+evolution": 0}
+	wantASK := map[string]int{"map+gate": 1, "map+gate+evolution": 0}
+	for _, arm := range arms {
+		if arm.harmfulLoads != wantHarmful[arm.name] {
+			t.Errorf("%s harmful loads=%d, want %d", arm.name, arm.harmfulLoads, wantHarmful[arm.name])
+		}
+		if expected, ok := wantASK[arm.name]; ok && arm.askCount != expected {
+			t.Errorf("%s ASK count=%d, want %d", arm.name, arm.askCount, expected)
+		}
+	}
+	if arms[4].harmfulLoads != 0 || arms[5].harmfulLoads != 0 {
+		t.Fatal("proof-gated arms must have zero harmful body deliveries")
 	}
 }
