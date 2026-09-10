@@ -161,7 +161,7 @@ export default function Landing(){
    </section>
 
    <section className={css.questions} aria-labelledby="questions-title">
-    <h2 id="questions-title">Before you join</h2>
+    <h2 id="questions-title">Things you are probably wondering</h2>
     <div className={css.questionList}>
      <Question id="question-1" title="Can I use it today?"><p>The CLI and retrieval service are open source. Paid hosting is planned. Joining the waitlist gets you availability updates, not a hosted account or a guaranteed launch date.</p></Question>
      <Question id="question-2" title="What will hosting cost?"><p>The planned subscription is $99 per organisation per month, excluding taxes. With your own model key and CI, you pay those providers directly.</p><p>The planned managed-AI option adds a separate prepaid budget: $9 of provider usage costs $10. There is no unlimited AI allowance. Enterprise SSO is not included; hosted runner pricing and quotas will be specified before purchase.</p></Question>
