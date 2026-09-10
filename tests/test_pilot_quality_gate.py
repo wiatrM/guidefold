@@ -68,3 +68,41 @@ def test_gate_rejects_duplicate_task_arm_rows():
     ])
     assert report["verdict"] == "inconclusive"
     assert report["duplicate_task_arm_rows"] == [("t1", "map+gate+evolution")]
+
+
+def test_quality_gate_reports_execution_telemetry_and_preserves_missing_as_unknown():
+    rows = []
+    for arm in quality_gate.ARMS:
+        rows.extend([
+            {
+                "task_id": f"{arm}-1", "arm": arm, "outcome": "success",
+                "harness_error": False,
+                "telemetry": {"search_requests": 2, "use_requests": 1, "ask_count": 1,
+                               "input_tokens": 100, "output_tokens": 25, "tool_calls": 3,
+                               "elapsed_ms": 40},
+            },
+            {"task_id": f"{arm}-2", "arm": arm, "outcome": "failure",
+             "terminal_status": "timeout", "elapsed_ms": 60},
+        ])
+    report = quality_gate.evaluate(rows, [
+        {"harmful": True, "expected_action": "ASK", "actual_action": "ASK"}
+        for _ in range(100)
+    ])
+    execution = report["arms"]["map+gate+evolution"]["execution"]
+    assert execution == {
+        "harness_errors": 1,
+        "search_requests": 2,
+        "use_requests": 1,
+        "ask_count": 1,
+        "input_tokens": 100,
+        "output_tokens": 25,
+        "tool_calls": 3,
+        "elapsed_ms": 100,
+        "elapsed_samples": 2,
+        "avg_elapsed_ms": 50.0,
+    }
+    missing = quality_gate.evaluate([
+        {"task_id": "t", "arm": "flat", "outcome": "success"},
+    ], None)["arms"]["flat"]["execution"]
+    assert missing["search_requests"] is None
+    assert missing["elapsed_ms"] is None

@@ -53,6 +53,40 @@ def _bool(row: dict[str, Any], *names: str) -> bool:
     return False
 
 
+def _number(row: dict[str, Any], *names: str) -> int | float | None:
+    """Read an optional numeric task metric, including an exported telemetry object."""
+    candidates: list[dict[str, Any]] = [row]
+    telemetry = row.get("telemetry")
+    if isinstance(telemetry, dict):
+        candidates.append(telemetry)
+    for candidate in candidates:
+        for name in names:
+            value = candidate.get(name)
+            if isinstance(value, bool):
+                continue
+            if isinstance(value, (int, float)):
+                return value
+            if isinstance(value, str) and value.strip():
+                try:
+                    return float(value)
+                except ValueError:
+                    continue
+    return None
+
+
+def _sum_metric(rows: Iterable[dict[str, Any]], *names: str) -> int | float | None:
+    values = [_number(row, *names) for row in rows]
+    observed = [value for value in values if value is not None]
+    return sum(observed) if observed else None
+
+
+def _harness_error(row: dict[str, Any]) -> bool:
+    if _bool(row, "harness_error", "harness_failed"):
+        return True
+    terminal = str(row.get("terminal_status") or row.get("status") or "").lower()
+    return any(word in terminal for word in ("harness", "timeout", "error"))
+
+
 def _wilson_upper(k: int, n: int, z: float = 1.959963985) -> float | None:
     if n <= 0:
         return None
@@ -113,6 +147,26 @@ def _paired_delta(rows: list[dict[str, Any]], candidate: str, baseline: str) -> 
     return sum(values) / len(values) if values else None
 
 
+def _arm_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate optional execution telemetry without treating absent data as zero."""
+    elapsed = _sum_metric(rows, "elapsed_ms", "duration_ms", "latency_ms")
+    observed_elapsed = sum(
+        1 for row in rows if _number(row, "elapsed_ms", "duration_ms", "latency_ms") is not None
+    )
+    return {
+        "harness_errors": sum(_harness_error(row) for row in rows),
+        "search_requests": _sum_metric(rows, "search_requests", "search_count"),
+        "use_requests": _sum_metric(rows, "use_requests", "skill_load_requests", "use_count"),
+        "ask_count": _sum_metric(rows, "ask_count", "asks"),
+        "input_tokens": _sum_metric(rows, "input_tokens"),
+        "output_tokens": _sum_metric(rows, "output_tokens"),
+        "tool_calls": _sum_metric(rows, "tool_calls"),
+        "elapsed_ms": elapsed,
+        "elapsed_samples": observed_elapsed,
+        "avg_elapsed_ms": (elapsed / observed_elapsed if observed_elapsed else None),
+    }
+
+
 def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     arms = {}
     for arm in ARMS:
@@ -125,7 +179,8 @@ def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | No
                      "task_success_rate": rate, "harmful_loads": harmful,
                      "harmful_load_upper_95": _wilson_upper(harmful, len(subset)),
                      "useful_deliveries": useful,
-                     "useful_coverage": (useful / len(subset) if subset else None)}
+                     "useful_coverage": (useful / len(subset) if subset else None),
+                     "execution": _arm_metrics(subset)}
 
     baseline_candidates = [(arm, arms[arm]["task_success_rate"]) for arm in NON_GATED
                            if arms[arm]["task_success_rate"] is not None]
