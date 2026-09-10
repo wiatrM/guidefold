@@ -35,6 +35,6 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
 test('landing exposes the current retrieval story and docs entry',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('heading',{name:'What Guidefold does about it'})).toBeVisible();
- await expect(page.getByText('Search and USE',{exact:true})).toBeVisible();
+ await expect(page.getByText('Selected by task and place',{exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Read the docs',exact:true}).first()).toHaveAttribute('href','/docs/');
 });

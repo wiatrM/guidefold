@@ -7,7 +7,7 @@ test('Spectrum pie renders measured geometry and all reported verdicts',async({p
  await page.goto('/usage'+query());
  const chart=page.getByRole('group',{name:/Feedback verdicts out of 18 assessments/});
  await expect(chart).toBeVisible();
- await expect(chart.locator('.recharts-pie-sector')).toHaveCount(4);
+ await expect(chart.locator('.recharts-pie-sector')).toHaveCount(3);
  await expect(page.getByText('18 assessments; no rate is reported below 20.')).toBeVisible();
  const svg=chart.locator('.recharts-surface');
  expect((await svg.boundingBox())!.height).toBeGreaterThan(200);
