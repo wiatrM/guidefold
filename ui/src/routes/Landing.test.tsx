@@ -37,7 +37,7 @@ describe('public landing',()=>{
   render(<Landing/>);
   expect(screen.getAllByRole('heading',{level:1})).toHaveLength(1);
   const headings=screen.getAllByRole('heading',{level:2}).map(node=>node.textContent);
-  expect(headings.slice(0,3)).toEqual(['Three problems, and you already have all three','What Guidefold does about it','What your team gets']);
+  expect(headings.slice(0,3)).toEqual(["Let's not make every team rediscover this from scratch",'What Guidefold does about it','What your team gets']);
   expect(headings.indexOf('Want to know when hosting is ready?')).toBeGreaterThan(headings.indexOf('What your team gets'));
   expect(headings.indexOf('Things you are probably wondering')).toBeGreaterThan(headings.indexOf('Want to know when hosting is ready?'));
  });

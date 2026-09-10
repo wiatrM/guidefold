@@ -92,13 +92,14 @@ export default function Landing(){
     <div className={[css.plane,css.planeWhy].join(' ')} aria-hidden="true"/>
     <span className={css.keyline} aria-hidden="true"/>
     <div className={css.copy}>
-     <h2 id="why-title">Three problems, and you already have all three</h2>
+     <h2 id="why-title">Let's not make every team rediscover this from scratch</h2>
      <p className={css.answer}>At organisation scale, skills stop being documents and start being a data problem.</p>
      <dl className={css.beats}>
       <div><dt>Duplication</dt><dd>The same rule written five times, five ways, in five repositories. Each copy drifts. None of them is wrong enough for anyone to delete.</dd></div>
       <div><dt>No management</dt><dd>Nobody can see the whole set. Nobody can say which skills exist, who owns them, or what an agent will actually be shown when it opens a folder.</dd></div>
-      <div><dt>No extraction</dt><dd>Knowledge stays stuck at the level it was written. What is true for one service never climbs to the component, the platform, or the company, so the general rule gets rewritten instead of found.</dd></div>
+      <div><dt>No way up</dt><dd>One team figures out how to deploy safely. The next team hits the same incident and writes it again from zero, because there is no path for a local lesson to reach the rest of the organisation.</dd></div>
      </dl>
+     <p className={css.trust}>Where a rule was written shouldn't decide where it can be used.</p>
     </div>
    </section>
 

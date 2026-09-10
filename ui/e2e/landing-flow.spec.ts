@@ -8,7 +8,7 @@ for(const size of viewports)test('answers why, how and value in order at '+size.
  await page.goto('/');
  await expect(page.getByRole('heading',{level:1})).toHaveText('Thirty thousand skills. Nobody knows which four the agent should read.');
  const headings=page.getByRole('heading',{level:2});
- await expect(headings.nth(0)).toHaveText('Three problems, and you already have all three');
+ await expect(headings.nth(0)).toHaveText("Let's not make every team rediscover this from scratch");
  await expect(headings.nth(1)).toHaveText('What Guidefold does about it');
  await expect(headings.nth(2)).toHaveText('What your team gets');
  await expect(page.locator('#how-it-works')).toHaveCount(1);

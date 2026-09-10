@@ -51,6 +51,35 @@ Guidefold solves and automates that, with three concrete parts. Name them:
 - Never claim a hosted product that is not open, a launch date, a customer, or a
   benchmark number the repository cannot back.
 
+## How extraction actually works (owner clarification, 2026-09-10)
+
+Extraction is not a one-way cage that keeps a team's rule locked to that team.
+Where knowledge was written should not be where it stays stuck. A team can
+write something that turns out to be useful to the whole organisation, and
+Guidefold's job is to let it climb there, deliberately, not silently.
+
+The flow, in order:
+
+1. A team writes its own skill: "this is how we deploy our service."
+2. Guidefold finds the part of it that is not specific to that service: "check
+   the tests and have a rollback plan before you deploy."
+3. It proposes that part as a skill one level up, in the organisation's shared
+   library. Server names, local commands and team-specific exceptions stay
+   with the team; only the general part moves up.
+4. Once reviewed, the shared version serves every other team, and it still
+   shows where it came from and what it rests on.
+
+This is usually extraction of the common part, not a relocation of the whole
+skill: the local skill keeps its specifics and now layers them on top of the
+shared one. Two things must stay distinct and must never be collapsed into
+each other: "this works for us" is a good reason to *propose* the knowledge to
+the organisation; it is not the same as "everyone must do this," which needs a
+review, or a decision from whoever owns that rule, before it goes out.
+
+One line for a deck or a pitch: **Guidefold helps knowledge grow from a single
+team to the whole organisation, keeping local exceptions and the ability to
+check where a shared rule came from.**
+
 ## Layout
 
 The owner rejected a two-column landing layout outright: it made the project
