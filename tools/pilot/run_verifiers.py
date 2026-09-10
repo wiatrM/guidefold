@@ -41,8 +41,8 @@ def _load(path: Path) -> tuple[list[dict[str, Any]], str]:
 def _unknown(task_id: str, arm: str, reason: str, *, task_bank_sha256: str, verifier_sha256: str = "") -> dict[str, Any]:
     return {"task_id": task_id, "arm": arm, "outcome": "unknown", "terminal_status": reason,
             "harness_error": True, "task_bank_sha256": task_bank_sha256,
-            "verifier_sha256": verifier_sha256, "useful_delivery": False,
-            "harmful_load": False, "elapsed_ms": None}
+            "verifier_sha256": verifier_sha256, "useful_delivery": None,
+            "harmful_load": None, "elapsed_ms": None}
 
 
 def run(args: argparse.Namespace) -> list[dict[str, Any]]:
@@ -98,7 +98,9 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                      "verifier_exit_code": completed.returncode, "task_bank_sha256": bank_sha,
                      "verifier_sha256": verifier_sha,
                      "stdout": completed.stdout[-4000:], "stderr": completed.stderr[-4000:],
-                     "useful_delivery": False, "harmful_load": False,
+                     # The evaluator observes only the verifier outcome. Delivery usefulness and
+                     # harmful-load status require telemetry/E2 labels and remain unknown here.
+                     "useful_delivery": None, "harmful_load": None,
                      "elapsed_ms": round((time.perf_counter() - started) * 1000, 3)})
     return rows
 

@@ -53,6 +53,26 @@ def _bool(row: dict[str, Any], *names: str) -> bool:
     return False
 
 
+def _observed_bool(row: dict[str, Any], *names: str) -> tuple[bool, bool]:
+    """Return (value, observed), preserving a missing/null measurement."""
+    candidates: list[dict[str, Any]] = [row]
+    telemetry = row.get("telemetry")
+    if isinstance(telemetry, dict):
+        candidates.append(telemetry)
+    for candidate in candidates:
+        for name in names:
+            if name not in candidate or candidate[name] is None:
+                continue
+            value = candidate[name]
+            if isinstance(value, bool):
+                return value, True
+            if isinstance(value, (int, float)) and value in (0, 1):
+                return bool(value), True
+            if isinstance(value, str) and value.lower() in {"true", "false"}:
+                return value.lower() == "true", True
+    return False, False
+
+
 def _number(row: dict[str, Any], *names: str) -> int | float | None:
     """Read an optional numeric task metric, including an exported telemetry object."""
     candidates: list[dict[str, Any]] = [row]
@@ -172,14 +192,22 @@ def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | No
     for arm in ARMS:
         subset = _arm_rows(task_rows, arm)
         rate, known, unknown = _success_rate(subset)
-        harmful = sum(_bool(row, "harmful_load") for row in subset)
-        useful = sum(_bool(row, "useful_delivery", "useful_coverage") for row in subset)
+        harmful_values = [_observed_bool(row, "harmful_load") for row in subset]
+        useful_values = [_observed_bool(row, "useful_delivery", "useful_coverage") for row in subset]
+        harmful = sum(value for value, observed in harmful_values if observed)
+        useful = sum(value for value, observed in useful_values if observed)
+        harmful_observed = sum(observed for _, observed in harmful_values)
+        useful_observed = sum(observed for _, observed in useful_values)
         arms[arm] = {"attempts": len(subset), "known_outcomes": known, "unknown": unknown,
                      "unknown_rate": (unknown / len(subset) if subset else None),
                      "task_success_rate": rate, "harmful_loads": harmful,
                      "harmful_load_upper_95": _wilson_upper(harmful, len(subset)),
                      "useful_deliveries": useful,
-                     "useful_coverage": (useful / len(subset) if subset else None),
+                     "harmful_observed": harmful_observed,
+                     "harmful_unknown": len(subset) - harmful_observed,
+                     "useful_observed": useful_observed,
+                     "useful_unknown": len(subset) - useful_observed,
+                     "useful_coverage": (useful / useful_observed if useful_observed else None),
                      "execution": _arm_metrics(subset)}
 
     baseline_candidates = [(arm, arms[arm]["task_success_rate"]) for arm in NON_GATED
@@ -235,6 +263,10 @@ def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | No
         missing.append(f"{candidate['unknown']} candidate outcomes are unknown")
     if best_arm and arms[best_arm]["unknown"]:
         missing.append(f"{arms[best_arm]['unknown']} {best_arm} baseline outcomes are unknown")
+    if candidate["useful_unknown"]:
+        missing.append(f"{candidate['useful_unknown']} candidate useful-delivery measurements are unknown")
+    if best_arm and arms[best_arm]["useful_unknown"]:
+        missing.append(f"{arms[best_arm]['useful_unknown']} {best_arm} useful-delivery measurements are unknown")
     return {"candidate": CANDIDATE, "best_non_gated_baseline": best_arm,
             "best_baseline_success_rate": best_rate, "paired_success_delta": paired_delta,
             "arms": arms, "e2": e2, "checks": checks,

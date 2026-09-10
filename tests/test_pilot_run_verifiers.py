@@ -34,6 +34,8 @@ def test_runner_reports_success_failure_and_timeout(tmp_path):
     assert rows[2]["terminal_status"] == "timeout"
     assert rows[2]["harness_error"] is True
     assert all(row["arm"] == "map+gate+evolution" for row in rows)
+    assert rows[0]["useful_delivery"] is None
+    assert rows[0]["harmful_load"] is None
 
 
 def test_runner_rejects_workspace_escape_and_invalid_spec(tmp_path):

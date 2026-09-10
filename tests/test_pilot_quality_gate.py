@@ -106,3 +106,17 @@ def test_quality_gate_reports_execution_telemetry_and_preserves_missing_as_unkno
     ], None)["arms"]["flat"]["execution"]
     assert missing["search_requests"] is None
     assert missing["elapsed_ms"] is None
+
+
+def test_quality_gate_marks_missing_usefulness_as_inconclusive():
+    rows = [
+        {"task_id": "t1", "arm": "flat", "outcome": "success"},
+        {"task_id": "t1", "arm": "map+gate+evolution", "outcome": "success"},
+    ]
+    report = quality_gate.evaluate(rows, [
+        {"harmful": True, "expected_action": "ASK", "actual_action": "ASK"}
+        for _ in range(100)
+    ])
+    assert report["verdict"] == "inconclusive"
+    assert report["arms"]["map+gate+evolution"]["useful_coverage"] is None
+    assert any("useful-delivery" in item for item in report["missing_evidence"])

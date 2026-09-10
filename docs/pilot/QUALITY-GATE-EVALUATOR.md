@@ -77,3 +77,7 @@ then reports raw agreement and disagreements. `ANNOTATION_READY_FOR_ADJUDICATION
 label or a task result; disagreements require a separately recorded adjudication before E2 rows
 can be scored. The verifier deliberately rejects incomplete or out-of-range forms and keeps
 model calls disabled throughout annotation.
+
+The hidden-verifier runner leaves useful-delivery and task-level harmful-load fields unknown,
+because a verifier cannot observe delivery usefulness or E2 safety. Those fields must come from
+telemetry or E2 labels; the quality gate preserves null for missing observations.
