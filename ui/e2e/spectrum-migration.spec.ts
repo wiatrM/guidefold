@@ -32,15 +32,9 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
  }
 });
 
-test('Spectrum search filters only the labelled landing fixture',async({page})=>{
+test('landing exposes the current retrieval story and docs entry',async({page})=>{
  await page.goto('/');
- const search=page.getByRole('searchbox',{name:'Search example instructions'});
- await search.fill('rbac');
- const demo=page.locator('[data-slot="scope-mini-demo"]');
- await expect(demo.getByText('rbac-policies',{exact:true})).toBeVisible();
- await expect(demo.getByText('postgres-auth',{exact:true})).toHaveCount(0);
- await search.fill('no-such-instruction');
- await expect(demo.getByRole('status')).toContainText('No example instructions match');
- await demo.getByRole('button',{name:'Clear'}).click();
- await expect(demo.getByText('postgres-auth',{exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'What Guidefold does about it'})).toBeVisible();
+ await expect(page.getByText('Search and USE',{exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Read the docs',exact:true}).first()).toHaveAttribute('href','/docs/');
 });
