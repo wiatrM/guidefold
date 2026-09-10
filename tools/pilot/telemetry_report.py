@@ -19,6 +19,13 @@ from typing import Any
 
 SUCCESS = {"success", "succeeded", "pass", "passed"}
 FAILURE = {"failure", "failed", "fail"}
+ASK_REASON_CODES = {
+    "proof_missing", "proof_schema_invalid", "proof_identity_mismatch",
+    "proof_snapshot_mismatch", "proof_revision_mismatch", "proof_body_hash_mismatch",
+    "proof_scope_incomplete", "proof_claim_incomplete", "proof_conflict",
+    "closure_incomplete", "proof_source_ref_invalid", "proof_recursive_invalid",
+    "proof_source_unavailable", "proof_source_hash_mismatch", "proof_source_line_range",
+}
 
 
 def _event_rows(path: Path) -> list[dict[str, Any]]:
@@ -85,6 +92,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     tasks_started = tasks_finished = tasks_succeeded = tasks_failed = tasks_unknown = 0
     harness_errors = search_requests = search_results = search_errors = 0
     use_requests = ask_count = input_tokens = output_tokens = tool_calls = latency_ms = 0
+    ask_reasons: dict[str, int] = {}
     latency_samples = 0
     task_ids: set[str] = set()
     for row in rows:
@@ -138,6 +146,12 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             status = _text(row, "status", "delivery_status")
             if status in {"ask", "denied"}:
                 ask_count += 1
+                reason = _text(row, "reason", "delivery_reason")
+                delivery = row.get("delivery")
+                if not reason and isinstance(delivery, dict):
+                    reason = _text(delivery, "reason")
+                safe_reason = reason if reason in ASK_REASON_CODES else "unknown"
+                ask_reasons[safe_reason] = ask_reasons.get(safe_reason, 0) + 1
         elif kind in {"harness_error", "harness_failed"}:
             harness_errors += 1
 
@@ -169,6 +183,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "search_errors": search_errors,
             "use_requests": use_requests,
             "ask_count": ask_count,
+            "ask_reasons": dict(sorted(ask_reasons.items())),
         },
         "cost_time": {
             "input_tokens": input_tokens if cost_observed else None,

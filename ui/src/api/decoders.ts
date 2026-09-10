@@ -736,12 +736,15 @@ export interface ExecutionMetrics {
   use_requests: number; ask_count: number; input_tokens: number;
   output_tokens: number; tool_calls: number; latency_ms: number;
   latency_samples: number; tasks_observed: boolean; cost_observed: boolean;
+  /** Optional for backwards-compatible reports; decoded responses default it to an empty map. */
+  ask_reasons?: Record<string, number>;
 }
 export const emptyExecutionMetrics: ExecutionMetrics = {
   tasks_started: 0, tasks_finished: 0, tasks_succeeded: 0, tasks_failed: 0, tasks_unknown: 0,
   harness_errors: 0, search_requests: 0, search_results: 0, search_errors: 0, use_requests: 0,
   ask_count: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0, latency_ms: 0,
   latency_samples: 0, tasks_observed: false, cost_observed: false,
+  ask_reasons: {},
 };
 export const executionMetrics = object<ExecutionMetrics>({
   tasks_started: fallback(num, 0), tasks_finished: fallback(num, 0),
@@ -753,6 +756,7 @@ export const executionMetrics = object<ExecutionMetrics>({
   output_tokens: fallback(num, 0), tool_calls: fallback(num, 0),
   latency_ms: fallback(num, 0), latency_samples: fallback(num, 0),
   tasks_observed: fallback(bool, false), cost_observed: fallback(bool, false),
+  ask_reasons: fallback(dictionary(num), {}),
 });
 export const usage = object<Usage>({
   window: fallback(object({ from: nullable(str), to: nullable(str), watermark: nullable(str) }), { from: null, to: null, watermark: null }),

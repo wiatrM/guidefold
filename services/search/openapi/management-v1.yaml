@@ -1755,7 +1755,8 @@ components:
         [tasks_started, tasks_finished, tasks_succeeded, tasks_failed,
          tasks_unknown, harness_errors, search_requests, search_results,
          search_errors, use_requests, ask_count, input_tokens, output_tokens,
-         tool_calls, latency_ms, latency_samples, tasks_observed, cost_observed]
+         tool_calls, latency_ms, latency_samples, tasks_observed, cost_observed,
+         ask_reasons]
       description: >-
         Observed execution signals for the selected window. These are directional
         scorecards, not a causal quality claim. Unknown outcomes remain unknown.
@@ -1778,6 +1779,12 @@ components:
         latency_samples: { type: integer }
         tasks_observed: { type: boolean }
         cost_observed: { type: boolean }
+        ask_reasons:
+          type: object
+          additionalProperties: { type: integer }
+          description: >-
+            Count of fail-closed ASK decisions grouped by bounded delivery
+            reason. A missing adapter reason is reported under `unknown`.
 
     UsageSkill:
       type: object

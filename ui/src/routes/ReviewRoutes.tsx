@@ -840,6 +840,30 @@ export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
   const averageLatency = metrics.latency_samples > 0 ? Math.round(metrics.latency_ms / metrics.latency_samples) : null;
   const costObserved = metrics.cost_observed;
   const timeObserved = averageLatency !== null;
+  const askReasons = Object.entries(metrics.ask_reasons ?? {})
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const askReasonLabel = (reason: string) => ({
+    proof_conflict: 'Conflicting rules',
+    proof_missing: 'No source proof',
+    proof_revision_mismatch: 'Revision changed',
+    proof_snapshot_mismatch: 'Snapshot changed',
+    proof_body_hash_mismatch: 'Source changed',
+    proof_scope_incomplete: 'Scope not covered',
+    proof_claim_incomplete: 'Claim not supported',
+    closure_incomplete: 'Missing dependencies',
+    proof_source_unavailable: 'Source unavailable',
+    proof_source_hash_mismatch: 'Source changed',
+    proof_source_line_range: 'Source lines unavailable',
+    proof_schema_invalid: 'Invalid proof',
+    proof_identity_mismatch: 'Wrong skill identity',
+    proof_source_ref_invalid: 'Invalid source reference',
+    proof_recursive_invalid: 'Invalid child proof',
+    unknown: 'Unspecified reason',
+  } as Record<string, string>)[reason] ?? 'Unrecognised reason';
+  const askReasonText = askReasons.length
+    ? 'Reasons: ' + askReasons.slice(0, 3).map(([reason, count]) => askReasonLabel(reason) + ' ' + formatNumber(count)).join(' · ')
+    : 'Reason breakdown unavailable';
 
   return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<Pulse aria-hidden="true" />}>
     <MetricRow items={[
@@ -854,7 +878,7 @@ export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
         label: 'Safety boundary',
         value: safetyObserved ? formatNumber(metrics.ask_count) + ' ASK' : 'Unknown',
         detail: safetyObserved
-          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors'
+          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors · ' + askReasonText
           : 'No USE, ASK or harness-error observation in this window',
       },
       {

@@ -59,6 +59,7 @@ describe('Usage route, hosted API, six states', () => {
         search_requests: 14, search_results: 12, search_errors: 2, use_requests: 6, ask_count: 2,
         harness_errors: 1, input_tokens: 1200, output_tokens: 500, tool_calls: 9, cost_observed: true,
         latency_ms: 900, latency_samples: 3,
+        ask_reasons: { proof_conflict: 1, closure_incomplete: 1 },
       },
     } }) }));
     const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
@@ -66,6 +67,7 @@ describe('Usage route, hosted API, six states', () => {
     expect(scorecards.getByText('2 ASK')).toBeInTheDocument();
     expect(scorecards.getByText('14 · 6')).toBeInTheDocument();
     expect(scorecards.getByText('1,700 tok · 300 ms avg')).toBeInTheDocument();
+    expect(scorecards.getByText(/Reasons: Missing dependencies 1 · Conflicting rules 1/)).toBeInTheDocument();
     expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
   });
 

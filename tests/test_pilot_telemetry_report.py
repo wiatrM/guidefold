@@ -36,6 +36,7 @@ def test_replay_counts_task_routing_safety_and_cost_without_collapsing_unknown()
         {"event_type": "skill_load_requested", "task_id": "t1"},
         {
             "event_type": "skill_load_completed", "status": "ask", "task_id": "t1",
+            "reason": "proof_conflict",
         },
         {
             "event_type": "task_finished", "task_id": "t1", "outcome": "success",
@@ -57,7 +58,7 @@ def test_replay_counts_task_routing_safety_and_cost_without_collapsing_unknown()
     assert report["harness"] == {"errors": 1}
     assert report["routing"] == {
         "search_requests": 1, "search_results": 1, "search_errors": 0,
-        "use_requests": 1, "ask_count": 1,
+        "use_requests": 1, "ask_count": 1, "ask_reasons": {"proof_conflict": 1},
     }
     assert report["cost_time"] == {
         "input_tokens": 100, "output_tokens": 25, "total_tokens": 125,
@@ -83,6 +84,16 @@ def test_replay_accepts_nested_ledger_payload_and_unknown_measurements():
     assert report["harness"]["errors"] == 1
     assert report["cost_time"]["total_tokens"] is None
     assert report["coverage"]["cost_observed"] is False
+
+
+def test_replay_bounds_ask_reason_cardinality_and_reads_nested_delivery_reason():
+    report = R.summarize([
+        {"event_type": "skill_load_completed", "status": "denied", "reason": "customer-secret"},
+        {"event_type": "skill_load_completed", "status": "ask",
+         "delivery": {"reason": "closure_incomplete"}},
+    ])
+    assert report["routing"]["ask_count"] == 2
+    assert report["routing"]["ask_reasons"] == {"closure_incomplete": 1, "unknown": 1}
 
 
 def test_json_loader_supports_jsonl_and_json_object(tmp_path):
