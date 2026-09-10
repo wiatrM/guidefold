@@ -3562,6 +3562,73 @@ def cmd_validate(a, root, cfg):
     print(f"guidefold validate: {len(skills)} skills, {len(errors)} errors")
     sys.exit(1 if errors else 0)
 
+def cmd_procedure(a, root, cfg):
+    """S20: deterministic procedure contract and optional, explicit local verifier run.
+
+    The hosted worker never executes client code.  An owner may opt into ``--run`` locally
+    after the structural checks pass; the verifier path is resolved inside the repository and
+    receives no network or secret injection from Guidefold.
+    """
+    raw = Path(a.skill)
+    skill_md = (root / raw).resolve() if not raw.is_absolute() else raw.resolve()
+    try:
+        skill_md.relative_to(root.resolve())
+    except ValueError:
+        print("ERROR procedure path must stay inside the repository")
+        sys.exit(2)
+    if not skill_md.is_file() or skill_md.name != "SKILL.md":
+        print(f"ERROR procedure file not found: {a.skill}")
+        sys.exit(2)
+    text = skill_md.read_text(encoding="utf-8")
+    fm = frontmatter(skill_md)
+    body = FM.sub("", text, count=1) if FM.match(text) else text
+    headings = {m.group(1).strip().lower() for m in re.finditer(r"^#{2,3}\s+(.+?)\s*$", body, re.M)}
+    required = ("inputs", "outputs", "preconditions", "steps", "verification")
+    missing = [h for h in required if h not in headings]
+    steps = re.findall(r"^\s*(?:\d+[.)]|step\s+\d+)\s+.+$", body, re.I | re.M)
+    errors = [f"missing section: {h}" for h in missing]
+    if not steps:
+        errors.append("steps section must contain at least one ordered step")
+    md = fm.get("metadata") or {}
+    verifier_value = str(md.get("verifier", "")).strip()
+    verifier = None
+    if verifier_value:
+        verifier = (root / verifier_value).resolve()
+        try:
+            verifier.relative_to(root.resolve())
+        except ValueError:
+            errors.append("metadata.verifier must stay inside the repository")
+            verifier = None
+        if verifier is not None and not verifier.is_file():
+            errors.append(f"metadata.verifier not found: {verifier_value}")
+    if getattr(a, "run", False) and verifier is None:
+        errors.append("--run requires metadata.verifier pointing to a file")
+    result = {"schema": "guidefold-procedure-verification-v1", "skill": str(skill_md.relative_to(root)),
+              "sections": sorted(headings), "step_count": len(steps), "verifier": verifier_value or None,
+              "status": "failed" if errors else "passed", "errors": errors}
+    if not errors and getattr(a, "run", False):
+        command = [sys.executable, str(verifier)] if verifier.suffix == ".py" else [str(verifier)]
+        try:
+            completed = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=30)
+            result["verifier_exit_code"] = completed.returncode
+            result["verifier_output"] = (completed.stdout + completed.stderr)[-4000:]
+            if completed.returncode != 0:
+                result["status"] = "failed"
+                result["errors"].append(f"verifier exited {completed.returncode}")
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            result["status"] = "failed"
+            result["errors"].append(f"verifier could not complete: {exc}")
+    if getattr(a, "json", False):
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print(f"guidefold procedure: {result['status']} ({result['step_count']} ordered step(s))")
+        for error in result["errors"]:
+            print("ERROR", error)
+        if result.get("verifier_exit_code") is not None:
+            print(f"verifier exit: {result['verifier_exit_code']}")
+    sys.exit(0 if result["status"] == "passed" else 1)
+
+
 def _validate_errors(root, cfg):
     """Core CONVENTIONS.md enforcement, split out of cmd_validate so `doctor` can reuse it
     without duplicating the logic or triggering cmd_validate's sys.exit. Returns
@@ -9473,6 +9540,10 @@ def main():
                           "for every skill missing one, mined from the SKILL.md body -- never "
                           "written to a file. Default validate output is unaffected.")
     va.add_argument("--json", action="store_true", help="with --suggest, machine-readable output")
+    proc = sub.add_parser("procedure", help="S20: verify explicit runbook sections and an optional local verifier")
+    proc.add_argument("skill", metavar="SKILL.md", help="path to the procedure SKILL.md inside this repository")
+    proc.add_argument("--run", action="store_true", help="run metadata.verifier locally after structural checks")
+    proc.add_argument("--json", action="store_true")
     ev = sub.add_parser("eval", help="E7.5: run --queries through the product path and report ranking/injection metrics; optionally gate on a regression vs --baseline")
     ev.add_argument("--queries", required=True, help="golden-format directory or single .yaml/.yml file (tests/golden/README.md schema), or a single .jsonl file of unlabelled {query, node} objects")
     ev.add_argument("--k", type=int, default=4, help="injection cap for completeness@k/all_required@k/distractor_rate@k and Router.select's k (default 4, matching K_CARDS)")
