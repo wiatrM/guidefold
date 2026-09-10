@@ -94,4 +94,3 @@ def test_json_loader_supports_jsonl_and_json_object(tmp_path):
     wrapped = tmp_path / "events.json"
     wrapped.write_text(json.dumps({"events": [event]}), encoding="utf-8")
     assert len(R._event_rows(wrapped)) == 1
-

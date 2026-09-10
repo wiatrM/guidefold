@@ -26,4 +26,3 @@ can reproduce it.
 The implementation and tests are regression tooling. A real E6.7 result still
 requires frozen tasks, a hidden verifier or independent evaluators, and explicit
 unknown coverage.
-
