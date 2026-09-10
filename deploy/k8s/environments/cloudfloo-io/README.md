@@ -1,5 +1,53 @@
 # guidefold.cloudfloo.io — deployment runbook
 
+## ArgoCD adoption and the why/how/value landing — 2026-09-09 (current)
+
+The release is now managed by ArgoCD. `Application/guidefold` in namespace
+`argocd` under its own `AppProject`, automated sync with prune and selfHeal,
+destination namespace `guidefold`. First sync reported **Synced**; health is
+**Degraded**, which is the pre-existing API crash described below and not a
+result of this change.
+
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627`,
+built by `publish-images.yml` from merge commit `b195845`. Rollback image:
+`sha256:2b29c9484b9c102afa5d23c4762c1b61c76ea118db1333ab6b1ea86372f8989e`
+(Helm revision 12, material 3D).
+
+The landing page now answers why, how and what a team gets, in that order. The
+3D pyramid is replaced by a flat scope ladder with readable organisation and
+skill names. A ten-second camera flight generated with Seedance 2.0 sits behind
+the page with its playhead tied to scroll. Poster-first: reduced motion,
+Save-Data, a decoder error, a missing file or no `canplay` inside eight seconds
+all leave the still in place with no layout shift.
+
+The Application pins `targetRevision` to the tag `deploy-cloudfloo-chart-r12`,
+not `main`. Rendering the chart on main fails with
+`workos.clientID is required when auth=workos`, and the live ConfigMap is
+`immutable: true`, so a render that adds `WORKOS_CLIENT_ID` and
+`GUIDEFOLD_PUBLIC_URL` could not be applied in place either. Rendering the
+tagged chart with the release's own values differs from the live manifest by a
+single line, the UI image; that diff was checked before applying.
+
+Three things are needed to move the Application back to `main`, and the first
+two also fix the API:
+
+1. A real `workos.clientID` and `publicURL` in the values.
+2. The `guidefold-workos` secret created in the namespace; it does not exist.
+3. The immutable `ConfigMap/guidefold` deleted so it can be recreated.
+
+The API deployment has been in CrashLoopBackOff for 34 hours, failing on
+`workos_requires_api_key_and_client_id`. It predates this deploy and is
+unrelated to the UI.
+
+Verified after sync: UI rollout 2/2, both pods on the new digest, public root
+200 serving entry `/assets/index-D_C6sqQn.js`, `hero-flight.mp4` and
+`hero-poster.webp` 200. Gates before merge: typecheck, build, contracts,
+321 unit tests across 34 files, 7 landing browser tests, axe with zero
+violations and zero horizontal overflow at 390 and 1440. Playhead against
+scroll measured in Chromium at 1440 and WebKit at 390. Repository CI on the
+pull request was bypassed at the owner's explicit instruction.
+
+
 Target: the existing ArgoCD-managed cluster at `192.168.8.128` (kubeconfig supplied
 by the owner out of band), temporary domain `guidefold.cloudfloo.io`. Per
 [ADR-0034](../../../docs/adr/ADR-0034-github-app-oauth-and-chrome-extension.md),
