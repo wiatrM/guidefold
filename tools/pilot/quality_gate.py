@@ -201,7 +201,9 @@ def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | No
         arms[arm] = {"attempts": len(subset), "known_outcomes": known, "unknown": unknown,
                      "unknown_rate": (unknown / len(subset) if subset else None),
                      "task_success_rate": rate, "harmful_loads": harmful,
-                     "harmful_load_upper_95": _wilson_upper(harmful, len(subset)),
+                     # Unknown harmful-load observations are excluded from the denominator;
+                     # treating them as safe attempts would make the upper bound optimistic.
+                     "harmful_load_upper_95": _wilson_upper(harmful, harmful_observed),
                      "useful_deliveries": useful,
                      "harmful_observed": harmful_observed,
                      "harmful_unknown": len(subset) - harmful_observed,

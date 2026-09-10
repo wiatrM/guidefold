@@ -120,3 +120,12 @@ def test_quality_gate_marks_missing_usefulness_as_inconclusive():
     assert report["verdict"] == "inconclusive"
     assert report["arms"]["map+gate+evolution"]["useful_coverage"] is None
     assert any("useful-delivery" in item for item in report["missing_evidence"])
+
+
+def test_harmful_bound_excludes_unknown_observations_without_calling_them_safe():
+    report = quality_gate.evaluate([
+        {"task_id": "t1", "arm": "flat", "outcome": "success", "harmful_load": None},
+        {"task_id": "t1", "arm": "map+gate+evolution", "outcome": "success", "harmful_load": None},
+    ], [{"harmful": True, "expected_action": "ASK", "actual_action": "ASK"} for _ in range(100)])
+    assert report["arms"]["flat"]["harmful_load_upper_95"] is None
+    assert report["arms"]["map+gate+evolution"]["harmful_load_upper_95"] is None
