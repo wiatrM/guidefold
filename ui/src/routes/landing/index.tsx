@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {Collapsible} from '@base-ui/react/collapsible';
-import {ArrowRight,ArrowUpRight,CaretRight} from '@phosphor-icons/react';
+import {ArrowDown,ArrowRight,ArrowUpRight,CaretRight} from '@phosphor-icons/react';
 import {buttonVariants} from '../../components/ui/button';
+import {Card,CardContent,CardHeader,CardTitle} from '../../components/ui/card';
 import {FilmBackdrop} from './FilmBackdrop';
 import {IntroFigure} from './IntroFigure';
 import {DemoDialog} from './DemoDialog';
@@ -80,13 +81,17 @@ export default function Landing(){
     <div className={css.heroCopy}>
      <p className={css.eyebrow}>Instruction library for coding agents</p>
      <h1 id="hero-title">Team rules. Right where agents work.</h1>
-     <p className={css.lede}>Your coding agent can read the repo. Give it the instructions that apply to the code it's changing.</p>
+     <p className={css.lede}>Rules stay next to the code. Guidefold copies the reusable part up the organisation pyramid, then gives each agent the few rules it needs.</p>
      <div id="demo" className={css.heroActions}>
       <a data-slot="button" className={buttonVariants({className:css.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
       <DemoDialog onOpenChange={setDemoOpen}/>
      </div>
      <p className={css.trust}>Open source today. The hosted service is planned.</p>
      <a className={css.textLink} href="#research-results">New research: +8.53 pp Recall@10 on SRA-Bench <ArrowRight aria-hidden="true"/></a>
+     <a className={css.scrollCue} href="#why" aria-label="Scroll down to see why Guidefold exists">
+      <span className={css.scrollCueIcon} aria-hidden="true"><ArrowDown weight="bold"/></span>
+      <span>Scroll to see how it works</span>
+     </a>
     </div>
    </section>
 
@@ -130,11 +135,10 @@ export default function Landing(){
      <h2 id="value-title">What your team gets</h2>
      <p className={css.answer}>Day to day: a platform team gets one place to keep the rules, an owner gets a review step before anything reaches an agent, and a developer gets the right instruction without asking for it.</p>
     </div>
-    <div className={css.roles}>{roles.map(item=><article key={item.role} className={css.roleCard}>
-     <p className={css.roleLabel}>{item.role}</p>
-     <p className={css.rolePromise}>{item.promise}</p>
-     <p className={css.roleDetail}>{item.detail}</p>
-    </article>)}</div>
+    <div className={css.roles}>{roles.map(item=><Card key={item.role} className={css.roleCard}>
+     <CardHeader className={css.roleHeader}><p className={css.roleLabel}>{item.role}</p><CardTitle className={css.rolePromise}>{item.promise}</CardTitle></CardHeader>
+     <CardContent><p className={css.roleDetail}>{item.detail}</p></CardContent>
+    </Card>)}</div>
    </section>
 
    <ResearchEvidence/>

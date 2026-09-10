@@ -24,11 +24,12 @@
 .planeValue{background-image:url(/assets/landing/plane-value.webp);opacity:calc(clamp(0,(var(--p) - .1)/.35,1) * var(--plane-opacity-value));}
 
 /* ------------------------------------------------------------------- header */
-.nav{position:sticky;top:var(--zero);z-index:var(--layer-header);display:flex;align-items:center;justify-content:space-between;gap:var(--landing-nav-gap);flex-wrap:var(--landing-nav-wrap);min-height:var(--landing-nav-height);padding:var(--landing-nav-pad) var(--zero);background:var(--landing-nav-ground);border-bottom:var(--border-width) solid var(--line);}
+.nav{position:sticky;top:var(--space-2);z-index:var(--layer-header);display:flex;align-items:center;justify-content:space-between;gap:var(--landing-nav-gap);flex-wrap:var(--landing-nav-wrap);min-height:var(--landing-nav-height);margin-bottom:var(--space-3);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);background:var(--landing-nav-ground);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);box-shadow:var(--shadow-control);}
 .brand{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--stone-100);font:var(--weight-semibold) var(--landing-brand)/var(--line-height-heading) var(--font-display);text-decoration:none;white-space:nowrap;}
 .brand img{width:var(--landing-mark-size);height:var(--landing-mark-size);object-fit:contain;}
 .nav nav{display:var(--landing-nav-display);flex-basis:var(--landing-nav-basis);align-items:center;gap:var(--landing-nav-gap);}
-.nav nav a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--touch-height);color:var(--stone-300);font-size:var(--landing-nav-font);text-decoration:none;white-space:nowrap;}
+.nav nav a{position:relative;display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--touch-height);color:var(--stone-300);font-size:var(--landing-nav-font);text-decoration:none;white-space:nowrap;}
+.nav nav a::after{position:absolute;right:0;bottom:var(--space-1);left:0;height:var(--border-width);background:var(--survey-teal);content:"";transform:scaleX(0);transform-origin:right center;transition:transform var(--duration) var(--ease-out);}
 
 /* --------------------------------------------------------------- one button */
 .action,.actionQuiet,.navAction{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:var(--landing-control);padding:var(--space-2) var(--space-4);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);font-family:var(--font-body);font-size:var(--font-size-body);font-weight:var(--weight-semibold);line-height:var(--line-height-compact);white-space:nowrap;text-decoration:none;cursor:pointer;background:var(--graphite-850);color:var(--stone-100);box-shadow:var(--shadow-control);transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),color var(--duration) var(--ease),transform var(--duration) var(--ease-out);}
@@ -39,8 +40,9 @@
 .action:active:not(:disabled),.navAction:active{transform:scale(var(--press-scale));}
 @media(hover:hover) and (pointer:fine){
  .page a.action:hover,.page button.action:not(:disabled):hover{background:var(--stone-300);border-color:var(--stone-300);}
- .page a.actionQuiet:hover,.page button.actionQuiet:hover,.navAction:hover{background:var(--graphite-800);border-color:var(--line-hover);}
- .nav nav a:hover{color:var(--stone-100);}
+ .page a.actionQuiet:hover,.page button.actionQuiet:hover,.navAction:hover{background:var(--graphite-800);border-color:var(--line-hover);box-shadow:0 0 0 3px var(--line),0 0 22px var(--line-hover);}
+ .nav nav a:hover{color:var(--stone-100);text-shadow:0 0 16px var(--line-hover);}
+ .nav nav a:hover::after{transform:scaleX(1);transform-origin:left center;}
 }
 
 /* --------------------------------------------------------------------- hero */
@@ -58,6 +60,12 @@
 .page .lede{margin:var(--space-4) var(--zero) var(--zero);max-width:var(--landing-copy-width);font-size:var(--landing-lede);color:var(--stone-300);}
 .heroActions{display:grid;grid-template-columns:var(--landing-action-columns);gap:var(--space-3);margin-top:var(--space-5);scroll-margin-top:var(--space-7);}
 .page .trust{margin:var(--space-3) var(--zero) var(--zero);font-size:var(--font-size-small);color:var(--stone-300);}
+.scrollCue{display:inline-flex;align-items:center;gap:var(--space-2);align-self:flex-start;margin-top:var(--space-6);color:var(--stone-100);font-size:var(--font-size-small);font-weight:var(--weight-medium);letter-spacing:var(--tracking-label);text-decoration:none;text-transform:uppercase;}
+.scrollCueIcon{display:inline-flex;align-items:center;justify-content:center;width:var(--touch-height);height:var(--touch-height);border:var(--border-width) solid var(--line-strong);border-radius:50%;color:var(--survey-teal);animation:scrollCueBob 1.8s var(--ease-out) infinite,scrollCueRing 1.8s var(--ease-out) infinite;}
+.scrollCue svg{width:var(--icon-size);height:var(--icon-size);}
+@media(hover:hover) and (pointer:fine){.scrollCue:hover{color:var(--survey-teal);}.scrollCue:hover .scrollCueIcon{border-color:var(--survey-teal);}}
+@keyframes scrollCueBob{0%,100%{transform:translateY(0);}50%{transform:translateY(var(--space-1));}}
+@keyframes scrollCueRing{0%,100%{box-shadow:0 0 0 0 transparent;}50%{box-shadow:0 0 0 4px var(--line-strong);}}
 /* One bounded entrance, above the fold only, cancelled the moment focus arrives. */
 .heroCopy>*{animation:enter var(--landing-enter-duration) var(--ease-out) both;}
 .heroCopy>*:nth-child(1){animation-delay:var(--landing-enter-delay-1);}
@@ -69,6 +77,12 @@
 
 /* --------------------------------------------------------- editorial blocks */
 .why,.value{position:relative;padding:var(--landing-section-padding) var(--zero);}
+.why .copy,.value .copy,.roles,.howIntro,.howFigure,.howDetail{opacity:1;transform:none;}
+.why[data-in-view=true] .copy,.value[data-in-view=true] .copy,.value[data-in-view=true] .roles,.how[data-in-view=true] .howIntro,.how[data-in-view=true] .howFigure,.how[data-in-view=true] .howDetail{animation:scrollReveal var(--landing-enter-duration) var(--ease-out) both;}
+.value[data-in-view=true] .roles{animation-delay:120ms;}
+.how[data-in-view=true] .howFigure{animation-delay:100ms;}
+.how[data-in-view=true] .howDetail{animation-delay:180ms;}
+@keyframes scrollReveal{from{opacity:0;transform:translateY(var(--space-4));}to{opacity:1;transform:none;}}
 .copy{max-width:var(--landing-measure);}
 .copy h2+p{margin-top:var(--space-4);}
 .page .answer{font-size:var(--landing-lede);color:var(--stone-100);}
@@ -129,7 +143,9 @@
 
 /* -------------------------------------------------------------------- value */
 .roles{display:grid;grid-template-columns:var(--landing-value-columns);gap:var(--space-4);margin-top:var(--space-5);}
-.roleCard{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-4);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-850);box-shadow:var(--shadow-card);transition:border-color var(--duration-menu) var(--ease);}
+.roleCard{display:flex;flex-direction:column;padding:var(--zero);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-850);box-shadow:var(--shadow-card);transition:border-color var(--duration-menu) var(--ease);}
+.roleHeader{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-4) var(--space-4) var(--zero);}
+.roleCard [data-slot=card-content]{padding:var(--space-3) var(--space-4) var(--space-4);}
 .page .roleLabel{margin:var(--zero);color:var(--survey-teal);font-size:var(--font-size-small);font-weight:var(--weight-medium);letter-spacing:var(--tracking-label);line-height:var(--line-height-solid);text-transform:uppercase;}
 .page .rolePromise{margin:var(--zero);color:var(--stone-100);font-size:var(--landing-lede);}
 .page .roleDetail{margin:var(--zero);color:var(--stone-300);}
@@ -223,6 +239,9 @@
  * drift beyond the resting composition, and the route rule already drawn. */
 @media(prefers-reduced-motion:reduce){
  .heroCopy>*{animation:none;}
+ .scrollCueIcon{animation:none;}
+ .why .copy,.value .copy,.roles,.howIntro,.howFigure,.howDetail{opacity:1;transform:none;}
+ .why[data-in-view=true] .copy,.value[data-in-view=true] .copy,.value[data-in-view=true] .roles,.how[data-in-view=true] .howIntro,.how[data-in-view=true] .howFigure,.how[data-in-view=true] .howDetail{animation:none;}
  .action:active:not(:disabled),.navAction:active{transform:none;}
  .action,.navAction,.roleCard,.tab,.replay{transition-duration:var(--duration-reduced);}
  .heroVideo,.backdrop,.cinema{transition-duration:var(--duration-reduced);}
