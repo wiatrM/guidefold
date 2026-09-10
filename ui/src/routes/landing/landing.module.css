@@ -30,6 +30,14 @@
 .nav nav{display:var(--landing-nav-display);flex-basis:var(--landing-nav-basis);align-items:center;gap:var(--landing-nav-gap);}
 .nav nav a{display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--touch-height);color:var(--stone-300);font-size:var(--landing-nav-font);text-decoration:none;white-space:nowrap;}
 
+/* A hint, not a control: decorative, aria-hidden, never a click target. Fades
+   out the instant the visitor scrolls at all, and is gone outright under
+   reduced motion (the media query above) since nothing here should bounce. */
+.cue{position:fixed;left:var(--half);bottom:var(--space-5);z-index:var(--layer-header);transform:translateX(var(--negative-half));display:flex;flex-direction:column;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border:var(--border-width) solid var(--line);border-radius:var(--radius);background:var(--landing-nav-ground);color:var(--stone-300);font-size:var(--font-size-small);letter-spacing:var(--tracking-label);text-transform:uppercase;pointer-events:none;opacity:1;transition:opacity var(--duration-drawer) var(--ease-out);}
+.cue[data-hidden]{opacity:var(--zero);}
+.cueIcon{animation:cueBounce var(--duration-shine) ease-in-out infinite;}
+@keyframes cueBounce{0%,100%{transform:translateY(var(--zero));}50%{transform:translateY(var(--landing-cue-rise));}}
+
 /* --------------------------------------------------------------- one button */
 .action,.actionQuiet,.navAction{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:var(--landing-control);padding:var(--space-2) var(--space-4);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);font-family:var(--font-body);font-size:var(--font-size-body);font-weight:var(--weight-semibold);line-height:var(--line-height-compact);white-space:nowrap;text-decoration:none;cursor:pointer;background:var(--graphite-850);color:var(--stone-100);box-shadow:var(--shadow-control);transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),color var(--duration) var(--ease),transform var(--duration) var(--ease-out);}
 .navAction{min-height:var(--touch-height);padding:var(--space-2) var(--space-3);font-size:var(--landing-nav-font);}
@@ -44,7 +52,7 @@
 }
 
 /* --------------------------------------------------------------------- hero */
-.hero{position:relative;isolation:isolate;display:flex;align-items:var(--landing-hero-copy-align);height:var(--landing-media-band);min-height:var(--landing-hero-min);margin-top:var(--space-5);border-radius:var(--landing-radius);overflow:hidden;}
+.hero{position:relative;isolation:isolate;display:flex;align-items:var(--landing-hero-copy-align);min-height:max(var(--landing-media-band),var(--landing-hero-min));margin-top:var(--space-5);border-radius:var(--landing-radius);overflow:hidden;}
 .heroMedia{position:absolute;inset:var(--landing-media-inset) var(--zero);z-index:-2;transform:translate3d(var(--zero),calc((var(--p) - .5) * var(--amp-hero-media)),var(--zero));opacity:calc(1 - clamp(0,(var(--p) - .55)/.45,1) * .45);}
 .heroPoster,.heroVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-hero-object);}
 .heroVideo{opacity:0;transition:opacity var(--duration-drawer) var(--ease-out);}
@@ -74,6 +82,34 @@
 .page .answer{font-size:var(--landing-lede);color:var(--stone-100);}
 .why p{margin:var(--zero) var(--zero) var(--space-4);}
 .keyline{display:var(--landing-keyline-display);position:absolute;top:var(--zero);left:var(--zero);width:var(--full);height:var(--border-width);background:var(--survey-teal);transform-origin:left;transform:scaleX(clamp(.2,(var(--p) - .05)/.25,1));}
+
+/* -------------------------------------------------------------- pinned reveal
+   A track is a tall wrapper; the section inside it is the sticky panel that
+   holds in the viewport for the track's extra height while its own content
+   reveals. `--p` on the panel runs 0 at the instant it pins to 1 at the
+   instant it releases (useTrackProgress in scroll.ts), so every threshold
+   below is a fraction of that pinned dwell, not of the page. Every reveal
+   rule is gated behind `[data-p-ready]`, which JS only sets once it is
+   actually driving `--p`: reduced motion, Save-Data and no-JS all fall
+   through to the plain resting rule (opacity 1, no transform), and the track
+   itself collapses to auto height under reduced motion (tokens.css), so
+   nothing pins and nothing hides.
+   `.panel` must cascade after `.why,.value` above: both are single-class
+   selectors of equal specificity, and `.panel`'s `position:sticky` has to
+   win over their `position:relative` for the pin to take effect. */
+.track{height:var(--landing-track-height);}
+/* Pins just below the sticky nav, not under it: the nav is sticky at top:0 too,
+   and two elements both stuck at the same top would overlap, with the nav's
+   own stacking context painting over this panel's content. */
+.panel{position:sticky;top:var(--landing-nav-live-height);min-height:calc(var(--viewport) - var(--landing-nav-live-height));display:flex;flex-direction:column;justify-content:center;}
+
+.why .copy>*,.value .copy>*,.why .beats>div,.value .roles>*{opacity:1;transform:none;}
+[data-p-ready].why .copy>*:nth-child(1),[data-p-ready].value .copy>*:nth-child(1){opacity:clamp(0,calc(var(--p)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc(var(--p)/.3),1)) * var(--landing-reveal-rise)));}
+[data-p-ready].why .copy>*:nth-child(2),[data-p-ready].value .copy>*:nth-child(2){opacity:clamp(0,calc((var(--p) - .06)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc((var(--p) - .06)/.3),1)) * var(--landing-reveal-rise)));}
+[data-p-ready].why .beats>div:nth-child(1),[data-p-ready].value .roles>*:nth-child(1){opacity:clamp(0,calc((var(--p) - .12)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc((var(--p) - .12)/.3),1)) * var(--landing-reveal-rise)));}
+[data-p-ready].why .beats>div:nth-child(2),[data-p-ready].value .roles>*:nth-child(2){opacity:clamp(0,calc((var(--p) - .18)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc((var(--p) - .18)/.3),1)) * var(--landing-reveal-rise)));}
+[data-p-ready].why .beats>div:nth-child(3),[data-p-ready].value .roles>*:nth-child(3){opacity:clamp(0,calc((var(--p) - .24)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc((var(--p) - .24)/.3),1)) * var(--landing-reveal-rise)));}
+[data-p-ready].why .copy>*:nth-child(4){opacity:clamp(0,calc((var(--p) - .3)/.3),1);transform:translateY(calc((1 - clamp(var(--zero),calc((var(--p) - .3)/.3),1)) * var(--landing-reveal-rise)));}
 
 /* ---------------------------------------------------------------------- how */
 .how{position:relative;display:grid;grid-template-columns:var(--landing-mechanism-columns);grid-template-rows:var(--landing-how-rows);align-items:start;gap:var(--space-6) var(--landing-section-padding);padding:var(--landing-section-padding) var(--zero);scroll-margin-top:var(--space-4);}
@@ -214,6 +250,11 @@
  .question[data-pointer-motion=true] .questionPanel,.question[data-pointer-motion=true] .questionTrigger>svg{transition:none;}
  [data-p-ready] .routeLine{stroke-dashoffset:var(--zero);}
  [data-p-ready] .waypointNear,[data-p-ready] .waypointFar{opacity:1;}
+ /* The track's own height already collapses to auto (tokens.css); the sticky
+    panel's forced viewport-height minimum has to collapse with it, or a short
+    section leaves a tall empty gap even though nothing pins any more. */
+ .panel{position:static;min-height:var(--zero);}
+ .cue{display:none;}
 }
 
 /* ------------------------------------------------------------- scope pyramid */
@@ -247,3 +288,6 @@
 /* The hero's own scrim would draw a vertical seam across a full-viewport film, so the
    film layer carries the darkening for every section once it is running. */
 :global(html[data-film="on"]) .heroScrim{opacity:var(--zero);}
+/* The still is the poster for the film, not a layer under it: once the film paints,
+   the still is removed so two images never blend into each other. */
+:global(html[data-film="on"]) .filmPoster{opacity:var(--zero);}

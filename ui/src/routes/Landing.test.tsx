@@ -37,9 +37,9 @@ describe('public landing',()=>{
   render(<Landing/>);
   expect(screen.getAllByRole('heading',{level:1})).toHaveLength(1);
   const headings=screen.getAllByRole('heading',{level:2}).map(node=>node.textContent);
-  expect(headings.slice(0,3)).toEqual(['Why we built it','How it works','What your team gets']);
-  expect(headings.indexOf('Get availability updates')).toBeGreaterThan(headings.indexOf('What your team gets'));
-  expect(headings.indexOf('Before you join')).toBeGreaterThan(headings.indexOf('Get availability updates'));
+  expect(headings.slice(0,3)).toEqual(["Let's not make every team rediscover this from scratch",'What Guidefold does about it','What your team gets']);
+  expect(headings.indexOf('Want to know when hosting is ready?')).toBeGreaterThan(headings.indexOf('What your team gets'));
+  expect(headings.indexOf('Things you are probably wondering')).toBeGreaterThan(headings.indexOf('Want to know when hosting is ready?'));
  });
 
  it('keeps every protected destination and the availability statements',()=>{
@@ -58,7 +58,7 @@ describe('public landing',()=>{
   expect(container.querySelector('#waitlist')).toBeInTheDocument();
   for(const id of ['question-1','question-2','question-3','privacy'])expect(container.querySelector('#'+id)).toBeInTheDocument();
   expect(screen.getByText('Open source today.')).toBeInTheDocument();
-  expect(screen.getByText('Paid hosting is planned.')).toBeInTheDocument();
+  expect(screen.getByText('Hosting is planned.')).toBeInTheDocument();
   expect(screen.getByText('Open-source tools. Hosted service planned.')).toBeInTheDocument();
   expect(document.title).toBe('Guidefold | Team instructions for coding agents');
   expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main');
@@ -66,7 +66,7 @@ describe('public landing',()=>{
 
  it('keeps all four answers in the DOM with every panel closed on load',()=>{
   render(<Landing/>);
-  for(const question of ['Is Guidefold available now?','What will hosting cost?','Which coding tools can I use?','How is my email used?'])
+  for(const question of ['Can I use it today?','What will hosting cost?','Does it work with the tool my team already uses?','How is my email used?'])
    expect(screen.getByRole('button',{name:question})).toHaveAttribute('aria-expanded','false');
   expect(screen.getByText(/\$99 per organisation per month/)).toBeInTheDocument();
   expect(screen.getByText(/Unconfirmed signups are scheduled for deletion after 30 days/)).toBeInTheDocument();

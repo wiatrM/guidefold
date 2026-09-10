@@ -38,7 +38,7 @@
 }
 @media(max-width:1080px){:root{--funnel-metric-columns:repeat(3,minmax(0,1fr));--filter-form-columns:minmax(0,1fr);--filter-form-areas:"search" "filters" "actions";--rail-width:224px;--page-padding:24px;--two-columns:minmax(0,1fr);--aside-columns:minmax(0,1fr);--filter-columns:repeat(2,minmax(0,1fr));--field-columns:repeat(2,minmax(0,1fr));--steps-columns:repeat(2,minmax(0,1fr));--metric-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){:root{--transparent:transparent;--desktop-display:none;--mobile-display:flex;--rail-padding:16px;--context-padding:8px 0;--shell-columns:minmax(0,1fr);--shell-collapsed-columns:minmax(0,1fr);--rail-height:auto;--rail-position:static;--rail-columns:repeat(2,minmax(0,1fr));--page-padding:16px;--filter-columns:minmax(0,1fr);--field-columns:minmax(0,1fr);--steps-columns:minmax(0,1fr);--metric-columns:minmax(0,1fr);--rail-border:none;--rail-bottom:var(--border-width) solid var(--line-strong);--control-height:44px;--font-size-title:28px;--scroll-offset:16px;--delivery-bar-align:flex-start;--delivery-bar-direction:column;--delivery-bar-flex:none;--delivery-value-wrap:normal;--delivery-value-overflow:anywhere;--funnel-metric-columns:repeat(2,minmax(0,1fr));}}
-@media(prefers-reduced-motion:reduce){:root{--transparent:transparent;--duration:0ms;}}
+@media(prefers-reduced-motion:reduce){:root{--transparent:transparent;--duration:0ms;--landing-track-height:auto;}}
 
 /* ---------------------------------------------------------------------------
  * Landing v2 - WHY / HOW / VALUE.
@@ -66,7 +66,11 @@
  --landing-video-ratio:16/9;
 
  --landing-nav-height:80px;
- --landing-film-opacity:.62;
+ --landing-nav-live-height:var(--landing-nav-height);
+ --landing-track-height:190vh;
+ --landing-reveal-rise:28px;
+ --landing-cue-rise:6px;
+ --landing-film-opacity:1;
  --landing-film-scrim:linear-gradient(90deg,rgba(7,9,12,.88) 0%,rgba(7,9,12,.66) 42%,rgba(7,9,12,.44) 100%),linear-gradient(180deg,rgba(7,9,12,.46) 0%,rgba(7,9,12,.68) 55%,rgba(7,9,12,.9) 100%);
  --landing-scope-width-0:100%;
  --landing-scope-width-1:82%;
@@ -109,11 +113,11 @@
  --landing-hero-items:flex-start;
  --landing-action-columns:repeat(2,max-content);
  --landing-how-copy-column:1;
- --landing-how-figure-column:2;
- --landing-how-rows:min-content 1fr;
- --landing-how-intro-row:1;
- --landing-how-figure-row:1/span 2;
- --landing-how-detail-row:2;
+ --landing-how-figure-column:1;
+ --landing-how-rows:none;
+ --landing-how-intro-row:auto;
+ --landing-how-figure-row:auto;
+ --landing-how-detail-row:auto;
  --landing-hero-padding:48px;
  --landing-hero-scrim:linear-gradient(90deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.78) 30%,rgba(7,9,12,.06) 68%,rgba(7,9,12,.06) 100%);
  --landing-control:48px;
@@ -121,7 +125,7 @@
  --landing-control-top:auto;
  --landing-control-bottom:16px;
 
- --landing-mechanism-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-mechanism-columns:minmax(0,1fr);
  --landing-value-columns:repeat(3,minmax(0,1fr));
  --landing-availability-columns:repeat(2,minmax(0,1fr));
  --landing-availability-rule:var(--border-width) solid var(--line-strong);
@@ -129,7 +133,7 @@
  --landing-band-padding:48px;
  --landing-band-ground:rgba(12,16,20,.72);
  --landing-keyline-display:block;
- --landing-waitlist-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-waitlist-columns:minmax(0,1fr);
  --landing-waitlist-padding:48px;
  --landing-form-columns:minmax(0,1fr) max-content;
  --landing-question-width:900px;
@@ -157,6 +161,7 @@
  --landing-enter-delay-4:120ms;
 }
 @media(max-width:1080px){:root{
+ --landing-track-height:150vh;
  --landing-media-band:62vh;
  --landing-hero-copy-width:100%;
  --landing-hero-copy-align:flex-end;
@@ -174,7 +179,7 @@
  --landing-nav-gap:16px;
 }}
 @media(max-width:720px){:root{
- --landing-film-opacity:.5;
+ --landing-film-opacity:1;
  --landing-film-scrim:linear-gradient(180deg,rgba(7,9,12,.72) 0%,rgba(7,9,12,.82) 55%,rgba(7,9,12,.92) 100%);
  --landing-scope-width-1:100%;
  --landing-scope-width-2:100%;

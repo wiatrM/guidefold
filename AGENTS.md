@@ -16,6 +16,28 @@ Status Proposed nie jest dowodem implementacji; bieżące zlecenie użytkownika 
 Stan wykonania wobec P01–P15: [PIVOT-IMPLEMENTATION](docs/PIVOT-IMPLEMENTATION.md); obowiązujący
 kontrakt API/DB: [API-CONTRACT](docs/API-CONTRACT.md).
 
+## Pozycjonowanie: co sprzedajemy
+
+Decyzja właściciela, 2026-09-09. Obowiązuje w każdym tekście marketingowym, na
+landing page, w README i w deckach. Pełna wersja:
+[guidefold-positioning](.agents/skills/guidefold-positioning/SKILL.md).
+
+Nie sprzedajemy "team rules right where agents work". To jest za generyczne i nic
+nie znaczy. Sprzedajemy problem wielkiej organizacji:
+
+- około **30 000 skilli** w wielu repozytoriach i w monorepo, w wielu folderach,
+  każdy zespół pisze swoje,
+- **duplikacja** tych samych reguł w kilku miejscach,
+- brak **zarządzania**: nikt nie widzi całego zbioru,
+- **ekstrakcja wiedzy w piramidzie organizacji**, od szczegółu do ogółu.
+
+Guidefold to rozwiązuje i automatyzuje: serwis **search i USE**, **wpięcie do
+harnessu** oraz **automatyczne CI**.
+
+Czytelnik ma pięć sekund na poznanie bólu i tego, co rozwiązujemy. Reszta tekstu
+jest drugorzędna. Landing prowadzi jedną kolumną, hero najpierw; układ
+dwukolumnowy został odrzucony przez właściciela.
+
 ## Skille projektu
 
 Workflowy:

@@ -6,16 +6,16 @@ const viewports=[{width:1440,height:900},{width:390,height:844}];
 for(const size of viewports)test('answers why, how and value in order at '+size.width,async({page})=>{
  await page.setViewportSize(size);
  await page.goto('/');
- await expect(page.getByRole('heading',{level:1})).toHaveText('Team rules. Right where agents work.');
+ await expect(page.getByRole('heading',{level:1})).toHaveText('Thirty thousand skills. Nobody knows which four the agent should read.');
  const headings=page.getByRole('heading',{level:2});
- await expect(headings.nth(0)).toHaveText('Why we built it');
- await expect(headings.nth(1)).toHaveText('How it works');
+ await expect(headings.nth(0)).toHaveText("Let's not make every team rediscover this from scratch");
+ await expect(headings.nth(1)).toHaveText('What Guidefold does about it');
  await expect(headings.nth(2)).toHaveText('What your team gets');
  await expect(page.locator('#how-it-works')).toHaveCount(1);
  await expect(page.locator('#waitlist')).toHaveCount(1);
  await expect(page.locator('#demo')).toHaveCount(1);
  await expect(page.getByText('Open source today.',{exact:true})).toBeVisible();
- await expect(page.getByText('Paid hosting is planned.').first()).toBeVisible();
+ await expect(page.getByText('Hosting is planned.').first()).toBeVisible();
  expect(await noHorizontalScroll(page)).toBe(true);
  expect(await axeViolations(page)).toEqual([]);
  await page.screenshot({path:`qa/landing-v2-${size.width}.png`,fullPage:true});
@@ -42,7 +42,7 @@ test('the demo dialog mounts the player only on request and restores focus',asyn
 
 test('every answer ships closed, and the privacy deep link opens its panel',async({page})=>{
  await page.goto('/');
- for(const question of ['Is Guidefold available now?','What will hosting cost?','Which coding tools can I use?','How is my email used?'])
+ for(const question of ['Can I use it today?','What will hosting cost?','Does it work with the tool my team already uses?','How is my email used?'])
   await expect(page.getByRole('button',{name:question})).toHaveAttribute('aria-expanded','false');
  await page.goto('/#privacy');
  await expect(page.getByRole('button',{name:'How is my email used?'})).toHaveAttribute('aria-expanded','true');
