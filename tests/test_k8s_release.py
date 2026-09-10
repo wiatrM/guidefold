@@ -445,3 +445,14 @@ def test_auth_change_versions_immutable_config_and_rolls_consumers(tmp_path, hel
     assert before["metadata"]["name"] != after["metadata"]["name"]
     assert after["data"]["WORKOS_CLIENT_ID"] == "client_production"
     assert after["immutable"] is True
+
+
+def test_workos_https_egress_is_limited_to_api_and_public_tls(tmp_path, helm_values):
+    result = render(tmp_path, helm_values)
+    assert result.returncode == 0, result.stderr
+    docs = [d for d in yaml.safe_load_all(result.stdout) if d]
+    policy = next(d for d in docs if d["kind"] == "NetworkPolicy" and d["metadata"]["name"].endswith("-auth-https"))
+    assert policy["spec"]["podSelector"]["matchLabels"]["app.kubernetes.io/component"] == "api"
+    rule = policy["spec"]["egress"][0]
+    assert rule["ports"] == [{"protocol": "TCP", "port": 443}]
+    assert "169.254.0.0/16" in rule["to"][0]["ipBlock"]["except"]
