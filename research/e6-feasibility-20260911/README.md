@@ -18,6 +18,9 @@ The evaluator file hash is `7de52ae37846b5404f244c58c74bfb6c4e10852d8511beaadb8c
 The Guidefold skill, bridge and nodes are fingerprinted in each arm's
 `run-manifest.json`.
 
+The retained `artifacts/` directory contains both arm result files, manifests, compact bridge
+traces and the quality-gate JSON. It contains no bearer token or full skill body.
+
 ## Paired replay
 
 | Arm | Success | SEARCH | USE | ASK | Delivered body chars | Harness errors | Wall time |
@@ -52,3 +55,13 @@ Use a separate output directory for each arm and retain the manifests and traces
 The quality gate must remain `inconclusive` until E2 conflict/revision rows and
 useful/harmful observations are supplied. The next real run is the frozen E6.7 bank,
 not another hand-written four-task bank.
+
+An independent replay of the retained candidate rows is:
+
+```bash
+python3 tools/pilot/quality_gate.py \
+  --tasks research/e6-feasibility-20260911/artifacts/candidate/agent-results.jsonl
+```
+
+The command intentionally exits `inconclusive` when E2 decisions or useful-delivery labels are
+absent; that is the expected state of this feasibility run.
