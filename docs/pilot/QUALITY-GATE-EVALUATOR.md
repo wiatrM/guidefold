@@ -1,7 +1,8 @@
 # End-to-end quality-gate evaluator
 
-`tools/pilot/quality_gate.py` is the mechanical pre-check for the proof-gated hierarchy
-experiment. It consumes task-level replay rows and, separately, E2 delivery decisions. It does
+`tools/pilot/run_verifiers.py` runs evaluator-only hidden verifiers and emits task-level replay
+rows. `tools/pilot/quality_gate.py` is the mechanical pre-check for the proof-gated hierarchy
+experiment. It consumes those rows and, separately, E2 delivery decisions. It does
 not turn a retrieval hit into a task success and it never turns `unknown` into either success or
 failure.
 
@@ -41,6 +42,12 @@ The command exits `0` only for `pass`; `fail` and `inconclusive` exit `2`, so CI
 missing evidence for a passing experiment.
 
 ```bash
+python3 tools/pilot/run_verifiers.py \
+  --tasks path/to/evaluator-task-bank.json \
+  --workspace-root path/to/workspaces \
+  --arm map+gate+evolution \
+  --output path/to/task-replay.jsonl
+
 python3 tools/pilot/quality_gate.py \
   --tasks path/to/task-replay.jsonl \
   --e2 path/to/e2-decisions.jsonl

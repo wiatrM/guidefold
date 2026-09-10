@@ -27,3 +27,7 @@ export (`/usage/export`, CSV lub JSON), scoring sheet z generycznymi "ramionami"
 vs `without`, albo dwa harnessy) i opcjonalny koszt per import. Nie wymaga zamrożonego
 `protocol_sha256` — służy porównaniom poza sztywnym schematem E6.7. `--synthetic` stemplu każdą
 sekcję jako dane niebędące dowodem z pilota. Testy: `tests/test_pivot_report.py`.
+
+`tools/pilot/run_verifiers.py` uruchamia evaluator-only hidden verifiers w izolowanych katalogach,
+bez shella, z jawnym timeoutem i statusem `unknown` dla błędów harnessu. Jego JSONL jest wejściem
+do `tools/pilot/quality_gate.py`.
