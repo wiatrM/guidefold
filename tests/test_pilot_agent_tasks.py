@@ -74,6 +74,26 @@ def test_agent_runner_scores_verifier_and_trace(tmp_path, monkeypatch):
     assert row["token_samples"] == 1
 
 
+def test_agent_runner_accepts_single_task_json_object(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "_auth_available", lambda: True)
+    root = tmp_path / "workspaces"
+    source = root / "task-1"
+    source.mkdir(parents=True)
+    evaluator = tmp_path / "evaluator"
+    evaluator.mkdir()
+    (evaluator / "verify.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+    tasks = tmp_path / "tasks.jsonl"
+    tasks.write_text(json.dumps({
+        "task_id": "task-1", "query": "create the answer file", "workspace": "task-1",
+        "verifier": ["python3", "verify.py", "{workspace}"],
+    }) + "\n", encoding="utf-8")
+    fake = tmp_path / "fake_pi.py"
+    _fake_pi(fake)
+    rows = runner.run(_args(tasks, root, evaluator, tmp_path / "out", fake, tmp_path / "skill.md", tmp_path / "token"))
+    assert len(rows) == 1
+    assert rows[0]["outcome"] == "success"
+
+
 def test_agent_runner_rejects_workspace_escape_without_running_verifier(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "_auth_available", lambda: True)
     root = tmp_path / "workspaces"

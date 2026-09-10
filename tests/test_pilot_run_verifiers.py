@@ -38,6 +38,18 @@ def test_runner_reports_success_failure_and_timeout(tmp_path):
     assert rows[0]["harmful_load"] is None
 
 
+def test_runner_accepts_single_task_json_object(tmp_path):
+    (tmp_path / "one").mkdir()
+    task_file = tmp_path / "one-task.jsonl"
+    task_file.write_text(json.dumps({
+        "task_id": "one", "workspace": "one", "verifier": [sys.executable, "-c", "pass"]
+    }) + "\n", encoding="utf-8")
+    rows = runner.run(SimpleNamespace(tasks=task_file, workspace_root=tmp_path, arm="flat", timeout=1))
+    assert len(rows) == 1
+    assert rows[0]["task_id"] == "one"
+    assert rows[0]["outcome"] == "success"
+
+
 def test_runner_rejects_workspace_escape_and_invalid_spec(tmp_path):
     rows = invoke([
         {"task_id": "escape", "workspace": "../outside", "verifier": [sys.executable, "-c", "pass"]},

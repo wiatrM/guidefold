@@ -24,7 +24,12 @@ def _load(path: Path) -> tuple[list[dict[str, Any]], str]:
     except json.JSONDecodeError:
         value = [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
     if isinstance(value, dict):
-        value = value.get("tasks") or value.get("rows") or []
+        # A one-row JSONL file is valid JSON too; do not mistake the row for
+        # the optional {"tasks": [...]} wrapper.
+        if any(key in value for key in ("task_id", "id", "workspace", "verifier")):
+            value = [value]
+        else:
+            value = value.get("tasks") or value.get("rows") or []
     if not isinstance(value, list) or any(not isinstance(row, dict) for row in value):
         raise ValueError("task bank must be a JSON list, JSONL, or an object with tasks/rows")
     seen: set[str] = set()
