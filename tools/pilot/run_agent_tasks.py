@@ -240,7 +240,8 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                     "GEMINI_API_KEY", "NODE_PATH",
                 }}
                 env.update({"GUIDEFOLD_URL": args.url, "GUIDEFOLD_TOKEN_FILE": str(args.token_file),
-                            "GUIDEFOLD_TRACE_FILE": str(trace), "PI_OFFLINE": "0"})
+                            "GUIDEFOLD_TRACE_FILE": str(trace), "GUIDEFOLD_TASK_ID": task_id,
+                            "PI_OFFLINE": "0"})
                 started = time.perf_counter()
                 try:
                     proc = subprocess.run(command + [prompt], cwd=workspace, env=env,

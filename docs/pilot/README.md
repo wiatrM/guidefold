@@ -16,6 +16,7 @@ Zakres zastępowania: brak; ten plik nie zmienia treści dokumentów, do któryc
 | [QUALITY-GATE-EVALUATOR.md](QUALITY-GATE-EVALUATOR.md) | Mechaniczna bramka E2 + task success; `unknown` i brak dowodu kończą się `inconclusive`. |
 | `tools/pilot/verify_annotation_packet.py` | Waliduje ślepy pakiet dwóch recenzentów przed i po etykietowaniu; sprawdza hashe, zakresy linii i zgodność, bez rozstrzygania sporów. |
 | `tools/pilot/run_agent_tasks.py` | Uruchamia Pi w izolowanym workspace z ukrytym verifierem, zapisuje task success oraz SEARCH/USE/ASK i rozdziela porażkę zadania od błędu harnessu. |
+| `tools/pilot/bridge.py` | Referencyjny most Pi → Go SEARCH/USE: czyta zamrożony kontekst, obsługuje flat/top-down/bottom-up, redaguje trace i nie dostarcza ciała po `ASK`. |
 | [PIVOT-RUBRIC](PIVOT-RUBRIC.md) | Rubryka U11 z etykietami R/Q/P, progi go/no-go i to, czego syntetyczny run nie dowodzi. |
 
 ## Narzędzia
@@ -33,3 +34,10 @@ sekcję jako dane niebędące dowodem z pilota. Testy: `tests/test_pivot_report.
 `tools/pilot/run_verifiers.py` uruchamia evaluator-only hidden verifiers w izolowanych katalogach,
 bez shella, z jawnym timeoutem i statusem `unknown` dla błędów harnessu. Jego JSONL jest wejściem
 do `tools/pilot/quality_gate.py`.
+
+`tools/pilot/bridge.py` jest jedynym mostem używanym przez runner Pi. Plik `nodes.json` musi
+zawierać co najmniej `repo_id` oraz opcjonalnie `revision`, `cwd` i `scopes`; zapytanie pozostaje
+niezmienione. Strategie hierarchiczne wykonują SEARCH per scope w ustalonej kolejności i łączą
+unikalne karty po wyniku. `proof_gated` przełącza USE na kontrakt 1.2; odpowiedź `ASK` ma pusty
+body. Trace zawiera wyłącznie endpoint, status, czas, identyfikatory i akcję, bez promptu, ciała
+skilla ani tokenu.

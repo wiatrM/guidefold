@@ -97,6 +97,8 @@ python3 tools/pilot/run_agent_tasks.py \
   --evaluator-root evaluator/verifiers \
   --output .guidefold/checks/pilot-map-gate \
   --arm 'map+gate' \
+  --bridge tools/pilot/bridge.py \
+  --nodes-file evaluator/nodes.json \
   --guidefold-skill skills/guidefold/SKILL.md \
   --token-file .guidefold/compose/secrets/api_token \
   --delivery-policy proof_gated
