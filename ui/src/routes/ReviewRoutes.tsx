@@ -10,7 +10,7 @@ import {
   ApiFailure, DegradedNotice, OwnerNote, PartialNotice, RepositoryRequired, asApiError, downloadText,
   formatNumber, readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
-import type {ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
+import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
 import type {Params, View} from '../domain';
 import styles from './ReviewRoutes.module.css';
 
@@ -833,6 +833,51 @@ function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
   </Panel>;
 }
 
+function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
+  const taskObserved = metrics.tasks_observed && metrics.tasks_finished > 0;
+  const safetyObserved = metrics.use_requests > 0 || metrics.ask_count > 0 || metrics.harness_errors > 0;
+  const retrievalObserved = metrics.search_requests > 0 || metrics.use_requests > 0 || metrics.search_results > 0;
+  const averageLatency = metrics.latency_samples > 0 ? Math.round(metrics.latency_ms / metrics.latency_samples) : null;
+  const costObserved = metrics.cost_observed || averageLatency !== null;
+
+  return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<Pulse aria-hidden="true" />}>
+    <MetricRow items={[
+      {
+        label: 'Task success',
+        value: taskObserved ? formatNumber(metrics.tasks_succeeded) + ' / ' + formatNumber(metrics.tasks_finished) : 'Unknown',
+        detail: taskObserved
+          ? formatNumber(metrics.tasks_failed) + ' failed · ' + formatNumber(metrics.tasks_unknown) + ' without a verdict'
+          : 'No finished tasks with an observed outcome in this window',
+      },
+      {
+        label: 'Safety boundary',
+        value: safetyObserved ? formatNumber(metrics.ask_count) + ' ASK' : 'Unknown',
+        detail: safetyObserved
+          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors'
+          : 'No USE, ASK or harness-error observation in this window',
+      },
+      {
+        label: 'SEARCH → USE',
+        value: retrievalObserved ? formatNumber(metrics.search_requests) + ' · ' + formatNumber(metrics.use_requests) : 'Unknown',
+        detail: retrievalObserved
+          ? formatNumber(metrics.search_results) + ' results · ' + formatNumber(metrics.search_errors) + ' search errors'
+          : 'No retrieval activity observed in this window',
+      },
+      {
+        label: 'Cost and time',
+        value: costObserved
+          ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' + (averageLatency !== null ? ' · ' + formatNumber(averageLatency) + ' ms avg' : '')
+          : 'Unknown',
+        detail: costObserved
+          ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
+            + (metrics.latency_samples > 0 ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : '')
+          : 'No token or latency measurements in this window',
+      },
+    ]} />
+    <p className={styles.panelNote}>To sygnał kierunkowy, nie jeden wynik jakości. Unknown oznacza brak obserwacji, a nie zero.</p>
+  </Panel>;
+}
+
 export function ApiUsageRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
   const target = {org: org ?? '', repo: repo ?? ''};
@@ -871,11 +916,14 @@ export function ApiUsageRoute({ctx}: ApiProps) {
   if (!value) return <RouteState state="loading" title="Reading the usage report" description="Waiting for the aggregate over the selected window. No number is shown before it arrives." />;
 
   const totals = value.totals;
+  const metrics = totals.metrics;
   const feedback = totals.feedback;
   // Feedback recorded in the UI arrives without any adapter event, so "nothing observed" must
   // include it: a judged skill is an observation even when no card was ever delivered.
+  const noMetrics = !metrics.tasks_observed && metrics.search_requests === 0 && metrics.search_results === 0
+    && metrics.use_requests === 0 && metrics.ask_count === 0 && metrics.harness_errors === 0;
   const noObservations = totals.exposures === 0 && totals.loads_verified === 0 && totals.use_reported === 0
-    && totals.use_observed === 0 && (feedback?.n ?? 0) === 0;
+    && totals.use_observed === 0 && (feedback?.n ?? 0) === 0 && noMetrics;
   const open = value.queue.filter(item => !item.decision);
   const windowLabel = at('window') || '30d';
   const taskIds = value.coverage?.task_ids_present ?? false;
@@ -889,6 +937,7 @@ export function ApiUsageRoute({ctx}: ApiProps) {
   return <div className={styles.route}>
     {degraded && <DegradedNotice>Membership could not be reconfirmed. This is the last report read in this session and no owner decision can be recorded.</DegradedNotice>}
     {value.coverage && value.coverage.dropped_reported > 0 && <PartialNotice>{'Adapters reported ' + value.coverage.dropped_reported + ' dropped events in this window. Every count below is a lower bound.'}</PartialNotice>}
+    <ScorecardPanel metrics={metrics} />
     <Panel id="needs-review" title="Needs review" icon={<ListChecks aria-hidden="true" />} action={<StateBadge tone={open.length ? 'warning' : 'neutral'}>{open.length} open</StateBadge>}>
       {value.queue.length ? <DataTable caption="Skills that need an owner decision" headings={['Skill and revision', 'Reason', 'Since', 'Evidence', 'Owner decision']}>
         {value.queue.map(item => <QueueRow key={item.item_id} ctx={ctx} item={item} onDecided={report.reload} />)}

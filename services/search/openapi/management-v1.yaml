@@ -1714,7 +1714,7 @@ components:
       required:
         [exposures, loads_verified, context_loaded, context_unknown,
          use_reported, use_observed, use_episodes, exposures_expanded,
-         loads_unlinked]
+         loads_unlinked, metrics]
       properties:
         exposures: { type: integer }
         loads_verified: { type: integer }
@@ -1746,6 +1746,38 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/FeedbackTotals" }
             - { type: "null" }
+        metrics:
+          $ref: "#/components/schemas/ExecutionMetrics"
+
+    ExecutionMetrics:
+      type: object
+      required:
+        [tasks_started, tasks_finished, tasks_succeeded, tasks_failed,
+         tasks_unknown, harness_errors, search_requests, search_results,
+         search_errors, use_requests, ask_count, input_tokens, output_tokens,
+         tool_calls, latency_ms, latency_samples, tasks_observed, cost_observed]
+      description: >-
+        Observed execution signals for the selected window. These are directional
+        scorecards, not a causal quality claim. Unknown outcomes remain unknown.
+      properties:
+        tasks_started: { type: integer }
+        tasks_finished: { type: integer }
+        tasks_succeeded: { type: integer }
+        tasks_failed: { type: integer }
+        tasks_unknown: { type: integer }
+        harness_errors: { type: integer }
+        search_requests: { type: integer }
+        search_results: { type: integer }
+        search_errors: { type: integer }
+        use_requests: { type: integer }
+        ask_count: { type: integer }
+        input_tokens: { type: integer }
+        output_tokens: { type: integer }
+        tool_calls: { type: integer }
+        latency_ms: { type: integer }
+        latency_samples: { type: integer }
+        tasks_observed: { type: boolean }
+        cost_observed: { type: boolean }
 
     UsageSkill:
       type: object
