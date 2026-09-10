@@ -1066,3 +1066,13 @@ end-to-end harness evidence for fail-closed delivery and verifier plumbing, not 
 success advantage: the task was deliberately trivial and no useful-delivery or harmful-load labels
 were available. The local artifacts are under
 `.guidefold/checks/pi-task-execution-smoke-20260910/` and its legacy control directory.
+
+### 5.27 Quality-gate parser correction
+
+An evaluator audit found that a JSONL file containing exactly one object was parsed as an optional
+`{"rows": [...]}` wrapper and therefore produced zero attempts. The parser now recognizes a
+single task row, with a regression test covering the format. Replaying the existing Pi smoke
+through the corrected evaluator reports one candidate attempt, task success `1/1`, zero harness
+errors, `SEARCH=1`, `USE=4`, `ASK=4`, 34,282 ms and zero delivered body characters. Useful
+delivery and harmful-load remain unknown for that deliberately trivial task, so this correction
+improves accounting integrity but adds no task-quality claim.
