@@ -58,6 +58,8 @@
 .heroCopy h1{font-size:var(--landing-title);line-height:var(--landing-title-leading);}
 .page .eyebrow{margin:var(--zero) var(--zero) var(--space-3);color:var(--survey-teal);font-size:var(--font-size-small);font-weight:var(--weight-medium);letter-spacing:var(--tracking-label);line-height:var(--line-height-solid);text-transform:uppercase;}
 .page .lede{margin:var(--space-4) var(--zero) var(--zero);max-width:var(--landing-copy-width);font-size:var(--landing-lede);color:var(--stone-300);}
+.page .heroProof{margin:var(--space-3) var(--zero) var(--zero);color:var(--stone-100);font-size:var(--font-size-small);}
+.heroProof strong{color:var(--survey-teal);font-weight:var(--weight-semibold);}
 .heroActions{display:grid;grid-template-columns:var(--landing-action-columns);gap:var(--space-3);margin-top:var(--space-5);scroll-margin-top:var(--space-7);}
 .page .trust{margin:var(--space-3) var(--zero) var(--zero);font-size:var(--font-size-small);color:var(--stone-300);}
 .scrollCue{display:inline-flex;align-items:center;gap:var(--space-2);align-self:flex-start;margin-top:var(--space-6);color:var(--stone-100);font-size:var(--font-size-small);font-weight:var(--weight-medium);letter-spacing:var(--tracking-label);text-decoration:none;text-transform:uppercase;}

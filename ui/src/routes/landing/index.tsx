@@ -82,6 +82,7 @@ export default function Landing(){
      <p className={css.eyebrow}>Instruction library for coding agents</p>
      <h1 id="hero-title">Team rules. Right where agents work.</h1>
      <p className={css.lede}>Rules stay next to the code. Guidefold copies the reusable part up the organisation pyramid, then gives each agent the few rules it needs.</p>
+     <p className={css.heroProof}>Our hierarchy test: <strong>+8.53 pp Recall@10</strong> on SRA-Bench.</p>
      <div id="demo" className={css.heroActions}>
       <a data-slot="button" className={buttonVariants({className:css.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
       <DemoDialog onOpenChange={setDemoOpen}/>
