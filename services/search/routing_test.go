@@ -101,10 +101,10 @@ func TestContextResolution(t *testing.T) {
 
 func TestNearestWinsShadowsSameNameOnlyAtShallowerScope(t *testing.T) {
 	c := &Catalog{Cards: map[string]M{
-		"parent": {"name": "deploy", "node": "_root"},
-		"child":  {"name": "deploy", "node": "services.api"},
+		"parent":  {"name": "deploy", "node": "_root"},
+		"child":   {"name": "deploy", "node": "services.api"},
 		"sibling": {"name": "deploy", "node": "services.worker"},
-		"other": {"name": "lint", "node": "_root"},
+		"other":   {"name": "lint", "node": "_root"},
 	}}
 
 	got, drops := c.nearestWins(map[string]bool{
