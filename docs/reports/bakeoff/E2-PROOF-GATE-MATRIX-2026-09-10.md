@@ -47,4 +47,3 @@ real monorepo snapshots and frozen tasks, with two independent human judgements 
 deterministic verifier is impossible. The report must include task success, harness errors,
 SEARCH/USE/ASK counts, tokens, latency, and unknown coverage; synthetic passes do not close
 that gate.
-
