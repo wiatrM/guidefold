@@ -55,6 +55,28 @@ func TestWindowRejectsAnythingItDoesNotKnowInsteadOfWidening(t *testing.T) {
 	}
 }
 
+func TestExecutionMetricsKeepUnknownOutcomesAndCountRoutingSignals(t *testing.T) {
+	report := aggregate(t, []domain.Event{
+		event("task_started", 0, "t-start", map[string]any{"task_id": "task-1"}),
+		event("task_finished", time.Minute, "t-ok", map[string]any{"task_id": "task-1", "outcome": "success", "input_tokens": 100, "output_tokens": 25, "tool_calls": 2, "duration_ms": 400}),
+		event("task_finished", 2*time.Minute, "t-unknown", map[string]any{"task_id": "task-2", "outcome": "partial", "terminal_status": "harness_error", "duration_ms": 200}),
+		event("search_requested", 3*time.Minute, "s-request", nil),
+		event("search_results", 4*time.Minute, "s-results", map[string]any{"status": "error", "timings": map[string]any{"total_ms": 80}}),
+		event("skill_load_requested", 5*time.Minute, "use-request", nil),
+		event("skill_load_completed", 6*time.Minute, "ask", map[string]any{"status": "denied"}),
+	}, nil, domain.Filter{})
+	m := report.Totals.Metrics
+	if m.TasksStarted != 1 || m.TasksFinished != 2 || m.TasksSucceeded != 1 || m.TasksFailed != 0 || m.TasksUnknown != 1 {
+		t.Fatalf("task scorecard metrics: %+v", m)
+	}
+	if m.HarnessErrors != 1 || m.SearchRequests != 1 || m.SearchResults != 1 || m.SearchErrors != 1 || m.UseRequests != 1 || m.AskCount != 1 {
+		t.Fatalf("routing scorecard metrics: %+v", m)
+	}
+	if m.InputTokens != 100 || m.OutputTokens != 25 || m.ToolCalls != 2 || m.LatencyMs != 680 || m.LatencySamples != 3 || !m.CostObserved || !m.TasksObserved {
+		t.Fatalf("cost and time scorecard metrics: %+v", m)
+	}
+}
+
 func TestHelpedRatioIsAbsentRatherThanZeroWhenNothingWasJudgedEitherWay(t *testing.T) {
 	if r := domain.HelpedRatio(domain.Feedback{Mixed: 4, Unknown: 9, N: 13}); r != nil {
 		t.Fatalf("mixed and unknown are not a denominator: %v", r)

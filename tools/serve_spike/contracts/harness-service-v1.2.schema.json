@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:guidefold:harness-service:1.2",
   "title": "Guidefold harness service contract 1.2 (superset of 1.1)",
-  "description": "Additive superset of harness-service-v1.1. Requests may declare schema_version \"1.2\" and add the optional top-level field search_snapshot; responses may additionally carry closure, resources and family. Nothing in 1.1 changes meaning, and a 1.1 request is validated by the 1.1 document.",
+  "description": "Additive superset of harness-service-v1.1. Requests may declare schema_version \"1.2\" and add the optional top-level fields search_snapshot and (for USE) delivery_policy; responses may additionally carry closure, resources, family and proof-gated delivery. Nothing in 1.1 changes meaning, and a 1.1 request is validated by the 1.1 document.",
   "oneOf": [
     {
       "$ref": "#/$defs/search_request"
@@ -638,6 +638,13 @@
           "minLength": 1,
           "maxLength": 200,
           "description": "The snapshot SEARCH answered from. A head that has moved since produces 409 snapshot_changed."
+        },
+        "delivery_policy": {
+          "enum": [
+            "legacy",
+            "proof_gated"
+          ],
+          "description": "Optional 1.2 opt-in. proof_gated returns a body only when the immutable source proof is complete; otherwise it returns delivery.action ASK and an empty body."
         }
       },
       "required": [
@@ -1049,6 +1056,13 @@
             "1.2"
           ]
         },
+        "status": {
+          "enum": [
+            "hydrated",
+            "ask"
+          ],
+          "description": "hydrated means the body is present; ask is used only by the proof_gated opt-in and always carries an empty body."
+        },
         "request_id": {
           "type": "string",
           "minLength": 1,
@@ -1134,6 +1148,222 @@
         },
         "search_id_verified": {
           "const": false
+        },
+        "delivery": {
+          "type": "object",
+          "description": "Present when USE requested delivery_policy proof_gated. LOAD is source-grounded; ASK is a fail-closed abstention with redacted provenance and missing conditions.",
+          "required": [
+            "action",
+            "reason",
+            "missing",
+            "provenance"
+          ],
+          "properties": {
+            "action": {
+              "enum": [
+                "LOAD",
+                "ASK"
+              ]
+            },
+            "reason": {
+              "enum": [
+                "source_proof_complete",
+                "proof_missing",
+                "proof_schema_invalid",
+                "proof_identity_mismatch",
+                "proof_snapshot_mismatch",
+                "proof_revision_mismatch",
+                "proof_body_hash_mismatch",
+                "proof_scope_incomplete",
+                "proof_claim_incomplete",
+                "proof_conflict",
+                "closure_incomplete",
+                "proof_source_ref_invalid",
+                "proof_recursive_invalid",
+                "proof_source_unavailable",
+                "proof_source_hash_mismatch",
+                "proof_source_line_range"
+              ]
+            },
+            "missing": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "required": [
+                  "requirement",
+                  "reason"
+                ],
+                "properties": {
+                  "requirement": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "\\S"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  }
+                }
+              }
+            },
+            "provenance": {
+              "type": "object",
+              "required": [
+                "schema",
+                "snapshot",
+                "skill_id",
+                "revision",
+                "body_sha256",
+                "scopes",
+                "claims"
+              ],
+              "properties": {
+                "schema": {
+                  "const": "source-proof-v1"
+                },
+                "snapshot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "\\S"
+                },
+                "skill_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512,
+                  "pattern": "\\S"
+                },
+                "revision": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512,
+                  "pattern": "\\S"
+                },
+                "body_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "scopes": {
+                  "type": "array",
+                  "maxItems": 8,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "\\S"
+                  }
+                },
+                "claims": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "status",
+                      "source_refs"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "\\S"
+                      },
+                      "status": {
+                        "enum": [
+                          "supported",
+                          "partial",
+                          "uncertain",
+                          "unsupported"
+                        ]
+                      },
+                      "source_refs": {
+                        "type": "array",
+                        "maxItems": 16,
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "path",
+                            "sha256",
+                            "line_from",
+                            "line_to"
+                          ],
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1024,
+                              "pattern": "\\S"
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            },
+                            "line_from": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "line_to": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        }
+                      },
+                      "claim_refs": {
+                        "type": "array",
+                        "maxItems": 16,
+                        "description": "Optional recursive proof pointers to supported claims in lower cards of the same immutable snapshot.",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "skill_id",
+                            "revision",
+                            "claim_id",
+                            "claim_digest",
+                            "commitment"
+                          ],
+                          "properties": {
+                            "skill_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 512,
+                              "pattern": "\\S"
+                            },
+                            "revision": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 512,
+                              "pattern": "\\S"
+                            },
+                            "claim_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128,
+                              "pattern": "\\S"
+                            },
+                            "claim_digest": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            },
+                            "commitment": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         "family": {
           "type": "object",

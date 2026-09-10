@@ -724,9 +724,36 @@ export interface Usage {
     exposures: number; loads_verified: number; context_loaded: number; context_unknown: number;
     use_reported: number; use_observed: number; use_episodes: number;
     exposures_expanded: number; loads_unlinked: number; feedback: FeedbackTotals | null;
+    metrics: ExecutionMetrics;
   };
   skills: UsageSkill[]; queue: QueueItem[]; health: { adapters: AdapterHealth[] } | null;
 }
+
+export interface ExecutionMetrics {
+  tasks_started: number; tasks_finished: number; tasks_succeeded: number;
+  tasks_failed: number; tasks_unknown: number; harness_errors: number;
+  search_requests: number; search_results: number; search_errors: number;
+  use_requests: number; ask_count: number; input_tokens: number;
+  output_tokens: number; tool_calls: number; latency_ms: number;
+  latency_samples: number; tasks_observed: boolean; cost_observed: boolean;
+}
+export const emptyExecutionMetrics: ExecutionMetrics = {
+  tasks_started: 0, tasks_finished: 0, tasks_succeeded: 0, tasks_failed: 0, tasks_unknown: 0,
+  harness_errors: 0, search_requests: 0, search_results: 0, search_errors: 0, use_requests: 0,
+  ask_count: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0, latency_ms: 0,
+  latency_samples: 0, tasks_observed: false, cost_observed: false,
+};
+export const executionMetrics = object<ExecutionMetrics>({
+  tasks_started: fallback(num, 0), tasks_finished: fallback(num, 0),
+  tasks_succeeded: fallback(num, 0), tasks_failed: fallback(num, 0),
+  tasks_unknown: fallback(num, 0), harness_errors: fallback(num, 0),
+  search_requests: fallback(num, 0), search_results: fallback(num, 0),
+  search_errors: fallback(num, 0), use_requests: fallback(num, 0),
+  ask_count: fallback(num, 0), input_tokens: fallback(num, 0),
+  output_tokens: fallback(num, 0), tool_calls: fallback(num, 0),
+  latency_ms: fallback(num, 0), latency_samples: fallback(num, 0),
+  tasks_observed: fallback(bool, false), cost_observed: fallback(bool, false),
+});
 export const usage = object<Usage>({
   window: fallback(object({ from: nullable(str), to: nullable(str), watermark: nullable(str) }), { from: null, to: null, watermark: null }),
   coverage: nullable(object({
@@ -738,9 +765,11 @@ export const usage = object<Usage>({
     context_unknown: fallback(num, 0), use_reported: fallback(num, 0), use_observed: fallback(num, 0),
     use_episodes: fallback(num, 0), exposures_expanded: fallback(num, 0), loads_unlinked: fallback(num, 0),
     feedback: nullable(feedbackTotals),
+    metrics: fallback(executionMetrics, emptyExecutionMetrics),
   }), {
     exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
     use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
+    metrics: emptyExecutionMetrics,
   }),
   skills: listOf(usageSkill), queue: listOf(queueItem),
   health: nullable(object({ adapters: listOf(adapterHealth) })),

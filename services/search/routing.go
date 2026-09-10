@@ -266,6 +266,65 @@ func (c *Catalog) allowed(node, query string) (map[string]bool, int) {
 	}
 	return kept, drops
 }
+
+// nearestWins applies the repository's same-name shadowing rule after the
+// ordinary visibility/deprecation/negative-trigger policy. A deeper copy is
+// the effective definition; copies at the same depth remain candidates so
+// independent scopes cannot shadow one another.
+func (c *Catalog) nearestWins(allowed map[string]bool) (map[string]bool, int) {
+	maxDepth := map[string]int{}
+	for u := range allowed {
+		name := str(c.Cards[u]["name"])
+		if name == "" {
+			name = u
+			if i := strings.LastIndexByte(name, ':'); i >= 0 {
+				name = name[i+1:]
+			}
+		}
+		d := depth(str(c.Cards[u]["node"]))
+		if d > maxDepth[name] {
+			maxDepth[name] = d
+		}
+	}
+	kept := map[string]bool{}
+	drops := 0
+	for u := range allowed {
+		name := str(c.Cards[u]["name"])
+		if name == "" {
+			name = u
+			if i := strings.LastIndexByte(name, ':'); i >= 0 {
+				name = name[i+1:]
+			}
+		}
+		if depth(str(c.Cards[u]["node"])) == maxDepth[name] {
+			kept[u] = true
+		} else {
+			drops++
+		}
+	}
+	return kept, drops
+}
+
+func intersectAllowed(allowed, winners map[string]bool) map[string]bool {
+	kept := map[string]bool{}
+	for u := range allowed {
+		if winners[u] {
+			kept[u] = true
+		}
+	}
+	return kept
+}
+
+func filterCandidates(candidates []Candidate, allowed map[string]bool) []Candidate {
+	filtered := make([]Candidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if allowed[candidate.URN] {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered
+}
+
 func depth(node string) int {
 	if node == "_root" {
 		return 0

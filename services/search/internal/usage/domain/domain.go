@@ -212,9 +212,33 @@ type Totals struct {
 	UseEpisodes    int `json:"use_episodes"`
 	// ExposuresExpanded and LoadsUnlinked (contract 1.1.4) say whether the
 	// card was enough. See Skill for the definitions.
-	ExposuresExpanded int       `json:"exposures_expanded"`
-	LoadsUnlinked     int       `json:"loads_unlinked"`
-	Feedback          *Feedback `json:"feedback"`
+	ExposuresExpanded int              `json:"exposures_expanded"`
+	LoadsUnlinked     int              `json:"loads_unlinked"`
+	Feedback          *Feedback        `json:"feedback"`
+	Metrics           ExecutionMetrics `json:"metrics"`
+}
+
+// ExecutionMetrics powers the organisation scorecards. These are task and
+// harness observations, separate from per-skill delivery counts.
+type ExecutionMetrics struct {
+	TasksStarted   int  `json:"tasks_started"`
+	TasksFinished  int  `json:"tasks_finished"`
+	TasksSucceeded int  `json:"tasks_succeeded"`
+	TasksFailed    int  `json:"tasks_failed"`
+	TasksUnknown   int  `json:"tasks_unknown"`
+	HarnessErrors  int  `json:"harness_errors"`
+	SearchRequests int  `json:"search_requests"`
+	SearchResults  int  `json:"search_results"`
+	SearchErrors   int  `json:"search_errors"`
+	UseRequests    int  `json:"use_requests"`
+	AskCount       int  `json:"ask_count"`
+	InputTokens    int  `json:"input_tokens"`
+	OutputTokens   int  `json:"output_tokens"`
+	ToolCalls      int  `json:"tool_calls"`
+	LatencyMs      int  `json:"latency_ms"`
+	LatencySamples int  `json:"latency_samples"`
+	TasksObserved  bool `json:"tasks_observed"`
+	CostObserved   bool `json:"cost_observed"`
 }
 
 // Skill is one `(skill_id, revision)` row of the report.
@@ -405,6 +429,7 @@ func Aggregate(in Input) Report {
 	}
 
 	for _, e := range windowed {
+		updateMetrics(&report.Totals.Metrics, e)
 		skillID, producer := e.Str("skill_id"), e.Str("producer")
 		revision := in.Revisions.canonical(e.Str("revision"))
 		if skillID == "" {
@@ -567,6 +592,82 @@ func Aggregate(in Input) Report {
 	}
 	report.Computed = computeQueue(report.Skills, in)
 	return report
+}
+
+// updateMetrics reads explicit task, routing and harness counters. Missing
+// optional values stay unknown; the observed flags prevent the UI from
+// presenting an absent measurement as a zero.
+func updateMetrics(m *ExecutionMetrics, e Event) {
+	switch e.Type {
+	case "task_started":
+		m.TasksStarted++
+		m.TasksObserved = true
+	case "task_finished":
+		m.TasksFinished++
+		m.TasksObserved = true
+		switch strings.ToLower(e.Str("outcome")) {
+		case "success", "succeeded", "pass", "passed":
+			m.TasksSucceeded++
+		case "failure", "failed", "fail":
+			m.TasksFailed++
+		default:
+			m.TasksUnknown++
+		}
+		status := strings.ToLower(e.Str("terminal_status"))
+		if strings.Contains(status, "harness") || strings.Contains(status, "error") {
+			m.HarnessErrors++
+		}
+		addMetricInt(e, "input_tokens", &m.InputTokens, &m.CostObserved)
+		addMetricInt(e, "output_tokens", &m.OutputTokens, &m.CostObserved)
+		addMetricInt(e, "tool_calls", &m.ToolCalls, &m.CostObserved)
+		if value, ok := e.Int("duration_ms"); ok {
+			m.LatencyMs += value
+			m.LatencySamples++
+		}
+	case "search_requested":
+		m.SearchRequests++
+	case "search_results":
+		m.SearchResults++
+		status := strings.ToLower(e.Str("status"))
+		if status != "" && status != "ok" && status != "abstained" {
+			m.SearchErrors++
+		}
+		if timings, ok := e.Payload["timings"].(map[string]any); ok {
+			if value, ok := numberFromAny(timings["total_ms"]); ok {
+				m.LatencyMs += value
+				m.LatencySamples++
+			}
+		}
+	case "skill_load_requested":
+		m.UseRequests++
+	case "skill_load_completed":
+		if strings.EqualFold(e.Str("status"), "denied") || strings.EqualFold(e.Str("status"), "ask") {
+			m.AskCount++
+		}
+	}
+}
+
+func addMetricInt(e Event, key string, dst *int, observed *bool) {
+	if value, ok := e.Int(key); ok {
+		*dst += value
+		*observed = true
+	}
+}
+
+func numberFromAny(value any) (int, bool) {
+	switch v := value.(type) {
+	case json.Number:
+		n, err := v.Int64()
+		return int(n), err == nil
+	case float64:
+		return int(v), true
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	default:
+		return 0, false
+	}
 }
 
 // addEpisode records one applied episode. An event with no task_id has no

@@ -3,6 +3,34 @@ import {axeViolations,noHorizontalScroll} from './stub';
 
 const viewports=[{width:1440,height:900},{width:390,height:844}];
 
+for(const size of viewports)test('research evidence preserves context and negative results at '+size.width,async({page})=>{
+ await page.setViewportSize(size);
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/');
+ const evidence=page.getByRole('region',{name:'More relevant skills found'});
+ await page.getByRole('link',{name:/New research:/}).click();
+ await expect(evidence.getByText(/5,400 queries and 26,262 skills/)).toBeVisible();
+ await expect(evidence.getByRole('cell',{name:'65.22%',exact:true})).toBeVisible();
+ await expect(evidence.getByRole('cell',{name:'47.19%',exact:true})).toBeVisible();
+ await expect(evidence.locator('svg.recharts-surface')).toBeVisible();
+ const details=evidence.locator('summary');
+ await details.focus();
+ await page.keyboard.press('Enter');
+ await expect(evidence.getByRole('row',{name:/CHAMP 223 -8.67 -5.83/})).toBeVisible();
+ await expect(evidence.getByRole('row',{name:/TheoremQA 747 -6.29 -12.18/})).toBeVisible();
+ await expect(evidence.getByText(/Neither selected skill matched/)).toBeVisible();
+ await expect(evidence.getByText(/not a test of spontaneous tool adoption/)).toBeVisible();
+ const response=await page.request.get('/evidence/research-2026-09-10.json');
+ expect(response.ok()).toBe(true);
+ const record=await response.json();
+ expect(record.skills).toBe(26262);
+ expect(record.pi.gold_overlap).toBe(0);
+ expect(record.verification.retained_ranking_metrics_recomputed).toBe(37800);
+ expect(await noHorizontalScroll(page)).toBe(true);
+ expect(await axeViolations(page)).toEqual([]);
+ await evidence.screenshot({path:`qa/research-update-${size.width}.png`});
+});
+
 for(const size of viewports)test('answers why, how and value in order at '+size.width,async({page})=>{
  await page.setViewportSize(size);
  await page.goto('/');

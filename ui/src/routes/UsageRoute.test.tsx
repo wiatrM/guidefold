@@ -3,20 +3,26 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiUsageRoute } from './ReviewRoutes';
 import { ApiError } from '../api/client';
-import type { Usage, UsageSkill } from '../api/decoders';
+import type { ExecutionMetrics, Usage, UsageSkill } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
+const noMetrics: ExecutionMetrics = {
+  tasks_started: 0, tasks_finished: 0, tasks_succeeded: 0, tasks_failed: 0, tasks_unknown: 0,
+  harness_errors: 0, search_requests: 0, search_results: 0, search_errors: 0, use_requests: 0,
+  ask_count: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0, latency_ms: 0,
+  latency_samples: 0, tasks_observed: false, cost_observed: false,
+};
 const empty: Usage = {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false },
-  totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null },
+  totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, metrics: noMetrics },
   skills: [], queue: [], health: null,
 };
 const report = (over: Partial<Usage> = {}): Usage => ({
   ...empty,
   coverage: { events_received: 420, dropped_reported: 0, oldest_lag_s: 12, task_ids_present: true },
-  totals: { exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: null },
+  totals: { exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: null, metrics: noMetrics },
   skills: [
     { skill_id: 'urn:a', revision: 'rev-a', card_revision: 'card-a', content_sha256: 'sha-a', scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 8, use_observed: 5, use_episodes: 6, exposures_expanded: 26, loads_unlinked: 4, feedback: null, helped_ratio: { numerator: 21, denominator: 30, small_sample: false }, zero_loads: false },
     { skill_id: 'urn:b', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: { numerator: 2, denominator: 3, small_sample: true }, zero_loads: true },
@@ -40,6 +46,27 @@ describe('Usage route, hosted API, six states', () => {
     expect((await screen.findAllByText('No observations')).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.queryByText('Top skills')).not.toBeInTheDocument();
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getAllByText('Unknown')).toHaveLength(4);
+  });
+
+  test('decision scorecards make task, safety, retrieval and cost signals readable', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report({ totals: {
+      ...report().totals,
+      metrics: {
+        ...noMetrics,
+        tasks_observed: true, tasks_finished: 10, tasks_succeeded: 8, tasks_failed: 1, tasks_unknown: 1,
+        search_requests: 14, search_results: 12, search_errors: 2, use_requests: 6, ask_count: 2,
+        harness_errors: 1, input_tokens: 1200, output_tokens: 500, tool_calls: 9, cost_observed: true,
+        latency_ms: 900, latency_samples: 3,
+      },
+    } }) }));
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('8 / 10')).toBeInTheDocument();
+    expect(scorecards.getByText('2 ASK')).toBeInTheDocument();
+    expect(scorecards.getByText('14 · 6')).toBeInTheDocument();
+    expect(scorecards.getByText('1,700 tok · 300 ms avg')).toBeInTheDocument();
+    expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
   });
 
   test('Loading: no number is shown before the report arrives', () => {
@@ -465,7 +492,7 @@ const ledgerRow = (over: Partial<UsageSkill> & { skill_id: string; scope: string
   ...over,
 });
 const fullLedger = (): Usage => report({
-  totals: { exposures: 222, loads_verified: 122, context_loaded: 114, context_unknown: 8, use_reported: 63, use_observed: 57, use_episodes: 99, exposures_expanded: 117, loads_unlinked: 5, feedback: { helped: 73, hindered: 23, mixed: 3, not_applicable: 0, unknown: 0, n: 99 } },
+  totals: { exposures: 222, loads_verified: 122, context_loaded: 114, context_unknown: 8, use_reported: 63, use_observed: 57, use_episodes: 99, exposures_expanded: 117, loads_unlinked: 5, feedback: { helped: 73, hindered: 23, mixed: 3, not_applicable: 0, unknown: 0, n: 99 }, metrics: noMetrics },
   skills: [
     // Promote up: reach, pull, value and health all clear on 30 assessments.
     ledgerRow({ skill_id: 'urn:promote', scope: '_root', owner: 'platform-engineering', exposures: 84, exposures_expanded: 51, loads_verified: 51, context_loaded: 47, context_unknown: 4, use_reported: 22, use_observed: 19, use_episodes: 33, helped_ratio: { numerator: 26, denominator: 30, small_sample: false } }),

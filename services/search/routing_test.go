@@ -98,6 +98,25 @@ func TestContextResolution(t *testing.T) {
 		t.Fatal("stale revision accepted")
 	}
 }
+
+func TestNearestWinsShadowsSameNameOnlyAtShallowerScope(t *testing.T) {
+	c := &Catalog{Cards: map[string]M{
+		"parent":  {"name": "deploy", "node": "_root"},
+		"child":   {"name": "deploy", "node": "services.api"},
+		"sibling": {"name": "deploy", "node": "services.worker"},
+		"other":   {"name": "lint", "node": "_root"},
+	}}
+
+	got, drops := c.nearestWins(map[string]bool{
+		"parent": true, "child": true, "sibling": true, "other": true,
+	})
+	if drops != 1 {
+		t.Fatalf("drops=%d, want 1", drops)
+	}
+	if got["parent"] || !got["child"] || !got["sibling"] || !got["other"] {
+		t.Fatalf("nearest-wins result=%v", got)
+	}
+}
 func TestStrictJSON(t *testing.T) {
 	bad := []string{`{"query":"a","query":"b"}`, `{"workspace":{"cwd":"a","cwd":"b"}}`, `{"q":"\ud800"}`, `{"q":"\udc00"}`, `{"q":"\ud800\u0041"}`, `{} {}`, `{"x":` + strings.Repeat("[", 65) + `0` + strings.Repeat("]", 65) + `}`}
 	for _, raw := range bad {

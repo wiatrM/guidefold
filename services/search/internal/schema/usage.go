@@ -46,5 +46,25 @@ CREATE INDEX IF NOT EXISTS events_tenant_type_occurred
  ON gf.events(tenant_id,event_type,occurred_at);
 CREATE INDEX IF NOT EXISTS events_skill
  ON gf.events(tenant_id,gf.event_field(payload,'skill_id'));
+CREATE TABLE IF NOT EXISTS gf.training_examples (
+ tenant_id text NOT NULL, example_id text NOT NULL, event_id bytea NOT NULL,
+ schema_version text NOT NULL, dataset_version text NOT NULL,
+ dataset_split text NOT NULL CHECK(dataset_split IN ('dev','calibration','test')),
+ content_mode text NOT NULL DEFAULT 'metadata_only'
+   CHECK(content_mode IN ('metadata_only','redacted_text')),
+ case_id text, task_id text, search_id text, use_id text,
+ snapshot_id text, source_family text, repository_hash text,
+ leaf_scope text, candidate_rank integer, candidate_skill_id text,
+ candidate_revision text, decision text, decision_reason text,
+ outcome text, feedback_label text, model_profile text,
+ router_revision text, policy_revision text,
+ input_tokens bigint, output_tokens bigint, tool_calls integer,
+ latency_ms bigint, context_bytes bigint, provenance_sha256 text NOT NULL,
+ features jsonb NOT NULL DEFAULT '{}'::jsonb,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(tenant_id,example_id), UNIQUE(tenant_id,event_id)
+);
+CREATE INDEX IF NOT EXISTS training_examples_split
+ ON gf.training_examples(tenant_id,dataset_version,dataset_split,created_at);
 INSERT INTO gf.schema_version VALUES (11) ON CONFLICT DO NOTHING;
 `
