@@ -26,6 +26,7 @@ class _Handler(BaseHTTPRequestHandler):
             type(self).search_count += 1
             body = {"search_id": f"search-{self.search_count}", "snapshot": "repository:test",
                     "cards": [{"skill_id": f"skill-{self.search_count}", "revision": "rev-1", "name": "test", "node": "scope"}],
+                    "ranked": [{"skill_id": f"skill-{self.search_count}", "score": 10 if self.search_count == 1 else 100}],
                     "card_context": "card", "context": {"delivery_status": "complete"}}
         elif self.path == "/v1/use":
             body = {"status": "ask", "delivery": {"action": "ASK"}, "body": "", "missing": ["proof_conflict"]}
@@ -59,6 +60,7 @@ def test_hierarchical_search_merges_scoped_calls_and_redacts_trace(tmp_path, mon
         assert code == 0
         output = json.loads(capsys.readouterr().out)
         assert output["search_requests"] == 2
+        assert output["cards"][0]["skill_id"] == "skill-2", "merge must use ranked scores, not lexical card order"
         assert [payload["workspace"]["cwd"] for path, payload in _Handler.requests if path == "/v1/search"] == ["root", "root/deep"]
         trace_text = trace.read_text(encoding="utf-8")
         assert "secret-token" not in trace_text and "do the task" not in trace_text

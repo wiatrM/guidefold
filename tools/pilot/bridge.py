@@ -157,12 +157,26 @@ def search(args: argparse.Namespace) -> int:
             return 2
         responses.append(body)
     cards_by_id: dict[str, dict[str, Any]] = {}
+    scores: dict[str, float] = {}
     for response in responses:
+        for ranked in response.get("ranked", []):
+            if not isinstance(ranked, dict):
+                continue
+            key = str(ranked.get("skill_id") or ranked.get("urn") or "")
+            if not key:
+                continue
+            try:
+                score = float(ranked.get("score", 0))
+            except (TypeError, ValueError):
+                score = 0.0
+            scores[key] = max(scores.get(key, float("-inf")), score)
         for card in response.get("cards", []):
             if isinstance(card, dict):
                 key = str(card.get("skill_id") or card.get("urn") or "")
-                if key and (key not in cards_by_id or _card_key(card) < _card_key(cards_by_id[key])):
-                    cards_by_id[key] = card
+                if key:
+                    candidate = {**card, "score": scores.get(key, float("-inf"))}
+                    if key not in cards_by_id or _card_key(candidate) < _card_key(cards_by_id[key]):
+                        cards_by_id[key] = candidate
     cards = sorted(cards_by_id.values(), key=_card_key)[:4]
     first = responses[0]
     print(json.dumps({
