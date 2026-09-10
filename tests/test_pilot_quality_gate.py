@@ -77,6 +77,22 @@ def test_gate_rejects_duplicate_task_arm_rows():
     assert report["duplicate_task_arm_rows"] == [("t1", "map+gate+evolution")]
 
 
+def test_gate_rejects_mismatched_frozen_inputs():
+    rows = [
+        {"task_id": "t1", "arm": "flat", "outcome": "success", "useful_delivery": True,
+         "task_bank_sha256": "bank-a", "verifier_sha256": "verify-a"},
+        {"task_id": "t1", "arm": "map+gate+evolution", "outcome": "success", "useful_delivery": True,
+         "task_bank_sha256": "bank-b", "verifier_sha256": "verify-b"},
+    ]
+    report = quality_gate.evaluate(rows, [
+        {"harmful": True, "expected_action": "ASK", "actual_action": "ASK"}
+        for _ in range(100)
+    ])
+    assert report["verdict"] == "inconclusive"
+    assert "task bank hashes differ across arms" in report["missing_evidence"]
+    assert "verifier hashes differ for a paired task" in report["missing_evidence"]
+
+
 def test_quality_gate_reports_execution_telemetry_and_preserves_missing_as_unknown():
     rows = []
     for arm in quality_gate.ARMS:

@@ -172,6 +172,24 @@ def _paired_delta(rows: list[dict[str, Any]], candidate: str, baseline: str) -> 
     return sum(values) / len(values) if values else None
 
 
+def _consistency_errors(rows: list[dict[str, Any]]) -> list[str]:
+    """Reject paired comparisons built from different frozen inputs."""
+    errors: list[str] = []
+    bank_hashes = {str(row["task_bank_sha256"]) for row in rows
+                   if row.get("task_bank_sha256") not in (None, "")}
+    if len(bank_hashes) > 1:
+        errors.append("task bank hashes differ across arms")
+    verifier_hashes: dict[str, set[str]] = {}
+    for row in rows:
+        task_id = str(row.get("task_id") or row.get("task") or "")
+        verifier_sha = row.get("verifier_sha256")
+        if task_id and verifier_sha not in (None, ""):
+            verifier_hashes.setdefault(task_id, set()).add(str(verifier_sha))
+    if any(len(values) > 1 for values in verifier_hashes.values()):
+        errors.append("verifier hashes differ for a paired task")
+    return errors
+
+
 def _arm_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate optional execution telemetry without treating absent data as zero."""
     elapsed = _sum_metric(rows, "elapsed_ms", "duration_ms", "latency_ms")
@@ -264,6 +282,7 @@ def evaluate(task_rows: list[dict[str, Any]], e2_rows: list[dict[str, Any]] | No
     duplicates = _duplicate_pairs(task_rows)
     if duplicates:
         missing.append(f"duplicate task/arm rows ({len(duplicates)})")
+    missing.extend(_consistency_errors(task_rows))
     if not best_baseline:
         missing.append("known task outcomes for candidate and a non-gated baseline")
     if not e2["evidence_present"] or e2["triggered_cases"] == 0:
