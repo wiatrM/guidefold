@@ -1048,3 +1048,21 @@ files; it reports raw reviewer agreement but leaves disagreements for adjudicati
 replay returned `BLANK_PACKET_VALID` with manifest hash
 `2e3887610dba163ec2118eb51bcd3b59c94640a1081a62c607c6ec264acb288e` on 2026-09-10. This is
 input-integrity evidence, not a semantic, task-success or publication result.
+
+### 5.26 Hidden-verifier Pi execution smoke
+
+The new [`run_agent_tasks.py`](../tools/pilot/run_agent_tasks.py) separates the retrieval-only Pi
+replay from task execution. It copies each task workspace into a temporary directory, keeps hidden
+verifiers in a separate evaluator root, permits only the declared Pi tools, and emits rows accepted
+by `quality_gate.py`. Verifier failures are `failure`; agent, timeout and harness failures are
+`unknown` with `harness_error=true`. Unknown safety/usefulness observations remain null.
+
+On 2026-09-10, one harmless task was run twice against the live 10,123-card Go snapshot with the
+same task bank and hidden verifier. Both arms passed the verifier. `proof_gated` made 1 SEARCH and
+4 USE calls, received 4 `ASK` responses and delivered zero body characters; `legacy` made 1 SEARCH
+and 5 USE calls, delivered 155,728 body characters and received no `ASK`. The Pi output stayed
+blind to the evaluator and correctly reported no used skills in the gated arm. This is direct
+end-to-end harness evidence for fail-closed delivery and verifier plumbing, not evidence of a task
+success advantage: the task was deliberately trivial and no useful-delivery or harmful-load labels
+were available. The local artifacts are under
+`.guidefold/checks/pi-task-execution-smoke-20260910/` and its legacy control directory.
