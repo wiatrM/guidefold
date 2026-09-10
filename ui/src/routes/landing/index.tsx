@@ -10,7 +10,8 @@ import {RouteRule} from './RouteRule';
 import {ScopePyramid} from './ScopePyramid';
 import {WaitlistForm,EmailAction} from './WaitlistForm';
 import {LandingFooter} from './Footer';
-import {useSectionProgress} from './scroll';
+import {ScrollCue} from './ScrollCue';
+import {useSectionProgress,useTrackProgress} from './scroll';
 import {github} from './instruction';
 import css from './landing.module.css';
 
@@ -51,23 +52,41 @@ export default function Landing(){
  const page=useRef<HTMLDivElement>(null);
  const field=useRef<HTMLDivElement>(null);
  const hero=useRef<HTMLElement>(null);
+ const whyTrack=useRef<HTMLDivElement>(null);
  const why=useRef<HTMLElement>(null);
  const how=useRef<HTMLElement>(null);
+ const valueTrack=useRef<HTMLDivElement>(null);
  const value=useRef<HTMLElement>(null);
+ const nav=useRef<HTMLElement>(null);
  useSectionProgress(page,field);
  useSectionProgress(hero);
- useSectionProgress(why);
+ useTrackProgress(whyTrack,why);
  useSectionProgress(how);
- useSectionProgress(value);
+ useTrackProgress(valueTrack,value);
  const [demoOpen,setDemoOpen]=useState(false);
  const [emailAction]=useState(()=>{const p=new URLSearchParams(window.location.search);return p.has('confirm')?{action:'confirm' as const,token:p.get('confirm')!}:p.has('unsubscribe')?{action:'unsubscribe' as const,token:p.get('unsubscribe')!}:null;});
  useEffect(()=>{document.title='Guidefold | Team instructions for coding agents';if(emailAction)window.history.replaceState(null,'','/');},[emailAction]);
+ // The pinned panels stick just below the nav; the nav's own height varies
+ // with viewport width because its links wrap to extra rows, so the two
+ // panels' `top` offset tracks the nav's real measured height rather than a
+ // fixed token that would drift out of sync and let content pin under it.
+ useEffect(()=>{
+  const element=nav.current;
+  if(!element||typeof ResizeObserver==='undefined')return;
+  const root=document.documentElement;
+  const measure=()=>root.style.setProperty('--landing-nav-live-height',element.getBoundingClientRect().height+'px');
+  measure();
+  const observer=new ResizeObserver(measure);
+  observer.observe(element);
+  return()=>{observer.disconnect();root.style.removeProperty('--landing-nav-live-height');};
+ },[]);
 
  return <div ref={page} className={css.page}>
   <div ref={field} className={css.field} aria-hidden="true"><div className={css.topo}/><div className={css.survey}/></div>
   <FilmBackdrop/>
+  {!emailAction&&<ScrollCue/>}
   <a className={css.skip} href="#main">Skip to content</a>
-  <header className={css.nav}>
+  <header ref={nav} className={css.nav}>
    <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-web.webp" width="38" height="38" alt=""/>Guidefold</a>
    <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="/docs/">Docs</a><a href={github}>GitHub <ArrowUpRight aria-hidden="true"/></a></nav>
    <a data-slot="button" className={buttonVariants({variant:'outline',className:css.navAction})} href={emailAction?'/':'#waitlist'}>Join the waitlist</a>
@@ -88,20 +107,22 @@ export default function Landing(){
     </div>
    </section>
 
-   <section ref={why} id="why" className={css.why} aria-labelledby="why-title">
-    <div className={[css.plane,css.planeWhy].join(' ')} aria-hidden="true"/>
-    <span className={css.keyline} aria-hidden="true"/>
-    <div className={css.copy}>
-     <h2 id="why-title">Let's not make every team rediscover this from scratch</h2>
-     <p className={css.answer}>At organisation scale, skills stop being documents and start being a data problem.</p>
-     <dl className={css.beats}>
-      <div><dt>Duplication</dt><dd>The same rule written five times, five ways, in five repositories. Each copy drifts. None of them is wrong enough for anyone to delete.</dd></div>
-      <div><dt>No management</dt><dd>Nobody can see the whole set. Nobody can say which skills exist, who owns them, or what an agent will actually be shown when it opens a folder.</dd></div>
-      <div><dt>No way up</dt><dd>One team figures out how to deploy safely. The next team hits the same incident and writes it again from zero, because there is no path for a local lesson to reach the rest of the organisation.</dd></div>
-     </dl>
-     <p className={css.trust}>Where a rule was written shouldn't decide where it can be used.</p>
-    </div>
-   </section>
+   <div ref={whyTrack} className={css.track}>
+    <section ref={why} id="why" className={[css.why,css.panel].join(' ')} aria-labelledby="why-title">
+     <div className={[css.plane,css.planeWhy].join(' ')} aria-hidden="true"/>
+     <span className={css.keyline} aria-hidden="true"/>
+     <div className={css.copy}>
+      <h2 id="why-title">Let's not make every team rediscover this from scratch</h2>
+      <p className={css.answer}>At organisation scale, skills stop being documents and start being a data problem.</p>
+      <dl className={css.beats}>
+       <div><dt>Duplication</dt><dd>The same rule written five times, five ways, in five repositories. Each copy drifts. None of them is wrong enough for anyone to delete.</dd></div>
+       <div><dt>No management</dt><dd>Nobody can see the whole set. Nobody can say which skills exist, who owns them, or what an agent will actually be shown when it opens a folder.</dd></div>
+       <div><dt>No way up</dt><dd>One team figures out how to deploy safely. The next team hits the same incident and writes it again from zero, because there is no path for a local lesson to reach the rest of the organisation.</dd></div>
+      </dl>
+      <p className={css.trust}>Where a rule was written shouldn't decide where it can be used.</p>
+     </div>
+    </section>
+   </div>
 
    <section ref={how} id="how-it-works" className={css.how} aria-labelledby="how-title">
     <div className={[css.plane,css.planeHow].join(' ')} aria-hidden="true"/>
@@ -126,18 +147,20 @@ export default function Landing(){
     </div>
    </section>
 
-   <section ref={value} id="value" className={css.value} aria-labelledby="value-title">
-    <div className={[css.plane,css.planeValue].join(' ')} aria-hidden="true"/>
-    <div className={css.copy}>
-     <h2 id="value-title">What your team gets</h2>
-     <p className={css.answer}>Nobody has to remember anything. The platform team keeps the rules in one place, the owner sees what changed before an agent ever reads it, and the developer just works.</p>
-    </div>
-    <div className={css.roles}>{roles.map(item=><article key={item.role} className={css.roleCard}>
-     <p className={css.roleLabel}>{item.role}</p>
-     <p className={css.rolePromise}>{item.promise}</p>
-     <p className={css.roleDetail}>{item.detail}</p>
-    </article>)}</div>
-   </section>
+   <div ref={valueTrack} className={css.track}>
+    <section ref={value} id="value" className={[css.value,css.panel].join(' ')} aria-labelledby="value-title">
+     <div className={[css.plane,css.planeValue].join(' ')} aria-hidden="true"/>
+     <div className={css.copy}>
+      <h2 id="value-title">What your team gets</h2>
+      <p className={css.answer}>Nobody has to remember anything. The platform team keeps the rules in one place, the owner sees what changed before an agent ever reads it, and the developer just works.</p>
+     </div>
+     <div className={css.roles}>{roles.map(item=><article key={item.role} className={css.roleCard}>
+      <p className={css.roleLabel}>{item.role}</p>
+      <p className={css.rolePromise}>{item.promise}</p>
+      <p className={css.roleDetail}>{item.detail}</p>
+     </article>)}</div>
+    </section>
+   </div>
 
    <section className={css.availability} aria-label="Product availability">
     <div className={css.availabilityStatements}>
