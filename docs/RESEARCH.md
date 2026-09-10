@@ -1009,3 +1009,7 @@ proof-gated/evolved-map arms on source-owner-disjoint repository scopes and a
 later revision. Task success, harmful loads, stale/conflicting delivery and
 false `ASK` are primary; Recall@k is secondary. The file is deliberately not a
 frozen protocol and no execution has started.
+
+### 5.22 E2 proof-gate regression matrix
+
+The tracked [E2 matrix](reports/bakeoff/E2-PROOF-GATE-MATRIX-2026-09-10.md) is the next executable quality gate for the conflict and revision boundary. On a synthetic sibling catalog, the production proof gate produced two safe `LOAD` decisions and six fail-closed `ASK` decisions for conflict, deprecated status, scope mismatch, revision drift, body tampering and incomplete closure. This is regression evidence (R/Q), not pilot evidence: it contains no model, real repository or task evaluator. The next meaningful result is the same matrix on real monorepo snapshots plus the frozen paired-task harness, where task success, harness errors, SEARCH/USE/ASK, tokens, latency and unknown coverage are measured together.
