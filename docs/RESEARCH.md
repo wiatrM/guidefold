@@ -1030,3 +1030,15 @@ records from the pinned public commits with matching hashes. It is still
 `PREPARED_NOT_ANNOTATED`: C′ is a controlled drift derivative, both reviewer forms are pending,
 and no model, retrieval or task execution has been run. The corpus therefore removes one
 independence flaw but does not yet open the publication gate.
+
+### 5.25 Annotation integrity gate
+
+The new [`verify_annotation_packet.py`](../tools/pilot/verify_annotation_packet.py) adds the
+mechanical boundary between corpus preparation and semantic evaluation. In `blank` mode it
+verified the four generated C/C′ packets, both reviewer forms per packet, source hashes and the
+`model_calls_allowed=false` invariant. In `annotated` mode it will reject incomplete labels,
+unknown field values, duplicate reviewer fields and evidence ranges outside the immutable source
+files; it reports raw reviewer agreement but leaves disagreements for adjudication. The local
+replay returned `BLANK_PACKET_VALID` with manifest hash
+`2e3887610dba163ec2118eb51bcd3b59c94640a1081a62c607c6ec264acb288e` on 2026-09-10. This is
+input-integrity evidence, not a semantic, task-success or publication result.
