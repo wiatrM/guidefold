@@ -170,7 +170,7 @@ def main():
     print('Prepared',len(cases),'queries,',len(cards),'documents',flush=True)
     env=dict(os.environ,GUIDEFOLD_REPO=repo,GUIDEFOLD_LEXICAL_ENGINE='router')
     def compose(*a):subprocess.run(['docker','compose',*a],cwd=ROOT,env=env,check=True,stdout=subprocess.DEVNULL)
-    # `dev.py deploy` has already completed the migration and keeps the DB/API
+    # dev.py deploy has already completed the migration and keeps the DB/API
     # stack alive. Re-starting the one-shot migrate dependency here races with
     # the running API after the graph checks and can fail before parity begins.
     # Publish still connects to the already healthy DB; only its dependency
