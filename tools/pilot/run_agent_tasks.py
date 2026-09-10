@@ -149,6 +149,43 @@ def _trace_metrics(path: Path) -> dict[str, Any]:
     return metrics
 
 
+def _output_metrics(stdout: str) -> dict[str, Any]:
+    """Read token usage only from complete assistant messages emitted by Pi.
+
+    Streaming deltas are intentionally ignored: counting them would double-count a turn and
+    make the cost card look precise when the provider did not expose a final usage record.
+    Provider field aliases are accepted, but an absent field remains unknown.
+    """
+    input_tokens = output_tokens = 0
+    samples = 0
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "message_end":
+            continue
+        message = event.get("message") if isinstance(event.get("message"), dict) else {}
+        usage = message.get("usage") if isinstance(message.get("usage"), dict) else event.get("usage")
+        if not isinstance(usage, dict):
+            continue
+        found = False
+        for names, target in ((("input_tokens", "prompt_tokens", "inputTokens"), "input"),
+                              (("output_tokens", "completion_tokens", "outputTokens"), "output")):
+            value = next((usage.get(name) for name in names if usage.get(name) is not None), None)
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+                if target == "input":
+                    input_tokens += value
+                else:
+                    output_tokens += value
+                found = True
+        if found:
+            samples += 1
+    return {"input_tokens": input_tokens if samples else None,
+            "output_tokens": output_tokens if samples else None,
+            "token_samples": samples}
+
+
 def _unknown(task_id: str, arm: str, reason: str, bank_sha: str, verifier_sha: str = "") -> dict[str, Any]:
     return {"task_id": task_id, "arm": arm, "outcome": "unknown", "terminal_status": reason,
             "harness_error": True, "task_bank_sha256": bank_sha, "verifier_sha256": verifier_sha,
@@ -255,6 +292,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                 events_file.write_text(stdout[-20000:], encoding="utf-8")
                 answer, parsed = _parse_final(stdout)
                 telemetry = _trace_metrics(trace)
+                output_telemetry = _output_metrics(stdout)
                 if agent_timeout or agent_exit != 0 or not parsed:
                     status, verifier_error, verifier_exit, verifier_stdout, verifier_stderr, verifier_ms = (
                         "unknown", True, None, "", "agent_timeout_or_invalid_output", (time.perf_counter() - started) * 1000)
@@ -271,7 +309,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                        "verifier_stderr": verifier_stderr, "agent_answer": answer,
                        "parsed_agent_answer": parsed, "elapsed_ms": round((time.perf_counter() - task_started) * 1000, 3),
                        "verifier_elapsed_ms": round(verifier_ms, 3), "useful_delivery": None,
-                       "harmful_load": None, **telemetry}
+                       "harmful_load": None, **telemetry, **output_telemetry}
                 results.write(json.dumps(row, ensure_ascii=False) + "\n"); results.flush()
                 print(json.dumps({"task_id": task_id, "outcome": status, "harness_error": verifier_error,
                                   "search": telemetry["search_requests"], "use": telemetry["use_requests"],

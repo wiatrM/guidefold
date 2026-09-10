@@ -33,7 +33,7 @@ def _fake_pi(path: Path) -> None:
         "trace.parent.mkdir(parents=True, exist_ok=True)\n"
         "trace.write_text(json.dumps({'path':'/v1/search','elapsed_ms':2})+'\\n' + json.dumps({'path':'/v1/use','action':'ASK','body_chars':0,'elapsed_ms':3})+'\\n')\n"
         "answer = {'selected_skill_ids':['s'], 'used_skill_ids':[], 'answer':'ASK'}\n"
-        "event = {'type':'message_end','message':{'role':'assistant','content':[{'type':'text','text':json.dumps(answer)}]}}\n"
+        "event = {'type':'message_end','message':{'role':'assistant','usage':{'input_tokens':11,'output_tokens':7},'content':[{'type':'text','text':json.dumps(answer)}]}}\n"
         "print(json.dumps(event))\n",
         encoding="utf-8",
     )
@@ -67,6 +67,9 @@ def test_agent_runner_scores_verifier_and_trace(tmp_path, monkeypatch):
     assert row["use_requests"] == 1
     assert row["ask_count"] == 1
     assert row["useful_delivery"] is None
+    assert row["input_tokens"] == 11
+    assert row["output_tokens"] == 7
+    assert row["token_samples"] == 1
 
 
 def test_agent_runner_rejects_workspace_escape_without_running_verifier(tmp_path, monkeypatch):
