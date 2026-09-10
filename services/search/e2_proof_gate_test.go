@@ -230,3 +230,41 @@ func TestE2AblationArmsKeepTheSafetyBoundaryVisible(t *testing.T) {
 		t.Fatal("proof-gated arms must have zero harmful body deliveries")
 	}
 }
+
+func TestE2TransferAndDriftFailClosed(t *testing.T) {
+	const v2 = "urn:guidefold:e2:auth-v2"
+	const v1 = "urn:guidefold:e2:auth-v1"
+	t.Run("scope transfer", func(t *testing.T) {
+		c := e2Catalog()
+		card := c.Cards[v2]
+		card["node"] = "platform.api.identity"
+		decision := e2Delivery(c, v2, str(card["_body"]), c.Revisions[v2], []string{"platform.api.auth"}, "complete")
+		if str(decision["action"]) != "ASK" || str(decision["reason"]) != "skill_outside_resolved_scope" {
+			t.Fatalf("a moved card must not cross its old scope: %v", decision)
+		}
+	})
+	t.Run("status becomes deprecated", func(t *testing.T) {
+		c := e2Catalog()
+		c.Cards[v2]["status"] = "deprecated"
+		decision := e2Delivery(c, v2, str(c.Cards[v2]["_body"]), c.Revisions[v2], []string{"platform.api.auth"}, "complete")
+		if str(decision["action"]) != "ASK" || str(decision["reason"]) != "skill_not_active" {
+			t.Fatalf("a newly deprecated card must not load: %v", decision)
+		}
+	})
+	t.Run("map points at old revision after publication", func(t *testing.T) {
+		c := e2Catalog()
+		oldRevision := c.Revisions[v2]
+		c.Revisions[v2] = "published-revision-2"
+		decision := e2Delivery(c, v2, str(c.Cards[v2]["_body"]), oldRevision, []string{"platform.api.auth"}, "complete")
+		if str(decision["action"]) != "ASK" || str(decision["reason"]) != "revision_mismatch" {
+			t.Fatalf("a stale map pointer must not load: %v", decision)
+		}
+	})
+	t.Run("evolution replaces stale sibling pointer", func(t *testing.T) {
+		c := e2Catalog()
+		result := e2RunArm(c, "map+gate+evolution", []string{v1}, true, true)
+		if result.harmfulLoads != 0 || result.askCount != 0 || len(result.selected) != 1 {
+			t.Fatalf("evolution should replace the stale pointer before delivery: %+v", result)
+		}
+	})
+}

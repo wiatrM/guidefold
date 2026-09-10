@@ -32,6 +32,9 @@ network, or gold label is used.
 | published revision drift | `ASK` | `revision_mismatch` |
 | body tampering | `ASK` | `proof_body_hash_mismatch` |
 | incomplete dependency closure | `ASK` | `closure_incomplete` |
+| moved card outside resolved scope | `ASK` | `skill_outside_resolved_scope` |
+| card newly marked deprecated | `ASK` | `skill_not_active` |
+| stale map pointer after publication | `ASK` | `revision_mismatch` |
 
 The targeted test passed with **2 safe loads, 6 abstentions, and 0 proof-gated harmful
 loads**. The six abstention cases are the negative safety controls; they are not a claim
@@ -60,7 +63,7 @@ synthetic regression controls, not an estimate of real-world error rates.
 ## What this unlocks
 
 The service boundary is now protected by a repeatable regression test for conflict, scope,
-revision, integrity, and closure failure. The next experiment must run the same arms on
+revision, transfer, integrity, and closure failure. The next experiment must run the same arms on
 real monorepo snapshots and frozen tasks, with two independent human judgements where a
 deterministic verifier is impossible. The report must include task success, harness errors,
 SEARCH/USE/ASK counts, tokens, latency, and unknown coverage; synthetic passes do not close
