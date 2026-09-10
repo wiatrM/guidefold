@@ -18,6 +18,7 @@ Zakres zastępowania: brak; ten plik nie zmienia treści dokumentów, do któryc
 | `tools/pilot/run_agent_tasks.py` | Uruchamia Pi w izolowanym workspace z ukrytym verifierem, zapisuje task success, SEARCH/USE/ASK, token usage i czas oraz rozdziela porażkę zadania od błędu harnessu. |
 | `tools/pilot/bridge.py` | Referencyjny most Pi → Go SEARCH/USE: czyta zamrożony kontekst, obsługuje flat/top-down/bottom-up, redaguje trace i nie dostarcza ciała po `ASK`. |
 | [PI-SMOKE-2026-09-10](PI-SMOKE-2026-09-10.md) | Reprodukowalny smoke prawdziwego Pi z ukrytym verifierem; potwierdza plumbing, nie jakość retrieval. |
+| [HIERARCHY-SMOKE-2026-09-10](HIERARCHY-SMOKE-2026-09-10.md) | Replay scoped flat/top-down/bottom-up na 26-kartowym snapshotcie Meridian; neutralny wynik kierunku traversalu. |
 | [PIVOT-RUBRIC](PIVOT-RUBRIC.md) | Rubryka U11 z etykietami R/Q/P, progi go/no-go i to, czego syntetyczny run nie dowodzi. |
 
 ## Narzędzia
