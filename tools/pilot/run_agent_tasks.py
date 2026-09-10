@@ -261,6 +261,27 @@ def _run_verifier(argv: list[str], cwd: Path, timeout: float) -> tuple[str, bool
         result.stdout[-4000:], result.stderr[-4000:], elapsed
 
 
+def _verifier_labels(stdout: str) -> dict[str, bool]:
+    """Read optional evaluator-only labels from a verifier's final JSON object.
+
+    Labels are emitted by the hidden evaluator after the agent exits, so they are never part
+    of the agent prompt. Plain-text verifiers remain supported and leave these measurements
+    unknown. Only boolean values for the declared scorecard fields are accepted.
+    """
+    allowed = {"useful_delivery", "harmful_load", "stale_conflict_delivery"}
+    for line in reversed(stdout.splitlines()):
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(value, dict):
+            continue
+        labels = {key: value[key] for key in allowed if isinstance(value.get(key), bool)}
+        if labels:
+            return labels
+    return {}
+
+
 def run(args: argparse.Namespace) -> list[dict[str, Any]]:
     tasks, bank_sha = _load_tasks(args.tasks)
     root = args.workspace_root.resolve()
@@ -371,6 +392,7 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                     expanded_verifier = [item.replace("{workspace}", str(workspace)) for item in verifier]
                     status, verifier_error, verifier_exit, verifier_stdout, verifier_stderr, verifier_ms = _run_verifier(
                         expanded_verifier, evaluator_root, verifier_timeout)
+                labels = _verifier_labels(verifier_stdout)
                 row = {"task_id": task_id, "arm": args.arm, "strategy": args.strategy, "outcome": status,
                        "run_manifest_sha256": manifest_sha, "prompt_sha256": prompt_sha,
                        "terminal_status": "completed" if not verifier_error else "harness_error",
@@ -379,8 +401,10 @@ def run(args: argparse.Namespace) -> list[dict[str, Any]]:
                        "task_bank_sha256": bank_sha, "verifier_stdout": verifier_stdout,
                        "verifier_stderr": verifier_stderr, "agent_answer": answer,
                        "parsed_agent_answer": parsed, "elapsed_ms": round((time.perf_counter() - task_started) * 1000, 3),
-                       "verifier_elapsed_ms": round(verifier_ms, 3), "useful_delivery": None,
-                       "harmful_load": None, **telemetry, **output_telemetry}
+                       "verifier_elapsed_ms": round(verifier_ms, 3), "useful_delivery": labels.get("useful_delivery"),
+                       "harmful_load": labels.get("harmful_load"),
+                       "stale_conflict_delivery": labels.get("stale_conflict_delivery"),
+                       **telemetry, **output_telemetry}
                 results.write(json.dumps(row, ensure_ascii=False) + "\n"); results.flush()
                 print(json.dumps({"task_id": task_id, "outcome": status, "harness_error": verifier_error,
                                   "search": telemetry["search_requests"], "use": telemetry["use_requests"],

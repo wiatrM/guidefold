@@ -1124,3 +1124,13 @@ task scorecard therefore remains `inconclusive` because the four-task Pi bank ha
 delivery labels and both arms score 3/4. Reproduce it from
 [`research/e2-source-backed-20260911/README.md`](../research/e2-source-backed-20260911/README.md);
 the runner rejects any snapshot whose digest differs from the frozen manifest.
+
+### 5.31 Evaluator-only usefulness labels
+
+The end-to-end runner now accepts optional boolean `useful_delivery`, `harmful_load`, and
+`stale_conflict_delivery` fields from the hidden verifier's final JSON line. The fields are
+parsed only after the agent exits and are never included in the agent prompt; plain-text
+verifiers remain valid and keep the measurements `unknown`. This closes the instrumentation
+gap needed for the useful-coverage part of the quality gate without treating task success or
+body length as a proxy for semantic usefulness. A focused regression suite covers both labelled
+and unlabelled verifier output.

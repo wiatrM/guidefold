@@ -177,3 +177,18 @@ def test_verifier_fingerprint_changes_when_hidden_script_changes(tmp_path):
     script.write_text("print('two')\n", encoding="utf-8")
     second = runner._verifier_sha256(argv, evaluator)
     assert first != second
+
+
+def test_verifier_labels_are_optional_and_evaluator_only():
+    labels = runner._verifier_labels(
+        "VERIFIER_PASS\n"
+        '{"useful_delivery": true, "harmful_load": false, '
+        '"stale_conflict_delivery": false}\n'
+    )
+    assert labels == {
+        "useful_delivery": True,
+        "harmful_load": False,
+        "stale_conflict_delivery": False,
+    }
+    assert runner._verifier_labels("VERIFIER_PASS\n") == {}
+    assert runner._verifier_labels('{"useful_delivery": "true"}\n') == {}
