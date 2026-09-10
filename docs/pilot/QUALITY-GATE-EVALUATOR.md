@@ -56,3 +56,21 @@ python3 tools/pilot/quality_gate.py \
 This evaluator is an analysis guard, not a substitute for the frozen protocol, hidden verifiers,
 or two independent human judgements where deterministic acceptance is impossible. Freeze the task
 bank, repository snapshots, model, harness, prompts, map, policy and seeds before collecting rows.
+
+## Human annotation packet gate
+
+The source-disjoint C/C′ corpus has a separate blind packet. Before any model call, verify its
+integrity and blank state:
+
+```bash
+python3 tools/pilot/verify_annotation_packet.py \
+  --packet .guidefold/checks/source-disjoint-urct-2026-09-10/annotation_packet \
+  --mode blank
+```
+
+After two reviewers independently complete every field, run the same command with
+`--mode annotated`. It checks allowed labels, immutable source hashes and line-bounded evidence,
+then reports raw agreement and disagreements. `ANNOTATION_READY_FOR_ADJUDICATION` is not a gold
+label or a task result; disagreements require a separately recorded adjudication before E2 rows
+can be scored. The verifier deliberately rejects incomplete or out-of-range forms and keeps
+model calls disabled throughout annotation.
