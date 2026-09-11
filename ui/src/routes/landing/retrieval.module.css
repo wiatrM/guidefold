@@ -1,7 +1,13 @@
-/* Retrieval, DESIGN.md 3.3. Shell only: the section frame, its eyebrow and its heading.
- * Every value is a token; the responsive changes are token swaps in tokens.css. */
-.section{padding-block:var(--landing-section-padding);}
+/* Retrieval, DESIGN.md 3.3 as amended by conflict-table row 1. Ships no proof figures and no
+ * number ticker; the microcopy line is the only claim about scale. Every value is a token; the
+ * responsive changes are token swaps in the 1080/720 blocks of tokens.css. */
+.section{
+ display:grid;
+ grid-template-columns:var(--landing-grid);
+ padding-block:var(--landing-section-padding);
+}
 .section p.eyebrow{
+ grid-column:1/-1;
  margin:var(--zero);
  display:flex;
  align-items:center;
@@ -20,6 +26,7 @@
  background:var(--line-strong);
 }
 .section h2.heading{
+ grid-column:1/-1;
  margin:var(--space-3) var(--zero) var(--zero);
  font-family:var(--font-display);
  font-size:var(--landing-heading);
@@ -28,4 +35,150 @@
  letter-spacing:var(--tracking-title);
  color:var(--landing-ivory);
  text-wrap:balance;
+}
+.section p.subline{
+ grid-column:1/-1;
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-kicker-measure);
+ font-size:var(--landing-lede);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+.section p.body{
+ grid-column:1/-1;
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+
+/* The instrument: one glass panel, three zones read left to right, `--glow-system` under it
+ * (the page's first of exactly two glows; the second is the proof gate, T9). */
+.instrument{
+ grid-column:var(--landing-retrieval-span);
+ margin-top:var(--space-6);
+ display:grid;
+ grid-template-columns:var(--landing-retrieval-zones);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:blur(var(--glass-blur));
+ box-shadow:var(--glow-system);
+}
+.zone{
+ min-width:var(--zero);
+ padding:var(--landing-panel-pad);
+}
+.zone+.zone{
+ border-left:var(--landing-retrieval-rule);
+ border-top:var(--landing-retrieval-rule-top);
+}
+.zoneLabel{
+ margin:var(--zero) var(--zero) var(--space-2);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+.queryTask{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+}
+.queryPath{
+ margin:var(--space-1) var(--zero) var(--zero);
+ overflow-wrap:anywhere;
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--steel);
+}
+.candidateCount{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-title);
+ font-weight:var(--weight-semibold);
+ font-variant-numeric:tabular-nums;
+ color:var(--stone-100);
+}
+.candidateNote{
+ margin:var(--space-1) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+.cards{
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ display:grid;
+ grid-template-columns:var(--landing-retrieval-cards);
+ gap:var(--space-3);
+}
+.card{
+ min-width:var(--zero);
+ padding:var(--space-3);
+ border:var(--border-width) solid var(--line);
+ border-radius:var(--radius-small);
+}
+.cardName{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ font-weight:var(--weight-medium);
+ color:var(--stone-100);
+}
+.cardScope{
+ margin:var(--space-1) var(--zero) var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+.cardNote{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+.cardProof{
+ display:flex;
+ align-items:center;
+ gap:var(--space-1);
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ font-weight:var(--weight-medium);
+ color:var(--system-ink);
+}
+.proofDot{
+ inline-size:var(--space-1);
+ block-size:var(--space-1);
+ border-radius:var(--radius-small);
+ background:currentColor;
+}
+
+.microcopy{
+ grid-column:var(--landing-retrieval-span);
+ margin:var(--space-4) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+
+/* `IntroFigure` and `InstructionReader`, unchanged, re-homed here as the "full text only
+ * when the agent asks for it" step. Same paired layout the mechanism figure always used. */
+.fullText{
+ grid-column:var(--landing-retrieval-span);
+ margin-top:var(--space-6);
+ display:grid;
+ grid-template-columns:var(--landing-mechanism-columns);
+ gap:var(--landing-band-gap);
+ align-items:start;
+}
+
+.textLink{
+ grid-column:var(--landing-retrieval-span);
+ display:inline-flex;
+ align-items:center;
+ margin-top:var(--space-5);
+ min-height:var(--touch-height);
+ color:var(--system-ink);
 }
