@@ -136,6 +136,7 @@
  --landing-keyline-display:block;
  --landing-waitlist-columns:minmax(0,.8fr) minmax(0,1.2fr);
  --landing-waitlist-rule:var(--border-width) solid var(--line-strong);
+ --landing-waitlist-inset:var(--space-4);
  --landing-waitlist-padding:48px;
  --landing-form-columns:minmax(0,1fr) max-content;
  --landing-question-width:900px;
@@ -295,6 +296,7 @@
  --landing-value-columns:repeat(2,minmax(0,1fr));
  --landing-waitlist-columns:minmax(0,1fr);
  --landing-waitlist-rule:none;
+ --landing-waitlist-inset:var(--zero-length);
  --landing-hero-padding:32px;
  --landing-nav-gap:16px;
  --landing-stage-height:auto;

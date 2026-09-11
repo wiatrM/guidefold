@@ -1,7 +1,13 @@
 /* Before you join, DESIGN.md 3.9. The Base UI Collapsible is kept and restyled rather
  * than replaced, because the ids, the hash deep link and the consent link's behaviour
- * are contractual. Rules moved with the markup from landing.module.css. */
-.section{max-width:var(--landing-question-width);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
+ * are contractual. Rules moved with the markup from landing.module.css.
+ *
+ * The band paints the full row; `--landing-question-width` is a reading measure for the
+ * content inside it, not the band's own width, so it lives on `.content`, not `.section`
+ * (a band whose own box stops at 900px reads as a left-hugging rectangle with a hard
+ * edge against the film, not a band). */
+.section{padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
+.content{max-width:var(--landing-question-width);}
 .section h2.heading{
  margin:var(--zero);
  font-family:var(--font-display);
