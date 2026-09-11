@@ -1,4 +1,4 @@
-import {lazy,Suspense,useEffect,useRef,useState} from 'react';
+import {lazy,Suspense,useRef} from 'react';
 import {useReducedMotion} from 'motion/react';
 import evidence from '../../data/research-evidence.json';
 import {Reveal,useRevealed} from './Reveal';
@@ -21,28 +21,24 @@ const data=[
 const chartSeries:[{label:string;color:string},{label:string;color:string}]=[{label:'Flat dense search',color:'var(--stone-300)'},{label:'LLM map + scoped search',color:'var(--survey-teal)'}];
 
 export function ResearchEvidence(){
- const section=useRef<HTMLElement>(null);
- const [visible,setVisible]=useState(false);
- useEffect(()=>{
-  if(!section.current||typeof IntersectionObserver==='undefined')return;
-  const observer=new IntersectionObserver(entries=>{
-   if(entries.some(entry=>entry.isIntersecting)){setVisible(true);observer.disconnect();}
-  });
-  observer.observe(section.current);
-  return()=>observer.disconnect();
- },[]);
-
- // The bento's own chart mount and its two tickers ride the page's shared P3 observer
- // pool through useRevealed rather than opening a new IntersectionObserver each: the
- // same 30%-panel threshold that plays the tile-settle animation also gates when the
- // chart lazy-loads here and when the tickers arm their once-only roll (DESIGN.md 4.1, 5;
- // Reveal.tsx keeps the page at two observers). Below, the original figure's own visible
- // state and observer are untouched, per this task's binding: they stay as they were.
+ // The chart now lives once, in the tall bento tile below: it and the two tickers
+ // ride the page's shared P3 observer pool through useRevealed rather than opening a
+ // new IntersectionObserver each, so the same 30%-panel threshold that plays the
+ // tile-settle animation also gates when the chart lazy-loads and when the tickers
+ // arm their once-only roll (DESIGN.md 4.1, 5; Reveal.tsx keeps the page at two
+ // observers). The pre-existing block below (table, interval paragraphs, Pi trace,
+ // <details>, CTA) is otherwise untouched.
  const chartTileRef=useRef<HTMLDivElement>(null);
  const chartRevealed=useRevealed(chartTileRef);
  const tickerTileRef=useRef<HTMLDivElement>(null);
  const tickersRevealed=useRevealed(tickerTileRef);
  const reducedMotion=useReducedMotion();
+ // Spotlight hover (DESIGN.md 4.3) is gated the same way Reveal.tsx's private
+ // motionAllowed gates every other entrance and hover effect on this page: reduced
+ // motion or Save-Data both turn it off. That helper is not exported, so the
+ // Save-Data half is replicated here rather than imported.
+ const saveData=typeof navigator!=='undefined'&&(navigator as Navigator&{connection?:{saveData?:boolean}}).connection?.saveData===true;
+ const spotlightOn=!reducedMotion&&!saveData;
  // NumberTicker calls motion/react's own useInView unconditionally on mount, which
  // throws where IntersectionObserver does not exist (jsdom, and any platform without
  // it); the static fallback below already carries the exact final figure, so this
@@ -50,7 +46,7 @@ export function ResearchEvidence(){
  // and this file's own chart-visibility effect already use.
  const canTick=typeof IntersectionObserver!=='undefined';
 
- return <section ref={section} id="research-results" className={css.research} aria-labelledby="research-title">
+ return <section id="research-results" className={css.research} aria-labelledby="research-title">
   <div className={css.copy}>
    <p className={css.eyebrow}>Research update · 10 September 2026</p>
    <h2 id="research-title">Plus 8.53 points of recall over flat.</h2>
@@ -59,16 +55,16 @@ export function ResearchEvidence(){
 
   <div className={css.bento}>
    <Reveal pattern="p3" as="div" className={[css.tile,css.tileChart].join(' ')}>
-    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+    <BentoCard borderAnim={false} spotlight={spotlightOn} className={css.tileCard}>
      <p className={css.tileLabel}>Relevant skills retrieved and complete sets found (%)</p>
-     <div ref={chartTileRef} className={css.bentoChart} role="group" aria-label="Benchmark comparison summary; full comparison and exact values further down this section">
+     <div ref={chartTileRef} className={css.bentoChart} role="group" aria-label="Benchmark comparison; exact values in the table below">
       {chartRevealed&&<Suspense fallback={null}><BarChart data={data} series={chartSeries}/></Suspense>}
      </div>
     </BentoCard>
    </Reveal>
 
    <Reveal pattern="p3" index={1} as="div" className={[css.tile,css.tileTicker].join(' ')}>
-    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+    <BentoCard borderAnim={false} spotlight={spotlightOn} className={css.tileCard}>
      <div ref={tickerTileRef} className={css.tickerGroup}>
       <div className={css.tickerRow}>
        <p className={css.tickerLabel}>Recall@10</p>
@@ -90,23 +86,19 @@ export function ResearchEvidence(){
    </Reveal>
 
    <Reveal pattern="p3" index={2} as="div" className={[css.tile,css.tileOpen].join(' ')}>
-    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+    <BentoCard borderAnim={false} spotlight={spotlightOn} className={css.tileCard}>
      <p className={css.tileNote}>{'Task-level value is not settled. '}<a className={css.inlineLink} href="#proof-gate">The delivery boundary in section 4</a>{' is deterministic and source-backed; it says nothing about whether a delivered rule helped somebody finish the work. That measurement needs real repository snapshots and frozen tasks, and we have not made it yet.'}</p>
     </BentoCard>
    </Reveal>
 
    <Reveal pattern="p3" index={3} as="div" className={[css.tile,css.tileScale].join(' ')}>
-    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+    <BentoCard borderAnim={false} spotlight={spotlightOn} className={css.tileCard}>
      <p className={css.tileNote}>{'Corpora of 1k, 10k and 30k skills, cold and warm cache: in the Q6 validation plan. '}<span className={css.warning}>Designed for, not yet measured.</span>{' No latency figure appears on this page until that run exists.'}</p>
     </BentoCard>
    </Reveal>
   </div>
 
   <figure className={css.researchFigure}>
-   <figcaption>Relevant skills retrieved and complete sets found (%)</figcaption>
-   <div className={css.researchChart} role="group" aria-label="Benchmark comparison; exact values in the table below">
-    {visible&&<Suspense fallback={null}><BarChart data={data} series={[{label:'Flat dense search',color:'var(--stone-300)'},{label:'LLM map + scoped search',color:'var(--survey-teal)'}]}/></Suspense>}
-   </div>
    <table className={css.researchTable}>
     <caption>SRA-Bench results · experimental offline retrieval</caption>
     <thead><tr><th scope="col">Measure</th><th scope="col">Flat</th><th scope="col">LLM map</th><th scope="col">Change</th></tr></thead>

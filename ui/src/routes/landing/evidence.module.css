@@ -24,25 +24,29 @@
 .tileScale{grid-column:var(--landing-evidence-scale-col);}
 
 /* BentoCard (T2, hash-pinned) ships a Tailwind neutral surface plus a hover-lift and a
- * tap spring; DESIGN.md 4.3 and 4.6 ban both, tiles are not pressable. The Tailwind
- * utility output lives in a layer, and author CSS here is unlayered, so a plain rule
- * already outranks bg-neutral-50, border-neutral, shadow-xs, hover:shadow-lg and
- * rounded-2xl regardless of specificity or source order; only the spring, whose inline
- * transform is set directly by the animation library, needs an important override to
- * beat that inline style. Recorded Spectrum exception: borderAnim is always false
- * (border-beam stays unused on this page) and spotlight is the only hover left, gated
- * off under reduced motion at the wiring layer. */
+ * tap spring; DESIGN.md 4.3 and 4.6 ban both, tiles are not pressable. ui/registry.css
+ * imports Tailwind's utilities with source(none) and no layer(...), so its classes are
+ * not inside a cascade layer here: this rule beats bg-neutral-50, border-neutral,
+ * shadow-xs, hover:shadow-lg and rounded-2xl only because this file is later in bundle
+ * source order, which an import reorder could undo. Every override below is therefore
+ * `!important`, pinning the banned Tailwind surface out regardless of source order,
+ * including the spring's `transform`, which the animation library also writes directly
+ * to the inline style. This is the wiring-layer adaptation for a hash-pinned component
+ * whose surface and hover motion this page's design forbids; no registry file is
+ * edited. Recorded Spectrum exception: borderAnim is always false (border-beam stays
+ * unused on this page) and spotlight is the only hover left, gated off under reduced
+ * motion or Save-Data at the wiring layer. */
 .tileCard{
  flex:1;
  width:var(--full);
  min-width:var(--zero);
- background:var(--graphite-850);
- border-color:var(--line);
- border-radius:var(--landing-radius-panel);
- box-shadow:none;
+ background:var(--graphite-850)!important;
+ border-color:var(--line)!important;
+ border-radius:var(--landing-radius-panel)!important;
+ box-shadow:none!important;
  transform:none!important;
 }
-.tileCard:hover{border-color:var(--line-hover);}
+.tileCard:hover{border-color:var(--line-hover)!important;}
 
 .bentoChart{min-block-size:var(--landing-chart-min-height);}
 .tileLabel{margin:var(--zero) var(--zero) var(--space-2);color:var(--stone-100);font-weight:var(--weight-semibold);}

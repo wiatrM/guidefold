@@ -30,4 +30,10 @@ describe('evidence section',()=>{
   expect(screen.getByRole('link',{name:'Read the evidence'})).toBeInTheDocument();
   expect(screen.getByRole('link',{name:'Download results and source hashes'})).toBeInTheDocument();
  });
+
+ it('renders the chart once, in the bento tile, not a second time below',()=>{
+  render(<ResearchEvidence/>);
+  expect(screen.getAllByText('Relevant skills retrieved and complete sets found (%)')).toHaveLength(1);
+  expect(document.querySelectorAll('figcaption')).toHaveLength(0);
+ });
 });
