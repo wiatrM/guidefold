@@ -98,19 +98,22 @@
       "file": "src/components/spectrumui/bento-card.tsx",
       "sha256": "7f6deb89f90ac1eb366a1dc17c2676f68f3c34432b7a0918ded87a65b6c19142",
       "source": "https://ui.spectrumhq.in/r/bento-grid.json",
-      "allowInlineGeometry": true
+      "allowInlineGeometry": true,
+      "reason": "Inline style spread carries measured mouse-tilt/spotlight motion values (rotateX/rotateY driven by pointer position) — geometry only, no colour in the inline style attribute itself. Noted for future review: the className also carries a Tailwind arbitrary-value hex colour (dark:bg-[#0C0C0C], line 137); that is a plain className string, not a parsed inline style or CSS declaration, so it is already exempt under the project's Tailwind-in-spectrumui/ui exemption and does not itself require this waiver."
     },
     {
       "file": "src/components/spectrumui/spotlight.tsx",
       "sha256": "944b63aec0aa5185f2c3cfad38565ac9d50e91743a0ba7ed9867524c33927ff1",
       "source": "https://ui.spectrumhq.in/r/bento-grid.json",
-      "allowInlineGeometry": true
+      "allowInlineGeometry": true,
+      "reason": "style={{background}} is a measured pointer-follow radial-gradient position (mouseX/mouseY motion values via useMotionTemplate); its default colour stop is a hardcoded RGBA literal (color=\"rgba(255, 255, 255, 0.06)\", line 20) that flows into the same exempted inline style attribute rather than a design token — this waiver covers both the pointer geometry and that non-token colour."
     },
     {
       "file": "src/components/spectrumui/border-beam.tsx",
       "sha256": "049f899e9632829bdff6b5ad7e13b3a0fee4cdab0a6515d074c346d604ac4919",
       "source": "https://ui.spectrumhq.in/r/bento-grid.json",
-      "allowInlineGeometry": true
+      "allowInlineGeometry": true,
+      "reason": "Dynamic conic-gradient rotation/opacity/border-width geometry computed from hover state and duration; the gradient's default colour stops are hardcoded RGBA literals (colorFrom=\"rgba(163, 163, 163, 0)\", colorTo=\"rgba(163, 163, 163, 0.4)\", lines 18-19) that are interpolated into the same inline style attribute rather than a design token — this waiver covers both the geometry and those non-token colours."
     },
     {
       "file": "src/components/spectrumui/number-ticker.tsx",
