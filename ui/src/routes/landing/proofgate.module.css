@@ -1,6 +1,38 @@
-/* ProofGate, DESIGN.md 3.4. Shell only: the section frame, its eyebrow and its heading.
+/* ProofGate, DESIGN.md 3.4. Type on film, not glass: no border, no backdrop-filter on
+ * the copy or the proof lines, only an ambient --glow-system behind the whole block.
  * Every value is a token; the responsive changes are token swaps in tokens.css. */
-.section{padding-block:var(--landing-section-padding);}
+.section{
+ position:relative;
+ isolation:isolate;
+ display:grid;
+ grid-template-columns:var(--landing-grid);
+ column-gap:var(--landing-bento-gap);
+ row-gap:var(--space-5);
+ padding-block:var(--landing-section-padding);
+}
+.glow{
+ position:absolute;
+ z-index:-1;
+ inset-block:var(--zero);
+ inset-inline:var(--zero);
+ border-radius:var(--landing-radius-panel);
+ box-shadow:var(--glow-system);
+ pointer-events:none;
+}
+.copy{
+ grid-column:var(--landing-proofgate-copy-span);
+ min-width:var(--zero);
+ display:flex;
+ flex-direction:column;
+}
+.figures{
+ grid-column:var(--landing-proofgate-figures-span);
+ min-width:var(--zero);
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+}
+
 .section p.eyebrow{
  margin:var(--zero);
  display:flex;
@@ -28,4 +60,46 @@
  letter-spacing:var(--tracking-title);
  color:var(--landing-ivory);
  text-wrap:balance;
+}
+.section p.subline{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-measure);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-heading);
+ font-weight:var(--weight-medium);
+ color:var(--stone-100);
+}
+.section p.body{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+
+/* Two rows, one hairline between them: the boundary in the copy and the boundary in
+ * the frame are the same line. */
+.figures .figure{padding-block:var(--space-4);}
+.figures .figure+.figure{border-top:var(--border-width) solid var(--line-strong);}
+
+.figureText{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-weight:var(--weight-medium);
+ font-size:var(--landing-metric-unit);
+ line-height:var(--line-height-heading);
+ font-variant-numeric:tabular-nums;
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-ivory);
+}
+.figureText code{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ color:var(--system-ink);
+}
+.qualifier{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--steel);
 }

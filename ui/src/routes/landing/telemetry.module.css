@@ -1,7 +1,14 @@
-/* Telemetry, DESIGN.md 3.5. Shell only: the section frame, its eyebrow and its heading.
- * Every value is a token; the responsive changes are token swaps in tokens.css. */
-.section{padding-block:var(--landing-section-padding);}
+/* Telemetry, DESIGN.md 3.5. The instrument is a real glass panel (an instrument, not
+ * decoration); the copy above it stays plain film type. Every value is a token; the
+ * responsive changes are token swaps in tokens.css. */
+.section{
+ display:grid;
+ grid-template-columns:var(--landing-grid);
+ column-gap:var(--landing-bento-gap);
+ padding-block:var(--landing-section-padding);
+}
 .section p.eyebrow{
+ grid-column:1/-1;
  margin:var(--zero);
  display:flex;
  align-items:center;
@@ -20,6 +27,7 @@
  background:var(--line-strong);
 }
 .section h2.heading{
+ grid-column:1/-1;
  margin:var(--space-3) var(--zero) var(--zero);
  font-family:var(--font-display);
  font-size:var(--landing-heading);
@@ -28,4 +36,85 @@
  letter-spacing:var(--tracking-title);
  color:var(--landing-ivory);
  text-wrap:balance;
+}
+.section p.subline{
+ grid-column:1/-1;
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-measure);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-heading);
+ font-weight:var(--weight-medium);
+ color:var(--stone-100);
+}
+.section p.body{
+ grid-column:1/-1;
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+.section p.microcopy{
+ grid-column:1/-1;
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+
+/* The instrument: the page's only telemetry glass panel. */
+.panel{
+ grid-column:var(--landing-telemetry-panel-span);
+ margin-top:var(--landing-band-gap);
+ min-width:var(--zero);
+ padding:var(--landing-panel-pad);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:blur(var(--glass-blur));
+}
+.fixtureLabel{
+ margin:var(--zero) var(--zero) var(--space-4);
+ font-size:var(--font-size-small);
+ color:var(--steel);
+}
+.fixtureLabel strong{color:var(--warning-ink);font-weight:var(--weight-semibold);}
+
+.rows{display:flex;flex-direction:column;}
+.row{
+ margin:var(--zero);
+ display:grid;
+ grid-template-columns:var(--landing-telemetry-columns);
+ gap:var(--space-3) var(--landing-bento-gap);
+ padding-block:var(--space-3);
+}
+.row+.row{border-top:var(--border-width) solid var(--line);}
+
+.cell{min-width:var(--zero);display:flex;flex-direction:column;gap:var(--space-1);}
+.cellLabel{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--tracking-label);
+ text-transform:uppercase;
+ color:var(--steel);
+}
+.cellValue{
+ margin:var(--zero);
+ font-size:var(--font-size-body);
+ line-height:var(--line-height-compact);
+ color:var(--stone-100);
+}
+.cellValue.team{font-weight:var(--weight-semibold);color:var(--landing-ivory);}
+.cellValue[data-value="unknown"]{color:var(--steel);font-style:italic;}
+.cellValue[data-ask-reason]{color:var(--human-ink);}
+
+.gateRule{
+ margin:var(--space-4) var(--zero) var(--zero);
+ padding-top:var(--space-3);
+ border-top:var(--border-width) solid var(--line-strong);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
 }
