@@ -119,7 +119,7 @@
  min-width:var(--zero);
  padding:var(--space-3);
  border:var(--border-width) solid var(--line);
- border-radius:var(--radius-small);
+ border-radius:var(--landing-radius);
 }
 .cardName{
  margin:var(--zero);
@@ -149,10 +149,14 @@
  font-weight:var(--weight-medium);
  color:var(--system-ink);
 }
+/* DESIGN.md 2.4: exactly two radii on the page, --landing-radius and --landing-radius-panel.
+ * A literal 50% would also be a third value the contract checker treats as a literal
+ * dimension outside tokens.css, so the dot reuses --landing-radius (8px): on a 4px
+ * (--space-1) box that exceeds half its own size, which CSS clamps to a full circle. */
 .proofDot{
  inline-size:var(--space-1);
  block-size:var(--space-1);
- border-radius:var(--radius-small);
+ border-radius:var(--landing-radius);
  background:currentColor;
 }
 

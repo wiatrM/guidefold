@@ -165,22 +165,7 @@ describe('public landing',()=>{
   expect(container.querySelector('img[src="/assets/landing/hero-poster.webp"]')).toBeInTheDocument();
  });
 
- // The mechanism clip (IntroFigure) and the Meridian reader (InstructionReader, whose
- // excerpt and "not a live run" label are protected copy) belong to the retrieval
- // section, which T5 leaves as a shell. T8 re-homes both; these two skips keep the
- // missing coverage visible until it does, and must be unskipped in the same change.
- it.skip('keeps the intro poster beside the film poster under reduced motion (T8)',()=>{
-  reduceMotion(true);
-  const {container}=render(<Landing/>);
-  expect(container.querySelector('img[src="/assets/landing/intro-poster.webp"]')).toBeInTheDocument();
- });
-
- it.skip('mounts the mechanism clip only when motion is allowed (T8)',()=>{
-  reduceMotion(false);
-  const {container}=render(<Landing/>);
-  const clip=container.querySelector('video');
-  expect(clip).toHaveAttribute('poster','/assets/landing/intro-poster.webp');
-  expect(clip).not.toHaveAttribute('loop');
-  expect(clip).toHaveAttribute('preload','none');
- });
+ // The mechanism clip (IntroFigure) and the Meridian reader (InstructionReader) are re-homed
+ // in the retrieval section; their reduced-motion, poster and "not a live run" coverage now
+ // lives in Retrieval.test.tsx, which renders that section directly.
 });
