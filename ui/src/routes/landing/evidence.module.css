@@ -1,0 +1,77 @@
+/* Evidence, DESIGN.md 3.6. Rules moved with the markup from landing.module.css: eyebrow,
+ * copy, textLink and availabilityLinks are duplicated here rather than shared, matching
+ * availability.module.css and proofgate.module.css. The bento is new. The chart, the
+ * table, the interval paragraphs, the Pi trace and the details method block stay exactly
+ * as they were and are untouched below. Every value here is a token; the 390 collapse is
+ * the token swap in tokens.css, never a media query in this file. */
+.research{position:relative;padding:var(--landing-section-padding) var(--zero);border-top:var(--border-width) solid var(--line-strong);}
+.research p.eyebrow{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero) var(--zero) var(--space-3);color:var(--steel);font-family:var(--font-mono);font-size:var(--font-size-code);letter-spacing:var(--landing-tracking-mono);}
+.research p.eyebrow::before{content:"";display:block;flex:none;inline-size:var(--landing-eyebrow-rule);block-size:var(--landing-pixel);background:var(--line-strong);}
+.copy{max-width:var(--landing-measure);}
+.research .subline{margin:var(--space-3) var(--zero) var(--zero);font-size:var(--landing-lede);color:var(--stone-100);}
+
+/* ------------------------------------------------------------------- bento */
+/* DESIGN.md 3.6, 4.1, 4.3, 4.6: a 12-column asymmetric bento (tall chart tile, wide
+ * ticker tile, two single-cell tiles), spotlight-only hover, no lift. Each tile is a
+ * `Reveal pattern="p3"` element carrying the grid placement itself (never a RevealGroup
+ * wrapper, which would swallow the span onto a slot div instead) with a `BentoCard`
+ * nested inside for the visual surface and the spotlight hover. */
+.bento{display:grid;grid-template-columns:var(--landing-evidence-columns);gap:var(--landing-bento-gap);margin:var(--space-5) var(--zero);}
+.tile{display:flex;min-width:var(--zero);}
+.tileChart{grid-column:var(--landing-evidence-chart-col);grid-row:var(--landing-evidence-chart-row);}
+.tileTicker{grid-column:var(--landing-evidence-ticker-col);}
+.tileOpen{grid-column:var(--landing-evidence-open-col);}
+.tileScale{grid-column:var(--landing-evidence-scale-col);}
+
+/* BentoCard (T2, hash-pinned) ships a Tailwind neutral surface plus a hover-lift and a
+ * tap spring; DESIGN.md 4.3 and 4.6 ban both, tiles are not pressable. The Tailwind
+ * utility output lives in a layer, and author CSS here is unlayered, so a plain rule
+ * already outranks bg-neutral-50, border-neutral, shadow-xs, hover:shadow-lg and
+ * rounded-2xl regardless of specificity or source order; only the spring, whose inline
+ * transform is set directly by the animation library, needs an important override to
+ * beat that inline style. Recorded Spectrum exception: borderAnim is always false
+ * (border-beam stays unused on this page) and spotlight is the only hover left, gated
+ * off under reduced motion at the wiring layer. */
+.tileCard{
+ flex:1;
+ width:var(--full);
+ min-width:var(--zero);
+ background:var(--graphite-850);
+ border-color:var(--line);
+ border-radius:var(--landing-radius-panel);
+ box-shadow:none;
+ transform:none!important;
+}
+.tileCard:hover{border-color:var(--line-hover);}
+
+.bentoChart{min-block-size:var(--landing-chart-min-height);}
+.tileLabel{margin:var(--zero) var(--zero) var(--space-2);color:var(--stone-100);font-weight:var(--weight-semibold);}
+
+.tickerGroup{display:flex;flex-direction:column;gap:var(--space-3);width:var(--full);}
+.tickerRow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:var(--space-3);row-gap:var(--space-1);}
+.tickerLabel{margin:var(--zero);flex:1 1 auto;color:var(--stone-300);font-size:var(--font-size-small);}
+.tickerValue{font-family:var(--font-mono);font-size:var(--landing-metric);font-variant-numeric:tabular-nums;color:var(--stone-100);}
+.baseline{margin:var(--zero);flex:none;font-family:var(--font-mono);font-size:var(--font-size-small);font-variant-numeric:tabular-nums;letter-spacing:var(--landing-tracking-mono);color:var(--stone-300);}
+
+.tileNote{margin:var(--zero);color:var(--stone-300);font-size:var(--font-size-small);line-height:var(--line-height-body);}
+.warning{color:var(--warning-ink);}
+.inlineLink{color:var(--system-ink);}
+
+/* -------------------------------------------------------- existing figure, unchanged */
+.researchFigure{margin:var(--space-5) var(--zero);}
+.researchFigure figcaption{color:var(--stone-100);font-weight:var(--weight-semibold);}
+.researchChart{min-height:var(--landing-reader-height);margin:var(--space-3) var(--zero);}
+.researchTable{width:var(--full);border-collapse:collapse;font-size:var(--font-size-small);font-variant-numeric:tabular-nums;}
+.researchTable caption{text-align:left;color:var(--stone-300);padding:var(--space-3) var(--zero);}
+.researchTable th,.researchTable td{padding:var(--space-3) var(--space-1);border-bottom:var(--border-width) solid var(--line);text-align:right;}
+.researchTable th:first-child{text-align:left;}
+.researchTable th{color:var(--stone-100);}
+.researchFinding{max-width:var(--landing-measure);margin:var(--space-5) var(--zero);}
+.researchFinding p{margin:var(--space-3) var(--zero);}
+.researchNote{color:var(--stone-300);font-size:var(--font-size-small);margin-top:var(--space-3);}
+.researchDetails{border-block:var(--border-width) solid var(--line-strong);padding:var(--space-2) var(--zero);}
+.researchDetails summary{min-height:var(--touch-height);align-content:center;color:var(--stone-100);cursor:pointer;}
+.researchDetails p{max-width:var(--landing-measure);margin:var(--space-3) var(--zero);}
+.researchTrace{white-space:pre-wrap;overflow-wrap:anywhere;padding:var(--space-4);border-left:var(--border-width) solid var(--survey-teal);background:var(--graphite-850);font:var(--font-size-code)/var(--line-height-body) var(--font-mono);color:var(--stone-100);}
+.availabilityLinks{display:flex;flex-wrap:wrap;gap:var(--space-4);}
+.textLink{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);color:var(--system-ink);}

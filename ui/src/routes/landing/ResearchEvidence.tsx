@@ -1,15 +1,24 @@
 import {lazy,Suspense,useEffect,useRef,useState} from 'react';
+import {useReducedMotion} from 'motion/react';
 import evidence from '../../data/research-evidence.json';
-import css from './landing.module.css';
+import {Reveal,useRevealed} from './Reveal';
+import {BentoCard} from '../../components/spectrumui/bento-card';
+import {NumberTicker} from '../../components/spectrumui/number-ticker';
+import css from './evidence.module.css';
 
 const BarChart=lazy(()=>import('../../components/spectrumui/charts/bar-chart').then(m=>({default:m.BarChart})));
 const number=(value:number)=>value.toFixed(2);
 const delta=(value:number)=>(value>0?'+':'')+number(value);
+/** NumberTicker rounds `value` to an integer before formatting, so a two-decimal figure
+ * is carried as hundredths and unscaled by `format` (DESIGN.md 4.1 P4). */
+const centipp=(value:number)=>Math.round(value*100);
+const formatPp=(value:number)=>(value/100).toFixed(2);
 const labels:Record<string,string>={bigcodebench:'BigCodeBench',champ:'CHAMP',logicbench:'LogicBench',medcalcbench:'MedCalcBench',theoremqa:'TheoremQA',toolqa:'ToolQA'};
 const data=[
  {category:'Recall@10',first:evidence.rates.flat.recall10,second:evidence.rates.full_pyramid.recall10},
  {category:'Complete@4',first:evidence.rates.flat.complete4,second:evidence.rates.full_pyramid.complete4},
 ];
+const chartSeries:[{label:string;color:string},{label:string;color:string}]=[{label:'Flat dense search',color:'var(--stone-300)'},{label:'LLM map + scoped search',color:'var(--survey-teal)'}];
 
 export function ResearchEvidence(){
  const section=useRef<HTMLElement>(null);
@@ -22,13 +31,77 @@ export function ResearchEvidence(){
   observer.observe(section.current);
   return()=>observer.disconnect();
  },[]);
+
+ // The bento's own chart mount and its two tickers ride the page's shared P3 observer
+ // pool through useRevealed rather than opening a new IntersectionObserver each: the
+ // same 30%-panel threshold that plays the tile-settle animation also gates when the
+ // chart lazy-loads here and when the tickers arm their once-only roll (DESIGN.md 4.1, 5;
+ // Reveal.tsx keeps the page at two observers). Below, the original figure's own visible
+ // state and observer are untouched, per this task's binding: they stay as they were.
+ const chartTileRef=useRef<HTMLDivElement>(null);
+ const chartRevealed=useRevealed(chartTileRef);
+ const tickerTileRef=useRef<HTMLDivElement>(null);
+ const tickersRevealed=useRevealed(tickerTileRef);
+ const reducedMotion=useReducedMotion();
+ // NumberTicker calls motion/react's own useInView unconditionally on mount, which
+ // throws where IntersectionObserver does not exist (jsdom, and any platform without
+ // it); the static fallback below already carries the exact final figure, so this
+ // guard is the same "no IntersectionObserver, final state" degradation Reveal.tsx
+ // and this file's own chart-visibility effect already use.
+ const canTick=typeof IntersectionObserver!=='undefined';
+
  return <section ref={section} id="research-results" className={css.research} aria-labelledby="research-title">
   <div className={css.copy}>
    <p className={css.eyebrow}>Research update · 10 September 2026</p>
-   <h2 id="research-title">More relevant skills found</h2>
-   <p className={css.answer}>An LLM-generated map of the skill library improved retrieval in our SRA-Bench experiment.</p>
-   <p>Across {evidence.queries.toLocaleString('en-US')} queries and {evidence.skills.toLocaleString('en-US')} skills, the map raised Recall@10 by <strong>{delta(evidence.vs_flat.recall10.delta_pp)} percentage points</strong> over flat dense search. The model wrote summaries and example tasks for 28 groups; search used them to choose where to look next.</p>
+   <h2 id="research-title">Plus 8.53 points of recall over flat.</h2>
+   <p className={css.subline}>{evidence.queries.toLocaleString('en-US')}{' queries across '}{evidence.skills.toLocaleString('en-US')}{' skills on SRA-Bench, against flat dense search.'}</p>
   </div>
+
+  <div className={css.bento}>
+   <Reveal pattern="p3" as="div" className={[css.tile,css.tileChart].join(' ')}>
+    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+     <p className={css.tileLabel}>Relevant skills retrieved and complete sets found (%)</p>
+     <div ref={chartTileRef} className={css.bentoChart} role="group" aria-label="Benchmark comparison summary; full comparison and exact values further down this section">
+      {chartRevealed&&<Suspense fallback={null}><BarChart data={data} series={chartSeries}/></Suspense>}
+     </div>
+    </BentoCard>
+   </Reveal>
+
+   <Reveal pattern="p3" index={1} as="div" className={[css.tile,css.tileTicker].join(' ')}>
+    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+     <div ref={tickerTileRef} className={css.tickerGroup}>
+      <div className={css.tickerRow}>
+       <p className={css.tickerLabel}>Recall@10</p>
+       {tickersRevealed&&canTick
+        ?<NumberTicker value={centipp(evidence.vs_flat.recall10.delta_pp)} format={formatPp} prefix="+" suffix=" pp" startOnView={false} className={css.tickerValue}/>
+        :<span className={css.tickerValue}>{delta(evidence.vs_flat.recall10.delta_pp)+' pp'}</span>}
+       <p className={css.baseline}>{number(evidence.rates.flat.recall10)}{' → '}{number(evidence.rates.full_pyramid.recall10)}</p>
+      </div>
+      <div className={css.tickerRow}>
+       <p className={css.tickerLabel}>Complete@4</p>
+       {tickersRevealed&&canTick
+        ?<NumberTicker value={centipp(evidence.vs_flat.complete4.delta_pp)} format={formatPp} prefix="+" suffix=" pp" startOnView={false} className={css.tickerValue}/>
+        :<span className={css.tickerValue}>{delta(evidence.vs_flat.complete4.delta_pp)+' pp'}</span>}
+       <p className={css.baseline}>{number(evidence.rates.flat.complete4)}{' → '}{number(evidence.rates.full_pyramid.complete4)}</p>
+      </div>
+      <p className={css.tileNote}>Measured, exploratory offline retrieval, not completed coding tasks. Four of six datasets improved; CHAMP and TheoremQA regressed. The hierarchy came from benchmark corpus prefixes rather than real repository scopes.</p>
+     </div>
+    </BentoCard>
+   </Reveal>
+
+   <Reveal pattern="p3" index={2} as="div" className={[css.tile,css.tileOpen].join(' ')}>
+    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+     <p className={css.tileNote}>{'Task-level value is not settled. '}<a className={css.inlineLink} href="#proof-gate">The delivery boundary in section 4</a>{' is deterministic and source-backed; it says nothing about whether a delivered rule helped somebody finish the work. That measurement needs real repository snapshots and frozen tasks, and we have not made it yet.'}</p>
+    </BentoCard>
+   </Reveal>
+
+   <Reveal pattern="p3" index={3} as="div" className={[css.tile,css.tileScale].join(' ')}>
+    <BentoCard borderAnim={false} spotlight={!reducedMotion} className={css.tileCard}>
+     <p className={css.tileNote}>{'Corpora of 1k, 10k and 30k skills, cold and warm cache: in the Q6 validation plan. '}<span className={css.warning}>Designed for, not yet measured.</span>{' No latency figure appears on this page until that run exists.'}</p>
+    </BentoCard>
+   </Reveal>
+  </div>
+
   <figure className={css.researchFigure}>
    <figcaption>Relevant skills retrieved and complete sets found (%)</figcaption>
    <div className={css.researchChart} role="group" aria-label="Benchmark comparison; exact values in the table below">

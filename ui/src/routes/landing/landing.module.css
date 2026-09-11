@@ -81,10 +81,10 @@
 /* Solid band, DESIGN.md 3.8: headline and subline in the narrower column, the form in
  * the wider one, one hairline between at ≥1080; the rule token collapses to `none` when
  * the grid stacks so the divider never floats alone above the full-width form. */
-.waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-section-padding);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
-.waitlistCopy{border-right:var(--landing-waitlist-rule);}
+.waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-band-gap);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
+.waitlistCopy{padding-right:var(--landing-waitlist-inset);border-right:var(--landing-waitlist-rule);}
 .waitlistCopy p{margin:var(--space-3) var(--zero) var(--zero);}
-.form{min-width:var(--zero);scroll-margin-top:var(--space-7);}
+.form{min-width:var(--zero);padding-left:var(--landing-waitlist-inset);scroll-margin-top:var(--space-7);}
 .page .signupNote{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-small);}
 .signupNote strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
 .form>label{display:block;margin-bottom:var(--space-2);color:var(--stone-100);font-size:var(--font-size-body);}
@@ -112,7 +112,11 @@
 .player{width:var(--full);aspect-ratio:var(--landing-video-ratio);border:var(--zero);border-radius:var(--radius-small);background:var(--graphite-950);}
 
 /* ------------------------------------------------------------------- footer */
-.footer{position:relative;padding:var(--landing-section-padding) var(--zero) var(--space-5);border-top:var(--border-width) solid var(--line);background:var(--film-scrim-band),var(--graphite-900);}
+/* Scrim only, no opaque ground: DESIGN.md 3.9 puts the footer "on the film's terminal
+ * frame so the folded map and the wordmark share the last screen" — an opaque band
+ * would hide exactly that frame. Contrast is measured against the rendered terminal
+ * frame in the report, not assumed. */
+.footer{position:relative;padding:var(--landing-section-padding) var(--zero) var(--space-5);border-top:var(--border-width) solid var(--line);background:var(--film-scrim-band);}
 .footerTop{display:grid;grid-template-columns:var(--landing-footer-columns);gap:var(--space-5);}
 .footerIdentity p{margin:var(--space-3) var(--zero);max-width:var(--landing-copy-width);}
 .footer nav{display:flex;flex-direction:column;align-items:flex-start;}
