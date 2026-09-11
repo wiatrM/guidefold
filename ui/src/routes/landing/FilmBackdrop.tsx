@@ -31,15 +31,20 @@ export type Anchor = {id:string;second:number;at:number};
 
 /**
  * The nine sections in DOM order with the playhead second each one opens on
- * (DESIGN.md 3.0). Seconds are fixed; the scroll positions they sit at are measured.
- * Two beats are literal and must not be re-assigned: the four-card fan belongs to
- * `how-it-works`, the tier-edge crossing to `proof-gate`.
+ * (DESIGN.md 3.0, "Implemented anchors"). Seconds are fixed; the scroll positions they
+ * sit at are measured. Two beats are literal and must not be re-assigned: the four-card
+ * fan belongs to `how-it-works`, the tier-edge crossing to `proof-gate`.
+ *
+ * Where a second differs from DESIGN.md's table it is because the film's own cut is the
+ * truth and the design second was a target: an anchor is the cut plus ~0.09 s, which is
+ * wider than the one-frame deadband the delta gate leaves behind, so the section opens on
+ * its own shot rather than on the last frame of the previous one.
  */
 export const FILM_ANCHORS:readonly Omit<Anchor,'at'>[] = [
  {id:'hero',second:0},               // table above the clouds, the drawn orange route, sunrise window
  {id:'extraction',second:1.4},       // the fall into the terrain: contour valley, teal rings, map sheet lifting
- {id:'how-it-works',second:4.2},     // four cream cards standing in a fan around one lit orange marker
- {id:'proof-gate',second:5.6},       // the route crossing a plateau edge, teal rim light on the boundary
+ {id:'how-it-works',second:4.3},     // four cream cards standing in a fan around one lit orange marker (cut 4.2083)
+ {id:'proof-gate',second:5.75},      // the route crossing a plateau edge, teal rim light on the boundary
  {id:'telemetry',second:6.8},        // stacked plateaus held wide, cubes across the lower tiers
  {id:'research-results',second:7.8}, // upper plateau, sparse cubes, route arriving at the top tier
  {id:'availability',second:8.6},     // pull back begins, the terrain reads as a map again
