@@ -46,3 +46,13 @@ Use case: infographic-diagram. Professional implementation-level architecture di
 
 Correction:
 Correct this technical architecture diagram. Postgres must be OUTSIDE the Static Go executable boundary: redraw that boundary enclosing only the Go processing boxes, ending before the Postgres cylinder. Label lower repeated database 'Same Postgres' so it cannot be interpreted as a second database. Keep all remaining exact text and design unchanged. No new slogan or content.
+
+## Landing v2 JS budget
+
+Date: 2026-09-11. Pre-change baseline captured on unchanged code (before the Landing v2 tokens
+and evidence-mirror change), via `pnpm build`.
+
+Chunk: `dist/assets/landing-P09dfzH_.js` — 76,889 bytes raw, 25,216 bytes gzipped
+(`gzip -c dist/assets/landing-P09dfzH_.js | wc -c`).
+
+Budget: +34 KB gzipped (DESIGN.md v2 §5). After-figure recorded by the landing v2 QA gate task.
