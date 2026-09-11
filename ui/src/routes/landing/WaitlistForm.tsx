@@ -32,7 +32,7 @@ export function WaitlistForm(){
   finally{clearTimeout(timeout);active.current=null;}
  }
  if(state==='saved')return <div ref={result} tabIndex={-1} role="status" aria-label="Waitlist confirmation" className={css.success}><Check aria-hidden="true"/><div><strong>Check your inbox to confirm.</strong><p>New signups receive one confirmation email. Repeat requests do not send another message. Already confirmed? You’re all set.</p><p>Missing the email? Contact <a href="mailto:hello@cloudfloo.io">hello@cloudfloo.io</a>.</p></div></div>;
- return <form id="waitlist" onSubmit={submit} className={css.form} aria-busy={state==='sending'}>
+ return <form id="waitlist-form" onSubmit={submit} className={css.form} aria-busy={state==='sending'}>
   <p className={css.signupNote}>Paid hosting is planned. Sign up for availability updates.</p>
   <label htmlFor="waitlist-email">Your email</label>
   <div className={css.formRow}>

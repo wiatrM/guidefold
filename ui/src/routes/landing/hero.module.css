@@ -1,0 +1,160 @@
+/* Hero, DESIGN.md 3.1. Copy sits on the film over a bounded local scrim; the proof
+ * rail is the only glass surface in this section. Every value is a token and every
+ * breakpoint change is a token swap in the 1080/720 blocks of tokens.css. */
+
+.hero{
+ position:relative;
+ isolation:isolate;
+ display:grid;
+ grid-template-columns:var(--landing-grid);
+ align-content:end;
+ gap:var(--space-3) var(--landing-bento-gap);
+ min-height:var(--landing-media-band);
+ padding-block:var(--space-3) var(--space-4);
+}
+
+/* The scrim is the only full-bleed element: the page container is capped at
+ * --landing-width, and a scrim that stopped at the gutter would leave the film
+ * at full strength beside the headline. */
+.heroScrim{
+ position:absolute;
+ z-index:-1;
+ inset-block:var(--zero);
+ inset-inline:var(--landing-bleed-inline);
+ background:var(--film-scrim-hero);
+}
+
+.heroCopy{
+ grid-column:var(--landing-hero-copy-span);
+ grid-row:var(--landing-hero-copy-row);
+ display:flex;
+ flex-direction:column;
+ align-items:var(--landing-hero-items);
+ min-width:var(--zero);
+}
+
+.hero h1.title{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-display);
+ font-weight:var(--weight-semibold);
+ line-height:var(--landing-display-leading);
+ letter-spacing:var(--landing-display-tracking);
+ color:var(--landing-ivory);
+}
+
+.hero p.subline{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-kicker-measure);
+ font-size:var(--landing-kicker);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+
+.hero p.body{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+
+.heroActions{
+ display:grid;
+ grid-template-columns:var(--landing-action-columns);
+ gap:var(--space-3);
+ margin-top:var(--space-4);
+ scroll-margin-top:var(--space-7);
+}
+
+.hero p.trust{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ color:var(--stone-300);
+}
+
+.textLink{
+ display:inline-flex;
+ align-items:center;
+ min-height:var(--touch-height);
+ margin-top:var(--zero);
+ color:var(--system-ink);
+}
+
+/* Sentence case, no ring, no ambient bob: the cue reads as a sentence with a
+ * direction, and it only moves when the pointer is on it. */
+.scrollCue{
+ display:inline-flex;
+ align-items:center;
+ gap:var(--space-2);
+ align-self:var(--landing-hero-items);
+ min-height:var(--touch-height);
+ margin-top:var(--space-2);
+ color:var(--stone-300);
+ font-size:var(--font-size-small);
+ text-decoration:none;
+}
+.scrollCueIcon{display:inline-flex;color:var(--survey-teal);transition:transform var(--duration) var(--ease-out);}
+.scrollCue svg{width:var(--icon-size);height:var(--icon-size);}
+@media(hover:hover) and (pointer:fine){
+ .scrollCue:hover{color:var(--stone-100);}
+ .scrollCue:hover .scrollCueIcon{transform:translateY(var(--space-1));}
+}
+
+/* The proof rail: one glass strip, two cells, one hairline. --glass-blur is 0px while
+ * [data-film="on"], so the blur is live only over the static poster. */
+.proofRail{
+ grid-column:var(--landing-hero-rail-span);
+ grid-row:var(--landing-hero-rail-row);
+ display:grid;
+ grid-template-columns:var(--landing-rail-columns);
+ gap:var(--landing-panel-pad);
+ padding:var(--landing-panel-pad);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:blur(var(--glass-blur));
+}
+.cell{min-width:var(--zero);}
+.cell+.cell{
+ padding-left:var(--landing-rail-indent);
+ padding-top:var(--landing-rail-stack-pad);
+ border-left:var(--landing-rail-rule);
+ border-top:var(--landing-rail-rule-top);
+}
+.proofRail p.figure{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--landing-rail-figure);
+ font-weight:var(--weight-medium);
+ line-height:var(--landing-rail-figure-leading);
+ font-variant-numeric:tabular-nums;
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+ text-wrap:balance;
+}
+.proofRail p.qualifier{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--steel);
+}
+
+.tierGlyph{
+ grid-column:var(--landing-hero-glyph-span);
+ grid-row:var(--landing-hero-glyph-row);
+ align-self:end;
+ justify-self:var(--landing-hero-items);
+}
+.glyph{display:block;height:var(--landing-tier-glyph-height);width:auto;overflow:visible;}
+.tier1{fill:var(--tier-1);}
+.tier2{fill:var(--tier-2);}
+.tier3{fill:var(--tier-3);}
+.tier4{fill:var(--tier-4);}
+.route{
+ fill:none;
+ stroke:var(--safety-orange);
+ stroke-width:var(--landing-glyph-stroke);
+ stroke-linecap:round;
+ stroke-linejoin:round;
+}

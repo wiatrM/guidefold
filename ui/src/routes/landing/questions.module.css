@@ -1,0 +1,45 @@
+/* Before you join, DESIGN.md 3.9. The Base UI Collapsible is kept and restyled rather
+ * than replaced, because the ids, the hash deep link and the consent link's behaviour
+ * are contractual. Rules moved with the markup from landing.module.css. */
+.section{max-width:var(--landing-question-width);padding-block:var(--landing-section-padding);}
+.section h2.heading{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+.questionList{margin-top:var(--space-4);}
+.question{border-bottom:var(--border-width) solid var(--line);}
+.question h3{margin:var(--zero);}
+.questionTrigger{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:var(--space-3);
+ width:var(--full);
+ min-height:var(--touch-height);
+ padding:var(--space-3) var(--zero);
+ border:var(--zero);
+ background:var(--transparent);
+ color:var(--stone-100);
+ font:inherit;
+ font-size:var(--landing-body);
+ font-weight:var(--weight-medium);
+ text-align:left;
+ cursor:pointer;
+}
+.questionTrigger>svg{flex:none;color:var(--stone-300);}
+.questionTrigger[aria-expanded=true]>svg{transform:rotate(var(--quarter-turn));}
+.questionPanel{overflow:hidden;height:var(--collapsible-panel-height);}
+.questionPanel[data-starting-style],.questionPanel[data-ending-style]{height:var(--zero-length);opacity:var(--zero);}
+.question[data-pointer-motion=true] .questionPanel{transition:height var(--duration-menu) var(--ease-out),opacity var(--duration-menu) var(--ease-out);}
+.question[data-pointer-motion=true] .questionTrigger>svg{transition:transform var(--duration-menu) var(--ease-out);}
+.question div p{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-body);color:var(--stone-300);line-height:var(--line-height-body);}
+
+@media(prefers-reduced-motion:reduce){
+ .question[data-pointer-motion=true] .questionPanel,.question[data-pointer-motion=true] .questionTrigger>svg{transition:none;}
+}

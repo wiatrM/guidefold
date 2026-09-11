@@ -166,6 +166,28 @@
  --landing-tracking-mono:.04em;
  --landing-eyebrow-rule:12px;
 
+ /* Hero placement. One 12-column grid; sections differ by which columns they use,
+  * never by a new container, and every responsive change below is a span swap. */
+ --landing-grid:repeat(12,minmax(0,1fr));
+ --landing-bleed-inline:calc(50% - 50vw);
+ --landing-nav-position:sticky;
+ --landing-hero-copy-span:1/10;
+ --landing-hero-copy-row:1;
+ --landing-hero-glyph-span:10/13;
+ --landing-hero-glyph-row:1;
+ --landing-hero-rail-span:1/10;
+ --landing-hero-rail-row:2;
+ --landing-rail-columns:repeat(2,minmax(0,1fr));
+ --landing-rail-rule:var(--border-width) solid var(--glass-border);
+ --landing-rail-rule-top:none;
+ --landing-rail-stack-pad:0px;
+ --landing-rail-indent:var(--landing-panel-pad);
+ --landing-glyph-stroke:2px;
+ /* The hero proof figures are sentences, not bare numbers: --landing-metric (up to
+  * 52px) wraps them to three lines and outranks the h1. Same role, own size. */
+ --landing-rail-figure:clamp(20px,1.7vw,26px);
+ --landing-rail-figure-leading:1.25;
+
  --film-scrim-hero:linear-gradient(100deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.8) 34%,rgba(7,9,12,.1) 66%,rgba(7,9,12,0) 100%);
  --film-scrim-chapter:radial-gradient(120% 90% at 30% 55%,rgba(7,9,12,.86) 0%,rgba(7,9,12,.52) 48%,rgba(7,9,12,.24) 100%);
  --film-scrim-band:linear-gradient(180deg,rgba(7,9,12,.58) 0%,rgba(7,9,12,.86) 100%);
@@ -238,6 +260,9 @@
  --landing-hero-padding:32px;
  --landing-nav-gap:16px;
  --landing-stage-height:auto;
+ --landing-hero-copy-span:1/9;
+ --landing-hero-glyph-span:9/13;
+ --landing-hero-rail-span:1/-1;
 }}
 @media(max-width:720px){:root{
  --landing-film-opacity:.7;
@@ -285,6 +310,20 @@
  --landing-control-top:16px;
  --landing-control-bottom:auto;
  --landing-footer-columns:repeat(2,minmax(0,1fr));
+ /* The 390 defect this fixes: a sticky header covering the first line of the h1. */
+ --landing-nav-position:static;
+ --landing-hero-copy-span:1/-1;
+ --landing-hero-copy-row:auto;
+ --landing-hero-glyph-span:1/-1;
+ --landing-hero-glyph-row:auto;
+ --landing-hero-rail-span:1/-1;
+ --landing-hero-rail-row:auto;
+ --landing-rail-columns:minmax(0,1fr);
+ --landing-rail-rule:none;
+ --landing-rail-rule-top:var(--border-width) solid var(--glass-border);
+ --landing-rail-figure:19px;
+ --landing-rail-stack-pad:var(--landing-panel-pad);
+ --landing-rail-indent:0px;
 }}
 
 /* ---------------------------------------------------------------------------

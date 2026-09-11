@@ -33,19 +33,35 @@ describe('public landing',()=>{
   expect(errors).toEqual([]);
  });
 
- it('answers why, then how, then value, under one h1',()=>{
-  render(<Landing/>);
+ it('opens on the outcome and orders the nine sections',()=>{
+  const {container}=render(<Landing/>);
   expect(screen.getAllByRole('heading',{level:1})).toHaveLength(1);
-  const headings=screen.getAllByRole('heading',{level:2}).map(node=>node.textContent);
-  expect(headings.slice(0,3)).toEqual(['Why we built it','How it works','What your team gets']);
-  expect(headings.indexOf('Get availability updates')).toBeGreaterThan(headings.indexOf('What your team gets'));
-  expect(headings.indexOf('Before you join')).toBeGreaterThan(headings.indexOf('Get availability updates'));
+  expect(screen.getByRole('heading',{level:1,name:'Your repos are already writing the handbook.'})).toBeInTheDocument();
+  const ids=[...container.querySelectorAll('main section[id]')].map(n=>n.id);
+  expect(ids).toEqual(['hero','extraction','how-it-works','proof-gate','telemetry','research-results','availability','waitlist','questions']);
+  expect(container.querySelector('a[href="#extraction"]')).toBeInTheDocument();
+ });
+
+ it('renders both hero proof cells with their qualifiers in full',()=>{
+  render(<Landing/>);
+  expect(screen.getByText('76 of 76 harmful rules refused.')).toBeVisible();
+  expect(screen.getAllByText('Delivery boundary, deterministic, source-backed; not a task-success claim. 2026-09-11.').length).toBeGreaterThan(0);
+  expect(screen.getByText('+8.53 pp Recall@10 on SRA-Bench.')).toBeVisible();
+  expect(screen.getByText('Measured, exploratory offline retrieval. 10 September 2026.')).toBeVisible();
+ });
+
+ it('gives the scroll cue one agreeing label, name and destination',()=>{
+  render(<Landing/>);
+  const cue=screen.getByRole('link',{name:'Scroll to the extraction section'});
+  expect(cue).toHaveAttribute('href','#extraction');
+  expect(cue).toHaveTextContent('How rules move up');
  });
 
  it('keeps every protected destination and the availability statements',()=>{
   const {container}=render(<Landing/>);
   const href=(selector:string)=>container.querySelector(selector);
-  expect(href('a[href="#how-it-works"]')).toBeInTheDocument();
+  expect(href('a[href="#extraction"]')).toBeInTheDocument();      // nav, copy.md 5
+  expect(container.querySelector('section#how-it-works')).toBeInTheDocument(); // v1 inbound anchor still resolves
   expect(href('a[href="#waitlist"]')).toBeInTheDocument();
   expect(href('a[href="#demo"]')).toBeInTheDocument();
   expect(href('a[href="#privacy"]')).toBeInTheDocument();
@@ -94,7 +110,7 @@ describe('public landing',()=>{
   const user=await fill();
   await user.click(screen.getByRole('button',{name:'Join the waitlist'}));
   expect(screen.getByRole('button',{name:'Saving…'})).toBeDisabled();
-  fireEvent.submit(document.getElementById('waitlist')!);
+  fireEvent.submit(document.getElementById('waitlist-form')!);
   expect(submitWaitlist).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('status',{name:'Waitlist confirmation'})).not.toBeInTheDocument();
   finish();
@@ -134,25 +150,18 @@ describe('public landing',()=>{
   expect(submitWaitlist).not.toHaveBeenCalled();
   expect(document.querySelector('img[src^="https:"]')).toBeNull();
   expect(screen.queryByRole('button',{name:'Play demo'})).not.toBeInTheDocument();
+  expect(document.querySelector('video')).toBeNull();
   await userEvent.setup().click(screen.getByRole('button',{name:action==='confirm'?'Confirm email':'Unsubscribe'}));
   expect(submitWaitlist).toHaveBeenCalledWith(action,{token:'private-token'},expect.any(AbortSignal));
   expect(await screen.findByRole('status')).toBeInTheDocument();
  });
 
- it('creates no video element under reduced motion and keeps the posters',()=>{
+ // The mechanism clip (IntroFigure) and the Meridian reader belong to the retrieval
+ // section, which T5 leaves as a shell; T8 re-homes both and restores their coverage.
+ it('creates no video element under reduced motion and keeps the film poster',()=>{
   reduceMotion(true);
   const {container}=render(<Landing/>);
   expect(container.querySelector('video')).toBeNull();
-  expect(container.querySelector('img[src="/assets/landing/intro-poster.webp"]')).toBeInTheDocument();
   expect(container.querySelector('img[src="/assets/landing/hero-poster.webp"]')).toBeInTheDocument();
- });
-
- it('mounts the mechanism clip only when motion is allowed',()=>{
-  reduceMotion(false);
-  const {container}=render(<Landing/>);
-  const clip=container.querySelector('video');
-  expect(clip).toHaveAttribute('poster','/assets/landing/intro-poster.webp');
-  expect(clip).not.toHaveAttribute('loop');
-  expect(clip).toHaveAttribute('preload','none');
  });
 });

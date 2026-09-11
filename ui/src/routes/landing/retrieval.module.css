@@ -1,0 +1,31 @@
+/* Retrieval, DESIGN.md 3.3. Shell only: the section frame, its eyebrow and its heading.
+ * Every value is a token; the responsive changes are token swaps in tokens.css. */
+.section{padding-block:var(--landing-section-padding);}
+.section p.eyebrow{
+ margin:var(--zero);
+ display:flex;
+ align-items:center;
+ gap:var(--space-2);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--steel);
+}
+.section p.eyebrow::before{
+ content:"";
+ display:block;
+ flex:none;
+ inline-size:var(--landing-eyebrow-rule);
+ block-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.section h2.heading{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
