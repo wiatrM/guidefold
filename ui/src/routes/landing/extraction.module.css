@@ -2,29 +2,25 @@
  *
  * Every value is a token and every breakpoint change is a token swap in tokens.css; the
  * bare numbers that remain are the beat windows of DESIGN.md 4.2 (0.0-0.33, 0.33-0.66,
- * 0.66-1.0 with a 0.06 overlap) and the normalised tier-route fraction. Those are
- * positions in `--p`, not design values, so they stay next to the mapping that reads them.
+ * 0.66-1.0 with a 0.06 overlap) and the rendered dash run of the tier route. Those are
+ * positions in `--p`, not design values, so they stay next to the mapping that reads them,
+ * and Extraction.test.tsx asserts the window numbers here still match `beatOpacity`.
  *
- * Resting state is the finished composition: three beats stacked in flow, all at full
- * opacity, the tier route drawn complete. Everything the sampler drives is keyed on
- * `[data-p-ready="true"]`, which Extraction.tsx sets only when the stage is really pinned
- * (`--landing-stage-height` is not `auto`) and motion is allowed. */
+ * **The rules below the `[data-p-ready="true"]` line are the only pinned ones.** Everything
+ * above it is the pre-enhancement composition and the fallback at the same time: three
+ * beats in flow, caption above instrument at one column, all at full opacity, no sticky
+ * stage, no reserved track, the tier route drawn complete. That is what renders with
+ * JavaScript off, after a thrown error, at 1080 and below, under reduced motion and under
+ * Save-Data, and there is no arrangement in which a frozen track sits above unreachable
+ * beats. Extraction.tsx sets the flag only when it has actually installed a sampler. */
 
 .section{padding-block:var(--landing-section-padding);}
 
-/* The track reserves the pinned stage's scroll before enhancement, so the pin costs no
- * layout shift. Both tokens are `auto` at 1080 and below and under reduced motion. */
-.track{position:relative;height:var(--landing-stage-scroll);}
+.track{position:relative;}
 .stage{
- position:sticky;
- top:var(--zero-length);
  display:flex;
  flex-direction:column;
- justify-content:center;
  gap:var(--landing-band-gap);
- min-height:var(--landing-stage-height);
- padding-block:var(--space-4);
- will-change:transform;
 }
 
 /* ------------------------------------------------------------------- masthead */
@@ -61,14 +57,14 @@
 
 /* ---------------------------------------------------------------------- beats */
 /* In flow the three beats are three blocks. Pinned, they occupy the same cell and
- * crossfade; the stacking is gated with the crossfade so a missing sampler can never
- * leave three beats piled in one cell at full opacity. */
+ * crossfade. `align-items:start` rather than `center` so a caption does not jump upward
+ * as the taller beat takes over the row height during a handover. */
 .beats{display:grid;gap:var(--landing-band-gap);}
 .beat{
  display:grid;
  grid-template-columns:var(--landing-mechanism-columns);
  gap:var(--space-4) var(--landing-measure-gutter);
- align-items:center;
+ align-items:start;
  min-width:var(--zero);
 }
 .caption{min-width:var(--zero);}
@@ -127,32 +123,58 @@
  background:var(--steel);
 }
 
-/* ------------------------------------------------------- the pinned behaviour */
-.stage[data-p-ready="true"] .beat{grid-area:1/1;}
-.stage[data-p-ready="true"] .rail{grid-area:1/1;display:grid;}
+/* =============================================================================
+ * The pinned behaviour. Nothing below applies until Extraction.tsx has installed a
+ * sampler, which it does only when motion is allowed, Save-Data is off and
+ * `--landing-stage-height` is not `auto`.
+ * ========================================================================== */
+.track[data-p-ready="true"]{height:var(--landing-stage-scroll);}
+.track[data-p-ready="true"] .stage{
+ position:sticky;
+ top:var(--zero-length);
+ justify-content:center;
+ min-height:var(--landing-stage-height);
+ padding-block:var(--space-4);
+ will-change:transform;
+}
+/* The row reserves the tallest beat so no caption moves during a handover, which is the
+ * one motion a reader is actually reading through. The caption therefore starts at the
+ * top of the row in every beat; the instrument centres inside it instead, so a short panel
+ * sits in the middle of the reserved height rather than leaving it empty underneath. */
+.track[data-p-ready="true"] .beat{grid-area:1/1;align-self:stretch;}
+.track[data-p-ready="true"] .instrument{align-self:center;}
+.track[data-p-ready="true"] .rail{grid-area:1/1;display:grid;}
+
+/* Only the beat that owns the progress window takes the pointer, so a caret dragged
+ * across the stage cannot select the two captions fading underneath it. The attribute is
+ * written once per handover, not per frame. */
+.track[data-p-ready="true"] .beat{pointer-events:none;user-select:none;}
+.track[data-p-ready="true"][data-active-beat="1"] .beat[data-beat="1"],
+.track[data-p-ready="true"][data-active-beat="2"] .beat[data-beat="2"],
+.track[data-p-ready="true"][data-active-beat="3"] .beat[data-beat="3"]{pointer-events:auto;user-select:auto;}
 
 /* Beat crossfade, DESIGN.md 4.2: windows at 0.0-0.33, 0.33-0.66 and 0.66-1.0, each
  * handover a 0.06-wide crossfade centred on the boundary. Linear in `--p`, so reverse
  * scroll lands on exactly the value the forward pass had. */
-.stage[data-p-ready="true"] .beat[data-beat="1"]{opacity:clamp(0,(0.36 - var(--p)) / 0.06,1);}
-.stage[data-p-ready="true"] .beat[data-beat="2"]{
+.track[data-p-ready="true"] .beat[data-beat="1"]{opacity:clamp(0,(0.36 - var(--p)) / 0.06,1);}
+.track[data-p-ready="true"] .beat[data-beat="2"]{
  opacity:min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1));
 }
-.stage[data-p-ready="true"] .beat[data-beat="3"]{opacity:clamp(0,(var(--p) - 0.63) / 0.06,1);}
+.track[data-p-ready="true"] .beat[data-beat="3"]{opacity:clamp(0,(var(--p) - 0.63) / 0.06,1);}
 
 /* The ticks read the same three windows, so the rail says which beat is on screen without
  * a number and without a second colour. Opacity, not a colour swap, keeps it one value. */
-.stage[data-p-ready="true"] .tick1,
-.stage[data-p-ready="true"] .tick2,
-.stage[data-p-ready="true"] .tick3{background:var(--survey-teal);}
-.stage[data-p-ready="true"] .tick1{opacity:calc(0.3 + 0.7 * clamp(0,(0.36 - var(--p)) / 0.06,1));}
-.stage[data-p-ready="true"] .tick2{opacity:calc(0.3 + 0.7 * min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1)));}
-.stage[data-p-ready="true"] .tick3{opacity:calc(0.3 + 0.7 * clamp(0,(var(--p) - 0.63) / 0.06,1));}
+.track[data-p-ready="true"] .tick1,
+.track[data-p-ready="true"] .tick2,
+.track[data-p-ready="true"] .tick3{background:var(--survey-teal);}
+.track[data-p-ready="true"] .tick1{opacity:calc(0.3 + 0.7 * clamp(0,(0.36 - var(--p)) / 0.06,1));}
+.track[data-p-ready="true"] .tick2{opacity:calc(0.3 + 0.7 * min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1)));}
+.track[data-p-ready="true"] .tick3{opacity:calc(0.3 + 0.7 * clamp(0,(var(--p) - 0.63) / 0.06,1));}
 
 /* Chapter parallax on the instrument layer only, DESIGN.md 4.2. It lands on the panel
  * rather than on the Reveal element, whose P3 entrance already owns that element's
  * `transform`. Linear in `--p`, exact in reverse, transform only. */
-.stage[data-p-ready="true"] .panel{
+.track[data-p-ready="true"] .panel{
  transform:translate3d(var(--zero-length),calc((var(--p) - .5) * var(--parallax-chapter)),var(--zero-length));
 }
 
@@ -266,6 +288,21 @@
 }
 
 /* --------------------------------------------------- beat 3, tier instrument */
+/* Bar length is scope breadth and the number is a count; they disagree, so the panel
+ * names both above the rows rather than leaving the reader to guess what the bar measures. */
+.tierHead{
+ display:flex;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-bottom:var(--space-2);
+ padding-bottom:var(--space-2);
+ border-bottom:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--steel);
+}
 .tiers{position:relative;}
 .tierRows{
  display:flex;
@@ -321,7 +358,9 @@
  fill:none;
  stroke:var(--safety-orange);
  stroke-width:var(--landing-glyph-stroke);
- stroke-linecap:round;
+ /* `butt`, not `round`: a round cap on a zero-length dash paints a dot at the route's
+  * start for the whole of beats 1 and 2, before the draw has anything to show. */
+ stroke-linecap:butt;
  stroke-linejoin:round;
 }
 /* The draw moves `stroke-dasharray`, never `stroke-dashoffset`: the offset stays at the
@@ -329,4 +368,4 @@
  * contract both read. 2000 is `ROUTE_RUN` in Extraction.tsx, a dash run in rendered pixels
  * longer than the route is ever drawn; see the comment there for why it is not a path
  * fraction. */
-.stage[data-p-ready="true"] .tierRoute{stroke-dasharray:calc(2000 * clamp(0,(var(--p) - 0.66) / 0.34,1)) 2000;}
+.track[data-p-ready="true"] .tierRoute{stroke-dasharray:calc(2000 * clamp(0,(var(--p) - 0.66) / 0.34,1)) 2000;}

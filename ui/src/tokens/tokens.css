@@ -319,9 +319,10 @@
  --landing-proofgate-figures-span:1/-1;
  --landing-telemetry-panel-span:1/-1;
  --landing-telemetry-columns:minmax(0,1fr);
- --landing-scope-width-1:100%;
- --landing-scope-width-2:100%;
- --landing-scope-width-3:100%;
+ /* The scope ladder is NOT flattened at 720. It was, and the extraction tier instrument
+  * then read as four identical full-width rows with no hierarchy in it at 390, while the
+  * tier route was drawn for the stepped widths. One ladder at every width also keeps the
+  * route's x-stops (SCOPE_LADDER in Extraction.tsx) landing on the bars at both. */
  --landing-scope-indent:8px;
  --amp-topo:8px; --amp-grid:20px; --amp-plane:12px; --amp-hero-media:6px;
  --plane-opacity-why:.28; --plane-opacity-how:.28; --plane-opacity-value:.28;
