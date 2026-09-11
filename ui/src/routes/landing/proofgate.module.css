@@ -10,10 +10,14 @@
  row-gap:var(--space-5);
  padding-block:var(--landing-section-padding);
 }
+/* Hugs the content rows, not the section's own vertical padding: inset-block matches
+ * --landing-section-padding (the same token .section pads with) so the ring traces the
+ * copy/figures box rather than drawing a rectangle around the empty film above and below
+ * it - the boxed-panel read DESIGN.md 3.4 rules out for this "type on film" block. */
 .glow{
  position:absolute;
  z-index:-1;
- inset-block:var(--zero);
+ inset-block:var(--landing-section-padding);
  inset-inline:var(--zero);
  border-radius:var(--landing-radius-panel);
  box-shadow:var(--glow-system);

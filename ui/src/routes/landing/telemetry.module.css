@@ -100,6 +100,8 @@
 }
 .cellValue{
  margin:var(--zero);
+ display:flex;
+ flex-direction:column;
  font-size:var(--font-size-body);
  line-height:var(--line-height-compact);
  color:var(--stone-100);
@@ -107,6 +109,9 @@
 .cellValue.team{font-weight:var(--weight-semibold);color:var(--landing-ivory);}
 .cellValue[data-value="unknown"]{color:var(--steel);font-style:italic;}
 .cellValue[data-ask-reason]{color:var(--human-ink);}
+/* Cost and time is three separate measures, each its own line, never joined with a
+ * middle dot: that join is reserved for decorative byline metadata, not instrument data. */
+.metaLine+.metaLine{margin-top:var(--space-1);}
 
 .gateRule{
  margin:var(--space-4) var(--zero) var(--zero);

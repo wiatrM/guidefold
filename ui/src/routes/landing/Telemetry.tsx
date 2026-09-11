@@ -8,7 +8,7 @@ type TeamRow={
  taskSuccess:string|null;
  safetyBoundary:string|null;
  funnel:string|null;
- costTime:string|null;
+ costTime:readonly string[]|null;
  askReason:AskReason|null;
 };
 
@@ -22,12 +22,16 @@ type ColumnKey=Exclude<keyof TeamRow,'team'>;
  * stripped down to less than it provides). Rows never animate (DESIGN.md 4.6 rejects
  * animated funnel bars): every value is already at its final state in the base DOM, and
  * the whole panel gets one P3 settle rather than a per-row stagger.
+ *
+ * Cost and time is three measures, not one string: it renders as three stacked lines
+ * inside the cell rather than a single line joined with middle dots, which the anti-slop
+ * gate reserves for decorative byline metadata, not an instrument's own data.
  */
 const rows:readonly TeamRow[]=[
- {team:'Payments platform',taskSuccess:'94% (48 of 51 tasks)',safetyBoundary:'6 ASK, 0 loaded on conflict',funnel:'318 SEARCH → 92 USE',costTime:'21.4K tokens · 58 tool calls · 2m 40s',askReason:'Conflicting rules'},
- {team:'Identity and access',taskSuccess:'88% (37 of 42 tasks)',safetyBoundary:'11 ASK, 0 loaded on conflict',funnel:'204 SEARCH → 61 USE',costTime:'14.9K tokens · 33 tool calls · 1m 55s',askReason:'Revision changed'},
+ {team:'Payments platform',taskSuccess:'94% (48 of 51 tasks)',safetyBoundary:'6 ASK, 0 loaded on conflict',funnel:'318 SEARCH → 92 USE',costTime:['21.4K tokens','58 tool calls','2m 40s'],askReason:'Conflicting rules'},
+ {team:'Identity and access',taskSuccess:'88% (37 of 42 tasks)',safetyBoundary:'11 ASK, 0 loaded on conflict',funnel:'204 SEARCH → 61 USE',costTime:['14.9K tokens','33 tool calls','1m 55s'],askReason:'Revision changed'},
  {team:'Data platform',taskSuccess:null,safetyBoundary:'3 ASK, 0 loaded on conflict',funnel:'126 SEARCH → 40 USE',costTime:null,askReason:'Missing dependencies'},
- {team:'Growth',taskSuccess:'91% (29 of 32 tasks)',safetyBoundary:null,funnel:null,costTime:'9.2K tokens · 22 tool calls · 1m 05s',askReason:null},
+ {team:'Growth',taskSuccess:'91% (29 of 32 tasks)',safetyBoundary:null,funnel:null,costTime:['9.2K tokens','22 tool calls','1m 05s'],askReason:null},
 ];
 
 const columns:readonly {key:ColumnKey;label:string;isReason?:boolean}[]=[
@@ -41,12 +45,14 @@ const columns:readonly {key:ColumnKey;label:string;isReason?:boolean}[]=[
 /** A cell never shows a bare zero or a dash for missing data: it shows the word
  * `Unknown`, in the instrument itself, carrying `data-value="unknown"` so the rule is
  * checkable rather than only promised in the microcopy above. */
-function Cell({label,value,isReason}:{label:string;value:string|null;isReason?:boolean}){
+function Cell({label,value,isReason}:{label:string;value:string|readonly string[]|null;isReason?:boolean}){
  return <div className={css.cell}>
   <dt className={css.cellLabel}>{label}</dt>
   {value===null
    ?<dd className={css.cellValue} data-value="unknown">{'Unknown'}</dd>
-   :<dd className={css.cellValue} data-ask-reason={isReason?value:undefined}>{value}</dd>}
+   :Array.isArray(value)
+    ?<dd className={css.cellValue}>{value.map(part=><span key={part} className={css.metaLine}>{part}</span>)}</dd>
+    :<dd className={css.cellValue} data-ask-reason={isReason?value as string:undefined}>{value}</dd>}
  </div>;
 }
 
@@ -59,7 +65,7 @@ export function Telemetry(){
   <Reveal pattern="p1" as="p" index={4} className={css.microcopy}>{'Missing data reads Unknown, never zero.'}</Reveal>
 
   <Reveal pattern="p3" as="div" className={css.panel}>
-   <p className={css.fixtureLabel}><strong>{'Meridian fixture'}</strong>{' — illustrative rows, not a live tenant or real telemetry.'}</p>
+   <p className={css.fixtureLabel}><strong>{'Meridian fixture'}</strong>{': illustrative rows, not a live tenant or real telemetry.'}</p>
    <div className={css.rows}>
     {rows.map(row=>
      <dl key={row.team} className={css.row}>
