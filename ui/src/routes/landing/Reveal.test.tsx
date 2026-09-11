@@ -1,6 +1,7 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
+import {useRef,type ReactNode} from 'react';
 import {render,screen} from '@testing-library/react';
-import {Reveal,RevealGroup,RevealLines} from './Reveal';
+import {Reveal,RevealGroup,RevealLines,useRevealed} from './Reveal';
 
 const observers:{cb:IntersectionObserverCallback;opts?:IntersectionObserverInit}[]=[];
 function stubObserver(){
@@ -61,6 +62,30 @@ describe('Reveal',()=>{
   </RevealGroup>);
   const slots=[...container.querySelectorAll('[data-reveal-slot]')].map(n=>(n as HTMLElement).dataset.revealSlot);
   expect(slots).toEqual(['0','1','2','3','4','4','4']);
+ });
+
+ it('gives a component child its own slot element so the entrance still fires',()=>{
+  stubObserver();reduceMotion(false);
+  // A tile that keeps its own ref and spreads nothing, like BentoCard and Panel: cloning
+  // onto it would swallow the ref and the class and silently skip the entrance.
+  function Tile({children}:{children?:ReactNode}){return <section>{children}</section>;}
+  const {container}=render(<RevealGroup pattern="p3"><Tile>tile</Tile></RevealGroup>);
+  const node=container.querySelector('[data-reveal-slot]') as HTMLElement;
+  expect(node.dataset.revealSlot).toBe('0');
+  expect(node.dataset.revealReady).toBe('true');
+  observers[0].cb([{isIntersecting:true,target:node} as unknown as IntersectionObserverEntry],{} as IntersectionObserver);
+  expect(node.dataset.revealEntered).toBe('true');
+  expect(screen.getByText('tile')).toBeVisible();
+ });
+
+ it('shares two observers across p1, p3 and useRevealed',()=>{
+  stubObserver();reduceMotion(false);
+  function Probe(){
+   const ref=useRef<HTMLDivElement|null>(null);
+   return <div ref={ref}>{String(useRevealed(ref))}</div>;
+  }
+  render(<><Reveal pattern="p1"><p>a</p></Reveal><Reveal pattern="p3"><p>b</p></Reveal><Probe/></>);
+  expect(observers).toHaveLength(2);
  });
 
  it('renders every child of a group even when the observer never fires',()=>{

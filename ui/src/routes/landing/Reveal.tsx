@@ -133,26 +133,41 @@ export function Reveal({pattern,as,index=0,className,id,children}:{
   className={[css.reveal,css[pattern],className].filter(Boolean).join(' ')}>{children}</As>;
 }
 
-/** What a cloned group child must be able to receive. */
+/**
+ * What an intrinsic element accepts. The cast below is sound only because `RevealSlot`
+ * has already checked that the child's type is a string: a host element always forwards
+ * `ref`, merges `className` and renders `data-*`. A component may do none of those.
+ */
 type SlotProps={className?:string;ref?:RefObject<HTMLElement|null>;'data-reveal-slot'?:string};
 
 /**
- * One staggered slot of a group. The pattern class and the slot land on the child itself
- * rather than on a wrapper, because the canonical P3 group is the evidence bento, whose
- * tiles carry their own grid placement (DESIGN.md 3.6: "a tall tile, columns 1-5, two
- * rows"). A wrapper would become the grid item and the placement would be lost. A child
- * that is not an element renders untouched and simply does not animate.
+ * An intrinsic child takes the pattern class and the slot on itself rather than on a
+ * wrapper, because the canonical P3 group is the evidence bento, whose tiles carry their
+ * own grid placement (DESIGN.md 3.6: "a tall tile, columns 1-5, two rows"). A wrapper
+ * would become the grid item and the placement would be lost.
  */
-function RevealSlot({pattern,index,children}:{pattern:RevealPattern;index:number;children:ReactNode}){
+function RevealClone({pattern,index,child}:{pattern:RevealPattern;index:number;child:ReactElement<SlotProps>}){
  const ref=useRef<HTMLElement|null>(null);
  useEntrance(ref,pattern);
- if(!isValidElement(children))return <>{children}</>;
- const child=children as ReactElement<SlotProps>;
  return cloneElement(child,{
   ref,
   'data-reveal-slot':slot(index),
   className:[css.reveal,css[pattern],child.props.className].filter(Boolean).join(' '),
  });
+}
+
+/**
+ * One staggered slot of a group. Only a host element is guaranteed to forward `ref` and
+ * merge `className`; a component child that keeps its own ref and does not spread the rest
+ * of its props - `BentoCard` and `Panel` both do - would swallow both and never enter,
+ * with nothing to show for it at runtime. Those get their own slot element instead, which
+ * costs one wrapper in exchange for the entrance actually firing.
+ */
+function RevealSlot({pattern,index,children}:{pattern:RevealPattern;index:number;children:ReactNode}){
+ if(children==null||typeof children==='boolean')return null;
+ if(isValidElement(children)&&typeof children.type==='string')
+  return <RevealClone pattern={pattern} index={index} child={children as ReactElement<SlotProps>}/>;
+ return <Reveal pattern={pattern} index={index}>{children}</Reveal>;
 }
 
 export function RevealGroup({pattern,as,className,children}:{
@@ -194,14 +209,20 @@ export function RevealLines({as,id,className,lines,label}:{
  * Whether an element has crossed its trigger, for the one case a data attribute cannot
  * serve: a component that must change what it renders on entry rather than how it looks.
  * Reduced motion and Save-Data report `true` immediately, which is the final state.
+ *
+ * It deliberately takes no threshold. A free threshold would open a module-scoped observer
+ * per distinct value and quietly break the page's two-observer budget (DESIGN.md 5), so
+ * this shares the P3 configuration and the page carries two observers whatever is built
+ * on top of it.
  */
-export function useRevealed(ref:RefObject<HTMLElement|null>,threshold=PANEL_THRESHOLD):boolean{
+export function useRevealed(ref:RefObject<HTMLElement|null>):boolean{
  const [revealed,setRevealed]=useState(false);
  useEffect(()=>{
   const element=ref.current;
   if(!element)return;
   if(!motionAllowed()){setRevealed(true);return;}
-  return register(element,'threshold:'+threshold,{threshold},()=>setRevealed(true));
- },[ref,threshold]);
+  const {key,init}=entranceConfig('p3');
+  return register(element,key,init,()=>setRevealed(true));
+ },[ref]);
  return revealed;
 }
