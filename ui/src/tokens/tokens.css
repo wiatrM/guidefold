@@ -41,6 +41,7 @@
  --transparent:transparent;--duration:0ms;
  --duration-entrance:0ms;--duration-panel:0ms;--duration-draw:0ms;--duration-count:0ms;
  --enter-rise:0px;--enter-blur:0px;--enter-scale:1;
+ --mask-hidden:inset(0 0 0 0);
  --parallax-panel:0px;--parallax-chapter:0px;
  --landing-stage-height:auto;
 }}
@@ -211,6 +212,18 @@
  --enter-rise:12px;
  --enter-blur:3px;
  --enter-scale:.985;
+ --full-opacity:1;
+ --scale-full:1;
+ --zero-length:0px;
+ --duration-draw-offset:80ms;
+ --stagger-1:60ms;
+ --stagger-2:120ms;
+ --stagger-3:180ms;
+ --stagger-panel-1:70ms;
+ --stagger-panel-2:140ms;
+ --stagger-panel-3:210ms;
+ --mask-hidden:inset(0 0 100% 0);
+ --mask-shown:inset(0 0 0 0);
  --parallax-panel:12px;
  --parallax-chapter:32px;
  --film-lerp:.14;

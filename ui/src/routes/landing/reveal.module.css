@@ -1,0 +1,58 @@
+/**
+ * The entrance layer, DESIGN.md 4.1 P1-P3.
+ *
+ * Every rule below is keyed on `[data-reveal-ready="true"]`, which Reveal.tsx sets in an
+ * effect only after the shared observer is installed. Nothing here applies to the
+ * pre-enhancement DOM, so a missed callback, a thrown error, reverse scroll, a refresh
+ * mid-page or JavaScript off leaves the finished composition on screen.
+ *
+ * Only transform, opacity, clip-path and filter. Never a layout property.
+ */
+.reveal{will-change:auto;}
+
+/* P1 Lift: headings, captions, list rows. */
+.p1[data-reveal-ready="true"]{
+ opacity:var(--zero);
+ transform:translateY(var(--enter-rise));
+ transition:opacity var(--duration-entrance) var(--ease-entrance),transform var(--duration-entrance) var(--ease-entrance);
+}
+.p1[data-reveal-entered="true"]{opacity:var(--full-opacity);transform:translateY(var(--zero-length));}
+.p1[data-reveal-slot="1"]{transition-delay:var(--stagger-1);}
+.p1[data-reveal-slot="2"]{transition-delay:var(--stagger-2);}
+.p1[data-reveal-slot="3"]{transition-delay:var(--stagger-3);}
+.p1[data-reveal-slot="4"]{transition-delay:var(--stagger-cap);}
+
+/* P1 line mask: the hero headline treatment, DESIGN.md 4.1 and 7 decision 4. */
+.p1Line{display:block;overflow:hidden;}
+.p1Line[data-reveal-ready="true"]{
+ clip-path:var(--mask-hidden);
+ transform:translateY(var(--enter-rise));
+ transition:clip-path var(--duration-entrance) var(--ease-entrance),transform var(--duration-entrance) var(--ease-entrance);
+}
+.p1Line[data-reveal-entered="true"]{clip-path:var(--mask-shown);transform:translateY(var(--zero-length));}
+.p1Line[data-reveal-slot="1"]{transition-delay:var(--stagger-1);}
+.p1Line[data-reveal-slot="2"]{transition-delay:var(--stagger-2);}
+.p1Line[data-reveal-slot="3"]{transition-delay:var(--stagger-3);}
+.p1Line[data-reveal-slot="4"]{transition-delay:var(--stagger-cap);}
+
+/* P2 Rule draw: hairlines, beat ticks, the tier route. */
+.p2[data-reveal-ready="true"]{
+ transform:scaleX(var(--zero));
+ transform-origin:left;
+ transition:transform var(--duration-draw) var(--ease-entrance);
+ transition-delay:var(--duration-draw-offset);
+}
+.p2[data-reveal-entered="true"]{transform:scaleX(var(--scale-full));}
+
+/* P3 Panel settle: glass instruments, bento tiles, the chart. */
+.p3[data-reveal-ready="true"]{
+ opacity:var(--zero);
+ transform:scale(var(--enter-scale));
+ filter:blur(var(--enter-blur));
+ transition:opacity var(--duration-panel) var(--ease-entrance),transform var(--duration-panel) var(--ease-entrance),filter var(--duration-panel) var(--ease-entrance);
+}
+.p3[data-reveal-entered="true"]{opacity:var(--full-opacity);transform:scale(var(--scale-full));filter:blur(var(--zero-length));}
+.p3[data-reveal-slot="1"]{transition-delay:var(--stagger-panel-1);}
+.p3[data-reveal-slot="2"]{transition-delay:var(--stagger-panel-2);}
+.p3[data-reveal-slot="3"]{transition-delay:var(--stagger-panel-3);}
+.p3[data-reveal-slot="4"]{transition-delay:var(--stagger-cap);}
