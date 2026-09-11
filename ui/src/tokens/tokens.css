@@ -324,6 +324,9 @@
  --landing-rail-figure:19px;
  --landing-rail-stack-pad:var(--landing-panel-pad);
  --landing-rail-indent:0px;
+ /* DESIGN.md 3.1: the hero scrim rotates to vertical at 390, because the copy runs the
+  * full height of the frame and the 74% framing puts a lit ridge behind the headline. */
+ --film-scrim-hero:linear-gradient(180deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.86) 38%,rgba(7,9,12,.66) 74%,rgba(7,9,12,.44) 100%);
 }}
 
 /* ---------------------------------------------------------------------------

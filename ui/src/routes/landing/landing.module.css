@@ -148,7 +148,7 @@
 
 /* ---------------------------------------------------------------- film layer */
 .film{position:fixed;inset:var(--zero);z-index:-1;overflow:hidden;pointer-events:none;background:var(--graphite-950);}
-.filmPoster,.filmVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;opacity:var(--landing-film-opacity);}
+.filmPoster,.filmVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-hero-object);opacity:var(--landing-film-opacity);}
 .filmVideo{opacity:var(--zero);transition:opacity var(--duration-drawer) var(--ease-out);}
 .filmVideo[data-ready]{opacity:var(--landing-film-opacity);}
 .filmScrim{position:absolute;inset:var(--zero);background:var(--landing-film-scrim);}
