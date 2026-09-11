@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-09-09",
+  "reviewedAt": "2026-09-11",
   "license": "Apache-2.0 (Spectrum components), MIT (shadcn/ui Button); see public/licenses/spectrum-ui.txt and shadcn-ui.txt",
   "scope": "Explicit owner-authorized Spectrum sources; CSS computed from data and measured DOM coordinates stays inline. Authored product CSS, imports and public component contracts remain checked. Any source edit invalidates the hash and requires review.",
   "components": [
@@ -87,6 +87,42 @@
       "sha256": "722bb77570d29ea858bbaa9ffdd5c03983a7be491ee615e1653d0a40d06a3509",
       "source": "https://ui.spectrumhq.in/r/pie-chart.json",
       "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/bento-grid.tsx",
+      "sha256": "87c16de6f179d13cb6cf8e4cfdb7e67f6e3a5d4d90254db15db37cd8d16ddb19",
+      "source": "https://ui.spectrumhq.in/r/bento-grid.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/spectrumui/bento-card.tsx",
+      "sha256": "7f6deb89f90ac1eb366a1dc17c2676f68f3c34432b7a0918ded87a65b6c19142",
+      "source": "https://ui.spectrumhq.in/r/bento-grid.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/spotlight.tsx",
+      "sha256": "944b63aec0aa5185f2c3cfad38565ac9d50e91743a0ba7ed9867524c33927ff1",
+      "source": "https://ui.spectrumhq.in/r/bento-grid.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/border-beam.tsx",
+      "sha256": "049f899e9632829bdff6b5ad7e13b3a0fee4cdab0a6515d074c346d604ac4919",
+      "source": "https://ui.spectrumhq.in/r/bento-grid.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/spectrumui/number-ticker.tsx",
+      "sha256": "439e27dca2e0a63b6cc49d73f027a7af4ea4df535daa15000b2744d2807794ce",
+      "source": "https://ui.spectrumhq.in/r/number-ticker.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/lib/ease.ts",
+      "sha256": "081e5bceaed6470ca5aed22e7e4875892753969d869486fb122a39f249d26e88",
+      "source": "https://ui.spectrumhq.in/r/number-ticker.json",
+      "allowInlineGeometry": false
     }
   ]
 }
