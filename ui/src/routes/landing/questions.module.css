@@ -1,7 +1,7 @@
 /* Before you join, DESIGN.md 3.9. The Base UI Collapsible is kept and restyled rather
  * than replaced, because the ids, the hash deep link and the consent link's behaviour
  * are contractual. Rules moved with the markup from landing.module.css. */
-.section{max-width:var(--landing-question-width);padding-block:var(--landing-section-padding);}
+.section{max-width:var(--landing-question-width);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
 .section h2.heading{
  margin:var(--zero);
  font-family:var(--font-display);
@@ -12,7 +12,8 @@
  color:var(--landing-ivory);
  text-wrap:balance;
 }
-.questionList{margin-top:var(--space-4);}
+.section .subline{margin:var(--space-3) var(--zero) var(--zero);max-width:var(--landing-copy-width);color:var(--stone-300);line-height:var(--line-height-body);}
+.questionList{margin-top:var(--landing-band-gap);}
 .question{border-bottom:var(--border-width) solid var(--line);}
 .question h3{margin:var(--zero);}
 .questionTrigger{

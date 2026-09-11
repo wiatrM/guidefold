@@ -1,6 +1,15 @@
 /* Availability, DESIGN.md 3.7. A solid band over the film scrim: reading matters more
- * than atmosphere here. Rules moved with the markup from landing.module.css. */
-.section{padding-block:var(--landing-section-padding);}
+ * than atmosphere here. Headline sits alone in the narrower column; the statements,
+ * the supporting line and the link share the wider one, so the split is asymmetric
+ * rather than the generic two-column ratio used elsewhere on the page. */
+.section{
+ display:grid;
+ grid-template-columns:var(--landing-availability-layout);
+ align-items:start;
+ gap:var(--landing-gutter);
+ padding-block:var(--landing-section-padding);
+ background:var(--film-scrim-band),var(--graphite-900);
+}
 .section h2.heading{
  margin:var(--zero);
  font-family:var(--font-display);
@@ -11,11 +20,11 @@
  color:var(--landing-ivory);
  text-wrap:balance;
 }
+.body{display:flex;flex-direction:column;gap:var(--landing-band-gap);min-width:var(--zero);}
 .availabilityStatements{
  display:grid;
  grid-template-columns:var(--landing-availability-columns);
  gap:var(--space-4);
- margin-top:var(--landing-band-gap);
 }
 .section .availabilityStatements p{margin:var(--zero);padding-right:var(--space-4);color:var(--stone-300);line-height:var(--line-height-body);}
 .availabilityStatements p+p{
@@ -25,5 +34,7 @@
  border-top:var(--landing-availability-rule-top);
 }
 .availabilityStatements strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
-.availabilityLinks{display:flex;flex-wrap:wrap;gap:var(--space-4);margin-top:var(--space-4);}
-.textLink{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);color:var(--system-ink);}
+.supporting{margin:var(--zero);max-width:var(--landing-measure);color:var(--stone-300);line-height:var(--line-height-body);}
+.availabilityLinks{display:flex;flex-wrap:wrap;gap:var(--space-4);}
+.textLink{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);color:var(--system-ink);transition:color var(--duration) var(--ease);}
+@media(hover:hover) and (pointer:fine){.textLink:hover{color:var(--stone-100);}}
