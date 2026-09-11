@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, GoogleLogo, Key, LinkSimple, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
+import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, GoogleLogo, Key, LinkSimple, Pulse, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
 import { isStale, type ApiError } from '../api/client';
-import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, unknown, useAsync, type ApiProps } from './apiState';
+import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, formatNumber, unknown, useAsync, type ApiProps } from './apiState';
+import { formatDay, ScorecardPanel } from './ReviewRoutes';
 import { proposalKinds } from '../api/decoders';
 import type { AuditEntry, Job, ImportStatus, Installation, InvitationLifecycle, Member, Org, ProposalKind, ProposalLimits, Repo, RepoAccessLevel, Team, GitHubInstallation } from '../api/decoders';
 import type { AccessState } from '../api/access';
@@ -648,7 +649,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const { source, org, role, me } = ctx;
   const owner = role === 'owner';
   const tabParam = ctx.params.get('tab');
-  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : 'members';
+  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : tabParam === 'telemetry' ? 'telemetry' : 'members';
   const deviceCode = ctx.params.get('device');
   const auditCursor = ctx.params.get('cursor');
   const members = useAsync(() => source.listMembers(org ?? ''), 'members:' + org, Boolean(org) && tab === 'members');
@@ -660,6 +661,11 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     () => source.getAudit(org ?? '', auditCursor ?? undefined),
     'audit:' + org + ':' + (auditCursor ?? ''),
     owner && Boolean(org) && tab === 'audit',
+  );
+  const telemetry = useAsync(
+    () => source.getUsage({ org: org ?? '', repo: ctx.repo ?? '' }, { window: ctx.params.get('window') || undefined }),
+    'organization-telemetry:' + org + '/' + (ctx.repo ?? '') + ':' + (ctx.params.get('window') ?? ''),
+    Boolean(org && ctx.repo && tab === 'telemetry'),
   );
   const [linkStatus, setLinkStatus] = useState('');
   const [profileName, setProfileName] = useState(me?.user.name ?? '');
@@ -841,11 +847,28 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     <Tabs label="Organization sections" current={tab} items={[
       { id: 'members', label: 'Members', href: ctx.href('organization', { tab: 'members', cursor: null }) },
       { id: 'integrations', label: 'Integrations', href: ctx.href('organization', { tab: 'integrations', cursor: null }) },
+      { id: 'telemetry', label: 'Telemetry', href: ctx.href('organization', { tab: 'telemetry', cursor: null }) },
       { id: 'audit', label: 'Audit', href: ctx.href('organization', { tab: 'audit', cursor: null }) },
     ]} />
     <OwnerNote role={role} />
 
-    {tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+    {tab === 'telemetry' ? <>
+      {!ctx.repo && <RouteState state="empty" title="No repository selected" description="Choose a repository before reading task and harness telemetry." action={<ActionButton href={ctx.href('import', { step: 'organization' })} tone="system">Choose a repository</ActionButton>} />}
+      {ctx.repo && telemetry.phase === 'loading' && <RouteState state="loading" title="Reading telemetry" description="Waiting for the execution metrics for this repository." />}
+      {ctx.repo && telemetry.phase === 'error' && telemetry.error && <ApiFailure error={telemetry.error} onRetry={telemetry.reload} retryLabel="Retry telemetry" />}
+      {ctx.repo && telemetry.value && <>
+        <ScorecardPanel metrics={telemetry.value.totals.metrics} />
+        <Panel title="Telemetry context" eyebrow={'Repository ' + ctx.repo} icon={<Pulse weight="regular" aria-hidden="true" />}>
+          <ProvenanceTrail entries={[
+            { label: 'Window', value: (ctx.params.get('window') || '30d') + ' · ' + formatDay(telemetry.value.window.from) + ' to ' + formatDay(telemetry.value.window.to), detail: 'The period is anchored to the ledger watermark, not this browser clock.' },
+            { label: 'Events received', value: telemetry.value.coverage ? formatNumber(telemetry.value.coverage.events_received) : 'Unknown', detail: telemetry.value.coverage?.dropped_reported ? formatNumber(telemetry.value.coverage.dropped_reported) + ' reported dropped events; counts are lower bounds.' : 'No drops reported by adapters.' },
+            { label: 'Task identifiers', value: telemetry.value.coverage ? (telemetry.value.coverage.task_ids_present ? 'Present' : 'Absent') : 'Unknown', detail: 'Without task IDs, task-level success and episode rates remain Unknown.' },
+            { label: 'Detail', value: 'Usage & quality', href: ctx.href('usage', { window: ctx.params.get('window') || null }) },
+          ]} />
+          <p className={styles.help}>These cards help an owner decide whether the integration is producing usable evidence. They do not certify that a model followed a skill or that a successful task was caused by retrieval.</p>
+        </Panel>
+      </>}
+    </> : tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
       {owner && <>
         {audit.phase === 'loading' && <RouteState state="loading" title="Reading audit entries" description="Waiting for the audit log of this organization." />}
         {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}

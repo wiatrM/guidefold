@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ApiOrganizationRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
-import type { AuditPage, Installation, InvitationLifecycle, Member } from '../api/decoders';
+import type { AuditPage, Installation, InvitationLifecycle, Member, Usage } from '../api/decoders';
 import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
@@ -222,13 +222,37 @@ describe('Organization route, identity linking', () => {
 });
 
 describe('Organization route, presentation', () => {
-  test('the three sections are tab links and the address chooses the current one', async () => {
+  test('the four sections are tab links and the address chooses the current one', async () => {
     renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations');
     const nav = screen.getByRole('navigation', { name: 'Organization sections' });
-    expect(within(nav).getAllByRole('link').map(link => link.textContent)).toEqual(['Members', 'Integrations', 'Audit']);
+    expect(within(nav).getAllByRole('link').map(link => link.textContent)).toEqual(['Members', 'Integrations', 'Telemetry', 'Audit']);
     expect(within(nav).getByRole('link', { name: 'Integrations' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Members' })).not.toHaveAttribute('aria-current');
     expect(await screen.findByText('No installation yet')).toBeInTheDocument();
+  });
+
+  test('telemetry tab reads the repository report and exposes scorecards', async () => {
+    const getUsage = vi.fn(async (): Promise<Usage> => ({
+      window: { from: '2026-09-01T00:00:00Z', to: '2026-09-10T00:00:00Z', watermark: '2026-09-10T00:00:00Z' },
+      coverage: { events_received: 42, dropped_reported: 0, oldest_lag_s: 2, task_ids_present: true },
+      totals: {
+        exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0,
+        use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
+        metrics: {
+          tasks_started: 3, tasks_finished: 3, tasks_succeeded: 2, tasks_failed: 1, tasks_unknown: 0, harness_errors: 0,
+          search_requests: 4, search_results: 4, search_errors: 0, use_requests: 3, ask_count: 1,
+          input_tokens: 100, output_tokens: 40, tool_calls: 5, latency_ms: 900, latency_samples: 3,
+          tasks_observed: true, cost_observed: true,
+        },
+      },
+      skills: [], queue: [], health: null,
+    }));
+    renderRoute(fakeSource({ getUsage }), 'tab=telemetry');
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('2 / 3')).toBeInTheDocument();
+    expect(scorecards.getByText('1 ASK')).toBeInTheDocument();
+    expect(getUsage).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, { window: undefined });
+    expect(await screen.findByText('Events received')).toBeInTheDocument();
   });
 
   test('the member status line is empty before any action and carries the outcome after one', async () => {

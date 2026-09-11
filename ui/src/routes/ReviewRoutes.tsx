@@ -718,7 +718,7 @@ function shareText(numerator: number, denominator: number, smallSample: boolean)
 }
 
 /** ISO timestamp to its calendar day; an absent bound stays Unknown. */
-function formatDay(iso: string | null): string {
+export function formatDay(iso: string | null): string {
   if (!iso) return 'Unknown';
   const day = iso.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : iso;
@@ -833,12 +833,37 @@ function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
   </Panel>;
 }
 
-function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
+export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
   const taskObserved = metrics.tasks_observed && metrics.tasks_finished > 0;
   const safetyObserved = metrics.use_requests > 0 || metrics.ask_count > 0 || metrics.harness_errors > 0;
   const retrievalObserved = metrics.search_requests > 0 || metrics.use_requests > 0 || metrics.search_results > 0;
   const averageLatency = metrics.latency_samples > 0 ? Math.round(metrics.latency_ms / metrics.latency_samples) : null;
-  const costObserved = metrics.cost_observed || averageLatency !== null;
+  const costObserved = metrics.cost_observed;
+  const timeObserved = averageLatency !== null;
+  const askReasons = Object.entries(metrics.ask_reasons ?? {})
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const askReasonLabel = (reason: string) => ({
+    proof_conflict: 'Conflicting rules',
+    proof_missing: 'No source proof',
+    proof_revision_mismatch: 'Revision changed',
+    proof_snapshot_mismatch: 'Snapshot changed',
+    proof_body_hash_mismatch: 'Source changed',
+    proof_scope_incomplete: 'Scope not covered',
+    proof_claim_incomplete: 'Claim not supported',
+    closure_incomplete: 'Missing dependencies',
+    proof_source_unavailable: 'Source unavailable',
+    proof_source_hash_mismatch: 'Source changed',
+    proof_source_line_range: 'Source lines unavailable',
+    proof_schema_invalid: 'Invalid proof',
+    proof_identity_mismatch: 'Wrong skill identity',
+    proof_source_ref_invalid: 'Invalid source reference',
+    proof_recursive_invalid: 'Invalid child proof',
+    unknown: 'Unspecified reason',
+  } as Record<string, string>)[reason] ?? 'Unrecognised reason';
+  const askReasonText = askReasons.length
+    ? 'Reasons: ' + askReasons.slice(0, 3).map(([reason, count]) => askReasonLabel(reason) + ' ' + formatNumber(count)).join(' · ')
+    : 'Reason breakdown unavailable';
 
   return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<Pulse aria-hidden="true" />}>
     <MetricRow items={[
@@ -853,7 +878,7 @@ function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
         label: 'Safety boundary',
         value: safetyObserved ? formatNumber(metrics.ask_count) + ' ASK' : 'Unknown',
         detail: safetyObserved
-          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors'
+          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors · ' + askReasonText
           : 'No USE, ASK or harness-error observation in this window',
       },
       {
@@ -865,12 +890,15 @@ function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
       },
       {
         label: 'Cost and time',
-        value: costObserved
-          ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' + (averageLatency !== null ? ' · ' + formatNumber(averageLatency) + ' ms avg' : '')
+        value: costObserved || timeObserved
+          ? (costObserved ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' : 'Unknown tokens')
+            + (timeObserved ? ' · ' + formatNumber(averageLatency!) + ' ms avg' : '')
           : 'Unknown',
-        detail: costObserved
-          ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
-            + (metrics.latency_samples > 0 ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : '')
+        detail: costObserved || timeObserved
+          ? (costObserved
+            ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
+            : 'No token measurement in this window')
+            + (timeObserved ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : ' · No latency measurement in this window')
           : 'No token or latency measurements in this window',
       },
     ]} />

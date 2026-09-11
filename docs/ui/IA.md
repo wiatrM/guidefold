@@ -21,7 +21,7 @@ Persona nie nadaje uprawnień. Owner/member pochodzą z polityki organizacji; CO
 | Skill | Tożsamość rewizji, zastosowanie, treść, źródła, wymagania i feedback. |
 | Proposals | Kolejka i kandydat ze źródłem/diffem; przygotowanie decyzji, eksport i stan Git. |
 | Usage & quality | Powody przeglądu, obserwacje, pokrycie i brak danych. |
-| Organization | Members oraz Integrations: instalacja adaptera, diagnostyka, członkowie i tokeny. |
+| Organization | Members, Integrations oraz Telemetry: instalacja adaptera, diagnostyka, członkowie, tokeny i szybki obraz jakości wykonania. |
 Login jest stanem wejścia, szczegół propozycji częścią Proposals. Galeria komponentów jest narzędziem developerskim poza nawigacją produktu.
 ## 4. Nawigacja i kontekst
 Kontekst org/repo jest widoczny przed importem i decyzją. Odmowa autoryzacji usuwa dane poprzedniego kontekstu.

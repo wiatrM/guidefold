@@ -239,6 +239,32 @@ type ExecutionMetrics struct {
 	LatencySamples int  `json:"latency_samples"`
 	TasksObserved  bool `json:"tasks_observed"`
 	CostObserved   bool `json:"cost_observed"`
+	// AskReasons keeps the safety card actionable without exposing request
+	// bodies. Keys are the bounded reason codes emitted by the delivery path;
+	// an adapter that omits a reason is counted under "unknown".
+	AskReasons map[string]int `json:"ask_reasons"`
+}
+
+// askReasonCodes is intentionally closed. Delivery reasons are safe to show
+// in an organisation scorecard only when they come from the service's public
+// proof-gate vocabulary; arbitrary adapter strings must never become labels or
+// a high-cardinality telemetry dimension.
+var askReasonCodes = map[string]bool{
+	"proof_missing": true, "proof_schema_invalid": true,
+	"proof_identity_mismatch": true, "proof_snapshot_mismatch": true,
+	"proof_revision_mismatch": true, "proof_body_hash_mismatch": true,
+	"proof_scope_incomplete": true, "proof_claim_incomplete": true,
+	"proof_conflict": true, "closure_incomplete": true,
+	"proof_source_ref_invalid": true, "proof_recursive_invalid": true,
+	"proof_source_unavailable": true, "proof_source_hash_mismatch": true,
+	"proof_source_line_range": true,
+}
+
+func safeAskReason(reason string) string {
+	if askReasonCodes[reason] {
+		return reason
+	}
+	return "unknown"
 }
 
 // Skill is one `(skill_id, revision)` row of the report.
@@ -389,6 +415,7 @@ func Aggregate(in Input) Report {
 	// whichever of the three identifiers that was.
 	in.Filter.Revision = in.Revisions.canonical(in.Filter.Revision)
 	report := Report{Window: in.Window}
+	report.Totals.Metrics.AskReasons = map[string]int{}
 	report.Coverage.EventsReceived = in.EventsReceived
 	report.Coverage.OldestLagS = in.OldestLagS
 
@@ -614,7 +641,7 @@ func updateMetrics(m *ExecutionMetrics, e Event) {
 			m.TasksUnknown++
 		}
 		status := strings.ToLower(e.Str("terminal_status"))
-		if strings.Contains(status, "harness") || strings.Contains(status, "error") {
+		if strings.Contains(status, "harness") || strings.Contains(status, "error") || strings.Contains(status, "timeout") {
 			m.HarnessErrors++
 		}
 		addMetricInt(e, "input_tokens", &m.InputTokens, &m.CostObserved)
@@ -643,6 +670,19 @@ func updateMetrics(m *ExecutionMetrics, e Event) {
 	case "skill_load_completed":
 		if strings.EqualFold(e.Str("status"), "denied") || strings.EqualFold(e.Str("status"), "ask") {
 			m.AskCount++
+			if m.AskReasons == nil {
+				m.AskReasons = map[string]int{}
+			}
+			reason := e.Str("reason")
+			if reason == "" {
+				reason = e.Str("delivery_reason")
+			}
+			if reason == "" {
+				if delivery, ok := e.Payload["delivery"].(map[string]any); ok {
+					reason, _ = delivery["reason"].(string)
+				}
+			}
+			m.AskReasons[safeAskReason(reason)]++
 		}
 	}
 }
