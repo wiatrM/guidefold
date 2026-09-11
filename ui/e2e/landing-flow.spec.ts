@@ -50,6 +50,11 @@ for(const size of viewports)test('opens on the outcome, then extraction, retriev
  await expect(page.getByText('Open source today.',{exact:true})).toBeVisible();
  await expect(page.getByText('Paid hosting is planned.').first()).toBeVisible();
  expect(await noHorizontalScroll(page)).toBe(true);
+ // Past the longest P1/P3 entrance (stagger cap 240ms + duration-entrance 420ms = 660ms), same
+ // reasoning as the FAQ/dialog axe test below: without it, axe also catches headings, sublines
+ // and bodies still mid-fade (opacity < 1), which reads as a false color-contrast positive on
+ // tokens (stone-300, warning-ink, system-ink) that measure 7.98-12.84:1 at rest.
+ await page.waitForTimeout(1000);
  expect(await axeViolations(page)).toEqual([]);
  await page.screenshot({path:`qa/landing-v2-${size.width}.png`,fullPage:true});
 });
@@ -66,6 +71,10 @@ test('the demo dialog mounts the player only on request and restores focus',asyn
  await expect(dialog.getByTitle('Guidefold product demo')).toBeVisible();
  await expect(dialog.getByRole('button',{name:'Stop video'})).toBeFocused();
  await expect(dialog.getByRole('link',{name:/Watch on YouTube/})).toHaveAttribute('href','https://www.youtube.com/watch?v=e350wBr1W8c');
+ // Same reasoning as the FAQ/dialog and outcome-order axe checks: past the longest P1/P3
+ // entrance (660ms) so axe reads resting opacity, not a section still fading in behind the
+ // dialog.
+ await page.waitForTimeout(1000);
  expect(await axeViolations(page)).toEqual([]);
  await page.keyboard.press('Escape');
  await expect(dialog).toHaveCount(0);
