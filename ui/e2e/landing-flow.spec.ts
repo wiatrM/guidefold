@@ -7,9 +7,9 @@ for(const size of viewports)test('research evidence preserves context and negati
  await page.setViewportSize(size);
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.goto('/');
- const evidence=page.getByRole('region',{name:'More relevant skills found'});
- await page.getByRole('link',{name:/New research:/}).click();
- await expect(evidence.getByText(/5,400 queries and 26,262 skills/)).toBeVisible();
+ const evidence=page.getByRole('region',{name:'Plus 8.53 points of recall over flat.'});
+ await page.getByRole('link',{name:'Read the numbers and how we got them'}).click();
+ await expect(evidence.getByText(/5,400 queries across 26,262 skills/)).toBeVisible();
  await expect(evidence.getByRole('cell',{name:'65.22%',exact:true})).toBeVisible();
  await expect(evidence.getByRole('cell',{name:'47.19%',exact:true})).toBeVisible();
  await expect(evidence.locator('svg.recharts-surface')).toBeVisible();
@@ -31,14 +31,19 @@ for(const size of viewports)test('research evidence preserves context and negati
  await evidence.screenshot({path:`qa/research-update-${size.width}.png`});
 });
 
-for(const size of viewports)test('answers why, how and value in order at '+size.width,async({page})=>{
+for(const size of viewports)test('opens on the outcome, then extraction, retrieval and the safety boundary in order at '+size.width,async({page})=>{
  await page.setViewportSize(size);
  await page.goto('/');
- await expect(page.getByRole('heading',{level:1})).toHaveText('Team rules. Right where agents work.');
+ // The headline is set as two `Reveal` line-mask blocks (DESIGN.md 4.1 decision 4): each is
+ // its own block box, so the accessible name (backed by the h1's `aria-label`) carries the
+ // word-space between them while the raw DOM text of two adjoining block children does not.
+ // `toHaveAccessibleName` reads the same string a screen reader would, which is what this
+ // assertion is protecting.
+ await expect(page.getByRole('heading',{level:1})).toHaveAccessibleName('Your repos are already writing the handbook.');
  const headings=page.getByRole('heading',{level:2});
- await expect(headings.nth(0)).toHaveText('Why we built it');
- await expect(headings.nth(1)).toHaveText('How it works');
- await expect(headings.nth(2)).toHaveText('What your team gets');
+ await expect(headings.nth(0)).toHaveText("One team's fix becomes everyone's rule.");
+ await expect(headings.nth(1)).toHaveText('Thirty thousand rules. Four reach the agent.');
+ await expect(headings.nth(2)).toHaveText('Seventy-six harmful rules. Seventy-six refusals.');
  await expect(page.locator('#how-it-works')).toHaveCount(1);
  await expect(page.locator('#waitlist')).toHaveCount(1);
  await expect(page.locator('#demo')).toHaveCount(1);
@@ -97,21 +102,66 @@ test.describe('reduced motion',()=>{
   await page.waitForTimeout(500);
   expect(media).toEqual([]);
   await expect(page.locator('video')).toHaveCount(0);
-  const offset=await page.locator('[class*="routeLine"]').evaluate(node=>getComputedStyle(node).strokeDashoffset);
+  const offset=await page.locator('[data-tier-route]').evaluate(node=>getComputedStyle(node).strokeDashoffset);
   expect(offset).toBe('0px');
   expect(await axeViolations(page)).toEqual([]);
  });
 });
 
-test('scrolling to the footer and back returns every plane to its exact transform',async({page})=>{
+test('scrolling to the footer and back returns the film and parallax layers to their exact transform',async({page})=>{
  await page.goto('/');
  await page.locator('[data-p-ready]').first().waitFor({state:'attached'});
  await page.waitForTimeout(200);
- const read=()=>page.evaluate(()=>[...document.querySelectorAll('[class*="plane"],[class*="topo"],[class*="survey"]')].map(node=>getComputedStyle(node).transform));
+ // Rounded to 3 decimals: the matrix serializes with float noise in its least-significant
+ // digit between two reads of the same resting value (0.985003 vs 0.985), which is not a
+ // reversibility regression. Rounding keeps the assertion meaningful (same transform, not
+ // byte-identical serialization) without loosening what "returns to its exact transform" checks.
+ const read=()=>page.evaluate(()=>[...document.querySelectorAll('[class*="film"],[data-beat],[class*="proofRail"]')].map(node=>{
+  const t=getComputedStyle(node).transform;
+  return t==='none'?t:t.replace(/-?\d+\.?\d*/g,n=>Number(n).toFixed(3));
+ }));
  const before=await read();
  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
  await page.waitForTimeout(300);
  await page.evaluate(()=>window.scrollTo(0,0));
  await page.waitForTimeout(300);
  expect(await read()).toEqual(before);
+});
+
+test('the extraction chapter pins at 1440 and stacks at 390',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const stage=page.locator('#extraction [class*="stage"]');
+ await expect(stage).toHaveCSS('position','sticky');
+ for(const beat of ['1','2','3'])await expect(page.locator(`#extraction [data-beat="${beat}"]`)).toBeAttached();
+ await page.setViewportSize({width:390,height:844});
+ await expect(stage).not.toHaveCSS('position','sticky');
+ for(const beat of ['1','2','3'])await expect(page.locator(`#extraction [data-beat="${beat}"]`)).toBeVisible();
+ expect(await noHorizontalScroll(page)).toBe(true);
+});
+
+test('every control meets 44px at 390',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const controls=page.locator('main a[href], main button:not([disabled]), main input[type="checkbox"]');
+ const count=await controls.count();
+ for(let i=0;i<count;i++){
+  const box=await controls.nth(i).boundingBox();
+  if(!box)continue;
+  expect(box.height,`control ${i} height`).toBeGreaterThanOrEqual(44);
+ }
+});
+
+for(const size of viewports)test('axe is clean with the FAQ open and the dialog open at '+size.width,async({page})=>{
+ await page.route('https://www.youtube-nocookie.com/embed/**',route=>route.fulfill({contentType:'text/html',body:'<title>Stubbed player</title><p>Player boundary test</p>'}));
+ await page.setViewportSize(size);
+ await page.goto('/');
+ // Past the longest P1/P3 entrance (stagger cap + duration), so axe reads resting colour and
+ // opacity rather than a still-fading element, which would report a transient false positive.
+ await page.waitForTimeout(1000);
+ expect(await axeViolations(page)).toEqual([]);
+ await page.getByRole('button',{name:'How is my email used?'}).click();
+ expect(await axeViolations(page)).toEqual([]);
+ await page.getByRole('button',{name:'Play demo',exact:true}).click();
+ expect(await axeViolations(page)).toEqual([]);
 });

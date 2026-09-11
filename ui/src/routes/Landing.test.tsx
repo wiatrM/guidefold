@@ -163,6 +163,26 @@ describe('public landing',()=>{
   expect(container.querySelector('img[src="/assets/landing/hero-poster.webp"]')).toBeInTheDocument();
  });
 
+ it('puts the skip link first and keeps DOM order equal to reading order',()=>{
+  const {container}=render(<Landing/>);
+  const focusable=[...container.querySelectorAll('a[href],button:not([disabled]),input,summary,[tabindex]:not([tabindex="-1"])')];
+  expect(focusable[0]).toHaveTextContent('Skip to content');
+  expect(container.querySelector('[style*="order"]')).toBeNull();
+ });
+
+ it('publishes only the citable figures',()=>{
+  const {container}=render(<Landing/>);
+  const text=container.textContent??'';
+  expect(text).toContain('76 of 76 harmful rules refused.');
+  expect(text).toContain('4.81%');
+  expect(text).toContain('+8.53 pp Recall@10 on SRA-Bench.');
+  expect(text).not.toMatch(/17\s*\/\s*20/);
+  expect(text).not.toMatch(/16\s*\/\s*20/);
+  expect(text).not.toMatch(/25\s*\/\s*25/);
+  expect(text).not.toMatch(/\b\d+(\.\d+)?\s?(ms|milliseconds)\b/);
+  expect(text.toLowerCase()).not.toContain('zero risk');
+ });
+
  // The mechanism clip (IntroFigure) and the Meridian reader (InstructionReader) are re-homed
  // in the retrieval section; their reduced-motion, poster and "not a live run" coverage now
  // lives in Retrieval.test.tsx, which renders that section directly.
