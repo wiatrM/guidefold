@@ -4,9 +4,11 @@
 
 /* ---------------------------------------------------------------- page shell */
 .page{position:relative;isolation:isolate;max-width:var(--landing-width);margin:var(--zero) auto;padding:var(--zero) var(--landing-gutter);font-size:var(--landing-body);}
-.page h1,.page h2{margin:var(--zero);font-family:var(--font-display);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-title);color:var(--landing-ivory);text-wrap:balance;}
-.page h2{font-size:var(--landing-heading);line-height:var(--landing-heading-leading);}
-.page p{color:var(--stone-300);line-height:var(--line-height-body);}
+/* :where() keeps the same match set at zero specificity, so a section module styles its
+ * own heading with a plain class and never needs a compound selector to win. */
+:where(.page h1,.page h2){margin:var(--zero);font-family:var(--font-display);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-title);color:var(--landing-ivory);text-wrap:balance;}
+:where(.page h2){font-size:var(--landing-heading);line-height:var(--landing-heading-leading);}
+:where(.page) p{color:var(--stone-300);line-height:var(--line-height-body);}
 .page section{scroll-margin-top:var(--landing-nav-height);}
 .page :focus-visible{outline:var(--focus-width) solid var(--survey-teal);outline-offset:var(--focus-offset);}
 .skip{position:absolute;transform:translateY(var(--skip-hidden-offset));z-index:var(--layer-skip);padding:var(--space-3);background:var(--graphite-800);}
@@ -92,10 +94,15 @@
 .availabilityLinks{display:flex;flex-wrap:wrap;gap:var(--space-4);}
 
 /* ----------------------------------------------------------------- waitlist */
-.waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-section-padding);margin:var(--landing-section-padding) var(--zero);padding:var(--landing-waitlist-padding);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-850);box-shadow:var(--shadow-card);}
+/* Solid band, DESIGN.md 3.8: headline and subline in the narrower column, the form in
+ * the wider one, one hairline between at ≥1080; the rule token collapses to `none` when
+ * the grid stacks so the divider never floats alone above the full-width form. */
+.waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-section-padding);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
+.waitlistCopy{border-right:var(--landing-waitlist-rule);}
 .waitlistCopy p{margin:var(--space-3) var(--zero) var(--zero);}
 .form{min-width:var(--zero);scroll-margin-top:var(--space-7);}
 .page .signupNote{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-small);}
+.signupNote strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
 .form>label{display:block;margin-bottom:var(--space-2);color:var(--stone-100);font-size:var(--font-size-body);}
 .formRow{display:grid;grid-template-columns:var(--landing-form-columns);gap:var(--space-3);align-items:start;}
 .formRow input{height:var(--landing-control);min-height:var(--landing-control);padding:var(--space-2) var(--space-3);border:var(--border-width) solid var(--steel);border-radius:var(--landing-radius);background:var(--graphite-800);}
@@ -121,7 +128,7 @@
 .player{width:var(--full);aspect-ratio:var(--landing-video-ratio);border:var(--zero);border-radius:var(--radius-small);background:var(--graphite-950);}
 
 /* ------------------------------------------------------------------- footer */
-.footer{position:relative;padding:var(--landing-section-padding) var(--zero) var(--space-5);border-top:var(--border-width) solid var(--line);}
+.footer{position:relative;padding:var(--landing-section-padding) var(--zero) var(--space-5);border-top:var(--border-width) solid var(--line);background:var(--film-scrim-band),var(--graphite-900);}
 .footerTop{display:grid;grid-template-columns:var(--landing-footer-columns);gap:var(--space-5);}
 .footerIdentity p{margin:var(--space-3) var(--zero);max-width:var(--landing-copy-width);}
 .footer nav{display:flex;flex-direction:column;align-items:flex-start;}

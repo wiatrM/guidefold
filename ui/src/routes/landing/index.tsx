@@ -25,7 +25,6 @@ import css from './landing.module.css';
  * `FilmBackdrop`, which otherwise sits outside `<main>` and would mount on that branch.
  */
 export default function Landing(){
- const [,setDemoOpen]=useState(false);
  const [emailAction]=useState(()=>{const p=new URLSearchParams(window.location.search);return p.has('confirm')?{action:'confirm' as const,token:p.get('confirm')!}:p.has('unsubscribe')?{action:'unsubscribe' as const,token:p.get('unsubscribe')!}:null;});
  useEffect(()=>{document.title='Guidefold | Team instructions for coding agents';if(emailAction)window.history.replaceState(null,'','/');},[emailAction]);
 
@@ -39,7 +38,7 @@ export default function Landing(){
   </header>
   <main id="main" tabIndex={-1}>{emailAction?<EmailAction {...emailAction}/>:<>
 
-   <Hero onDemoOpenChange={setDemoOpen}/>
+   <Hero/>
    <Extraction/>
    <Retrieval/>
    <ProofGate/>

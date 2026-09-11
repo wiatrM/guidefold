@@ -6,6 +6,8 @@ import evidence from '../../data/research-evidence.json';
 import shared from './landing.module.css';
 import css from './hero.module.css';
 
+function noop(){}
+
 /**
  * The hero, DESIGN.md 3.1. The film poster behind it stays the LCP element: nothing
  * here paints above it, no font or script blocks it, and both proof figures are in the
@@ -19,7 +21,7 @@ import css from './hero.module.css';
  * is fine, an unsourced figure is not. Both cells keep their qualifier at every
  * breakpoint; an item that cannot carry its qualifier is dropped whole.
  */
-export function Hero({onDemoOpenChange}:{onDemoOpenChange:(open:boolean)=>void}){
+export function Hero(){
  return <section id="hero" className={css.hero} aria-labelledby="hero-title">
   <div className={css.heroScrim} aria-hidden="true"/>
 
@@ -34,7 +36,10 @@ export function Hero({onDemoOpenChange}:{onDemoOpenChange:(open:boolean)=>void})
    </Reveal>
    <div id="demo" className={css.heroActions}>
     <a data-slot="button" className={buttonVariants({className:shared.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
-    <DemoDialog onOpenChange={onDemoOpenChange}/>
+    {/* DemoDialog's onOpenChange has no consumer anywhere on this page; the callback is
+      * required by its signature, so it is satisfied here and flagged for the task that
+      * owns DemoDialog to make optional. */}
+    <DemoDialog onOpenChange={noop}/>
    </div>
    <p className={css.trust}>Open source today. The hosted service is planned.</p>
    <a className={css.textLink} href="#research-results">Read the numbers and how we got them</a>
@@ -55,15 +60,18 @@ export function Hero({onDemoOpenChange}:{onDemoOpenChange:(open:boolean)=>void})
    </div>
   </Reveal>
 
-  {/* The pyramid mechanic above the fold without a paragraph, and the page's first
-    * of exactly two orange moments; the second is the extraction diff row. */}
+  {/* The pyramid mechanic above the fold without a paragraph. Orange appears three times
+    * on the whole page and never anywhere else: this route, the extraction diff row, and
+    * the full stop in the footer wordmark. */}
   <div className={css.tierGlyph} aria-hidden="true">
-   <svg viewBox="0 0 120 96" className={css.glyph} role="presentation" focusable="false">
-    <rect className={css.tier4} x="0" y="76" width="120" height="14" rx="2"/>
-    <rect className={css.tier3} x="14" y="56" width="92" height="14" rx="2"/>
-    <rect className={css.tier2} x="28" y="36" width="64" height="14" rx="2"/>
-    <rect className={css.tier1} x="42" y="16" width="36" height="14" rx="2"/>
-    <polyline className={css.route} points="104,83 80,63 54,43 60,23"/>
+   <svg viewBox="0 0 160 128" className={css.glyph} role="presentation" focusable="false">
+    <rect className={css.tier4} x="0" y="100" width="160" height="18" rx="2"/>
+    <rect className={css.tier3} x="18" y="72" width="124" height="18" rx="2"/>
+    <rect className={css.tier2} x="36" y="44" width="88" height="18" rx="2"/>
+    <rect className={css.tier1} x="54" y="16" width="52" height="18" rx="2"/>
+    {/* One polyline, drawn as a staircase so it reads as a rule climbing the tiers
+      * rather than a diagonal laid across them. */}
+    <polyline className={css.route} points="140,109 110,109 110,81 86,81 86,53 66,53 66,25 56,25"/>
    </svg>
   </div>
  </section>;

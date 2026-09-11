@@ -74,7 +74,9 @@ describe('public landing',()=>{
   expect(container.querySelector('#waitlist')).toBeInTheDocument();
   for(const id of ['question-1','question-2','question-3','privacy'])expect(container.querySelector('#'+id)).toBeInTheDocument();
   expect(screen.getByText('Open source today.')).toBeInTheDocument();
-  expect(screen.getByText('Paid hosting is planned.')).toBeInTheDocument();
+  // Both required instances (Availability's statement and the waitlist signup note,
+  // copy.md section 4) are now separately markable, so this is no longer singular.
+  expect(screen.getAllByText('Paid hosting is planned.').length).toBeGreaterThan(0);
   expect(screen.getByText('Open-source tools. Hosted service planned.')).toBeInTheDocument();
   expect(document.title).toBe('Guidefold | Team instructions for coding agents');
   expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main');
@@ -156,12 +158,29 @@ describe('public landing',()=>{
   expect(await screen.findByRole('status')).toBeInTheDocument();
  });
 
- // The mechanism clip (IntroFigure) and the Meridian reader belong to the retrieval
- // section, which T5 leaves as a shell; T8 re-homes both and restores their coverage.
  it('creates no video element under reduced motion and keeps the film poster',()=>{
   reduceMotion(true);
   const {container}=render(<Landing/>);
   expect(container.querySelector('video')).toBeNull();
   expect(container.querySelector('img[src="/assets/landing/hero-poster.webp"]')).toBeInTheDocument();
+ });
+
+ // The mechanism clip (IntroFigure) and the Meridian reader (InstructionReader, whose
+ // excerpt and "not a live run" label are protected copy) belong to the retrieval
+ // section, which T5 leaves as a shell. T8 re-homes both; these two skips keep the
+ // missing coverage visible until it does, and must be unskipped in the same change.
+ it.skip('keeps the intro poster beside the film poster under reduced motion (T8)',()=>{
+  reduceMotion(true);
+  const {container}=render(<Landing/>);
+  expect(container.querySelector('img[src="/assets/landing/intro-poster.webp"]')).toBeInTheDocument();
+ });
+
+ it.skip('mounts the mechanism clip only when motion is allowed (T8)',()=>{
+  reduceMotion(false);
+  const {container}=render(<Landing/>);
+  const clip=container.querySelector('video');
+  expect(clip).toHaveAttribute('poster','/assets/landing/intro-poster.webp');
+  expect(clip).not.toHaveAttribute('loop');
+  expect(clip).toHaveAttribute('preload','none');
  });
 });

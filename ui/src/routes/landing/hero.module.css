@@ -8,19 +8,20 @@
  display:grid;
  grid-template-columns:var(--landing-grid);
  align-content:end;
- gap:var(--space-3) var(--landing-bento-gap);
+ gap:var(--landing-hero-row-gap) var(--landing-bento-gap);
  min-height:var(--landing-media-band);
- padding-block:var(--space-3) var(--space-4);
+ padding-block:var(--landing-hero-pad-top) var(--space-4);
 }
 
-/* The scrim is the only full-bleed element: the page container is capped at
- * --landing-width, and a scrim that stopped at the gutter would leave the film
- * at full strength beside the headline. */
+/* The scrim spans the page container's padding box, which is the whole viewport at any
+ * width up to --landing-width. It deliberately does NOT bleed with `50% - 50vw`: `vw`
+ * counts the classic scrollbar, so that bleed made the document 8px wider than its own
+ * client area and the page scrolled sideways. Beyond 1400px the film layer's own scrim
+ * covers the margin, so nothing is left unshaded. */
 .heroScrim{
  position:absolute;
  z-index:-1;
- inset-block:var(--zero);
- inset-inline:var(--landing-bleed-inline);
+ inset:var(--zero);
  background:var(--film-scrim-hero);
 }
 
@@ -33,7 +34,7 @@
  min-width:var(--zero);
 }
 
-.hero h1.title{
+.title{
  margin:var(--zero);
  font-family:var(--font-display);
  font-size:var(--landing-display);
@@ -43,7 +44,7 @@
  color:var(--landing-ivory);
 }
 
-.hero p.subline{
+.subline{
  margin:var(--space-3) var(--zero) var(--zero);
  max-width:var(--landing-kicker-measure);
  font-size:var(--landing-kicker);
@@ -51,7 +52,8 @@
  color:var(--stone-100);
 }
 
-.hero p.body{
+.body{
+ display:var(--landing-hero-body-display);
  margin:var(--space-3) var(--zero) var(--zero);
  max-width:var(--landing-copy-width);
  font-size:var(--landing-body);
@@ -67,7 +69,7 @@
  scroll-margin-top:var(--space-7);
 }
 
-.hero p.trust{
+.trust{
  margin:var(--space-2) var(--zero) var(--zero);
  font-size:var(--font-size-small);
  color:var(--stone-300);
@@ -84,7 +86,7 @@
 /* Sentence case, no ring, no ambient bob: the cue reads as a sentence with a
  * direction, and it only moves when the pointer is on it. */
 .scrollCue{
- display:inline-flex;
+ display:var(--landing-hero-cue-display);
  align-items:center;
  gap:var(--space-2);
  align-self:var(--landing-hero-items);
@@ -108,8 +110,8 @@
  grid-row:var(--landing-hero-rail-row);
  display:grid;
  grid-template-columns:var(--landing-rail-columns);
- gap:var(--landing-panel-pad);
- padding:var(--landing-panel-pad);
+ gap:var(--landing-rail-gap);
+ padding:var(--landing-rail-pad);
  border:var(--border-width) solid var(--glass-border);
  border-radius:var(--landing-radius-panel);
  background:var(--glass-highlight),var(--glass-ground);
@@ -117,12 +119,12 @@
 }
 .cell{min-width:var(--zero);}
 .cell+.cell{
- padding-left:var(--landing-rail-indent);
+ padding-left:var(--landing-rail-gap);
  padding-top:var(--landing-rail-stack-pad);
  border-left:var(--landing-rail-rule);
  border-top:var(--landing-rail-rule-top);
 }
-.proofRail p.figure{
+.figure{
  margin:var(--zero);
  font-family:var(--font-mono);
  font-size:var(--landing-rail-figure);
@@ -133,20 +135,26 @@
  color:var(--stone-100);
  text-wrap:balance;
 }
-.proofRail p.qualifier{
- margin:var(--space-2) var(--zero) var(--zero);
+/* DESIGN.md 3.1 asks for --steel here, but measured against the composited rail the
+ * qualifier lands at 3.5:1 and DESIGN.md 5 requires 4.5:1 for body-sized text. The
+ * accessibility contract wins; --stone-300 measures 8:1+ and still reads as secondary. */
+.qualifier{
+ margin:var(--landing-rail-qualifier-gap) var(--zero) var(--zero);
  font-size:var(--font-size-small);
  line-height:var(--line-height-body);
- color:var(--steel);
+ color:var(--stone-300);
 }
 
+/* The pyramid mechanic, sized to hold the right column rather than float in it. It is
+ * the one decorative diagram on the page: inert, aria-hidden and static. */
 .tierGlyph{
  grid-column:var(--landing-hero-glyph-span);
  grid-row:var(--landing-hero-glyph-row);
  align-self:end;
  justify-self:var(--landing-hero-items);
+ width:var(--landing-glyph-width);
 }
-.glyph{display:block;height:var(--landing-tier-glyph-height);width:auto;overflow:visible;}
+.glyph{display:block;width:var(--landing-glyph-width);height:var(--landing-glyph-height);overflow:visible;}
 .tier1{fill:var(--tier-1);}
 .tier2{fill:var(--tier-2);}
 .tier3{fill:var(--tier-3);}

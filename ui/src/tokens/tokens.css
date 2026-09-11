@@ -120,7 +120,14 @@
  --landing-control-bottom:16px;
 
  --landing-mechanism-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-proofgate-copy-span:1/6;
+ --landing-proofgate-figures-span:7/13;
+ --landing-telemetry-panel-span:2/12;
+ --landing-telemetry-columns:minmax(0,.9fr) repeat(5,minmax(0,1fr));
  --landing-value-columns:repeat(3,minmax(0,1fr));
+ /* Availability, DESIGN.md 3.7: headline columns 1-4 against the two statements'
+  * columns 6-12, a narrower split than the generic .8/1.2 idiom used elsewhere. */
+ --landing-availability-layout:minmax(0,4fr) minmax(0,7fr);
  --landing-availability-columns:repeat(2,minmax(0,1fr));
  --landing-availability-rule:var(--border-width) solid var(--line-strong);
  --landing-availability-rule-top:none;
@@ -128,6 +135,7 @@
  --landing-band-ground:rgba(12,16,20,.72);
  --landing-keyline-display:block;
  --landing-waitlist-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ --landing-waitlist-rule:var(--border-width) solid var(--line-strong);
  --landing-waitlist-padding:48px;
  --landing-form-columns:minmax(0,1fr) max-content;
  --landing-question-width:900px;
@@ -169,7 +177,13 @@
  /* Hero placement. One 12-column grid; sections differ by which columns they use,
   * never by a new container, and every responsive change below is a span swap. */
  --landing-grid:repeat(12,minmax(0,1fr));
- --landing-bleed-inline:calc(50% - 50vw);
+ --landing-hero-body-display:block;
+ --landing-hero-cue-display:inline-flex;
+ --landing-rail-pad:var(--landing-panel-pad);
+ --landing-rail-gap:var(--landing-panel-pad);
+ --landing-rail-qualifier-gap:var(--space-2);
+ --landing-hero-row-gap:var(--space-3);
+ --landing-hero-pad-top:var(--space-3);
  --landing-nav-position:sticky;
  --landing-hero-copy-span:1/10;
  --landing-hero-copy-row:1;
@@ -183,10 +197,22 @@
  --landing-rail-stack-pad:0px;
  --landing-rail-indent:var(--landing-panel-pad);
  --landing-glyph-stroke:2px;
+ --landing-glyph-width:100%;
+ --landing-glyph-height:auto;
  /* The hero proof figures are sentences, not bare numbers: --landing-metric (up to
   * 52px) wraps them to three lines and outranks the h1. Same role, own size. */
  --landing-rail-figure:clamp(20px,1.7vw,26px);
  --landing-rail-figure-leading:1.25;
+
+ /* Retrieval instrument, DESIGN.md 3.3 (T8). Three zones read left to right at 1440 and
+  * stack at 1080/720; the divider is a 1 px `--line` hairline, flipped from a left border
+  * to a top border the same way the hero rail already flips (T5), so the instrument still
+  * reads as one instrument when it stacks. */
+ --landing-retrieval-span:2/12;
+ --landing-retrieval-zones:minmax(0,1.1fr) minmax(0,.7fr) minmax(0,3.2fr);
+ --landing-retrieval-cards:repeat(4,minmax(0,1fr));
+ --landing-retrieval-rule:var(--border-width) solid var(--line);
+ --landing-retrieval-rule-top:none;
 
  --film-scrim-hero:linear-gradient(100deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.8) 34%,rgba(7,9,12,.1) 66%,rgba(7,9,12,0) 100%);
  --film-scrim-chapter:radial-gradient(120% 90% at 30% 55%,rgba(7,9,12,.86) 0%,rgba(7,9,12,.52) 48%,rgba(7,9,12,.24) 100%);
@@ -213,6 +239,17 @@
  --landing-radius-panel:16px;
  --landing-chart-min-height:280px;
  --landing-tier-glyph-height:96px;
+ /* Evidence bento, DESIGN.md 3.6: a 12-column span so a tall chart tile (1-5, two
+  * rows) and a wide ticker tile (6-12) sit unevenly beside two single-cell tiles.
+  * Placement is a token per tile, not a literal in evidence.module.css, so the 390
+  * collapse to one column is the token swap in the 720 block below, not a media
+  * query in the component's own CSS module. */
+ --landing-evidence-columns:repeat(12,minmax(0,1fr));
+ --landing-evidence-chart-col:1/6;
+ --landing-evidence-chart-row:1/3;
+ --landing-evidence-ticker-col:6/13;
+ --landing-evidence-open-col:6/10;
+ --landing-evidence-scale-col:10/13;
 
  --duration-entrance:420ms;
  --duration-draw:520ms;
@@ -257,16 +294,29 @@
  --landing-how-detail-row:auto;
  --landing-value-columns:repeat(2,minmax(0,1fr));
  --landing-waitlist-columns:minmax(0,1fr);
+ --landing-waitlist-rule:none;
  --landing-hero-padding:32px;
  --landing-nav-gap:16px;
  --landing-stage-height:auto;
+ /* The pin is off here, so the chapter's scroll track must collapse with it; a 260vh
+  * track under three stacked beats is 260vh of nothing. */
+ --landing-stage-scroll:auto;
  --landing-hero-copy-span:1/9;
  --landing-hero-glyph-span:9/13;
  --landing-hero-rail-span:1/-1;
+ --landing-retrieval-span:1/-1;
+ --landing-retrieval-zones:minmax(0,1fr);
+ --landing-retrieval-cards:minmax(0,1fr);
+ --landing-retrieval-rule:none;
+ --landing-retrieval-rule-top:var(--border-width) solid var(--line);
 }}
 @media(max-width:720px){:root{
  --landing-film-opacity:.7;
  --landing-film-scrim:linear-gradient(180deg,rgba(7,9,12,.72) 0%,rgba(7,9,12,.82) 55%,rgba(7,9,12,.92) 100%);
+ --landing-proofgate-copy-span:1/-1;
+ --landing-proofgate-figures-span:1/-1;
+ --landing-telemetry-panel-span:1/-1;
+ --landing-telemetry-columns:minmax(0,1fr);
  --landing-scope-width-1:100%;
  --landing-scope-width-2:100%;
  --landing-scope-width-3:100%;
@@ -294,11 +344,19 @@
  --landing-panel-pad:16px;
  --landing-bento-gap:10px;
  --landing-measure-gutter:0px;
+ /* Evidence bento collapses to one column, chart tile first, in DOM order. */
+ --landing-evidence-columns:1fr;
+ --landing-evidence-chart-col:1/-1;
+ --landing-evidence-chart-row:auto;
+ --landing-evidence-ticker-col:1/-1;
+ --landing-evidence-open-col:1/-1;
+ --landing-evidence-scale-col:1/-1;
  --landing-stage-height:auto;
  --parallax-panel:6px;
  --parallax-chapter:16px;
  --landing-tier-glyph-height:96px;
  --landing-value-columns:minmax(0,1fr);
+ --landing-availability-layout:minmax(0,1fr);
  --landing-availability-columns:minmax(0,1fr);
  --landing-availability-rule:none;
  --landing-availability-rule-top:var(--border-width) solid var(--line-strong);
@@ -327,6 +385,18 @@
  /* DESIGN.md 3.1: the hero scrim rotates to vertical at 390, because the copy runs the
   * full height of the frame and the 74% framing puts a lit ridge behind the headline. */
  --film-scrim-hero:linear-gradient(180deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.86) 38%,rgba(7,9,12,.66) 74%,rgba(7,9,12,.44) 100%);
+ /* Value at first sight wins at 390: the hero body paragraph and the scroll cue are
+  * dropped whole so both proof cells clear the fold. A dropped item is never partial. */
+ --landing-hero-body-display:none;
+ --landing-hero-cue-display:none;
+ --landing-rail-pad:12px;
+ --landing-rail-gap:8px;
+ --landing-rail-stack-pad:8px;
+ --landing-rail-qualifier-gap:var(--space-1);
+ --landing-hero-row-gap:var(--space-2);
+ --landing-hero-pad-top:var(--space-2);
+ --landing-glyph-width:auto;
+ --landing-glyph-height:var(--landing-tier-glyph-height);
 }}
 
 /* ---------------------------------------------------------------------------
@@ -341,4 +411,5 @@
  --mask-hidden:inset(0 0 0 0);
  --parallax-panel:0px;--parallax-chapter:0px;
  --landing-stage-height:auto;
+ --landing-stage-scroll:auto;
 }}
