@@ -74,9 +74,7 @@ describe('public landing',()=>{
   expect(container.querySelector('#waitlist')).toBeInTheDocument();
   for(const id of ['question-1','question-2','question-3','privacy'])expect(container.querySelector('#'+id)).toBeInTheDocument();
   expect(screen.getByText('Open source today.')).toBeInTheDocument();
-  // Both required instances (Availability's statement and the waitlist signup note,
-  // copy.md section 4) are now separately markable, so this is no longer singular.
-  expect(screen.getAllByText('Paid hosting is planned.').length).toBeGreaterThan(0);
+  expect(screen.getByText('Paid hosting is planned.')).toBeInTheDocument();
   expect(screen.getByText('Open-source tools. Hosted service planned.')).toBeInTheDocument();
   expect(document.title).toBe('Guidefold | Team instructions for coding agents');
   expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main');
