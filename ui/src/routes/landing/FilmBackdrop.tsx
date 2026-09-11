@@ -53,10 +53,37 @@ export const FILM_ANCHORS:readonly Omit<Anchor,'at'>[] = [
 ] as const;
 
 /**
+ * Puts an anchor table into the shape `playheadAt` scans: **ascending by `at`, with no two
+ * anchors sharing an offset**. `measure()` reads the sections in DOM order and a document
+ * normally lays them out in that order, but nothing in the DOM enforces it — a section
+ * that has not laid out yet, a future `position` change, or two sections resolving to the
+ * same offset would all feed the scan input it cannot handle, and it would quietly return
+ * the wrong second rather than fail. So the guarantee is made here, once per measure,
+ * instead of being assumed.
+ *
+ * Equal offsets keep the **last** entry of the run: a section sharing its offset with the
+ * one before it owns the pixels below that point, so its beat is the one a reader at that
+ * scroll position should be on. The earlier beat has zero scroll span and is unreachable
+ * by construction, not by accident.
+ */
+export function normaliseAnchors(anchors:readonly Anchor[]):Anchor[]{
+ const sorted=[...anchors].sort((a,b)=>a.at-b.at);
+ const out:Anchor[]=[];
+ for(const anchor of sorted){
+  if(out.length&&out[out.length-1].at===anchor.at)out[out.length-1]=anchor;
+  else out.push(anchor);
+ }
+ return out;
+}
+
+/**
  * Piecewise-linear interpolation over the measured anchors. Pure, monotonic while the
  * anchors are, and exact in reverse, which is what makes the scrub reversible: the same
  * scroll position always yields the same second, whichever direction it was reached from.
  * Outside the measured range it clamps to the end anchors rather than extrapolating.
+ *
+ * Expects the ascending, offset-unique table `normaliseAnchors` produces — it runs once
+ * per frame, so it scans rather than sorts.
  */
 export function playheadAt(progress:number,anchors:readonly Anchor[]):number{
  if(!anchors.length)return 0;
@@ -85,9 +112,9 @@ export function playheadAt(progress:number,anchors:readonly Anchor[]):number{
  */
 function measure(terminal:number):Anchor[]{
  const scrollable=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);
- const anchors=FILM_ANCHORS
+ const anchors=normaliseAnchors(FILM_ANCHORS
   .map(a=>{const el=document.getElementById(a.id);return el?{...a,at:Math.min(1,Math.max(0,(el.getBoundingClientRect().top+window.scrollY)/scrollable))}:null;})
-  .filter((a):a is Anchor=>a!==null);
+  .filter((a):a is Anchor=>a!==null));
  if(!anchors.length)return anchors;
  const last=anchors[anchors.length-1];
  if(last.at>=1)last.second=terminal;
@@ -175,20 +202,39 @@ export function FilmBackdrop(){
   const onVisibility=()=>{hidden=document.visibilityState==='hidden';apply();};
   document.addEventListener('visibilitychange',onVisibility);
   const element=film.current;
+  // `.film` is `position:fixed; inset:0`, so today this observer never reports a miss.
+  // It is kept deliberately: it is the rule DESIGN.md 4.4 states, it costs one callback,
+  // and it is what would catch a future layout that stops pinning the film to the viewport.
   const seen=element&&typeof IntersectionObserver!=='undefined'
    ?new IntersectionObserver(entries=>{for(const entry of entries)offscreen=!entry.isIntersecting;apply();},{rootMargin:'0px'})
    :null;
   if(element&&seen)seen.observe(element);
+  /**
+   * The demo dialog's open state is not reachable from here — `index.tsx` discards it and
+   * is not this task's file — so the dialog is detected in the DOM. Base UI portals it as a
+   * direct child of `document.body` (measured: the popup sits one level inside a `div`
+   * appended to body), so `childList` **without** `subtree` is enough, and that is the whole
+   * point: a subtree observer fired 85 times on one scroll pass against 1 for this one, and
+   * would fire harder once the number ticker rolls per digit. The check is coalesced into a
+   * frame so a burst of mutations costs one `querySelector`, which also lets React finish
+   * committing the popup into the container it just appended.
+   */
+  let check=0;
   const dialogs=typeof MutationObserver!=='undefined'
    ?new MutationObserver(()=>{
-     const open=document.querySelector('[role="dialog"]')!==null;
-     if(open!==dialog){dialog=open;apply();}
+     if(check)return;
+     check=requestAnimationFrame(()=>{
+      check=0;
+      const open=document.querySelector('[role="dialog"]')!==null;
+      if(open!==dialog){dialog=open;apply();}
+     });
     })
    :null;
-  dialogs?.observe(document.body,{childList:true,subtree:true});
+  dialogs?.observe(document.body,{childList:true});
   apply();
   return ()=>{
    document.removeEventListener('visibilitychange',onVisibility);
+   if(check)cancelAnimationFrame(check);
    seen?.disconnect();
    dialogs?.disconnect();
   };
