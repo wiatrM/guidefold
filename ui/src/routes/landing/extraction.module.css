@@ -34,7 +34,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .stage p.eyebrow::before{
  content:"";
@@ -198,7 +198,7 @@
  margin:var(--space-3) var(--zero) var(--zero);
  font-size:var(--font-size-small);
  line-height:var(--line-height-body);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 
 /* --------------------------------------------------- beat 1, path instrument */
@@ -216,7 +216,7 @@
  color:var(--stone-300);
 }
 .crumbs li{display:inline-flex;align-items:center;gap:var(--space-1);min-width:var(--zero);}
-.crumbs li+li::before{content:"/";color:var(--steel);}
+.crumbs li+li::before{content:"/";color:var(--landing-muted-ink);}
 .crumbs li:last-child{color:var(--stone-100);}
 .fileRow{
  display:flex;
@@ -231,7 +231,7 @@
  letter-spacing:var(--landing-tracking-mono);
 }
 .fileName{font-size:var(--landing-h3);font-weight:var(--weight-medium);color:var(--landing-ivory);}
-.fileScope{font-size:var(--font-size-code);color:var(--steel);min-width:var(--zero);overflow-wrap:anywhere;}
+.fileScope{font-size:var(--font-size-code);color:var(--landing-muted-ink);min-width:var(--zero);overflow-wrap:anywhere;}
 
 /* --------------------------------------------------- beat 2, diff instrument */
 .diff{display:grid;grid-template-columns:var(--two-columns);gap:var(--space-4);}
@@ -243,7 +243,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .diffList{
  display:flex;
@@ -283,7 +283,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
  overflow-wrap:anywhere;
 }
 
@@ -301,7 +301,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .tiers{position:relative;}
 .tierRows{

@@ -91,6 +91,11 @@
  --landing-copy-width:46ch;
  --landing-measure:60ch;
  --landing-ivory:#efe3d0;
+ /* --steel (#5f6c77) measured 3.4-3.7:1 on graphite/film-scrim, below the 4.5:1 body-text
+  * floor; --stone-300 (#a3adb6) measured 8.3:1 on the same backgrounds (Task 5). Muted
+  * landing text (eyebrows, microcopy, qualifiers, notes) uses this token, never --steel
+  * directly - --steel itself stays unchanged for charts and the management UI. */
+ --landing-muted-ink:var(--stone-300);
 
  --landing-topo-opacity:.32;
  --landing-topo-saturate:.85;

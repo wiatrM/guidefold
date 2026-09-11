@@ -15,7 +15,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .section p.eyebrow::before{
  content:"";
@@ -77,7 +77,7 @@
 .zoneLabel{
  margin:var(--zero) var(--zero) var(--space-2);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .queryTask{
  margin:var(--zero);
@@ -92,7 +92,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .candidateCount{
  margin:var(--zero);
@@ -105,7 +105,7 @@
 .candidateNote{
  margin:var(--space-1) var(--zero) var(--zero);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .cards{
  margin:var(--zero);
@@ -132,7 +132,7 @@
  margin:var(--space-1) var(--zero) var(--zero);
  font-family:var(--font-mono);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .cardNote{
  margin:var(--space-2) var(--zero) var(--zero);
@@ -164,7 +164,7 @@
  grid-column:var(--landing-retrieval-span);
  margin:var(--space-4) var(--zero) var(--zero);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 
 /* `IntroFigure` and `InstructionReader`, unchanged, re-homed here as the "full text only

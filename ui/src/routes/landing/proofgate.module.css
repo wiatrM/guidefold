@@ -45,7 +45,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .section p.eyebrow::before{
  content:"";
@@ -105,5 +105,5 @@
  margin:var(--space-2) var(--zero) var(--zero);
  font-size:var(--font-size-small);
  line-height:var(--line-height-body);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }

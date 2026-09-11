@@ -5,7 +5,7 @@
  * as they were and are untouched below. Every value here is a token; the 390 collapse is
  * the token swap in tokens.css, never a media query in this file. */
 .research{position:relative;padding:var(--landing-section-padding) var(--zero);border-top:var(--border-width) solid var(--line-strong);}
-.research p.eyebrow{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero) var(--zero) var(--space-3);color:var(--steel);font-family:var(--font-mono);font-size:var(--font-size-code);letter-spacing:var(--landing-tracking-mono);}
+.research p.eyebrow{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero) var(--zero) var(--space-3);color:var(--landing-muted-ink);font-family:var(--font-mono);font-size:var(--font-size-code);letter-spacing:var(--landing-tracking-mono);}
 .research p.eyebrow::before{content:"";display:block;flex:none;inline-size:var(--landing-eyebrow-rule);block-size:var(--landing-pixel);background:var(--line-strong);}
 .copy{max-width:var(--landing-measure);}
 .research .subline{margin:var(--space-3) var(--zero) var(--zero);font-size:var(--landing-lede);color:var(--stone-100);}

@@ -16,7 +16,7 @@
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .section p.eyebrow::before{
  content:"";
@@ -58,7 +58,7 @@
  grid-column:1/-1;
  margin:var(--space-2) var(--zero) var(--zero);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 
 /* The instrument: the page's only telemetry glass panel. */
@@ -75,7 +75,7 @@
 .fixtureLabel{
  margin:var(--zero) var(--zero) var(--space-4);
  font-size:var(--font-size-small);
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .fixtureLabel strong{color:var(--warning-ink);font-weight:var(--weight-semibold);}
 
@@ -96,7 +96,7 @@
  font-size:var(--font-size-code);
  letter-spacing:var(--tracking-label);
  text-transform:uppercase;
- color:var(--steel);
+ color:var(--landing-muted-ink);
 }
 .cellValue{
  margin:var(--zero);
@@ -107,7 +107,7 @@
  color:var(--stone-100);
 }
 .cellValue.team{font-weight:var(--weight-semibold);color:var(--landing-ivory);}
-.cellValue[data-value="unknown"]{color:var(--steel);font-style:italic;}
+.cellValue[data-value="unknown"]{color:var(--landing-muted-ink);font-style:italic;}
 .cellValue[data-ask-reason]{color:var(--human-ink);}
 /* Cost and time is three separate measures, each its own line, never joined with a
  * middle dot: that join is reserved for decorative byline metadata, not instrument data. */

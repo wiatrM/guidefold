@@ -39,7 +39,7 @@
 /* --------------------------------------------------------- editorial blocks */
 /* Eyebrows are copy, not chrome: sentence-case mono behind a short hairline, never
  * an all-caps tracked label above a heading (DESIGN.md 2.1 and 3). */
-.page p.eyebrow{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero) var(--zero) var(--space-3);color:var(--steel);font-family:var(--font-mono);font-size:var(--font-size-code);letter-spacing:var(--landing-tracking-mono);}
+.page p.eyebrow{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero) var(--zero) var(--space-3);color:var(--landing-muted-ink);font-family:var(--font-mono);font-size:var(--font-size-code);letter-spacing:var(--landing-tracking-mono);}
 .page p.eyebrow::before{content:"";display:block;flex:none;inline-size:var(--landing-eyebrow-rule);block-size:var(--landing-pixel);background:var(--line-strong);}
 .copy{max-width:var(--landing-measure);}
 .copy h2+p{margin-top:var(--space-4);}
@@ -122,7 +122,7 @@
 .footer nav{display:flex;flex-direction:column;align-items:flex-start;}
 .footer h2{margin:var(--zero) var(--zero) var(--space-2);color:var(--stone-100);font-size:var(--font-size-small);font-weight:var(--weight-medium);letter-spacing:var(--tracking-label);text-transform:uppercase;}
 .footer nav a{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);color:var(--stone-300);font-size:var(--font-size-body);text-decoration:none;}
-.wordmark{margin:var(--space-6) var(--zero) var(--space-4);color:var(--steel);font-family:var(--font-display);font-size:var(--landing-footer-wordmark);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-title);line-height:var(--line-height-solid);}
+.wordmark{margin:var(--space-6) var(--zero) var(--space-4);color:var(--landing-muted-ink);font-family:var(--font-display);font-size:var(--landing-footer-wordmark);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-title);line-height:var(--line-height-solid);}
 .wordmark span{color:var(--safety-orange);}
 .footerBottom{display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;padding-top:var(--space-4);border-top:var(--border-width) solid var(--line);color:var(--stone-300);font-size:var(--font-size-small);}
 @media(hover:hover) and (pointer:fine){.footer nav a:hover{color:var(--stone-100);}}
