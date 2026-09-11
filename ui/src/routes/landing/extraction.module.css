@@ -1,17 +1,46 @@
-/* Extraction, DESIGN.md 3.2. Shell only: the section frame, its eyebrow and its heading.
- * Every value is a token; the responsive changes are token swaps in tokens.css. */
+/* Extraction, DESIGN.md 3.2 and 4.2: the pinned chapter and its three beats.
+ *
+ * Every value is a token and every breakpoint change is a token swap in tokens.css; the
+ * bare numbers that remain are the beat windows of DESIGN.md 4.2 (0.0-0.33, 0.33-0.66,
+ * 0.66-1.0 with a 0.06 overlap) and the normalised tier-route fraction. Those are
+ * positions in `--p`, not design values, so they stay next to the mapping that reads them.
+ *
+ * Resting state is the finished composition: three beats stacked in flow, all at full
+ * opacity, the tier route drawn complete. Everything the sampler drives is keyed on
+ * `[data-p-ready="true"]`, which Extraction.tsx sets only when the stage is really pinned
+ * (`--landing-stage-height` is not `auto`) and motion is allowed. */
+
 .section{padding-block:var(--landing-section-padding);}
-.section p.eyebrow{
- margin:var(--zero);
+
+/* The track reserves the pinned stage's scroll before enhancement, so the pin costs no
+ * layout shift. Both tokens are `auto` at 1080 and below and under reduced motion. */
+.track{position:relative;height:var(--landing-stage-scroll);}
+.stage{
+ position:sticky;
+ top:var(--zero-length);
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ gap:var(--landing-band-gap);
+ min-height:var(--landing-stage-height);
+ padding-block:var(--space-4);
+ will-change:transform;
+}
+
+/* ------------------------------------------------------------------- masthead */
+/* Fixed at the top of the stage; it does not move between beats. */
+.masthead{min-width:var(--zero);}
+.stage p.eyebrow{
  display:flex;
  align-items:center;
  gap:var(--space-2);
+ margin:var(--zero);
  font-family:var(--font-mono);
  font-size:var(--font-size-code);
  letter-spacing:var(--landing-tracking-mono);
  color:var(--steel);
 }
-.section p.eyebrow::before{
+.stage p.eyebrow::before{
  content:"";
  display:block;
  flex:none;
@@ -19,7 +48,7 @@
  block-size:var(--landing-pixel);
  background:var(--line-strong);
 }
-.section h2.heading{
+.stage h2.heading{
  margin:var(--space-3) var(--zero) var(--zero);
  font-family:var(--font-display);
  font-size:var(--landing-heading);
@@ -29,3 +58,275 @@
  color:var(--landing-ivory);
  text-wrap:balance;
 }
+
+/* ---------------------------------------------------------------------- beats */
+/* In flow the three beats are three blocks. Pinned, they occupy the same cell and
+ * crossfade; the stacking is gated with the crossfade so a missing sampler can never
+ * leave three beats piled in one cell at full opacity. */
+.beats{display:grid;gap:var(--landing-band-gap);}
+.beat{
+ display:grid;
+ grid-template-columns:var(--landing-mechanism-columns);
+ gap:var(--space-4) var(--landing-measure-gutter);
+ align-items:center;
+ min-width:var(--zero);
+}
+.caption{min-width:var(--zero);}
+.instrument{min-width:var(--zero);}
+
+.beat h3.beatTitle{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-h3);
+ line-height:var(--line-height-compact);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+}
+.beat p.beatLede{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-kicker-measure);
+ font-size:var(--landing-kicker);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+.beat p.beatBody{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+
+/* ----------------------------------------------------------------- beat rail */
+/* One hairline with three ticks, sitting in the middle of the gap between the caption
+ * and the instrument columns. It marks a position in a sequence, so it exists only while
+ * there is a position to mark. */
+.rail{
+ display:none;
+ grid-template-columns:var(--landing-mechanism-columns);
+ gap:var(--space-4) var(--landing-measure-gutter);
+ pointer-events:none;
+}
+.railLine{
+ grid-column:1;
+ justify-self:end;
+ align-self:stretch;
+ margin-inline-end:calc(var(--landing-measure-gutter) / -2);
+ display:flex;
+ flex-direction:column;
+ justify-content:space-between;
+ align-items:center;
+ inline-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.tick1,.tick2,.tick3{
+ display:block;
+ inline-size:var(--space-3);
+ block-size:var(--landing-pixel);
+ background:var(--steel);
+}
+
+/* ------------------------------------------------------- the pinned behaviour */
+.stage[data-p-ready="true"] .beat{grid-area:1/1;}
+.stage[data-p-ready="true"] .rail{grid-area:1/1;display:grid;}
+
+/* Beat crossfade, DESIGN.md 4.2: windows at 0.0-0.33, 0.33-0.66 and 0.66-1.0, each
+ * handover a 0.06-wide crossfade centred on the boundary. Linear in `--p`, so reverse
+ * scroll lands on exactly the value the forward pass had. */
+.stage[data-p-ready="true"] .beat[data-beat="1"]{opacity:clamp(0,(0.36 - var(--p)) / 0.06,1);}
+.stage[data-p-ready="true"] .beat[data-beat="2"]{
+ opacity:min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1));
+}
+.stage[data-p-ready="true"] .beat[data-beat="3"]{opacity:clamp(0,(var(--p) - 0.63) / 0.06,1);}
+
+/* The ticks read the same three windows, so the rail says which beat is on screen without
+ * a number and without a second colour. Opacity, not a colour swap, keeps it one value. */
+.stage[data-p-ready="true"] .tick1,
+.stage[data-p-ready="true"] .tick2,
+.stage[data-p-ready="true"] .tick3{background:var(--survey-teal);}
+.stage[data-p-ready="true"] .tick1{opacity:calc(0.3 + 0.7 * clamp(0,(0.36 - var(--p)) / 0.06,1));}
+.stage[data-p-ready="true"] .tick2{opacity:calc(0.3 + 0.7 * min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1)));}
+.stage[data-p-ready="true"] .tick3{opacity:calc(0.3 + 0.7 * clamp(0,(var(--p) - 0.63) / 0.06,1));}
+
+/* Chapter parallax on the instrument layer only, DESIGN.md 4.2. It lands on the panel
+ * rather than on the Reveal element, whose P3 entrance already owns that element's
+ * `transform`. Linear in `--p`, exact in reverse, transform only. */
+.stage[data-p-ready="true"] .panel{
+ transform:translate3d(var(--zero-length),calc((var(--p) - .5) * var(--parallax-chapter)),var(--zero-length));
+}
+
+/* --------------------------------------------------------------- glass panels */
+.panel{
+ padding:var(--landing-panel-pad);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:blur(var(--glass-blur));
+ min-width:var(--zero);
+}
+.panel p.panelLabel{
+ margin:var(--zero) var(--zero) var(--space-3);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+}
+.panel p.panelNote{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--steel);
+}
+
+/* --------------------------------------------------- beat 1, path instrument */
+.crumbs{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:var(--space-1);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+}
+.crumbs li{display:inline-flex;align-items:center;gap:var(--space-1);min-width:var(--zero);}
+.crumbs li+li::before{content:"/";color:var(--steel);}
+.crumbs li:last-child{color:var(--stone-100);}
+.fileRow{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-top:var(--space-3);
+ padding-top:var(--space-3);
+ border-top:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ letter-spacing:var(--landing-tracking-mono);
+}
+.fileName{font-size:var(--landing-h3);font-weight:var(--weight-medium);color:var(--landing-ivory);}
+.fileScope{font-size:var(--font-size-code);color:var(--steel);min-width:var(--zero);overflow-wrap:anywhere;}
+
+/* --------------------------------------------------- beat 2, diff instrument */
+.diff{display:grid;grid-template-columns:var(--two-columns);gap:var(--space-4);}
+.diffColumn{min-width:var(--zero);}
+.diffColumn p.diffHead{
+ margin:var(--zero) var(--zero) var(--space-2);
+ padding-bottom:var(--space-2);
+ border-bottom:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--steel);
+}
+.diffList{
+ display:flex;
+ flex-direction:column;
+ gap:var(--space-2);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+}
+.diffList li{min-width:var(--zero);overflow-wrap:anywhere;}
+/* The page's second and last orange moment, and its only `--glow-route`. Colour is never
+ * the only carrier: the row also says `promoted` in words. */
+.diffList li.promoted{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:var(--space-2);
+ padding:var(--space-2);
+ border:var(--border-width) solid var(--safety-orange);
+ border-radius:var(--radius-small);
+ box-shadow:var(--glow-route);
+ color:var(--safety-orange);
+}
+.promotedTag{
+ padding:var(--zero) var(--space-1);
+ border:var(--border-width) solid var(--safety-orange);
+ border-radius:var(--radius-small);
+ font-size:var(--font-size-code);
+ color:var(--safety-orange);
+}
+.diffColumn p.diffScope{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--steel);
+ overflow-wrap:anywhere;
+}
+
+/* --------------------------------------------------- beat 3, tier instrument */
+.tiers{position:relative;}
+.tierRows{
+ display:flex;
+ flex-direction:column;
+ gap:var(--space-3);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+}
+/* Name and count sit above the bar, so every bar starts at the same x and the pyramid
+ * reads as one shape. The route below is drawn against that shared left edge. */
+.tierRow{min-width:var(--zero);}
+.tierMeta{
+ display:flex;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-bottom:var(--space-1);
+}
+.tierName{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+}
+.tierTrack{display:block;min-width:var(--zero);}
+.tierBar{display:block;block-size:var(--space-2);border-radius:var(--radius-small);}
+.tierBar1{inline-size:var(--landing-scope-width-3);background:var(--tier-1);}
+.tierBar2{inline-size:var(--landing-scope-width-2);background:var(--tier-2);}
+.tierBar3{inline-size:var(--landing-scope-width-1);background:var(--tier-3);}
+.tierBar4{inline-size:var(--landing-scope-width-0);background:var(--tier-4);}
+.tierCount{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ font-variant-numeric:tabular-nums;
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+ white-space:nowrap;
+}
+
+/* The route climbs the tiers the way the hero glyph does (DESIGN.md 3.1). Its resting
+ * value is the finished route: the markup carries `stroke-dashoffset="0"` and only the
+ * rule below, live while the sampler drives, turns it into a draw across beat 3. */
+.tierSvg{
+ position:absolute;
+ inset:var(--zero-length);
+ inline-size:var(--full);
+ block-size:var(--full);
+ pointer-events:none;
+ overflow:visible;
+}
+.tierRoute{
+ fill:none;
+ stroke:var(--safety-orange);
+ stroke-width:var(--landing-glyph-stroke);
+ stroke-linecap:round;
+ stroke-linejoin:round;
+}
+/* The draw moves `stroke-dasharray`, never `stroke-dashoffset`: the offset stays at the
+ * markup's `0` at every progress, which is the value the resting route and the end-to-end
+ * contract both read. 2000 is `ROUTE_RUN` in Extraction.tsx, a dash run in rendered pixels
+ * longer than the route is ever drawn; see the comment there for why it is not a path
+ * fraction. */
+.stage[data-p-ready="true"] .tierRoute{stroke-dasharray:calc(2000 * clamp(0,(var(--p) - 0.66) / 0.34,1)) 2000;}
