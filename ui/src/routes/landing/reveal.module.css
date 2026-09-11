@@ -22,8 +22,11 @@
 .p1[data-reveal-slot="3"]{transition-delay:var(--stagger-3);}
 .p1[data-reveal-slot="4"]{transition-delay:var(--stagger-cap);}
 
-/* P1 line mask: the hero headline treatment, DESIGN.md 4.1 and 7 decision 4. */
-.p1Line{display:block;overflow:hidden;}
+/* P1 line mask: the hero headline treatment, DESIGN.md 4.1 and 7 decision 4.
+ * `clip-path` is the whole mask, so the wrapper carries no `overflow:hidden`: the hero
+ * display leading is 1.02 (DESIGN.md 2.1), where clipping the line box would cut the
+ * descenders off the finished headline, with JavaScript off and under reduced motion too. */
+.p1Line{display:block;}
 .p1Line[data-reveal-ready="true"]{
  clip-path:var(--mask-hidden);
  transform:translateY(var(--enter-rise));

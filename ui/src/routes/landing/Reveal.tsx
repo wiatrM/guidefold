@@ -1,4 +1,5 @@
-import {Children,useEffect,useRef,useState,type ElementType,type ReactNode,type RefObject} from 'react';
+import {Children,cloneElement,isValidElement,useEffect,useRef,useState,
+ type ElementType,type ReactElement,type ReactNode,type RefObject} from 'react';
 import css from './reveal.module.css';
 
 /**
@@ -132,6 +133,28 @@ export function Reveal({pattern,as,index=0,className,id,children}:{
   className={[css.reveal,css[pattern],className].filter(Boolean).join(' ')}>{children}</As>;
 }
 
+/** What a cloned group child must be able to receive. */
+type SlotProps={className?:string;ref?:RefObject<HTMLElement|null>;'data-reveal-slot'?:string};
+
+/**
+ * One staggered slot of a group. The pattern class and the slot land on the child itself
+ * rather than on a wrapper, because the canonical P3 group is the evidence bento, whose
+ * tiles carry their own grid placement (DESIGN.md 3.6: "a tall tile, columns 1-5, two
+ * rows"). A wrapper would become the grid item and the placement would be lost. A child
+ * that is not an element renders untouched and simply does not animate.
+ */
+function RevealSlot({pattern,index,children}:{pattern:RevealPattern;index:number;children:ReactNode}){
+ const ref=useRef<HTMLElement|null>(null);
+ useEntrance(ref,pattern);
+ if(!isValidElement(children))return <>{children}</>;
+ const child=children as ReactElement<SlotProps>;
+ return cloneElement(child,{
+  ref,
+  'data-reveal-slot':slot(index),
+  className:[css.reveal,css[pattern],child.props.className].filter(Boolean).join(' '),
+ });
+}
+
 export function RevealGroup({pattern,as,className,children}:{
  pattern:RevealPattern;
  as?:keyof React.JSX.IntrinsicElements;
@@ -140,7 +163,7 @@ export function RevealGroup({pattern,as,className,children}:{
 }){
  const As=(as??'div') as ElementType;
  return <As className={className}>
-  {Children.map(children,(child,i)=><Reveal pattern={pattern} index={i}>{child}</Reveal>)}
+  {Children.map(children,(child,i)=><RevealSlot pattern={pattern} index={i}>{child}</RevealSlot>)}
  </As>;
 }
 
