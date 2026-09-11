@@ -37,14 +37,6 @@
 }
 @media(max-width:1080px){:root{--funnel-metric-columns:repeat(3,minmax(0,1fr));--filter-form-columns:minmax(0,1fr);--filter-form-areas:"search" "filters" "actions";--rail-width:224px;--page-padding:24px;--two-columns:minmax(0,1fr);--aside-columns:minmax(0,1fr);--filter-columns:repeat(2,minmax(0,1fr));--field-columns:repeat(2,minmax(0,1fr));--steps-columns:repeat(2,minmax(0,1fr));--metric-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){:root{--transparent:transparent;--desktop-display:none;--mobile-display:flex;--rail-padding:16px;--context-padding:8px 0;--shell-columns:minmax(0,1fr);--shell-collapsed-columns:minmax(0,1fr);--rail-height:auto;--rail-position:static;--rail-columns:repeat(2,minmax(0,1fr));--page-padding:16px;--filter-columns:minmax(0,1fr);--field-columns:minmax(0,1fr);--steps-columns:minmax(0,1fr);--metric-columns:minmax(0,1fr);--rail-border:none;--rail-bottom:var(--border-width) solid var(--line-strong);--control-height:44px;--font-size-title:28px;--scroll-offset:16px;--delivery-bar-align:flex-start;--delivery-bar-direction:column;--delivery-bar-flex:none;--delivery-value-wrap:normal;--delivery-value-overflow:anywhere;--funnel-metric-columns:repeat(2,minmax(0,1fr));}}
-@media(prefers-reduced-motion:reduce){:root{
- --transparent:transparent;--duration:0ms;
- --duration-entrance:0ms;--duration-panel:0ms;--duration-draw:0ms;--duration-count:0ms;
- --enter-rise:0px;--enter-blur:0px;--enter-scale:1;
- --mask-hidden:inset(0 0 0 0);
- --parallax-panel:0px;--parallax-chapter:0px;
- --landing-stage-height:auto;
-}}
 
 /* ---------------------------------------------------------------------------
  * Landing v2 - WHY / HOW / VALUE.
@@ -293,4 +285,18 @@
  --landing-control-top:16px;
  --landing-control-bottom:auto;
  --landing-footer-columns:repeat(2,minmax(0,1fr));
+}}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion, last in the file so source order carries it.
+ * A media query adds no specificity, so these overrides only win if every landing
+ * and breakpoint block that redefines the same token has already been declared.
+ * ------------------------------------------------------------------------- */
+@media(prefers-reduced-motion:reduce){:root{
+ --transparent:transparent;--duration:0ms;
+ --duration-entrance:0ms;--duration-panel:0ms;--duration-draw:0ms;--duration-count:0ms;
+ --enter-rise:0px;--enter-blur:0px;--enter-scale:1;
+ --mask-hidden:inset(0 0 0 0);
+ --parallax-panel:0px;--parallax-chapter:0px;
+ --landing-stage-height:auto;
 }}
