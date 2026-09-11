@@ -35,7 +35,8 @@ describe('preservation contract',()=>{
 
  it('keeps both required instances of the hosting statement',()=>{
   render(<Landing/>);
-  expect(screen.getAllByText('Paid hosting is planned.',{exact:true}).length).toBe(2);
+  expect(screen.getAllByText('Paid hosting is planned.',{exact:true}).length).toBe(1);
+  expect(screen.getAllByText('Paid hosting is planned. Sign up for availability updates.',{exact:true}).length).toBe(1);
  });
 
  it('links Try the open-source version exactly twice: section 3 and the footer',()=>{
