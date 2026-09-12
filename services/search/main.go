@@ -23,9 +23,11 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/identity"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
+	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/schema"
+	"github.com/wiatrM/guidefold/services/search/internal/secrets"
 	"github.com/wiatrM/guidefold/services/search/internal/usage"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
@@ -955,6 +957,26 @@ func mountManagement(app *App, pool *pgxpool.Pool) error {
 	}
 	knowledge.New(pool, blobs, sink, env("GUIDEFOLD_ENVIRONMENT", "pilot")).Register(router)
 	usage.New(pool).Register(router)
+	// The organisation's own model key (ADR-0045). A deployment without a master
+	// key still mounts the routes: they answer `secret_encryption_unavailable`,
+	// which is a state an owner can act on, rather than 404 on a route the
+	// contract says exists.
+	keyring, e := secrets.LoadKeyring(os.Getenv)
+	if e != nil {
+		return e
+	}
+	if keyring == nil {
+		slog.Warn("secret_keyring_absent",
+			"detail", "GUIDEFOLD_SECRET_KEY_FILE is unset, so organisations cannot store a model key and the Live Agent cannot run")
+	}
+	credentials := secrets.New(pool, keyring, secrets.NewHTTPVerifier())
+	credentials.Register(router)
+	// The Live Agent resolves its provider and model from the organisation's
+	// preferred stored credential (§4.8, §4.9) through the narrow
+	// CredentialSource interface; NewSecretsCredentialSource discards the
+	// plaintext key OpenPreferred hands back, so live itself never opens a
+	// key and needs no keyring of its own (ADR-0046 §5).
+	live.New(pool, live.NewSecretsCredentialSource(credentials)).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		return e

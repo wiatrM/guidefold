@@ -400,4 +400,50 @@ describe('decoders match the closed domains of API-CONTRACT §5', () => {
     expect(decode({ mode: 'dev', providers: [{ id: 'github', label: 'GitHub', login_url: '/x' }] }, d.authProviders).providers[0].id).toBe('github');
     expect(() => decode({ mode: 'dev', providers: [{ id: 'okta', label: 'Okta', login_url: '/x' }] }, d.authProviders)).toThrowError(/id: expected one of/);
   });
+
+  // Contract §4.8/§4.9/§5.5a (ADR-0045, ADR-0046, changelog 1.6.0): `model` and `preferred` on
+  // the credential, `summary` on the run and `phase`/`skills`/`proposals` on the target are all
+  // new, required fields. A server that has not shipped them must fail loudly here, not render a
+  // false zero or blank — that is the whole point of leaving them undecorated (no `fallback`).
+  test('a model credential carries model and preferred, and a response missing either fails loudly', () => {
+    const value = { provider: 'openrouter', name: 'default', last4: '9f2a', model: 'gpt-5.6', preferred: true, created_at: null, created_by: null };
+    expect(decode(value, d.orgCredential).model).toBe('gpt-5.6');
+    expect(decode(value, d.orgCredential).preferred).toBe(true);
+    expect(() => decode({ ...value, model: undefined }, d.orgCredential)).toThrowError(/model: expected string/);
+    expect(() => decode({ ...value, preferred: undefined }, d.orgCredential)).toThrowError(/preferred: expected boolean/);
+  });
+
+  test('a live run has no prompt, carries a summary, and a response missing it fails loudly', () => {
+    const value = {
+      run_id: 'r1', state: 'succeeded', provider: 'openrouter', model: 'gpt-5.6',
+      created_by: null, created_at: '2026-09-12T00:00:00Z', started_at: null, finished_at: null,
+      counts: { targets: 1, done: 1, failed: 0, skipped: 0 },
+      summary: { skills_indexed: 3, proposals_created: 1 },
+      cost: { tokens_in: 0, tokens_out: 0, usd: 0, usd_estimated: false }, error: null,
+    };
+    const run = decode(value, d.liveRun);
+    expect(run.summary).toEqual({ skills_indexed: 3, proposals_created: 1 });
+    expect((run as unknown as { prompt?: unknown }).prompt).toBeUndefined();
+    expect(() => decode({ ...value, summary: undefined }, d.liveRun)).toThrowError(/summary: expected object/);
+  });
+
+  test('a live run target carries phase, skills and proposals; each is required', () => {
+    const value = { repo_id: 'monorepo', state: 'running', job_id: null, phase: 'parse', skills: 4, proposals: 0, error: null, started_at: null, finished_at: null };
+    expect(decode(value, d.liveRunTarget).phase).toBe('parse');
+    expect(() => decode({ ...value, phase: 'thinking' }, d.liveRunTarget)).toThrowError(/phase: expected one of/);
+    expect(() => decode({ ...value, skills: undefined }, d.liveRunTarget)).toThrowError(/skills: expected number/);
+  });
+
+  test('a live run event type is the eight-member 1.6.0 set; model.delta and finding are gone', () => {
+    expect(d.liveRunEventTypes).toEqual(['run.started', 'repo.started', 'repo.fetched', 'repo.parsed', 'repo.proposed', 'repo.finished', 'run.finished', 'error']);
+    expect(() => decode({ seq: 1, at: '2026-09-12T00:00:00Z', repo_id: null, type: 'model.delta', payload: { text: 'x' } }, d.liveRunEvent)).toThrowError(/type: expected one of/);
+  });
+
+  test('every live run event carries payload.text, printed verbatim; a response missing it fails loudly', () => {
+    const value = { seq: 2, at: '2026-09-12T00:00:01Z', repo_id: 'monorepo', type: 'repo.parsed', payload: { text: 'Parsed 4 skills.', skills: 4, import_id: 'im-1' } };
+    const event = decode(value, d.liveRunEvent);
+    expect(event.payload.text).toBe('Parsed 4 skills.');
+    expect(event.payload.skills).toBe(4); // extra, type-specific keys survive alongside `text`.
+    expect(() => decode({ ...value, payload: { skills: 4 } }, d.liveRunEvent)).toThrowError(/payload\.text: expected string/);
+  });
 });

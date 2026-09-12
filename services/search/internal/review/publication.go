@@ -233,7 +233,7 @@ func (s *Service) handleActivate(c *mgmt.Context) error {
 	if e2 != nil {
 		return mgmt.Internal(e2)
 	}
-	owners, e2 := s.scopeOwners(c.Ctx(), rc)
+	owners, e2 := s.scopeOwners(c.Ctx(), rc.Org.ID, rc.RepoID)
 	if e2 != nil {
 		return mgmt.Internal(e2)
 	}

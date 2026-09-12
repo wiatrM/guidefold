@@ -15,15 +15,21 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// The two HTTP providers. They differ in one request shape and one response
-// shape; everything else — the prompt, the output schema, the retry rule, the
-// cost accounting — is shared, because "which vendor" must not change what a
+// The three HTTP providers. OpenRouter speaks the identical OpenAI-compatible
+// wire protocol (same endpoint suffix, same request/response shape, same
+// Bearer header) that request/readResponse already produce in their default,
+// non-Anthropic branch, so it is this same type with a different endpoint and
+// default model, not a second implementation. Anthropic's shape is different
+// enough (auth header, body, SSE-free response) that it stays its own branch.
+// Everything else — the prompt, the output schema, the retry rule, the cost
+// accounting — is shared, because "which vendor" must not change what a
 // proposal is allowed to claim.
 //
 // Three rules are not negotiable here.
 //
-// The key comes from a file (`OPENAI_API_KEY_FILE`, `ANTHROPIC_API_KEY_FILE`),
-// is read per call, and is never logged, echoed or put in an error message
+// The key comes from a file (`OPENAI_API_KEY_FILE`, `ANTHROPIC_API_KEY_FILE`,
+// `OPENROUTER_API_KEY_FILE`) or from one request's own Request.APIKey, is read
+// per call, and is never logged, echoed or put in an error message
 // (security-baseline).
 //
 // The output is validated against a JSON Schema before anything is believed. A
@@ -57,24 +63,34 @@ type remote struct {
 
 var _ Generator = (*remote)(nil)
 
-func newRemote(provider string, env func(string) string) (*remote, error) {
+// baseRemote builds everything about a remote generator that is the same no
+// matter which key ends up on a request: the endpoint, the timeout and the
+// price list are deployment infrastructure (an operator still points
+// OPENAI_BASE_URL at a private gateway, or prices a call, the same way
+// whether the deployment's own key is used or an organisation's own is), read
+// from env exactly once. modelOverride is deliberately a parameter rather
+// than something this function reads from the environment itself: newRemote
+// passes GUIDEFOLD_GENERATOR_MODEL (the deployment's own model), ForOrganisation
+// passes the organisation's own stored model, and neither may leak into the
+// other's remote -- an operator's deployment-wide model override must not
+// silently apply to an organisation on a different provider (API-CONTRACT §8).
+func baseRemote(provider, modelOverride string, env func(string) string) (*remote, error) {
 	r := &remote{provider: provider, client: &http.Client{Timeout: DefaultTimeout}}
 	switch provider {
 	case NameOpenAI:
-		r.model = firstNonEmpty(env("GUIDEFOLD_GENERATOR_MODEL"), "gpt-4.1-mini")
+		r.model = firstNonEmpty(modelOverride, "gpt-4.1-mini")
 		r.endpoint = firstNonEmpty(env("OPENAI_BASE_URL"), "https://api.openai.com") +
 			"/v1/chat/completions"
-		r.keyFile = env("OPENAI_API_KEY_FILE")
 	case NameAnthropic:
-		r.model = firstNonEmpty(env("GUIDEFOLD_GENERATOR_MODEL"), "claude-sonnet-4-5")
+		r.model = firstNonEmpty(modelOverride, "claude-sonnet-4-5")
 		r.endpoint = firstNonEmpty(env("ANTHROPIC_BASE_URL"), "https://api.anthropic.com") +
 			"/v1/messages"
-		r.keyFile = env("ANTHROPIC_API_KEY_FILE")
+	case NameOpenRouter:
+		r.model = firstNonEmpty(modelOverride, "openai/gpt-4o-mini")
+		r.endpoint = firstNonEmpty(env("OPENROUTER_BASE_URL"), "https://openrouter.ai/api") +
+			"/v1/chat/completions"
 	default:
 		return nil, fmt.Errorf("unknown_generator %q", provider)
-	}
-	if strings.TrimSpace(r.keyFile) == "" {
-		return nil, fmt.Errorf("%s_api_key_file_required", provider)
 	}
 	if v := env("GUIDEFOLD_GENERATOR_TIMEOUT_SECONDS"); v != "" {
 		n, e := strconv.Atoi(v)
@@ -91,6 +107,54 @@ func newRemote(provider string, env func(string) string) (*remote, error) {
 	}
 	r.schema = schema
 	return r, nil
+}
+
+// newRemote builds the deployment's own configured generator (GUIDEFOLD_GENERATOR),
+// with its own key file as the fallback a request's own key takes priority over.
+func newRemote(provider string, env func(string) string) (*remote, error) {
+	r, e := baseRemote(provider, env("GUIDEFOLD_GENERATOR_MODEL"), env)
+	if e != nil {
+		return nil, e
+	}
+	switch provider {
+	case NameOpenAI:
+		r.keyFile = env("OPENAI_API_KEY_FILE")
+	case NameAnthropic:
+		r.keyFile = env("ANTHROPIC_API_KEY_FILE")
+	case NameOpenRouter:
+		r.keyFile = env("OPENROUTER_API_KEY_FILE")
+	}
+	// No `*_API_KEY_FILE` is a valid deployment now (ADR-0045): a BYOK-only
+	// installation may run this generator for organisations that each hold
+	// their own key and none of the operator's. A request with neither an
+	// organisation key nor this file ends the job `skipped` at Generate time,
+	// which is where a caller can name it against the job instead of refusing
+	// the whole worker at startup for a configuration that is only sometimes
+	// wrong.
+	r.keyFile = strings.TrimSpace(r.keyFile)
+	return r, nil
+}
+
+// ForOrganisation builds a remote generator for one organisation's preferred
+// provider and stored model (API-CONTRACT §8: "proposal.generate uruchomiony
+// przez przebieg bierze klucz preferowanego dostawcy tej organizacji"). model
+// empty means that provider's own default, exactly like an omitted `model` on
+// PUT …/credentials/{provider} does. It carries no key file: this generator
+// is bound to one organisation's own key for the lifetime of one job, and
+// that key travels on Request.APIKey -- the same field and the same
+// resolveKey priority a deployment-configured generator already uses -- so
+// there is one key-carrying mechanism, not two. env is nil in production
+// (os.Getenv); a test passes its own to point the endpoint at a fake server
+// without touching the process environment.
+func ForOrganisation(provider, model string, env func(string) string) (Generator, Recipe, error) {
+	if env == nil {
+		env = os.Getenv
+	}
+	r, e := baseRemote(provider, model, env)
+	if e != nil {
+		return nil, Recipe{}, e
+	}
+	return r, r.Recipe(), nil
 }
 
 // Recipe names the provider and the model revision. Both are part of the cache
@@ -216,7 +280,7 @@ func (r *remote) Generate(ctx context.Context, req Request) (Output, Cost, error
 	if req.Limits.MaxCalls < 0 {
 		return Output{}, Cost{}, errors.New("generator_call_budget_exhausted")
 	}
-	key, e := readKey(r.keyFile)
+	key, e := r.resolveKey(req)
 	if e != nil {
 		return Output{}, Cost{}, e
 	}
@@ -250,6 +314,24 @@ func (r *remote) Generate(ctx context.Context, req Request) (Output, Cost, error
 	}
 	return Output{}, total, fmt.Errorf("generator_invalid_output after %d attempts: %w",
 		maxJSONRetries+1, lastErr)
+}
+
+// resolveKey picks the request's own key over the deployment's file (ADR-0045:
+// the organisation's key belongs to the organisation, so it is used whenever
+// the caller supplied one) and falls back to the file only when the request
+// carries none, which is how an organisation with no stored credential keeps
+// working exactly as it did before this field existed. Neither exists (a
+// BYOK-only deployment with no fallback file, for an organisation that never
+// stored a key) ends the request with ErrCredentialMissing rather than
+// silently running on nobody's key.
+func (r *remote) resolveKey(req Request) (string, error) {
+	if req.APIKey != "" {
+		return req.APIKey, nil
+	}
+	if r.keyFile == "" {
+		return "", ErrCredentialMissing
+	}
+	return readKey(r.keyFile)
 }
 
 // call performs one provider request. `raw` is the model's message text.

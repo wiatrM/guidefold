@@ -94,7 +94,21 @@ const facetValues = (field: string) => counted(
 /** `signedOut` models a browser with no session: `/me` is refused until the provider round trip
  *  hands one back, which is what the app's session gate reacts to. Default false — the scenarios
  *  describe an organisation's data, not its session. */
-export interface StubState { proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number; signedOut: boolean }
+export interface StubCredential { name: string; last4: string; created_at: string; created_by: string }
+export interface StubLiveRun {
+  run_id: string; state: string; prompt: string; provider: string; model: string;
+  created_by: string; created_at: string; started_at: string | null; finished_at: string | null;
+  counts: { targets: number; done: number; failed: number; skipped: number };
+  cost: { tokens_in: number; tokens_out: number; usd: number; usd_estimated: boolean };
+  error: string | null;
+}
+export interface StubState {
+  proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number; signedOut: boolean;
+  /** ADR-0045: absent means "no key stored", matching the contract's `OrgCredential` semantics. */
+  credentials: Partial<Record<'openrouter' | 'anthropic' | 'openai', StubCredential>>;
+  /** ADR-0046: `lr-1` is a finished seeded run; a start creates a new one deterministically. */
+  liveRuns: StubLiveRun[];
+}
 
 const importPlan = () => ({
   groups: [{
@@ -164,7 +178,16 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
  * (contract §4.1) can ask for `role: 'member'` on top of any scenario.
  */
 export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'owner' | 'member' = 'owner'): Promise<StubState> {
-  const state: StubState = { proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0, signedOut: false };
+  const state: StubState = {
+    proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0, signedOut: false,
+    credentials: scenario === 'empty' ? {} : { openrouter: { name: 'default', last4: '9f2a', model: 'openai/gpt-4o-mini', preferred: true, created_at: '2026-09-01T00:00:00Z', created_by: 'u-1' } },
+    liveRuns: scenario === 'empty' ? [] : [{
+      run_id: 'lr-1', state: 'succeeded', provider: 'openrouter', model: 'openai/gpt-4o-mini',
+      created_by: 'u-1', created_at: '2026-09-06T09:00:00Z', started_at: '2026-09-06T09:00:01Z', finished_at: '2026-09-06T09:00:20Z',
+      counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, summary: { skills_indexed: 12, proposals_created: 3 },
+      cost: { tokens_in: 800, tokens_out: 220, usd: 0.006, usd_estimated: false }, error: null,
+    }],
+  };
   const listed = scenario === 'empty' ? [] : skills;
   const proposal = () => ({
     proposal_id: 'p-1', kind: 'enrichment', state: state.proposalState,
@@ -261,6 +284,71 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
       });
     }
     if (at === '/orgs/' + org.slug + '/repos') return json({ items: scenario === 'empty' ? [] : [{ repo_id: repoId, name: null, git_host_url: gitHost, created_at: null }], next_cursor: null });
+
+    // Model keys (contract §4.8, ADR-0045). The key itself is never in the response, matching
+    // what the real API never returns; a provider absent from `items` has no stored key.
+    const credentialsBase = '/orgs/' + org.slug + '/credentials';
+    if (at === credentialsBase) return json({
+      items: (Object.entries(state.credentials) as [string, typeof state.credentials.openrouter][])
+        .filter((entry): entry is [string, NonNullable<typeof entry[1]>] => Boolean(entry[1]))
+        .map(([provider, credentialEntry]) => ({ provider, ...credentialEntry })),
+    });
+    const credentialMatch = at.startsWith(credentialsBase + '/') ? at.slice((credentialsBase + '/').length) : null;
+    if (credentialMatch && (credentialMatch === 'openrouter' || credentialMatch === 'anthropic' || credentialMatch === 'openai')) {
+      if (method === 'PUT') {
+        const body = route.request().postDataJSON() as { api_key: string; name?: string };
+        if (!body.api_key) return failure(400, 'invalid_body', 'A key value is required.');
+        const stored: StubCredential = { name: body.name || 'default', last4: body.api_key.slice(-4), created_at: '2026-09-12T00:00:00Z', created_by: 'u-1' };
+        state.credentials[credentialMatch] = stored;
+        return json({ provider: credentialMatch, ...stored });
+      }
+      if (method === 'DELETE') {
+        if (!state.credentials[credentialMatch]) return failure(404, 'credential_not_found', 'No key stored for this provider.');
+        delete state.credentials[credentialMatch];
+        return route.fulfill({ status: 204, headers: { 'Cache-Control': 'no-store', 'X-Request-Id': 'stub-1' } });
+      }
+    }
+
+    // Live Agent (contract §4.9, ADR-0046). One seeded, finished run (`lr-1`); a start creates a
+    // second, deterministically finished run rather than staging a real async transition, the
+    // same simplification the import and proposal-generation stubs above already make.
+    const liveBase = '/orgs/' + org.slug + '/live/runs';
+    if (at === liveBase && method === 'GET') return json({ items: state.liveRuns, next_cursor: null });
+    if (at === liveBase && method === 'POST') {
+      const body = route.request().postDataJSON() as { prompt: string; provider?: string; model?: string; repos?: string[] };
+      if (!body.prompt || !body.prompt.trim()) return failure(400, 'invalid_prompt', 'The prompt is empty.');
+      const provider = body.provider ?? 'openrouter';
+      if (!state.credentials[provider as 'openrouter' | 'anthropic' | 'openai']) return failure(409, 'model_credential_missing', 'No stored key for this provider.');
+      const created: StubLiveRun = {
+        run_id: 'lr-' + (state.liveRuns.length + 1), state: 'succeeded', prompt: body.prompt, provider, model: body.model || 'gpt-x',
+        created_by: 'u-1', created_at: '2026-09-12T00:05:00Z', started_at: '2026-09-12T00:05:01Z', finished_at: '2026-09-12T00:05:12Z',
+        counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, cost: { tokens_in: 400, tokens_out: 120, usd: 0.003, usd_estimated: false }, error: null,
+      };
+      state.liveRuns.unshift(created);
+      return json(created, 202);
+    }
+    const liveRunMatch = at.startsWith(liveBase + '/') ? at.slice((liveBase + '/').length) : null;
+    if (liveRunMatch) {
+      const [runId, action] = liveRunMatch.split('/');
+      const run = state.liveRuns.find(item => item.run_id === runId);
+      if (!run) return failure(404, 'live_run_not_found', 'No such run.');
+      if (action === 'events') return json({
+        items: [
+          { seq: 1, at: run.started_at, repo_id: null, type: 'run.started', payload: {} },
+          { seq: 2, at: run.started_at, repo_id: repoId, type: 'repo.started', payload: {} },
+          { seq: 3, at: run.started_at, repo_id: repoId, type: 'model.delta', payload: { text: 'Reading SKILL.md files under ' + repoId + '.' } },
+          { seq: 4, at: run.finished_at, repo_id: repoId, type: 'repo.finished', payload: {} },
+          { seq: 5, at: run.finished_at, repo_id: null, type: 'run.finished', payload: {} },
+        ].filter(item => item.seq > Number(url.searchParams.get('after') ?? 0)),
+        next_after: 5, done: true,
+      });
+      if (action === 'cancel' && method === 'POST') {
+        if (run.state !== 'queued' && run.state !== 'running') return failure(409, 'live_run_not_cancellable', 'This run already finished.');
+        run.state = 'cancelled';
+        return json(run);
+      }
+      if (!action) return json({ run, targets: [{ repo_id: repoId, state: run.state === 'cancelled' ? 'failed' : 'done', job_id: 'j-live-1', findings: 1, error: null, started_at: run.started_at, finished_at: run.finished_at }] });
+    }
 
     if (at === repoBase + '/imports') return json({ items: scenario === 'empty' ? [] : [{ import_id: 'im-1', state: scenario === 'partial' ? 'partial' : 'ready', commit, created_at: '2026-09-06T09:00:00Z' }], next_cursor: null });
     if (at === repoBase + '/imports/im-1/plan') return json(importPlan());

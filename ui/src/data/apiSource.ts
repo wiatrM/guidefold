@@ -16,6 +16,7 @@ import type {
   Me, Member, ModulePage, Org, Profile, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
   Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
+  OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
 import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, RelationQuery, SkillQuery, UsageQuery } from './source';
@@ -200,6 +201,54 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
     getAudit(org: string, cursor?: string): Promise<AuditPage> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/audit', query: { cursor }, decode: d.auditPage, resource: 'audit/' + org });
+    },
+
+    // Model keys --------------------------------------------------------------
+    listCredentials(org: string): Promise<OrgCredential[]> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/credentials', decode: d.orgCredentialList, resource: 'credentials/' + org });
+    },
+    setCredential(org: string, provider: OrgCredentialProvider, input: { api_key: string; name?: string | null; model?: string | null; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/credentials/' + encodeURIComponent(provider),
+        method: 'PUT', body: input, decode: d.orgCredential, resource: 'credential/' + org + '/' + provider, idempotencyKey,
+      });
+    },
+    patchCredential(org: string, provider: OrgCredentialProvider, input: { model?: string; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/credentials/' + encodeURIComponent(provider),
+        method: 'PATCH', body: input, decode: d.orgCredential, resource: 'credential/' + org + '/' + provider, idempotencyKey,
+      });
+    },
+    async deleteCredential(org: string, provider: OrgCredentialProvider, idempotencyKey: string): Promise<void> {
+      await write({
+        path: '/orgs/' + encodeURIComponent(org) + '/credentials/' + encodeURIComponent(provider),
+        method: 'DELETE', decode: d.ok, resource: 'credential/' + org + '/' + provider, idempotencyKey,
+      });
+    },
+
+    // Live Agent ----------------------------------------------------------------
+    listLiveRuns(org: string, cursor?: string): Promise<LiveRunPage> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/live/runs', query: { cursor }, decode: d.liveRunPage, resource: 'live-runs/' + org });
+    },
+    getLiveRun(org: string, runId: string): Promise<LiveRunDetail> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/live/runs/' + encodeURIComponent(runId), decode: d.liveRunDetail, resource: 'live-run/' + org + '/' + runId });
+    },
+    getLiveRunEvents(org: string, runId: string, after?: number): Promise<LiveRunEventPage> {
+      // Its own resource key per run (not shared with getLiveRun): the poll loop below issues
+      // both every tick, and a superseded run detail must not void the events page, or vice versa.
+      return read({
+        path: '/orgs/' + encodeURIComponent(org) + '/live/runs/' + encodeURIComponent(runId) + '/events',
+        query: { after }, decode: d.liveRunEventPage, resource: 'live-run-events/' + org + '/' + runId,
+      });
+    },
+    startLiveRun(org: string, idempotencyKey: string): Promise<LiveRun> {
+      return write({ path: '/orgs/' + encodeURIComponent(org) + '/live/runs', method: 'POST', body: {}, decode: d.liveRun, resource: 'live-runs/' + org, idempotencyKey });
+    },
+    cancelLiveRun(org: string, runId: string, idempotencyKey: string): Promise<LiveRun> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/live/runs/' + encodeURIComponent(runId) + '/cancel',
+        method: 'POST', decode: d.liveRun, resource: 'live-run/' + org + '/' + runId, idempotencyKey,
+      });
     },
 
     // Repositories and import -----------------------------------------------

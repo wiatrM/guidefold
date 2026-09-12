@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import type {DataSource} from './data/source';
 import type {AccessState} from './api/access';
 import type {Me,Role} from './api/decoders';
-export type View='home'|'import'|'library'|'map'|'skill'|'proposals'|'usage'|'organization';
+export type View='home'|'import'|'library'|'map'|'skill'|'proposals'|'usage'|'organization'|'live';
 export type DataState='ready'|'empty'|'loading'|'partial'|'error'|'degraded'|'restricted';
 export type Tone='neutral'|'system'|'human'|'warning'|'error';
 /** Unsent operator text held in RAM for the current access generation; never persisted (07 §Prywatność). */

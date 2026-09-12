@@ -87,6 +87,7 @@ DEFAULT_REPO_ID = "meridian"
 DEFAULT_SEED_EMAIL = "owner@example.test"
 
 SECRET_NAMES = ("app_password", "api_token", "postgres_password")
+SECRET_KEYRING_NAME = "secret_keyring.json"
 SECRET_DIR_MODE = 0o700
 SECRET_FILE_MODE = 0o600
 MIN_SECRET_LEN = 32  # services/search/contract.go's secret() rejects anything shorter
@@ -196,6 +197,17 @@ def ensure_secret_file(path: Path, value_factory=generate_secret) -> None:
     os.chmod(path, SECRET_FILE_MODE)
 
 
+def generate_keyring() -> str:
+    """One AES-256 master key, in the JSON shape services/search/internal/secrets expects.
+    Without it the credential routes answer `secret_encryption_unavailable` and the Live
+    Agent cannot run at all, so a local stack that wants to exercise either needs one. It is
+    generated per stack and never leaves .guidefold/dev/secrets/."""
+    import base64
+    import json as _json
+    return _json.dumps({"active": "dev-1",
+                        "keys": {"dev-1": base64.b64encode(secrets.token_bytes(32)).decode("ascii")}})
+
+
 def ensure_secrets(secrets_dir: Path) -> dict:
     """Ensures app_password/api_token/postgres_password exist; returns their paths (not
     values). ``postgres_password`` is an unchecked placeholder: tools/dev/pg.py initialises
@@ -206,6 +218,9 @@ def ensure_secrets(secrets_dir: Path) -> dict:
         p = secrets_dir / n
         ensure_secret_file(p)
         result[n] = p
+    keyring = secrets_dir / SECRET_KEYRING_NAME
+    ensure_secret_file(keyring, generate_keyring)
+    result["secret_keyring"] = keyring
     return result
 
 
@@ -224,6 +239,19 @@ def base_pg_env(pg_port: int, pguser: str, password_file: Path) -> dict:
     }
 
 
+def parse_env_overrides(pairs) -> dict:
+    """--env KEY=VALUE, repeatable. The API reads settings this file does not model, and
+    without a pass-through, exercising one of them means editing this file -- which is how a
+    local hack ends up committed."""
+    out = {}
+    for pair in pairs or []:
+        key, sep, value = str(pair).partition("=")
+        if not sep or not key.strip():
+            raise ValueError(f"--env expects KEY=VALUE, got {pair!r}")
+        out[key.strip()] = value
+    return out
+
+
 def migrate_env(*, pg_port: int, secret_paths: dict, policy_source: Path) -> dict:
     """PGUSER=postgres (the superuser migrate needs to create/alter guidefold_api), plus
     APP_PASSWORD_FILE -- the password schema.Migrate sets on that role. GUIDEFOLD_POLICY_SOURCE
@@ -237,7 +265,8 @@ def migrate_env(*, pg_port: int, secret_paths: dict, policy_source: Path) -> dic
 
 def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path,
               policy_source: Path, generator: str, repo_root: Path,
-              auth: str = "dev", workos_client_id: str = "", workos_api_key_file: str = "") -> dict:
+              auth: str = "dev", workos_client_id: str = "", workos_api_key_file: str = "",
+              extra: Optional[dict] = None) -> dict:
     env = base_pg_env(pg_port, "guidefold_api", secret_paths["app_password"])
     env.update({
         "GUIDEFOLD_AUTH": auth,
@@ -252,6 +281,10 @@ def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path
         "GUIDEFOLD_TENANT": "local",
         "GUIDEFOLD_REPO": "meridian",
         "GUIDEFOLD_TOKEN_FILE": str(secret_paths["api_token"]),
+        # ADR-0045: without this the credential routes answer secret_encryption_unavailable
+        # and nothing can store an organisation's model key, so a local stack that cannot
+        # exercise the Live Agent would look like a bug rather than a missing key.
+        "GUIDEFOLD_SECRET_KEY_FILE": str(secret_paths["secret_keyring"]),
         "GUIDEFOLD_CONTRACT": str(contract),
         "GUIDEFOLD_POLICY_SOURCE": str(policy_source),
         "GUIDEFOLD_LEXICAL_ENGINE": "router",
@@ -269,6 +302,11 @@ def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path
         # the key never appears in `ps`/`/proc/<pid>/environ` as a bare value.
         env["WORKOS_CLIENT_ID"] = workos_client_id
         env["WORKOS_API_KEY_FILE"] = workos_api_key_file
+    # Last, so an --env override wins. Pointing a provider base URL at a local stub is how the
+    # model path gets exercised without a real account, and an override that lost to a default
+    # would look like the stub being ignored.
+    for key, value in (extra or {}).items():
+        env[key] = value
     return env
 
 
@@ -745,7 +783,8 @@ def cmd_up(args: argparse.Namespace) -> int:
                        contract=paths.contract, policy_source=paths.policy_source,
                        generator=args.generator, repo_root=paths.repo_root,
                        auth=args.auth, workos_client_id=args.workos_client_id,
-                       workos_api_key_file=args.workos_api_key_file)
+                       workos_api_key_file=args.workos_api_key_file,
+                       extra=parse_env_overrides(getattr(args, "env", None)))
 
     print("starting serve ...")
     stop_pid(paths.api_pid, "api", needle="guidefold-search")
@@ -994,6 +1033,8 @@ def build_parser() -> argparse.ArgumentParser:
     up.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
     up.add_argument("--ui", action="store_true")
     up.add_argument("--generator", choices=["none", "deterministic"], default=DEFAULT_GENERATOR)
+    up.add_argument("--env", action="append", metavar="KEY=VALUE",
+                    help="extra environment for serve and worker, repeatable")
     up.add_argument("--reset", action="store_true")
     up.add_argument("--auth", choices=["dev", "workos"], default="dev",
                      help="dev: local sign-in form (default). workos: real AuthKit login -- "

@@ -26,6 +26,8 @@ tags:
   - name: organizations
   - name: repositories
   - name: knowledge
+  - name: credentials
+  - name: live
   - name: proposals
   - name: publication
   - name: usage
@@ -1557,6 +1559,173 @@ paths:
           description: "`idempotency_payload_mismatch`, `idempotency_in_progress`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /api/v1/orgs/{org}/credentials:
+    get:
+      tags: [credentials]
+      summary: Model credentials this organisation has stored (ADR-0045). Metadata only.
+      parameters: [{ $ref: "#/components/parameters/Org" }]
+      responses:
+        "200":
+          description: One row per provider that has a credential. Never the key itself.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrgCredentialList" }
+
+  /api/v1/orgs/{org}/credentials/{provider}:
+    put:
+      tags: [credentials]
+      summary: Store or replace this organisation's model key (ADR-0045). Owners only.
+      description: >-
+        The key is verified against the provider before it is sealed, so a key that
+        cannot work is refused here rather than failing later inside a background job
+        nobody is watching. It is stored encrypted and never returned.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter, anthropic, openai] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetOrgCredential" }
+      responses:
+        "200":
+          description: Stored. Metadata only.
+          content: { application/json: { schema: { $ref: "#/components/schemas/OrgCredential" } } }
+        "400":
+          description: "`invalid_provider`, `invalid_model`, `invalid_body`, `credential_invalid`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "502":
+          description: "`provider_unavailable`. The provider could not be reached to check the key, which is not the same answer as a key it rejected."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "503":
+          description: "`secret_encryption_unavailable`. No master key, so no credential is stored in the clear."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    patch:
+      tags: [credentials]
+      summary: Change the model, or move the preferred mark, without resending the key (ADR-0045). Owners only.
+      description: >-
+        Flipping a checkbox must not require pasting a secret. The key cannot be shown
+        back, so re-entering it would confirm nothing; replacing a key is PUT, which
+        verifies it against the provider.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter, anthropic, openai] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatchOrgCredential" }
+      responses:
+        "200":
+          description: Updated. Metadata only.
+          content: { application/json: { schema: { $ref: "#/components/schemas/OrgCredential" } } }
+        "400":
+          description: "`invalid_provider`, `invalid_model`, `invalid_body`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`credential_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    delete:
+      tags: [credentials]
+      summary: Forget this organisation's model key. Owners only.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter, anthropic, openai] } }
+      responses:
+        "204": { description: Removed. }
+        "404":
+          description: "`credential_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/live/runs:
+    get:
+      tags: [live]
+      summary: Live Agent runs, newest first (ADR-0046).
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: A page of runs.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LiveRunList" } } }
+    post:
+      tags: [live]
+      summary: Start a Live Agent run across the connected repositories. Owners only.
+      description: >-
+        The request has no fields. The run reads every connected repository, refreshes the
+        skill catalogue from what it finds, and generates consolidation proposals into the
+        existing review flow. One run at a time per organisation: starting a second while
+        one is active is `409 live_run_already_active` with the active run's id in
+        `details.run_id`.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartLiveRun" }
+      responses:
+        "202":
+          description: Accepted; the run is queued and its targets are being planned.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LiveRun" } } }
+        "409":
+          description: "`live_run_already_active`, `model_credential_missing`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/live/runs/{run_id}:
+    get:
+      tags: [live]
+      summary: One run with the per-repository targets it covers.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The run and its targets.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LiveRunDetail" } } }
+        "404":
+          description: "`live_run_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/live/runs/{run_id}/events:
+    get:
+      tags: [live]
+      summary: The run's append-only event log, from a position cursor.
+      description: >-
+        Not a streaming transport: an ordinary envelope polled with `after`. Stop
+        polling on `done`, never on an empty page — a running agent is often quiet.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: after, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500 } }
+      responses:
+        "200":
+          description: Events after `after`, in `seq` order.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LiveRunEventPage" } } }
+        "404":
+          description: "`live_run_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/live/runs/{run_id}/cancel:
+    post:
+      tags: [live]
+      summary: Stop a running Live Agent run. Owners only.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The run, now cancelled.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LiveRun" } } }
+        "404":
+          description: "`live_run_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`live_run_not_cancellable`. The run already finished."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1629,6 +1798,134 @@ components:
       schema: { type: integer, minimum: 1, maximum: 1000 }
 
   schemas:
+    OrgCredential:
+      type: object
+      additionalProperties: false
+      required: [provider, name, last4, model, preferred]
+      properties:
+        provider: { type: string, enum: [openrouter, anthropic, openai] }
+        name: { type: string }
+        last4: { type: string, description: The last four characters of the key. The only part that ever leaves the server. }
+        model: { type: string, description: The model background work calls with this key. Empty means the provider's default. }
+        preferred: { type: boolean, description: Exactly one stored credential is preferred; background work uses that one. }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid, nullable: true }
+    OrgCredentialList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/OrgCredential" } }
+    SetOrgCredential:
+      type: object
+      additionalProperties: false
+      required: [api_key]
+      properties:
+        api_key: { type: string, minLength: 8 }
+        name: { type: string, maxLength: 120 }
+        model: { type: string, maxLength: 120, description: Only the shape is checked; the provider owns its catalogue. }
+        preferred: { type: boolean, description: Make this the credential background work uses, clearing the mark from the others. }
+    PatchOrgCredential:
+      type: object
+      additionalProperties: false
+      description: At least one field must be present. api_key is deliberately not accepted here.
+      properties:
+        model: { type: string, maxLength: 120 }
+        preferred: { type: boolean }
+    StartLiveRun:
+      type: object
+      additionalProperties: false
+      description: >-
+        Deliberately empty. The run always does the same thing across every connected
+        repository, and the provider and model are an organisation setting stored beside
+        the key, so there is nothing for the owner to fill in and nothing to get wrong.
+      properties: {}
+    LiveRun:
+      type: object
+      additionalProperties: false
+      required: [run_id, state, provider, model, created_at, counts, summary, cost]
+      properties:
+        run_id: { type: string, format: uuid }
+        state: { type: string, enum: [queued, running, succeeded, partial, failed, cancelled] }
+        provider: { type: string, enum: [openrouter, anthropic, openai] }
+        model: { type: string }
+        created_by: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        counts:
+          type: object
+          additionalProperties: false
+          required: [targets, done, failed, skipped]
+          properties:
+            targets: { type: integer }
+            done: { type: integer }
+            failed: { type: integer }
+            skipped: { type: integer }
+        summary:
+          type: object
+          additionalProperties: false
+          required: [skills_indexed, proposals_created]
+          description: What the run left behind. A run that produced neither is not a success.
+          properties:
+            skills_indexed: { type: integer }
+            proposals_created: { type: integer }
+        cost:
+          type: object
+          additionalProperties: false
+          required: [tokens_in, tokens_out, usd, usd_estimated]
+          properties:
+            tokens_in: { type: integer }
+            tokens_out: { type: integer }
+            usd: { type: number }
+            usd_estimated: { type: boolean, description: True when any provider response carried no usage and the spend had to be estimated. }
+        error: { type: string, nullable: true, description: "Why the run ended: live_run_budget_exhausted, model_not_available, model_quota_exhausted, model_credential_missing, model_provider_unavailable, cancelled_by_owner." }
+    LiveRunList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/LiveRun" } }
+        next_cursor: { type: string, nullable: true }
+    LiveRunTarget:
+      type: object
+      additionalProperties: false
+      required: [repo_id, state, phase, skills, proposals]
+      properties:
+        repo_id: { type: string }
+        state: { type: string, enum: [queued, running, done, failed, skipped] }
+        job_id: { type: string, format: uuid, nullable: true }
+        phase: { type: string, enum: [fetch, parse, propose, done], description: Where a repository still running has got to. }
+        skills: { type: integer }
+        proposals: { type: integer }
+        error: { type: string, nullable: true }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+    LiveRunDetail:
+      type: object
+      additionalProperties: false
+      required: [run, targets]
+      properties:
+        run: { $ref: "#/components/schemas/LiveRun" }
+        targets: { type: array, items: { $ref: "#/components/schemas/LiveRunTarget" } }
+    LiveRunEvent:
+      type: object
+      additionalProperties: false
+      required: [seq, at, type, payload]
+      properties:
+        seq: { type: integer }
+        at: { type: string, format: date-time }
+        repo_id: { type: string, nullable: true }
+        type: { type: string, enum: [run.started, repo.started, repo.fetched, repo.parsed, repo.proposed, repo.finished, run.finished, error] }
+        payload: { type: object, additionalProperties: true, description: "Always carries `text`: the sentence the console prints." }
+    LiveRunEventPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_after, done]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/LiveRunEvent" } }
+        next_after: { type: integer }
+        done: { type: boolean, description: True only when the run has finished and its last event has been returned. }
     Error:
       type: object
       required: [error, message, request_id]
