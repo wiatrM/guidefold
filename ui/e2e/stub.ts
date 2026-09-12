@@ -91,7 +91,10 @@ const facetValues = (field: string) => counted(
         : item => item.scope,
 );
 
-export interface StubState { proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number }
+/** `signedOut` models a browser with no session: `/me` is refused until the provider round trip
+ *  hands one back, which is what the app's session gate reacts to. Default false — the scenarios
+ *  describe an organisation's data, not its session. */
+export interface StubState { proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number; signedOut: boolean }
 
 const importPlan = () => ({
   groups: [{
@@ -125,7 +128,7 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
 };
 
 export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise<StubState> {
-  const state: StubState = { proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0 };
+  const state: StubState = { proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0, signedOut: false };
   const listed = scenario === 'empty' ? [] : skills;
   const proposal = () => ({
     proposal_id: 'p-1', kind: 'enrichment', state: state.proposalState,
@@ -160,6 +163,7 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
     // not the session, except `restricted`, whose account belongs to another organisation.
     if (at === '/me') {
       state.meCalls += 1;
+      if (state.signedOut) return failure(401, 'unauthenticated', 'No session.');
       if (scenario === 'degraded' && state.meCalls > 1) return failure(503, 'unavailable', 'The identity service did not answer.');
       return json({
         user: { id: 'u-1', email: 'ada@meridian.test', name: 'Ada' },
@@ -182,7 +186,10 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
     });
     // The provider round trip: the real API redirects to the provider and back; the stub sends
     // the browser straight to `return_to`, the address the app asked to come back to.
-    if (at.startsWith('/auth/login/')) return route.fulfill({ status: 302, headers: { Location: url.searchParams.get('return_to') ?? '/import' } });
+    if (at.startsWith('/auth/login/')) {
+      state.signedOut = false;
+      return route.fulfill({ status: 302, headers: { Location: url.searchParams.get('return_to') ?? '/import' } });
+    }
 
     // Everything below belongs to an organisation or a repository and follows the scenario.
     if (scenario === 'error') return failure(500, 'internal', 'The stub is failing on purpose.');

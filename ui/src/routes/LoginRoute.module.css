@@ -5,7 +5,6 @@
 .column { display: grid; gap: var(--space-3); width: var(--full); max-width: var(--form-width); min-width: var(--zero); }
 .title { margin: var(--space-2) var(--zero) var(--zero); font-size: var(--font-size-title); letter-spacing: var(--tracking-title); }
 .lede { margin: var(--zero) var(--zero) var(--space-2); color: var(--stone-300); max-width: var(--reading-width); }
-.target { color: var(--stone-100); overflow-wrap: anywhere; }
 .help { margin: var(--zero) var(--zero) var(--space-3); color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
 .providers { display: grid; gap: var(--space-2); min-width: var(--zero); }
 /* 44 px at every width, not only below 720: this page is the first thing a phone user touches. */

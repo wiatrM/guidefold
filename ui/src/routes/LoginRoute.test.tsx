@@ -39,12 +39,15 @@ describe('the return target is a path, never a second origin', () => {
 });
 
 describe('login page, full width, outside the shell', () => {
-  test('the page names itself, carries the mark and shows where sign-in leads', async () => {
-    renderLogin(withProviders([github]), '/proposals?state=open');
+  test('the page names itself and never echoes the address it was reached from', async () => {
+    const target = '/skill?org=meridian&skill=' + encodeURIComponent('urn:skill:meridian:atlas:postgres-auth');
+    renderLogin(withProviders([github]), target);
     expect(await screen.findByRole('button', { name: /Continue with GitHub/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
     expect(screen.getByText('Guidefold')).toBeInTheDocument();
-    expect(screen.getByText('/proposals?state=open')).toBeInTheDocument();
+    // An address can carry an organization, a repository and a skill URN; this screen is reached
+    // without a session, so it keeps the target and prints none of it.
+    expect(document.body.textContent).not.toMatch(/urn:skill:|meridian/);
     // No shell: the login page reads nothing for an organisation the caller is not in yet.
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
   });

@@ -43,7 +43,10 @@ export function LoginRoute({ source, returnTo }: { source: DataSource; returnTo:
     <div className={styles.column}>
       <BrandMark />
       <h1 className={styles.title}>Sign in</h1>
-      <p className={styles.lede}>Guidefold shows skills, imports and review decisions only to a confirmed member of the organization that owns them. Sign in to continue to <code className={styles.target}>{returnTo}</code>.</p>
+      {/* The requested address is kept, never printed: it can carry an organization slug, a
+          repository and a skill URN, and an address is not content this page may echo back on an
+          unauthenticated screen (UX 7, the same rule the error states follow). */}
+      <p className={styles.lede}>Guidefold shows skills, imports and review decisions only to a confirmed member of the organization that owns them. Sign in to continue where you were going.</p>
       <Panel title="Identity provider" eyebrow="Session" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
         {providers.phase === 'loading' && <RouteState state="loading" title="Reading providers" description="Asking the API which identity providers are configured." />}
         {providers.phase === 'error' && providers.error && <ApiFailure error={providers.error} onRetry={providers.reload} retryLabel="Retry the provider list" />}

@@ -9,7 +9,9 @@ import { anImportId, api, enter, repoBase, settled, seed, signIn, someSkills, ta
 
 test('owner reaches import, library, skill and a decision with the keyboard only', async ({ page }) => {
   // Logowanie: dostawca jest przyciskiem, więc dochodzimy do niego Tabem i naciskamy Enter.
-  await page.goto(`/import?org=${seed.org}&repo=${seed.repo}&step=login`);
+  // Brama sesji: adres panelu bez sesji ląduje na /login z celem powrotu w `?return=`.
+  await page.goto(`/import?org=${seed.org}&repo=${seed.repo}`);
+  await page.waitForURL(/\/login\?return=/);
   await settled(page);
   await enter(page, page.getByRole('button', { name: /Continue with (Google|GitHub)/ }).first());
 

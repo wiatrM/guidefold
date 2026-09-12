@@ -102,13 +102,15 @@ test('a 403 from the repository revokes the session view-wide and reveals nothin
     body: JSON.stringify({ error: 'forbidden', message: 'No.', request_id: 'stub-403' }),
   }));
   for (const [view, extra] of [['library', ''], ['skill', skillView], ['usage', '']]) {
-    await page.goto('/' + view + query(extra));
-    await settle(page, 'restricted');
+    const at = '/' + view + query(extra);
+    await page.goto(at);
+    // A denial observed by any request is reported to the access controller, and every management
+    // route is private: the request leaves the shell for the login page carrying where it was
+    // going. The route's own restricted state is never reached, and neither is the shell's.
+    await page.waitForURL('**/login?return=' + encodeURIComponent(at));
     const main = page.locator('main');
-    // A denial observed by any request is reported to the access controller, which masks every
-    // view until the operator signs in again; the route's own restricted state is never reached.
-    await expect(main.getByText('Access unavailable').first()).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Sign in again' })).toBeVisible();
+    await expect(main.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0);
     expect(await main.innerText(), view).not.toMatch(content);
     await expect(main.locator('input, textarea, select')).toHaveCount(0);
     await clean(page, view + '/403');
