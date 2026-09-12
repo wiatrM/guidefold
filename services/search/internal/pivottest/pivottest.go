@@ -29,6 +29,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
+	"github.com/wiatrM/guidefold/services/search/internal/secrets"
 	"github.com/wiatrM/guidefold/services/search/internal/testdb"
 	"github.com/wiatrM/guidefold/services/search/internal/usage"
 )
@@ -48,6 +49,23 @@ type Harness struct {
 	// assert on a judgment without standing up the delivery service.
 	Events *EventLog
 	Review *review.Service
+	// Secrets is mounted with a fixed in-memory keyring and a verifier that
+	// accepts every key but one, so the credential routes can be exercised
+	// without a master key file and without reaching a provider.
+	Secrets *secrets.Service
+	Keyring *secrets.Keyring
+}
+
+// TestVerifier rejects any key containing "-bad" and accepts everything else,
+// so a test can drive both answers without a network.
+type TestVerifier struct{}
+
+// Verify implements secrets.Verifier.
+func (TestVerifier) Verify(_ context.Context, _, apiKey string) error {
+	if strings.Contains(apiKey, "-bad") {
+		return secrets.ErrRejected
+	}
+	return nil
 }
 
 // EventLog is a test double for the ledger port that also writes through to
@@ -120,10 +138,17 @@ func New(t *testing.T) *Harness {
 		t.Fatal(e)
 	}
 	reviewer.Register(router)
+	keyring, e := secrets.NewKeyring("test-1", map[string][]byte{"test-1": bytes.Repeat([]byte{7}, 32)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	credentials := secrets.New(pool, keyring, TestVerifier{})
+	credentials.Register(router)
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	return &Harness{Pool: pool, Router: router, Server: server, Identity: svc,
-		Importer: imports, Blobs: blobs, Events: log, Review: reviewer}
+		Importer: imports, Blobs: blobs, Events: log, Review: reviewer,
+		Secrets: credentials, Keyring: keyring}
 }
 
 // Root is the repository root, found by walking up to the directory that holds

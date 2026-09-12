@@ -50,9 +50,11 @@ func base(provider string) string {
 func defaultEndpoint(provider string) (string, string, func(*http.Request)) {
 	switch provider {
 	case ProviderOpenRouter:
-		// Key introspection. Verify this path against the provider's current API
-		// before relying on it; the fallback below keeps a wrong guess from
-		// turning every key into `credential_invalid`.
+		// Key introspection. This path is unverified against the provider's
+		// current API (ADR-0045 References), which is safe only because of how
+		// Verify reads the answer: a wrong path gives 404, which is neither 401
+		// nor 2xx, so it surfaces as "we could not reach the provider" rather
+		// than as an invalid key. Nobody is told their good key is bad.
 		return http.MethodGet, base(provider) + "/key", func(r *http.Request) {
 			r.Header.Set("Authorization", "Bearer "+r.Header.Get("X-Key"))
 			r.Header.Del("X-Key")

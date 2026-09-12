@@ -96,8 +96,11 @@ yet; its contract entries (§4.7) do.
 - The service gains its first long-running, owner-initiated, money-spending operation. Everything
   above — the ceiling, the single active run, real cancellation, the honest `partial` state — exists
   because of that, not because of the model.
-- The event log grows fastest of any table in `gfm`. It needs a retention rule (events older than
-  30 days deleted with their run) and a per-run event cap, decided with the contract entry.
+- The event log grows fastest of any table in `gfm`. Events are deleted with their run after 30
+  days, and one run's log is capped at 20,000 events: past that the worker stops appending
+  `model.delta`, writes one `error` event with `live_run_log_truncated`, and keeps writing the
+  structured events. The run continues and the console says the transcript is truncated. Dropping
+  transcript lines quietly would look exactly like an agent that went silent.
 - ADR-0036's GitHub adapter and installation tokens become a prerequisite for a second feature. If
   it slips, the live run degrades honestly: repositories with no installation are reported
   `github_app_not_configured` per target rather than skipped quietly.
