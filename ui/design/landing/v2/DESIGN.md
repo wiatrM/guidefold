@@ -315,10 +315,13 @@ here are unchanged from the table above and were confirmed to open on their own 
 
 | Section | Design second | Measured cut | Shipped anchor |
 |---|---|---|---|
-| Retrieval (`how-it-works`) | 4.20 | **4.2083** (hard cut, scene score 0.23: map sheets → the four-card fan) | **4.30** |
-| Proof gate (`proof-gate`) | 5.60 | **≈5.67** (no hard cut; the continuous pull-back at which the cards clear frame and the teal-rimmed plateau edge becomes the subject) | **5.75** |
+| Retrieval (`how-it-works`) | 4.20 | **4.2083** (hard cut, scene score 0.23: map sheets → the four-card fan) | **4.40** |
+| Proof gate (`proof-gate`) | 5.60 | **≈5.67** (no hard cut; the continuous pull-back at which the cards clear frame and the teal-rimmed plateau edge becomes the subject) | **5.85** |
 
-The shipped anchor is the cut plus ≈0.09 s, not the cut itself. The scrub's delta gate stops writing
+The shipped anchor is the cut plus ≈0.19 s, not the cut itself. (Final review, 2026-09-12: at the
+first margin of ≈0.09 s the settle measured 4.2002 and 5.6686, still inside the previous shot, so both
+anchors took a further +0.10 s. The margin is carried by the anchor second, not by a navigation-offset
+subtraction, because the header computes `position: static` at 720 and below.) The scrub's delta gate stops writing
 once the residual is under one frame, so a settled playhead sits within ±0.042 s of its anchor
 (±0.055 s measured); an anchor placed exactly on a cut therefore still renders the previous shot on a
 forward approach. The margin is wider than that deadband and negligible against a section's own span.

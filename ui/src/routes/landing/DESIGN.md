@@ -27,7 +27,7 @@ One `h1`; one `h2` per section; `h3` only inside the FAQ triggers.
 
 | # | Section id | `h2` | What it renders |
 |---|---|---|---|
-| 1 | `hero` | (the `h1`) | Two-line masked headline, subline, body, the two primary actions, the evidence link, the scroll cue, the tier glyph and the two-figure proof rail |
+| 1 | `hero` | (the `h1`) | Two-line masked headline, subline, body, the two primary actions, the evidence link, the scroll cue (dropped at ≤ 720, see **The hero at 390**), the tier glyph and the two-figure proof rail |
 | 2 | `extraction` | One team's fix becomes everyone's rule. | The pinned chapter: three beats over one sticky stage, each with its own instrument (the promotion diff, the scope table with per-node rule counts, the tier bars) |
 | 3 | `how-it-works` | Thirty thousand rules. Four reach the agent. | The retrieval instrument: the query, the 27-candidate funnel and the four delivered cards, general first |
 | 4 | `proof-gate` | Seventy-six harmful rules. Seventy-six refusals. | The safety boundary: two figures with their qualifiers, and the ASK trace |
@@ -80,7 +80,9 @@ Token groups added for v2, by name:
   `--enter-scale` .985, `--mask-hidden`, `--mask-shown`, `--full-opacity`, `--scale-full`,
   `--zero-length`.
 - Film and material: `--film-lerp`, `--film-scrim-hero`, `--film-scrim-band`,
-  `--film-scrim-chapter`, `--landing-film-opacity`, `--glass-blur`, `--glass-border`,
+  `--film-scrim-chapter`, `--landing-film-opacity`, `--glass-backdrop` (the whole
+  `backdrop-filter` value, `none` under `[data-film="on"]`), `--glass-blur` (its radius),
+  `--glass-border`,
   `--glass-ground`, `--glass-highlight`, `--glass-panel`, `--glass-panel-strong`,
   `--glow-route`, `--glow-system`, `--parallax-panel` 12 px, `--parallax-chapter` 32 px.
 - Type and rhythm: `--landing-display`, `--landing-display-leading`,
@@ -199,7 +201,7 @@ task's scope and the cost is a second passive scroll listener.
 `index.html` preloads the four faces the first viewport actually uses — Manrope 400 and 600,
 Instrument Sans 600, JetBrains Mono 400 — and Vite rewrites those `node_modules` paths to the
 hashed build assets. `#root` carries `display:flow-root`, which stops the
-pre-mount fallback heading's margin collapsing through to `body`; that collapse, plus two
+pre-mount fallback heading's margin collapsing through to `body`; that collapse, plus three
 un-preloaded above-the-fold faces swapping in, was the whole of the 0.047 cold CLS.
 
 `index.html` preloads **no image**. It used to preload `guidefold-stone-hero-v1.webp`, which
@@ -232,6 +234,46 @@ would become the grid item and defeat `colSpan`/`rowSpan`. The bento applies P3 
 The evidence chart is **rendered once**, in the tall tile; the duplicate lower figure was
 removed.
 
+## The hero at 390
+
+Controller ruling, 2026-09-12 (whole-branch review C1). **The body paragraph is in the DOM and
+visible at every width.** It used to be `display:none` below 720 together with the scroll cue,
+which removed the scale envelope and the "nothing unproven arrives" promise from the page and
+from the accessibility tree for every phone reader. Only the scroll cue is still dropped at
+≤ 720, and it is dropped whole: the header is static there, the next section is one thumb away,
+and the cue is navigation, not an argument.
+
+The fold is bought back from spacing and from the body's own type, never from content:
+`--landing-hero-body-size` 14 px / `--landing-hero-body-leading` 1.4 (its own tokens, so the
+six other sections keep `--landing-body` 17 px), `--landing-hero-body-margin`,
+`--landing-hero-lede-margin` and `--landing-hero-actions-margin` 12 px, `--landing-rail-pad`
+8 px, `--landing-rail-gap` 4 px, `--landing-rail-stack-pad` 6 px, `--landing-rail-figure`
+18 px. No `order`, no grid-area move: DOM order is still visual order.
+
+Measured at 390 × 844 in Chromium, document coordinates:
+
+| Element | Top | Bottom |
+|---|---|---|
+| Proof rail | 684 | 888 |
+| Cell 1 (figure + qualifier) | 693 | 781 |
+| Cell 2 figure | 792 | 837 |
+| Cell 2 qualifier | 841 | 879 |
+
+The first cell is complete above the 844 px fold and the second figure is complete above it
+too. The second qualifier crosses the fold by 35 px. Both cells complete would need another
+35 px, which only the headline size or the wrapped header could give, and neither is a
+spacing lever; the ruling's minimum is met and this is the recorded limit, not an oversight.
+A qualifier below the fold is still rendered with its figure — nothing is dropped alone.
+
+## Orange, three times
+
+DESIGN v2 §2.2 says "at most twice"; the page ships three instances and `Hero.tsx:63-65`
+states the count. The three are the hero tier route (`hero.module.css:164`), the extraction
+promoted row, and the full stop in the footer wordmark (`landing.module.css:126`). Each is
+the same meaning — the rule that was promoted — at the start, the middle and the end of the
+page, and none of them is decoration. The implementation keeps three; the spec line is the
+one that is out of date.
+
 ## The test contract
 
 `e2e/landing-flow.spec.ts` no longer sleeps before axe. It sweeps the scroll to the bottom
@@ -250,22 +292,23 @@ table and limits in `ui/qa/landing-v2-gate.json`.
 
 | Item | Measured | Contract | Verdict |
 |---|---|---|---|
-| Unit suite | 373 / 373, 42 files | — | pass |
-| Contracts | passed, 390 tokens, 0 diagnostics | 0 diagnostics | pass |
-| Landing e2e | 13 / 13, twice consecutively | — | pass |
+| Unit suite | 375 / 375, 42 files | — | pass |
+| Contracts | passed, 398 tokens, 0 diagnostics | 0 diagnostics | pass |
+| Landing e2e | 13 / 13, three consecutive runs (the third after the 2026-09-12 fix wave) | — | pass |
 | JS budget | landing chunk 25,216 → 36,242 B gzip, **+10.77 KB** | ≤ +34 KB | pass |
 | CLS, cold | **0.0000** at 1440 and 390, and under emulated 4G | 0 | pass |
-| LCP | hero copy at 472 ms (1440) and 440 ms (390) local; 2,696 ms (1440) and 848 ms (390) on emulated 4G | ≤ 2.0 s | over at 1440 on that profile |
+| LCP | hero copy at 472 ms (1440) and 440 ms (390) local; 2,152 ms (1440) and 832 ms (390) on emulated 4G | ≤ 2.0 s | over at 1440 on that profile |
 | LCP element | the hero copy, not the poster | — | recorded per the 2026-09-11 ruling |
 | Frame budget, pinned chapter | 0 long tasks, frame median 16.7 / 16.8 ms at 4× CPU | 0 long tasks | pass |
 | Frame budget, whole page | 1 long task (192 / 201 ms), attributed to the lazy chart by blocking it | 0 long tasks | fail, attributed |
 | First-scroll long task | 0 at 1× CPU; at 4× two tasks that both land before the scroll | — | not the sampler |
 | Contrast over film | worst case per section 4.66 – 12.18:1; hero display 10.92:1 at the sunrise anchor | body 4.5, large 3, display 7 | pass |
 | Film scrub | 302 forward samples, 0 backward steps; fast reverse settles to 0.002 s | — | pass |
-| Observers and listeners | 2 scroll, 5 resize, 6 IntersectionObserver, 5 ResizeObserver | 1 each | fail, two of them are recorded exceptions |
+| Film anchors | `#how-it-works` settles at 4.317 s (cut 4.2083), `#proof-gate` at 5.770 s (cut ≈5.67) | past its own cut | pass |
+| Observers and listeners | 2 scroll, 5 resize, 6 IntersectionObserver, 5 ResizeObserver | the page's own code opens one scroll sampler and the two-observer entrance pool; the remainder belong to the two recorded exceptions, motion's `scroll()` and the Spectrum bento's `whileInView`, neither of which the wiring layer can collapse without editing a hash-pinned file | pass, as built |
 | `content-visibility: auto` | 0 | 0 | pass |
-| `backdrop-filter` with `data-film="on"` | 6 live surfaces | none | fail |
-| Targets at 390 | every control ≥ 44 px | 44 px | pass |
+| `backdrop-filter` with `data-film="on"` | **0 live surfaces** (`--glass-backdrop: none`; swept with `getComputedStyle` over every element) | none | pass |
+| Targets at 390 | every visible link and button ≥ 44 × 44 across the whole document, header included; the consent checkbox's target is its 44 px `label`; inline links inside a sentence are excluded by name | 44 × 44 px | pass |
 | axe | clean at 1440 and 390, FAQ closed and open, dialog open, reduced motion | clean | pass |
 | Console and network | 0 errors across the capture pass | 0 | pass |
 
