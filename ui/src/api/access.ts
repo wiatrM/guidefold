@@ -7,7 +7,7 @@
  * denial keeps the session but never reveals unconfirmed data.
  */
 import { createContext, createElement, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import { ApiError } from './client';
+import { ApiError, isStale } from './client';
 import type { Me } from './decoders';
 
 export const ACCESS_TTL_MS = 45000;
@@ -16,10 +16,22 @@ export const ACCESS_TIMEOUT_MS = 5000;
 
 export type AccessStatus = 'confirmed' | 'stale' | 'checking' | 'denied' | 'offline';
 
+/**
+ * Why a denial happened, because the two are not the same failure and must not get the same
+ * remedy. `unauthenticated` is "there is no usable session" — `/me` itself was refused, and the
+ * only way forward is to sign in. `forbidden` is "the session is fine, this object is not yours"
+ * — a 403 on one organisation or repository, which says nothing about the identity and must never
+ * send the operator to sign in again: the address that caused it is still the address they would
+ * come back to, so a redirect there is an endless loop.
+ */
+export type DenialKind = 'unauthenticated' | 'forbidden';
+
 export interface AccessState {
   status: AccessStatus;
   me: Me | null;
   checkedAt: number | null;
+  /** Set only while `status` is 'denied'; absent or null everywhere else. */
+  denial?: DenialKind | null;
 }
 
 /** Only 'confirmed' may reveal private data; every other status masks the view. */
@@ -39,12 +51,13 @@ export class AccessController {
   private readonly deps: AccessDeps;
   private readonly nowFn: () => number;
   private listeners = new Set<() => void>();
-  private state: AccessState = { status: 'checking', me: null, checkedAt: null };
+  private state: AccessState = { status: 'checking', me: null, checkedAt: null, denial: null };
   private me: Me | null = null;
   private checkedAt: number | null = null;
   private lastAttemptAt: number | null = null;
   private lastFailureAt: number | null = null;
   private denied = false;
+  private denial: DenialKind | null = null;
   private checking = false;
   private mustReconfirm = false;
   private visible = true;
@@ -115,6 +128,7 @@ export class AccessController {
     this.lastAttemptAt = startedAt;
     this.checking = true;
     this.publish();
+    let superseded = false;
     this.pending = (async () => {
       try {
         const me = await this.deps.fetchMe(ACCESS_TIMEOUT_MS);
@@ -126,10 +140,18 @@ export class AccessController {
         this.deps.onConfirmed?.(me);
       } catch (error) {
         if (error instanceof ApiError && error.denied) {
+          // `/me` refused is always "no usable session", 403 included: the endpoint is the
+          // session itself, not an organisation's data.
           this.denied = true;
+          this.denial = 'unauthenticated';
           this.me = null;
           this.checkedAt = null;
           this.deps.onDenied();
+        } else if (isStale(error)) {
+          // The answer was voided by a context change (the shell's first `setContext` can land
+          // while the first `/me` is in flight), not refused and not lost: ask again at once
+          // instead of reporting offline and waiting out the refresh interval.
+          superseded = true;
         } else {
           this.lastFailureAt = this.nowFn();
         }
@@ -137,24 +159,41 @@ export class AccessController {
         this.checking = false;
         this.pending = null;
         this.publish();
+        if (superseded) { this.lastAttemptAt = null; void this.check(true); }
       }
       return this.state;
     })();
     return this.pending;
   }
 
-  /** A denial observed by any other request, not only by the /me heartbeat. */
-  reportDenied(): void {
-    if (this.denied) return;
+  /**
+   * A denial observed by any other request, not only by the /me heartbeat. Both kinds stop every
+   * view from revealing data; only `unauthenticated` discards the identity, because a 403 on one
+   * resource leaves the session — and the operator's own organisations — intact.
+   */
+  reportDenied(kind: DenialKind = 'unauthenticated'): void {
+    if (this.denied && this.denial === kind) return;
     this.denied = true;
-    this.me = null;
-    this.checkedAt = null;
+    this.denial = kind;
+    if (kind === 'unauthenticated') { this.me = null; this.checkedAt = null; }
     this.deps.onDenied();
     this.publish();
   }
 
+  /**
+   * Drops the held identity together with the denial. Signing in again has to start from nothing:
+   * under a forbidden denial the identity is still held (by design — it is what offers the way
+   * back to the operator's own organisation), and carrying it to the login page would leave that
+   * page waiting for a session it already has instead of offering a form.
+   */
+  forget(): void {
+    this.me = null;
+    this.reset();
+  }
+
   reset(): void {
     this.denied = false;
+    this.denial = null;
     this.mustReconfirm = true;
     this.checkedAt = null;
     this.lastAttemptAt = null;
@@ -175,8 +214,9 @@ export class AccessController {
     const status = this.derive();
     // The identity itself stays available while the session lives; only `status` decides
     // whether the view may reveal organisation data.
-    const next: AccessState = { status, me: status === 'denied' ? null : this.me, checkedAt: this.checkedAt };
-    if (next.status === this.state.status && next.me === this.state.me && next.checkedAt === this.state.checkedAt) return;
+    const denial = status === 'denied' ? this.denial : null;
+    const next: AccessState = { status, me: status === 'denied' && denial === 'unauthenticated' ? null : this.me, checkedAt: this.checkedAt, denial };
+    if (next.status === this.state.status && next.me === this.state.me && next.checkedAt === this.state.checkedAt && next.denial === this.state.denial) return;
     this.state = next;
     for (const listener of this.listeners) listener();
   }
@@ -192,10 +232,10 @@ export function AccessProvider({ controller, children }: { controller: AccessCon
   return createElement(AccessContext.Provider, { value: controller }, children);
 }
 
-const offlineState: AccessState = { status: 'offline', me: null, checkedAt: null };
+const offlineState: AccessState = { status: 'offline', me: null, checkedAt: null, denial: null };
 const noSubscription = () => () => {};
 
-/** `{status, me, checkedAt}`; without a provider the view stays masked. */
+/** `{status, me, checkedAt, denial}`; without a provider the view stays masked. */
 export function useAccess(): AccessState {
   const controller = useContext(AccessContext);
   const store = useMemo(() => controller

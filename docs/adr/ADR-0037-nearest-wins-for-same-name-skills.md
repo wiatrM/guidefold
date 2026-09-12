@@ -8,8 +8,8 @@ implemented in `skills/guidefold/scripts/guidefold` (`Router.policy_filter`) wit
 **Amends:** [ADR-0022](ADR-0022-admissibility-relevance-and-bundle-completeness.md): admissibility
 now includes a shadowing rule, applied inside the policy filter before ranking, so the ranker never
 sees a shadowed copy. Ranking itself is unchanged (ADR-0029 rule on production ranking holds).
-**Governs:** `guidefold find` and `guidefold hook` local delivery; the `drops` reasons recorded by
-`policy_filter`.
+**Governs:** `guidefold find`, `guidefold hook` and hosted Go SEARCH; the `drops` reasons recorded by
+`policy_filter` and the service's aggregate `policy_drops`.
 
 ## Context
 
@@ -54,9 +54,10 @@ not implemented here; they need their own evidence.
 - Authors can override a parent rule by copying it to a child scope under the same name. This is
   now documented in `docs/CONVENTIONS.md`; `guidefold validate` does not yet warn when a child copy
   drifts from its parent, which `guidefold report` (P12) should surface.
-- The hosted Go service (`services/search`) does not implement this rule. Until it does, remote
-  SEARCH and the local CLI disagree on conflicting copies; the service change is a separate task
-  that adds its own `docs/API-CONTRACT.md` entry before code, per the contract-first rule.
+- The hosted Go service (`services/search`) now applies the same boundary before lexical, dense
+  and fused retrieval. Its public response remains schema-compatible: `policy_drops` includes
+  shadowed copies and `policy_revision` identifies the policy configuration. The live-path
+  benchmark must still be rerun before quoting the local 23/24 result as a hosted-product result.
 - Telemetry: `drops` now carries the new reason; the shadow record and the ledger event vocabulary
   (`docs/SEARCH-USE-TELEMETRY.md`) treat it as an admissibility drop like `not-visible`.
 

@@ -24,3 +24,6 @@ design/landing/video/frames/
 design/landing/video/*.json
 
 design/landing/**/*.err
+# Per-view captures the spectrum e2e spec rewrites on every run
+qa/spectrum-*-1440.png
+qa/spectrum-*-390.png

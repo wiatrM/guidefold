@@ -66,7 +66,12 @@ search:
   {local,service}` overrides the configured backend for one invocation (distinct from the
   top-level `--backend {local,agent-registry}`, which selects the skill **registry**, a different
   axis entirely). `load <urn>@<revision>` uses `/v1/use` when `backend: service`; the non-service
-  path is unchanged and still accepts a bare `<urn>`.
+  path is unchanged and still accepts a bare `<urn>`. `load <urn>@<revision> --delivery-policy
+  proof_gated` opts into USE 1.2's source-proof gate: a complete, matching
+  proof is returned as `LOAD`; otherwise the CLI reports `ASK`, records a denied load, and writes
+  no body to its cache. The proof-gated flag is rejected for the local backend so it cannot be
+  mistaken for an authorization check that local retrieval does not provide. The default
+  `legacy` policy keeps the existing 1.1 request and cache behavior.
 - `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
   guideline (recommends `service` above it), configured service reachability + advertised contract
   versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
@@ -142,7 +147,9 @@ guidefold's own opt-out and the author should see it took effect.
 
 ## 4. `SKILL.md` frontmatter
 
-Agent Skills spec fields + a `metadata` block. Nothing outside `metadata` is Guidefold-specific, so every harness stays compatible.
+Agent Skills spec fields + a `metadata` block. The optional top-level `source_proof` record is the
+one Guidefold-specific structured field; it is ignored by legacy harnesses and kept outside
+`metadata` so the scalar metadata rule remains compatible.
 
 ```yaml
 ---
@@ -170,6 +177,22 @@ Rules:
 - `metadata.requires`: comma-separated URNs only; every URN must exist in the tree; cycles are rejected.
 - Body: ≤ 500 lines / ≤ 5k words. Longer material goes to `references/*.md` next to `SKILL.md` (the registry ships the whole directory).
 - No secrets, no absolute local paths, no environment-specific hostnames outside `references/environments.md`.
+
+An optional top-level `source_proof` object may accompany this scalar frontmatter for published
+source-grounded delivery. It is deliberately outside `metadata` (which remains scalar-only) and
+is carried into the immutable card without affecting ranking. The importer/reviewer must set
+`schema: source-proof-v1`, `verified: true`, the exact snapshot/skill/revision/body hash, covered
+scopes, and claims with relative source paths and line ranges before a proof-gated USE can return
+`LOAD`; an abstract claim may instead or additionally use `claim_refs` to point to a supported
+claim in a lower card by its skill/revision, claim digest and proof commitment. Go verifies that
+recursive path against the same snapshot and scope/refines relation. Incomplete, stale, cyclic
+or conflicting records produce `ASK`.
+
+`guidefold ascend` follows this rule by construction. Its LLM-produced map and convention
+cards carry `source_proof.verified: false`, `status: pending_review`, the contributing source
+URNs and broad, hash-bound `source_refs` covering the source files. A generated digest can therefore be imported and reviewed, but it
+cannot silently cross the proof-gated boundary; an importer or owner must replace the pending
+record with exact line ranges and the immutable snapshot/revision/body binding before `LOAD`.
 
 ### 4a. MVP graph fields (E1.4)
 
@@ -206,6 +229,10 @@ that doctrine.
 ## 6. Promotion rule (commonality)
 
 If a paragraph is true for the parent scope, it belongs in a parent-scope skill and is `requires`-linked, not copied. Reviewers check this manually; `guidefold ascend` (ADR-0035, `templates/ci.yml` job `ascend`) automates the *proposal*: on a PR that changes a skill it asks a model to write or edit one abstract skill per ancestor scope — a **map** (what lives there, who owns it) and/or a **convention** (what every child shares) — from the cards of every skill below that scope, and opens a separate PR for the parent scope's owner. The written file is a digest (`knowledge_layer: abstract`, `generated_by: guidefold-ascend`, `derived_from` naming its sources), never a procedure: a body that names an unknown component, carries a code block or numbered steps, or copies three lines of a child verbatim is rejected, and the tree must still pass `validate`. `metadata.ascend_fingerprint` records the child cards it was derived from, so an unchanged subtree makes no model call and no diff. Ascent outputs never trigger another ascent on their own.
+
+Ascent also fails closed when a claim cites a skill marked `metadata.status: deprecated`; a
+summary that mixes a retired source with an active sibling must be reviewed before it can be
+written. This is a conflict safeguard, not a semantic truth test.
 
 ## 7. Deprecation
 

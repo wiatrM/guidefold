@@ -21,11 +21,12 @@ Indeks: [AGENTS.md](../../../AGENTS.md). Zakres zastępowania: brak; skill jest 
 
 `Shared.tsx` tylko reeksportuje. Galeria `/__components` jest narzędziem developerskim poza nawigacją produktu; jej baseline nie importuje `ui/`.
 
-## Utrzymuj bibliotekę 14 komponentów
+## Utrzymuj bibliotekę 16 komponentów
 
-ActionButton, BrandMark, Panel, StateBadge, RouteState, Tabs, ProvenanceTrail, ScopeTree, DataTable, SkillDiff, MetricRow, Urn, SkillContent, Field. Każdy katalog: `index.tsx`, nazwany `*.module.css`, `*.test.tsx`, `*.stories.tsx`, kontrakt a11y i obsługa stanów z tabeli w 08.
-- Piętnasty komponent lub drugi wariant wymaga zadania U4 i pisemnego powodu w opisie zmiany; bez GateList, StageTrace, PromotionRoute, CommandPalette.
-- `ui/src/tokens/tokens.css` jest jedynym miejscem wartości hex i rozmiarów (103 tokeny); moduły używają `var()`. Nowy token ma wpis „dlaczego” w [06-ux-ui](../../../docs/ui/pipeline/06-ux-ui.md). Bez biblioteki komponentów (MUI, shadcn, Chakra).
+ActionButton, BrandMark, Panel, StateBadge, RouteState, Tabs, ProvenanceTrail, ScopeTree, DataTable, SkillDiff, MetricRow, Urn, SkillContent, Field, PyramidChart, IconTile. Każdy katalog: `index.tsx`, nazwany `*.module.css`, `*.test.tsx`, `*.stories.tsx`, kontrakt a11y i obsługa stanów z tabeli w 08.
+- Siedemnasty komponent lub drugi wariant wymaga zadania U4 i pisemnego powodu w opisie zmiany; bez GateList, StageTrace, PromotionRoute, CommandPalette.
+- `ui/src/tokens/tokens.css` jest jedynym miejscem wartości hex i rozmiarów (103 tokeny); moduły używają `var()`. Nowy token ma wpis „dlaczego” w [06-ux-ui](../../../docs/ui/pipeline/06-ux-ui.md).
+- Od 2026-09-12 (polecenie właściciela) prymitywy pochodzą z shadcn/ui w `ui/src/components/ui/` (styl base-nova na Base UI, instalacja przez przypięty `pnpm exec shadcn`), a klasy Tailwind w TSX są dozwolone; `ui/src/registry.css` mapuje tokeny shadcn wyłącznie jako `var()` na tokens.css (sprawdza to `check-contracts`). Publiczne 16 komponentów pozostaje jedynym API tras; `components/ui` i `components/spectrumui` to kod registry do przeglądu, nie drugi zestaw API. Bez MUI/Chakra i bez drugiego systemu barw.
 - `SkillContent` renderuje semantyczny Markdown przez react-markdown bez raw HTML i zdalnych obrazów; dokładny surowy plik jest osobnym odczytem.
 - Kolor nigdy nie jest jedynym nośnikiem stanu; `RouteState` obsługuje empty/loading/partial/error/degraded/restricted, restricted ma pierwszeństwo.
 
@@ -42,5 +43,5 @@ ActionButton, BrandMark, Panel, StateBadge, RouteState, Tabs, ProvenanceTrail, S
 1. `cd ui && pnpm build && pnpm test && pnpm test:contracts` zielone; `pnpm test:e2e` (po `pnpm exec playwright install chromium`).
 2. Przy zmianie wyglądu: `pnpm dev`, potem `pnpm test:flow` i `pnpm test:visual`; baseline nie jest regenerowany, aby zaakceptować zmianę.
 3. `grep -rn '#[0-9a-fA-F]\{3,6\}' ui/src --include=*.css --include=*.tsx | grep -v tokens/tokens.css` zwraca nic.
-4. `ls ui/src/components | wc -l` daje 14 albo zmiana ma pisemny powód i aktualizację UI §4 i 08.
+4. `ls ui/src/components | wc -l` daje 18 (16 publicznych + `ui` + `spectrumui`) albo zmiana ma pisemny powód i aktualizację UI §4 i 08.
 5. `domain/` i `components/` nie importują `data/` ani `src/sample.ts` (przykłady galerii); `pnpm test:contracts` (reguła `data-boundary`) to sprawdza.

@@ -424,6 +424,68 @@ func TestApproveThenExport(t *testing.T) {
 	}
 }
 
+// API-CONTRACT 1.3.0 §5.4: `ProposalSummary.decision` carries the latest
+// `gfm.decisions` row, `actor` formatted the same plain `actor_user_id::text`
+// string the detail page's decision already returns, so a list row and its
+// detail page name the same person for the same decision. An undecided
+// proposal lists `decision: null`.
+func TestListCarriesTheLatestDecision(t *testing.T) {
+	e := setup(t)
+	generate(t, e)
+	id := pick(t, e, generator.KindExtraction, "rotate-an-auth-sdk-signing-key")
+	undecided := list(t, e, generator.KindEnrichment)[0]
+	detail := get(t, e, id)
+
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: e.base + "/proposals/" + id + "/decision",
+		Body: map[string]any{"idempotency_key": "ld1", "decision": "approve",
+			"reason":            "the procedure matches the runbook",
+			"expected_revision": detail["expected_revision"]}, Key: "ld1"})
+	if status != 200 {
+		t.Fatalf("approve: %d %v", status, body)
+	}
+
+	decidedDetail := get(t, e, id)
+	detailDecision, _ := decidedDetail["decision"].(map[string]any)
+	detailActor, _ := detailDecision["actor_user_id"].(string)
+	if detailActor == "" {
+		t.Fatalf("detail decision.actor_user_id missing: %v", decidedDetail["decision"])
+	}
+
+	items := listItems(t, e, "")
+	var decidedItem, undecidedItem map[string]any
+	for _, item := range items {
+		if item["proposal_id"] == id {
+			decidedItem = item
+		}
+		if item["proposal_id"] == undecided {
+			undecidedItem = item
+		}
+	}
+	if decidedItem == nil || undecidedItem == nil {
+		t.Fatalf("expected both proposals in the list, got %d items", len(items))
+	}
+
+	decision, ok := decidedItem["decision"].(map[string]any)
+	if !ok {
+		t.Fatalf("decided proposal lists decision: %v", decidedItem["decision"])
+	}
+	if decision["decision"] != "approve" {
+		t.Errorf("expected decision.decision approve, got %v", decision["decision"])
+	}
+	if decision["actor"] != detailActor {
+		t.Errorf("list decision.actor %v != detail decision.actor_user_id %v",
+			decision["actor"], detailActor)
+	}
+	if decision["at"] == nil {
+		t.Error("decision.at must be non-null once decided")
+	}
+
+	if undecidedItem["decision"] != nil {
+		t.Errorf("undecided proposal must list decision: null, got %v", undecidedItem["decision"])
+	}
+}
+
 // §4.4: `expected_revision` that no longer matches is 409 with the current one.
 func TestStaleRevisionIsRefusedWithTheCurrentRevision(t *testing.T) {
 	e := setup(t)
@@ -628,6 +690,27 @@ func list(t *testing.T, e *env, kind string) []string {
 	for _, raw := range items {
 		item, _ := raw.(map[string]any)
 		out = append(out, item["proposal_id"].(string))
+	}
+	return out
+}
+
+// listItems answers the raw `/proposals` page with each item map intact;
+// `list` above keeps only `proposal_id`, which would hide `decision`.
+func listItems(t *testing.T, e *env, kind string) []map[string]any {
+	t.Helper()
+	path := e.base + "/proposals?limit=100"
+	if kind != "" {
+		path += "&kind=" + kind
+	}
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: path})
+	if status != 200 {
+		t.Fatalf("list proposals: %d %v", status, body)
+	}
+	items, _ := body["items"].([]any)
+	out := make([]map[string]any, 0, len(items))
+	for _, raw := range items {
+		item, _ := raw.(map[string]any)
+		out = append(out, item)
 	}
 	return out
 }

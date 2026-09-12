@@ -1,0 +1,90 @@
+/* The value panel, SPEC v3. One shape on every block: glass surface, a teal rule down the
+ * left edge, the label in the accent colour, the sentence at the lede size in display ink.
+ *
+ * **Everything below the `[data-value-ready="true"]` line is the entrance.** The rules
+ * above it are the resting composition and the fallback at the same time: rule drawn, glow
+ * settled, label and sentence at full opacity in place. ValuePanel.tsx sets the flag only
+ * after the shared observer exists, so a missed callback, a thrown error or a platform
+ * without IntersectionObserver leaves the finished panel on screen.
+ *
+ * Every value is a token. */
+.panel{
+ position:relative;
+ min-width:var(--zero);
+ margin-top:var(--landing-value-margin);
+ padding:var(--landing-panel-pad);
+ padding-left:var(--landing-value-inset);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:var(--glass-backdrop);
+}
+
+/* The accent rule: full height of the panel, inside its radius, its own element so it can
+ * be drawn and glow without touching the panel's border or its backdrop. */
+.rule{
+ position:absolute;
+ top:var(--landing-value-rule-inset);
+ bottom:var(--landing-value-rule-inset);
+ left:var(--landing-value-rule-inset);
+ inline-size:var(--landing-rule-width);
+ border-radius:var(--landing-rule-width);
+ background:var(--survey-teal);
+ box-shadow:var(--landing-value-glow-rest);
+}
+
+.panel p.line{
+ margin:var(--zero);
+ font-size:var(--landing-lede);
+ line-height:var(--line-height-heading);
+ color:var(--landing-ivory);
+}
+.label{
+ color:var(--survey-teal);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ font-weight:var(--weight-medium);
+ letter-spacing:var(--landing-tracking-mono);
+}
+.sentence{display:inline;}
+
+/* =============================================================================
+ * The entrance. Once, on 30 % of the panel in view.
+ * ========================================================================== */
+.panel[data-value-ready="true"] .rule{
+ transform:scaleY(var(--zero));
+ transform-origin:var(--landing-value-origin);
+ transition:transform var(--duration-draw) var(--ease-entrance),box-shadow var(--landing-value-glow-duration) var(--ease-entrance);
+}
+.panel[data-value-ready="true"] .label{
+ opacity:var(--zero);
+ transition:opacity var(--duration-entrance) var(--ease-entrance);
+ transition-delay:var(--landing-value-delay-label);
+}
+.panel[data-value-ready="true"] .sentence{
+ opacity:var(--zero);
+ transform:translateY(var(--enter-rise));
+ transition:opacity var(--duration-entrance) var(--ease-entrance),transform var(--duration-entrance) var(--ease-entrance);
+ transition-delay:var(--landing-value-delay-sentence);
+}
+
+.panel[data-value-entered="true"] .rule{transform:scaleY(var(--scale-full));box-shadow:var(--landing-value-glow-rest);}
+.panel[data-value-entered="true"] .label{opacity:var(--full-opacity);}
+.panel[data-value-entered="true"] .sentence{opacity:var(--full-opacity);transform:translateY(var(--zero-length));}
+
+/* The brief glow: it is on the rule while the draw runs and settles out of it over the
+ * 900 ms the spec asks for, so the panel arrives lit and then rests. `transition` cannot
+ * express a there-and-back, so this is the one keyframe animation on the page. */
+@keyframes valueGlow{
+ from{box-shadow:var(--landing-value-glow);}
+ to{box-shadow:var(--landing-value-glow-rest);}
+}
+.panel[data-value-ready="true"][data-value-entered="true"] .rule{
+ animation:valueGlow var(--landing-value-glow-duration) var(--ease-entrance) both;
+}
+
+@media(prefers-reduced-motion:reduce){
+ .panel[data-value-ready="true"] .rule{transition:none;animation:none;transform:scaleY(var(--scale-full));}
+ .panel[data-value-ready="true"] .label,
+ .panel[data-value-ready="true"] .sentence{transition:none;opacity:var(--full-opacity);transform:translateY(var(--zero-length));}
+}

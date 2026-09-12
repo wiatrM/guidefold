@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {ActionButton,BrandMark,Panel,StateBadge,RouteState,Tabs,ProvenanceTrail,ScopeTree,DataTable,SkillDiff,MetricRow,Urn,SkillContent,Field,PyramidChart} from './Shared';
+import {ActionButton,BrandMark,Panel,StateBadge,RouteState,Tabs,ProvenanceTrail,ScopeTree,DataTable,SkillDiff,MetricRow,Urn,SkillContent,Field,PyramidChart,IconTile} from './Shared';
+import {BooksIcon,GitPullRequestIcon,TreeStructureIcon} from '@phosphor-icons/react';
 import {sampleCandidate,sampleCommit,sampleRepo,sampleSkill,sampleSkills,sampleSourceUrl} from './sample';
 import css from './Gallery.module.css';
 export function ComponentGallery(){
@@ -8,6 +9,7 @@ export function ComponentGallery(){
  const cases=[
  {name:'ActionButton',content:<div className={css.row}><ActionButton onClick={()=>setNotice('Decision saved in this browser only.')}>Inspect source</ActionButton><ActionButton tone="system" href="/library">Open Library</ActionButton><ActionButton tone="human" onClick={()=>setNotice('Decision saved in this browser only.')}>Record decision</ActionButton><ActionButton disabled>Export SKILL.md</ActionButton><p role="status">{notice}</p></div>},
  {name:'BrandMark',content:<BrandMark/>},
+ {name:'IconTile',content:<div className={css.row}><IconTile icon={<BooksIcon weight="duotone"/>} size="sm"/><IconTile icon={<BooksIcon weight="duotone"/>}/><IconTile icon={<TreeStructureIcon weight="duotone"/>} size="lg" tone="human"/><IconTile icon={<GitPullRequestIcon weight="duotone"/>} size="xl" tone="neutral" label="Proposals"/></div>},
  {name:'Panel',content:<Panel title={skill.name} eyebrow="Exact imported revision"><p>{skill.description}</p></Panel>},
  {name:'StateBadge',content:<div className={css.row}><StateBadge>Unknown</StateBadge><StateBadge tone="system">{skill.sourceStatus}</StateBadge><StateBadge tone="human">Draft</StateBadge><StateBadge tone="warning">Partial</StateBadge><StateBadge tone="error">Could not load this view</StateBadge></div>},
  {name:'RouteState',content:<div className={css.stack}><RouteState state="empty" title="No observations" description="No adapter events or outcome assessments are available. Usefulness is Unknown."/><RouteState state="loading" title="Loading view" description="Waiting for the requested snapshot. No results are available yet."/><RouteState state="error" title="Could not load this view" description="No operation or publication is confirmed." action={<ActionButton>Retry view</ActionButton>}/></div>},

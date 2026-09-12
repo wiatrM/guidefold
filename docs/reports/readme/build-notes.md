@@ -46,3 +46,54 @@ Use case: infographic-diagram. Professional implementation-level architecture di
 
 Correction:
 Correct this technical architecture diagram. Postgres must be OUTSIDE the Static Go executable boundary: redraw that boundary enclosing only the Go processing boxes, ending before the Postgres cylinder. Label lower repeated database 'Same Postgres' so it cannot be interpreted as a second database. Keep all remaining exact text and design unchanged. No new slogan or content.
+
+## Landing v2 JS budget
+
+Date: 2026-09-11. Pre-change baseline captured on unchanged code (before the Landing v2 tokens
+and evidence-mirror change), via `pnpm build`.
+
+Chunk: `dist/assets/landing-P09dfzH_.js` — 76,889 bytes raw, 25,216 bytes gzipped
+(`gzip -c dist/assets/landing-P09dfzH_.js | wc -c`).
+
+Budget: +34 KB gzipped (DESIGN.md v2 §5).
+
+After (2026-09-12, landing v2 QA gate, task 13). Production build at HEAD plus this task's
+`index.html` and radius fixes; the baseline above was not recreated with `git stash`.
+
+| Artefact | Before (2026-09-11) | After (2026-09-12) | Delta |
+|---|---|---|---|
+| Landing route chunk, raw | 76,889 B | 109,935 B | +33,046 B |
+| Landing route chunk, gzip | 25,216 B | 36,242 B | **+11,026 B (+10.77 KB)** |
+| Landing route CSS, gzip | not captured at task 1 | 7,678 B | no baseline |
+
+After the LCP follow-up wave (2026-09-12). The route's own code is now two chunks: `landing`
+keeps the shell, header, film, hero and footer, and `BelowHero` carries the eight sections
+under the hero, so the budget is read against their sum. The baseline for this wave was
+recreated by reverting the eleven changed source files and rebuilding, then restoring them.
+
+| Artefact | Task 1 baseline | Task 13 | This wave | Delta vs task 1 |
+|---|---|---|---|---|
+| Landing route code, raw | 76,889 B | 109,935 B | 103,004 B (32,438 + 70,566) | +26,115 B |
+| Landing route code, gzip | 25,216 B | 36,242 B | 35,131 B (11,051 + 24,080) | **+9,915 B (+9.68 KB)** |
+| Landing route CSS, gzip | not captured | 7,678 B | 6,150 B (1,612 + 4,538) | no baseline |
+| Entry chunk, gzip | not captured | 82.77 kB (vite display) | 60,620 B = 59.20 kB | −23.57 kB |
+| First-paint payload at `/`, gzip | not captured | 224.61 KB | **108.61 KB** | −116.00 KB |
+
+`gzip -c dist/assets/<file> | wc -c` for the byte columns, except the task 13 entry-chunk cell, which is vite's own rounded display — that build's `dist/` was not kept; the first-paint payload sums the
+gzip figures `vite build` prints for the entry chunk, the route chunk, every chunk they share
+and both stylesheets — that is, everything the browser must have before the hero can paint.
+Verdict: **inside the +34 KB budget**, 29% of the allowance used, and the first-paint payload
+is now less than half what it was. The demo dialog (`DemoDialog`, 1,850 B raw / 940 B gzip,
+plus a 50,426 B / 17,010 B @base-ui chunk) and the management shell (`management`, 50,360 B /
+17,120 B) are outside it in both directions: neither is requested on `/`.
+
+`gzip -c dist/assets/landing-<hash>.js | wc -c`, run on `dist/` from `pnpm build`.
+Verdict: **inside the +34 KB budget**, 32% of the allowance used. The allowance covers the
+bento grid and bento card, the number ticker with `lib/ease.ts`, the anchor map and the
+entrance layer.
+
+The lazily imported `bar-chart` chunk (358,590 B raw, 103,400 B gzip, Recharts) is **not**
+part of this delta: `ResearchEvidence.tsx` already imported it with `lazy()` at the task 1
+baseline, so it sits outside the route chunk before and after. It is the only long task
+measured during a full scroll pass; see the task 13 gate record.
+

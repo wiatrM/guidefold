@@ -8,11 +8,22 @@
 import { test, expect } from '@playwright/test';
 import { axeViolations, chosen, nodes, noHorizontalScroll, open, sourceUrl, stubApi, tabTo } from './stub';
 
-test('sign-in providers and the organisation come from the API', async ({ page }) => {
-  await stubApi(page);
-  await page.goto('/import?step=login');
+test('an unauthenticated management route lands on the login page outside the shell', async ({ page }) => {
+  const state = await stubApi(page);
+  state.signedOut = true;
+  await page.goto('/proposals?state=open');
+  await expect(page).toHaveURL(/\/login\?return=%2Fproposals%3Fstate%3Dopen/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Continue with GitHub/ })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0);
+});
+
+test('the organisation comes from the API once the session is confirmed', async ({ page }) => {
+  await stubApi(page);
+  await page.goto('/import');
   await expect(page.getByText('Meridian Data')).toBeVisible();
+  // Sign-in is not a step of the wizard any more.
+  await expect(page.getByRole('button', { name: /Continue with GitHub/ })).toHaveCount(0);
 });
 
 test('library filters, cursor context and the skill link survive the URL', async ({ page }) => {
@@ -125,6 +136,18 @@ const apiViews: [string, string, string?][] = [
   ['organization', ''],
   ['organization', '&tab=audit', 'organization, audit tab'],
 ];
+test('axe finds no violation on the login page, at 390 as well as 1280', async ({ page }) => {
+  const state = await stubApi(page);
+  state.signedOut = true;
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Continue with/ }).first().waitFor();
+    expect(await axeViolations(page), 'login/' + width).toEqual([]);
+    expect(await noHorizontalScroll(page), 'login/' + width).toBe(true);
+  }
+});
+
 for (const [view, extra, label] of apiViews) {
   test('axe finds no violation on ' + (label ?? view), async ({ page }) => {
     await stubApi(page);

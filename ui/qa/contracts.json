@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-10T06:58:38.935Z",
+  "capturedAt": "2026-09-12T15:19:21.437Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
-    "components": 15,
-    "cssFiles": 27,
-    "tokens": 305,
-    "productionFilesTraversed": 42,
+    "components": 16,
+    "cssFiles": 40,
+    "tokens": 437,
+    "productionFilesTraversed": 51,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -196,6 +196,18 @@
         "Family",
         "EmptyAtomicLayer"
       ]
+    },
+    {
+      "name": "IconTile",
+      "files": [
+        "src/components/IconTile/index.tsx",
+        "src/components/IconTile/IconTile.module.css",
+        "src/components/IconTile/IconTile.test.tsx",
+        "src/components/IconTile/IconTile.stories.tsx"
+      ],
+      "scenarios": [
+        "Default"
+      ]
     }
   ],
   "typeOnlyEdges": [
@@ -213,6 +225,10 @@
     },
     {
       "file": "src/components/RouteState/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/IconTile/index.tsx",
       "specifier": "react"
     },
     {
@@ -236,20 +252,43 @@
       "specifier": "./SchemaFlow"
     },
     {
+      "file": "src/domain/overview.test.ts",
+      "specifier": "../api/decoders"
+    },
+    {
+      "file": "src/domain/overview.ts",
+      "specifier": "../api/decoders"
+    },
+    {
+      "file": "src/domain/skillHealth.ts",
+      "specifier": "../api/decoders"
+    },
+    {
       "file": "src/domain/pyramidGraph.ts",
       "specifier": "../api/decoders"
     },
     {
       "file": "src/domain/pyramidGraph.test.ts",
       "specifier": "../api/decoders"
-    },
-    {
-      "file": "src/domain/skillHealth.ts",
-      "specifier": "../api/decoders"
     }
   ],
   "inlineStyles": [],
   "reviewedInlineStyles": [
+    {
+      "file": "src/components/spectrumui/bento-card.tsx",
+      "line": 131,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/border-beam.tsx",
+      "line": 29,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/border-beam.tsx",
+      "line": 35,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
     {
       "file": "src/components/spectrumui/charts/chart-engine.tsx",
       "line": 369,
@@ -406,6 +445,16 @@
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     },
     {
+      "file": "src/components/spectrumui/number-ticker.tsx",
+      "line": 163,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/spotlight.tsx",
+      "line": 37,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
       "file": "src/components/spectrumui/tree-nav.tsx",
       "line": 146,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
@@ -428,6 +477,31 @@
     {
       "file": "src/components/spectrumui/tree-nav.tsx",
       "line": 180,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/chart.tsx",
+      "line": 231,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/chart.tsx",
+      "line": 314,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/sidebar.tsx",
+      "line": 131,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/sidebar.tsx",
+      "line": 189,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/sidebar.tsx",
+      "line": 629,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     }
   ],

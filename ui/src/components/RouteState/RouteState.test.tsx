@@ -28,4 +28,11 @@ describe('RouteState',()=>{
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
  });
+
+ it('keeps the heading, sentence and action in the compact layout',()=>{
+  render(<RouteState compact state="empty" title="No observations" description="Nothing arrived for this window." action={<button>Change window</button>}/>);
+  expect(screen.getByRole('heading',{level:2,name:'No observations'})).toBeInTheDocument();
+  expect(screen.getByText('Nothing arrived for this window.')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Change window'})).toBeInTheDocument();
+ });
 });

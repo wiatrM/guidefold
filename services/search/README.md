@@ -284,6 +284,26 @@ files, re-checking access rather than trusting the URL. The 1.2 request schema i
 1.1 document or named by `GUIDEFOLD_CONTRACT_12`; without it a `1.2` request is
 `400 unsupported_schema_version` rather than being validated as 1.1.
 
+For an explicit source-integrity boundary, a 1.2 USE request may add
+`delivery_policy:"proof_gated"`. The service evaluates the card's immutable
+`source_proof` after closure calculation: a complete identity, revision,
+snapshot, body hash, scope and claim record is followed by a check that every
+cited path and SHA belongs either to the active package resource manifest or to
+a skill/document published in the same repository snapshot, then content-
+addressed source fetching from `gfm.blobs`; Go verifies every source SHA-256
+and line range before returning `delivery.action:"LOAD"`. Abstract claims may
+also carry content-addressed `claim_refs` to lower cards; those child proofs,
+commitments, revisions, scopes and `refines` edges are checked recursively.
+Missing,
+stale, conflicting, unavailable or changed source proof returns
+`delivery.action:"ASK"` with an empty body and redacted provenance. This is a
+fail-closed delivery policy, not a semantic or execution guarantee. The default
+and 1.1 paths retain their existing behavior; see
+[ADR-0039](../../docs/adr/ADR-0039-proof-gated-source-grounded-delivery.md).
+During publication, explicit `pending`/empty binding fields are filled from the
+immutable snapshot and delivered bytes. `verified` is never upgraded by this
+step, and a non-placeholder mismatch remains an `ASK` condition.
+
 ## Listening address
 
 `guidefold-search serve` binds `GUIDEFOLD_LISTEN` (default `:8080`), and

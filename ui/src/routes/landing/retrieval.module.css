@@ -1,0 +1,198 @@
+/* Chapter 3, SPEC v3 screen 5. One instrument that reads like a story: what was typed on
+ * the left, what the service did on the right, the four cards it returned underneath.
+ * Every value is a token and every responsive change is a token swap in tokens.css. */
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
+.copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
+.section p.eyebrow{
+ display:flex;
+ align-items:center;
+ gap:var(--space-2);
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.section p.eyebrow::before{
+ content:"";
+ display:block;
+ flex:none;
+ inline-size:var(--landing-eyebrow-rule);
+ block-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.section h2.heading{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+.section p.lede{
+ margin:var(--space-4) var(--zero) var(--zero);
+ font-size:var(--landing-lede);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+
+/* ------------------------------------------------------------------ instrument */
+.instrument{
+ grid-column:1/-1;
+ min-width:var(--zero);
+ margin-top:var(--space-5);
+ display:grid;
+ grid-template-columns:var(--landing-instrument-columns);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:var(--glass-backdrop);
+}
+.asked,.did{min-width:var(--zero);padding:var(--landing-panel-pad);}
+.did{
+ border-left:var(--landing-instrument-rule);
+ border-top:var(--landing-instrument-rule-top);
+}
+.zoneLabel{
+ margin:var(--zero) var(--zero) var(--space-3);
+ color:var(--stone-100);
+ font-size:var(--font-size-small);
+ font-weight:var(--weight-semibold);
+}
+.asked p.prompt{
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+ overflow-wrap:anywhere;
+}
+.dollar{color:var(--survey-teal);}
+.asked p.promptWhere{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-small);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+ overflow-wrap:anywhere;
+}
+
+.steps{
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ counter-reset:step;
+ display:grid;
+ gap:var(--landing-step-gap);
+}
+.step{min-width:var(--zero);counter-increment:step;}
+.did p.stepName{
+ margin:var(--zero);
+ color:var(--stone-100);
+ font-weight:var(--weight-semibold);
+}
+.did p.stepName::before{
+ content:counter(step) ". ";
+ color:var(--survey-teal);
+ font-family:var(--font-mono);
+}
+.did p.stepSays{
+ margin:var(--space-1) var(--zero) var(--zero);
+ color:var(--stone-300);
+ line-height:var(--line-height-body);
+}
+.did p.stepDetail{
+ margin:var(--space-2) var(--zero) var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-small);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+ overflow-wrap:anywhere;
+}
+
+/* The four cards the trace ends on, spanning the whole instrument under both columns. */
+.cards{
+ grid-column:1/-1;
+ margin:var(--zero);
+ padding:var(--landing-panel-pad);
+ list-style:none;
+ display:grid;
+ grid-template-columns:var(--landing-cards-columns);
+ gap:var(--landing-card-gap);
+ border-top:var(--border-width) solid var(--line);
+}
+.card{
+ min-width:var(--zero);
+ display:grid;
+ grid-template-columns:var(--landing-card-row);
+ align-items:baseline;
+ gap:var(--space-2) var(--space-4);
+ padding:var(--space-3);
+ border:var(--border-width) solid var(--line);
+ border-radius:var(--landing-radius);
+}
+.cards p.cardHead{margin:var(--zero);}
+.cardLevel{color:var(--landing-muted-ink);font-size:var(--font-size-small);}
+.cardDot{color:var(--landing-muted-ink);}
+.cardName{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ font-weight:var(--weight-medium);
+ color:var(--stone-100);
+ overflow-wrap:anywhere;
+}
+.cards p.cardSays{
+ margin:var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+.cards p.cardProof{
+ display:flex;
+ align-items:center;
+ gap:var(--space-1);
+ margin:var(--zero);
+ white-space:nowrap;
+ font-size:var(--font-size-small);
+ font-weight:var(--weight-medium);
+ color:var(--system-ink);
+}
+.proofDot{
+ inline-size:var(--landing-dot-size);
+ block-size:var(--landing-dot-size);
+ border-radius:var(--half);
+ background:var(--system-ink);
+}
+
+.section p.instrumentCaption{
+ grid-column:1/-1;
+ margin:var(--space-3) var(--zero) var(--zero);
+ color:var(--landing-muted-ink);
+ font-size:var(--font-size-small);
+}
+
+.screen{grid-column:var(--landing-block-screen);min-width:var(--zero);margin-top:var(--landing-screen-margin);}
+
+/* ---------------------------------------------------------------- full rule */
+/* The protected reader, folded away until it is asked for: the instrument already says
+ * what the agent received, and the whole file is only interesting to a reader who wants
+ * to check it. One summary row, one hairline, no chevron animation. */
+.reader{
+ grid-column:var(--landing-block-copy);
+ min-width:var(--zero);
+ margin-top:var(--landing-screen-margin);
+ border-top:var(--border-width) solid var(--line);
+}
+.readerSummary{
+ display:flex;
+ align-items:center;
+ min-height:var(--touch-height);
+ color:var(--system-ink);
+ cursor:pointer;
+ font-size:var(--font-size-body);
+}
+.readerSummary:focus-visible{outline-offset:var(--focus-offset);}
+.readerBody{padding-top:var(--landing-details-gap);}

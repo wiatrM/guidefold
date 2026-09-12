@@ -1,5 +1,5 @@
 # Architektura informacji Guidefold
-Status: projekt hosted UI po pivocie, 2026-09-06; makiety etapu 4 po dwóch rundach review, 0 otwartych P1/P2. Reguły: [DOCUMENTATION-RULES](../DOCUMENTATION-RULES.md).
+Status: hosted UI po pivocie; nawigacja i system komponentów zaktualizowane 2026-09-08. Reguły: [DOCUMENTATION-RULES](../DOCUMENTATION-RULES.md).
 Zastępuje wersję 2026-09-04 z commitu 88e404561a9f6994cd870743bf858b9b0a616126. Różnice zapisano w [briefie](pipeline/00-brief.md); stare Routing/Eval nie wracają przez ten dokument.
 ## 1. Cel
 Hosted UI pomaga znaleźć instrukcję ze źródłem i zakresem, przygotować propozycję do Git oraz rozpoznać potrzebę poprawki. Zakres: [PRODUCT-PIVOT §7](../PRODUCT-PIVOT.md).
@@ -15,16 +15,19 @@ Persona nie nadaje uprawnień. Owner/member pochodzą z polityki organizacji; CO
 ## 3. Widoki U4
 | Widok | Zawartość |
 |---|---|
+| Overview (od 2026-09-12, `/home`, pierwszy ekran po zalogowaniu) | Cztery liczby z API (opublikowane skille, ekspozycje w oknie, udział helped, otwarte pozycje kolejki), „Your next actions” według roli, lejek dostawy i feedback (Spectrum), top skille z czterema bramkami i rekomendacją, biblioteka wg stanu/warstwy/scope, pipeline (ostatni import, propozycje wg stanu, adaptery), audyt dla ownera. Okno `?window=` wspólne z Usage. Żadnej delty ani wyniku: kontrakt nie ma poprzedniego okna. |
 | Import | Wejście przez login/org, komendy CLI, zakres wysyłki, manifest, postęp i błędy. |
 | Library | Lista metadanych skilli; filtry repo, scope, owner, layer, status i zapytanie. |
 | Map | Repository, Scopes, Pyramid; domyślnie drzewo/lista, ograniczone sąsiedztwo. |
 | Skill | Tożsamość rewizji, zastosowanie, treść, źródła, wymagania i feedback. |
 | Proposals | Kolejka i kandydat ze źródłem/diffem; przygotowanie decyzji, eksport i stan Git. |
 | Usage & quality | Powody przeglądu, obserwacje, pokrycie i brak danych. |
-| Organization | Members oraz Integrations: instalacja adaptera, diagnostyka, członkowie i tokeny. |
-Login jest stanem wejścia, szczegół propozycji częścią Proposals. Galeria komponentów jest narzędziem developerskim poza nawigacją produktu.
+| Organization | Members, Integrations oraz Telemetry: instalacja adaptera, diagnostyka, członkowie, tokeny i szybki obraz jakości wykonania. |
+Login jest stanem wejścia i od 2026-09-12 ma własną trasę `/login` poza ośmioma widokami (siedem U4 i Overview): każda trasa panelu jest prywatna, więc żądanie bez sesji trafia tam z celem powrotu w `?return=` i wraca pod pierwotny adres po zalogowaniu (odmowa 403 przy żywej sesji nie przekierowuje, tylko maskuje widok). Szczegół propozycji pozostaje częścią Proposals. Galeria komponentów jest narzędziem developerskim poza nawigacją produktu.
 ## 4. Nawigacja i kontekst
 Kontekst org/repo jest widoczny przed importem i decyzją. Odmowa autoryzacji usuwa dane poprzedniego kontekstu.
+Stały rail grupuje cele, a nie typy danych: Workspace (Overview, Import), Knowledge (Library, Map), Review (Proposals, Usage & quality) oraz Manage (Organization). Skill jest kontekstowym szczegółem otwieranym z Library, Map, Usage lub linku bezpośredniego, więc nie konkuruje z celami pierwszego poziomu.
+Rail składa się do paska ikon; etykiety znikają krótką animacją bez przesuwania treści strony. Na małym ekranie ten sam porządek otwiera modalny sheet. Profil i rola są w stopce raila; menu konta prowadzi do członkostwa organizacji i wywołuje istniejący logout. Historia edycji pozostaje historią rewizji w Skill/Proposals, bez ósmej trasy. Ulubione są działaniem na wierszu i w menu kontekstowym, nie nowym silosem nawigacji. Lista jest trwała w tej przeglądarce i izolowana kluczem użytkownik/organizacja/repozytorium; nie udaje preferencji zsynchronizowanej przez API.
 URL koduje widok, filtry, zaznaczony obiekt i zakładkę; zamknięcie szczegółu lub powrót odtwarza listę/mapę. Kontrakty bieżących makiet: [etap4](pipeline/04-wireframes.md); docelowych tras: etap7.
 Repo tree odpowiada na położenie źródła, scope na zastosowanie i odpowiedzialność, Pyramid na relacje wiedzy. Głębokość folderu nie nadaje warstwy atomic/task/abstract.
 Każdy obiekt kompletnego importu jest osiągalny. Nieprzypisany scope i brak klasyfikacji są nazwanymi brakami, nie powodem ukrycia skilla.

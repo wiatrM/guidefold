@@ -453,6 +453,32 @@
     "instructions": "explicit bootstrap skill plus mandatory benchmark SEARCH/USE/ASK prompt",
     "run": "pi-hierarchical-harness-2026-09-10-pi-r3"
   },
+  "proof_gate": {
+    "date": "2026-09-11",
+    "branch": "codex/e2-proof-gate-matrix-20260910",
+    "label": "delivery boundary, not task success",
+    "microcopy": "Delivery boundary, deterministic, source-backed; not a task-success claim. 2026-09-11.",
+    "matrix": {
+      "harmful_mutations": 76,
+      "harmful_asked": 76,
+      "harmful_loaded": 0,
+      "safe_cases": 4,
+      "safe_loaded": 4,
+      "flat_control_loaded": 76,
+      "wilson_upper_bound_pct": 4.81,
+      "source": "docs/RESEARCH.md#530-source-backed-e2-delivery-matrix",
+      "reproduce": "research/e2-source-backed-20260911/README.md"
+    },
+    "http_path": {
+      "targets": 4,
+      "loaded": 4,
+      "reason": "source_proof_complete",
+      "handler": "USE 1.2",
+      "service_verified": "source hash and range",
+      "source": "docs/RESEARCH.md#532-source-backed-e2-through-the-go-http-path",
+      "reproduce": "research/e2-source-backed-http-20260911/README.md"
+    }
+  },
   "limitations": [
     "Offline benchmark retrieval, not task completion or user productivity.",
     "Positive pooled mean; CHAMP and TheoremQA regress versus flat.",

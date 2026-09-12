@@ -17,6 +17,7 @@ Kod, testy i raporty z identyfikatorem przebiegu dowodzą implementacji. Plan, s
 | Hosted UI | [pipeline/README](ui/pipeline/README.md), potem dokument właściwego etapu | Rejestr stanu przeglądów i źródło szczegółowych decyzji ekranów. |
 | Architektura informacji, UX i system wizualny | [IA](ui/IA.md), [UX](ui/UX.md), [UI](ui/UI.md) | Dokumenty aktualizowane pod pivot; status na początku wskazuje zakres przeglądu. Historyczne różnice zapisuje brief; nie odtwarzaj starych czterech sekcji. |
 | Istniejący CLI lub kontrakt SEARCH/USE | Właściwy kod, testy, HARNESS-SERVICE-CONTRACT i SEARCH-USE-TELEMETRY | Sprawdź bieżące zachowanie; nie opisuj komend projektowanych jako dostępnych. |
+| Instalacja i uwierzytelnienie adaptera (harness ↔ hosted API) | [HOWTO-adapter](HOWTO-adapter.md) | Pięć komend cytowanych dosłownie z `skills/guidefold/scripts/guidefold`, tabela rozwiązywania problemów; ten sam przewodnik w zakładce Organization › Integrations. Publikacja importu to osobny krok. |
 | Rubryka pilota, dowody U11, raport porównania harnessów | [pilot/README](pilot/README.md), [pilot/PIVOT-RUBRIC](pilot/PIVOT-RUBRIC.md), [pilot/E6.7-PROTOCOL](pilot/E6.7-PROTOCOL.md) | Etykiety R/Q/P, progi go/no-go i `tools/pilot/pivot_report.py`; syntetyczny run nie jest dowodem z pilota. |
 | Stan implementacji pivotu | [PIVOT-IMPLEMENTATION](PIVOT-IMPLEMENTATION.md) | Które P01–P15 mają kod i testy, mapa modułów Go, luki przed pilotem; nie dowód pilota ani zamiennik backlogu. |
 ## Pipeline UI

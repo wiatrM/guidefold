@@ -1,20 +1,19 @@
 # UI Guidefold
 
-Status: frontend w ui/ wyłącznie na hostowanym API od 2026-09-08 (tryb fixture usunięty decyzją właściciela, [08 §Usunięcie trybu fixture](pipeline/08-components.md)); etapy 6 i 7 zamknięte 2026-09-06, ekstrakcja etapu 8 zamknięta po dwóch rundach bez otwartych P1/P2/P3.
+Status: frontend w ui/ wyłącznie na hostowanym API; system komponentów i shell zaktualizowane 2026-09-08 na zlecenie właściciela.
 Cel: system wizualny i zakres ekstrakcji siedmiu widoków U4. Wejścia: [IA](IA.md), [UX](UX.md), [brief](pipeline/00-brief.md), [makiety](pipeline/04-wireframes.md), [symulacja](pipeline/05-simulation.md), [pivot](../PRODUCT-PIVOT.md).
 Zastępuje dokument 2026-09-04 z commitu 88e404561a9f6994cd870743bf858b9b0a616126. Reguły użycia: [DOCUMENTATION-RULES](../DOCUMENTATION-RULES.md).
 
 ## 1. Decyzje wizualne
 
-Jedyny wzorzec: [Industrial Surveyor](../../prototypes/industrial-surveyor/DESIGN.md), [plansza źródłowa](../../prototypes/industrial-surveyor/design-reference/source-industrial-surveyor.png) i [styles.css](../../prototypes/industrial-surveyor/src/styles.css), odczyt 2026-09-06.
-Implementacja: [ui](../../ui/). Zamrożone odniesienie sprzed ekstrakcji: [pipeline-hifi](../../prototypes/pipeline-hifi/). Plansza jest odniesieniem marki; zakres i zachowanie określa aktualny pivot.
+Rdzeń marki nadal określa [Industrial Surveyor](../../prototypes/industrial-surveyor/DESIGN.md): graphite, teal/orange, zwarta geometria, Phosphor i raster znaku. Kompozycję interakcji przeniesiono na wzorce shadcnspace z prymitywami Base UI: sidebar/sheet, dropdown, avatar, card, button, badge, alert/skeleton, tabs, table, field, collapsible, context menu, code block i statystyki. Motion obsługuje krótkie przejścia, a Sonner nieblokujące potwierdzenia. Implementacja pozostaje w CSS Modules i [tokenach](../../ui/src/tokens/tokens.css), bez Tailwind i bez kopiowania cudzej palety.
 
 | Zachowujemy | Zmieniamy względem starego prototypu / UI | Dlaczego |
 |---|---|---|
 | Paletę graphite, teal i orange; czerwony dla błędów | Rejected oraz usunięta linia diffu nie są czerwonym błędem | Odrzucenie jest decyzją człowieka; diff opisuje zmianę. |
-| Barlow Condensed i Inter, fonty lokalne | Mono dla URN, SHA, ścieżek i kodu | Czytelność dokładnych identyfikatorów i plików. |
-| Siatkę 8 px, radius 2 px, border 1 px | Balanced 40 px jest stałe; brak przełącznika gęstości | Wymaganie zlecenia, bez dodatkowej konfiguracji. |
-| Oryginalny raster znaku i survey-grid-pattern | Brak nowego SVG logo, mapy z divów lub topograficznego tła pod treścią | Zachowanie zatwierdzonego assetu i czytelności danych. |
+| Instrument Sans i Manrope, fonty lokalne | Mono dla URN, SHA, ścieżek i kodu | Czytelność dokładnych identyfikatorów i plików. |
+| Siatkę 8 px, radius 4/6 px, border 1 px | Krótkie cienie tylko dla kontroli, kart i warstw portalowych | Hierarchia bez efektu szkła i pływających kafli. |
+| Oryginalny raster znaku | Usunięty survey-grid-pattern i każde obrazkowe tło z raila oraz mobilnego sheeta | Nawigacja ma być spokojnym tłem dla informacji. |
 | Kanciaste panele i status z etykietą | Siedem widoków, bez Route monitor/Component bay/Asset library w nawigacji | Zakres U4. Galeria pozostaje narzędziem developerskim. |
 | Phosphor regular | Bez fill, emoji oraz dekoracyjnych ikon metryk | Jedna waga w całym interfejsie. |
 | Wzorzec dowodu przy decyzji | Brak fikcyjnej promocji team → division → company, quorum i metryk | Źródło deklaruje inne dane; brak klasyfikacji to Unclassified. |
@@ -41,18 +40,18 @@ Kanoniczne wartości aplikacji: [ui/src/tokens/tokens.css](../../ui/src/tokens/t
 | form/reading/source-width, text-area/body-editor-height, raw-max-height, scroll-offset | Ograniczają długość wiersza i pełny surowy plik; decyzja pozostaje osiągalna po rozwinięciu treści. |
 | zero, full, viewport, min-page-width, grid-tile | Wspólne rozmiary struktury i skali istniejącego rastra. |
 | desktop/mobile-display, rail/context-padding, layer-skip, skip-hidden-offset | Kompaktowe menu na telefonie oraz link pomijania nawigacji; pełny powód każdego tokenu w [inwentarzu](../../prototypes/pipeline-hifi/qa/token-provenance.json). |
-| duration, ease, disabled-opacity | Krótkie przejścia stanu i oznaczenie niedostępności; reduced motion ustawia duration na zero. |
+| duration/ease, shadow-*, shine-*, disabled-opacity | Krótkie przejścia, kontrolowana głębia i jednorazowy Shine Border nagłówka trasy; reduced motion wyłącza dekoracyjny ruch. |
 
 Każdy dalszy token wymaga nazwy, zastosowania i powodu w dokumencie etapu. Sama możliwość stworzenia wariantu nie uzasadnia nowej wartości.
 
 | Rola | Bieżące ustawienie |
 |---|---|
-| Tytuł | Barlow Condensed 700, 32 px; mobile 28 px |
-| Sekcja / tekst metryki | Barlow Condensed 600, odpowiednio 20 / 28 px |
-| Body | Inter 400, 14 px, line-height 1,55 |
-| Metadane i tabela | Inter, 12 px; ważna treść nie jest ukryta przez mały kontrast |
+| Tytuł | Instrument Sans 600, 32 px; mobile 28 px |
+| Sekcja / tekst metryki | Instrument Sans 600, odpowiednio 20 / 28 px |
+| Body | Manrope 400, 14 px, line-height 1,6 |
+| Metadane i tabela | Manrope, 12 px; ważna treść nie jest ukryta przez mały kontrast |
 | Kod / URN / SHA | Systemowy monospace, 12 px |
-| Eyebrow | Barlow Condensed 600, 12 px, uppercase i tracking 0,12 em |
+| Eyebrow | Instrument Sans 500, 12 px, zapis zdaniowy |
 
 Teal opisuje system/wybór; orange decyzję człowieka i focus; warning częściowe lub ograniczone dane; red wyłącznie błąd. Neutralne Unknown nie jest zielonym potwierdzeniem.
 Diff korzysta z +/−, opisu i istniejących wash: dodanie teal, usunięcie orange. Kolor nie określa poprawności zmiany.
@@ -61,9 +60,9 @@ Diff korzysta z +/−, opisu i istniejących wash: dodanie teal, usunięcie oran
 
 | Szerokość | Układ bieżącego hi-fi |
 |---|---|
-| Ponad 1080 px | Rail 216 px, treść minmax(0,1fr), porównanie źródło/kandydat w dwóch kolumnach. |
-| 721–1080 px | Rail 184 px; porównanie w jednej kolumnie, pola i etapy najwyżej w dwóch. |
-| Do 720 px | Kompaktowa nawigacja w natywnym disclosure Navigate, początkowo zamknięta; siedem pozycji po rozwinięciu. Org/repo pozostaje widoczne, pola i panele pojedynczo, padding 16 px. |
+| Ponad 1080 px | Rail 264 px lub złożony rail ikon 64 px; treść do 1480 px, porównanie źródło/kandydat w dwóch kolumnach. |
+| 721–1080 px | Rail 224 px lub 64 px; porównanie w jednej kolumnie, pola i etapy najwyżej w dwóch. |
+| Do 720 px | Modalny sheet Base UI z tymi samymi grupami IA. Org/repo i konto pozostają dostępne, pola i panele są pojedynczo, padding 16 px. |
 
 Wymagane zrzuty: siedem widoków przy 1280×720, 820×720 i 390×720. Nie ukrywamy funkcji na mobile. Duże tabele mają własny obszar przewijania; body, URN i ścieżki zawijają się.
 Kontekst organizacja/repozytorium (z `/me` i adresu) oraz rola w organizacji są widoczne, dopóki dostęp jest potwierdzony. Restricted nie pokazuje danych organizacji.
@@ -82,7 +81,7 @@ Stany dotyczą tras; nie wymagamy sześciu sztucznych wariantów każdej ikony. 
 
 ## 4. Komponenty
 
-Aktualne 14 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx), inwentarz z 2026-09-06. Każdy wydzielony komponent ma testy i stories; szczegółowe props, stany i dowody: [08-components](pipeline/08-components.md).
+Aktualne 15 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx). Każdy wydzielony komponent ma testy i stories; szczegółowe props, stany i dowody: [08-components](pipeline/08-components.md). Atrybuty `data-slot` zapisują odpowiednik shadcn bez zmiany domenowego API komponentu.
 
 | Komponent | Użycie | Granica odpowiedzialności / stan |
 |---|---|---|
@@ -94,23 +93,27 @@ Aktualne 14 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx), inwentarz z
 | Tabs | Osie Map, zakładki Skill/Organization | Linki w nav z aria-current; bez pozornego ARIA tablist. |
 | ProvenanceTrail | Metadane źródła i rewizji | Lista label/value/detail/link; nie wnioskuje pochodzenia. |
 | ScopeTree | Repository i Scopes | Natywne disclosure oraz linki; zaznaczenie i opis. |
-| DataTable | Library, manifest, relacje i membership | Caption, nagłówki oraz wiersze; sortowanie/filtry są logiką trasy. |
+| DataTable | Library, manifest, relacje i membership | Caption, nagłówki oraz wiersze; sortowanie/filtry są logiką trasy. `flush` wewnątrz Panelu (caption tylko dla AT). |
 | SkillDiff | Proposals | Rzeczywisty source/candidate; No text changes albo oznaczone linie. |
+| Panel (od 2026-09-12) | wszystkie | `collapsible`/`defaultOpen` składa dowody drugorzędne bez odmontowania; `tone="quiet"` dla sekcji kontekstu. |
+| RouteState (od 2026-09-12) | wszystkie | `compact` dla pustej sekcji pod stanem głównym strony; strona ma jeden pełny stan. |
 | MetricRow | Liczniki importu i dowody użycia | Label/value/detail; Unknown jest dopuszczalne, metryka wymaga źródła. |
 | Urn | Tożsamość skilla | Pełna wartość, kopiowanie i komunikat sukcesu/błędu. |
 | SkillContent | Skill i porównanie propozycji | Semantyczny Markdown bez raw HTML; surowy plik jest osobnym odczytem. |
 | Field | Filtry, feedback i decyzje | Jawna etykieta, hint/error oraz aria-describedby; poprawność kontrolki sprawdza kontrakt a11y. |
+| IconTile | Nagłówek każdej trasy, kroki Import, stany RouteState, puste stany | Jeden duży glif (Phosphor duotone) na siatce grafitowej; size sm/md/lg/xl, tone system/human/neutral; dekoracyjny (aria-hidden), chyba że `label` czyni go jedynym nośnikiem nazwy. Dodany 2026-09-12 na polecenie właściciela (duże ikony, czytelność quickstartu). |
 
 Formularz decyzji, lifecycle, eksport, filtry, auth i wybór źródła zostają w routes/data. Nie tworzymy GateList, StageTrace, PromotionRoute ani CommandPalette bez zadania U4.
-Każdy komponent ma index.tsx, CSS Module, test i story. Drugi wariant wymaga pisemnego powodu; piętnasty komponent wymaga ograniczenia zakresu lub jawnej zmiany decyzji.
+Każdy komponent ma index.tsx, CSS Module, test i story. Drugi wariant wymaga pisemnego powodu; siedemnasty komponent wymaga ograniczenia zakresu lub jawnej zmiany decyzji.
+Od 2026-09-12 (polecenie właściciela) komponenty publiczne są złożone z prymitywów shadcn/ui (`ui/src/components/ui`, styl base-nova na Base UI): Panel→Card, DataTable→Table, Field→Label, StateBadge→Badge, RouteState→Empty+Skeleton+IconTile, ActionButton→Button, a powłoka używa Breadcrumb, DropdownMenu i Sheet. Tokeny shadcn (`--background`, `--card`, `--primary`…) są referencjami do palety Industrial Surveyor w tokens.css; `registry.css` mapuje je do Tailwind. Zapis: [raport 2026-09-12](../reports/ui/console-shadcn-20260912.md).
 
 ## 5. Plan frontendu
 Kanoniczny plan portu: [07-frontend](pipeline/07-frontend.md), 2026-09-06; dwie rundy Owner/Principal/Architekt zakończone, 0 otwartych P1/P2. Ta sekcja podaje granice, nie drugą listę zadań.
 
 | Obszar | Decyzja |
 |---|---|
-| Stack | React 19.2.8, TypeScript 7.0.2, Vite 8.2.2, Router DOM 7.18.3; CSS Modules bez biblioteki komponentów. Node22.14/pnpm10.30, wersjonowane lockfile. |
-| ui/ | src/tokens, components≤14, routes/app, domain/data, przyszła warstwa api, test/e2e/qa. Formularze i lifecycle nie są komponentami biblioteki. |
+| Stack | React 19.2.8, TypeScript 7.0.2, Vite 8.2.2, Router DOM 7.18.3; CSS Modules + Tailwind 4 (bez Preflight) dla kodu registry, shadcn/ui base-nova na Base UI 1.8, Motion 13.2 i Sonner 2.0. Node22.14/pnpm10.30, wersjonowane lockfile. |
+| ui/ | src/tokens, components=16 publicznych + ui/spectrumui (registry), routes/app, domain/data, przyszła warstwa api, test/e2e/qa. Formularze i lifecycle nie są komponentami biblioteki. |
 | Dane | Jeden port `DataSource` z adapterem hostowanego API (adapter fixture usunięty 2026-09-08); typy OpenAPI i dekodowanie runtime. Produkcja pobiera summary/cursor i osobne facets/lookup; body dopiero w szczególe. Pełny klucz query/zasobu i numer żądania blokują starsze odpowiedzi. |
 | Backend | Modularne Go API i osobny worker, Postgres/GCS, WorkOS przez Go. Brak mikroserwisów na widok i dodatkowego Nest BFF. |
 | Sesja | Cookie HttpOnly/Secure, CSRF i membership per request; bez sekretów w JS. Potwierdzenie ważne maks.45 s, odnowienie co25 s; brak odnowienia zasłania dane. Wznowienie karty wymaga sprawdzenia. Odwołanie≤60 s ma test przy bezczynnym widoku/ciepłym cache. |
@@ -129,3 +132,20 @@ ui/ jest oddzielne od skills/guidefold; frontend nie trafia do paczki konsumenck
 Build sprawdza TypeScript i pakowanie aplikacji. Nie potwierdza a11y, czytelności, SLA, autoryzacji ani wartości produktu.
 Etap 6 zamknął P3 z symulacji: semantyczny Markdown, dokładny surowy plik i skok klawiaturą ustawiający focus na decyzji; dowód s06-flow.json.
 Decyzje do prawdziwego pilota dotyczą potrzeb i pracy, nie wyboru motywu: rozumienie źródła/scope, granica eksport/published/loaded, sens mapy oraz koszt powrotu do Git. Progi i pytania: [03](pipeline/03-survey.md), [05](pipeline/05-simulation.md).
+
+## 7. Obowiązkowa migracja Spectrum Charts
+
+Status: wymaganie właściciela z 2026-09-09; zapis wymagań nie potwierdza wykonania migracji.
+Cel: cała warstwa wizualizacji telemetrii i wykresów Guidefold korzysta z rzeczywistych [Spectrum Charts](https://ui.spectrumhq.in/charts), w tym [Pie/Donut](https://ui.spectrumhq.in/charts/pie).
+Wejścia: bieżące zlecenie właściciela, [SEARCH-USE-TELEMETRY](../SEARCH-USE-TELEMETRY.md), [API-CONTRACT](../API-CONTRACT.md). Dotyczy prezentacji dowodów U4/U11; nie zmienia definicji R/Q/P.
+Zakres zastępowania: wcześniejszy dowolny wybór rendererów i zakaz shadcn/Tailwind w zakresie integracji Spectrum. Nie zmienia API, ledgerów, izolacji org ani historycznych dowodów QA.
+
+- **SC-01 — pełny zakres:** zinwentaryzować i zmigrować wszystkie istniejące wizualizacje telemetrii, wykresy, miniwykresy oraz karty metryk; nowe tworzyć w Spectrum. Bez pomijania małych lub rzadko odwiedzanych widoków.
+- **SC-02 — komponent źródłowy:** użyć rzeczywistych itemów z rejestru, po sprawdzeniu kodu i zależności. Ręczny podobny renderer nie wystarcza. Brak odpowiednika/zgodności wymaga nazwanego wyjątku z uzasadnieniem i dalszą decyzją.
+- **SC-03 — semantyka:** zachować źródła, jednostki, okresy, mianowniki, rewizje, deduplikację, pokrycie i granice org. Unknown ≠ zero; pobranie ≠ użycie. Biblioteka UI nie zastępuje backendu telemetrii ani raportów CLI.
+- **SC-04 — właściwy typ:** @spectrumui/pie-chart dla rozłącznych udziałów jednej całości; odpowiednie Spectrum line/area/bar/histogram/stat cards dla trendów, porównań, rozkładów i wskaźników. Nie zamieniać wszystkich danych w wykresy kołowe.
+- **SC-05 — zachowanie:** wszystkie stany danych, filtry, tooltipy, legendy i dokładne wartości pozostają dostępne; restricted ma pierwszeństwo. Pie bez dodatniego mianownika pokazuje brak danych, a nie pozorne 100%.
+- **SC-06 — jakość:** tokeny marki, responsywność, dostępne tekstowe wartości, klawiatura i focus, reduced-motion i brak fikcyjnego live feedu; zależności i rozmiar serii mieszczą się w budżetach UI.
+- **SC-07 — odbiór:** dla każdej pozycji inwentarza podać trasę/plik, stary renderer, item Spectrum, kontrakt danych, status i dowód. Wymagane testy zgodności liczb/stanu/izolacji, build, a11y oraz porównanie 390px/desktop. Sam skill, pakiet lub demo nie zamyka migracji.
+
+Procedura wykonawcza: [spectrum-charts-migration](../../.agents/skills/spectrum-charts-migration/SKILL.md). Statusy i wyniki rzeczywistej migracji rejestruj w powiązanym raporcie etapu [07-frontend](pipeline/07-frontend.md); nie dopisuj fikcyjnego wyniku do istniejącego audytu.

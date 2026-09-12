@@ -32,9 +32,13 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
  }
 });
 
-test('landing exposes the current retrieval story and docs entry',async({page})=>{
- await page.goto('/');
- await expect(page.getByRole('heading',{name:'What Guidefold does about it'})).toBeVisible();
- await expect(page.getByText('Selected by task and place',{exact:true})).toBeVisible();
- await expect(page.getByRole('link',{name:'Read the docs',exact:true}).first()).toHaveAttribute('href','/docs/');
-});
+// Removed 2026-09-12 (final review C2): 'Spectrum search filters only the labelled landing
+// fixture' guarded the v1 landing scope mini demo — a Spectrum searchbox filtering
+// [data-slot="scope-mini-demo"] down to the matching example instruction, its empty-state
+// status line and its Clear button. The landing v2 rebuild removed that surface entirely,
+// so the test had no target left. The Spectrum surfaces that still exist on the product
+// views are covered by the visual packet above; nothing on landing v2 is a Spectrum search.
+// A main-side 'landing exposes the current retrieval story and docs entry' test (asserting
+// the 'What Guidefold does about it' heading and 'Selected by task and place' copy) is not
+// carried forward here for the same reason: the why/how/value v3 rebuild on this branch
+// replaced that heading and copy, and landing coverage stays in e2e/landing-flow.spec.ts.

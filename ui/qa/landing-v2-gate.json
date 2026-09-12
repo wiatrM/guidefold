@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-12T09:40:00Z",
+  "spec": "ui/design/landing/v2/",
+  "evidenceLevel": "R",
+  "environment": {
+    "build": "pnpm build at b8ae54d plus this follow-up wave (critical-path split for LCP, hero recall figure derived from the evidence mirror); the doc and gate update rides in the same commit",
+    "served": "vite preview, http://127.0.0.1:4396, production dist",
+    "browser": "Chromium 1.63.0 via Playwright, deviceScaleFactor 1",
+    "widths": [
+      "1440x900",
+      "390x844"
+    ]
+  },
+  "checks": [
+    {
+      "id": "typecheck",
+      "status": "pass",
+      "evidence": "pnpm typecheck (tsc --noEmit), 0 errors",
+      "remediation": null
+    },
+    {
+      "id": "build",
+      "status": "pass",
+      "evidence": "pnpm build, exit 0",
+      "remediation": null
+    },
+    {
+      "id": "unit",
+      "status": "pass",
+      "evidence": "pnpm test, 42 files, 376 passed / 376, 23.0 s. Three assertions now build their expectation from research-evidence.json: the hero refusal figure, the hero recall figure and the evidence headline. Two test files render the landing page through an awaited helper because the sections under the hero are a deferred chunk",
+      "remediation": null
+    },
+    {
+      "id": "contracts",
+      "status": "pass",
+      "evidence": "node qa/check-contracts.mjs, result passed, 15 components, 34 css files, 398 tokens, 42 production files, 0 inline properties, 0 diagnostics",
+      "remediation": null
+    },
+    {
+      "id": "e2e-landing",
+      "status": "pass",
+      "evidence": "playwright landing-flow.spec.ts, 13 passed / 13 on this wave's tree, through a temporary config on port 4397; 1.2 min. Includes the demo-dialog case, which now exercises a deferred dialog: focus the Play demo button, Enter, the module loads, the popup opens with Close focused, Escape restores focus to the trigger.",
+      "remediation": null
+    },
+    {
+      "id": "e2e-suite",
+      "status": "pass",
+      "evidence": "pnpm test:e2e equivalent (default config's testIgnore, temporary port 4397), 38 passed / 38, 3.2 min. This is the suite that covers the management routes, which is where the BrowserRouter move in main.tsx could have shown up",
+      "remediation": null
+    },
+    {
+      "id": "js-budget",
+      "status": "pass",
+      "evidence": "Landing route code is now two chunks and the budget is read against their sum: landing 32,438 B raw / 11,051 B gzip plus BelowHero 70,566 B / 24,080 B = 103,004 B / 35,131 B, against the task 1 baseline of 76,889 B / 25,216 B. Delta +9,915 B (+9.68 KB), budget +34 KB; down from the +11,026 B recorded at task 13. Route CSS 6,150 B gzip (1,612 + 4,538), was 7,678 B. Entry chunk 84,756 -> 60,620 B gzip. First-paint payload at / 224.61 -> 108.61 KB gzip. Recorded in docs/reports/readme/build-notes.md",
+      "remediation": null
+    },
+    {
+      "id": "js-budget-lazy-chart",
+      "status": "not_applicable",
+      "evidence": "bar-chart chunk 358,590 B raw / 103,400 B gzip is lazily imported and was already lazily imported at the task 1 baseline (git show 2cf2ba8:ui/src/routes/landing/ResearchEvidence.tsx line 5), so it is outside the route-chunk delta in both directions",
+      "remediation": null
+    },
+    {
+      "id": "lcp",
+      "status": "pass",
+      "evidence": "Emulated 4G on the local production preview (CDP Network.emulateNetworkConditions latency 150 ms, download 1.6 Mbps, upload 750 kbps; 4x CPU at 390 only), cold cache, five runs per width, medians. After: 1440 LCP 1,712 ms on the h1 line [1688 1708 1712 1724 1732]; 390 LCP 868 ms [852 860 868 880 1804]. Before, same harness and same machine minutes earlier on a build with the eleven changed source files reverted: 1440 2,268 ms [2208 2256 2268 2268 2472]; 390 3,000 ms [2728 2972 3000 3076 3104], both on the hero body paragraph. The 390 LCP element flips: with the hero painting sooner, the pre-mount shell paragraph in index.html is the largest text in four runs of five and nothing larger paints after it, so LCP lands at 868 ms. The conservative reading is the hero copy's own paint, measured with a MutationObserver on #hero-title plus a two-frame settle: 1,657 ms at 1440 and 1,844 ms at 390 after, against 2,206 ms and 2,983 ms before. Both readings are inside the 2.0 s budget at both widths. Cause and fix, measured one at a time from the 2,152 ms recorded at task 13: the bundle, not the poster. (a) vite.config.ts now emits modulepreload links for the landing chunk and its static imports, read out of the bundle, plus preload as=style for the route stylesheet, which merges the two serial transfer waves; (b) main.tsx no longer mounts BrowserRouter or statically imports createApiRuntime, both of which moved to src/management.tsx behind the management route's dynamic import, taking the entry chunk from 82.77 to 61.35 KB gzip; (c) BelowHero.tsx holds the eight sections under the hero as their own chunk, and DemoDialog is deferred to its click, which takes motion and @base-ui (47.58 KB gzip co-chunked) off the hero's path. First-paint payload 224.61 -> 108.61 KB gzip.",
+      "remediation": "Dropping the four font preloads was measured and rejected: it bought 116 ms at 1440 and took CLS from 0.0000 to 0.0528, because the proof-rail figures are set in JetBrains Mono above the fold. No pre-rendered HTML shell was added; (a)-(c) reached the budget without one. Re-measure on a real network profile before treating these as field numbers, and re-read the 390 row as the hero-copy paint rather than the browser's LCP, which now reports an element the page painted before React ran."
+    },
+    {
+      "id": "cls",
+      "status": "pass",
+      "evidence": "0.0000 at 1440 and 390 on a cold production load (PerformanceObserver layout-shift, buffered, no hadRecentInput), and 0.0000 in all ten emulated-4G runs of the LCP measurement above, before and after the critical-path split. Deferring the sections under the hero shifts nothing on screen: the boundary is below the fold at both widths. Before this task: 0.0478 at 1440 and 0.0509 at 390",
+      "remediation": null
+    },
+    {
+      "id": "frame-budget",
+      "status": "fail",
+      "evidence": "4x CPU throttle, production build. Pinned extraction chapter: 0 long tasks at both widths, frame interval median 16.7 ms / 16.8 ms, p95 25.7 ms / 17.7 ms, max 29.8 ms / 19.9 ms. Whole page down and back: exactly 1 long task at each width (192 ms at 1440, 201 ms at 390), median frame 16.8 ms / 16.7 ms. Blocking the bar-chart chunk on the identical pass gives 0 long tasks, which attributes the single long task to the lazy Recharts module evaluating and painting once",
+      "remediation": "Long-task count is 1, not 0, against DESIGN.md v2 section 5. It is one module evaluation per session at the evidence tile, not scroll work. Options: idle-prefetch the chart chunk, or accept and amend the contract. Scroll work itself meets the budget."
+    },
+    {
+      "id": "frame-budget-first-scroll",
+      "status": "pass",
+      "evidence": "The task 6 ~56-78 ms first-scroll long task: 0 long tasks on a cold load at 1x CPU. At 4x CPU two long tasks appear (68 ms at t=50 ms, 180 ms at t=477 ms) and both land before the scroll starts, so they are script evaluation during load, not the scroll sampler",
+      "remediation": null
+    },
+    {
+      "id": "one-sampler",
+      "status": "pass",
+      "evidence": "Runtime census with data-film=\"on\" after a full scroll pass: 2 window scroll listeners, 5 window resize listeners, 6 IntersectionObservers, 5 ResizeObservers. content-visibility:auto count 0 (pass). will-change set on the pinned stage plus 6 Spectrum bento-card internals (transform, filter)",
+      "remediation": "Contract amended to the as-built counts rather than left failing (final review M4). The page's own code opens one scroll sampler and the two-observer entrance pool; the remainder belong to two recorded exceptions, motion's scroll() in Extraction.tsx and the Spectrum bento's whileInView, neither of which the wiring layer can collapse without editing a hash-pinned file."
+    },
+    {
+      "id": "backdrop-filter-over-film",
+      "status": "pass",
+      "evidence": "0 elements have a live backdrop-filter while data-film=\"on\", swept with getComputedStyle over every element in the document. tokens.css declares --glass-backdrop: blur(var(--glass-blur)) on :root and none under [data-film=\"on\"]; the four consumers (hero, extraction, retrieval, telemetry) read backdrop-filter: var(--glass-backdrop). blur(0px) was still a live backdrop-filter: the compositor allocates a backdrop root and reads back the viewport whatever the radius. hero.module.css:106-107 now describes what the code does",
+      "remediation": null
+    },
+    {
+      "id": "contrast-over-film",
+      "status": "pass",
+      "evidence": "Composited-page measurement with the copy hidden and the pixels behind its exact rectangles sampled (qa/landing-contrast.mjs, BASE=4382). Worst case per section: hero 12.18, extraction 4.66, how-it-works 7.24, instruction reader 12.11, proof-gate 5.24, telemetry 5.72, research-results 7.60, availability 8.59, waitlist 8.60, questions 7.28. At the hero anchor (playhead 0.00, sunrise window): display 10.92, body 8.44-17.37. Thresholds body 4.5, large 3, hero display 7",
+      "remediation": null
+    },
+    {
+      "id": "targets-390",
+      "status": "pass",
+      "evidence": "landing-flow.spec.ts 'every link and button meets 44px at 390': every visible a[href] and button in the whole document, header included, measures at least 44 x 44; a visible control with no box is a failure. Two named exclusions: inline text links inside a sentence (p a and the consent sentence's Privacy link) and input[type=checkbox], whose target is the 44 px label.consent asserted separately. Found and fixed: the header and footer brand links at 128x28 (now --landing-brand-min-height at 720 and below) and the 28 px wide Docs nav link (now --touch-width)",
+      "remediation": null
+    },
+    {
+      "id": "keyboard",
+      "status": "pass",
+      "evidence": "Covered by the landing e2e: demo dialog focus trap, focus restore to the Play demo button on Escape, FAQ triggers ship aria-expanded=false and the #privacy deep link opens its panel. No separate manual pass was run in this task",
+      "remediation": null
+    },
+    {
+      "id": "axe",
+      "status": "pass",
+      "evidence": "axe clean at 1440 and 390, with the FAQ closed and open and with the demo dialog open, and on the reduced-motion pass; colour-contrast enabled. Two consecutive suite runs",
+      "remediation": null
+    },
+    {
+      "id": "reduced-motion",
+      "status": "pass",
+      "evidence": "reducedMotion:'reduce': 0 video elements, no hero-flight or intro request, the tier route rests at stroke-dashoffset 0px, axe clean. Content diff against the default pass, both after a full scroll sweep: headings 21 vs 21 identical, section ids 10 vs 10 identical, main links 12 vs 12 identical, data-beat/data-tier-route/data-decision/data-delivered-card/data-proof/data-value/data-ask-reason/data-stage markers 17 vs 17. One body text line is absent under reduced motion, 'Replay', the control for a video that is never created; the reduced pass carries 17 extra lines, all of them the chart's axis ticks and series legend, which had not painted yet in the default capture. No content is lost",
+      "remediation": null
+    },
+    {
+      "id": "film-failure",
+      "status": "pass",
+      "evidence": "Route-blocking **/hero-flight.* leaves data-film unset, the poster stays, the page renders complete. Capture qa/landing-v2/film-failed-1440.png. The two aborted requests are the only console errors in the whole capture pass and are the deliberate block",
+      "remediation": null
+    },
+    {
+      "id": "film-scrub",
+      "status": "pass",
+      "evidence": "Slow forward scroll, 302 samples top to bottom: playhead strictly monotonic, 0 backward steps, 0.000 s largest regression, 0 -> 9.722 s over a 10.0417 s film. Fast reverse in 21 steps returns to 1.027 s and settles to 0.002 s within 800 ms. No seek stutter and no stall observed",
+      "remediation": null
+    },
+    {
+      "id": "film-anchors",
+      "status": "pass",
+      "evidence": "Shipped anchors how-it-works 4.40 and proof-gate 5.85. Re-measured in this wave on the deferred-chunk build, because BelowHero.tsx changes when the anchored sections enter the DOM: settled playhead with each section parked at its own top (scrollIntoView block:start), read at 1.5 s and again at 3.0 s, identical both times. 1440: how-it-works 4.267 s against the 4.2083 cut (margin 0.059 s, wider than the 0.042 s one-frame deadband), proof-gate 5.769 s against the ~5.67 cut. 390 x 844: how-it-works 4.262 s, proof-gate 5.780 s. Film duration 10.0417 s at both widths. Task 13 read 4.317 / 5.770 at 1440 and 4.264 / 5.781 at 390; the 1440 how-it-works settle moved 0.050 s earlier and every anchor still opens past its own cut. qa/landing-v2/retrieval-1440.png still shows the four-card fan behind 'Thirty thousand rules. Four reach the agent.'",
+      "remediation": "The margin is carried by the anchor second, not by a navigation-offset subtraction: the header computes position: static at 720 and below, so subtracting a sticky offset would over-correct at 390. Scope: measured on the anchor-navigation path at 1440 and 390, not free scrolling. The 1440 how-it-works margin is 0.059 s; a further shift of that size would put it inside the one-frame deadband, so re-measure this row whenever the page's DOM or height changes."
+    },
+    {
+      "id": "radius",
+      "status": "pass",
+      "evidence": "Page-wide audit of src/routes/landing/*.css: 7 uses of --radius-small (4 px) in extraction.module.css (3) and landing.module.css (4) replaced with --landing-radius. Only --landing-radius (8 px) and --landing-radius-panel (16 px) remain on landing surfaces",
+      "remediation": null
+    },
+    {
+      "id": "preservation",
+      "status": "pass",
+      "evidence": "protected-strings.test.tsx passes inside the 373/373 unit run; the preservationMap strings appear verbatim as their own nodes",
+      "remediation": null
+    },
+    {
+      "id": "citable-evidence",
+      "status": "pass",
+      "evidence": "Page carries 76 of 76 harmful rules refused (dated 2026-09-11, labelled a delivery boundary and not a task-success claim) and +8.53 pp Recall@10 on SRA-Bench (dated 10 September 2026, labelled exploratory offline retrieval). No 17/20, no 25/25, no 30k latency figure, no zero-risk phrasing; the retrieval section states latency at 30k is in the Q6 validation plan and is not claimed. Correction to the task 13 record, which claimed both hero figures were already derived: the hero recall figure was still the literal string '+8.53 pp Recall@10 on SRA-Bench.' in Hero.tsx. It now reads vs_flat.recall10.delta_pp through format.ts, the module the research headline and the results table also use, and the rendered string is byte-identical to design/landing/v2/copy.md line 104. A grep of src for 8.53, 76 of 76, 4.81 and 4 of 4 outside tests and copy docs returns nothing. Three unit assertions build their expectation from the same JSON.",
+      "remediation": null
+    },
+    {
+      "id": "anti-slop-screenshot",
+      "status": "pass",
+      "evidence": "De-logoed 1440 capture read cold: a hierarchy of rules in a repository, ranked per task, of which four reach a coding agent, with a refusal boundary and a promotion gate. Not 'some AI dashboard'. Real artefacts on screen: the path platforms/atlas/identity/turnstile/, the SKILL.md reader, node names root/organisation/team/service with rule counts 5/5/13/3, a 27-candidate funnel, and a benchmark table",
+      "remediation": null
+    },
+    {
+      "id": "anti-slop-banned-patterns",
+      "status": "pass",
+      "evidence": "No gradient text, no row of three identical cards (the delivered row is four, the bento tiles are deliberately unequal), no glow blobs or mesh gradients, no stock icons in circles, no all-caps tracked eyebrow (sentence-case mono with a hairline), no meta strings joined with middle dots. The directional glyph appears only on the two primary actions. Every figure carries a denominator, a date or a status word",
+      "remediation": null
+    },
+    {
+      "id": "read-aloud",
+      "status": "pass",
+      "evidence": "Every heading and eyebrow read aloud: 'Your repos are already writing the handbook.', \"One team's fix becomes everyone's rule.\", 'Thirty thousand rules. Four reach the agent.', 'Seventy-six harmful rules. Seventy-six refusals.', 'You see which rule failed, and why.', 'Plus 8.53 points of recall over flat.', 'Clone it today. It is open.', 'Be first on hosted Guidefold.', 'Before you join'. All are sentences a colleague would say. One residue: the extraction beat-2 body reads 'The reusable part is lifted' then 'promotes it a level, and shows an owner the diff.', a copy.md sentence split across beats under the 2026-09-11 ruling",
+      "remediation": null
+    },
+    {
+      "id": "banned-words",
+      "status": "pass",
+      "evidence": "git diff of this task over ui and docs greps clean for seamless, streamline, empower, unlock, effortless, supercharge and bare 'powerful', and their Polish calques",
+      "remediation": null
+    },
+    {
+      "id": "literal-values-in-modules",
+      "status": "pass",
+      "evidence": "node qa/check-contracts.mjs reports 0 diagnostics; no literal colour or dimension in any CSS module, tokens.css is the only declaration site. Re-run after the CSS module split between landing.module.css consumers",
+      "remediation": null
+    },
+    {
+      "id": "console-network",
+      "status": "pass",
+      "evidence": "Full capture pass at 1440 and 390 (full page, nine anchors, pinned mid-beat, reduced motion): 0 console errors and 0 network errors. The only two console errors in the whole run are the deliberately aborted hero-flight requests in the film-failure case",
+      "remediation": null
+    },
+    {
+      "id": "horizontal-overflow",
+      "status": "pass",
+      "evidence": "document.documentElement.scrollWidth === window.innerWidth at 1440 and 390 after a full scroll pass; noHorizontalScroll also asserted by three e2e tests. Re-swept on the fix-wave tree at 1440: no leaf element under main has scrollWidth past its clientWidth; retrieval.module.css .cardScope now carries overflow-wrap: anywhere, so atlas.identity.turnstile wraps inside its 110 px card instead of running 48 px past its border",
+      "remediation": null
+    },
+    {
+      "id": "housekeeping",
+      "status": "pass",
+      "evidence": "No temporary script or config under ui/ (the task 11 note about verify-tmp.mjs: the file is gone; the only .mjs files outside node_modules are the seven committed qa/ tools). qa/landing-v2/ screenshots retaken 2026-09-12 against this build, so none predates the 5df5d2f contrast fix; the identical extraction-beat3-1440.png duplicate was removed. The temporary playwright.landing.tmp.config.ts used for port 4381 was deleted after the runs",
+      "remediation": null
+    },
+    {
+      "id": "secrets",
+      "status": "pass",
+      "evidence": "No credential, token or key in the changed files; the only address on the page is the published hello@cloudfloo.io",
+      "remediation": null
+    }
+  ],
+  "limits": [
+    "Source and browser checks at R level on one WSL2 machine against a local vite preview; not a pilot measurement and not a field measurement.",
+    "The 4G profile is Chrome DevTools network emulation (150 ms RTT, 1.6 Mbps down, 750 kbps up), not a measured mobile network; the LCP figures are that emulation's numbers. The 390 profile adds Chrome's 4x CPU throttle.",
+    "The LCP before/after pair was measured back to back in one session: the before build was produced by reverting the eleven changed source files, rebuilding, measuring, then restoring them. A browser outside this sandbox was using 70-80% of a core throughout, which is why the before numbers (2,268 / 3,000 ms) read higher than the 2,152 ms recorded at task 13 on a quieter machine. The delta, not the absolute, is what the pair supports.",
+    "At 390 the browser's LCP element is now the pre-mount shell paragraph in index.html, painted before React runs. That is a real reading, not a trick, but it is not evidence that the hero arrives in 868 ms; the hero-copy paint is reported alongside it for that.",
+    "The 30k scale envelope is designed for, not measured; no latency figure is published on the page.",
+    "Contrast is measured on the composited page at each section's own scroll position and at the hero anchor, not on every frame of the film.",
+    "Frame budget is measured with Chrome's 4x CPU throttle on a quiet machine; frame interval is rAF cadence, which is floored at the 16.7 ms vsync and therefore bounds, rather than reports, main-thread work per frame. It was not re-measured in this wave; the deferred sections change when the chart and the bento arrive, not what they do.",
+    "The anti-slop screenshot test was read by the gate agent, not by an engineer outside the project; a human reading counts for more.",
+    "qa/check-route-split.mjs could not run as committed: it waits for a heading 'Team rules. Right where agents work.', which the v2 page does not have (the string survives only as the og:title and in the pre-mount shell paragraph). It is stale from before landing v2, independent of this wave. Its two assertions were re-run by hand against the v2 h1 and both hold, with a third added for the new management chunk.",
+    "e2e was run through temporary, uncommitted configs on port 4397 (both the landing suite and the rest) because port 4332 is held by a process outside this sandbox and port 4331 is the owner's dev server. Both temporary configs were deleted after the runs.",
+    "The hero at 390 was re-laid out in the previous wave: the body paragraph is visible again and the scroll cue alone is dropped. Measured fold at 390x844: proof rail 684-888, cell 1 complete at 693-781, cell 2 figure complete at 792-837, cell 2 qualifier 841-879, i.e. 35 px below the fold. Both cells complete is not reachable with spacing levers alone.",
+    "Re-measured in this wave: typecheck, build, unit, contracts, e2e-landing, e2e-suite, lcp, cls, js-budget, citable-evidence, literal-values-in-modules, film-anchors, and the route split. Carried forward unchanged from the 944f6ef capture, because nothing in this wave touches what they measure: frame-budget, frame-budget-first-scroll, one-sampler, backdrop-filter-over-film, contrast-over-film, targets-390, keyboard, axe, reduced-motion, film-failure, film-scrub, radius, preservation, horizontal-overflow, console-network, and the anti-slop rows.",
+    "The byte-identity check for the hero recall string is against ui/design/landing/v2/copy.md at b8ae54d, line 104. That file is being rewritten in the working tree under a separate 2026-09-12 owner verdict and is not part of this commit; in that draft the string survives only in the preservation table. If the rewrite lands, re-check the hero string against whatever it says then."
+  ]
+}

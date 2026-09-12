@@ -1009,3 +1009,145 @@ proof-gated/evolved-map arms on source-owner-disjoint repository scopes and a
 later revision. Task success, harmful loads, stale/conflicting delivery and
 false `ASK` are primary; Recall@k is secondary. The file is deliberately not a
 frozen protocol and no execution has started.
+
+### 5.22 E2 proof-gate regression matrix
+
+The tracked [E2 matrix](reports/bakeoff/E2-PROOF-GATE-MATRIX-2026-09-10.md) is the next executable quality gate for the conflict and revision boundary. On a synthetic sibling catalog, the production proof gate produced two safe `LOAD` decisions and six fail-closed `ASK` decisions for conflict, deprecated status, scope mismatch, revision drift, body tampering and incomplete closure. This is regression evidence (R/Q), not pilot evidence: it contains no model, real repository or task evaluator. The next meaningful result is the same matrix on real monorepo snapshots plus the frozen paired-task harness, where task success, harness errors, SEARCH/USE/ASK, tokens, latency and unknown coverage are measured together.
+
+### 5.23 End-to-end quality-gate evaluator
+
+The new [`quality_gate.py`](../tools/pilot/quality_gate.py) evaluator joins task-level replay rows with a separate E2 decision file. It reports task success, unknown coverage, useful delivery, harmful-load Wilson bounds and paired candidate/baseline deltas. It requires conflict/revision trigger cases and known candidate outcomes before it can return `pass`; missing evidence returns `inconclusive`, while a loaded stale/conflicting body returns `fail`. The implementation and regression cases are documented in [`QUALITY-GATE-EVALUATOR.md`](pilot/QUALITY-GATE-EVALUATOR.md). This is instrumentation and a decision guard, not new experiment evidence; the real E2 and frozen paired-task replay remain outstanding.
+
+### 5.24 Source-disjoint URCT preparation
+
+The [source-disjoint URCT manifest](reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json)
+and [preparation report](reports/bakeoff/SOURCE-DISJOINT-URCT-2026-09-10.md) replace the earlier
+same-owner input as a candidate corpus for the held-out hierarchy study. It contains two families,
+eight hash-addressed public-repository snapshots and four C/C′ cases; A, B and C have distinct
+GitHub owners within each family, and an independent hash check passed. The replay helper
+[`fetch_source_disjoint_urct.py`](../tools/pilot/fetch_source_disjoint_urct.py) rebuilt all eight
+records from the pinned public commits with matching hashes. It is still
+`PREPARED_NOT_ANNOTATED`: C′ is a controlled drift derivative, both reviewer forms are pending,
+and no model, retrieval or task execution has been run. The corpus therefore removes one
+independence flaw but does not yet open the publication gate.
+
+Fresh replay `urct-fetch-e5e4bdd-2026-09-10T21:54:09+02:00` ran in the Docker/WSL workspace with
+new clone caches and returned `PASS`, records `8/8`, with every digest equal to the manifest.
+Command: `python3 tools/pilot/fetch_source_disjoint_urct.py --manifest
+docs/reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json --output
+/tmp/guidefold-urct-replay-e5e4bdd --repo-cache /tmp/guidefold-urct-cache-e5e4bdd`.
+
+### 5.25 Annotation integrity gate
+
+The new [`verify_annotation_packet.py`](../tools/pilot/verify_annotation_packet.py) adds the
+mechanical boundary between corpus preparation and semantic evaluation. In `blank` mode it
+verified the four generated C/C′ packets, both reviewer forms per packet, source hashes and the
+`model_calls_allowed=false` invariant. In `annotated` mode it will reject incomplete labels,
+unknown field values, duplicate reviewer fields and evidence ranges outside the immutable source
+files; it reports raw reviewer agreement but leaves disagreements for adjudication. The local
+replay returned `BLANK_PACKET_VALID` with manifest hash
+`2e3887610dba163ec2118eb51bcd3b59c94640a1081a62c607c6ec264acb288e` on 2026-09-10. This is
+input-integrity evidence, not a semantic, task-success or publication result.
+
+### 5.26 Hidden-verifier Pi execution smoke
+
+The new [`run_agent_tasks.py`](../tools/pilot/run_agent_tasks.py) separates the retrieval-only Pi
+replay from task execution. It copies each task workspace into a temporary directory, keeps hidden
+verifiers in a separate evaluator root, permits only the declared Pi tools, and emits rows accepted
+by `quality_gate.py`. Verifier failures are `failure`; agent, timeout and harness failures are
+`unknown` with `harness_error=true`. Unknown safety/usefulness observations remain null.
+
+On 2026-09-10, one harmless task was run twice against the live 10,123-card Go snapshot with the
+same task bank and hidden verifier. Both arms passed the verifier. `proof_gated` made 1 SEARCH and
+4 USE calls, received 4 `ASK` responses and delivered zero body characters; `legacy` made 1 SEARCH
+and 5 USE calls, delivered 155,728 body characters and received no `ASK`. The Pi output stayed
+blind to the evaluator and correctly reported no used skills in the gated arm. This is direct
+end-to-end harness evidence for fail-closed delivery and verifier plumbing, not evidence of a task
+success advantage: the task was deliberately trivial and no useful-delivery or harmful-load labels
+were available. The local artifacts are under
+`.guidefold/checks/pi-task-execution-smoke-20260910/` and its legacy control directory.
+
+### 5.27 Quality-gate parser correction
+
+An evaluator audit found that a JSONL file containing exactly one object was parsed as an optional
+`{"rows": [...]}` wrapper and therefore produced zero attempts. The parser now recognizes a
+single task row, with a regression test covering the format. Replaying the existing Pi smoke
+through the corrected evaluator reports one candidate attempt, task success `1/1`, zero harness
+errors, `SEARCH=1`, `USE=4`, `ASK=4`, 34,282 ms and zero delivered body characters. Useful
+delivery and harmful-load remain unknown for that deliberately trivial task, so this correction
+improves accounting integrity but adds no task-quality claim.
+
+### 5.28 Fresh source replay and annotation-packet regeneration
+
+On 2026-09-10 a clean-cache replay of the source-disjoint manifest fetched the eight pinned
+public blobs (two families, A/B/C/C′) and reproduced every manifest digest. The new
+[`make_annotation_packet.py`](../tools/pilot/make_annotation_packet.py) then generated four
+blank C/C′ packets (one current and one drift target per family), each with two independent
+reviewer forms and six canonical fields. `verify_annotation_packet.py --mode blank` returned
+`BLANK_PACKET_VALID`, `packet_count=4`, with `model_calls_allowed=false`.
+
+This is a preparation result, not a semantic label or task outcome. The packet is deliberately
+generated from the fresh snapshot directory rather than silently checked into the source corpus;
+the manifest, generator, and verifier are the reproducible source of truth. The next meaningful
+step is for two independent human reviewers to fill the blank forms, followed by adjudication
+of disagreements. No model call may occur before that step.
+
+### 5.29 Four-task Pi feasibility replay
+
+The first shared-bank end-to-end feasibility replay ran four isolated hidden-verifier tasks in
+both `map+gate+evolution`/`top_down`/`proof_gated` and `flat`/`flat`/`legacy`. After correcting a
+fixture newline and repeating the full bank, both arms scored **3/4 (75%)** with no harness
+errors. The candidate made 12 SEARCH and 16 USE calls, all 16 ending in `ASK` with zero body
+characters; the legacy control made 4 SEARCH and 17 USE calls and exposed 457,275 body
+characters. The one failed task was the same in both arms: the agent omitted a required final
+period, so the hidden verifier correctly rejected it. Paired success delta was 0 pp.
+
+This is a useful execution and delivery-boundary signal, not a quality or publication claim.
+The quality gate remains `inconclusive` because E2 conflict/revision cases and independent
+useful/harmful delivery labels are absent, and the bank has only four trivial tasks. The frozen
+inputs and report are in
+[`research/e6-feasibility-20260911/README.md`](../research/e6-feasibility-20260911/README.md).
+
+### 5.30 Source-backed E2 delivery matrix
+
+On 2026-09-11, the proof-gated policy was replayed against the fresh, hash-verified
+engineering and documentation C/C′ snapshots. Each of the four targets contributed 19
+harmful mutations covering conflict, deprecation, scope, stale revision, tampering,
+incomplete closure and sibling transfer, plus one safe complete-proof case. The candidate
+returned `ASK` for all 76 harmful cases and `LOAD` for all four safe cases; the flat exposure
+control returned `LOAD` for all 76 harmful cases. The one-sided Wilson 95% upper bound for
+harmful delivery is 4.81%, and stale/conflicting body delivery is zero.
+
+This is source-backed deterministic R/Q evidence for the delivery boundary, not a human
+semantic judgment, natural-hierarchy transfer result or task-success claim. The combined
+task scorecard therefore remains `inconclusive` because the four-task Pi bank has no useful-
+delivery labels and both arms score 3/4. Reproduce it from
+[`research/e2-source-backed-20260911/README.md`](../research/e2-source-backed-20260911/README.md);
+the runner rejects any snapshot whose digest differs from the frozen manifest.
+
+### 5.31 Evaluator-only usefulness labels
+
+The end-to-end runner now accepts optional boolean `useful_delivery`, `harmful_load`, and
+`stale_conflict_delivery` fields from the hidden verifier's final JSON line. The fields are
+parsed only after the agent exits and are never included in the agent prompt; plain-text
+verifiers remain valid and keep the measurements `unknown`. This closes the instrumentation
+gap needed for the useful-coverage part of the quality gate without treating task success or
+body length as a proxy for semantic usefulness. A focused regression suite covers both labelled
+and unlabelled verifier output. Trace rows now also retain the machine-readable `ASK` reason,
+and the scorecard aggregates those reasons per arm; this makes missing proof, scope denial and
+revision drift visible in the organization telemetry instead of collapsing them into one count.
+
+### 5.32 Source-backed E2 through the Go HTTP path
+
+An opt-in integration test now takes the fresh engineering and documentation C/C′ snapshots,
+publishes their bytes through the real import/parse/build worker, and calls the production
+`USE 1.2` handler with `delivery_policy: proof_gated`. The replay passed **4/4** targets:
+each returned `delivery.action=LOAD`, `reason=source_proof_complete`, `status=hydrated` and a
+non-empty body. The service itself verified the cited source hash and range. The test skips
+only when its external snapshot directory is not supplied; with the variable set, missing
+PyYAML or PostgreSQL is a failure, not a pass.
+
+This closes the gap between the source-backed evaluator and the actual Go delivery path for
+the safe current-proof case. It still does not replace the harmful-mutation matrix, human
+semantic labels or end-to-end task evaluation. Reproduction details are in
+[`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).

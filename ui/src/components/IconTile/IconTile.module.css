@@ -1,0 +1,13 @@
+.tile{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--tile-size-md);height:var(--tile-size-md);border-radius:var(--radius-tile);background-color:var(--graphite-850);background-image:var(--tile-glow-system),var(--tile-pattern);background-size:var(--full) var(--full),var(--tile-grid) var(--tile-grid),var(--tile-grid) var(--tile-grid);box-shadow:var(--shadow-control),var(--zero) var(--zero) var(--zero) var(--border-width) var(--tile-ring-system);overflow:hidden;isolation:isolate;}
+.glyph{display:inline-flex;color:var(--system-ink);}
+.tile svg{width:var(--tile-icon-md);height:var(--tile-icon-md);}
+.sm{width:var(--tile-size-sm);height:var(--tile-size-sm);border-radius:var(--radius-panel);}
+.sm svg{width:var(--tile-icon-sm);height:var(--tile-icon-sm);}
+.lg{width:var(--tile-size-lg);height:var(--tile-size-lg);}
+.lg svg{width:var(--tile-icon-lg);height:var(--tile-icon-lg);}
+.xl{width:var(--tile-size-xl);height:var(--tile-size-xl);}
+.xl svg{width:var(--tile-icon-xl);height:var(--tile-icon-xl);}
+.human{background-image:var(--tile-glow-human),var(--tile-pattern);box-shadow:var(--shadow-control),var(--zero) var(--zero) var(--zero) var(--border-width) var(--tile-ring-human);}
+.human .glyph{color:var(--human-ink);}
+.neutral{background-image:var(--tile-glow-neutral),var(--tile-pattern);box-shadow:var(--shadow-control),var(--zero) var(--zero) var(--zero) var(--border-width) var(--tile-ring-neutral);}
+.neutral .glyph{color:var(--stone-300);}

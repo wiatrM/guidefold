@@ -18,7 +18,7 @@ Każda historia ma wartość dla użytkownika, właściciela roli, zależności 
 | P06 | Ekstrakcja i enrichment: autor dostaje propozycje poparte źródłami | Backend + research | P04, źródła partnera | U2; provenance, błędy modelu, próbka 30, koszt | #72, #86; nowy zakres #117 |
 | P07 | Review i eksport do Git: owner kontroluje treść przed publikacją | Frontend + CLI | P05, P06 | U2/U3; diff, reject, apply z kontrolą commitu, sync | #72, #85, rozszerzenie #117 |
 | P08 | Konsolidacja i widok piramidy: wspólna wiedza ma źródła i zakres | Research + frontend | P06, P07 | U2/U4; pary powiązane/niepowiązane, brak cykli, decyzja ownera | #117; oddzielne od treningu #76 |
-| P09 | Snapshot i pakiety: agent pobiera dokładnie zatwierdzoną treść | Backend | P02, P04; P07 tylko dla nowej wygenerowanej treści | U5; atomowa publikacja, rollback, references/scripts, budget/closure | #74, #99–100 |
+| P09 | Snapshot i pakiety: agent pobiera dokładnie zatwierdzoną treść, a brak dowodu kończy się `ASK` | Backend | P02, P04; P07 tylko dla nowej wygenerowanej treści | U5; atomowa publikacja, rollback, references/scripts, budget/closure, proof-gated provenance | #74, #99–100 |
 | P10 | Instalator dwóch adapterów: developer korzysta w swoim narzędziu | CLI + integracje | P01, P09 | U5; Claude i Copilot na realnym repo, uninstall, token scopes | #71, #81–84 |
 | P11 | UI użycia i zdrowie integracji: owner podejmuje decyzję na danych | Backend + frontend | P05, P10 | U6; ledger, unknown, retry, rewizje, export | #73, #91–95 |
 | P12 | Raport zmian w CI: autor widzi regresje przed merge | CLI + CI | P03, P05, P09 | U7; deterministyczny diff, kontrolny PR, 10 realnych PR-ów | #72, #85, #87–90 |

@@ -1,0 +1,10 @@
+{
+  "status": "SOURCE_BACKED_E2_MATRIX",
+  "manifest_sha256": "47a145923f1fb256a2d6c03f9a117fbbde9fe99a6ec1d0d419bc9b0c7fa1f3ec",
+  "candidate_rows": 80,
+  "flat_rows": 80,
+  "candidate_harmful": 76,
+  "candidate_harmful_loads": 0,
+  "flat_harmful_loads": 76,
+  "candidate_safe_loads": 4
+}

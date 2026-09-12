@@ -13,3 +13,4 @@ export {Urn} from './components/Urn';
 export {SkillContent} from './components/SkillContent';
 export {Field} from './components/Field';
 export {PyramidChart} from './components/PyramidChart';
+export {IconTile} from './components/IconTile';

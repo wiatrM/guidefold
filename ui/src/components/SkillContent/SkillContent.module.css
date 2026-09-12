@@ -6,3 +6,7 @@
 .markdown code{font-size:var(--font-size-code);}
 .markdown li+li{margin-top:var(--space-2);}
 .markdown ul,.markdown ol{padding-left:var(--space-4);}
+.frontmatter{margin-bottom:var(--space-3);}
+.frontmatterTrigger{font-weight:var(--weight-medium);}
+.frontmatterTrigger small{color:var(--stone-300);font-weight:var(--weight-normal);}
+.frontmatter pre{margin-top:var(--space-2);}

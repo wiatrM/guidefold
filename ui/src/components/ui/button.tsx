@@ -1,4 +1,3 @@
-// shadcn/ui base-nova Button, MIT. Source and review hash: qa/spectrum-registry.json.
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"

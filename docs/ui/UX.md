@@ -32,7 +32,7 @@ Pobranie, context_loaded i outcome to różne poziomy dowodu. No observations/Un
 
 | Obszar | Reguła |
 |---|---|
-| Nawigacja | Import, Library, Map, Skill, Proposals, Usage & quality, Organization. Login i tworzenie org są stanami wejścia; Members/Integrations zakładkami Organization. |
+| Nawigacja | Import, Library, Map, Skill, Proposals, Usage & quality, Organization. Login i tworzenie org są stanami wejścia; Members/Integrations/Telemetry/Audit zakładkami Organization. |
 | Główna akcja | Wynika z obiektu i aktualnego etapu [IA §5](IA.md). Po eksporcie skrót prowadzi do dowodu publikacji; nie obiecuje ponownej decyzji. |
 | Import | Org/repo, zakres i manifest przed wysyłką. Wynik rozdziela przyjęte i pominięte pliki; niekompletny import nie udaje pełnego. |
 | Propozycja | Źródło i kandydat obok siebie na desktopie, kolejno na mobile. Podgląd Markdownu, dokładny surowy plik, diff oraz skok do formularza decyzji. |

@@ -176,6 +176,8 @@ describe('Proposals route, decision, conflict and export', () => {
   test('an owner rolls back a snapshot only after giving a reason, and the reason is sent', async () => {
     const activateSnapshot = vi.fn(async () => snapshot({ ...snapshots[1], active: true, state: 'active' }));
     renderApi(ApiProposalsRoute, base({ activateSnapshot }), 'proposal=p-1');
+    // Snapshots are folded until the owner opens them (a rollback is a deliberate act, 2026-09-12).
+    await userEvent.click(await screen.findByRole('button', { name: 'Expand Snapshots' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Roll back to this' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirm rollback' }));
     expect(await screen.findByText(/Give the reason for this rollback/)).toBeInTheDocument();
@@ -203,6 +205,7 @@ describe('Proposals route, decision, conflict and export', () => {
   test('an owner queues a publication for a named import', async () => {
     const publish = vi.fn(async () => ({ job_id: 'job-7' }));
     renderApi(ApiProposalsRoute, base({ publish }), 'proposal=p-1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Expand Snapshots' }));
     await userEvent.type(await screen.findByLabelText('Publish an import'), 'im-3');
     await userEvent.click(screen.getByRole('button', { name: 'Queue publication' }));
     await waitFor(() => expect(publish).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'im-3', expect.any(String)));
