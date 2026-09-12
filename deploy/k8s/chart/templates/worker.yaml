@@ -94,5 +94,17 @@ spec:
         {{- toYaml .Values.database.networkPeers | nindent 8 }}
       ports: [{protocol: TCP, port: {{ .Values.database.port }}}]
     {{- end }}
+    {{- if .Values.worker.externalEgress }}
+    # `live.repo` reads a repository through api.github.com and calls the
+    # organisation's model provider (ADR-0046 §2, §5); `ascend.run` needs the same
+    # two destinations. A NetworkPolicy cannot match a hostname, so the operator
+    # names the peers rather than the chart guessing a CIDR that will rot. Leaving
+    # this empty is a supported state, not an oversight: the worker then reaches
+    # only DNS and the database, and both job kinds terminate `skipped` with a
+    # named reason instead of hanging on a connection that will never open.
+    - to:
+        {{- toYaml .Values.worker.externalEgress | nindent 8 }}
+      ports: [{protocol: TCP, port: 443}]
+    {{- end }}
 {{- end }}
 {{- end }}
