@@ -1,385 +1,295 @@
-# Guidefold landing — implemented system
+# Guidefold landing — implemented system (v3)
 
 Status: **Implemented**. Date: 2026-09-12.
-Purpose: the durable record of what `ui/src/routes/landing/` actually contains after the v2
+Purpose: the durable record of what `ui/src/routes/landing/` actually contains after the v3
 rebuild, and of the places where implementation had to choose.
-Inputs: `ui/design/landing/v2/DESIGN.md` (the direction this implements), `v2/copy.md`,
-`v2/components.md`, `v2/value-brief.md`, and the preservation contract in
-`ui/design/landing/design-brief.json` (`preservationMap`), summarised in
-`ui/design/landing/DESIGN.md` §2.
-Replacement scope: this file replaces the v1 implemented-system record for this directory,
-including the rules the owner verdict of 2026-09-11 overrode. It replaces nothing outside
-`ui/src/routes/landing/`.
+Inputs: `ui/design/landing/v3/SPEC.md` — binding, and the only direction this implements —
+the preservation contract in `ui/design/landing/design-brief.json` (`preservationMap`), and
+the measured scroll investigation whose remedies R1 and R2 the spec adopts.
+Replacement scope: this file replaces the v2 implemented-system record for this directory.
+It replaces nothing outside `ui/src/routes/landing/`. Where `ui/design/landing/v2/` still
+describes a section this page no longer has, v3 wins.
 
-Authority order is unchanged: preservation contract → owner verdict → `v2/DESIGN.md` →
-`design-brief.json` → craft skills.
+Authority order: preservation contract → owner instruction → `v3/SPEC.md` → craft skills.
 
-Nothing below is described as done unless a command in the task 13 QA gate checked it. The
-measurements are in **Measured** at the end and in `ui/qa/landing-v2-gate.json`.
+Nothing below is described as done unless a command checked it. The numbers are in
+**Measured** at the end, with the commands that produced them.
 
-## Reading order and ids
+## 1. Reading order and ids
 
-`hero → extraction → how-it-works → proof-gate → telemetry → research-results →
-availability → waitlist → questions`, then the footer.
+Nine sections inside `<main>`, then the footer outside it. DOM order is reading order is
+tab order is visual order at every width; no module uses CSS `order`.
 
-DOM order equals visual order equals tab order at every breakpoint; no CSS `order` anywhere.
-One `h1`; one `h2` per section; `h3` only inside the FAQ triggers.
+| # | id | file | what it carries |
+|---|----|------|-----------------|
+| 1 | `hero` | `Hero.tsx` | H1, one sentence, two actions, the trust line, the arrow-down cue, and the organisation portal in a device frame |
+| 2 | `why` | `Why.tsx` | three roles as a `dl`, hairlines between, one value panel |
+| 3 | `extraction` | `Extraction.tsx` | the pinned chapter, three beats, as the owner approved it, plus its value panel |
+| 4 | `portal` | `Portal.tsx` | the review view in a device frame |
+| 5 | `how-it-works` | `Retrieval.tsx` | the instrument: what was typed, what the service did, the four cards; the usage view; the protected reader in a `details` |
+| 6 | `under-the-hood` | `UnderTheHood.tsx` | SEARCH / USE / ASK in plain words, the footnote, the rule library in a device frame |
+| 7 | `proof` | `Proof.tsx` | two figures from the evidence mirror, two small-print lines, one link |
+| 8 | `waitlist` | `BelowHero.tsx` | the two protected availability statements and the untouched `WaitlistForm` |
+| 9 | `questions` | `Questions.tsx` | the four protected Collapsible answers |
+| — | `footer` | `Footer.tsx` | unchanged from 39f2396 apart from its id and its container |
 
-| # | Section id | `h2` | What it renders |
-|---|---|---|---|
-| 1 | `hero` | (the `h1`) | Two-line masked headline, subline, body, the two primary actions, the evidence link, the scroll cue (dropped at ≤ 720, see **The hero at 390**), the tier glyph and the two-figure proof rail |
-| 2 | `extraction` | One team's fix becomes everyone's rule. | The pinned chapter: three beats over one sticky stage, each with its own instrument (the promotion diff, the scope table with per-node rule counts, the tier bars) |
-| 3 | `how-it-works` | Thirty thousand rules. Four reach the agent. | The retrieval instrument: the query, the 27-candidate funnel and the four delivered cards, general first |
-| 4 | `proof-gate` | Seventy-six harmful rules. Seventy-six refusals. | The safety boundary: two figures with their qualifiers, and the ASK trace |
-| 5 | `telemetry` | You see which rule failed, and why. | The telemetry panel and the promotion table, over the Meridian fixture |
-| 6 | `research-results` | Plus 8.53 points of recall over flat. | The evidence bento: chart tile, ticker tile, the open-method tile and the scale tile, plus the dated table and its limitations |
-| 7 | `availability` | Clone it today. It is open. | Open-source status, harness list, the hosting statement |
-| 8 | `waitlist` | Be first on hosted Guidefold. | The protected `WaitlistForm` (form id `waitlist-form`), its success state and its four error strings |
-| 9 | `questions` | Before you join | Four FAQ triggers, every one shipped closed; `#privacy` deep-links its panel open |
+Removed with v3, and the files deleted with them: the use-case chapter, `ProofGate.tsx`,
+`Telemetry.tsx`, `ResearchEvidence.tsx` (and `proofgate/telemetry/evidence.module.css` and
+their three test files), `Availability.tsx` and `availability.module.css`, `IntroFigure.tsx`,
+the hero proof rail, the tier glyph, the demo stage and the pre-JS text shell in
+`index.html`. `evidence.test.ts` stays: it guards the data mirror, not a component.
 
-`?confirm=` / `?unsubscribe=` renders `EmailAction` instead of the nine sections, drops the
-token from the URL and never mounts the film.
+New files: `DeviceFrame.tsx`, `ValuePanel.tsx` (+ `value.module.css` + `ValuePanel.test.tsx`),
+`Why.tsx`, `Portal.tsx`, `UnderTheHood.tsx`, `Proof.tsx` and their four modules.
 
-## Files
+## 2. The page grid
 
-| File | Job |
-|---|---|
-| `index.tsx` | Page shell, header, the nine sections in order, the email-action branch |
-| `Hero.tsx` | Section 1; the headline is `RevealLines`, the proof rail is one P3 panel |
-| `Extraction.tsx` | Section 2; the pinned stage, `activeBeat`, the stacked fallback |
-| `Retrieval.tsx` | Section 3; the funnel instrument |
-| `ProofGate.tsx` | Section 4; figures with qualifiers, the ASK trace |
-| `Telemetry.tsx` | Section 5 |
-| `ResearchEvidence.tsx` | Section 6; the bento, the lazily imported chart, the tickers, the dated table |
-| `Availability.tsx` | Section 7 |
-| `WaitlistForm.tsx` | Section 8; protected markup, untouched by the rebuild |
-| `Questions.tsx` | Section 9 |
-| `Footer.tsx` | Wordmark, link groups, the protected bottom line |
-| `FilmBackdrop.tsx` | Poster-first page film, `FILM_ANCHORS`, `playheadAt`, the damped seek |
-| `Reveal.tsx` / `reveal.module.css` | The entrance layer: `Reveal`, `RevealGroup`, `RevealLines`, `useRevealed` |
-| `scroll.ts` | The shared sampler: one rAF, one passive `scroll`, one `resize`, one `IntersectionObserver` |
-| `InstructionReader.tsx`, `IntroFigure.tsx`, `DemoDialog.tsx`, `instruction.ts` | The `SKILL.md` reader, the mechanism clip, the demo dialog, the Meridian fixture and its protected URLs |
-| `*.module.css` | One module per section plus `landing.module.css` for the shell |
+One container, and every section's content box is it. `landing.module.css` declares
+`.shell` (max-width `--landing-container`, auto side margins, `--landing-gutter` side
+padding) and `.grid` (which composes `.shell` and adds the twelve columns and
+`--landing-column-gap`). Every section composes one of the two.
 
-## Tokens
+The sections themselves are full-bleed. That split is the whole point: a band's background,
+the hero scrim and the film run to the viewport edge while the content keeps the page's
+margins. Before it, `.page` carried the max-width and the padding, and a strip of film
+showed down the right edge of a 1440 viewport while the FAQ stopped 500 px short of the
+waitlist form above it.
 
-Every value lives in `src/tokens/tokens.css`; `qa/check-contracts.mjs` rejects a custom
-property declared anywhere else, a literal dimension or colour in a module, and a literal
-breakpoint inside a module `@media`. **Responsive recomposition is a token swap inside the
-1080 px and 720 px blocks, not a media query in the module.** The only module media queries
-are `(hover: hover) and (pointer: fine)` and `(prefers-reduced-motion: reduce)`. The
-reduced-motion `:root` block is last in `tokens.css` and wins by source order.
+`--landing-container` is 1280 px. `--landing-gutter` is 72 / 48 / 24 / 20 px at
+1440 / 1080 / 720 / 390. Measured content edges are in **Measured**.
 
-Token groups added for v2, by name:
+Two-column blocks split on the same twelve columns: the hero is copy 1–6 and screen 7–12,
+the waitlist is copy 1–5 and form 7–12, and everything else is 1–12. No block's copy is
+narrower than its column: the 34ch and 46ch measures are gone, and the value panel and the
+headline end on the same pixel.
 
-- Entrance: `--duration-entrance` 420 ms, `--duration-panel` 360 ms, `--duration-draw` 520 ms,
-  `--duration-count` 900 ms, `--ease-entrance` `cubic-bezier(.16,1,.3,1)`,
-  `--stagger-entrance` 60 ms, `--stagger-1/2/3` 60/120/180 ms, `--stagger-cap` 240 ms,
-  `--stagger-panel` 70 ms with `--stagger-panel-1/2/3` 70/140/210 ms, `--stagger-count` 40 ms,
-  `--duration-draw-offset` 80 ms, `--enter-rise` 12 px, `--enter-blur` 3 px,
-  `--enter-scale` .985, `--mask-hidden`, `--mask-shown`, `--full-opacity`, `--scale-full`,
-  `--zero-length`.
-- Film and material: `--film-lerp`, `--film-scrim-hero`, `--film-scrim-band`,
-  `--film-scrim-chapter`, `--landing-film-opacity`, `--glass-backdrop` (the whole
-  `backdrop-filter` value, `none` under `[data-film="on"]`), `--glass-blur` (its radius),
-  `--glass-border`,
-  `--glass-ground`, `--glass-highlight`, `--glass-panel`, `--glass-panel-strong`,
-  `--glow-route`, `--glow-system`, `--parallax-panel` 12 px, `--parallax-chapter` 32 px.
-- Type and rhythm: `--landing-display`, `--landing-display-leading`,
-  `--landing-display-tracking`, `--landing-heading`, `--landing-h3`, `--landing-kicker`,
-  `--landing-body`, `--landing-metric`, `--landing-metric-leading`, `--landing-metric-unit`,
-  `--landing-copy-width`, `--landing-measure-gutter`, `--landing-tracking-mono`,
-  `--landing-eyebrow-rule`, `--landing-section-padding`, `--landing-band-gap`,
-  `--landing-grid`, `--landing-panel-pad`, `--landing-radius-panel` 16 px.
-- Colour: `--landing-muted-ink` (the one muted-text token; the batched fix of 2026-09-12
-  replaced `--steel` on roughly fourteen muted classes), `--tier-1` … `--tier-4`.
-- Layout: the `--landing-hero-*`, `--landing-rail-*`, `--landing-retrieval-*`,
-  `--landing-proofgate-*`, `--landing-telemetry-*`, `--landing-evidence-*`,
-  `--landing-availability-*`, `--landing-waitlist-*`, `--landing-stage-*` and
-  `--landing-scope-width-*` families.
+## 3. The value panel
 
-Two radii on landing surfaces and no third: `--landing-radius` 8 px and
-`--landing-radius-panel` 16 px. The task 13 audit replaced the seven remaining
-`--radius-small` uses in `extraction.module.css` and `landing.module.css`. A small element
-that would need a literal 50% reuses `--landing-radius`, which CSS clamps to a circle; the
-reasoning is written out at `retrieval.module.css:152`.
+`ValuePanel.tsx` is the one implementation of the spec's `What you get:` line, used on six
+blocks and nowhere else. Glass surface, `--landing-radius-panel`, `--landing-panel-pad`,
+a 2 px teal rule inset down the left edge, the label in the accent colour at the eyebrow
+size, the sentence at the lede size in `--landing-ivory`. The label is inside the sentence
+rather than a badge above it, so the rendered text is exactly the spec's string and a
+screen reader hears one sentence.
 
-## The entrance layer
+Entrance, once, at 30 % of the panel in view — the same threshold and the same shared
+observer pool the page's P3 panels already use, so it opens no new observer. The rule draws
+top to bottom over `--duration-draw`, the label fades at 80 ms, the sentence lifts 12 px and
+fades at 160 ms, and a teal glow settles out of the rule over 900 ms. That glow is the one
+`@keyframes` on the page: a transition cannot express a there-and-back.
 
-Four patterns, all keyed on `[data-reveal-ready="true"]`, which `Reveal.tsx` sets in an
-effect only after the shared observer is installed. Nothing applies to the pre-enhancement
-DOM, so a missed callback, a thrown error, a refresh mid-page, reverse scroll or JavaScript
-off all leave the finished composition on screen. Only `transform`, `opacity`, `clip-path`
-and `filter` — never a layout property.
+Base-state discipline as everywhere else: every entrance rule is keyed on
+`[data-value-ready="true"]`, written in an effect after the observer exists. A missed
+callback, a thrown error or a platform without `IntersectionObserver` leaves the finished
+panel. Under reduced motion the durations are zero in tokens.css and `useRevealed` reports
+entered on mount, which is the resting state.
 
-| Pattern | What moves | Duration and easing | Stagger | Used by |
-|---|---|---|---|---|
-| **P1 lift** | `opacity` 0→1 and `translateY(12px)`→0 | 420 ms `--ease-entrance` | 60/120/180 ms, capped at 240 ms | Every heading, eyebrow, subline, body and list row: extraction, how-it-works, proof-gate, telemetry, availability, waitlist, questions, footer |
-| **P1 line mask** | `clip-path` `inset(0 0 100% 0)`→`inset(0 0 0 0)` plus the same 12 px rise | 420 ms | same slots | The hero `h1` only, one block per line. `clip-path` is the whole mask, so no wrapper `overflow:hidden` cuts the descenders at the 1.02 display leading |
-| **P2 rule draw** | `scaleX(0)`→1 from the left | 520 ms, delayed 80 ms | — | Hairlines, beat ticks, the tier route |
-| **P3 panel settle** | `opacity` 0→1, `scale(.985)`→1, `blur(3px)`→0 | 360 ms | 70/140/210 ms, capped at 240 ms | The glass instruments: hero proof rail, extraction instruments, retrieval instrument, the four evidence bento tiles |
-| **P4 count** | Per-digit rolling number | `--duration-count` 900 ms, `--stagger-count` 40 ms | — | **Only in the evidence bento**, through the Spectrum `number-ticker` at the wiring layer |
+## 4. Motion
 
-`useRevealed(ref)` fires at the shared **P3 threshold, 30% visible** — not the 60% the
-direction asked for. The ruling of 2026-09-11 chose the two-observer cap over the nicer
-trigger point; counters therefore start a little earlier. Under reduced motion no attribute
-is written at all, which is also what makes the entrance state the e2e settle signal (see
-**The test contract**).
+**Entrances.** P1 lift for copy, P3 settle for the device frames and the service panels,
+once, through `Reveal.tsx` unchanged. P2 is used only by the value panel's rule. P4 Count is
+the proof band's two tickers and runs nowhere near the LCP window.
 
-## The film
+**The film.** Scrubbed by scroll, never played. The poster still is gone: `.film` paints
+`--graphite-950` and the video fades up over it once it can seek, so every failure path —
+reduced motion, Save-Data, a decoder error, a missing file, no `canplay` inside eight
+seconds — leaves the graphite field with nothing left to load. `mounted` no longer waits on
+a decoded still.
 
-`hero-flight.mp4` is 10.041667 s at 24 fps, 241 frames, re-encoded at `-g 6` (a keyframe
-every 0.25 s) at 1.10× the original bytes; the webm was restored to its original bytes
-because `-g 12` cost 1.42× for no scrub gain.
+**R1, the measured seek fix** (`FilmBackdrop.tsx`). Scrubbing used to write `currentTime`
+on every rAF tick that cleared `!node.seeking`: about 66 writes a second into a decoder
+presenting 21–28 frames a second, which the investigation measured as 41–44 % of all
+main-thread busy time during a scroll pass and 80 % of paint time. A write now needs three
+things: no seek in flight, 33 ms of wall clock since the last write, and more than one
+frame of drift. "In flight" clears on `requestVideoFrameCallback`, on `seeked` where that
+API is absent, **or** on a 100 ms timer — the escape hatch is not optional, because a seek
+that resolves to the frame already on screen fires no callback at all and a naive flag
+would freeze the film permanently with every test still green. The loop also parks itself
+once the damper has arrived (`|wanted − current| < FRAME/4`) and is restarted from the
+`useDocumentProgress` callback, instead of running forever on a page at rest. That wake-up
+lives in `FilmBackdrop` rather than as a `lastScrollAt` clock in `scroll.ts`, because
+`scroll.ts` is shared by every registered section and only this one consumer needs it.
 
-The playhead is a **piecewise-linear anchor map built from the measured offsets of the nine
-section elements**, not a table of scroll fractions; it is recomputed on resize, rotation,
-font load and after the film's metadata arrives. `FILM_ANCHORS` in `FilmBackdrop.tsx`:
+**R2, the pinned chapter** (`Extraction.tsx`, `extraction.module.css`). `--landing-stage-scroll`
+is 150vh, down from 260vh: about 1 100 px of document at 1440 and no beat lost, since the
+three windows are fractions of the track. The window arithmetic now exists in exactly one
+place — `beatOpacity` — and the sampler writes its result as `--o` onto the three beats and
+the three ticks, plus `--p` onto the three beats for the parallax and the tier route, which
+inherit it. Before, one `--p` on the stage invalidated style for the whole pinned subtree
+every frame. `--o` rests at 1 in tokens.css, so with no sampler all three beats are simply
+visible, which is the stacked fallback this chapter already rendered. `.instrument` carries
+`contain: layout style` — not `paint`, which would clip the glass panel's backdrop. The
+permanent `will-change: transform` is gone from `.stage`.
 
-| Section id | Playhead | Beat |
-|---|---|---|
-| `hero` | 0.00 | Table above the clouds, the drawn orange route, the sunrise window |
-| `extraction` | 1.40 | The fall into the terrain: contour valley, teal rings, the map sheet lifting |
-| `how-it-works` | **4.30** | Four cream cards standing in a fan around one lit orange marker |
-| `proof-gate` | **5.75** | The route crossing a plateau edge, teal rim light on the boundary |
-| `telemetry` | 6.80 | Stacked plateaus held wide, cubes across the lower tiers |
-| `research-results` | 7.80 | Upper plateau, sparse cubes, the route arriving at the top tier |
-| `availability` | 8.60 | Pull-back begins, the terrain reads as a map again |
-| `waitlist` | 9.10 | The map rising into its folds |
-| `questions` | 9.70 | The folded map on the desk beside the wordmark; a terminal anchor holds the last frame |
+The `--p`/`--o` writes deliberately target the beats and the ticks rather than the panels:
+`Instrument` swaps its element type when the pin engages, so a reference to a panel captured
+in the layout effect would be detached by the time the sampler ran.
 
-The two bold values are the **measured cuts**, not the design seconds. ffmpeg scene detection
-put the hard cut to the four-card fan at **4.2083** (scene score 0.23) and the continuous
-pull-back at which the plateau edge becomes the subject at **≈5.67**; the shipped anchors sit
-the cut plus ≈0.09 s, because the scrub's delta gate stops writing once the residual is under
-one frame and an anchor placed exactly on a cut still renders the previous shot on a forward
-approach. The only other hard cut, the folded map at **8.8333**, falls inside `availability`,
-whose own beat is the pull-back that precedes it.
+**Reduced motion** installs no sampler at all, mounts no video, and rests on the finished
+composition. No scroll-linked motion exists outside the film and the extraction pin; the
+hero screen's 12 px parallax that the spec allows was not built (see §8).
 
-The scrub keeps the damped seek `current += (wanted - current) * .14`, writes only when the
-delta exceeds one frame, and never writes while `seeking`.
+## 5. Film anchors
 
-**Known deviation, measured 2026-09-12.** With a section parked at its own top, the sticky
-header leaves an 80 px scroll offset, and that offset eats the +0.09 s margin: `how-it-works`
-settles at 4.2002 (0.008 s *before* its cut) and `proof-gate` at 5.6686. A visitor landing on
-either section therefore sees the tail of the previous shot. `qa/landing-v2/retrieval-1440.png`
-shows the map sheets rather than the four-card fan. Remedy recorded in
-`ui/qa/landing-v2-gate.json` under `film-anchors`; `FilmBackdrop.tsx` was outside the gate
-task's file scope.
+`FILM_ANCHORS` in `FilmBackdrop.tsx`. Seconds are fixed; the scroll offsets they sit at are
+measured from the live rects on every resize, font settle and body resize.
 
-## The pinned extraction chapter
+| id | second | shot |
+|----|--------|------|
+| `hero` | 0 | table above the clouds, the drawn route, sunrise window |
+| `why` | 0.7 | the first push towards the terrain, horizon still wide |
+| `extraction` | 1.4 | the fall into the terrain: contour valley, teal rings, map sheet lifting |
+| `portal` | 3.1 | the sheet settling over the valley, tiers reading as one surface |
+| `how-it-works` | 4.4 | four cream cards in a fan around one lit marker (cut 4.2083) |
+| `under-the-hood` | 5.85 | the route crossing a plateau edge, teal rim light on the boundary |
+| `proof` | 7.0 | stacked plateaus held wide, cubes across the lower tiers |
+| `waitlist` | 8.4 | pull back begins, the terrain reads as a map again |
+| `questions` | 9.1 | the map rising into its folds |
+| `footer` | 9.7 | the folded map on the desk beside the wordmark |
 
-One sticky stage with three beats, all three in the DOM and all three reachable. The track
-carries `data-p-ready="true"` only when a sampler is actually installed, and
-`data-active-beat` changes only when the beat changes. Base rules paint the **stacked
-fallback**: at 720 px and below, with JavaScript off, under reduced motion and under
-Save-Data the chapter is three stacked blocks and the pin never engages. The pyramid keeps a
-stepped shape at 390 px through `--landing-scope-width-1..3` in the 720 block.
+How the table was rebuilt: v2 had nine anchors, four of whose sections no longer exist
+(`proof-gate`, `telemetry`, `research-results`, `availability`). The three sections that
+stayed keep their seconds — hero 0, extraction 1.4, how-it-works 4.4, the last because the
+four-card fan is a literal beat and belongs to the chapter about four cards. The seconds the
+removed sections held are redistributed over the sections that replaced them, so the film
+still spans the page end to end rather than finishing early. One reassignment is deliberate
+and is recorded here rather than left as a stale comment: the tier-edge crossing at 5.85 used
+to open `proof-gate` and now opens `under-the-hood`. The footer carries its own anchor, so
+the terminal frame is reached by the last screen rather than by the synthetic anchor alone.
 
-The sampler is motion's imperative `scroll()` rather than `scroll.ts`. This is a **recorded
-exception to the one-sampler rule**: routing it through `scroll.ts` was out of the chapter
-task's scope and the cost is a second passive scroll listener.
+## 6. The loader
 
-## Media contract
+A fixed full-viewport overlay in `index.html`, above the app, `pointer-events: none`, so it
+contributes no layout and traps no click. It exists because v3 removed the pre-JS text
+shell: without it a visitor sees an empty document until React commits.
 
-- The hero poster `hero-poster.webp` (1920×1080, 126 KB) is preloaded in `index.html` with
-  `fetchpriority="high"` and is never removed.
-- The `<video>` is **mounted** only when the hero is in view, motion is allowed, Save-Data is
-  off and the poster has decoded. Conditional mounting, not `preload="none"`, is what
-  guarantees zero requests.
-- It crosses in on `canplay`, pauses on `visibilitychange`, on leaving the viewport, on user
-  pause and while the demo dialog is open, and unmounts on `error` or if `canplay` has not
-  fired within **8 s**.
-- Reduced motion and Save-Data render the posters and create no video element at all.
-- Blocking the film leaves `data-film` unset and the poster in place; the page renders
-  complete.
-- The demo dialog mounts the nocookie iframe only while it is open, traps focus and restores
-  it to the Play demo button.
+The mark breathes over 900 ms and is static under reduced motion. Two ways out, and the page
+is never trapped by either: the default is a CSS-only fade after 4 s, whatever JavaScript
+did; the normal path is `data-gone`, set once `document.fonts.ready` has resolved **and** the
+app has committed. `data-gone` restates the whole `animation` shorthand with no delay, so it
+replaces the fallback rather than racing it. A `noscript` rule removes the overlay outright
+and keeps the plain message beside it.
 
-## Fonts and CLS
+The commit signal is `data-hero-mounted` on the document element, written from an effect in
+`Hero.tsx`; the management shell writes `data-app-mounted` for the same purpose on its own
+routes. The overlay removes itself on `animationend`.
 
-`index.html` preloads the four faces the first viewport actually uses — Manrope 400 and 600,
-Instrument Sans 600, JetBrains Mono 400 — and Vite rewrites those `node_modules` paths to the
-hashed build assets. `#root` carries `display:flow-root`, which stops the
-pre-mount fallback heading's margin collapsing through to `body`; that collapse, plus three
-un-preloaded above-the-fold faces swapping in, was the whole of the 0.047 cold CLS.
+The mark is its own 128 px encode, `guidefold-mark-loader.webp`, 7.7 kB. The site's 1024 px
+mark is 177 kB, and preloading that at high priority cost the hero image roughly a second of
+its LCP on emulated 4G; the header and footer brand marks now read the small one too.
 
-`index.html` preloads **no image**. It used to preload `guidefold-stone-hero-v1.webp`, which
-no component renders. Repointing that hint at `hero-poster.webp` measured 2,696 ms LCP at
-1440 on an emulated 4G profile; removing it measured 2,152 ms, because 126 KB of
-`fetchpriority="high"` image sat ahead of the render-critical bundle while the LCP element is
-the hero copy. The poster still paints: `FilmBackdrop.tsx` renders it with
-`fetchPriority="high"` and it is requested exactly once.
+## 7. Real output, and where it comes from
 
-### The critical path, 2026-09-12
+Every mono detail in the retrieval instrument is real output of the shipped CLI against
+`examples/monorepo`, at commit 39f2396, on 2026-09-12:
 
-Removing the poster preload left 2,152 ms at 1440, and the rest was bundle-bound: the LCP
-element is hero copy that only React can paint, so every byte the route imports statically
-sits in front of the headline. Three changes, measured one at a time:
+```
+$ cd examples/monorepo
+$ echo '{"cwd":"…/platforms/atlas/identity/turnstile"}' \
+    | python3 ../../skills/guidefold/scripts/guidefold hook
+[guidefold] scope=atlas.identity.turnstile owner=turnstile-team \
+    chain=atlas.identity.turnstile→atlas.identity→atlas→_root
 
-1. **The route's chunks are declared in the head.** `vite.config.ts` carries a build plugin
-   that reads the landing chunk and its static imports out of the bundle and emits
-   `<link rel="modulepreload">` for each, plus `rel="preload" as="style"` for the route's
-   stylesheet. Without it the browser cannot see any of them until the entry chunk has
-   downloaded *and* executed, which is a second serial transfer wave. The list comes from
-   the bundle, so a re-chunk cannot leave a stale hash behind. The stylesheet is preloaded
-   rather than linked because Vite's own preload helper appends the `<link rel="stylesheet">`
-   when the chunk runs, and a cold fetch there gates the module's execution.
-2. **The router and the API runtime left the entry chunk.** `main.tsx` used to mount
-   `BrowserRouter` and statically import `createApiRuntime`; `src/management.tsx` now holds
-   both behind the management route's own dynamic import. The landing page uses neither.
-   Entry chunk 82.77 → 61.35 kB gzip.
-3. **Everything under the hero is its own chunk.** `BelowHero.tsx` holds the eight sections
-   after the hero; `index.tsx` renders it inside a `Suspense` with a null fallback. Those
-   sections carry `motion` and @base-ui, which rollup co-chunks into 47.58 kB gzip the hero
-   never executes. The demo dialog is deferred the same way, to its click, with the same
-   button as placeholder and as Suspense fallback.
+$ python3 ../../skills/guidefold/scripts/guidefold find \
+    --scope atlas.identity.turnstile --limit 4 "rotate the service token"
+- urn:skill:meridian:atlas.identity.turnstile:postgres-auth      (score=17433 · node=atlas.identity.turnstile)
+- urn:skill:meridian:atlas.identity:rbac-policies                (score=17063 · node=atlas.identity)
+- urn:skill:meridian:atlas.identity.turnstile:turnstile-oncall-runbook (score=16872)
+- urn:skill:meridian:_root:postgres-production                   (score=16484 · node=_root)
 
-First-paint payload at `/` fell from 224.61 to 108.61 kB gzip. Two things this deliberately
-did **not** do: touch the four font preloads, and pre-render an HTML shell. Dropping the font
-preloads was measured — it bought 116 ms at 1440 and took CLS from 0.0000 to 0.0528, because
-the proof-rail figures are set in JetBrains Mono above the fold. Font preloads stay.
+$ find . -iname SKILL.md | wc -l
+27
+```
 
-The boundary is below the fold at both measured widths, so the arriving sections extend the
-page downward rather than displace anything on screen: CLS stays 0.0000 at 1440 and 390.
+So `scope: atlas.identity.turnstile` and `SEARCH · 27 candidates · 4 selected` are literal:
+27 rules in the example repository, four selected by a real run at `--limit 4`.
 
-### Citable figures are derived, not typed
+The four cards the panel names are the spec's, and they are **not** the four that run
+returned. They are the example repository's own rules at the four levels of its hierarchy —
+`security-baseline` at `_root`, `atlas-api-conventions` at `atlas`, `rbac-policies` at
+`atlas.identity`, `postgres-auth` at `atlas.identity.turnstile` — which is what the four
+level labels say. Each card's line is the opening clause of that `SKILL.md`'s own
+`description`. A ranked run for one particular prompt returns a different set; the panel
+illustrates the hierarchy, which is the chapter's subject. This is the one place where the
+page shows a set no single command produced, and it is recorded here rather than implied.
 
-Every published figure on this page is read from `ui/src/data/research-evidence.json` at
-render time and formatted by `format.ts`, which both the hero proof rail and the research
-section import — `76 of 76` and `4.81%` from `proof_gate.matrix`, `+8.53 pp` and
-`Plus 8.53 points` from `vs_flat.recall10.delta_pp` through one `toFixed(2)`. Two unit
-assertions build their expectation from the same JSON, so a refreshed mirror that the markup
-did not follow fails the suite instead of shipping a superseded number.
+`USE · source hash and revision verified · LOAD` names the service's own delivery states as
+`docs/API-CONTRACT.md` defines them; it is not quoted from a run.
 
-## Spectrum decisions
+## 8. Naming of sample content
 
-Installed with provenance in `qa/spectrum-registry.json`, hash-pinned, never edited in place;
-adaptation happens at the wiring layer.
+Owner instruction, 2026-09-12: nobody outside the project knows "Meridian". Every caption,
+label and tag that marks example content says `Sample data` or `sample data` — including the
+extraction chapter's instrument labels and the proof band's `Sample repository`. The single
+survivor is the protected instruction-reader label, which the preservation contract keeps
+byte-identical, and `Landing.test.tsx` asserts that it is the only one left in the rendered
+page. The word still appears inside the app screenshots themselves, which are captures of a
+running UI and cannot be edited here (§10).
 
-| Item | Decision |
-|---|---|
-| `bento-grid`, `bento-card` | Installed; used for the evidence bento. Wiring passes `borderAnim={false}` and gates the spotlight on Save-Data. The hover transform is neutralised with one `!important` and a comment, because the file is hash-pinned |
-| `number-ticker` | Installed; drives P4, and **only** in the evidence bento |
-| `border-beam` | Installed by the component task, **unused** on this page |
-| `spotlight` | Installed; gated on Save-Data |
-| Pinned stage | Exception: aceternity sticky-scroll was rejected and the stage hand-built with `motion`. Obstacle: the registry component owns its own scroll sampler and its own DOM, neither of which can be reconciled with the anchor map or the stacked fallback |
-| `faq-tabs-card` | Exception: the FAQ stays the existing `Collapsible`. Obstacle: the registry card is a tabbed container, not four independently deep-linkable panels, and `#privacy` must open one |
-| `status-tracker` | Exception, recorded at `Telemetry.tsx:21`. Obstacle: its long-running-job framing would have to be rewritten to mean promotion state |
-| `orbital-letters`, marquee | Exception: both are decoration without a data reason on a page whose atmosphere is already the film |
+## 9. Measured
 
-`RevealGroup` must not wrap a `BentoCard`: it wraps component children in a slot div, which
-would become the grid item and defeat `colSpan`/`rowSpan`. The bento applies P3 per tile with
-`Reveal` as the grid item carrying the span class.
+Production build, `pnpm build`, served by `vite preview` on 127.0.0.1:4432. Chromium 1.63.0
+via Playwright, `deviceScaleFactor 1`, dark. 2026-09-12.
 
-The evidence chart is **rendered once**, in the tall tile; the duplicate lower figure was
-removed.
+**Page height and overflow.** 7 511 px at 1440×900 — **8.35 viewports**, against the 8.5
+budget. `documentElement.scrollWidth === clientWidth` at 1440, 1080, 720 and 390.
 
-## The hero at 390
+**Content edges**, every section's content box, at 1440: **152 .. 1288**, inside a container
+padding box of 80 .. 1360. That is the nav card, the hero copy, every headline, every value
+panel, every device frame, the waitlist copy, the waitlist submit button, the FAQ rows and
+the footer — one pair of edges, no exceptions. The hero screen sits at 726 .. 1288, which is
+columns 7–12 of the same grid. At 1080: 48 .. 1032. At 720: 24 .. 696. At 390: 20 .. 370.
 
-Controller ruling, 2026-09-12 (whole-branch review C1). **The body paragraph is in the DOM and
-visible at every width.** It used to be `display:none` below 720 together with the scroll cue,
-which removed the scale envelope and the "nothing unproven arrives" promise from the page and
-from the accessibility tree for every phone reader. Only the scroll cue is still dropped at
-≤ 720, and it is dropped whole: the header is static there, the next section is one thumb away,
-and the cue is navigation, not an argument.
+**CLS 0.0000** at 1440 and at 390, cold production load on emulated 4G (CDP
+`Network.emulateNetworkConditions`, latency 150 ms, 1.6 Mbps down; 4× CPU at 390),
+`PerformanceObserver` `layout-shift`, buffered, `hadRecentInput` excluded. Before the
+`Suspense` fallback was given a height this was **0.32** at 1440: v3's hero is shorter than
+v2's, so the footer painted at y=612 and was pushed off screen when the deferred chunk
+arrived. One viewport of reserved height keeps the footer below the fold until the screens
+land, and the growth that replaces it happens off screen.
 
-The fold is bought back from spacing and from the body's own type, never from content:
-`--landing-hero-body-size` 14 px / `--landing-hero-body-leading` 1.4 (its own tokens, so the
-six other sections keep `--landing-body` 17 px), `--landing-hero-body-margin`,
-`--landing-hero-lede-margin` and `--landing-hero-actions-margin` 12 px, `--landing-rail-pad`
-8 px, `--landing-rail-gap` 4 px, `--landing-rail-stack-pad` 6 px, `--landing-rail-figure`
-18 px. No `order`, no grid-area move: DOM order is still visual order.
+**LCP**, same emulation, cold cache, five runs per width, medians: **1440 2 132 ms**
+[2132 2132 2132 2136 2136]; **390 2 276 ms** [2240 2264 2276 2280 2320]. The element is the
+hero's `proposals.webp` at both widths. This is **above the spec's 2.0 s target** — see §10.
+It began at 3 972 ms; the 177 kB loader mark, the 2880 px screenshot encodes and the absent
+image preload were the three causes, in that order.
 
-Measured at 390 × 844 in Chromium, document coordinates:
+**Film cadence**, 60 px per frame scrub at 1440, presented frames counted with
+`requestVideoFrameCallback` on the `<video>` itself: **25.2 presented frames per second**
+over 2.03 s, median gap 33.4 ms, p95 66.6 ms. The investigation measured 21–28 fps with a
+p95 gap of 67 ms before R1, and predicted the visible cadence would be "unchanged or
+better" — it is at the top of that range. The 41–44 % main-thread saving is the
+investigation's own measurement and was not re-measured here.
 
-| Element | Top | Bottom |
-|---|---|---|
-| Proof rail | 684 | 888 |
-| Cell 1 (figure + qualifier) | 693 | 781 |
-| Cell 2 figure | 792 | 837 |
-| Cell 2 qualifier | 841 | 879 |
+**Suites.** `pnpm test` 393 passed; the three failures in the same run are
+`LibraryRoute.test.tsx` and come from an uncommitted `ui/src/data/apiSource.ts` change made
+outside this task (verified: they pass with that file stashed). `pnpm typecheck` 0 errors.
+`pnpm build` exit 0. `node qa/check-contracts.mjs` passed, 0 diagnostics.
+`node qa/check-route-split.mjs` passed. Landing e2e **13 passed / 13**.
 
-The first cell is complete above the 844 px fold and the second figure is complete above it
-too. The second qualifier crosses the fold by 35 px. Both cells complete would need another
-35 px, which only the headline size or the wrapped header could give, and neither is a
-spacing lever; the ruling's minimum is met and this is the recorded limit, not an oversight.
-A qualifier below the fold is still rendered with its figure — nothing is dropped alone.
+**Screenshots.** `ui/qa/landing-v3/<section>-{1440,390}.png`, every screen at both widths,
+plus the two full-page captures the e2e suite writes.
 
-## Orange, three times
+## 10. Where implementation chose, and what is still open
 
-DESIGN v2 §2.2 says "at most twice"; the page ships three instances and `Hero.tsx:63-65`
-states the count. The three are the hero tier route (`hero.module.css:164`), the extraction
-promoted row, and the full stop in the footer wordmark (`landing.module.css:126`). Each is
-the same meaning — the rule that was promoted — at the start, the middle and the end of the
-page, and none of them is decoration. The implementation keeps three; the spec line is the
-one that is out of date.
-
-## The test contract
-
-`e2e/landing-flow.spec.ts` no longer sleeps before axe. It sweeps the scroll to the bottom
-and back so every `IntersectionObserver` fires, then waits until no
-`[data-reveal-ready="true"]:not([data-reveal-entered="true"])` remains, then drains the
-finite CSS animations. axe scans the document, not the viewport, so waiting only on what is
-on screen is not enough: a section still at its pre-entrance opacity reads as a
-colour-contrast violation on tokens that measure 7.98–12.84:1 at rest. Both the wait and the
-drain are capped, so a stalled animation degrades to roughly the old fixed delay rather than
-failing the suite for the wrong reason.
-
-## Measured, 2026-09-12
-
-Production build served by `vite preview`, Chromium via Playwright, one WSL2 machine. Full
-table and limits in `ui/qa/landing-v2-gate.json`.
-
-| Item | Measured | Contract | Verdict |
-|---|---|---|---|
-| Unit suite | 376 / 376, 42 files | — | pass |
-| Contracts | passed, 398 tokens, 0 diagnostics | 0 diagnostics | pass |
-| Landing e2e | 13 / 13, three consecutive runs (the third after the 2026-09-12 fix wave) | — | pass |
-| JS budget | landing route code 25,216 → 35,131 B gzip (`landing` 11,051 + `BelowHero` 24,080), **+9.68 KB** | ≤ +34 KB | pass |
-| CLS, cold | **0.0000** at 1440 and 390, and under emulated 4G, before and after the critical-path split | 0 | pass |
-| LCP, emulated 4G | **1,712 ms** at 1440 and **868 ms** at 390 with 4× CPU, medians of five; hero copy painted at **1,657 / 1,844 ms**. Same run on the pre-split build: 2,268 / 3,000 ms LCP, 2,206 / 2,983 ms hero copy | ≤ 2.0 s | pass at both widths, on both readings |
-| LCP element | hero copy, never the poster: the `h1` line at 1440; at 390 the pre-mount shell paragraph now outlives it in four runs of five, so the hero-copy paint is reported beside it | — | recorded per the 2026-09-11 ruling |
-| Frame budget, pinned chapter | 0 long tasks, frame median 16.7 / 16.8 ms at 4× CPU | 0 long tasks | pass |
-| Frame budget, whole page | 1 long task (192 / 201 ms), attributed to the lazy chart by blocking it | 0 long tasks | fail, attributed |
-| First-scroll long task | 0 at 1× CPU; at 4× two tasks that both land before the scroll | — | not the sampler |
-| Contrast over film | worst case per section 4.66 – 12.18:1; hero display 10.92:1 at the sunrise anchor | body 4.5, large 3, display 7 | pass |
-| Film scrub | 302 forward samples, 0 backward steps; fast reverse settles to 0.002 s | — | pass |
-| Film anchors | re-measured on the deferred-chunk build: at 1440 `#how-it-works` settles at 4.267 s (cut 4.2083, margin 0.059 s against a 0.042 s one-frame deadband) and `#proof-gate` at 5.769 s (cut ≈5.67); at 390 the same navigation gives 4.262 s and 5.780 s. Task 13 read 4.317 / 5.770 and 4.264 / 5.781 | past its own cut | pass |
-| Observers and listeners | 2 scroll, 5 resize, 6 IntersectionObserver, 5 ResizeObserver | the page's own code opens one scroll sampler and the two-observer entrance pool; the remainder belong to the two recorded exceptions, motion's `scroll()` and the Spectrum bento's `whileInView`, neither of which the wiring layer can collapse without editing a hash-pinned file | pass, as built |
-| `content-visibility: auto` | 0 | 0 | pass |
-| `backdrop-filter` with `data-film="on"` | **0 live surfaces** (`--glass-backdrop: none`; swept with `getComputedStyle` over every element) | none | pass |
-| Targets at 390 | every visible link and button ≥ 44 × 44 across the whole document, header included; the consent checkbox's target is its 44 px `label`; inline links inside a sentence are excluded by name | 44 × 44 px | pass |
-| axe | clean at 1440 and 390, FAQ closed and open, dialog open, reduced motion | clean | pass |
-| Console and network | 0 errors across the capture pass | 0 | pass |
-| First-paint payload at `/` | 224.61 → **108.61 kB gzip** (entry, route chunk, their shared chunks and both stylesheets) | — | recorded |
-| Route split | `/` requests no `app-*.js` and no `management-*.js`; `/import` still loads `app-*.js` | management code off the public route | pass |
-
-**What these prove and do not.** They prove the page builds, types, passes its own suites and
-behaves as described on this machine in Chromium. They do not prove field performance: the 4G
-figures are DevTools emulation over a local preview, the frame interval is rAF cadence floored
-at vsync rather than a reading of main-thread work per frame, contrast is sampled at each
-section's own scroll position rather than on every frame, and the anti-slop screenshot test was
-read by an agent, not by an engineer outside the project. The 30k envelope is designed for, not
-measured; no latency figure appears on the page.
-
-## What must not come back
-
-Still banned: the 3D pyramid, the WebGL hero atmosphere, the schema-flow canvas, autoplaying
-feature demos, the typewriter, the shine sweep, per-word text reveals, `MorphButton` on this
-page, any new dependency, any new font fetch, any new icon library. Also banned for this page:
-gradient text or a headline with one word in a different colour or weight; a row of three
-identical cards; glow blobs, mesh gradients and radial aurora backgrounds; stock icons in
-circles, an icon per feature, emoji as icons; the all-caps tracked eyebrow; a directional glyph
-glued to link or button text outside the two primary actions; meta strings joined with middle
-dots; glass on anything that is not a real instrument; a third radius; a figure without its
-denominator, date or status word; presenting 17/20 as task-level proof or 0/76 as zero risk.
-
-Lifted by the owner verdict of 2026-09-11 and now shipped: **section entrance motion**,
-**scroll-triggered content motion**, **the 240 ms motion ceiling** and **the
-single-hero-entrance rule**. Motion above 240 ms is permitted only for the four patterns above
-and for the film. The v1 record's "no section reveals, no scroll-triggered content motion"
-line no longer applies and has been removed rather than left to mislead.
-
-Beam cards, beam search and the fold-film hover choreography remain in the repository for the
-management UI; the landing route does not import them.
+1. **The hero screen's parallax was not built.** The spec allows it "at most 12 px" and the
+   motion section says "no other scroll-linked motion". The second rule wins: a scroll
+   registration for 12 px is exactly the cost R1 was written to remove. Recorded as a
+   deviation.
+2. **The trace rows enter on the page's own P1 stagger** (60 ms steps, capped at 240 ms),
+   not the spec's 120 ms. A 120 ms ladder needs four new delay tokens for one block, and the
+   spec's own motion section asks for the vocabulary unchanged.
+3. **LCP is 2.13 s / 2.28 s, not under 2.0 s.** What is left is critical-path
+   serialisation at 1.6 Mbps: HTML, then the preloaded image against three font files and
+   the route chunk. The image is already 36 kB at 1280×800 and preloaded at high priority.
+   Closing the last 130 ms needs a smaller above-the-fold payload than this page has —
+   fewer preloaded faces, or an LCP element that is text.
+4. **The page's marketing prose is about 636 words against the spec's 420.** Every string
+   is byte-binding spec copy and the extraction chapter is owner-approved as committed, so
+   nothing was cut. This is a conflict inside the spec, not a drift from it.
+5. **The app screenshots still read "Meridian" and "meridian" inside the image.** They are
+   captures of the running UI against that example repository. Re-capturing them against a
+   differently named workspace is the fix; it is app work, not page work.
+6. **`ui/qa/landing-v2/` was deleted.** Every capture in it was of a page that no longer
+   exists. `ui/qa/landing-v2-gate.json` keeps its numbers and now cites captures that are
+   gone; it stays as the dated record of the v2 wave.

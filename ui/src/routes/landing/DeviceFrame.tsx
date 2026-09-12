@@ -22,8 +22,11 @@ export function DeviceFrame({src,alt,caption,eager,whole}:{
 }){
  return <figure className={css.deviceFigure}>
   <Reveal pattern="p3" as="div" className={[css.deviceFrame,whole?css.deviceWhole:''].filter(Boolean).join(' ')}>
-   <img className={css.deviceShot} src={src} alt={alt} width="2880" height="1800"
-    loading={eager?'eager':'lazy'} decoding="async"/>
+   {/* The captures are encoded at 1280x800, which is the frame's own box at the container
+     * width on a 1.4x display and a third of the bytes of the 2880 original. The hero's is the
+     * page's LCP element, so it is fetched eagerly and at high priority; the rest are lazy. */}
+   <img className={css.deviceShot} src={src} alt={alt} width="1280" height="800"
+    loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async"/>
   </Reveal>
   <figcaption className={css.deviceCaption}>{caption}</figcaption>
  </figure>;

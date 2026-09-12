@@ -15,7 +15,7 @@ export function LandingFooter({emailAction}:{emailAction:boolean}){
   <div className={css.footerShell}>
   <RevealGroup pattern="p1" as="div" className={css.footerTop}>
    <div className={css.footerIdentity}>
-    <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-web.webp" width="44" height="44" alt=""/>Guidefold</a>
+    <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-loader.webp" width="44" height="44" alt=""/>Guidefold</a>
     <p>Instructions that stay close to the code.</p>
     <a className={css.textLink} href={github+'#quickstart'}>Try the open-source version<ArrowUpRight aria-hidden="true"/></a>
    </div>

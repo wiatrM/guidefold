@@ -7,6 +7,9 @@
  * split is what lets a band's background and the film run to the viewport edge while its
  * content keeps the page's margins (SPEC v3, "Page grid"). */
 .page{position:relative;isolation:isolate;font-size:var(--landing-body);}
+/* See index.tsx: one viewport, so the footer is never on screen before the deferred
+ * screens arrive. */
+.belowHeroReserve{min-block-size:var(--viewport);}
 .shell{max-width:var(--landing-container);margin-inline:auto;padding-inline:var(--landing-gutter);}
 /* The 12-column grid every block places on, inside the container. */
 .grid{composes:shell;display:grid;grid-template-columns:var(--landing-grid);column-gap:var(--landing-column-gap);}
