@@ -96,6 +96,8 @@ describe('helpedShareDelta', () => {
     expect(helpedShareDelta(withShares({helped: 5, hindered: 15}, {helped: 0, hindered: 20}))).toEqual({percent: null, direction: 'up', label: 'new', known: true});
     // previous 0/20 = 0%, current 0/20 = 0%: no change, still known.
     expect(helpedShareDelta(withShares({helped: 0, hindered: 20}, {helped: 0, hindered: 20}))).toEqual({percent: 0, direction: 'flat', label: 'no change', known: true});
+    // previous 15/20 = 75%, current 0/20 = 0%: a real drop to a known zero, the full negative difference.
+    expect(helpedShareDelta(withShares({helped: 0, hindered: 20}, {helped: 15, hindered: 5}))).toEqual({percent: -75, direction: 'down', label: '-75 pp', known: true});
   });
 });
 
