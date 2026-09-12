@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, GoogleLogo, Key, LinkSimple, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
+import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, Key, LinkSimple, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, unknown, useAsync, type ApiProps } from './apiState';
@@ -8,7 +8,7 @@ import { proposalKinds } from '../api/decoders';
 import type { AuditEntry, Job, ImportStatus, Installation, Member, Org, ProposalKind, ProposalLimits, Repo } from '../api/decoders';
 import styles from './OnboardingRoutes.module.css';
 
-type ImportStep = 'login' | 'organization' | 'preview' | 'result';
+type ImportStep = 'organization' | 'preview' | 'result';
 
 function CommandBlock({ commands }: { commands: string }) {
   const [status, setStatus] = useState('');
@@ -55,8 +55,10 @@ function CommandBlock({ commands }: { commands: string }) {
 const terminalImportStates = ['ready', 'partial', 'failed', 'cancelled'];
 /** `proposal.generate` job states that stop the generation panel's own poll (contract §6). */
 const terminalJobStates = ['done', 'failed', 'skipped', 'cancelled'];
+/* Sign-in is no longer a step of this wizard: every management route is private, so an
+   unauthenticated request never reaches it — the shell redirects it to /login (app.tsx).
+   A stale `?step=login` bookmark therefore falls through to the first real step below. */
 const apiSteps: { id: ImportStep; label: string; detail: string }[] = [
-  { id: 'login', label: 'Sign in', detail: 'Identity provider' },
   { id: 'organization', label: 'Organization', detail: 'Choose or create one' },
   { id: 'preview', label: 'Repository', detail: 'Pick what the CLI uploads' },
   { id: 'result', label: 'Import status', detail: 'Files, jobs and publication' },
@@ -306,10 +308,9 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const signedIn = Boolean(me);
   const owner = role === 'owner';
   const requested = ctx.params.get('step');
-  const fallbackStep: ImportStep = !signedIn ? 'login' : !org ? 'organization' : !repo ? 'preview' : 'result';
+  const fallbackStep: ImportStep = !org ? 'organization' : !repo ? 'preview' : 'result';
   const step = apiSteps.some(item => item.id === requested) ? requested as ImportStep : fallbackStep;
   const current = apiSteps.findIndex(item => item.id === step);
-  const providers = useAsync(() => source.getAuthProviders(), 'providers', step === 'login');
   const orgs = useAsync(() => source.listOrgs(), 'orgs:' + (me?.user.id ?? ''), signedIn && step === 'organization');
   const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'result'));
   const imports = useAsync(() => source.listImports({ org: org ?? '', repo: repo ?? '' }), 'imports:' + org + '/' + repo, Boolean(org && repo) && step === 'result');
@@ -368,17 +369,6 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     </ol>
     {signedIn && <OwnerNote role={role} />}
     {formError && <p className={styles.feedback} role="alert">{formError}</p>}
-
-    {step === 'login' && <Panel title="Sign in" eyebrow="Identity" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
-      {providers.phase === 'loading' && <RouteState state="loading" title="Reading providers" description="Asking the API which identity providers are configured." />}
-      {providers.phase === 'error' && providers.error && <ApiFailure error={providers.error} onRetry={providers.reload} retryLabel="Retry the provider list" />}
-      {providers.phase === 'ready' && (providers.value?.providers.length
-        ? <><p>Sign in with an account you already use. No repository scopes are requested.</p>
-          <div className={styles.providers}>{providers.value.providers.map(provider => <ActionButton key={provider.id} tone="human" onClick={() => { void signIn(provider.id); }}>
-            {provider.id === 'github' ? <GithubLogo weight="regular" aria-hidden="true" /> : <GoogleLogo weight="regular" aria-hidden="true" />}Continue with {provider.label}
-          </ActionButton>)}</div></>
-        : <p className={styles.help}>No identity provider is configured on this API.</p>)}
-    </Panel>}
 
     {step === 'organization' && <div className={styles.asideColumns}>
       <Panel title="Your organizations" eyebrow="Organization" icon={<Buildings weight="regular" aria-hidden="true" />}>

@@ -21,10 +21,31 @@ VITE_GUIDEFOLD_API=https://api.example.test pnpm dev
 ```
 Nagłówek pokazuje organizację z `/me` i repozytorium z adresu (`?org=`, `?repo=`). Organizacja spoza `/me.orgs` daje stan restricted bez żadnej informacji o jej treści. Bez działającego API każdy widok pozostaje w stanie loading/error/restricted; to oczekiwane, nie regresja.
 
+### Brama sesji i trasa `/login`
+
+Status: 2026-09-12, polecenie właściciela. Każda trasa panelu jest prywatna. Gdy `/me` zostaje
+odrzucone (`access.status === 'denied'`), powłoka `ApiApp` nie pokazuje stanu restricted w
+środku panelu, tylko przekierowuje żądanie na `/login?return=<oryginalny adres>` (`src/app.tsx`).
+`/login` renderuje się poza powłoką: pełna szerokość, graphite, znak Guidefold, formularz w
+mierze `--form-width`, cele 44 px (`src/routes/LoginRoute.tsx`). Publiczne pozostają `/`
+z `?confirm=`/`?unsubscribe=` (osobne wejście w `main.tsx`, nie dociera do `App`), statyczne
+`/docs/` oraz galeria `/__components`.
+
+Kontrakt bez zmian: strona czyta `GET /auth/providers` i startuje `GET /auth/login/{provider}?return_to=`
+([API §4.1](../docs/API-CONTRACT.md)). Logowanie kończy się u dostawcy tożsamości, a API robi 302 na
+`return_to` — nie ma w aplikacji przejścia „zalogowano”. Cel `return` jest walidowany
+(`src/routes/loginTarget.ts`): przyjmowana jest wyłącznie ścieżka tego samego pochodzenia,
+inaczej `/import`; adres nie nadaje uprawnień.
+
+Kreator importu nie ma już kroku `login`: zostały trzy kroki (Organization, Repository,
+Import status). Zakładka `/import?step=login` bez sesji pokazuje stronę logowania, a z sesją —
+pierwszy realny krok tego konta.
+
 ### Pokrycie operacji kontraktu
 | Widok | Operacje kontraktu | Uwagi |
 |---|---|---|
-| Import | `auth/providers`, `orgs`, `repos`, `imports`, `imports/{id}`, `imports/{id}/plan`, `imports/{id}/proposals:generate` | Polling statusu co 2 s do stanu terminalnego. Generowanie propozycji: plan (grupy, wejścia, szacunek kosztu, limity, generator) czytany przed startem, tylko dla ownera; `proposals:generate` otwiera jedno zadanie `proposal.generate` na rodzaj z własnym `Idempotency-Key`; osobny polling zadań generacji po `job_ids` (niezależny od pollingu statusu importu, który zatrzymuje się po pierwszym stanie terminalnym importu); `skipped`/`llm_not_configured` pokazywany jako uczciwy stan, nie błąd. |
+| Login (`/login`, poza siedmioma widokami) | `auth/providers`, `auth/login/{provider}` | Brama sesji: `denied` na dowolnej trasie panelu przekierowuje tu z `?return=`. Pusta lista dostawców to jawny stan „No identity provider is configured”, nie błąd. |
+| Import | `orgs`, `repos`, `imports`, `imports/{id}`, `imports/{id}/plan`, `imports/{id}/proposals:generate` | Polling statusu co 2 s do stanu terminalnego. Generowanie propozycji: plan (grupy, wejścia, szacunek kosztu, limity, generator) czytany przed startem, tylko dla ownera; `proposals:generate` otwiera jedno zadanie `proposal.generate` na rodzaj z własnym `Idempotency-Key`; osobny polling zadań generacji po `job_ids` (niezależny od pollingu statusu importu, który zatrzymuje się po pierwszym stanie terminalnym importu); `skipped`/`llm_not_configured` pokazywany jako uczciwy stan, nie błąd. |
 | Library | `skills`, `skills/facets`, `skills/facets/lookup` | Filtry `q, scope, owner, layer, status` i `cursor` w URL; bez pobierania body. Aktywna wartość ma własny lookup; `filters[*].available:false` renderuje jawny brak, nigdy cichego „All”. |
 | Map | `map/repository`, `map/scopes`, `map/layers`, `map/relations`, `modules/{scope}` | Leniwe rozwijanie gałęzi (≤100 obiektów na żądanie, twardy limit renderu 200), tekstowa lista relacji z etykietą typu, jawne `truncated`, nazwany unmapped scope. |
 | Skill | `skills/{id}`, `revisions/{rev}`, `revisions/{rev}/raw`, `revisions/{rev}/feedback` | Brak rewizji to `revision_not_found`, nigdy podmiana na nowszą. Link źródła buduje się z `source.url`; bez `git_host_url` pokazujemy ścieżkę i „Source host not configured”. |

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import App from './app';
 import { AccessController, AccessProvider } from './api/access';
 import { ApiClient, ApiError } from './api/client';
@@ -20,6 +20,12 @@ const me: Me = {
 afterEach(() => { sessionStorage.clear(); });
 
 const rejectingSource = () => fakeSource();
+
+/** Reads the address the gate actually navigated to; MemoryRouter has no window.location. */
+function Probe() {
+  const location = useLocation();
+  return <span data-testid="where">{location.pathname + location.search}</span>;
+}
 
 describe('shell composition', () => {
   test('the component gallery renders outside the shell and reads nothing from the API', async () => {
@@ -159,25 +165,71 @@ describe('shell composition', () => {
     expect(screen.queryByText('someone-else')).not.toBeInTheDocument();
   });
 
-  test('a denied session routes to the restricted state and still offers sign-in on Import', async () => {
-    const controller = new AccessController({ fetchMe: async () => { throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); }, onDenied: vi.fn() });
-    await controller.check(true);
-    render(<MemoryRouter initialEntries={['/library']}>
-      <AccessProvider controller={controller}><App source={fakeSource()} /></AccessProvider>
-    </MemoryRouter>);
-    expect(await screen.findAllByText('Access unavailable')).not.toHaveLength(0);
-    expect(screen.getByRole('link', { name: 'Sign in again' })).toBeInTheDocument();
-  });
-
-  test('after a denial the Import view still reaches the sign-in step', async () => {
+  test('an unauthenticated management route leaves the shell for the full-width login page', async () => {
     const controller = new AccessController({ fetchMe: async () => { throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); }, onDenied: vi.fn() });
     await controller.check(true);
     const source = fakeSource({ getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'google', label: 'Google', login_url: '/api/v1/auth/login/google' }] }) });
-    render(<MemoryRouter initialEntries={['/import']}>
+    render(<MemoryRouter initialEntries={['/library?org=meridian&repo=monorepo']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
+    // The shell is gone: no rail, no organisation context, nothing read for that organisation.
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('/login?return=' + encodeURIComponent('/library?org=meridian&repo=monorepo'));
+  });
+
+  test('an unauthenticated /import?step=login shows the login page, and signing in returns to it', async () => {
+    const controller = new AccessController({ fetchMe: async () => { throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); }, onDenied: vi.fn() });
+    await controller.check(true);
+    const startLogin = vi.fn(async () => ({ provider: 'github', loginUrl: '' }));
+    const source = fakeSource({
+      getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'github', label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }),
+      startLogin,
+    });
+    render(<MemoryRouter initialEntries={['/import?step=login']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    const button = await screen.findByRole('button', { name: /Continue with GitHub/ });
+    expect(screen.getByTestId('where')).toHaveTextContent('/login?return=' + encodeURIComponent('/import?step=login'));
+    await userEvent.click(button);
+    // Sign-in finishes at the provider and the API 302s to return_to, so the round trip is
+    // the address handed to the API, not an in-app navigation.
+    expect(startLogin).toHaveBeenCalledWith('github', '/import?step=login');
+  });
+
+  test('a confirmed session on /import?step=login gets the wizard at its first real step', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const source = fakeSource({ listRepos: async () => [] });
+    render(<MemoryRouter initialEntries={['/import?step=login']}>
       <AccessProvider controller={controller}><App source={source} /></AccessProvider>
     </MemoryRouter>);
-    expect(await screen.findByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();
-    expect(screen.getByText('Access unavailable')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
+    // Sign-in is no longer a step of the wizard: the stale address falls through to the first
+    // real step this account is at (an organisation from /me, no repository in the URL yet).
+    expect(await screen.findByText('Repositories')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
+  });
+
+  test('a confirmed session that opens /login is sent on to the address it carried', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/login?return=' + encodeURIComponent('/import?step=preview')]}>
+      <AccessProvider controller={controller}><App source={fakeSource({ listRepos: async () => [] })} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('/import?step=preview');
+  });
+
+  test('the component gallery stays reachable while the session is refused', async () => {
+    const controller = new AccessController({ fetchMe: async () => { throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); }, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/__components']}>
+      <AccessProvider controller={controller}><App source={rejectingSource()} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Component gallery' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).not.toBeInTheDocument();
   });
 
   test('an unconfirmed session masks the view instead of revealing stale data', async () => {

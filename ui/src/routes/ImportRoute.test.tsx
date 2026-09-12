@@ -120,16 +120,15 @@ describe('Import route, hosted API, six states', () => {
 });
 
 describe('Import route, sign in and context', () => {
-  test('providers come from the API and the redirect carries return_to', async () => {
-    const startLogin = vi.fn(async () => ({ provider: 'github', loginUrl: '' }));
-    const source = fakeSource({
-      getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'github', label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }),
-      startLogin,
-    });
-    renderRoute(source, 'step=login', { me: null, org: null, repo: null, role: null });
-    const button = await screen.findByRole('button', { name: /Continue with GitHub/ });
-    await userEvent.click(button);
-    expect(startLogin).toHaveBeenCalledWith('github', '/import?step=organization');
+  test('the wizard has no sign-in step: a stale ?step=login falls through to the first real one', async () => {
+    const source = fakeSource({ listImports: async () => [] });
+    renderRoute(source, 'step=login');
+    // Sign-in moved to the full-width /login page (app.tsx gate); an unauthenticated request
+    // never reaches this route, so a bookmarked step is just an unknown step here, and the
+    // route resolves the same first real step it would have picked with no step at all.
+    expect(await screen.findByText('No import yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with GitHub/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
   });
 
   test('the CLI block names the real organization, never a fixture', async () => {
@@ -278,21 +277,23 @@ describe('Import route, proposal generation panel', () => {
 describe('Import route, stepper', () => {
   const providers = fakeSource({ getAuthProviders: async () => ({ mode: 'dev' as const, providers: [{ id: 'github', label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }) });
 
-  test('the four steps are numbered and named for the hosted flow; the current one carries aria-current', () => {
+  test('the three steps are numbered and named for the hosted flow; the current one carries aria-current', () => {
     renderRoute(fakeSource({ listImports: async () => [] }), 'step=result');
     const list = screen.getByRole('list', { name: 'Import progress' });
     const items = within(list).getAllByRole('listitem');
-    expect(items.map(item => within(item).getByText(/^(Sign in|Organization|Repository|Import status)$/).textContent)).toEqual(['Sign in', 'Organization', 'Repository', 'Import status']);
-    expect(items[3]).toHaveAttribute('aria-current', 'step');
+    // Sign-in is not among them: it is the /login page the shell redirects to, not a step.
+    expect(items.map(item => within(item).getByText(/^(Organization|Repository|Import status)$/).textContent)).toEqual(['Organization', 'Repository', 'Import status']);
+    expect(items[2]).toHaveAttribute('aria-current', 'step');
     expect(items[0]).not.toHaveAttribute('aria-current');
     expect(within(items[0]).getByText('01')).toBeInTheDocument();
   });
 
-  test('without a session and no step in the address the route starts at sign-in', async () => {
-    renderRoute(providers, '', { me: null, org: null, repo: null, role: null, access: { status: 'checking', me: null, checkedAt: null } });
+  test('the wizard never starts a sign-in of its own', async () => {
+    renderRoute(providers, '', { org: null, repo: null, role: null });
     const list = screen.getByRole('list', { name: 'Import progress' });
     expect(within(list).getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'step');
-    expect(await screen.findByRole('button', { name: /Continue with GitHub/ })).toBeInTheDocument();
+    expect(await screen.findByText('Your organizations')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with GitHub/ })).not.toBeInTheDocument();
   });
 
   test('a signed-in operator without an organisation lands on the organisation step', async () => {

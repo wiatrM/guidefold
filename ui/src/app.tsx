@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import {ArrowSquareIn,Books,TreeStructure,FileText,GitPullRequest,ChartBar,Buildings,SidebarSimple,List,X,SignOut,CaretRight} from '@phosphor-icons/react';
 import {BrandMark,ActionButton,RouteState} from './Shared';
 import {useAccess,useAccessController} from './api/access';
+import {loginHref,safeReturn} from './routes/loginTarget';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
@@ -17,6 +18,7 @@ const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
 const ApiProposalsRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiProposalsRoute})));
 const ApiUsageRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiUsageRoute})));
+const LoginRoute=lazy(()=>import('./routes/LoginRoute').then(m=>({default:m.LoginRoute})));
 const ToastHost=lazy(()=>import('./ToastHost'));
 import css from './App.module.css';
 import {TreeNav} from './components/spectrumui/tree-nav';
@@ -105,6 +107,10 @@ function ApiApp({source}:{source:DataSource}){
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // A refused or revoked session is not a view state: every management route is private, so the
+ // request leaves the shell for the full-width login page carrying where it was going (IA 3,
+ // "Login jest stanem wejscia"). Import used to keep its own inline sign-in step; it does not.
+ if(access.status==='denied')return <Navigate to={loginHref(location.pathname+location.search)} replace/>;
  if(!views.includes(name as View))return <Navigate to="/import" replace/>;
  const masked=foreign||access.status!=='confirmed';
  const ctx:ApiRouteContext={source,access,me,org,repo,role:membership?.role??null,params,view,href,go:(target,changes)=>navigate(href(target,changes)),recheckAccess:controller?(()=>controller.check(true)):undefined};
@@ -112,11 +118,9 @@ function ApiApp({source}:{source:DataSource}){
  return <Shell view={view} href={href}
   railContext={<><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></>}
   topbar={<><span>{masked?'Workspace unavailable':membership?.name??'No organization'}</span>{!masked&&repo&&<code>{repo}</code>}</>}
-  account={me?<AccountMenu name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/import?step=login',{replace:true});}}/>:<Link className={css.signInLink} to={href('import',{step:'login'})}>Sign in</Link>}
+  account={me?<AccountMenu name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">
  {foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton>}/>
- // Import stays reachable after a denial: it is where signing in again happens.
- :access.status==='denied'?(view==='import'?<RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading view" description="Preparing the requested view."/>}><ApiImportRoute ctx={ctx}/></Suspense></RouteErrorBoundary>:<RouteState state="restricted" title="Access unavailable" description="The session was refused or revoked. Cached data, drafts and in-flight requests were dropped. Sign in again to continue." action={<ActionButton href={href('import',{step:'login'})}>Sign in again</ActionButton>}/>)
  :access.status==='checking'?<RouteState state="loading" title="Confirming access" description="Checking membership before anything is shown."/>
  :access.status!=='confirmed'?<RouteState state="restricted" title="Access not reconfirmed" description="Membership was last confirmed more than 45 seconds ago, so organization data stays hidden. This is not a statement about your permissions." action={<ActionButton onClick={()=>{void controller?.check(true);}}>Check access now</ActionButton>}/>
  // Keyed by organisation and repository: a switch remounts the view, so no row, tree branch or
@@ -125,9 +129,22 @@ function ApiApp({source}:{source:DataSource}){
  </Shell>;
 }
 
+/** `/login`. Outside the shell and outside `View`: login is an entry state, not a destination
+ * in the rail (IA 3). A caller who already has a confirmed session is sent on to the target it
+ * carries, which is what the browser Back button produces after a successful sign-in. */
+function LoginEntry({source}:{source:DataSource}){
+ const location=useLocation();
+ const access=useAccess();
+ const target=safeReturn(new URLSearchParams(location.search).get('return'));
+ if(access.status==='confirmed')return <Navigate to={target} replace/>;
+ return <Suspense fallback={<RouteState state="loading" title="Loading sign-in" description="Preparing the sign-in page."/>}><LoginRoute source={source} returnTo={target}/></Suspense>;
+}
+
 export default function App({source}:{source:DataSource}){
  const location=useLocation();
  const toaster=<Suspense fallback={null}><ToastHost/></Suspense>;
- if(location.pathname.replace(/^\//,'').replace(/\/$/,'')==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
+ const path=location.pathname.replace(/^\//,'').replace(/\/$/,'');
+ if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
+ if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }
