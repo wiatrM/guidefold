@@ -61,11 +61,111 @@ Create existing Secrets through the cluster's secret-management process:
 - `guidefold-operator-credentials`: `admin-password`, `app-password` (publication/migration only).
 - `guidefold-postgres-ca`: `ca.crt` for `PGSSLMODE=verify-full`.
 - Optional registry pull and ingress TLS Secrets.
+- Optional (`secretKeyringSecretName`): a `keyring` key holding the deployment's
+  encryption keyring — see "Organisation credential keyring" below. Without it, the
+  Live Agent and PR-review model calls cannot store an organisation's provider key at
+  all; that is a deliberately honest failure, not a bug to work around by other means.
 
 Do not put secret values in Helm values, release manifests, images or Git. API pods
 receive no operator credential or Kubernetes API token. Database password/token rotation
 requires coordinating the service restart and clients; the current process reads its
 bearer credential at startup, not continuously from the mounted file.
+
+## Organisation credential keyring (ADR-0045)
+
+The Live Agent and the GitHub PR-review model call ([ADR-0046](../../docs/adr/ADR-0046-live-agent-on-demand-across-connected-repositories.md), [ADR-0036](../../docs/adr/ADR-0036-github-app-ascent-without-customer-ci.md))
+run with a model credential the organisation supplies through the console, not a
+deployment-wide key. `internal/secrets` stores that credential encrypted
+(AES-256-GCM) rather than hashed, because the worker has to present it to the
+provider later with nobody present — the one recoverable secret this product
+keeps. Recovering it at all requires a deployment master keyring, which this
+chart does **not** generate or default: `secretKeyringSecretName` is empty until
+an operator sets it, and with it empty the API and worker mount nothing and set no
+`GUIDEFOLD_SECRET_KEY_FILE` — `PUT {org_base}/credentials/{provider}` then answers
+`503 secret_encryption_unavailable` and the console's Model keys screen says this
+deployment cannot store keys, instead of ever falling back to storing one in the
+clear.
+
+**Generate the keyring value.** It is one JSON file, the exact shape
+`internal/secrets.LoadKeyring` reads (`services/search/internal/secrets/box.go`) and
+the same shape `tools/dev/stack.py`'s `generate_keyring()` produces for a local
+stack: `{"active": "<key_id>", "keys": {"<key_id>": "<base64 of 32 random bytes>"}}`.
+Generate it with only tools already required elsewhere in this doc:
+
+```sh
+python3 - <<'PY'
+import base64, json, os
+print(json.dumps({"active": "k1", "keys": {"k1": base64.b64encode(os.urandom(32)).decode()}}))
+PY
+```
+
+Create the Secret from that output without ever letting it touch a shell history
+file or Git, e.g. by piping straight into `kubectl`:
+
+```sh
+python3 - <<'PY' | kubectl create secret generic guidefold-keyring -n "$NS" \
+  --from-file=keyring=/dev/stdin
+import base64, json, os
+print(json.dumps({"active": "k1", "keys": {"k1": base64.b64encode(os.urandom(32)).decode()}}))
+PY
+```
+
+Then set `secretKeyringSecretName: guidefold-keyring` in the release's values and
+apply. Both the API and the worker mount the same Secret at `/run/keyring/keyring`
+and get `GUIDEFOLD_SECRET_KEY_FILE` pointing at it — the worker needs it too, because
+`pr.report` and the `proposal.generate` job `live.repo` waits on both open the
+organisation's stored credential in the worker, never in the API.
+
+**Losing every key in this file makes every stored credential unrecoverable.**
+Each row in `gfm.org_credentials` is AES-256-GCM ciphertext bound to one `key_id`
+from this file and to the organisation and provider it was sealed for (additional
+authenticated data, not just the key) — there is no master password recovery, no
+support-side decryption path, and a database backup alone is not enough to read a
+credential back. Back the keyring file up **separately** from the database dump: a
+database dump plus this file together yield working provider keys, but a database
+dump alone must not. If the file is lost, every organisation on this deployment
+loses its stored credential and has to re-enter it from the console; that is the
+intended failure mode; it is safer than an unrecoverable key that could otherwise
+tempt a "recovery" path back to plaintext.
+
+**Rotation** is additive, matching `key_id`'s purpose in the schema
+(ADR-0045 point 2): add a new key to the `keys` map, point `active` at it, and
+update the Secret — new credentials (and any `PUT` that replaces an existing one)
+are sealed under the new key immediately. Existing rows stay sealed under their old
+`key_id` and remain readable as long as that key stays in the file: `Keyring.Open`
+looks the key up by the `key_id` stored on the row, not by whichever key is active.
+Do not remove an old key until every row still referencing it has been re-sealed
+under the new one (a background re-seal pass, not yet automated — see ADR-0045's
+consequences); removing a key while a row still names it makes that one row
+unrecoverable, the same as losing the whole file.
+
+Verified in this repository: the `PUT/GET/DELETE {org_base}/credentials/{provider}`
+handlers, `gfm.org_credentials` and the console's Model keys screen described by
+ADR-0045 are deployed — `main.go` wires `secrets.New(pool, keyring,
+secrets.NewHTTPVerifier())` into those routes. `PUT` makes one authenticated call
+to the provider to verify a key an owner just typed before sealing it (ADR-0045
+point 5), so a deployment that mounts the keyring above but has no egress for
+that call still cannot store a key: the API can only reach DNS, the database and
+(if enabled) the GPU shadow, and the verification call answers
+`provider_unavailable` before the key is ever sealed. Set **both**
+`secretKeyringSecretName` above and `api.externalEgress` below — either one alone
+leaves the Model keys screen unusable, honestly reporting why rather than
+falling back to storing a key unverified or in the clear.
+
+## API egress for provider-key verification
+
+`api.externalEgress` (empty by default, alongside `worker.externalEgress` below)
+names the peers the `[api, operator]` NetworkPolicy in `templates/network.yaml`
+opens TCP 443 to. This is a much smaller need than the worker's: the API only
+ever makes one short-lived call per `PUT`, to check a key an owner just typed —
+never a job that reads a repository or does real model work, which stays the
+worker's job below. Set it to the CIDR(s) or peer selectors for the
+organisation's configured model provider endpoint(s); a NetworkPolicy cannot
+match a hostname, so the operator names the peers rather than the chart
+guessing a CIDR that will rot. Leaving it empty is a supported state, not an
+oversight: the API then reaches only DNS, the database and (if enabled) the GPU
+shadow, and every `PUT` fails closed with `provider_unavailable` instead of
+hanging on a connection that will never open.
 
 Copy [cluster.example.yaml](cluster.example.yaml) outside the repo and replace its DB
 host, allowed network peers, client selectors and resource budgets. The chart rejects

@@ -73,6 +73,21 @@
     "credentialsSecret": {
       "type": "string"
     },
+    "secretKeyringSecretName": {
+      "type": "string"
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "externalEgress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
     "database": {
       "type": "object",
       "additionalProperties": false,
