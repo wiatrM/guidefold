@@ -16,15 +16,14 @@ func runsPath(org string) string { return "/api/v1/orgs/" + org + "/live/runs" }
 
 // startRun creates a run through the real API (the credential check, the
 // one-active-run index and the opening event all live there) and returns
-// its run_id.
-func startRun(t *testing.T, owner *pivottest.Client, org, prompt string, repos []string) string {
+// its run_id. The start request has no fields (API-CONTRACT §4.9, 1.6.0):
+// no prompt, no repository picker — a run always covers every connected
+// repository — so the body key only needs to make each call's idempotency
+// key distinct between tests.
+func startRun(t *testing.T, owner *pivottest.Client, org, key string) string {
 	t.Helper()
-	body := map[string]any{"prompt": prompt}
-	if repos != nil {
-		body["repos"] = repos
-	}
 	status, resp, _ := owner.Call(t, pivottest.Call{Method: http.MethodPost, Path: runsPath(org),
-		Body: body, Key: "start-" + prompt})
+		Key: "start-" + key})
 	if status != http.StatusAccepted {
 		t.Fatalf("start run: %d %v", status, resp)
 	}
@@ -96,7 +95,7 @@ func TestRepoWithoutInstallationIsSkippedNotOmitted(t *testing.T) {
 	registerInstallation(t, h, org, 1, "acme/connected")
 	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
 
-	runID := startRun(t, owner, org, "scan everything", nil)
+	runID := startRun(t, owner, org, "scan-everything")
 	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
 
 	if state, errText := targetRow(t, h, org, runID, "not-connected"); state != live.TargetSkipped || errText != live.ErrorGitHubNotWired {
@@ -132,7 +131,7 @@ func TestZeroTargetsFinishesPartial(t *testing.T) {
 	h, owner, org := newHarness(t)
 	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
 
-	runID := startRun(t, owner, org, "scan everything", nil)
+	runID := startRun(t, owner, org, "scan-everything")
 	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
 
 	state, _ := runRowState(t, h, org, runID)
@@ -150,7 +149,7 @@ func TestRunWhoseEveryRepositoryIsSkippedStillFinishes(t *testing.T) {
 	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
 	owner.CreateRepo(t, org, "not-connected", "https://example.test/acme/not-connected")
 
-	runID := startRun(t, owner, org, "scan everything", nil)
+	runID := startRun(t, owner, org, "scan-everything")
 	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
 
 	if state, errText := targetRow(t, h, org, runID, "not-connected"); state != live.TargetSkipped || errText != live.ErrorGitHubNotWired {
@@ -159,20 +158,5 @@ func TestRunWhoseEveryRepositoryIsSkippedStillFinishes(t *testing.T) {
 	state, _ := runRowState(t, h, org, runID)
 	if state != live.StatePartial {
 		t.Fatalf("run state = %s, want partial: nothing else will ever finish it", state)
-	}
-}
-
-// A repository named explicitly in `repos` that the organisation never even
-// registered is reported the same way — never silently absorbed into "the
-// run just didn't cover it".
-func TestExplicitUnknownRepoIsSkippedNotOmitted(t *testing.T) {
-	h, owner, org := newHarness(t)
-	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
-
-	runID := startRun(t, owner, org, "scan one repo", []string{"never-registered"})
-	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
-
-	if state, errText := targetRow(t, h, org, runID, "never-registered"); state != live.TargetSkipped || errText != live.ErrorGitHubNotWired {
-		t.Fatalf("unknown repo target = %s/%s, want skipped/%s", state, errText, live.ErrorGitHubNotWired)
 	}
 }

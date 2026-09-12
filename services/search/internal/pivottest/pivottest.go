@@ -149,7 +149,7 @@ func New(t *testing.T) *Harness {
 	}
 	credentials := secrets.New(pool, keyring, TestVerifier{})
 	credentials.Register(router)
-	liveAgent := live.New(pool)
+	liveAgent := live.New(pool, live.NewSecretsCredentialSource(credentials))
 	liveAgent.Register(router)
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)

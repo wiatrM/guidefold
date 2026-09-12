@@ -25,6 +25,19 @@ func SetTargetState(ctx context.Context, tx jobs.Tx, orgID, runID, repoID, state
 	return e
 }
 
+// SetTargetPhase advances one target's progress markers — phase, skills and
+// proposals (§5.5a LiveRunTarget) — independently of SetTargetState: a
+// repository still running moves fetch -> parse -> propose -> done while its
+// state stays "running", so a client watching mid-run sees the same numbers
+// the worker just wrote without waiting for the target to reach a finished
+// state.
+func SetTargetPhase(ctx context.Context, tx jobs.Tx, orgID, runID, repoID, phase string, skills, proposals int) error {
+	_, e := tx.Exec(ctx, `UPDATE gfm.live_run_targets SET phase=$4, skills=$5, proposals=$6
+ WHERE org_id=$1::uuid AND run_id=$2::uuid AND repo_id=$3`,
+		orgID, runID, repoID, phase, skills, proposals)
+	return e
+}
+
 // terminalState computes a run's terminal state from its targets. The
 // precedence is cancelled > failed > partial > succeeded: a cancelled run has
 // to read as cancelled even though cancelling leaves skipped targets behind
@@ -51,13 +64,34 @@ func terminalState(cancelled, runFailed bool, targets, done, failed, skipped int
 	}
 }
 
+// runFinishedText is the Polish sentence run.finished carries in
+// payload.text (§5.5a): one clause naming the terminal state a client — or
+// the owner reading the PR comment or the console — was told about
+// elsewhere in this same run's log, never a second wording for it.
+func runFinishedText(state string) string {
+	switch state {
+	case StateSucceeded:
+		return "Przebieg zakończył się powodzeniem."
+	case StatePartial:
+		return "Przebieg zakończył się częściowo — część repozytoriów nie doszła do końca."
+	case StateFailed:
+		return "Przebieg zakończył się niepowodzeniem."
+	case StateCancelled:
+		return "Przebieg został anulowany."
+	default:
+		return "Przebieg się zakończył."
+	}
+}
+
 // Finish ends a run: it reads the current target counts, computes the
 // terminal state with terminalState, writes it to the run row along with the
-// caller's cost and error, and appends run.finished. It is the one place that
-// decision is made, so the API's cancel path and the worker's end-of-run path
-// can never disagree about what a run's final state means. cost may be nil to
-// leave the run's existing cost column untouched, which is what a
-// cancellation does — cancelling spends nothing new.
+// caller's cost and error, and appends run.finished carrying the counts and
+// summary a client sees in the same shape GET .../runs/{run_id} would show
+// (§5.5a: run.finished's payload is {counts, summary}). It is the one place
+// that decision is made, so the API's cancel path and the worker's
+// end-of-run path can never disagree about what a run's final state means.
+// cost may be nil to leave the run's existing cost column untouched, which
+// is what a cancellation does — cancelling spends nothing new.
 func Finish(ctx context.Context, tx jobs.Tx, orgID, runID string, cancelled, runFailed bool,
 	errCode string, cost json.RawMessage) (string, error) {
 	var targets, done, failed, skipped int
@@ -73,17 +107,22 @@ func Finish(ctx context.Context, tx jobs.Tx, orgID, runID string, cancelled, run
 	if len(cost) > 0 {
 		costArg = string(cost)
 	}
-	if _, e := tx.Exec(ctx, `UPDATE gfm.live_runs SET state=$3, error=$4,
+	var summaryRaw *string
+	if e := tx.QueryRow(ctx, `UPDATE gfm.live_runs SET state=$3, error=$4,
  cost=COALESCE($5::jsonb,cost), finished_at=now()
- WHERE org_id=$1::uuid AND run_id=$2::uuid`,
-		orgID, runID, state, nullable(errCode), costArg); e != nil {
+ WHERE org_id=$1::uuid AND run_id=$2::uuid RETURNING summary::text`,
+		orgID, runID, state, nullable(errCode), costArg).Scan(&summaryRaw); e != nil {
 		return "", e
 	}
-	payload := map[string]any{"state": state}
-	if errCode != "" {
-		payload["error"] = errCode
+	fields := map[string]any{
+		"state":   state,
+		"counts":  countsView{Targets: targets, Done: done, Failed: failed, Skipped: skipped},
+		"summary": decodeSummary(summaryRaw),
 	}
-	if _, e := Append(ctx, tx, orgID, runID, "", EventRunFinished, payload); e != nil {
+	if errCode != "" {
+		fields["error"] = errCode
+	}
+	if _, e := Append(ctx, tx, orgID, runID, "", EventRunFinished, runFinishedText(state), fields); e != nil {
 		return "", e
 	}
 	return state, nil

@@ -207,10 +207,16 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     listCredentials(org: string): Promise<OrgCredential[]> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/credentials', decode: d.orgCredentialList, resource: 'credentials/' + org });
     },
-    setCredential(org: string, provider: OrgCredentialProvider, input: { api_key: string; name?: string | null }, idempotencyKey: string): Promise<OrgCredential> {
+    setCredential(org: string, provider: OrgCredentialProvider, input: { api_key: string; name?: string | null; model?: string | null; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential> {
       return write({
         path: '/orgs/' + encodeURIComponent(org) + '/credentials/' + encodeURIComponent(provider),
         method: 'PUT', body: input, decode: d.orgCredential, resource: 'credential/' + org + '/' + provider, idempotencyKey,
+      });
+    },
+    patchCredential(org: string, provider: OrgCredentialProvider, input: { model?: string; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/credentials/' + encodeURIComponent(provider),
+        method: 'PATCH', body: input, decode: d.orgCredential, resource: 'credential/' + org + '/' + provider, idempotencyKey,
       });
     },
     async deleteCredential(org: string, provider: OrgCredentialProvider, idempotencyKey: string): Promise<void> {
@@ -235,8 +241,8 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
         query: { after }, decode: d.liveRunEventPage, resource: 'live-run-events/' + org + '/' + runId,
       });
     },
-    startLiveRun(org: string, input: { prompt: string; provider?: OrgCredentialProvider; model?: string; repos?: string[] }, idempotencyKey: string): Promise<LiveRun> {
-      return write({ path: '/orgs/' + encodeURIComponent(org) + '/live/runs', method: 'POST', body: input, decode: d.liveRun, resource: 'live-runs/' + org, idempotencyKey });
+    startLiveRun(org: string, idempotencyKey: string): Promise<LiveRun> {
+      return write({ path: '/orgs/' + encodeURIComponent(org) + '/live/runs', method: 'POST', body: {}, decode: d.liveRun, resource: 'live-runs/' + org, idempotencyKey });
     },
     cancelLiveRun(org: string, runId: string, idempotencyKey: string): Promise<LiveRun> {
       return write({

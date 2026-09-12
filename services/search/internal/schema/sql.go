@@ -254,8 +254,8 @@ CREATE TABLE IF NOT EXISTS gfm.live_run_targets (
  phase text NOT NULL DEFAULT 'fetch' CHECK(phase IN ('fetch','parse','propose','done')),
  skills integer NOT NULL DEFAULT 0,
  proposals integer NOT NULL DEFAULT 0,
- -- findings is unused, for the same reason prompt is. See gfm.live_runs.
- findings integer NOT NULL DEFAULT 0,
+ findings integer NOT NULL DEFAULT 0, -- unused; see the note on gfm.live_runs.prompt
+
  error text,
  started_at timestamptz,
  finished_at timestamptz,

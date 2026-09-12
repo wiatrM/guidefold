@@ -46,7 +46,15 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	for kind, h := range parser.Handlers() {
 		handlers[kind] = h
 	}
-	generate, e := review.NewGenerateWorker(pool, blobs)
+	// Loaded here, ahead of the generate worker, because proposal.generate
+	// needs it to prefer an organisation's own stored key over this
+	// deployment's key file (ADR-0045); a nil keyring is still valid and the
+	// generator falls back to its file exactly as it did before this existed.
+	keyring, keyringErr := secrets.LoadKeyring(os.Getenv)
+	if keyringErr != nil {
+		return nil, fmt.Errorf("secret keyring: %w", keyringErr)
+	}
+	generate, e := review.NewGenerateWorker(pool, blobs, keyring)
 	if e != nil {
 		return nil, e
 	}
@@ -76,11 +84,15 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	// The Live Agent (ADR-0046) and the GitHub App's pull-request coverage
 	// report (ADR-0036 points 1a, 4a). Both degrade to a named "skipped"
 	// reason rather than refusing to start the worker: GITHUB_APP_ID /
-	// GITHUB_APP_PRIVATE_KEY_FILE and GUIDEFOLD_SECRET_KEY_FILE are each
-	// optional per deployment (the same "a module whose jobs stay queued
-	// with a stated reason, not the same as a module that failed to start"
-	// distinction import.parse's own generator selection draws above), and
-	// nothing about the queue or the API depends on either being present.
+	// GITHUB_APP_PRIVATE_KEY_FILE is optional per deployment (the same "a
+	// module whose jobs stay queued with a stated reason, not the same as a
+	// module that failed to start" distinction import.parse's own generator
+	// selection draws above), and nothing about the queue or the API
+	// depends on it being present. live.repo no longer opens the
+	// organisation's model key itself (that happens inside
+	// proposal.generate, under its own preferred credential — ADR-0046
+	// point 9), so GUIDEFOLD_SECRET_KEY_FILE only gates pr.report's own
+	// model call now.
 	gh, ghErr := ghapp.NewFromEnv(os.Getenv)
 	if ghErr != nil && !errors.Is(ghErr, ghapp.ErrNotConfigured) {
 		return nil, fmt.Errorf("github app configuration: %w", ghErr)
@@ -91,24 +103,30 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 			ghCfg = cfg
 		}
 	}
-	keyring, keyringErr := secrets.LoadKeyring(os.Getenv)
-	if keyringErr != nil {
-		return nil, fmt.Errorf("secret keyring: %w", keyringErr)
-	}
 	if gh == nil {
 		slog.Warn("github_app_not_configured",
 			"detail", "GITHUB_APP_ID/GITHUB_APP_PRIVATE_KEY_FILE unset; live.repo and pr.report end skipped")
 	}
 	if keyring == nil {
 		slog.Warn("secret_keyring_absent",
-			"detail", "GUIDEFOLD_SECRET_KEY_FILE unset; live.repo and pr.report end skipped for want of a model key")
+			"detail", "GUIDEFOLD_SECRET_KEY_FILE unset; pr.report ends skipped for want of a model key")
 	}
 
 	livePlan := agentrun.NewLivePlanWorker(pool)
 	for kind, h := range livePlan.Handlers() {
 		handlers[kind] = h
 	}
-	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, keyring, os.Getenv)
+	// liveRepo's own consolidation step runs through the same review.Service
+	// the API mounts, over internal/review's exported GenerateProposals seam
+	// (API-CONTRACT §8, ADR-0046 point 9), so a live run's proposals land
+	// under the same recipe and cache key an HTTP-driven
+	// proposals:generate call would.
+	reviewer, e := review.New(pool, blobs)
+	if e != nil {
+		return nil, e
+	}
+	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, importer.New(pool, blobs)).
+		WithProposalGenerator(agentrun.NewReviewProposalGenerator(pool, reviewer))
 	for kind, h := range liveRepo.Handlers() {
 		handlers[kind] = h
 	}

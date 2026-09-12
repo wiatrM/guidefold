@@ -13,6 +13,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/jobs"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review/generator"
+	"github.com/wiatrM/guidefold/services/search/internal/secrets"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
 
@@ -29,6 +30,25 @@ type GenerateWorker struct {
 	blobs  BlobStore
 	engine generator.Generator
 	recipe generator.Recipe
+	// keyring opens an organisation's own stored provider key (ADR-0045). Nil
+	// is a valid state -- the same "no master key configured" state
+	// internal/secrets.Service itself allows -- and resolveGenerator treats it
+	// exactly like "this organisation stored nothing": the deployment's own
+	// generator and its own key file are still the fallback.
+	keyring *secrets.Keyring
+}
+
+// generatorBinding is what runs one job: the engine, the recipe recorded on
+// every candidate and cache key it produces, and the key that travels on each
+// Request. All three are resolved together, never mixed from different
+// tiers -- a request carrying an organisation's Anthropic key must never run
+// through an engine built for OpenAI, and a candidate must never be keyed
+// under a recipe that does not match the engine that actually produced it
+// (API-CONTRACT §8).
+type generatorBinding struct {
+	Engine generator.Generator
+	Recipe generator.Recipe
+	APIKey string
 }
 
 // generateCheckpoint is what a restarted job reads. It records progress, not
@@ -39,13 +59,17 @@ type generateCheckpoint struct {
 	Notes  json.RawMessage `json:"abstentions,omitempty"`
 }
 
-// NewGenerateWorker wires the job handler with the configured generator.
-func NewGenerateWorker(pool *pgxpool.Pool, blobs BlobStore) (*GenerateWorker, error) {
+// NewGenerateWorker wires the job handler with the configured generator and
+// the keyring that opens an organisation's own stored provider key. keyring
+// may be nil for a deployment with no secret master key (ADR-0045 §6): every
+// job then falls back to the generator's own deployment key file, same as
+// before this seam existed.
+func NewGenerateWorker(pool *pgxpool.Pool, blobs BlobStore, keyring *secrets.Keyring) (*GenerateWorker, error) {
 	engine, recipe, e := generator.Select(nil)
 	if e != nil {
 		return nil, e
 	}
-	return &GenerateWorker{pool: pool, blobs: blobs, engine: engine, recipe: recipe}, nil
+	return &GenerateWorker{pool: pool, blobs: blobs, engine: engine, recipe: recipe, keyring: keyring}, nil
 }
 
 // WithGenerator replaces the engine, which is how a test drives the same worker
@@ -82,6 +106,14 @@ func (w *GenerateWorker) Run(ctx context.Context, t *worker.Task) error {
 	var cp generateCheckpoint
 	_ = json.Unmarshal(t.Job.Checkpoint, &cp)
 
+	// Resolved once for the whole job: every group of one proposal.generate job
+	// belongs to the same organisation (the identity check above), so there is
+	// one binding to build, not one per group.
+	binding, e := w.resolveGenerator(ctx, payload.OrgID)
+	if e != nil {
+		return e
+	}
+
 	total := cp.Cost
 	produced, skipped := 0, 0
 	abstentions := []generator.Abstention{}
@@ -112,12 +144,20 @@ func (w *GenerateWorker) Run(ctx context.Context, t *worker.Task) error {
 		if e != nil {
 			return e
 		}
-		out, cost, e := w.engine.Generate(ctx, req)
+		req.APIKey = binding.APIKey
+		out, cost, e := binding.Engine.Generate(ctx, req)
 		total.Add(cost)
 		if errors.Is(e, generator.ErrNotConfigured) {
 			// No generator is configured. The import stays exactly as it is —
 			// the skills a repository already has do not depend on a model.
 			return worker.Skipped("llm_not_configured")
+		}
+		if errors.Is(e, generator.ErrCredentialMissing) {
+			// Neither the organisation nor the deployment has a key for this
+			// provider. Running on nobody's key is not an option (ADR-0045):
+			// charging whoever hosts the service for this organisation's
+			// generation is exactly what BYOK exists to prevent.
+			return worker.Skipped("model_credential_missing")
 		}
 		if e != nil {
 			// The cost of a failed attempt is still recorded before the retry.
@@ -128,7 +168,7 @@ func (w *GenerateWorker) Run(ctx context.Context, t *worker.Task) error {
 			return fmt.Errorf("group %s: %w", group.GroupID, e)
 		}
 		abstentions = append(abstentions, out.Abstentions...)
-		n, s, e := w.store(ctx, t, payload, group, req, out)
+		n, s, e := w.store(ctx, t, payload, group, req, out, binding.Recipe)
 		if e != nil {
 			return e
 		}
@@ -150,6 +190,40 @@ func (w *GenerateWorker) Run(ctx context.Context, t *worker.Task) error {
 	}
 	t.Result = mustJSON(result)
 	return nil
+}
+
+// resolveGenerator picks what runs the job (API-CONTRACT §8: "proposal.generate
+// uruchomiony przez przebieg bierze klucz preferowanego dostawcy tej
+// organizacji zamiast klucza wdrożenia"). An organisation's preferred
+// credential -- whichever provider it is, openrouter included -- wins
+// whenever one exists, even over a deployment configured for a different
+// provider: the organisation's own choice of provider and model travel
+// together with its own key, built fresh through generator.ForOrganisation
+// rather than reused from this deployment's fixed engine, so a request can
+// never end up carrying one provider's key while running through another
+// provider's generator.
+//
+// ErrNoCredential and ErrNoKeyring both mean "this organisation stored
+// nothing here" -- not an error, since the deployment's own configured
+// generator and its own key file are the documented fallback (U2.7: nothing
+// that worked before ADR-0045 stops working). Anything else -- a database
+// failure, a ciphertext that no longer opens, an unsupported stored provider
+// -- is returned so the job retries instead of silently running on the wrong
+// key.
+func (w *GenerateWorker) resolveGenerator(ctx context.Context, orgID string) (generatorBinding, error) {
+	provider, model, key, e := secrets.OpenPreferred(ctx, w.pool, w.keyring, orgID)
+	switch {
+	case e == nil:
+		engine, recipe, e := generator.ForOrganisation(provider, model, nil)
+		if e != nil {
+			return generatorBinding{}, e
+		}
+		return generatorBinding{Engine: engine, Recipe: recipe, APIKey: key}, nil
+	case errors.Is(e, secrets.ErrNoCredential), errors.Is(e, secrets.ErrNoKeyring):
+		return generatorBinding{Engine: w.engine, Recipe: w.recipe}, nil
+	default:
+		return generatorBinding{}, e
+	}
 }
 
 func maxInt(a, b int) int {
@@ -306,9 +380,12 @@ func (w *GenerateWorker) importCommit(ctx context.Context, orgID, importID strin
 
 // store writes one group's candidates. The whole group is one transaction,
 // fenced by the job's generation: a worker whose lease has moved on writes
-// nothing at all.
+// nothing at all. recipe is the one resolveGenerator actually ran this group
+// under -- never w.recipe read directly, because two organisations on two
+// different providers must land in the cache key under their own recipe, not
+// this worker's fixed deployment default (API-CONTRACT §8).
 func (w *GenerateWorker) store(ctx context.Context, t *worker.Task, payload generatePayload,
-	group Group, req generator.Request, out generator.Output) (int, int, error) {
+	group Group, req generator.Request, out generator.Output, recipe generator.Recipe) (int, int, error) {
 	if len(out.Candidates) == 0 {
 		return 0, 0, nil
 	}
@@ -323,7 +400,7 @@ func (w *GenerateWorker) store(ctx context.Context, t *worker.Task, payload gene
 	}
 	created, skipped := 0, 0
 	for _, c := range out.Candidates {
-		key := generator.CacheKey(payload.OrgID, payload.Kind, digests, w.recipe, c.Identity)
+		key := generator.CacheKey(payload.OrgID, payload.Kind, digests, recipe, c.Identity)
 		contentSHA := digest(c.Body)
 		if _, e := w.blobs.Put(ctx, payload.OrgID, contentSHA, []byte(c.Body)); e != nil {
 			return 0, 0, fmt.Errorf("store candidate body: %w", e)
@@ -336,7 +413,7 @@ func (w *GenerateWorker) store(ctx context.Context, t *worker.Task, payload gene
 			}
 		}
 		id, isNew, e := insertCandidate(ctx, tx, payload.OrgID, payload.RepoID, payload.ImportID,
-			t.Job.JobID, payload.Kind, w.recipe, key, c, contentSHA, contentSHA, expected)
+			t.Job.JobID, payload.Kind, recipe, key, c, contentSHA, contentSHA, expected)
 		if e != nil {
 			return 0, 0, fmt.Errorf("store candidate %s: %w", c.Slug, e)
 		}

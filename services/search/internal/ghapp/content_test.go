@@ -55,6 +55,8 @@ func TestListSkillFilesMatchesOnlyAgentsAndSkillFiles(t *testing.T) {
 	tree := []map[string]any{
 		{"path": "AGENTS.md", "type": "blob"},
 		{"path": "docs/AGENTS.md", "type": "blob"},                           // not the root
+		{"path": "guidefold.yaml", "type": "blob"},                           // the scope hierarchy
+		{"path": "docs/guidefold.yaml", "type": "blob"},                      // not the root
 		{"path": ".agents/skills/foo/SKILL.md", "type": "blob"},              // root-level skill
 		{"path": "services/api/.agents/skills/bar/SKILL.md", "type": "blob"}, // nested skill
 		{"path": ".agents/skills/foo/bar/SKILL.md", "type": "blob"},          // nested under the skill dir
@@ -77,10 +79,38 @@ func TestListSkillFilesMatchesOnlyAgentsAndSkillFiles(t *testing.T) {
 		".agents/skills/foo/SKILL.md",
 		".agents/skills/foo/bar/SKILL.md",
 		"AGENTS.md",
+		"guidefold.yaml",
 		"services/api/.agents/skills/bar/SKILL.md",
 	}
 	if !equalSets(got, want) {
 		t.Fatalf("ListSkillFiles = %v, want %v", got, want)
+	}
+}
+
+// A repository with no root guidefold.yaml simply does not have it in the
+// returned list — ListSkillFiles never invents an error for its absence, so
+// a caller can tell "not managed by Guidefold" (no entry) from "GitHub is
+// down" (a returned error) by looking at the list it already has, with no
+// second round trip.
+func TestListSkillFilesOmitsGuidefoldYamlWhenAbsent(t *testing.T) {
+	tree := []map[string]any{
+		{"path": "AGENTS.md", "type": "blob"},
+		{"path": ".agents/skills/foo/SKILL.md", "type": "blob"},
+	}
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/repos/acme/widgets/git/trees/main", func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": tree, "truncated": false})
+		})
+	})
+	client := newTestClient(t, server.URL)
+	got, err := client.ListSkillFiles(context.Background(), 1, "acme/widgets", "main")
+	if err != nil {
+		t.Fatalf("ListSkillFiles: %v", err)
+	}
+	for _, p := range got {
+		if p == "guidefold.yaml" {
+			t.Fatalf("ListSkillFiles invented guidefold.yaml: %v", got)
+		}
 	}
 }
 

@@ -5,22 +5,29 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/wiatrM/guidefold/services/search/internal/agentrun"
-	"github.com/wiatrM/guidefold/services/search/internal/jobs"
+	"github.com/wiatrM/guidefold/services/search/internal/ghapp"
+	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/pivottest"
+	"github.com/wiatrM/guidefold/services/search/internal/review/generator"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
 
 // githubTreeAndContents wires a fake api.github.com that answers the git
-// trees listing with three skill files and their contents, plus the token
-// exchange every ghapp.Client and prFilesClient call needs.
-func githubTreeAndContents(t *testing.T, fullName string, paths []string, onRead func(path string)) *httptest.Server {
+// trees listing with a fixed set of files and their contents, plus the token
+// exchange every ghapp.Client call needs. bodies overrides the generic
+// placeholder body for any path it names — a test that drives a real
+// import.parse or proposal.generate needs a real guidefold.yaml and real
+// SKILL.md frontmatter, not a placeholder the trusted builder would refuse
+// or a generator would find nothing to consolidate in.
+func githubTreeAndContents(t *testing.T, fullName string, paths []string, bodies map[string]string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/app/installations/1/access_tokens", tokenHandler)
@@ -34,10 +41,10 @@ func githubTreeAndContents(t *testing.T, fullName string, paths []string, onRead
 	for _, p := range paths {
 		p := p
 		mux.HandleFunc("/repos/"+fullName+"/contents/"+p, func(w http.ResponseWriter, r *http.Request) {
-			if onRead != nil {
-				onRead(p)
+			body, ok := bodies[p]
+			if !ok {
+				body = "---\nname: " + p + "\n---\n\nContent of " + p + ".\n"
 			}
-			body := "---\nname: " + p + "\n---\n\nContent of " + p + ".\n"
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"content": jsonBase64(body), "encoding": "base64", "size": len(body), "type": "file",
 			})
@@ -71,241 +78,468 @@ func jsonBase64(s string) string {
 	return b.String()
 }
 
-// enqueueLiveRepoJob writes a target row and its live.repo job directly,
-// bypassing live.plan, so a test can set its own tight Limits without
-// waiting on the package's own default ceiling.
-func enqueueLiveRepoJob(t *testing.T, h *pivottest.Harness, orgID, runID, repoID string, installationID int64,
-	fullName string, limits agentrun.Limits) *jobs.Job {
+// rootGuidefoldYAML is the Meridian fixture's own guidefold.yaml, proven
+// valid by every other test that already runs the real builder over it
+// (internal/importer/parse_test.go et al.): a `_root` node covering `**`,
+// owned by platform-engineering, plus everything else the fixture declares.
+// Reading it from disk rather than hand-writing a minimal one avoids
+// guessing at fields tools/worker/build_tree.py's own CLI import requires
+// beyond `publisher`.
+func rootGuidefoldYAML(t *testing.T) string {
 	t.Helper()
-	ctx := context.Background()
-	if _, e := h.Pool.Exec(ctx, `INSERT INTO gfm.live_run_targets(org_id,run_id,repo_id,state)
- VALUES($1::uuid,$2::uuid,$3,'queued')`, orgID, runID, repoID); e != nil {
-		t.Fatal(e)
-	}
-	tx, e := h.Pool.Begin(ctx)
+	tree := pivottest.Monorepo(t)
+	data, e := os.ReadFile(filepath.Join(tree, "guidefold.yaml"))
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer tx.Rollback(ctx)
-	payload, _ := json.Marshal(map[string]any{"schema_version": "live.repo-1", "org_id": orgID,
-		"run_id": runID, "repo_id": repoID, "installation_id": installationID, "full_name": fullName})
-	limitsRaw, _ := json.Marshal(limits)
-	q := jobs.New(h.Pool)
-	job, e := q.Enqueue(ctx, tx, jobs.Job{OrgID: orgID, Kind: live.KindRepo, RepoID: repoID,
-		Payload: payload, Limits: limitsRaw, IdempotencyKey: "live.repo:" + runID + ":" + repoID})
-	if e != nil {
-		t.Fatal(e)
-	}
-	if e := tx.Commit(ctx); e != nil {
-		t.Fatal(e)
-	}
-	return job
+	return string(data)
 }
 
-// A run must not spend past its own ceiling — and it must keep every event
-// it already wrote rather than discarding progress made before the ceiling
-// was reached (ADR-0046 §5).
-func TestLiveRepoStopsAtSpendCeilingAndKeepsEvents(t *testing.T) {
+// sharedProcedureSkill is internal/review/api_test.go's own sharedProcedure
+// fixture, duplicated rather than imported: it is review_test's unexported
+// consolidation fixture (two skills marking the same procedure, so a
+// consolidation group finds them), and this package has no dependency on
+// that test package. Root-level (no platforms/ prefix), so it falls into the
+// Meridian fixture's `_root` scope exactly as api_test.go's own copy does.
+func sharedProcedureSkill(name, owner string) string {
+	return `---
+name: ` + name + `
+description: "[meridian] Runbook ` + name + ` for the shared credential rotation procedure."
+metadata:
+  owner: ` + owner + `
+  status: active
+  kind: engineering
+  layer: team
+---
+
+# ` + name + `
+
+## Steps
+
+1. Drain the affected workload before touching its credentials.
+2. Issue a replacement credential from the platform vault.
+3. Roll the deployment and confirm readiness probes pass.
+4. Retire the previous credential after the grace period.
+`
+}
+
+// liveRepoFixture is the realistic setup every test below shares: a real run
+// started through the API, live.plan drained once so the target row and the
+// real live.repo job exist exactly as production creates them, and a
+// *ghapp.Client wired at a fake GitHub serving the given files.
+type liveRepoFixture struct {
+	h      *pivottest.Harness
+	owner  *pivottest.Client
+	org    string
+	runID  string
+	repoID string
+	gh     *ghapp.Client
+}
+
+const liveRepoFullName = "acme/meridian"
+
+func setUpLiveRepoTarget(t *testing.T, key string, files []string, bodies map[string]string) *liveRepoFixture {
+	t.Helper()
 	h, owner, org := newHarness(t)
-	owner.CreateRepo(t, org, "meridian", "https://github.com/acme/meridian")
-	registerInstallation(t, h, org, 1, "acme/meridian")
+	const repoID = "meridian"
+	owner.CreateRepo(t, org, repoID, "https://github.com/"+liveRepoFullName)
+	registerInstallation(t, h, org, 1, liveRepoFullName)
 	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
-	runID := startRun(t, owner, org, "scan for gaps", []string{"meridian"})
+	runID := startRun(t, owner, org, key)
+	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
 
-	var reads int32
-	ghServer := githubTreeAndContents(t, "acme/meridian",
-		[]string{"AGENTS.md", ".agents/skills/a/SKILL.md", ".agents/skills/b/SKILL.md"},
-		func(string) { atomic.AddInt32(&reads, 1) })
-	gh, _ := newGHClient(t, ghServer.URL)
-
-	var modelCalls int32
-	modelServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&modelCalls, 1)
-		sseChatResponse(w, "looks fine to me", 1000, 1000)
-	}))
-	t.Cleanup(modelServer.Close)
-
-	// $1000/M tokens each way: one call of 1000 in + 1000 out costs $2, so a
-	// $1 ceiling is exceeded after exactly one call.
-	env := func(name string) string {
-		switch name {
-		case "GUIDEFOLD_LIVE_USD_PER_MTOK_IN", "GUIDEFOLD_LIVE_USD_PER_MTOK_OUT":
-			return "1000"
-		case "OPENROUTER_BASE_URL":
-			return modelServer.URL
-		}
-		return ""
-	}
-
-	limits := agentrun.Limits{MaxUSD: 1.0, MaxTokens: 100000, MaxFiles: 10, MaxOutputTokens: 256}
-	enqueueLiveRepoJob(t, h, org, runID, "meridian", 1, "acme/meridian", limits)
-
-	w := agentrun.NewLiveRepoWorker(h.Pool, gh, h.Keyring, env)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	if e := worker.Run(ctx, h.Pool, "test-worker", w.Handlers(),
-		worker.Options{Once: true, Lease: 60 * time.Second}); e != nil {
-		t.Fatal(e)
-	}
-
-	if got := atomic.LoadInt32(&modelCalls); got != 1 {
-		t.Fatalf("model calls = %d, want exactly 1 (stopped before the second file)", got)
-	}
-	if got := atomic.LoadInt32(&reads); got != 1 {
-		t.Fatalf("files read = %d, want exactly 1", got)
-	}
-
-	state, errText := targetRow(t, h, org, runID, "meridian")
-	if state != live.TargetFailed || errText != live.ErrorBudgetExhausted {
-		t.Fatalf("target = %s/%s, want failed/%s", state, errText, live.ErrorBudgetExhausted)
-	}
-	runState, runErr := runRowState(t, h, org, runID)
-	if runState != live.StatePartial || runErr == nil || *runErr != live.ErrorBudgetExhausted {
-		t.Fatalf("run = %s/%v, want partial/%s", runState, runErr, live.ErrorBudgetExhausted)
-	}
-
-	// The event this package's own model call wrote before the ceiling
-	// stopped it must still be there.
-	var deltaCount int
-	if e := h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.live_run_events
- WHERE org_id=$1::uuid AND run_id=$2::uuid AND type=$3`, org, runID, live.EventModelDelta).
-		Scan(&deltaCount); e != nil {
-		t.Fatal(e)
-	}
-	if deltaCount == 0 {
-		t.Fatal("the model.delta written before the ceiling was reached was not kept")
-	}
+	server := githubTreeAndContents(t, liveRepoFullName, files, bodies)
+	gh, _ := newGHClient(t, server.URL)
+	return &liveRepoFixture{h: h, owner: owner, org: org, runID: runID, repoID: repoID, gh: gh}
 }
 
-// Cancellation stops the job at its next checkpoint, not at the end of the
-// repository (ADR-0046 §7): the second file must never be read once an
-// owner cancelled while the first was still in flight.
-func TestLiveRepoCancellationStopsAtNextCheckpoint(t *testing.T) {
-	h, owner, org := newHarness(t)
-	owner.CreateRepo(t, org, "meridian", "https://github.com/acme/meridian")
-	registerInstallation(t, h, org, 1, "acme/meridian")
-	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
-	runID := startRun(t, owner, org, "scan for gaps", []string{"meridian"})
-
-	var secondFileRead int32
-	ghServer := githubTreeAndContents(t, "acme/meridian",
-		[]string{".agents/skills/a/SKILL.md", ".agents/skills/b/SKILL.md"},
-		func(path string) {
-			if path == ".agents/skills/b/SKILL.md" {
-				atomic.AddInt32(&secondFileRead, 1)
-			}
-		})
-	gh, _ := newGHClient(t, ghServer.URL)
-
-	var firstCall int32
-	modelServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.AddInt32(&firstCall, 1) == 1 {
-			// The owner cancels while the first file's model call is still
-			// being answered — before this handler returns, and so before
-			// live.repo reaches its first checkpoint.
-			status, body, _ := owner.Call(t, pivottest.Call{Method: http.MethodPost,
-				Path: runsPath(org) + "/" + runID + "/cancel"})
-			if status != http.StatusOK {
-				t.Fatalf("cancel: %d %v", status, body)
-			}
-		}
-		sseChatResponse(w, "narrating the file", 10, 10)
-	}))
-	t.Cleanup(modelServer.Close)
-
-	limits := agentrun.DefaultLimits()
-	enqueueLiveRepoJob(t, h, org, runID, "meridian", 1, "acme/meridian", limits)
-
-	w := agentrun.NewLiveRepoWorker(h.Pool, gh, h.Keyring, modelEnv(modelServer.URL))
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	// The job is expected to end up fenced by the cancel above, which
-	// worker.Run reports as a normal (non-error) outcome — it is the queue's
-	// own generation fencing at work, not a bug in the run loop.
-	if e := worker.Run(ctx, h.Pool, "test-worker", w.Handlers(),
-		worker.Options{Once: true, Lease: 60 * time.Second}); e != nil {
-		t.Fatal(e)
-	}
-
-	if got := atomic.LoadInt32(&secondFileRead); got != 0 {
-		t.Fatalf("the second file was read %d times; cancellation must stop the job before it", got)
-	}
-
-	var jobState string
-	if e := h.Pool.QueryRow(context.Background(), `SELECT state FROM gfm.jobs
- WHERE org_id=$1::uuid AND kind=$2 AND repo_id=$3`, org, live.KindRepo, "meridian").Scan(&jobState); e != nil {
-		t.Fatal(e)
-	}
-	if jobState != jobs.StateCancelled {
-		t.Fatalf("job state = %s, want cancelled", jobState)
-	}
-	state, errText := targetRow(t, h, org, runID, "meridian")
-	if state != live.TargetSkipped || errText != live.ErrorCancelled {
-		t.Fatalf("target = %s/%s, want skipped/%s (written by the cancel call itself)", state, errText, live.ErrorCancelled)
-	}
+func (f *liveRepoFixture) newWorker() *agentrun.LiveRepoWorker {
+	w := agentrun.NewLiveRepoWorker(f.h.Pool, f.gh, importer.New(f.h.Pool, f.h.Blobs))
+	w.PollInterval = 20 * time.Millisecond
+	return w
 }
 
-// The organisation's own key must never reach anything this run persists:
-// not the job's payload, not its checkpoint, not its result, not its error.
-func TestLiveRepoKeyNeverLeaksIntoPersistedState(t *testing.T) {
-	h, owner, org := newHarness(t)
-	owner.CreateRepo(t, org, "meridian", "https://github.com/acme/meridian")
-	registerInstallation(t, h, org, 1, "acme/meridian")
-	const secretKey = "sk-or-v1-this-must-never-be-persisted-anywhere"
-	setCredential(t, owner, org, secretKey)
-	runID := startRun(t, owner, org, "scan for gaps", []string{"meridian"})
-
-	ghServer := githubTreeAndContents(t, "acme/meridian", []string{".agents/skills/a/SKILL.md"}, nil)
-	gh, _ := newGHClient(t, ghServer.URL)
-
-	modelServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// A broken provider or proxy that echoes the request back is exactly
-		// the case internal/model's own leak test covers; here the concern
-		// is one layer up, in what agentrun itself persists.
-		sseChatResponse(w, "some narration text here", 50, 50)
-	}))
-	t.Cleanup(modelServer.Close)
-
-	limits := agentrun.DefaultLimits()
-	job := enqueueLiveRepoJob(t, h, org, runID, "meridian", 1, "acme/meridian", limits)
-
-	w := agentrun.NewLiveRepoWorker(h.Pool, gh, h.Keyring, modelEnv(modelServer.URL))
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	if e := worker.Run(ctx, h.Pool, "test-worker", w.Handlers(),
-		worker.Options{Once: true, Lease: 60 * time.Second}); e != nil {
+func (f *liveRepoFixture) targetPhase(t *testing.T) (state, phase string) {
+	t.Helper()
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT state, phase FROM gfm.live_run_targets
+ WHERE org_id=$1::uuid AND run_id=$2::uuid AND repo_id=$3`, f.org, f.runID, f.repoID).
+		Scan(&state, &phase); e != nil {
 		t.Fatal(e)
 	}
+	return state, phase
+}
 
-	stored, e := jobs.New(h.Pool).Get(context.Background(), org, job.JobID)
-	if e != nil {
-		t.Fatal(e)
-	}
-	fields := map[string]string{
-		"payload":    string(stored.Payload),
-		"checkpoint": string(stored.Checkpoint),
-		"result":     string(stored.Result),
-		"error":      stored.Error,
-	}
-	for name, value := range fields {
-		if strings.Contains(value, secretKey) {
-			t.Fatalf("the credential leaked into the job's %s: %s", name, value)
+func (f *liveRepoFixture) waitForPhase(t *testing.T, phase string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, p := f.targetPhase(t); p == phase {
+			return
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
+	t.Fatalf("target %s never reached phase %s", f.repoID, phase)
+}
 
-	rows, e := h.Pool.Query(context.Background(), `SELECT type, payload::text FROM gfm.live_run_events
- WHERE org_id=$1::uuid AND run_id=$2::uuid`, org, runID)
+func (f *liveRepoFixture) eventTypes(t *testing.T) []string {
+	t.Helper()
+	rows, e := f.h.Pool.Query(context.Background(), `SELECT type FROM gfm.live_run_events
+ WHERE org_id=$1::uuid AND run_id=$2::uuid AND repo_id=$3 ORDER BY seq`, f.org, f.runID, f.repoID)
 	if e != nil {
 		t.Fatal(e)
 	}
 	defer rows.Close()
+	var out []string
 	for rows.Next() {
-		var typ, payload string
-		if e := rows.Scan(&typ, &payload); e != nil {
+		var typ string
+		if e := rows.Scan(&typ); e != nil {
 			t.Fatal(e)
 		}
-		if strings.Contains(payload, secretKey) {
-			t.Fatalf("the credential leaked into a %s event: %s", typ, payload)
+		out = append(out, typ)
+	}
+	return out
+}
+
+// runLiveRepoOnce leases and runs the one queued live.repo job, in the
+// calling goroutine, and returns worker.Run's own error (about the lease
+// loop itself, never about the handler's outcome — a failed or skipped job
+// is recorded on the row, not returned here).
+func runLiveRepoOnce(t *testing.T, f *liveRepoFixture, w *agentrun.LiveRepoWorker) error {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return worker.Run(ctx, f.h.Pool, "test-worker", w.Handlers(), worker.Options{Once: true, Lease: 30 * time.Second})
+}
+
+// runLiveRepoInBackground is runLiveRepoOnce run concurrently with the
+// caller, for tests that need to act (cancel, fence) while live.repo is
+// still inside its own wait loop.
+func runLiveRepoInBackground(f *liveRepoFixture, w *agentrun.LiveRepoWorker) <-chan error {
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		done <- worker.Run(ctx, f.h.Pool, "test-worker", w.Handlers(), worker.Options{Once: true, Lease: 30 * time.Second})
+	}()
+	return done
+}
+
+// A repository going all the way from fetch to a finished repository,
+// through the real pipeline both gaps this package closed were blocking:
+// guidefold.yaml is fetched alongside two skills sharing a marked procedure,
+// the real Python builder runs inside import.parse (pivottest.RunParseOnce,
+// no fake), and the real proposal.generate runs through
+// agentrun.NewReviewProposalGenerator — internal/review's own
+// GenerateProposals seam. What this proves is the fetch → real builder →
+// real seam → gfm.proposals row path — the claim that pressing the button
+// leaves a proposal a human can review, not just that live.repo's own event
+// sequencing is internally consistent.
+//
+// It does not exercise resolveGenerator's organisation-credential branch
+// (API-CONTRACT §8): deleting gfm.org_credentials after the run starts —
+// which handleCreate required — is what lets this test run the
+// deterministic recipe instead of a real call to OpenRouter, so in
+// production, where an active run always has a stored credential, this
+// branch is not the one this test drives. internal/review's own
+// api_test.go exercises the same ErrNoCredential fallback for the same
+// reason; a real-provider path would need a fake OpenRouter server and
+// OPENROUTER_BASE_URL pointed at it (generator.ForOrganisation hard-codes
+// nil for env, so only the process environment reaches it) and is left
+// for whoever adds coverage of that branch specifically.
+func TestLiveRepoGoesFetchParseProposeDone(t *testing.T) {
+	bodies := map[string]string{
+		"guidefold.yaml":                   rootGuidefoldYAML(t),
+		".agents/skills/rotate-a/SKILL.md": sharedProcedureSkill("rotate-a", "platform-engineering"),
+		".agents/skills/rotate-b/SKILL.md": sharedProcedureSkill("rotate-b", "platform-engineering"),
+	}
+	files := []string{"guidefold.yaml", ".agents/skills/rotate-a/SKILL.md", ".agents/skills/rotate-b/SKILL.md"}
+	f := setUpLiveRepoTarget(t, "happy-path", files, bodies)
+
+	// review.GenerateWorker prefers an organisation's own stored credential
+	// over WithGenerator (API-CONTRACT §8: "proposal.generate uruchomiony
+	// przez przebieg bierze klucz preferowanego dostawcy tej organizacji").
+	// The run's own creation required that credential (internal/live's
+	// handleCreate); dropping it now, before proposal.generate resolves its
+	// generator, is what lets this test run the deterministic recipe
+	// instead of a real network call to OpenRouter — the same
+	// ErrNoCredential fallback path internal/review/api_test.go's own
+	// consolidation tests exercise.
+	if _, e := f.h.Pool.Exec(context.Background(), `DELETE FROM gfm.org_credentials WHERE org_id=$1::uuid`,
+		f.org); e != nil {
+		t.Fatal(e)
+	}
+
+	scratch := pivottest.Scratch(t, "live-repo-happy-path")
+	recipe := generator.Recipe{Generator: generator.NameDeterministic, Version: generator.RecipeVersion}
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	t.Cleanup(cancelDrain)
+	go func() {
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			ranParse := f.h.RunParseOnce(drainCtx, t, scratch)
+			ranGenerate := f.h.RunGenerate(t, &generator.Deterministic{}, recipe) > 0
+			if !ranParse && !ranGenerate {
+				time.Sleep(20 * time.Millisecond)
+			}
 		}
+	}()
+
+	w := f.newWorker().WithProposalGenerator(agentrun.NewReviewProposalGenerator(f.h.Pool, f.h.Review))
+	if e := runLiveRepoOnce(t, f, w); e != nil {
+		t.Fatal(e)
+	}
+
+	events := f.eventTypes(t)
+	want := []string{live.EventRepoStarted, live.EventRepoFetched, live.EventRepoParsed,
+		live.EventRepoProposed, live.EventRepoFinished}
+	if len(events) != len(want) {
+		t.Fatalf("events = %v, want %v", events, want)
+	}
+	for i, typ := range want {
+		if events[i] != typ {
+			t.Fatalf("events[%d] = %s, want %s (full sequence %v)", i, events[i], typ, events)
+		}
+	}
+
+	var state, phase, errText *string
+	var skills, proposalCount int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT state, phase, skills, proposals, error
+ FROM gfm.live_run_targets WHERE org_id=$1::uuid AND run_id=$2::uuid AND repo_id=$3`,
+		f.org, f.runID, f.repoID).Scan(&state, &phase, &skills, &proposalCount, &errText); e != nil {
+		t.Fatal(e)
+	}
+	if state == nil || *state != live.TargetDone {
+		t.Fatalf("target state = %v, want %s", state, live.TargetDone)
+	}
+	if phase == nil || *phase != live.PhaseDone {
+		t.Fatalf("target phase = %v, want %s", phase, live.PhaseDone)
+	}
+	if skills != 2 {
+		t.Fatalf("skills = %d, want 2", skills)
+	}
+	if proposalCount == 0 {
+		t.Fatal("target.proposals = 0, want the shared procedure to have been consolidated")
+	}
+	if errText != nil {
+		t.Fatalf("target error = %v, want none", *errText)
+	}
+
+	// The claim the whole feature makes: a proposal row exists in the
+	// database a human can review, not merely a count on the target row.
+	var proposalsInDB int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.proposals
+ WHERE org_id=$1::uuid AND repo_id=$2 AND kind=$3`,
+		f.org, f.repoID, generator.KindConsolidation).Scan(&proposalsInDB); e != nil {
+		t.Fatal(e)
+	}
+	if proposalsInDB == 0 {
+		t.Fatal("live.repo's real proposal.generate left no row in gfm.proposals")
+	}
+
+	runState, runErr := runRowState(t, f.h, f.org, f.runID)
+	if runState != live.StateSucceeded {
+		t.Fatalf("run state = %s/%v, want %s", runState, runErr, live.StateSucceeded)
+	}
+}
+
+// A repository with no guidefold.yaml is not managed by Guidefold
+// (API-CONTRACT §8, ADR-0046 point 9): live.repo skips it before ever
+// calling CreateImport, rather than failing it the way a real import.parse
+// failure does (the next test).
+func TestLiveRepoSkipsRepositoryWithNoGuidefoldYAML(t *testing.T) {
+	f := setUpLiveRepoTarget(t, "no-guidefold-yaml",
+		[]string{"AGENTS.md", ".agents/skills/a/SKILL.md"}, nil)
+
+	w := f.newWorker()
+	if e := runLiveRepoOnce(t, f, w); e != nil {
+		t.Fatal(e)
+	}
+
+	state, errText := targetRow(t, f.h, f.org, f.runID, f.repoID)
+	if state != live.TargetSkipped || errText != live.ErrorGuidefoldYAMLMissing {
+		t.Fatalf("target = %s/%s, want %s/%s", state, errText,
+			live.TargetSkipped, live.ErrorGuidefoldYAMLMissing)
+	}
+
+	var imports int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.imports
+ WHERE org_id=$1::uuid AND repo_id=$2`, f.org, f.repoID).Scan(&imports); e != nil {
+		t.Fatal(e)
+	}
+	if imports != 0 {
+		t.Fatalf("an unmanaged repository got %d gfm.imports rows, want 0", imports)
+	}
+
+	runState, _ := runRowState(t, f.h, f.org, f.runID)
+	if runState != live.StatePartial {
+		t.Fatalf("run state = %s, want %s (one skipped target)", runState, live.StatePartial)
+	}
+}
+
+// A repository whose guidefold.yaml is present but malformed is a real
+// import.parse failure, driven through the real builder
+// (pivottest.Harness.RunParseOnce, no fake) — distinct from
+// TestLiveRepoSkipsRepositoryWithNoGuidefoldYAML's skip, and proving
+// live.repo's own reaction to a genuine child-job failure: the target ends
+// failed with a named reason and the run ends partial.
+func TestLiveRepoChildJobFailureLeavesTargetFailedAndRunPartial(t *testing.T) {
+	bodies := map[string]string{"guidefold.yaml": "- not\n- a\n- mapping\n"}
+	f := setUpLiveRepoTarget(t, "parse-fails",
+		[]string{"guidefold.yaml", "AGENTS.md", ".agents/skills/a/SKILL.md"}, bodies)
+	scratch := pivottest.Scratch(t, "live-repo-parse-fail")
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	t.Cleanup(cancelDrain)
+	go func() {
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			if f.h.RunParseOnce(drainCtx, t, scratch) {
+				return
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}()
+
+	w := f.newWorker()
+	if e := runLiveRepoOnce(t, f, w); e != nil {
+		t.Fatal(e)
+	}
+
+	var state string
+	var errText *string
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT state, error FROM gfm.live_run_targets
+ WHERE org_id=$1::uuid AND run_id=$2::uuid AND repo_id=$3`, f.org, f.runID, f.repoID).
+		Scan(&state, &errText); e != nil {
+		t.Fatal(e)
+	}
+	if state != live.TargetFailed {
+		t.Fatalf("target state = %s, want %s", state, live.TargetFailed)
+	}
+	if errText == nil || !strings.HasPrefix(*errText, "import_failed:") {
+		t.Fatalf("target error = %v, want a reason starting with import_failed:", errText)
+	}
+
+	runState, _ := runRowState(t, f.h, f.org, f.runID)
+	if runState != live.StatePartial {
+		t.Fatalf("run state = %s, want %s", runState, live.StatePartial)
+	}
+
+	events := f.eventTypes(t)
+	if len(events) == 0 || events[0] != live.EventRepoStarted || events[len(events)-1] != live.EventRepoFinished {
+		t.Fatalf("events = %v, want to start with repo.started and end with repo.finished", events)
+	}
+	for _, typ := range events {
+		if typ == live.EventRepoParsed || typ == live.EventRepoProposed {
+			t.Fatalf("events = %v: a failed import.parse must never reach repo.parsed/repo.proposed", events)
+		}
+	}
+}
+
+// Cancellation must stop live.repo mid-wait, not only at the end of the
+// repository (ADR-0046 point 7, point 9): the owner's cancel bumps this
+// very job's generation, so the next Heartbeat inside the wait loop ends it
+// before any further write — the target row is left exactly as the cancel
+// route itself set it (skipped/cancelled_by_owner), never touched again by
+// live.repo.
+func TestLiveRepoCancellationStopsMidWait(t *testing.T) {
+	f := setUpLiveRepoTarget(t, "cancel-mid-wait",
+		[]string{"guidefold.yaml", "AGENTS.md", ".agents/skills/a/SKILL.md"}, nil)
+	// import.parse is left queued forever: nothing drains it, so live.repo's
+	// wait loop keeps polling until this test acts.
+
+	w := f.newWorker()
+	done := runLiveRepoInBackground(f, w)
+	f.waitForPhase(t, live.PhaseParse)
+
+	status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: runsPath(f.org) + "/" + f.runID + "/cancel"})
+	if status != http.StatusOK {
+		t.Fatalf("cancel: %d %v", status, body)
+	}
+
+	select {
+	case e := <-done:
+		if e != nil {
+			t.Fatal(e)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("live.repo did not end after cancellation")
+	}
+
+	state, errText := targetRow(t, f.h, f.org, f.runID, f.repoID)
+	if state != live.TargetSkipped || errText != live.ErrorCancelled {
+		t.Fatalf("target = %s/%s, want %s/%s (written by the cancel call itself)",
+			state, errText, live.TargetSkipped, live.ErrorCancelled)
+	}
+	for _, typ := range f.eventTypes(t) {
+		if typ == live.EventRepoFinished {
+			t.Fatalf("live.repo appended repo.finished after being cancelled: %v", f.eventTypes(t))
+		}
+	}
+}
+
+// A heartbeat that finds a stale generation — this job's own lease was
+// re-leased elsewhere, simulated here by bumping gfm.jobs.generation
+// directly rather than through cancel, so this test asserts fencing alone
+// and not cancel's own target write — must end the job with no further
+// write at all: not the target, not a new event.
+func TestLiveRepoFencedHeartbeatEndsJobWithoutFurtherWrites(t *testing.T) {
+	f := setUpLiveRepoTarget(t, "fenced-heartbeat",
+		[]string{"guidefold.yaml", "AGENTS.md", ".agents/skills/a/SKILL.md"}, nil)
+
+	w := f.newWorker()
+	done := runLiveRepoInBackground(f, w)
+	f.waitForPhase(t, live.PhaseParse)
+
+	stateBefore, phaseBefore := f.targetPhase(t)
+	eventsBefore := len(f.eventTypes(t))
+
+	var generationBefore int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT generation FROM gfm.jobs
+ WHERE org_id=$1::uuid AND kind=$2 AND repo_id=$3`, f.org, live.KindRepo, f.repoID).Scan(&generationBefore); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := f.h.Pool.Exec(context.Background(), `UPDATE gfm.jobs SET generation=generation+1
+ WHERE org_id=$1::uuid AND kind=$2 AND repo_id=$3`, f.org, live.KindRepo, f.repoID); e != nil {
+		t.Fatal(e)
+	}
+
+	select {
+	case e := <-done:
+		if e != nil {
+			t.Fatal(e)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("live.repo did not end after being fenced")
+	}
+
+	stateAfter, phaseAfter := f.targetPhase(t)
+	if stateAfter != stateBefore || phaseAfter != phaseBefore {
+		t.Fatalf("target changed after fencing: %s/%s -> %s/%s, want no further write",
+			stateBefore, phaseBefore, stateAfter, phaseAfter)
+	}
+	if got := len(f.eventTypes(t)); got != eventsBefore {
+		t.Fatalf("event count changed after fencing: %d -> %d, want no further write", eventsBefore, got)
+	}
+
+	// finish()'s own Fail path would have added another +1 had it matched
+	// the row's generation; it must not have, since the row is fenced
+	// against exactly that write — the generation must be exactly the one
+	// this test itself set, never higher.
+	var generationAfter int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT generation FROM gfm.jobs
+ WHERE org_id=$1::uuid AND kind=$2 AND repo_id=$3`, f.org, live.KindRepo, f.repoID).Scan(&generationAfter); e != nil {
+		t.Fatal(e)
+	}
+	if generationAfter != generationBefore+1 {
+		t.Fatalf("job generation = %d, want exactly %d (this test's own bump, nothing more)",
+			generationAfter, generationBefore+1)
 	}
 }

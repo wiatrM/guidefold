@@ -71,8 +71,9 @@ func newHarnessWith(t *testing.T, cfg identity.Config) *harness {
 	importer.New(pool, blobs).Register(router)
 	knowledge.New(pool, blobs, nil, "dev").Register(router)
 	usage.New(pool).Register(router)
-	secrets.New(pool, nil, nil).Register(router)
-	live.New(pool).Register(router)
+	credentials := secrets.New(pool, nil, nil)
+	credentials.Register(router)
+	live.New(pool, live.NewSecretsCredentialSource(credentials)).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		t.Fatal(e)

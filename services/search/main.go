@@ -969,11 +969,14 @@ func mountManagement(app *App, pool *pgxpool.Pool) error {
 		slog.Warn("secret_keyring_absent",
 			"detail", "GUIDEFOLD_SECRET_KEY_FILE is unset, so organisations cannot store a model key and the Live Agent cannot run")
 	}
-	secrets.New(pool, keyring, secrets.NewHTTPVerifier()).Register(router)
-	// The Live Agent reads only gfm.org_credentials to decide whether a run
-	// can start; it never opens a key, so it needs no keyring of its own
-	// (ADR-0046 §5).
-	live.New(pool).Register(router)
+	credentials := secrets.New(pool, keyring, secrets.NewHTTPVerifier())
+	credentials.Register(router)
+	// The Live Agent resolves its provider and model from the organisation's
+	// preferred stored credential (§4.8, §4.9) through the narrow
+	// CredentialSource interface; NewSecretsCredentialSource discards the
+	// plaintext key OpenPreferred hands back, so live itself never opens a
+	// key and needs no keyring of its own (ADR-0046 §5).
+	live.New(pool, live.NewSecretsCredentialSource(credentials)).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		return e

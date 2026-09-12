@@ -45,8 +45,10 @@ func TestTerminalStatePrecedence(t *testing.T) {
 // The 20,000-event cap (§5.5a) is exercised at the boundary rather than by
 // inserting 20,000 rows: Append allocates the next seq from max(seq), so
 // seeding one row at seq=maxEventsPerRun is the same starting point as
-// 20,000 sequential appends would leave behind.
-func TestAppendDropsModelDeltaPastCapAndWritesTruncationNoticeOnce(t *testing.T) {
+// 20,000 sequential appends would leave behind. Past the cap, only the two
+// events that end something — repo.finished and run.finished — still get
+// through; everything else is dropped.
+func TestAppendDropsEverythingButFinishedPastCapAndWritesTruncationNoticeOnce(t *testing.T) {
 	_, pool := testdb.Start(t)
 	ctx := context.Background()
 	orgID, runID := jobs.NewID(), jobs.NewID()
@@ -54,8 +56,8 @@ func TestAppendDropsModelDeltaPastCapAndWritesTruncationNoticeOnce(t *testing.T)
 		orgID, "cap-test-"+runID[:8]); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := pool.Exec(ctx, `INSERT INTO gfm.live_runs(org_id,run_id,state,prompt,provider,model)
- VALUES($1::uuid,$2::uuid,'running','cap test','openrouter','openrouter/auto')`, orgID, runID); e != nil {
+	if _, e := pool.Exec(ctx, `INSERT INTO gfm.live_runs(org_id,run_id,state,provider,model)
+ VALUES($1::uuid,$2::uuid,'running','openrouter','openrouter/auto')`, orgID, runID); e != nil {
 		t.Fatal(e)
 	}
 	if _, e := pool.Exec(ctx, `INSERT INTO gfm.live_run_events(org_id,run_id,seq,type,payload)
@@ -69,35 +71,35 @@ func TestAppendDropsModelDeltaPastCapAndWritesTruncationNoticeOnce(t *testing.T)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	seq, e := Append(ctx, tx, orgID, runID, "", EventModelDelta, map[string]any{"text": "should be dropped"})
+	seq, e := Append(ctx, tx, orgID, runID, "meridian/atlas", EventRepoStarted, "should be dropped", nil)
 	if e != nil {
 		t.Fatal(e)
 	}
 	if seq != 0 {
-		t.Fatalf("model.delta past the cap returned seq %d, want 0 (dropped, not failure)", seq)
+		t.Fatalf("repo.started past the cap returned seq %d, want 0 (dropped, not failure)", seq)
 	}
 
-	// The first structural event past the cap is preceded by the truncation
+	// The first exempt event past the cap is preceded by the truncation
 	// notice, so it lands two seq past the seeded boundary, not one.
-	seq, e = Append(ctx, tx, orgID, runID, "meridian/atlas", EventFinding,
-		map[string]any{"summary": "first structural event past the cap", "severity": "info"})
+	seq, e = Append(ctx, tx, orgID, runID, "meridian/atlas", EventRepoFinished,
+		"Repozytorium meridian/atlas zakończyło pracę.", map[string]any{"proposals": 2})
 	if e != nil {
 		t.Fatal(e)
 	}
 	if seq != maxEventsPerRun+2 {
-		t.Fatalf("finding past the cap got seq %d, want %d", seq, maxEventsPerRun+2)
+		t.Fatalf("repo.finished past the cap got seq %d, want %d", seq, maxEventsPerRun+2)
 	}
 
-	// A second structural event must not write a second truncation notice:
-	// the guard is a query against the log, not an in-process flag, so this
-	// is the assertion that would catch a regression to the latter.
-	seq, e = Append(ctx, tx, orgID, runID, "meridian/graph", EventFinding,
-		map[string]any{"summary": "second structural event past the cap", "severity": "info"})
+	// A second exempt event must not write a second truncation notice: the
+	// guard is a query against the log, not an in-process flag, so this is
+	// the assertion that would catch a regression to the latter.
+	seq, e = Append(ctx, tx, orgID, runID, "meridian/graph", EventRepoFinished,
+		"Repozytorium meridian/graph zakończyło pracę.", map[string]any{"proposals": 0})
 	if e != nil {
 		t.Fatal(e)
 	}
 	if seq != maxEventsPerRun+3 {
-		t.Fatalf("second finding got seq %d, want %d (no second truncation notice ahead of it)",
+		t.Fatalf("second repo.finished got seq %d, want %d (no second truncation notice ahead of it)",
 			seq, maxEventsPerRun+3)
 	}
 
@@ -109,5 +111,32 @@ func TestAppendDropsModelDeltaPastCapAndWritesTruncationNoticeOnce(t *testing.T)
 	}
 	if notices != 1 {
 		t.Fatalf("wrote %d truncation notices, want exactly 1", notices)
+	}
+}
+
+// Append requires a non-empty payload.text: it is documented as "hard to
+// forget" rather than merely recommended, so an empty one must be a
+// programming error the caller sees immediately, not a blank line a second
+// reader of the log has to guess the meaning of.
+func TestAppendRequiresNonEmptyText(t *testing.T) {
+	_, pool := testdb.Start(t)
+	ctx := context.Background()
+	orgID, runID := jobs.NewID(), jobs.NewID()
+	if _, e := pool.Exec(ctx, `INSERT INTO gfm.orgs(org_id,slug,name) VALUES($1::uuid,$2,$2)`,
+		orgID, "text-test-"+runID[:8]); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := pool.Exec(ctx, `INSERT INTO gfm.live_runs(org_id,run_id,state,provider,model)
+ VALUES($1::uuid,$2::uuid,'running','openrouter','openrouter/auto')`, orgID, runID); e != nil {
+		t.Fatal(e)
+	}
+	tx, e := pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, e := Append(ctx, tx, orgID, runID, "", EventRunStarted, "  ", nil); e == nil {
+		t.Fatal("Append with blank text succeeded, want an error")
 	}
 }

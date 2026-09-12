@@ -193,6 +193,37 @@ function ShownOnce({ title, label, value, note }: { title: string; label: string
   </Panel>;
 }
 
+/**
+ * The Model keys table's Model column, editable in place (contract §4.8's `PATCH`, ADR-0045):
+ * free text, no dropdown of model names, saved without touching the key. Owns its own draft and
+ * error state so one row's in-progress edit or failure never bleeds into another row's.
+ */
+function CredentialModelCell({ entry, owner, onSave }: { entry: OrgCredential; owner: boolean; onSave: (model: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(entry.model);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const shown = entry.model ? <code>{entry.model}</code> : <span className={styles.linkHint}>Provider default</span>;
+  if (!owner) return shown;
+  if (!editing) return <div className={styles.modelCell}>
+    {shown}
+    <ActionButton size="sm" onClick={() => { setValue(entry.model); setError(''); setEditing(true); }}>Edit</ActionButton>
+  </div>;
+  return <form className={styles.modelCell} onSubmit={async event => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try { await onSave(value.trim()); setEditing(false); }
+    catch (failure) { setError('The model was not saved (' + asApiError(failure).code + ').'); }
+    finally { setSaving(false); }
+  }}>
+    <Input aria-label={'Model for ' + entry.provider} value={value} onChange={event => setValue(event.target.value)} maxLength={120} className={inputClass} disabled={saving} />
+    <ActionButton size="sm" type="submit" tone="human" disabled={saving}>Save</ActionButton>
+    <ActionButton size="sm" type="button" disabled={saving} onClick={() => { setEditing(false); setError(''); }}>Cancel</ActionButton>
+    {error && <p className={styles.feedback} role="alert">{error}</p>}
+  </form>;
+}
+
 const generationPanelId = 'generate-proposals';
 const createInstallationPanelId = 'create-installation';
 
@@ -788,6 +819,12 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const [busy, setBusy] = useState(false);
   const [keyProvider, setKeyProvider] = useState<OrgCredentialProvider>(orgCredentialProviders[0]);
   const [keyName, setKeyName] = useState('');
+  // No closed list (§4.8): the provider owns its model catalogue, and it changes weekly; a
+  // hardcoded dropdown here would refuse an organization's own fine-tune. Free text, checked by
+  // the provider itself when the key is saved. The organization's first stored credential
+  // becomes preferred automatically, so this form never asks for `preferred` at creation time —
+  // that field only ever moves through `PATCH` (below), which never asks for the key.
+  const [keyModel, setKeyModel] = useState('');
   // Never rendered back and cleared once the request settles, success or failure alike (§4.8).
   const [keyValue, setKeyValue] = useState('');
   const [keyFormError, setKeyFormError] = useState('');
@@ -937,23 +974,26 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     const provider = keyProvider;
     const value = keyValue.trim();
     const name = keyName.trim();
+    const model = keyModel.trim();
     if (!value) { setKeyFormError('Enter the key value.'); return; }
     setBusy(true);
     setKeyFormError('');
     try {
-      await source.setCredential(org, provider, { api_key: value, name: name || undefined }, 'credential:' + org + ':' + provider);
+      await source.setCredential(org, provider, { api_key: value, name: name || undefined, model: model || undefined }, 'credential:' + org + ':' + provider);
       setKeyName('');
+      setKeyModel('');
       setKeyStatus('Key saved for ' + provider + '.');
       credentials.reload();
     } catch (error) {
       const failure = asApiError(error);
-      // §4.8's closed error list for this endpoint has exactly these two named failures plus
+      // §4.8's closed error list for this endpoint has exactly these named failures plus
       // `invalid_provider`/`invalid_body` (already refused client-side above); anything else is
       // shown by its own code, never folded into one generic word.
       setKeyFormError(
         failure.code === 'credential_invalid' ? 'The provider rejected this key. Nothing was saved.'
-          : failure.code === 'secret_encryption_unavailable' ? 'This deployment cannot store model keys right now: no secret-encryption key is configured. Nothing was saved.'
-            : 'The key was not saved (' + failure.code + ').',
+          : failure.code === 'invalid_model' ? 'This model identifier was refused (it must be free of whitespace and at most 120 characters). Nothing was saved.'
+            : failure.code === 'secret_encryption_unavailable' ? 'This deployment cannot store model keys right now: no secret-encryption key is configured. Nothing was saved.'
+              : 'The key was not saved (' + failure.code + ').',
       );
     } finally {
       // Cleared here, not only on success: the typed value never outlives the request.
@@ -971,6 +1011,29 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     } catch (error) {
       setKeyStatus('The key was not removed (' + asApiError(error).code + ').');
     } finally { setBusy(false); }
+  }
+  /**
+   * One click, contract §4.8's `PATCH`: `{preferred: true}`, no key. The server clears the mark
+   * from whichever credential held it, so this never needs to send `preferred: false` anywhere —
+   * there is no "unprefer" action, only "prefer another one" or "delete this one".
+   */
+  async function makePreferred(provider: OrgCredentialProvider) {
+    if (!org || busy) return;
+    setBusy(true);
+    try {
+      await source.patchCredential(org, provider, { preferred: true }, 'credential-patch:' + org + ':' + provider + ':preferred');
+      setKeyStatus(provider + ' is now the preferred credential.');
+      credentials.reload();
+    } catch (error) {
+      setKeyStatus('The preferred credential was not changed (' + asApiError(error).code + ').');
+    } finally { setBusy(false); }
+  }
+  /** Inline model edit, contract §4.8's `PATCH`: `{model: "..."}`, no key. Thrown errors are
+   * shown by the row itself (`CredentialModelCell`), not folded into the shared `keyStatus` line. */
+  async function patchModel(provider: OrgCredentialProvider, model: string) {
+    if (!org) throw new Error('no organization selected');
+    await source.patchCredential(org, provider, { model }, 'credential-patch:' + org + ':' + provider + ':model');
+    credentials.reload();
   }
   async function decideDevice(approve: boolean) {
     if (!deviceCode) return;
@@ -1001,18 +1064,27 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     ]} />
     <OwnerNote role={role} />
 
-    {tab === 'keys' ? <Panel title="Model keys" eyebrow="ADR-0045" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
-      <p>The organization's own key for each model provider. Guidefold checks a key with the provider before storing it and never returns it once saved &mdash; only the last four characters are kept visible.</p>
+    {tab === 'keys' ? <Panel title="Model keys" eyebrow="ADR-0045, ADR-0046" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
+      <p>The organization's own key for each model provider, and the provider/model choice background work — Live Agent today — reads. Guidefold checks a key with the provider before storing it and never returns it once saved &mdash; only the last four characters are kept visible. Exactly one credential is <strong>preferred</strong> at a time; that is the one used.</p>
       {credentials.phase === 'loading' && <RouteState state="loading" title="Reading model keys" description="Waiting for the stored key metadata for this organization." />}
       {credentials.phase === 'error' && credentials.error && <ApiFailure error={credentials.error} onRetry={credentials.reload} retryLabel="Retry model keys" />}
-      {credentials.phase === 'ready' && <DataTable flush caption="Model provider keys" headings={['Provider', 'Name', 'Last 4', 'Stored', 'Action']}>
+      {credentials.phase === 'ready' && <DataTable flush caption="Model provider keys" headings={['Provider', 'Name', 'Model', 'Last 4', 'Stored', 'Preferred', 'Action']}>
         {orgCredentialProviders.map(provider => {
           const entry: OrgCredential | undefined = credentials.value?.find(item => item.provider === provider);
           return <tr key={provider}>
             <th scope="row">{provider}</th>
             <td>{entry ? entry.name : <span className={styles.linkHint}>No key stored</span>}</td>
+            <td>{entry ? <CredentialModelCell entry={entry} owner={owner} onSave={model => patchModel(provider, model)} /> : unknown(null)}</td>
             <td>{entry ? <code>&hellip;{entry.last4}</code> : unknown(null)}</td>
             <td>{entry ? unknown(entry.created_at) : unknown(null)}</td>
+            <td>{entry
+              ? (entry.preferred
+                ? <StateBadge tone="system">Preferred</StateBadge>
+                // No "unprefer" control: the server keeps exactly one preferred credential
+                // while any exist, so the only ways to stop using one are preferring another
+                // or deleting it (§4.8).
+                : owner ? <ActionButton size="sm" disabled={busy} onClick={() => { void makePreferred(provider); }}>Make preferred</ActionButton> : unknown(null))
+              : unknown(null)}</td>
             <td>{owner && entry
               ? <ActionButton size="sm" disabled={busy} onClick={() => { void removeCredential(provider); }}>Delete</ActionButton>
               : null}</td>
@@ -1027,6 +1099,9 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </Field>
         <Field id="key-name" label="Name" hint="A label for this key, for example which account it belongs to.">
           <Input id="key-name" value={keyName} onChange={event => setKeyName(event.target.value)} maxLength={80} className={inputClass} />
+        </Field>
+        <Field id="key-model" label="Model" hint="Free text, checked by the provider itself; leave blank for this provider's default model. There is no fixed list here — the provider owns its catalogue. To change the model on a credential that already exists, edit it in the table above instead — that does not require the key.">
+          <Input id="key-model" value={keyModel} onChange={event => { setKeyModel(event.target.value); setKeyFormError(''); }} maxLength={120} className={inputClass} />
         </Field>
         <Field id="key-value" label="API key" hint="Checked with the provider before it is saved; not shown again after this request." error={keyFormError || undefined}>
           <Input id="key-value" type="password" autoComplete="off" value={keyValue} onChange={event => { setKeyValue(event.target.value); setKeyFormError(''); }} required aria-invalid={Boolean(keyFormError)} className={inputClass} />

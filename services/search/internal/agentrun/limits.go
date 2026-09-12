@@ -4,13 +4,16 @@ import "encoding/json"
 
 // Default ceilings for a Live Agent run. API-CONTRACT §8 names the three
 // categories a run must enforce (max repositories, max input tokens per
-// repository, max spend in USD) but — as of this change — no endpoint field
-// lets an owner set the latter two per run: POST {org_base}/live/runs
-// accepts only prompt/provider/model/repos, and gfm.live_runs.limits is
-// written nowhere. These numbers are this package's own judgment call for
-// what "a hard ceiling" defaults to until a request field exists; live.plan
-// writes them into the run row it plans, so the console can show what was
-// actually enforced rather than an empty '{}'.
+// repository, max spend in USD) but the start request has no fields at all
+// (§4.9, 1.6.0: "one button, no composer") — there is nowhere for an owner
+// to set any of them per run. These numbers are this package's own judgment
+// call for what "a hard ceiling" defaults to until a request field exists;
+// live.plan writes them into the run row it plans, so the console can show
+// what was actually enforced rather than an empty '{}'. live.repo itself
+// only reads MaxFiles today (it no longer calls a model, so MaxUSD/MaxTokens
+// have nothing left to bound in this package); they stay on Limits because
+// the job row's `limits` column still carries them for schema consistency
+// with API-CONTRACT §8's job contract.
 const (
 	DefaultMaxUSD           = 2.0
 	DefaultMaxTokensPerRepo = 50000

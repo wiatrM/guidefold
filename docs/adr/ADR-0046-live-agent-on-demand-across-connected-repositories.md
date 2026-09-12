@@ -43,7 +43,7 @@ yet; its contract entries (§4.7) do.
    feature, not a side effect.
 
 2. **The run reads; it does not write to the customer's repositories.** `live.repo` fetches only
-   `AGENTS.md` and `**/.agents/skills/**/SKILL.md` through the GitHub contents API with an
+   `guidefold.yaml`, `AGENTS.md` and `**/.agents/skills/**/SKILL.md` through the GitHub contents API with an
    installation token, using the same least-privilege adapter ADR-0036 introduces. It clones
    nothing, executes nothing from the repository, opens no branch and no pull request. Anything the
    agent proposes changing goes to the existing review flow as a proposal, through the path
@@ -114,6 +114,11 @@ yet; its contract entries (§4.7) do.
    waiting is a long-held lease; the queue answers it: a 30-second lease extended by `Heartbeat` at
    most every 10 seconds, and a heartbeat with a stale generation returns `ErrFenced`, so a job that
    slept through its lease finds out and stops instead of writing beside its replacement.
+   `guidefold.yaml` is on the fetch list because it declares the scope hierarchy. Without it
+   `import.parse` has nothing to build and consolidation has nothing to compare, so an import
+   without the hierarchy is a bag of files rather than an import. A repository that does not have
+   one is not managed by Guidefold and becomes a `skipped` target with `guidefold_yaml_missing`,
+   named like every other skip.
    Deleted with this amendment: the `FINDING:` line convention, the `finding` and `model.delta`
    events, the prompt, the repository scope and the provider/model controls at start.
 

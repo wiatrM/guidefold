@@ -3,6 +3,7 @@ package generator_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -259,17 +260,57 @@ func TestRemoteTimeoutRecordsUncertainCost(t *testing.T) {
 	}
 }
 
-// A provider without a key file is a configuration error at start-up, not a
-// runtime surprise on the first job.
-func TestRemoteRequiresAKeyFile(t *testing.T) {
-	_, _, e := generator.Select(func(name string) string {
+// ADR-0045: a deployment with no key file is a valid, BYOK-only configuration
+// now -- every organisation using it must supply its own stored key. Select
+// must not refuse to start for that; only a request that arrives with neither
+// a request key nor this file ends its own job, not the worker.
+func TestRemoteWithNoKeyFileStartsAndEndsAJobWithNoRequestKey(t *testing.T) {
+	engine, _, e := generator.Select(func(name string) string {
 		if name == "GUIDEFOLD_GENERATOR" {
 			return generator.NameOpenAI
 		}
 		return ""
 	})
-	if e == nil || !strings.Contains(e.Error(), "api_key_file") {
-		t.Fatalf("expected a key-file configuration error, got %v", e)
+	if e != nil {
+		t.Fatalf("a deployment with no key file failed to start: %v", e)
+	}
+	_, _, e = engine.Generate(context.Background(), generator.Request{})
+	if !errors.Is(e, generator.ErrCredentialMissing) {
+		t.Fatalf("expected ErrCredentialMissing with no request key and no deployment file, got %v", e)
+	}
+}
+
+// A request that carries its own key is used even though the deployment has
+// none configured -- the organisation's key, opened by review.GenerateWorker
+// through internal/secrets, is enough on its own (ADR-0045).
+func TestRemoteWithNoKeyFileUsesTheRequestsOwnKey(t *testing.T) {
+	var sawAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sawAuth = r.Header.Get("Authorization")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []any{map[string]any{"message": map[string]any{
+				"content": `{"candidates":[]}`}}}})
+	}))
+	defer server.Close()
+	engine, _, e := generator.Select(func(name string) string {
+		switch name {
+		case "GUIDEFOLD_GENERATOR":
+			return generator.NameOpenAI
+		case "OPENAI_BASE_URL":
+			return server.URL
+		default:
+			return ""
+		}
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, _, e = engine.Generate(context.Background(), generator.Request{APIKey: "sk-from-the-organisation"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if sawAuth != "Bearer sk-from-the-organisation" {
+		t.Fatalf("the provider saw authorization %q, not the request's own key", sawAuth)
 	}
 }
 

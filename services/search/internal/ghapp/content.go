@@ -18,8 +18,13 @@ import (
 const MaxFileBytes = 256 * 1024
 
 // ListSkillFiles returns the repository paths, at ref, that a live run or
-// ascent reads: AGENTS.md at the root and every **/.agents/skills/**/SKILL.md.
-// It uses the git trees API with recursive=1 — one call regardless of
+// ascent reads: guidefold.yaml and AGENTS.md at the root, and every
+// **/.agents/skills/**/SKILL.md. guidefold.yaml is on this list because it
+// declares the scope hierarchy import.parse's own builder needs (API-CONTRACT
+// §8, ADR-0046 point 9): a repository whose returned list holds no
+// guidefold.yaml is not managed by Guidefold, and the caller is expected to
+// treat that absence as a named skip rather than fetching anything else. It
+// uses the git trees API with recursive=1 — one call regardless of
 // repository depth — rather than walking directories one contents-API call
 // at a time.
 func (c *Client) ListSkillFiles(ctx context.Context, installationID int64, fullName, ref string) ([]string, error) {
@@ -105,12 +110,12 @@ func (c *Client) ReadFile(ctx context.Context, installationID int64, fullName, r
 	return decoded, nil
 }
 
-// isSkillFile matches "AGENTS.md" at the root and
+// isSkillFile matches "guidefold.yaml" and "AGENTS.md" at the root and
 // "**/.agents/skills/**/SKILL.md" — a skill file always lives one or more
 // directories below skills/, named after the skill, never directly as
 // ".agents/skills/SKILL.md".
 func isSkillFile(path string) bool {
-	if path == "AGENTS.md" {
+	if path == "guidefold.yaml" || path == "AGENTS.md" {
 		return true
 	}
 	segments := strings.Split(path, "/")

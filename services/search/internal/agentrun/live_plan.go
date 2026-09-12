@@ -22,12 +22,13 @@ import (
 const liveRepoPayloadVersion = "live.repo-1"
 
 // livePlanPayload mirrors exactly what internal/live's handleCreate writes
-// (runs.go): {schema_version, org_id, run_id, repos}.
+// (runs.go): {schema_version, org_id, run_id}. There is no repos field
+// (API-CONTRACT §4.9, 1.6.0): a run always covers every repository of the
+// organisation, so there is nothing else for the API to tell live.plan.
 type livePlanPayload struct {
-	SchemaVersion string   `json:"schema_version"`
-	OrgID         string   `json:"org_id"`
-	RunID         string   `json:"run_id"`
-	Repos         []string `json:"repos"`
+	SchemaVersion string `json:"schema_version"`
+	OrgID         string `json:"org_id"`
+	RunID         string `json:"run_id"`
 }
 
 // liveRepoPayload is what live.plan enqueues per target, matching
@@ -82,7 +83,7 @@ func (w *LivePlanWorker) Run(ctx context.Context, t *worker.Task) error {
 		return worker.Permanent(errors.New("live.plan payload does not match its job row"))
 	}
 
-	targets, e := w.resolveTargets(ctx, payload.OrgID, payload.Repos)
+	targets, e := w.resolveTargets(ctx, payload.OrgID)
 	if e != nil {
 		return e
 	}
@@ -164,7 +165,7 @@ func (w *LivePlanWorker) startRun(ctx context.Context, tx pgx.Tx, orgID, runID s
 		return Limits{}, e
 	}
 	if !alreadyStarted {
-		if _, e := live.Append(ctx, tx, orgID, runID, "", live.EventRunStarted,
+		if _, e := live.Append(ctx, tx, orgID, runID, "", live.EventRunStarted, "Przebieg wystartował.",
 			map[string]any{"provider": provider, "model": model}); e != nil {
 			return Limits{}, e
 		}
@@ -205,12 +206,13 @@ func (w *LivePlanWorker) writeTarget(ctx context.Context, tx pgx.Tx, orgID, runI
 	return e
 }
 
-// resolveTargets is the run's repos list, or every repository of the
-// organisation, each matched against its GitHub App installation
-// (installation.go) — never filtered by whether that match succeeds: a
-// repository with none becomes a skipped target with a named reason,
-// exactly what API-CONTRACT §4.9 requires ("never silently pominięte").
-func (w *LivePlanWorker) resolveTargets(ctx context.Context, orgID string, repos []string) ([]planTarget, error) {
+// resolveTargets is every repository of the organisation (API-CONTRACT
+// §4.9, 1.6.0: a run always covers all of them, never a chosen subset),
+// each matched against its GitHub App installation (installation.go) —
+// never filtered by whether that match succeeds: a repository with none
+// becomes a skipped target with a named reason, exactly what API-CONTRACT
+// §4.9 requires ("never silently pominięte").
+func (w *LivePlanWorker) resolveTargets(ctx context.Context, orgID string) ([]planTarget, error) {
 	repoRows, e := w.pool.Query(ctx, `SELECT repo_id, git_host_url FROM gfm.repos
  WHERE org_id=$1::uuid ORDER BY repo_id`, orgID)
 	if e != nil {
@@ -218,8 +220,8 @@ func (w *LivePlanWorker) resolveTargets(ctx context.Context, orgID string, repos
 	}
 	defer repoRows.Close()
 	type repoRow struct{ id, url string }
+	var order []string
 	byID := map[string]repoRow{}
-	order := []string{}
 	for repoRows.Next() {
 		var r repoRow
 		if e := repoRows.Scan(&r.id, &r.url); e != nil {
@@ -232,26 +234,14 @@ func (w *LivePlanWorker) resolveTargets(ctx context.Context, orgID string, repos
 		return nil, e
 	}
 
-	wanted := order
-	if len(repos) > 0 {
-		wanted = dedupeNonEmpty(repos)
-	}
-
 	lookup, e := loadInstallationLookup(ctx, w.pool, orgID)
 	if e != nil {
 		return nil, e
 	}
 
-	targets := make([]planTarget, 0, len(wanted))
-	for _, repoID := range wanted {
-		r, known := byID[repoID]
-		if !known {
-			// A caller named a repository this organisation never
-			// registered. Never dropped from the list: reported the same
-			// way an unregistered installation is.
-			targets = append(targets, planTarget{repoID: repoID, skipReason: live.ErrorGitHubNotWired})
-			continue
-		}
+	targets := make([]planTarget, 0, len(order))
+	for _, repoID := range order {
+		r := byID[repoID]
 		installationID, fullName, ok := lookup.resolve(r.url)
 		if !ok {
 			targets = append(targets, planTarget{repoID: repoID, skipReason: live.ErrorGitHubNotWired})
@@ -260,17 +250,4 @@ func (w *LivePlanWorker) resolveTargets(ctx context.Context, orgID string, repos
 		targets = append(targets, planTarget{repoID: repoID, installationID: installationID, fullName: fullName})
 	}
 	return targets, nil
-}
-
-func dedupeNonEmpty(values []string) []string {
-	seen := map[string]bool{}
-	out := make([]string, 0, len(values))
-	for _, v := range values {
-		if v == "" || seen[v] {
-			continue
-		}
-		seen[v] = true
-		out = append(out, v)
-	}
-	return out
 }
