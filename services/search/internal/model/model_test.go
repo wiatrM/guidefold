@@ -58,8 +58,8 @@ func namedEvent(name, payload string) string {
 
 // --- deltas arrive in order -------------------------------------------------
 
-func TestOpenRouterDeltasArriveInOrder(t *testing.T)   { testChatDeltaOrder(t, model.ProviderOpenRouter) }
-func TestOpenAIDeltasArriveInOrder(t *testing.T)        { testChatDeltaOrder(t, model.ProviderOpenAI) }
+func TestOpenRouterDeltasArriveInOrder(t *testing.T) { testChatDeltaOrder(t, model.ProviderOpenRouter) }
+func TestOpenAIDeltasArriveInOrder(t *testing.T)     { testChatDeltaOrder(t, model.ProviderOpenAI) }
 
 func testChatDeltaOrder(t *testing.T, provider string) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

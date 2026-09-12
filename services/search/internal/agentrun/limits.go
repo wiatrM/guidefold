@@ -12,10 +12,10 @@ import "encoding/json"
 // writes them into the run row it plans, so the console can show what was
 // actually enforced rather than an empty '{}'.
 const (
-	DefaultMaxUSD            = 2.0
-	DefaultMaxTokensPerRepo  = 50000
-	DefaultMaxFiles          = 200
-	DefaultMaxOutputTokens   = 2048
+	DefaultMaxUSD           = 2.0
+	DefaultMaxTokensPerRepo = 50000
+	DefaultMaxFiles         = 200
+	DefaultMaxOutputTokens  = 2048
 )
 
 // Limits is what a live.repo job reads from its own `limits` column —
