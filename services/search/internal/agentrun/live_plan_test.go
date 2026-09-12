@@ -141,6 +141,27 @@ func TestZeroTargetsFinishesPartial(t *testing.T) {
 	}
 }
 
+// Found by driving the console in a browser: a run whose every repository was
+// skipped had no live.repo job coming to end it, so it said "running" for ever
+// while its answer was already complete. The worst state to be wrong about is
+// the one that makes an owner wait.
+func TestRunWhoseEveryRepositoryIsSkippedStillFinishes(t *testing.T) {
+	h, owner, org := newHarness(t)
+	setCredential(t, owner, org, "sk-or-v1-0123456789abcdef")
+	owner.CreateRepo(t, org, "not-connected", "https://example.test/acme/not-connected")
+
+	runID := startRun(t, owner, org, "scan everything", nil)
+	drainOnce(t, h, live.KindPlan, agentrun.NewLivePlanWorker(h.Pool).Handlers())
+
+	if state, errText := targetRow(t, h, org, runID, "not-connected"); state != live.TargetSkipped || errText != live.ErrorGitHubNotWired {
+		t.Fatalf("target = %s/%s, want skipped/%s", state, errText, live.ErrorGitHubNotWired)
+	}
+	state, _ := runRowState(t, h, org, runID)
+	if state != live.StatePartial {
+		t.Fatalf("run state = %s, want partial: nothing else will ever finish it", state)
+	}
+}
+
 // A repository named explicitly in `repos` that the organisation never even
 // registered is reported the same way — never silently absorbed into "the
 // run just didn't cover it".

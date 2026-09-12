@@ -107,15 +107,16 @@ func (w *LivePlanWorker) Run(ctx context.Context, t *worker.Task) error {
 		}
 	}
 
-	if len(targets) == 0 {
-		// A run over "every connected repository" that connects to none is
-		// not a success it can claim (ADR-0046 §3; live.go's own
-		// terminalState reaches the same conclusion for zero targets, but
-		// nothing calls Finish for this job unless it does so here — no
-		// live.repo will ever exist to do it).
-		if e := maybeFinishRun(ctx, tx, payload.OrgID, payload.RunID); e != nil {
-			return e
-		}
+	// Every target this job leaves in a terminal state — none at all, or a set
+	// where each repository was skipped for want of an installation — has no
+	// live.repo job coming to end the run, so the plan ends it here.
+	// maybeFinishRun is a no-op while any target is still queued or running, so
+	// the ordinary case is unaffected. Doing this only for zero targets left a
+	// run whose every repository was skipped saying "running" for ever, which
+	// is the worst of the states to be wrong about: an owner waits for an
+	// answer that is already complete.
+	if e := maybeFinishRun(ctx, tx, payload.OrgID, payload.RunID); e != nil {
+		return e
 	}
 
 	if e := tx.Commit(ctx); e != nil {

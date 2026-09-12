@@ -239,6 +239,19 @@ def base_pg_env(pg_port: int, pguser: str, password_file: Path) -> dict:
     }
 
 
+def parse_env_overrides(pairs) -> dict:
+    """--env KEY=VALUE, repeatable. The API reads settings this file does not model, and
+    without a pass-through, exercising one of them means editing this file -- which is how a
+    local hack ends up committed."""
+    out = {}
+    for pair in pairs or []:
+        key, sep, value = str(pair).partition("=")
+        if not sep or not key.strip():
+            raise ValueError(f"--env expects KEY=VALUE, got {pair!r}")
+        out[key.strip()] = value
+    return out
+
+
 def migrate_env(*, pg_port: int, secret_paths: dict, policy_source: Path) -> dict:
     """PGUSER=postgres (the superuser migrate needs to create/alter guidefold_api), plus
     APP_PASSWORD_FILE -- the password schema.Migrate sets on that role. GUIDEFOLD_POLICY_SOURCE
@@ -252,7 +265,8 @@ def migrate_env(*, pg_port: int, secret_paths: dict, policy_source: Path) -> dic
 
 def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path,
               policy_source: Path, generator: str, repo_root: Path,
-              auth: str = "dev", workos_client_id: str = "", workos_api_key_file: str = "") -> dict:
+              auth: str = "dev", workos_client_id: str = "", workos_api_key_file: str = "",
+              extra: Optional[dict] = None) -> dict:
     env = base_pg_env(pg_port, "guidefold_api", secret_paths["app_password"])
     env.update({
         "GUIDEFOLD_AUTH": auth,
@@ -288,6 +302,11 @@ def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path
         # the key never appears in `ps`/`/proc/<pid>/environ` as a bare value.
         env["WORKOS_CLIENT_ID"] = workos_client_id
         env["WORKOS_API_KEY_FILE"] = workos_api_key_file
+    # Last, so an --env override wins. Pointing a provider base URL at a local stub is how the
+    # model path gets exercised without a real account, and an override that lost to a default
+    # would look like the stub being ignored.
+    for key, value in (extra or {}).items():
+        env[key] = value
     return env
 
 
@@ -764,7 +783,8 @@ def cmd_up(args: argparse.Namespace) -> int:
                        contract=paths.contract, policy_source=paths.policy_source,
                        generator=args.generator, repo_root=paths.repo_root,
                        auth=args.auth, workos_client_id=args.workos_client_id,
-                       workos_api_key_file=args.workos_api_key_file)
+                       workos_api_key_file=args.workos_api_key_file,
+                       extra=parse_env_overrides(getattr(args, "env", None)))
 
     print("starting serve ...")
     stop_pid(paths.api_pid, "api", needle="guidefold-search")
@@ -1013,6 +1033,8 @@ def build_parser() -> argparse.ArgumentParser:
     up.add_argument("--api-port", type=int, default=DEFAULT_API_PORT)
     up.add_argument("--ui", action="store_true")
     up.add_argument("--generator", choices=["none", "deterministic"], default=DEFAULT_GENERATOR)
+    up.add_argument("--env", action="append", metavar="KEY=VALUE",
+                    help="extra environment for serve and worker, repeatable")
     up.add_argument("--reset", action="store_true")
     up.add_argument("--auth", choices=["dev", "workos"], default="dev",
                      help="dev: local sign-in form (default). workos: real AuthKit login -- "
