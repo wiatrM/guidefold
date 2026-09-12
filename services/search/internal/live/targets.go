@@ -64,22 +64,23 @@ func terminalState(cancelled, runFailed bool, targets, done, failed, skipped int
 	}
 }
 
-// runFinishedText is the Polish sentence run.finished carries in
-// payload.text (§5.5a): one clause naming the terminal state a client — or
-// the owner reading the PR comment or the console — was told about
-// elsewhere in this same run's log, never a second wording for it.
+// runFinishedText is the English sentence run.finished carries in
+// payload.text (§5.5a, in the console's own language): one clause naming the
+// terminal state a client — or the owner reading the PR comment or the
+// console — was told about elsewhere in this same run's log, never a second
+// wording for it.
 func runFinishedText(state string) string {
 	switch state {
 	case StateSucceeded:
-		return "Przebieg zakończył się powodzeniem."
+		return "The run finished successfully."
 	case StatePartial:
-		return "Przebieg zakończył się częściowo — część repozytoriów nie doszła do końca."
+		return "The run finished partially — some repositories did not complete."
 	case StateFailed:
-		return "Przebieg zakończył się niepowodzeniem."
+		return "The run failed."
 	case StateCancelled:
-		return "Przebieg został anulowany."
+		return "The run was cancelled."
 	default:
-		return "Przebieg się zakończył."
+		return "The run finished."
 	}
 }
 

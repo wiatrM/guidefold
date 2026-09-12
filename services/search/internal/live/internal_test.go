@@ -82,7 +82,7 @@ func TestAppendDropsEverythingButFinishedPastCapAndWritesTruncationNoticeOnce(t 
 	// The first exempt event past the cap is preceded by the truncation
 	// notice, so it lands two seq past the seeded boundary, not one.
 	seq, e = Append(ctx, tx, orgID, runID, "meridian/atlas", EventRepoFinished,
-		"Repozytorium meridian/atlas zakończyło pracę.", map[string]any{"proposals": 2})
+		"Repository meridian/atlas finished.", map[string]any{"proposals": 2})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -94,7 +94,7 @@ func TestAppendDropsEverythingButFinishedPastCapAndWritesTruncationNoticeOnce(t 
 	// guard is a query against the log, not an in-process flag, so this is
 	// the assertion that would catch a regression to the latter.
 	seq, e = Append(ctx, tx, orgID, runID, "meridian/graph", EventRepoFinished,
-		"Repozytorium meridian/graph zakończyło pracę.", map[string]any{"proposals": 0})
+		"Repository meridian/graph finished.", map[string]any{"proposals": 0})
 	if e != nil {
 		t.Fatal(e)
 	}

@@ -257,7 +257,7 @@ func (s *Service) handleCreate(c *mgmt.Context) error {
 		return mgmt.Internal(insertErr)
 	}
 
-	if _, e := Append(c.Ctx(), tx, org.ID, runID, "", EventRunStarted, "Przebieg wystartował.",
+	if _, e := Append(c.Ctx(), tx, org.ID, runID, "", EventRunStarted, EventRunStartedText,
 		map[string]any{"provider": provider, "model": model}); e != nil {
 		return mgmt.Internal(e)
 	}

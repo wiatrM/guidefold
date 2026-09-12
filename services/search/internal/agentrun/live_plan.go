@@ -165,7 +165,7 @@ func (w *LivePlanWorker) startRun(ctx context.Context, tx pgx.Tx, orgID, runID s
 		return Limits{}, e
 	}
 	if !alreadyStarted {
-		if _, e := live.Append(ctx, tx, orgID, runID, "", live.EventRunStarted, "Przebieg wystartował.",
+		if _, e := live.Append(ctx, tx, orgID, runID, "", live.EventRunStarted, live.EventRunStartedText,
 			map[string]any{"provider": provider, "model": model}); e != nil {
 			return Limits{}, e
 		}

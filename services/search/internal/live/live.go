@@ -101,6 +101,14 @@ const (
 	EventError        = "error"
 )
 
+// EventRunStartedText is run.started's payload.text (§5.5a): the API's own
+// handleCreate and the worker's live.plan (agentrun/live_plan.go) can each be
+// first to append it — whichever wins the race between a fast worker pickup
+// and the create request's own write — so both call sites share this one
+// constant rather than risk two different English sentences for the same
+// event type.
+const EventRunStartedText = "The run started."
+
 // Named termination reasons LiveRun.error carries (ADR-0046 §5, §7;
 // API-CONTRACT §5.5a). model_not_available, model_quota_exhausted,
 // model_provider_unavailable, github_app_not_configured and

@@ -28,10 +28,11 @@ type eventView struct {
 // gfm.live_run_events has no row of its own to lock before the first insert,
 // which is why the lock is taken on gfm.live_runs instead.
 //
-// text is the one Polish sentence this event carries in payload.text
-// (§5.5a): the console prints it exactly as returned rather than translating
-// a type code into words on its own side, so a second person reading the
-// same run through the API sees exactly what the first one saw live. text is
+// text is the one English sentence this event carries in payload.text
+// (§5.5a, in the console's own language): the console prints it exactly as
+// returned rather than translating a type code into words on its own side,
+// so a second person reading the same run through the API sees exactly what
+// the first one saw live. text is
 // a required, positional argument rather than a field a caller can leave out
 // of fields, so an empty one is an error, not a blank line in someone's
 // console. fields is merged alongside it into payload and may be nil.
@@ -76,7 +77,7 @@ func Append(ctx context.Context, tx jobs.Tx, orgID, runID, repoID, eventType, te
 		if !already {
 			seq, e := insertEvent(ctx, tx, orgID, runID, high+1, "", EventError, map[string]any{
 				"reason": ErrorLogTruncated,
-				"text":   "Dziennik zdarzeń osiągnął limit 20 000 wpisów; od teraz zapisywane są już tylko zakończenia repozytoriów i przebiegu.",
+				"text":   "The event log reached its limit of 20,000 entries; from now on only repository and run completions are recorded.",
 			})
 			if e != nil {
 				return 0, e

@@ -4,7 +4,8 @@ import { LightningIcon, ListChecksIcon, PlayIcon, TerminalIcon } from '@phosphor
 import { ActionButton, DataTable, IconTile, Panel, ProvenanceTrail, RouteState, StateBadge } from '../Shared';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, DegradedNotice, OwnerNote, PartialNotice, asApiError, shortId, unknown, useAsync, type ApiProps } from './apiState';
-import type { LiveRun, LiveRunEvent, LiveRunState, LiveRunTarget, LiveRunTargetPhase, LiveRunTargetState } from '../api/decoders';
+import { formatDay } from './ReviewRoutes';
+import type { LiveRun, LiveRunCounts, LiveRunEvent, LiveRunState, LiveRunTarget, LiveRunTargetPhase, LiveRunTargetState } from '../api/decoders';
 import styles from './LiveAgentRoute.module.css';
 
 const runStateTone: Record<LiveRunState, 'neutral' | 'system' | 'warning' | 'error'> = {
@@ -17,6 +18,23 @@ const phaseLabel: Record<LiveRunTargetPhase, string> = { fetch: 'Fetching', pars
 const cancellableStates: LiveRunState[] = ['queued', 'running'];
 /** A run that ended without succeeding, so a plain badge must never read as a green tick. */
 const unsuccessfulStates: LiveRunState[] = ['partial', 'failed', 'cancelled'];
+/** `phase` makes no reliable claim once a target has stopped: a skipped target's phase is stuck
+ * at the schema default ('fetch') whether or not it ever ran, and a failed one may have advanced
+ * past fetch before the failure — neither reading is safe to print as "the stage it is on". An
+ * explicit dash says nothing false, for either reason. */
+const phaseless: LiveRunTargetState[] = ['skipped', 'failed'];
+
+/** "Of N repositories, X failed and Y was/were skipped." Correct singular/plural agreement at
+ * every count, and a clause whose own count is zero is left out rather than printed as "0 …". */
+function partialSummaryText(counts: LiveRunCounts): string {
+  // No repository was ever in scope (the organization had none connected), rather than the
+  // run's own attempt failing: terminalState's own fallback for this shape.
+  if (counts.targets === 0) return 'No repository was in scope for this run.';
+  const clauses: string[] = [];
+  if (counts.failed > 0) clauses.push(counts.failed + ' failed');
+  if (counts.skipped > 0) clauses.push(counts.skipped + (counts.skipped === 1 ? ' was' : ' were') + ' skipped');
+  return 'Of ' + counts.targets + ' ' + (counts.targets === 1 ? 'repository' : 'repositories') + ', ' + clauses.join(' and ') + '.';
+}
 
 /**
  * The active or most recently opened run: its per-repository state beside the event log, polled
@@ -85,7 +103,7 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
 
   return <>
     {error && <DegradedNotice>{'Showing the last read status; the next update could not be read (' + error.code + ').'}</DegradedNotice>}
-    {run.state === 'partial' && <PartialNotice>{run.counts.failed + ' of ' + run.counts.targets + ' repositories failed and ' + run.counts.skipped + ' were skipped.'}</PartialNotice>}
+    {run.state === 'partial' && <PartialNotice>{partialSummaryText(run.counts)}</PartialNotice>}
     {run.state === 'cancelled' && <PartialNotice>This run was cancelled before it finished. Repositories it had not yet reached were left untouched.</PartialNotice>}
     {run.state === 'failed' && <PartialNotice>{'This run failed' + (run.error ? ' (' + run.error + ')' : '') + '. Nothing further ran after the point of failure.'}</PartialNotice>}
     <Panel title={'Run ' + shortId(run.run_id)} eyebrow="Live Agent" icon={<LightningIcon weight="regular" aria-hidden="true" />}
@@ -96,10 +114,12 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
       <ProvenanceTrail entries={[
         { label: 'Provider', value: run.provider },
         { label: 'Model', value: run.model, code: true },
-        { label: 'Started', value: unknown(run.started_at) },
-        { label: 'Finished', value: unknown(run.finished_at) },
+        { label: 'Started', value: run.started_at ? formatDay(run.started_at) : 'Not started yet' },
+        { label: 'Finished', value: run.finished_at ? formatDay(run.finished_at) : 'Not finished yet' },
         { label: 'Cost', value: (run.cost.usd_estimated ? '~' : '') + '$' + run.cost.usd.toFixed(4), detail: run.cost.usd_estimated ? 'At least one provider response carried no usage figure; this is an estimate.' : 'Measured from provider usage.' },
-        { label: 'Error', value: unknown(run.error) },
+        // Omitted entirely for a run with no error: a clean run should not carry an Error label
+        // at all, never one reading "Unknown" beside every honest field.
+        ...(run.error ? [{ label: 'Error', value: run.error }] : []),
       ]} />
       {cancelStatus && <p className={styles.feedback} role="status">{cancelStatus}</p>}
     </Panel>
@@ -125,7 +145,9 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
           : <DataTable flush caption="Repositories in this run" headings={['Repository', 'Phase', 'Skills', 'Proposals', 'State', 'Detail']}>
             {targets.map(target => <tr key={target.repo_id}>
               <th scope="row"><code>{target.repo_id}</code></th>
-              <td>{phaseLabel[target.phase]}</td>
+              {phaseless.includes(target.state)
+                ? <td aria-label="No phase">&mdash;</td>
+                : <td>{phaseLabel[target.phase]}</td>}
               <td>{target.skills}</td>
               <td>{target.proposals}</td>
               <td><StateBadge tone={targetStateTone[target.state]}>{target.state}</StateBadge></td>
@@ -219,7 +241,7 @@ export function ApiLiveAgentRoute({ ctx }: ApiProps) {
             <td><StateBadge tone={runStateTone[item.state]}>{item.state}</StateBadge></td>
             <td>{item.summary.skills_indexed}</td>
             <td>{item.summary.proposals_created}</td>
-            <td>{unknown(item.started_at)}</td>
+            <td>{item.started_at ? formatDay(item.started_at) : 'Not started yet'}</td>
           </tr>)}
         </DataTable>
         : <RouteState state="empty" title="No runs yet" description="A run started above appears here, with its per-repository result and event log kept for anyone who opens it later." />)}

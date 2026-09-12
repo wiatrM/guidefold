@@ -319,7 +319,7 @@ func (w *LiveRepoWorker) startTarget(ctx context.Context, t *worker.Task, payloa
 		return e
 	}
 	if _, e := live.Append(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.EventRepoStarted,
-		"Rozpoczęto skanowanie repozytorium "+payload.RepoID+".", map[string]any{}); e != nil {
+		"Started scanning repository "+payload.RepoID+".", map[string]any{}); e != nil {
 		return e
 	}
 	return tx.Commit(ctx)
@@ -522,7 +522,7 @@ func (w *LiveRepoWorker) fetchAndImport(ctx context.Context, t *worker.Task, pay
 		return "", "", e
 	}
 	if _, e := live.Append(ctx, tx3, payload.OrgID, payload.RunID, payload.RepoID, live.EventRepoFetched,
-		fmt.Sprintf("Pobrano %d plików z repozytorium %s.", len(fileEntries), payload.RepoID),
+		fmt.Sprintf("Fetched %d %s from repository %s.", len(fileEntries), plural(len(fileEntries), "file"), payload.RepoID),
 		map[string]any{"files": len(fileEntries)}); e != nil {
 		return "", "", e
 	}
@@ -589,7 +589,7 @@ func (w *LiveRepoWorker) advanceParsed(ctx context.Context, t *worker.Task, payl
 	if e := live.SetTargetPhase(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.PhasePropose, skills, 0); e != nil {
 		return e
 	}
-	text := fmt.Sprintf("Zaimportowano repozytorium %s: %d skilli w katalogu.", payload.RepoID, skills)
+	text := fmt.Sprintf("Imported repository %s: %d %s in the catalog.", payload.RepoID, skills, plural(skills, "skill"))
 	if _, e := live.Append(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.EventRepoParsed, text,
 		map[string]any{"skills": skills, "import_id": importID}); e != nil {
 		return e
@@ -612,7 +612,7 @@ func (w *LiveRepoWorker) advanceProposed(ctx context.Context, t *worker.Task, pa
 	if e := live.SetTargetPhase(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.PhaseDone, skills, proposals); e != nil {
 		return e
 	}
-	text := fmt.Sprintf("Wygenerowano %d propozycji dla repozytorium %s.", proposals, payload.RepoID)
+	text := fmt.Sprintf("Generated %d %s for repository %s.", proposals, plural(proposals, "proposal"), payload.RepoID)
 	if _, e := live.Append(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.EventRepoProposed, text,
 		map[string]any{"proposals": proposals}); e != nil {
 		return e
@@ -633,11 +633,11 @@ func (w *LiveRepoWorker) finishTarget(ctx context.Context, t *worker.Task, paylo
 		return e
 	}
 	state, errText := live.TargetDone, ""
-	text := "Repozytorium " + payload.RepoID + " zostało przetworzone."
+	text := "Repository " + payload.RepoID + " finished."
 	fields := map[string]any{}
 	if reason != "" {
 		state, errText = live.TargetFailed, reason
-		text = fmt.Sprintf("Przetwarzanie repozytorium %s zakończyło się niepowodzeniem (%s).", payload.RepoID, reason)
+		text = fmt.Sprintf("Processing repository %s failed (%s).", payload.RepoID, reason)
 		fields["error"] = reason
 	}
 	if e := live.SetTargetState(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, state, errText); e != nil {
@@ -669,7 +669,7 @@ func (w *LiveRepoWorker) skipTarget(ctx context.Context, t *worker.Task, payload
 	if e := fenceJob(ctx, tx, t); e != nil {
 		return e
 	}
-	text := fmt.Sprintf("Repozytorium %s zostało pominięte (%s).", payload.RepoID, reason)
+	text := fmt.Sprintf("Repository %s was skipped (%s).", payload.RepoID, reason)
 	if e := live.SetTargetState(ctx, tx, payload.OrgID, payload.RunID, payload.RepoID, live.TargetSkipped, reason); e != nil {
 		return e
 	}

@@ -38,7 +38,7 @@ const viewInfo:Record<View,{label:string;title:string;description:string;icon:ty
  proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequestIcon},
  usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBarIcon},
  organization:{label:'Organization',title:'Organization',description:'Inspect membership and the connection between a repository and its harness.',icon:BuildingsIcon},
- live:{label:'Live Agent',title:'Live Agent',description:'Run a prompt against connected repositories and watch its transcript and per-repository result.',icon:LightningIcon}
+ live:{label:'Live Agent',title:'Live Agent',description:'Start a run and watch its per-repository progress and outcome.',icon:LightningIcon}
 };
 const views=Object.keys(viewInfo) as View[];
 const navGroups:{label:string;items:View[]}[]=[

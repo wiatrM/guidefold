@@ -113,6 +113,24 @@ describe('Live Agent route, the button', () => {
     renderRoute(fakeSource({ listCredentials: async () => [credential()], listLiveRuns: async () => ({ items: [], next_cursor: null }) }));
     expect(await screen.findByText('No runs yet')).toBeInTheDocument();
   });
+
+  test('a queued run with no start time yet says so by name, not as Unknown', async () => {
+    const listLiveRuns = vi.fn(async () => ({ items: [run({ run_id: 'r-3', state: 'queued', started_at: null })], next_cursor: null }));
+    renderRoute(fakeSource({ listCredentials: async () => [credential()], listLiveRuns }));
+    const link = await screen.findByRole('link', { name: /r-3/ });
+    const row = link.closest('tr')!;
+    expect(within(row).getByText('Not started yet')).toBeInTheDocument();
+    expect(within(row).queryByText('Unknown')).not.toBeInTheDocument();
+  });
+
+  test('a started run shows its calendar day, not a raw timestamp', async () => {
+    const listLiveRuns = vi.fn(async () => ({ items: [run({ run_id: 'r-4', started_at: '2026-09-12T22:12:27.739101+02:00' })], next_cursor: null }));
+    renderRoute(fakeSource({ listCredentials: async () => [credential()], listLiveRuns }));
+    const link = await screen.findByRole('link', { name: /r-4/ });
+    const row = link.closest('tr')!;
+    expect(within(row).getByText('2026-09-12')).toBeInTheDocument();
+    expect(within(row).queryByText(/T22:12:27/)).not.toBeInTheDocument();
+  });
 });
 
 describe('Live Agent route, an open run', () => {
@@ -189,6 +207,10 @@ describe('Live Agent route, an open run', () => {
     const row = (await screen.findByText('no-app')).closest('tr')!;
     expect(within(row).getByText('skipped')).toBeInTheDocument();
     expect(within(row).getByText('No GitHub App installed for this repository.')).toBeInTheDocument();
+    // The target's own phase column stayed at the schema default ('fetch') because it was never
+    // reached; a skipped target must not read as if it were still fetching.
+    expect(within(row).getByLabelText('No phase')).toBeInTheDocument();
+    expect(within(row).queryByText('Fetching')).not.toBeInTheDocument();
   });
 
   test('partial says how many repositories failed or were skipped, without reading as success', async () => {
@@ -197,7 +219,7 @@ describe('Live Agent route, an open run', () => {
       getLiveRun: async () => detail({ run: run({ state: 'partial', finished_at: '2026-09-10T00:05:00Z', counts: { targets: 3, done: 1, failed: 1, skipped: 1 }, summary: { skills_indexed: 2, proposals_created: 0 } }) }),
       getLiveRunEvents: async () => eventPage({ done: true }),
     }), 'run=r-1');
-    expect(await screen.findByText('1 of 3 repositories failed and 1 were skipped.')).toBeInTheDocument();
+    expect(await screen.findByText('Of 3 repositories, 1 failed and 1 was skipped.')).toBeInTheDocument();
     expect(screen.getByText('partial')).toBeInTheDocument();
   });
 
@@ -231,6 +253,32 @@ describe('Live Agent route, an open run', () => {
     expect(within(summaryPanel).getByText('3')).toBeInTheDocument();
     const link = within(summaryPanel).getByRole('link', { name: 'Review proposals' });
     expect(link).toHaveAttribute('href', expect.stringContaining('kind=consolidation'));
+  });
+
+  test('a run with no error carries no Error row at all', async () => {
+    renderRoute(fakeSource({
+      listCredentials: async () => [credential()], listLiveRuns: async () => ({ items: [], next_cursor: null }),
+      getLiveRun: async () => detail({ run: run({ state: 'succeeded', finished_at: '2026-09-10T00:05:00Z', error: null }) }),
+      getLiveRunEvents: async () => eventPage({ done: true }),
+    }), 'run=r-1');
+    await screen.findByText('Run r-1');
+    expect(screen.queryByText('Error')).not.toBeInTheDocument();
+  });
+
+  test('a run that failed shows its error on its own Error row, and the run\'s dates as calendar days', async () => {
+    renderRoute(fakeSource({
+      listCredentials: async () => [credential()], listLiveRuns: async () => ({ items: [], next_cursor: null }),
+      getLiveRun: async () => detail({ run: run({
+        state: 'failed', error: 'model_provider_unavailable',
+        started_at: '2026-09-10T00:00:01.500000Z', finished_at: '2026-09-11T00:05:00.250000Z',
+      }) }),
+      getLiveRunEvents: async () => eventPage({ done: true }),
+    }), 'run=r-1');
+    expect(await screen.findByText('Error')).toBeInTheDocument();
+    expect(screen.getByText('model_provider_unavailable')).toBeInTheDocument();
+    expect(screen.getByText('2026-09-10')).toBeInTheDocument();
+    expect(screen.getByText('2026-09-11')).toBeInTheDocument();
+    expect(screen.queryByText(/T00:00:01/)).not.toBeInTheDocument();
   });
 
   test('an owner can cancel a running run; a member sees no cancel action', async () => {

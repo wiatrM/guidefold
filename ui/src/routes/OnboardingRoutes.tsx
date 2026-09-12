@@ -1073,10 +1073,14 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
           const entry: OrgCredential | undefined = credentials.value?.find(item => item.provider === provider);
           return <tr key={provider}>
             <th scope="row">{provider}</th>
+            {/* No row for a provider means the organization has no key for it — the contract is
+                explicit that there is no "has a key, but unknown" state (§5.5a). "No key stored"
+                on the Name column already says that once; every other cell of the same row stays
+                empty rather than repeating "Unknown" as if the data existed but could not be read. */}
             <td>{entry ? entry.name : <span className={styles.linkHint}>No key stored</span>}</td>
-            <td>{entry ? <CredentialModelCell entry={entry} owner={owner} onSave={model => patchModel(provider, model)} /> : unknown(null)}</td>
-            <td>{entry ? <code>&hellip;{entry.last4}</code> : unknown(null)}</td>
-            <td>{entry ? unknown(entry.created_at) : unknown(null)}</td>
+            <td>{entry && <CredentialModelCell entry={entry} owner={owner} onSave={model => patchModel(provider, model)} />}</td>
+            <td>{entry && <code>&hellip;{entry.last4}</code>}</td>
+            <td>{entry ? formatDay(entry.created_at) : null}</td>
             <td>{entry
               ? (entry.preferred
                 ? <StateBadge tone="system">Preferred</StateBadge>
@@ -1084,7 +1088,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
                 // while any exist, so the only ways to stop using one are preferring another
                 // or deleting it (§4.8).
                 : owner ? <ActionButton size="sm" disabled={busy} onClick={() => { void makePreferred(provider); }}>Make preferred</ActionButton> : unknown(null))
-              : unknown(null)}</td>
+              : null}</td>
             <td>{owner && entry
               ? <ActionButton size="sm" disabled={busy} onClick={() => { void removeCredential(provider); }}>Delete</ActionButton>
               : null}</td>

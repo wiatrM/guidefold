@@ -31,6 +31,17 @@ func nullable(s string) any {
 	return s
 }
 
+// plural is the regular English count noun live.repo's own event sentences
+// need (files, skills, proposals — every noun this package counts happens to
+// take a plain -s): 1 file, 0 or 2+ files. Never used for a noun with an
+// irregular plural; there is none among live.repo's own event text today.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return noun
+	}
+	return noun + "s"
+}
+
 // fenceJob refuses to write when the job's lease has moved on, the same
 // check internal/review/generate.go's own fence() makes before a group's
 // candidates are stored. A worker that lost its lease mid-transaction must

@@ -289,7 +289,7 @@ func TestEventCursorReturnsEachEventOnceWithTextWhileRunning(t *testing.T) {
 	}
 	for i := 0; i < 5; i++ {
 		if _, e := live.Append(ctx, tx, org, runID, "meridian/atlas", live.EventRepoFetched,
-			"Repozytorium meridian/atlas: pobrano pliki.", map[string]any{"files": i + 1}); e != nil {
+			"Repository meridian/atlas: fetched files.", map[string]any{"files": i + 1}); e != nil {
 			t.Fatal(e)
 		}
 	}
