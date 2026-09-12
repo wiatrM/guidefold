@@ -1,8 +1,16 @@
-# ADR-0046: Live Agent — an on-demand run across every connected repository, watched as it happens
+# ADR-0046: Live Agent — one button that refreshes the library across every connected repository
 
 **Status:** Proposed · 2026-09-12 · owner instruction the same day: a mode in the UI that runs a
 "Live Agent" over ALL connected GitHub repositories, with live output from a real model agent
 using keys the organisation supplied — "taki live refetch, nie w CI".
+**Amended the same day, after the owner rejected the first build.** Two corrections, both from the
+owner: there must be no start prompt ("MA BYC PO PROSTU INTELIGENTNY PRZYCISK ZEBY AGENT ZROBIL
+ROBOTE"), and what the run leaves behind must be the library and proposals, not a transcript.
+Points 4, 8 and 9 are the amended ones; the deleted parts are named in point 9 so the mistake stays
+readable. The error was mine and it was structural: Guidefold already detects duplicate and
+contradictory skills — that is `proposal.generate` with `kind = consolidation`, comparing the skills
+of a parent scope and its children pairwise — and I wrote a second, worse model call beside it whose
+output was text to read and throw away.
 **Governs:** `gfm.live_runs`, `gfm.live_run_targets`, `gfm.live_run_events`, job kinds `live.plan`
 and `live.repo`, `{org_base}/live/*`, and the console's Live Agent view.
 **Depends on:** [ADR-0045](ADR-0045-org-provider-credentials-encrypted-at-rest.md) (the key),
@@ -51,7 +59,8 @@ yet; its contract entries (§4.7) do.
 
 4. **Live output is an append-only event log the UI polls with a cursor.** `gfm.live_run_events`
    holds `(org_id, run_id, seq)` with a type from a closed domain — `run.started`, `repo.started`,
-   `model.delta`, `finding`, `repo.finished`, `run.finished`, `error` — and a JSON payload.
+   `repo.fetched`, `repo.parsed`, `repo.proposed`, `repo.finished`, `run.finished`, `error` — and a
+   JSON payload carrying the sentence the console prints.
    `GET {org_base}/live/runs/{run_id}/events?after=<seq>` returns the next page inside the ordinary
    response envelope, with the ordinary auth, pagination and error codes. No new transport, no
    long-lived connection through the ingress, no second authorization path.
@@ -59,8 +68,10 @@ yet; its contract entries (§4.7) do.
    sees the same thing the first viewer saw live. Streaming without a log would show the first
    viewer something nobody can reproduce. The cost is latency measured in seconds rather than
    milliseconds, which for a run that takes minutes is not a cost anyone feels.
-   The worker batches model deltas — one event per ~500 ms or ~2 KB of text — so a chatty model
-   cannot turn one run into a hundred thousand rows.
+   No event carries a raw model stream. The model is called inside `proposal.generate`, whose output
+   is a proposal a human decides on; watching it type would be the least valuable thing the run
+   produces. What is live is progress: which repository, which stage, how many skills, how many
+   proposals. The log is therefore bounded by construction — a handful of events per repository.
 
 5. **The organisation's key, and a ceiling.** The credential comes from ADR-0045, opened in the
    worker for the duration of one job. Every run carries a hard ceiling: maximum repositories,
@@ -83,24 +94,42 @@ yet; its contract entries (§4.7) do.
    rather than at the end of the repository. An owner watching money being spent must be able to
    stop it within seconds.
 
-8. **The view leads with the run, not with a table.** The console's Live Agent route follows the
-   shadcn console rules (owner instruction 2026-09-12): a large `IconTile`, a composer for the
-   prompt, model and repository scope, then a transcript that fills as events arrive and a
-   per-repository status list beside it. States are honest: `queued`, `running`, `partial`,
-   `cancelled` and `failed` each read as themselves, and "no events yet" is never rendered as
-   success. When no credential is configured, the view says so and links to the credential screen
-   instead of offering a start button that would fail.
+8. **One button, no composer.** The start request has no fields. There is no prompt, because the
+   task belongs to the product and always the same; no repository picker, because the run covers all
+   of them by definition; no provider or model control, because that is an organisation setting
+   stored beside the key (ADR-0045). The console's Live Agent route follows the shadcn console rules
+   (owner instruction 2026-09-12): a large `IconTile`, one sentence saying what the run will do, the
+   button, then a per-repository progress list and the log beside it. States are honest: `queued`,
+   `running`, `partial`, `cancelled` and `failed` each read as themselves, and "no events yet" is
+   never rendered as success. When no credential is configured, the view says so and links to the
+   credential screen instead of offering a start button that would fail. The run ends with a summary
+   that links to Proposals, because that is where the work continues.
+
+9. **The run drives the existing pipeline, and one job owns one repository end to end.** `live.repo`
+   fetches through the GitHub adapter, builds an import through an in-process seam over the
+   importer's own `CreateImport`/`PutBlob`/`FinalizeImport`, enqueues `import.parse`, and then
+   `proposal.generate` with `kind = consolidation`. It **waits** on each, polling the child job row
+   and appending an event at every transition. The alternative — having those jobs report back into a
+   live run — would require both to know about a feature they exist without. The obvious objection to
+   waiting is a long-held lease; the queue answers it: a 30-second lease extended by `Heartbeat` at
+   most every 10 seconds, and a heartbeat with a stale generation returns `ErrFenced`, so a job that
+   slept through its lease finds out and stops instead of writing beside its replacement.
+   Deleted with this amendment: the `FINDING:` line convention, the `finding` and `model.delta`
+   events, the prompt, the repository scope and the provider/model controls at start.
 
 ## Consequences
 
 - The service gains its first long-running, owner-initiated, money-spending operation. Everything
   above — the ceiling, the single active run, real cancellation, the honest `partial` state — exists
   because of that, not because of the model.
-- The event log grows fastest of any table in `gfm`. Events are deleted with their run after 30
-  days, and one run's log is capped at 20,000 events: past that the worker stops appending
-  `model.delta`, writes one `error` event with `live_run_log_truncated`, and keeps writing the
-  structured events. The run continues and the console says the transcript is truncated. Dropping
-  transcript lines quietly would look exactly like an agent that went silent.
+- The run is no longer only a read: it refreshes the catalog and creates proposals, which is what
+  makes it worth starting. It still writes nothing to the customer's repositories.
+- Events are deleted with their run after 30 days. The 20,000-event cap stays as a guard rather than
+  a live constraint, since the amended log is bounded by the number of repositories; past it the
+  worker writes one `error` event with `live_run_log_truncated` and keeps only the terminal events.
+- `live_runs.prompt` and `live_run_targets.findings` stay in the schema as unused columns and stop
+  being written. Dropping a `NOT NULL` column under a deployment that syncs automatically is the one
+  irreversible step here, so it goes in a later change once nothing reads them.
 - ADR-0036's GitHub adapter and installation tokens become a prerequisite for a second feature. If
   it slips, the live run degrades honestly: repositories with no installation are reported
   `github_app_not_configured` per target rather than skipped quietly.
@@ -108,8 +137,8 @@ yet; its contract entries (§4.7) do.
   that exists, `live.repo` terminates `skipped` with a named reason.
 - This ADR is Proposed. It becomes Accepted when the tables, the two job kinds, the five endpoints,
   the worker handler and the console view exist, and an acceptance run over the Meridian fixture
-  produces a complete event log, a `partial` run when one repository is unreachable, and a
-  cancellation that stops work within one poll interval.
+  refreshes the catalog, leaves at least one consolidation proposal in the review flow, produces a
+  `partial` run when one repository is unreachable, and cancels within one poll interval.
 
 ## References
 

@@ -1592,7 +1592,7 @@ paths:
           description: Stored. Metadata only.
           content: { application/json: { schema: { $ref: "#/components/schemas/OrgCredential" } } }
         "400":
-          description: "`invalid_provider`, `invalid_body`, `credential_invalid`."
+          description: "`invalid_provider`, `invalid_model`, `invalid_body`, `credential_invalid`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "502":
           description: "`provider_unavailable`. The provider could not be reached to check the key, which is not the same answer as a key it rejected."
@@ -1628,12 +1628,15 @@ paths:
       tags: [live]
       summary: Start a Live Agent run across the connected repositories. Owners only.
       description: >-
-        One run at a time per organisation: starting a second while one is active is
-        `409 live_run_already_active` with the active run's id in `details.run_id`.
+        The request has no fields. The run reads every connected repository, refreshes the
+        skill catalogue from what it finds, and generates consolidation proposals into the
+        existing review flow. One run at a time per organisation: starting a second while
+        one is active is `409 live_run_already_active` with the active run's id in
+        `details.run_id`.
       x-idempotent: true
       parameters: [{ $ref: "#/components/parameters/Org" }]
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema: { $ref: "#/components/schemas/StartLiveRun" }
@@ -1641,9 +1644,6 @@ paths:
         "202":
           description: Accepted; the run is queued and its targets are being planned.
           content: { application/json: { schema: { $ref: "#/components/schemas/LiveRun" } } }
-        "400":
-          description: "`invalid_prompt`, `invalid_provider`, `invalid_model`."
-          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "409":
           description: "`live_run_already_active`, `model_credential_missing`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
@@ -1776,11 +1776,13 @@ components:
     OrgCredential:
       type: object
       additionalProperties: false
-      required: [provider, name, last4]
+      required: [provider, name, last4, model, preferred]
       properties:
         provider: { type: string, enum: [openrouter, anthropic, openai] }
         name: { type: string }
         last4: { type: string, description: The last four characters of the key. The only part that ever leaves the server. }
+        model: { type: string, description: The model background work calls with this key. Empty means the provider's default. }
+        preferred: { type: boolean, description: Exactly one stored credential is preferred; background work uses that one. }
         created_at: { type: string, format: date-time }
         created_by: { type: string, format: uuid, nullable: true }
     OrgCredentialList:
@@ -1796,26 +1798,23 @@ components:
       properties:
         api_key: { type: string, minLength: 8 }
         name: { type: string, maxLength: 120 }
+        model: { type: string, maxLength: 120, description: Only the shape is checked; the provider owns its catalogue. }
+        preferred: { type: boolean, description: Make this the credential background work uses, clearing the mark from the others. }
     StartLiveRun:
       type: object
       additionalProperties: false
-      required: [prompt]
-      properties:
-        prompt: { type: string, minLength: 1, maxLength: 4000 }
-        provider: { type: string, enum: [openrouter, anthropic, openai] }
-        model: { type: string }
-        repos:
-          type: array
-          items: { type: string }
-          description: Omitted means every repository of this organisation that has a GitHub App installation.
+      description: >-
+        Deliberately empty. The run always does the same thing across every connected
+        repository, and the provider and model are an organisation setting stored beside
+        the key, so there is nothing for the owner to fill in and nothing to get wrong.
+      properties: {}
     LiveRun:
       type: object
       additionalProperties: false
-      required: [run_id, state, prompt, provider, model, created_at, counts, cost]
+      required: [run_id, state, provider, model, created_at, counts, summary, cost]
       properties:
         run_id: { type: string, format: uuid }
         state: { type: string, enum: [queued, running, succeeded, partial, failed, cancelled] }
-        prompt: { type: string }
         provider: { type: string, enum: [openrouter, anthropic, openai] }
         model: { type: string }
         created_by: { type: string, format: uuid, nullable: true }
@@ -1831,6 +1830,14 @@ components:
             done: { type: integer }
             failed: { type: integer }
             skipped: { type: integer }
+        summary:
+          type: object
+          additionalProperties: false
+          required: [skills_indexed, proposals_created]
+          description: What the run left behind. A run that produced neither is not a success.
+          properties:
+            skills_indexed: { type: integer }
+            proposals_created: { type: integer }
         cost:
           type: object
           additionalProperties: false
@@ -1840,7 +1847,7 @@ components:
             tokens_out: { type: integer }
             usd: { type: number }
             usd_estimated: { type: boolean, description: True when any provider response carried no usage and the spend had to be estimated. }
-        error: { type: string, nullable: true, description: "Why the run ended: live_run_budget_exhausted, model_provider_unavailable, cancelled_by_owner." }
+        error: { type: string, nullable: true, description: "Why the run ended: live_run_budget_exhausted, model_not_available, model_quota_exhausted, model_credential_missing, model_provider_unavailable, cancelled_by_owner." }
     LiveRunList:
       type: object
       additionalProperties: false
@@ -1851,12 +1858,14 @@ components:
     LiveRunTarget:
       type: object
       additionalProperties: false
-      required: [repo_id, state, findings]
+      required: [repo_id, state, phase, skills, proposals]
       properties:
         repo_id: { type: string }
         state: { type: string, enum: [queued, running, done, failed, skipped] }
         job_id: { type: string, format: uuid, nullable: true }
-        findings: { type: integer }
+        phase: { type: string, enum: [fetch, parse, propose, done], description: Where a repository still running has got to. }
+        skills: { type: integer }
+        proposals: { type: integer }
         error: { type: string, nullable: true }
         started_at: { type: string, format: date-time, nullable: true }
         finished_at: { type: string, format: date-time, nullable: true }
@@ -1875,8 +1884,8 @@ components:
         seq: { type: integer }
         at: { type: string, format: date-time }
         repo_id: { type: string, nullable: true }
-        type: { type: string, enum: [run.started, repo.started, model.delta, finding, repo.finished, run.finished, error] }
-        payload: { type: object, additionalProperties: true }
+        type: { type: string, enum: [run.started, repo.started, repo.fetched, repo.parsed, repo.proposed, repo.finished, run.finished, error] }
+        payload: { type: object, additionalProperties: true, description: "Always carries `text`: the sentence the console prints." }
     LiveRunEventPage:
       type: object
       additionalProperties: false
