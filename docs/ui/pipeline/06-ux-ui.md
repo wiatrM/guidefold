@@ -1,5 +1,5 @@
 # 6. UX/UI
-Status: zamknięty, 2026-09-06; 0 otwartych P1/P2 po R3.
+Status: ponownie otwarty i zaktualizowany 2026-09-08 na zlecenie właściciela; QA przeglądarkowe w toku.
 Wejścia: [04](04-wireframes.md), [05](05-simulation.md), [pivot U4](../../PRODUCT-PIVOT.md), [Industrial Surveyor](../../../prototypes/industrial-surveyor/DESIGN.md).
 Artefakt: [React/Vite hi-fi](../../../prototypes/pipeline-hifi/); [UI §1–4](../UI.md), [UX](../UX.md) zastępują dokumenty sprzed pivotu.
 
@@ -15,10 +15,17 @@ Scenariusze ról w URL służą QA; uprawnienia produkcji musi egzekwować API. 
 | Graphite, płaskie obrysy, square geometry | Jedyny motyw; radius 2 px, border 1 px, siatka 8 px z połówką 4 px przy etykiecie. |
 | Barlow Condensed + Inter | Fonty lokalne; kod/URN/SHA w systemowym monospace; brak dodatkowego fontu marki. |
 | Teal / orange / red | System i zaznaczenie / decyzja człowieka / wyłącznie błąd. Rejected jest orange, nie red. |
-| Oryginalny znak i survey-grid-pattern | Dokładne rastry źródłowe; wzór wyłącznie w railu, bez nowej ilustracji mapy. |
+| Oryginalny znak | Raster znaku zostaje; survey-grid-pattern i każde obrazkowe tło raila usunięto. |
 | Balanced 40 px i Phosphor regular | Jedna gęstość; mobilne cele dotykowe 44 px, bez selektora wariantów. |
 
 Odrzucone: historyczny Route monitor, fikcyjne metryki, promocja team→company i Component bay w menu produktu. Plansza źródłowa określa markę, nie dane ani dzisiejszy zakres.
+
+## Zmiana zlecona 2026-09-08
+Rozbieżność: ten etap utrwalał Industrial Surveyor jako jedyny wzorzec oraz raster tła raila, a właściciel zlecił pełny redesign i migrację na shadcnspace bez tego tła.
+Źródło decyzji: bieżące zlecenie właściciela obejmujące wszystkie strony, składane menu, profil, logout, edycje/revisions, animacje, cienie i Shine Border.
+Decyzja: zachować siedem tras, dane, paletę i kontrakty; zmienić shell i receptury wszystkich 15 komponentów na kompozycje shadcnspace/Base UI/Motion opisane w [design brief](../../../ui/qa/navigation-redesign/design-brief.json).
+Dokumenty zastępowane lokalnie: ta sekcja wzorca/kompozycji, [IA §4](../IA.md), [UI §1–5](../UI.md), [08](08-components.md); zamrożone prototypy pozostają dowodem historycznym.
+Do decyzji właściciela: nie; zakres został podany wprost, a oddzielnej trasy Editions nie dodano, bo historia rewizji już istnieje w Skill/Proposals.
 [Inwentarz tokenów](../../../prototypes/pipeline-hifi/qa/token-provenance.json) przypisuje każdemu z 101 tokenów pochodzenie i powód, także 129 deklaracjom z nadpisaniami responsywnymi.
 Nowe nazwy grupują wartości typografii, rozmiarów i układu; control-border używa istniejącego steel dla widocznej granicy formularza. Wpisane są również powody mobile/desktop, skip-link, focusu oraz nowych minimalnych szerokości tabeli/kolumn i zwartego układu filtrów.
 

@@ -428,6 +428,138 @@ func (f *fixture) expose(t *testing.T, skillID, revision, producer string, n int
 	}
 }
 
+// exposeAt emits one exposure of one revision at a specific occurred_at, so a
+// test can place an event in a window other than the one around f.clock.
+func (f *fixture) exposeAt(t *testing.T, skillID, revision string, at time.Time) {
+	t.Helper()
+	f.emit(t, f.org, map[string]any{"event_type": "card_injected",
+		"exposure_id": "prev-" + skillID + "-" + at.Format(time.RFC3339Nano),
+		"skill_id":    skillID, "revision": revision, "position": 1,
+		"surface": "hook", "delivery_evidence": "emitted",
+		"occurred_at": at.UTC().Format(time.RFC3339)})
+}
+
+// ---------------------------------------------------------------------------
+// Contract 1.3.0 — the window before the requested one, and who decided a
+// queue item.
+// ---------------------------------------------------------------------------
+
+func TestUsagePreviousWindowCoversTheWindowBeforeTheCurrentOne(t *testing.T) {
+	f := newFixture(t)
+	rev := strings.Repeat("p", 64)
+	skill := "urn:skill:acme:atlas:previous"
+	f.skill(t, f.org, f.repo, skill, "atlas", "platform", rev, "published",
+		f.clock.Add(-90*24*time.Hour))
+	// Two exposures land in the 30 days before the requested window, one
+	// lands inside it.
+	f.exposeAt(t, skill, rev, f.clock.Add(-40*24*time.Hour))
+	f.exposeAt(t, skill, rev, f.clock.Add(-35*24*time.Hour))
+	f.exposeAt(t, skill, rev, f.clock.Add(-5*24*time.Hour))
+
+	body := f.get(t, "/usage?window=30d")
+	if got := number(t, totals(t, body), "exposures"); got != 1 {
+		t.Fatalf("current window exposures = %d, want 1 (only the 5-day-old one): %v",
+			got, totals(t, body))
+	}
+	window := body["window"].(map[string]any)
+	previous, ok := body["previous"].(map[string]any)
+	if !ok {
+		t.Fatalf("no previous object: %v", body)
+	}
+	prevWindow, ok := previous["window"].(map[string]any)
+	if !ok {
+		t.Fatalf("previous.window missing: %v", previous)
+	}
+	// The previous window ends exactly where the requested one begins.
+	if prevWindow["to"] != window["from"] {
+		t.Fatalf("previous.window.to = %v, want the current window's from %v",
+			prevWindow["to"], window["from"])
+	}
+	from, e1 := time.Parse(time.RFC3339, prevWindow["from"].(string))
+	to, e2 := time.Parse(time.RFC3339, prevWindow["to"].(string))
+	if e1 != nil || e2 != nil {
+		t.Fatalf("previous.window timestamps do not parse: %v / %v", e1, e2)
+	}
+	if got := to.Sub(from); got != 30*24*time.Hour {
+		t.Fatalf("previous window is %s long, want 30d", got)
+	}
+	prevTotals, ok := previous["totals"].(map[string]any)
+	if !ok {
+		t.Fatalf("previous.totals missing: %v", previous)
+	}
+	if got := number(t, prevTotals, "exposures"); got != 2 {
+		t.Fatalf("previous.totals.exposures = %d, want 2 (the 40- and 35-day-old ones): %v",
+			got, prevTotals)
+	}
+}
+
+func TestUsageQueueDecisionActorRoundTripsThroughDecidedByAndNullStaysNull(t *testing.T) {
+	f := newFixture(t)
+	rev := strings.Repeat("q", 64)
+	skill := "urn:skill:acme:atlas:actor"
+	f.skill(t, f.org, f.repo, skill, "atlas", "platform", rev, "published", f.clock)
+	f.feedback(t, skill, rev, "hindered")
+	ownerID, _ := f.owner.User["id"].(string)
+	if ownerID == "" {
+		t.Fatalf("fixture owner has no id: %v", f.owner.User)
+	}
+
+	// A computed item, decided by the signed-in owner: the decision response
+	// names who decided it (decideComputed's own Actor: optional(actor)).
+	itemID := "negative_feedback:" + skill + ":" + rev
+	decided := f.decide(t, itemID, "reviewed", "Looked at the feedback.")
+	decision := decided["item"].(map[string]any)["decision"].(map[string]any)
+	if decision["actor"] != ownerID {
+		t.Fatalf("decision.actor = %v, want the deciding owner %s", decision["actor"], ownerID)
+	}
+
+	// A worker-raised (source_changed) item, still undecided: it carries no
+	// decision object at all yet.
+	driftID := identity.NewID()
+	f.exec(t, `INSERT INTO gfm.owner_queue
+ (org_id,item_id,repo_id,skill_id,revision_id,reason,evidence)
+ VALUES($1::uuid,$2::uuid,$3,$4,$5,'source_changed','{"sha256":"deadbeef"}'::jsonb)`,
+		f.org, driftID, f.repo, skill, rev)
+	if open := queueOf(t, f.get(t, "/usage"))[driftID]; open["decision"] != nil {
+		t.Fatalf("an undecided worker item must carry no decision: %v", open)
+	}
+	// Deciding it through the API is decidePersisted's path: the actor in the
+	// response must be read back from the decided_by column the UPDATE wrote,
+	// not merely echo the request.
+	drift := f.decide(t, driftID, "fixed_in_git", "Rewrote the step.")
+	driftDecision := drift["item"].(map[string]any)["decision"].(map[string]any)
+	if driftDecision["actor"] != ownerID {
+		t.Fatalf("persisted decision.actor = %v, want the deciding owner %s",
+			driftDecision["actor"], ownerID)
+	}
+
+	// A row that already carries a decision but whose decided_by is NULL — the
+	// shape a decision written outside the owner API would have (nothing in
+	// this codebase currently writes one, but the column is nullable and the
+	// SELECT in queue() must not invent an actor for it). Left `open` so it is
+	// listed rather than filtered out as resolved.
+	nullActorItem := identity.NewID()
+	f.exec(t, `INSERT INTO gfm.owner_queue
+ (org_id,item_id,repo_id,skill_id,revision_id,reason,evidence,state,
+  decision,decision_reason,decided_at)
+ VALUES($1::uuid,$2::uuid,$3,$4,$5,'source_changed','{}'::jsonb,'open',
+  'fixed_in_git','Reconciled during import.',now())`,
+		f.org, nullActorItem, f.repo, skill, rev)
+
+	queue := queueOf(t, f.get(t, "/usage"))
+	row, ok := queue[nullActorItem]
+	if !ok {
+		t.Fatalf("the null-actor item is missing from the queue: %v", queue)
+	}
+	rowDecision, ok := row["decision"].(map[string]any)
+	if !ok {
+		t.Fatalf("the row carries no decision: %v", row)
+	}
+	if rowDecision["actor"] != nil {
+		t.Fatalf("a NULL decided_by must not surface as an invented actor: %v", rowDecision)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // The queue: what a worker raised, what telemetry computed, and the decision.
 // ---------------------------------------------------------------------------

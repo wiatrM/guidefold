@@ -591,7 +591,7 @@ type auditView struct {
 }
 
 func (s *Service) handleAudit(c *mgmt.Context) error {
-	org, e := c.Authorize("org", mgmt.RoleOwner)
+	org, e := c.Authorize("org", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -603,10 +603,18 @@ func (s *Service) handleAudit(c *mgmt.Context) error {
 		}
 		cursor = n
 	}
+	// An owner reads every row of the org; a member reads only the rows the
+	// audit writer stored under their own principal id (c.Principal.ID(), the
+	// same value mgmt.Context.Audit uses as actor). "" is never a real actor,
+	// so it is a safe sentinel for "no filter".
+	actorFilter := ""
+	if org.Role != "owner" {
+		actorFilter = c.Principal.ID()
+	}
 	const limit = 100
 	rows, err := s.pool.Query(c.Ctx(), `SELECT audit_id,at,actor,action,entity,revision,request_id
- FROM gfm.audit WHERE org_id=$1::uuid AND ($2=0 OR audit_id<$2)
- ORDER BY audit_id DESC LIMIT $3`, org.ID, cursor, limit)
+ FROM gfm.audit WHERE org_id=$1::uuid AND ($2=0 OR audit_id<$2) AND ($4='' OR actor=$4)
+ ORDER BY audit_id DESC LIMIT $3`, org.ID, cursor, limit, actorFilter)
 	if err != nil {
 		return mgmt.Internal(err)
 	}

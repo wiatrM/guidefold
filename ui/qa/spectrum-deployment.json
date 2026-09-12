@@ -1,0 +1,59 @@
+{
+  "status": "deployed",
+  "date": "2026-09-09",
+  "scope": "UI-only material 3D pyramid, proof-gated delivery illustration and product positioning",
+  "helmRevision": 12,
+  "context": "cloudfloo-context",
+  "namespace": "guidefold",
+  "image": "ghcr.io/wiatrm/guidefold-ui@sha256:2b29c9484b9c102afa5d23c4762c1b61c76ea118db1333ab6b1ea86372f8989e",
+  "replicas": 2,
+  "readyReplicas": 2,
+  "updatedReplicas": 2,
+  "availableReplicas": 2,
+  "preflight": {
+    "deployedChart": "/home/mike/projects/guidefold/deploy/k8s/chart",
+    "result": "passed: only UI image changed"
+  },
+  "http": {
+    "/": 200,
+    "/assets/index-CDUI313h.js": 200,
+    "/evidence/retrieval-r4b.json": 200,
+    "/evidence/retrieval-admission.json": 200,
+    "/api/v1/me": 503
+  },
+  "tests": {
+    "scope": "Fresh landing tests, not full application suite",
+    "unit": 8,
+    "browser": 29,
+    "finalPyramidRerun": 7,
+    "build": "passed",
+    "dockerBuild": "passed",
+    "contracts": "passed: 15 components, 32 CSS files, 333 tokens, zero diagnostics"
+  },
+  "productionBrowser": {
+    "entry": "/assets/index-CDUI313h.js",
+    "webgl": true,
+    "formed": [
+      0,
+      5,
+      6
+    ],
+    "proofStates": [
+      "ASK without body",
+      "LOAD with body"
+    ],
+    "publicationGate": true,
+    "researchLinks": 4,
+    "overflow": 0,
+    "pageErrors": []
+  },
+  "rollbackRevision": 11,
+  "limitations": [
+    "Backend /api/v1/me remains 503; no real signup/authentication evidence",
+    "The proof-gated flow is an illustration, not a live harness or backend deployment",
+    "Scope-authority lattice remains research-only; no semantic guarantee, smallest-context optimality or task-success uplift claimed",
+    "Three.js loads near the scene: about 146kB gzip, raw chunk warning >500kB",
+    "No fresh Lighthouse or field CWV measurement",
+    "No Git commit/push; rejected motion-12 image was never deployed"
+  ]
+}

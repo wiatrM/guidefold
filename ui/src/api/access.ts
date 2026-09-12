@@ -7,7 +7,7 @@
  * denial keeps the session but never reveals unconfirmed data.
  */
 import { createContext, createElement, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import { ApiError } from './client';
+import { ApiError, isStale } from './client';
 import type { Me } from './decoders';
 
 export const ACCESS_TTL_MS = 45000;
@@ -128,6 +128,7 @@ export class AccessController {
     this.lastAttemptAt = startedAt;
     this.checking = true;
     this.publish();
+    let superseded = false;
     this.pending = (async () => {
       try {
         const me = await this.deps.fetchMe(ACCESS_TIMEOUT_MS);
@@ -146,6 +147,11 @@ export class AccessController {
           this.me = null;
           this.checkedAt = null;
           this.deps.onDenied();
+        } else if (isStale(error)) {
+          // The answer was voided by a context change (the shell's first `setContext` can land
+          // while the first `/me` is in flight), not refused and not lost: ask again at once
+          // instead of reporting offline and waiting out the refresh interval.
+          superseded = true;
         } else {
           this.lastFailureAt = this.nowFn();
         }
@@ -153,6 +159,7 @@ export class AccessController {
         this.checking = false;
         this.pending = null;
         this.publish();
+        if (superseded) { this.lastAttemptAt = null; void this.check(true); }
       }
       return this.state;
     })();

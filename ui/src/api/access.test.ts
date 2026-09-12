@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { ACCESS_REFRESH_MS, ACCESS_TIMEOUT_MS, ACCESS_TTL_MS, AccessController, revealsData } from './access';
-import { ApiError } from './client';
+import { ApiError, StaleResponseError } from './client';
 import type { Me } from './decoders';
 
 const identity: Me = {
@@ -53,6 +53,16 @@ describe('access confirmation', () => {
     expect(controller.getSnapshot().status).toBe('stale');
     expect(revealsData(controller.getSnapshot().status)).toBe(false);
     await controller.check(true);
+    expect(controller.getSnapshot().status).toBe('confirmed');
+  });
+
+  test('a /me answer voided by a context change is asked again at once, never reported as offline', async () => {
+    let calls = 0;
+    const { controller } = setup(async () => { calls += 1; if (calls === 1) throw new StaleResponseError('superseded by a context change'); return identity; });
+    await controller.check(true);
+    // The first attempt returned stale; the re-check it scheduled runs on the next microtask.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toBe(2);
     expect(controller.getSnapshot().status).toBe('confirmed');
   });
 

@@ -1,9 +1,12 @@
-import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
+import {Fragment, useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import {ContextMenu} from '@base-ui/react/context-menu';
 import {toast} from 'sonner';
-import {ArrowLeft, ArrowSquareOut, ChatText, CopySimple, DownloadSimple, FileText, FolderSimple, Funnel, GitBranch, LinkSimple, Prohibit, Scales, Stack, Star, ThumbsDown, ThumbsUp, TreeStructure} from '@phosphor-icons/react';
-import {ActionButton, DataTable, Field, Panel, ProvenanceTrail, PyramidChart, RouteState, ScopeTree, SkillContent, StateBadge, Tabs, Urn} from '../Shared';
+import {ArrowLeftIcon, ArrowSquareOutIcon, CaretRightIcon, ChatTextIcon, CopySimpleIcon, DownloadSimpleIcon, FileCodeIcon, FileTextIcon, FolderSimpleIcon, FunnelIcon, GitBranchIcon, InfoIcon, LinkSimpleIcon, MagnifyingGlassIcon, ProhibitIcon, ScalesIcon, StackIcon, StarIcon, ThumbsDownIcon, ThumbsUpIcon, TreeStructureIcon} from '@phosphor-icons/react';
+import {ActionButton, DataTable, Field, IconTile, Panel, ProvenanceTrail, PyramidChart, RouteState, SkillContent, StateBadge, Tabs, Urn} from '../Shared';
+import {Input} from '@/components/ui/input';
+import {Textarea} from '@/components/ui/textarea';
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {
   ApiFailure, DegradedNotice, PartialNotice, RepositoryRequired, asApiError, cleared, downloadText,
   readOnly, stableKey, unknown, useAsync, type ApiProps,
@@ -26,6 +29,11 @@ type MapAxis = 'repository' | 'scopes' | 'pyramid';
 const axes: MapAxis[] = ['repository', 'scopes', 'pyramid'];
 const originView = (ctx: {params: URLSearchParams}): View => ['map', 'library', 'proposals', 'usage'].includes(ctx.params.get('from') || '') ? ctx.params.get('from') as View : 'library';
 const originNames: Partial<Record<View, string>> = {map: 'Map', library: 'Library', proposals: 'Proposals', usage: 'Usage & quality'};
+
+/** Native select, styled like the shadcn Input; keyboard-simplest and what the tests drive. */
+const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-stone-100 shadow-(--shadow-control) transition-colors hover:border-(--line-hover) hover:bg-graphite-900 focus-visible:border-ring';
+const inputClass = 'min-h-(--control-height) rounded-md border-input bg-graphite-950 px-3 text-[length:var(--font-size-body)] text-stone-100 shadow-(--shadow-control) hover:border-(--line-hover) hover:bg-graphite-900';
+const muted = 'm-0 text-[length:var(--font-size-small)] text-stone-300';
 
 function favoritesKey(ctx: ApiProps['ctx']) {
   return ['guidefold-favorites-v1', ctx.me?.user.id ?? 'unknown', ctx.org ?? 'unknown', ctx.repo ?? 'unknown'].join(':');
@@ -54,10 +62,11 @@ function useFavorites(ctx: ApiProps['ctx']) {
   return {favorites, toggle};
 }
 
+/** Icon-only star with the full accessible name; `title` repeats the short verb for sighted pointer users (a floating tooltip is not worth a portal per row). */
 function FavoriteToggle({active,name,onToggle}:{active:boolean;name:string;onToggle:()=>void}) {
-  return <button type="button" className={styles.favoriteButton} data-slot="badge" aria-pressed={active} aria-label={(active ? 'Remove ' : 'Add ') + name + (active ? ' from favorites' : ' to favorites')} onClick={onToggle}>
-    <Star weight={active ? 'fill' : 'regular'} aria-hidden="true"/><span>{active ? 'Favorite' : 'Add favorite'}</span>
-  </button>;
+  return <ActionButton size="icon" tone={active ? 'system' : 'neutral'} aria-pressed={active} title={active ? 'Remove favorite' : 'Add favorite'} aria-label={(active ? 'Remove ' : 'Add ') + name + (active ? ' from favorites' : ' to favorites')} onClick={onToggle} className={active ? 'text-system-ink' : undefined}>
+    <StarIcon weight={active ? 'fill' : 'regular'} aria-hidden="true"/>
+  </ActionButton>;
 }
 
 function SkillContextActions({item,href,favorite,onToggle,children}:{item:SkillSummary;href:string;favorite:boolean;onToggle:()=>void;children:ReactNode}) {
@@ -71,13 +80,15 @@ function SkillContextActions({item,href,favorite,onToggle,children}:{item:SkillS
   return <ContextMenu.Root>
     <ContextMenu.Trigger className={styles.contextTarget}>{children}</ContextMenu.Trigger>
     <ContextMenu.Portal><ContextMenu.Positioner className={styles.contextPositioner}><ContextMenu.Popup className={styles.contextMenu}>
-      <ContextMenu.Item className={styles.contextItem} render={<Link to={href}/>}><ArrowSquareOut aria-hidden="true"/>Open skill</ContextMenu.Item>
-      <ContextMenu.Item className={styles.contextItem} onClick={onToggle}><Star weight={favorite ? 'fill' : 'regular'} aria-hidden="true"/>{favorite ? 'Remove from favorites' : 'Add to favorites'}</ContextMenu.Item>
+      <ContextMenu.Item className={styles.contextItem} render={<Link to={href}/>}><ArrowSquareOutIcon aria-hidden="true"/>Open skill</ContextMenu.Item>
+      <ContextMenu.Item className={styles.contextItem} onClick={onToggle}><StarIcon weight={favorite ? 'fill' : 'regular'} aria-hidden="true"/>{favorite ? 'Remove from favorites' : 'Add to favorites'}</ContextMenu.Item>
       <ContextMenu.Separator className={styles.contextSeparator}/>
-      <ContextMenu.Item className={styles.contextItem} onClick={()=>{void copyUrn();}}><CopySimple aria-hidden="true"/>Copy skill URN</ContextMenu.Item>
+      <ContextMenu.Item className={styles.contextItem} onClick={()=>{void copyUrn();}}><CopySimpleIcon aria-hidden="true"/>Copy skill URN</ContextMenu.Item>
     </ContextMenu.Popup></ContextMenu.Positioner></ContextMenu.Portal>
   </ContextMenu.Root>;
 }
+
+const publicationTone = (status: string) => status === 'published' ? 'system' : status === 'needs_review' ? 'warning' : 'neutral';
 
 // ---------------------------------------------------------------------------
 // Hosted API routes (F13, F14, F15).
@@ -119,6 +130,8 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
   );
   const [trail, setTrail] = useState<string[]>([]);
   const {favorites, toggle: toggleFavorite} = useFavorites(ctx);
+  const [openDetails, setOpenDetails] = useState<Set<string>>(() => new Set());
+  const toggleDetails = (id: string) => setOpenDetails(prev => {const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next;});
   const result = page.value;
   const failedRefresh = page.phase === 'error' && Boolean(result);
   const degraded = readOnly(ctx, failedRefresh);
@@ -132,6 +145,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
     return lookup ? !lookup.available : false;
   };
   const blocked = catalogFilters.filter(unavailable);
+  const filtered = chosen.length > 0 || Boolean(at('q'));
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,66 +180,83 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
       {values.filter(item => item.value !== active).map(item => <option key={item.value} value={item.value}>{item.value} ({item.count})</option>)}
     </>;
   };
+  const clearHref = ctx.href('library', {...cleared(libraryKeys), cursor: null});
 
   return <div className={styles.stack}>
     {degraded && <DegradedNotice>{failedRefresh
       ? 'Showing the last page this session read. The catalog could not be refreshed, so counts and filters may have moved on.'
       : 'Membership could not be reconfirmed, so this page stays read only.'}</DegradedNotice>}
     {blocked.length > 0 && <PartialNotice>{'This snapshot has no value ' + blocked.map(entry => at(entry.key)).join(', ') + ' for ' + blocked.map(entry => entry.label.toLowerCase()).join(', ') + '. The request is kept in the address; nothing was silently widened to All.'}</PartialNotice>}
-    <Panel title="Find an instruction" eyebrow="Skill catalog" icon={<Funnel weight="regular" aria-hidden="true" />}>
-      <form id="library-filters" className={styles.filterForm} onSubmit={applyFilters} key={ctx.params.toString()}>
-        <Field id="q" label="Search name, description or path"><input id="q" name="q" type="search" defaultValue={at('q')} /></Field>
-        <div className={styles.filterGrid}>{catalogFilters.map((entry, index) => <Field key={entry.key} id={entry.key} label={entry.label}
-          hint={facets.phase === 'loading' ? 'Reading available values' : undefined}
-          error={unavailable(entry) ? 'This value is not available in this snapshot. Choose another value or clear this filter.' : undefined}>
-          <select id={entry.key} name={entry.key} defaultValue={at(entry.key)}>{options(entry, index)}</select>
-        </Field>)}</div>
-        <div className={styles.actions}>
-          <ActionButton type="submit" tone="human">Apply filters</ActionButton>
-          <ActionButton href={ctx.href('library', {...cleared(libraryKeys), cursor: null})}>Clear filters</ActionButton>
+    <Panel title="Find an instruction" eyebrow="Skill catalog" icon={<FunnelIcon weight="duotone" aria-hidden="true" />}>
+      <form id="library-filters" className="grid gap-4" onSubmit={applyFilters} key={ctx.params.toString()}>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="relative">
+            <Field id="q" label="Search name, description or path">
+              <Input id="q" name="q" type="search" defaultValue={at('q')} className={inputClass + ' pl-9'} />
+            </Field>
+            <MagnifyingGlassIcon aria-hidden="true" className="pointer-events-none absolute left-3 bottom-[calc((var(--control-height)-var(--icon-size))/2)] text-stone-300" />
+          </div>
+          <ActionButton type="submit" tone="system">Apply filters</ActionButton>
         </div>
+        {/* The four facets sit under the search in a quiet, foldable section. They start open:
+            the stubbed e2e flow selects a scope before the first Apply, and a folded select is
+            not operable. Folding stays one click away for a reader who only searches. */}
+        <Panel title="Filters" eyebrow={chosen.length ? chosen.length + ' active' : 'None active'} tone="quiet" collapsible defaultOpen>
+          <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{catalogFilters.map((entry, index) => <Field key={entry.key} id={entry.key} label={entry.label}
+              hint={facets.phase === 'loading' ? 'Reading available values' : undefined}
+              error={unavailable(entry) ? 'This value is not available in this snapshot. Choose another value or clear this filter.' : undefined}>
+              <select id={entry.key} name={entry.key} defaultValue={at(entry.key)} className={selectClass}>{options(entry, index)}</select>
+            </Field>)}</div>
+            <div className={styles.actions}><ActionButton href={clearHref} size="sm">Clear filters</ActionButton></div>
+            {facets.phase === 'error' && facets.error && <p className={styles.muted} role="status">Filter values could not be read ({facets.error.code}). The address filters still apply to the result below.</p>}
+          </div>
+        </Panel>
       </form>
-      {facets.phase === 'error' && facets.error && <p className={styles.muted} role="status">Filter values could not be read ({facets.error.code}). The address filters still apply to the result below.</p>}
     </Panel>
-    <Panel title="Skill revisions" icon={<FileText weight="regular" aria-hidden="true" />}
+    <Panel title="Skill revisions" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}
       action={<StateBadge tone={blocked.length ? 'warning' : 'neutral'}>{blocked.length ? 'Filter value unavailable' : result.items.length + ' on this page'}</StateBadge>}>
-      <div className={styles.resultsSummary}>
-        <p role="status">{result.items.length} skill summaries on this page{result.next_cursor ? ', more pages follow' : ', last page'}. Bodies are read on the Skill view.</p>
-        <p className={styles.muted}>Snapshot {result.snapshot_id ?? 'Unknown'}. Source status does not establish publication.</p>
-      </div>
       {result.items.length ? <>
-        <DataTable caption="Skill summaries matching the current filters" headings={['Skill / source path', 'Scope', 'Owner from source', 'Source layer', 'Publication']}>
-          {result.items.map(item => {const skillHref=ctx.href('skill', {skill: item.skill_id, revision: item.revision_id, tab: 'content', from: 'library', return_tab: null});const favorite=favorites.has(item.skill_id);return <tr key={item.skill_id}>
-            <td><SkillContextActions item={item} href={skillHref} favorite={favorite} onToggle={()=>toggleFavorite(item.skill_id,item.name)}><div className={styles.skillCell}>
-              <Link className={styles.skillName} to={skillHref}>{item.name}</Link>
-              <FavoriteToggle active={favorite} name={item.name} onToggle={()=>toggleFavorite(item.skill_id,item.name)}/>
-              <details className={styles.sourceDetails}><summary>Source details</summary><p>{item.description}</p><code>{item.path}</code></details>
+        <DataTable dense flush caption="Skill summaries matching the current filters" headings={['Skill', 'Scope', 'Owner from source', 'Source layer', 'Publication', 'Actions']}>
+          {result.items.map(item => {const skillHref=ctx.href('skill', {skill: item.skill_id, revision: item.revision_id, tab: 'content', from: 'library', return_tab: null});const favorite=favorites.has(item.skill_id);const open=openDetails.has(item.skill_id);const detailsId='source-details-'+item.skill_id.replace(/[^a-zA-Z0-9_-]/g,'-');return <Fragment key={item.skill_id}><tr>
+            <td><SkillContextActions item={item} href={skillHref} favorite={favorite} onToggle={()=>toggleFavorite(item.skill_id,item.name)}><div className="grid gap-1">
+              <Link className="inline-flex min-h-(--touch-height) items-center font-semibold" to={skillHref}>{item.name}</Link>
+              <code className="text-stone-300">{item.path}</code>
             </div></SkillContextActions></td>
             <td><span className={styles.identifier}>{item.scope}</span></td>
             <td>{unknown(item.owner)}</td>
             <td>{unknown(item.source_layer)}<span className={styles.muted}>Knowledge layer: {item.knowledge_layer ?? 'Unknown'}</span></td>
-            <td><StateBadge tone={item.publication_status === 'published' ? 'system' : item.publication_status === 'needs_review' ? 'warning' : 'neutral'}>{item.publication_status}</StateBadge></td>
-          </tr>;})}
+            <td><StateBadge tone={publicationTone(item.publication_status)}>{item.publication_status}</StateBadge></td>
+            <td><div className="flex items-center gap-2">
+              <FavoriteToggle active={favorite} name={item.name} onToggle={()=>toggleFavorite(item.skill_id,item.name)}/>
+              <ActionButton size="sm" aria-expanded={open} aria-controls={detailsId} aria-label={'Source details for ' + item.name} onClick={()=>toggleDetails(item.skill_id)}><InfoIcon aria-hidden="true"/>Source details</ActionButton>
+            </div></td>
+          </tr>
+          {open && <tr id={detailsId} className={styles.detailsRow}><td colSpan={6}><p className="m-0 max-w-(--reading-width)">{item.description}</p></td></tr>}
+          </Fragment>;})}
         </DataTable>
-        <div className={styles.pager}>
-          <ActionButton onClick={openPrevious} disabled={trail.length === 0}>Previous page</ActionButton>
-          <ActionButton onClick={() => openNext(result.next_cursor as string)} disabled={!result.next_cursor}>Next page</ActionButton>
-          <p>{cursor ? 'Reading a page after the first. The cursor stays in the address.' : 'First page.'}</p>
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <ActionButton onClick={openPrevious} disabled={trail.length === 0} size="sm">Previous page</ActionButton>
+          <ActionButton onClick={() => openNext(result.next_cursor as string)} disabled={!result.next_cursor} size="sm">Next page</ActionButton>
+          <p className={styles.muted}>{cursor ? 'Reading a page after the first. The cursor stays in the address.' : 'First page.'}</p>
         </div>
-      </> : <div className={styles.emptyResult}>
-        <h3>{blocked.length ? 'Filter value unavailable' : chosen.length || at('q') ? 'No matching skills' : 'No skills yet'}</h3>
-        <p>{blocked.length
+        <div className="grid gap-1 pt-3">
+          <p role="status" className={styles.muted}>{result.items.length} skill summaries on this page{result.next_cursor ? ', more pages follow' : ', last page'}. Bodies are read on the Skill view.</p>
+          <p className={styles.muted}>Snapshot {result.snapshot_id ?? 'Unknown'}. Source status does not establish publication.</p>
+        </div>
+      </> : <RouteState state="empty"
+        title={blocked.length ? 'Filter value unavailable' : filtered ? 'No matching skills' : 'No skills yet'}
+        description={blocked.length
           ? 'The requested value is kept in the address. Choose an available value or clear this filter.'
-          : chosen.length || at('q')
+          : filtered
             ? 'No summary in this snapshot matches the current search and filters.'
-            : 'Nothing has been imported into this repository yet. Run the CLI from your checkout, then read the import result.'}</p>
-        <ActionButton href={chosen.length || at('q') ? ctx.href('library', {...cleared(libraryKeys), cursor: null}) : ctx.href('import', {step: 'preview'})} tone="system">
-          {chosen.length || at('q') ? 'Clear filters' : 'Open Import'}
-        </ActionButton>
-      </div>}
+            : 'Nothing has been imported into this repository yet. Run the CLI from your checkout, then read the import result.'}
+        action={<ActionButton href={filtered || blocked.length ? clearHref : ctx.href('import', {step: 'preview'})} tone="system">{filtered || blocked.length ? 'Clear filters' : 'Open Import'}</ActionButton>} />}
     </Panel>
   </div>;
 }
+
+const branchRow = 'flex min-h-(--touch-height) flex-wrap items-center gap-2 min-w-0';
 
 function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; label: string; depth: number}) {
   const {source, org, repo} = ctx;
@@ -244,23 +275,30 @@ function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; l
     {chunk.phase === 'loading' && children.length === 0 && <RouteState state="loading" title="Reading this directory" description="Only the requested branch is read." />}
     {chunk.phase === 'error' && chunk.error && <ApiFailure error={chunk.error} onRetry={chunk.reload} retryLabel="Retry this branch" />}
     {shown.length > 0 && <ul className={styles.branchList}>
-      {shown.map(child => <li key={child.path}>
+      {shown.map(child => <li key={child.path} className="min-w-0">
         {child.kind === 'dir'
           ? <RepositoryBranch ctx={ctx} path={child.path} label={child.name + '/'} depth={depth + 1} />
           : child.kind === 'skill' && child.skill_id
-            ? <><FileText weight="regular" aria-hidden="true" /><Link to={ctx.href('skill', {skill: child.skill_id, revision: null, tab: 'content', from: 'map', return_tab: 'repository'})}>{child.name}</Link><code>{child.path}</code></>
-            : <><FileText weight="regular" aria-hidden="true" /><span>{child.name}</span><span className={styles.muted}>Document, not a skill</span></>}
+            ? <div className={branchRow}><FileCodeIcon weight="duotone" aria-hidden="true" className="text-system-ink" /><Link to={ctx.href('skill', {skill: child.skill_id, revision: null, tab: 'content', from: 'map', return_tab: 'repository'})}>{child.name}</Link><code className="text-stone-300">{child.path}</code></div>
+            : <div className={branchRow}><FileTextIcon weight="duotone" aria-hidden="true" className="text-stone-300" /><span>{child.name}</span><span className={styles.muted}>Document, not a skill</span></div>}
       </li>)}
     </ul>}
     {chunk.phase === 'ready' && children.length === 0 && <p className={styles.muted}>This directory holds no imported object.</p>}
     {children.length > MAP_RENDER_LIMIT && <p className={styles.muted}>{'Showing ' + MAP_RENDER_LIMIT + ' of ' + children.length + ' read objects in this directory. Narrow the path to read the rest.'}</p>}
     {value?.next_cursor && children.length <= MAP_RENDER_LIMIT && <ActionButton onClick={() => setCursor(value.next_cursor)}>Read the next 100 objects</ActionButton>}
   </>;
-  if (depth === 0) return <div className={styles.branchRoot}>{body}</div>;
-  return <details open={open} onToggle={event => setOpen((event.currentTarget as HTMLDetailsElement).open)}>
-    <summary><FolderSimple weight="regular" aria-hidden="true" />{label}{depth >= MAP_MAX_DEPTH ? <span className={styles.muted}>Depth limit</span> : null}</summary>
-    {depth >= MAP_MAX_DEPTH ? <p className={styles.muted}>This branch is deeper than the map reads. Open the source repository to inspect it.</p> : body}
-  </details>;
+  if (depth === 0) return <div className="grid gap-2">{body}</div>;
+  return <Collapsible open={open} onOpenChange={setOpen} className="min-w-0">
+    <CollapsibleTrigger className={'group ' + branchRow + ' w-full cursor-pointer rounded-md border-0 bg-transparent px-1 text-left text-stone-100 hover:bg-graphite-800'}>
+      <CaretRightIcon aria-hidden="true" className="size-(--icon-size-small) text-stone-300 transition-transform duration-150 group-data-panel-open:rotate-90 motion-reduce:transition-none" />
+      <FolderSimpleIcon weight="duotone" aria-hidden="true" className="text-system-ink" />
+      <span>{label}</span>
+      {depth >= MAP_MAX_DEPTH ? <span className={styles.muted}>Depth limit</span> : null}
+    </CollapsibleTrigger>
+    <CollapsibleContent className="border-l border-line pl-3 ml-2">
+      {depth >= MAP_MAX_DEPTH ? <p className={styles.muted}>This branch is deeper than the map reads. Open the source repository to inspect it.</p> : body}
+    </CollapsibleContent>
+  </Collapsible>;
 }
 
 function RelationList({ctx, skillId}: ApiProps & {skillId: string}) {
@@ -274,7 +312,7 @@ function RelationList({ctx, skillId}: ApiProps & {skillId: string}) {
   if (!value || value.items.length === 0) return <p className={styles.muted}>No relation is declared for this skill.</p>;
   return <>
     {value.truncated && <PartialNotice>The API truncated this neighbourhood. The list below is incomplete and does not prove the absence of other relations.</PartialNotice>}
-    <DataTable caption="Declared relations of the selected skill" headings={['Relation', 'Target skill', 'Provenance']}>
+    <DataTable dense flush caption="Declared relations of the selected skill" headings={['Relation', 'Target skill', 'Provenance']}>
       {value.items.map(edge => <tr key={edge.type + ':' + edge.to + ':' + (edge.from ?? '')}>
         <th scope="row"><code>{edge.type}</code></th>
         <td className={styles.pathCell}><Link to={ctx.href('skill', {skill: edge.to, revision: edge.revision, tab: 'content', from: 'map', return_tab: 'pyramid'})}>{edge.to}</Link></td>
@@ -293,24 +331,31 @@ function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
   const value = module.value;
   if (!value) return null;
   const byId = new Map(value.skills.map(item => [item.skill_id, item]));
-  return <Panel title={'Module ' + value.scope} eyebrow="Reading order" icon={<Stack weight="regular" aria-hidden="true" />} action={<StateBadge>{value.skills.length} skills</StateBadge>}>
-    <p className={styles.muted}>Owner from source: {unknown(value.owner)}. Reading order comes from the module, not from directory depth.</p>
-    {value.reading_order.length ? <ol className={styles.readingOrder}>
-      {value.reading_order.map(id => <li key={id}>
-        <Link to={ctx.href('skill', {skill: id, revision: byId.get(id)?.revision_id ?? null, tab: 'content', from: 'map', return_tab: 'scopes'})}>{byId.get(id)?.name ?? id}</Link>
-        <span className={styles.muted}>{byId.get(id)?.description ?? 'Summary not part of this module page.'}</span>
-      </li>)}
-    </ol> : <p className={styles.muted}>This module declares no reading order.</p>}
-    <h3 className={styles.relationHeading}>Shared with other modules</h3>
-    {value.shared.length ? <ul className={styles.relationList}>
-      {value.shared.map(item => <li key={item.skill_id}>
-        <Link to={ctx.href('skill', {skill: item.skill_id, revision: null, tab: 'content', from: 'map', return_tab: 'scopes'})}>{item.name}</Link>
-        <span className={styles.muted}>Used by {item.used_by.length ? item.used_by.join(', ') : 'Unknown'}</span>
-      </li>)}
-    </ul> : <p className={styles.muted}>No skill in this module is shared with another scope.</p>}
-    {value.documents.length > 0 && <details className={styles.disclosure}><summary>Documents in this scope ({value.documents.length})</summary>
-      <ul className={styles.relationList}>{value.documents.map(document => <li key={document.path}><code>{document.path}</code><span className={styles.muted}>{unknown(document.kind)}</span></li>)}</ul>
-    </details>}
+  return <Panel title={'Module ' + value.scope} eyebrow="Reading order" icon={<StackIcon weight="duotone" aria-hidden="true" />} action={<StateBadge>{value.skills.length} skills</StateBadge>}>
+    <div className="grid gap-4">
+      <p className={styles.muted}>Owner from source: {unknown(value.owner)}. Reading order comes from the module, not from directory depth.</p>
+      {value.reading_order.length ? <ol className="m-0 grid gap-2 pl-6">
+        {value.reading_order.map(id => <li key={id} className="min-w-0">
+          <Link className="inline-flex min-h-(--touch-height) items-center" to={ctx.href('skill', {skill: id, revision: byId.get(id)?.revision_id ?? null, tab: 'content', from: 'map', return_tab: 'scopes'})}>{byId.get(id)?.name ?? id}</Link>
+          <span className={styles.muted}>{byId.get(id)?.description ?? 'Summary not part of this module page.'}</span>
+        </li>)}
+      </ol> : <p className={styles.muted}>This module declares no reading order.</p>}
+      <h3 className={styles.relationHeading}>Shared with other modules</h3>
+      {value.shared.length ? <ul className={styles.relationList}>
+        {value.shared.map(item => <li key={item.skill_id}>
+          <Link to={ctx.href('skill', {skill: item.skill_id, revision: null, tab: 'content', from: 'map', return_tab: 'scopes'})}>{item.name}</Link>
+          <span className={styles.muted}>Used by {item.used_by.length ? item.used_by.join(', ') : 'Unknown'}</span>
+        </li>)}
+      </ul> : <p className={styles.muted}>No skill in this module is shared with another scope.</p>}
+      {value.documents.length > 0 && <Collapsible className="border-t border-line pt-2">
+        <CollapsibleTrigger className="group inline-flex min-h-(--control-height) cursor-pointer items-center gap-2 border-0 bg-transparent p-0 font-medium text-stone-100">
+          <CaretRightIcon aria-hidden="true" className="size-(--icon-size-small) text-stone-300 transition-transform duration-150 group-data-panel-open:rotate-90 motion-reduce:transition-none" />Documents in this scope ({value.documents.length})
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ul className={styles.relationList}>{value.documents.map(document => <li key={document.path}><code>{document.path}</code><span className={styles.muted}>{unknown(document.kind)}</span></li>)}</ul>
+        </CollapsibleContent>
+      </Collapsible>}
+    </div>
   </Panel>;
 }
 
@@ -338,54 +383,55 @@ export function ApiMapRoute({ctx}: ApiProps) {
   if (!ready) return <RepositoryRequired ctx={ctx} action="Choose a repository" />;
   return <div className={styles.stack}>
     {degraded && <DegradedNotice>Membership could not be reconfirmed. The map is read only and may be behind the repository.</DegradedNotice>}
-    <p className={styles.intro}>Three axes over the same import: where a file lives, which scope owns it and how the declared relations run. Directory depth does not assign a knowledge layer.</p>
     <Tabs label="Map axes" current={axis} items={axes.map(id => ({id, label: id === 'repository' ? 'Repository' : id === 'scopes' ? 'Scopes' : 'Pyramid', href: ctx.href('map', {tab: id, skill: selectedSkill, scope: selectedScope})}))} />
     <div className={styles.mapGrid}>
       <div className={styles.stack}>
-        {axis === 'repository' && <Panel title="Repository tree" eyebrow="Source paths" icon={<FolderSimple weight="regular" aria-hidden="true" />}>
-          <p className={styles.panelIntro}>Each directory is read when you open it, up to 100 objects per request.</p>
+        {axis === 'repository' && <Panel title="Repository tree" eyebrow="Where each file lives" icon={<FolderSimpleIcon weight="duotone" aria-hidden="true" />}>
+          <p className={muted + ' pb-3'}>Each directory is read when you open it, up to 100 objects per request. Directory depth does not assign a knowledge layer.</p>
           <RepositoryBranch ctx={ctx} path="" label="/" depth={0} />
         </Panel>}
-        {axis === 'scopes' && <Panel title="Declared scopes" eyebrow="Scope mapping" icon={<TreeStructure weight="regular" aria-hidden="true" />}>
+        {axis === 'scopes' && <Panel title="Declared scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
           {scopes.phase === 'loading' && !scopes.value && <RouteState state="loading" title="Reading scopes" description="Waiting for the scope map of this repository." />}
           {scopes.phase === 'error' && scopes.error && !scopes.value && <ApiFailure error={scopes.error} onRetry={scopes.reload} retryLabel="Retry the scope map" />}
-          {scopes.value && <>
-            {scopes.value.scope ? <dl className={styles.scopeMeta}>
-              <div><dt>Scope</dt><dd>{scopes.value.scope.id}</dd></div>
-              <div><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
-              <div><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path}>{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
-              <div><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
+          {scopes.value && <div className="grid gap-4">
+            {scopes.value.scope ? <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              <div className={styles.definition}><dt>Scope</dt><dd>{scopes.value.scope.id}</dd></div>
+              <div className={styles.definition}><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
+              <div className={styles.definition}><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path} className="block">{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
+              <div className={styles.definition}><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
             {scopes.value.children.length ? <ul className={styles.relationList}>
               {scopes.value.children.map(child => <li key={child.id}>
-                <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null})}>{child.id}</Link>
+                <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null})}><TreeStructureIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{child.id}</Link>
                 <span className={styles.muted}>{child.skills} skills, owner {unknown(child.owner)}</span>
               </li>)}
             </ul> : <p className={styles.muted}>No child scope is declared here.</p>}
             {scopes.value.skills.length > 0 && <ul className={styles.relationList}>
               {scopes.value.skills.map(item => <li key={item.skill_id}>
-                <Link to={ctx.href('map', {tab: 'scopes', skill: item.skill_id, scope: selectedScope})}>{item.name}</Link><code>{item.skill_id}</code>
+                <Link to={ctx.href('map', {tab: 'scopes', skill: item.skill_id, scope: selectedScope})}><FileCodeIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{item.name}</Link><code>{item.skill_id}</code>
               </li>)}
             </ul>}
             {scopes.value.unmapped.length > 0 && <div className={styles.notice} role="status">
               <StateBadge tone="warning">Unmapped scope</StateBadge>
               <p>{scopes.value.unmapped.length} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.name).join(', ')}. They stay readable and are not assigned to a parent.</p>
             </div>}
-          </>}
+          </div>}
         </Panel>}
         {axis === 'scopes' && selectedScope && <ModulePanel ctx={ctx} scope={selectedScope} />}
-        {axis === 'pyramid' && <Panel title="Knowledge layer" eyebrow="General to specific" icon={<Stack weight="regular" aria-hidden="true" />}>
-          {layers.phase === 'loading' && !layers.value && <RouteState state="loading" title="Reading layers" description="Waiting for the knowledge layer counts." />}
-          {layers.phase === 'error' && layers.error && !layers.value && <ApiFailure error={layers.error} onRetry={layers.reload} retryLabel="Retry the layer counts" />}
-          {layers.value && (layers.value.layers.length ? <DataTable caption="Skills per knowledge layer" headings={['Knowledge layer', 'Skills']}>
-            {layers.value.layers.map(entry => <tr key={entry.layer}><th scope="row">{entry.layer}</th><td>{entry.count}</td></tr>)}
-          </DataTable> : <RouteState state="empty" title="No classified layer" description="No skill in this repository carries a knowledge layer. Unclassified is a named absence, not a level." />)}
-          <p className={styles.muted}>A layer is declared, never inferred from the folder a file sits in.</p>
+        {axis === 'pyramid' && <Panel title="Knowledge layer" eyebrow="How declared relations run, general to specific" icon={<StackIcon weight="duotone" aria-hidden="true" />}>
+          <div className="grid gap-3">
+            {layers.phase === 'loading' && !layers.value && <RouteState state="loading" title="Reading layers" description="Waiting for the knowledge layer counts." />}
+            {layers.phase === 'error' && layers.error && !layers.value && <ApiFailure error={layers.error} onRetry={layers.reload} retryLabel="Retry the layer counts" />}
+            {layers.value && (layers.value.layers.length ? <DataTable dense flush caption="Skills per knowledge layer" headings={['Knowledge layer', 'Skills']}>
+              {layers.value.layers.map(entry => <tr key={entry.layer}><th scope="row">{entry.layer}</th><td>{entry.count}</td></tr>)}
+            </DataTable> : <RouteState state="empty" title="No classified layer" description="No skill in this repository carries a knowledge layer. Unclassified is a named absence, not a level." />)}
+            <p className={styles.muted}>A layer is declared, never inferred from the folder a file sits in.</p>
+          </div>
         </Panel>}
-        {axis === 'pyramid' && <Panel title="Family" eyebrow={selectedScope ? 'Scope ' + selectedScope : 'Choose a scope'} icon={<Stack weight="regular" aria-hidden="true" />}>
+        {axis === 'pyramid' && <Panel title="Family" eyebrow={selectedScope ? 'Scope ' + selectedScope : 'Choose a scope'} icon={<StackIcon weight="duotone" aria-hidden="true" />}>
           {!selectedScope
             ? <p className={styles.muted}>No scope is selected. <Link to={ctx.href('map', {tab: 'scopes', skill: selectedSkill, scope: null})}>Open the Scopes tab</Link> and choose one to see its pyramid, abstract to atomic.</p>
-            : <>
+            : <div className="grid gap-3">
               {((familySkills.phase === 'loading' && !familySkills.value) || (familyRelations.phase === 'loading' && !familyRelations.value)) && <RouteState state="loading" title="Reading the family" description="Waiting for the skills and declared relations of this scope." />}
               {familySkills.phase === 'error' && familySkills.error && !familySkills.value && <ApiFailure error={familySkills.error} onRetry={familySkills.reload} retryLabel="Retry the scope's skills" />}
               {familyRelations.phase === 'error' && familyRelations.error && !familyRelations.value && <ApiFailure error={familyRelations.error} onRetry={familyRelations.reload} retryLabel="Retry the declared relations" />}
@@ -396,24 +442,24 @@ export function ApiMapRoute({ctx}: ApiProps) {
                   ? <>
                     <PyramidChart bands={familyChartBands} edges={familyEdges} selectedId={selectedSkill} onSelect={id => ctx.go('map', {tab: 'pyramid', scope: selectedScope, skill: id})} />
                     {familyUnclassifiedCount > 0 && <p className={styles.muted}>{familyUnclassifiedCount} more skill{familyUnclassifiedCount === 1 ? '' : 's'} in this scope carry no knowledge layer yet and are not pictured above.</p>}
-                    <DataTable caption={'Text alternative: refines relationships within ' + selectedScope} headings={['From', 'To']}>
+                    <DataTable dense caption={'Text alternative: refines relationships within ' + selectedScope} headings={['From', 'To']}>
                       {familyEdges.map(edge => <tr key={edge.from + '>' + edge.to}><td><code>{edge.from}</code></td><td><code>{edge.to}</code></td></tr>)}
                     </DataTable>
                   </>
                   : <RouteState state="empty" title="No classified skill in this scope" description="No skill in this scope carries a knowledge layer. Unclassified is a named absence, not a level." />}
               </>}
-            </>}
+            </div>}
         </Panel>}
       </div>
       <aside className={styles.stack} aria-label="Selected map object">
-        <Panel title="Selected skill" eyebrow="Declared relations" icon={<GitBranch weight="regular" aria-hidden="true" />}>
+        <Panel title="Selected skill" eyebrow="Declared relations" icon={<GitBranchIcon weight="duotone" aria-hidden="true" />}>
           {selectedSkill
-            ? <div className={styles.panelBody}>
-              <code>{selectedSkill}</code>
+            ? <div className="grid gap-3">
+              <code className="break-all">{selectedSkill}</code>
               <RelationList ctx={ctx} skillId={selectedSkill} />
-              <ActionButton tone="human" href={ctx.href('skill', {skill: selectedSkill, revision: null, tab: 'content', from: 'map', return_tab: axis})}>Open this skill</ActionButton>
+              <div><ActionButton tone="human" href={ctx.href('skill', {skill: selectedSkill, revision: null, tab: 'content', from: 'map', return_tab: axis})}>Open this skill</ActionButton></div>
             </div>
-            : <p className={styles.muted}>Choose a skill in the tree, a scope or a relation to read its neighbourhood.</p>}
+            : <RouteState compact state="empty" title="Nothing selected" description="Choose a skill in the tree, a scope or a relation to read its neighbourhood." />}
         </Panel>
       </aside>
     </div>
@@ -422,10 +468,10 @@ export function ApiMapRoute({ctx}: ApiProps) {
 
 const skillTabs = ['content', 'revisions', 'source', 'dependencies', 'feedback'];
 const verdicts = [
-  {value: 'helped', label: 'Helped', detail: 'The instruction changed what I did, for the better.', icon: ThumbsUp},
-  {value: 'mixed', label: 'Mixed', detail: 'Partly useful, partly wrong for this task.', icon: Scales},
-  {value: 'hindered', label: 'Hindered', detail: 'The instruction cost time or led the task astray.', icon: ThumbsDown},
-  {value: 'not_applicable', label: 'Not applicable', detail: 'The instruction did not apply to this task.', icon: Prohibit},
+  {value: 'helped', label: 'Helped', detail: 'The instruction changed what I did, for the better.', icon: ThumbsUpIcon},
+  {value: 'mixed', label: 'Mixed', detail: 'Partly useful, partly wrong for this task.', icon: ScalesIcon},
+  {value: 'hindered', label: 'Hindered', detail: 'The instruction cost time or led the task astray.', icon: ThumbsDownIcon},
+  {value: 'not_applicable', label: 'Not applicable', detail: 'The instruction did not apply to this task.', icon: ProhibitIcon},
 ];
 
 function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId: string; revisionId: string; existing: FeedbackEntry[]}) {
@@ -458,29 +504,30 @@ function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId
     } finally {setBusy(false);}
   }
 
-  return <Panel title="Feedback" eyebrow="Your assessment of this revision" icon={<ChatText weight="regular" aria-hidden="true" />}>
-    <div className={styles.panelBody}>
+  return <Panel title="Feedback" eyebrow="Your assessment of this revision" icon={<ChatTextIcon weight="duotone" aria-hidden="true" />}>
+    <div className="grid gap-4">
       <p className={styles.muted}>An assessment is attached to this exact revision. Members and owners may both record one.</p>
       {blocked && <p className={styles.muted}>Membership could not be reconfirmed, so nothing can be recorded right now.</p>}
-      <form id="skill-feedback" className={styles.stack} onSubmit={send}>
-        <fieldset className={styles.choices} disabled={blocked || busy} data-slot="rating">
-          <legend>Verdict</legend>
-          {verdicts.map(item => {const Icon=item.icon;return <label key={item.value} className={styles.choice}>
-            <input type="radio" name="verdict" value={item.value} checked={verdict === item.value} onChange={() => setVerdict(item.value)} />
-            <Icon weight={verdict===item.value?'fill':'regular'} aria-hidden="true"/><span>{item.label}<small>{item.detail}</small></span>
+      <form id="skill-feedback" className="grid gap-4" onSubmit={send}>
+        <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0 sm:grid-cols-2" disabled={blocked || busy} data-slot="rating">
+          <legend className="mb-2 p-0 font-medium">Verdict</legend>
+          {verdicts.map(item => {const Icon=item.icon;return <label key={item.value} className="group relative flex min-h-(--touch-height) cursor-pointer items-start gap-3 rounded-lg border border-line-strong bg-graphite-950 p-3 transition-colors has-checked:border-system has-checked:bg-system-wash has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-human has-disabled:cursor-not-allowed has-disabled:opacity-(--disabled-opacity)">
+            <input type="radio" name="verdict" value={item.value} checked={verdict === item.value} onChange={() => setVerdict(item.value)} className="sr-only" />
+            <Icon weight={verdict===item.value?'fill':'duotone'} aria-hidden="true" className="mt-0.5 size-(--icon-size-large) text-stone-300 group-has-checked:text-system-ink"/>
+            <span className="grid gap-1"><span className="font-medium">{item.label}</span><small className={styles.muted}>{item.detail}</small></span>
           </label>;})}
         </fieldset>
         <Field id="feedback-reason" label="What happened" hint="Name the task and the part of the instruction that mattered." error={error || undefined}>
-          <textarea id="feedback-reason" name="reason" rows={5} required value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked || busy} aria-invalid={Boolean(error)} />
+          <Textarea id="feedback-reason" name="reason" rows={5} required value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked || busy} aria-invalid={Boolean(error)} className="min-h-(--text-area-height) rounded-md border-input bg-graphite-950 px-3 py-2 text-[length:var(--font-size-body)] text-stone-100" />
         </Field>
         <Field id="feedback-task" label="Task id" hint="Optional. Links this assessment to one episode in the usage report.">
-          <input id="feedback-task" name="task_id" value={taskId} onChange={event => setTaskId(event.target.value)} disabled={blocked || busy} maxLength={120} />
+          <Input id="feedback-task" name="task_id" value={taskId} onChange={event => setTaskId(event.target.value)} disabled={blocked || busy} maxLength={120} className={inputClass} />
         </Field>
         <div className={styles.actions}><ActionButton type="submit" tone="human" disabled={blocked || busy}>{busy ? 'Recording assessment…' : 'Record assessment'}</ActionButton></div>
         <p className={styles.feedbackStatus} role="status">{judgment ? 'Recorded as judgment ' + judgment + '. A correction refers to this identifier instead of adding a second vote.' : ''}</p>
       </form>
       <h3 className={styles.relationHeading}>Recorded assessments</h3>
-      {existing.length ? <DataTable caption="Assessments already recorded for this revision" headings={['Verdict', 'Reason', 'Source', 'Recorded']}>
+      {existing.length ? <DataTable dense flush caption="Assessments already recorded for this revision" headings={['Verdict', 'Reason', 'Source', 'Recorded']}>
         {existing.map(entry => <tr key={entry.judgment_id}>
           <th scope="row"><StateBadge tone={entry.verdict === 'hindered' ? 'warning' : entry.verdict === 'helped' ? 'system' : 'neutral'}>{entry.verdict}</StateBadge></th>
           <td className={styles.pathCell}>{unknown(entry.reason)}</td>
@@ -491,6 +538,16 @@ function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId
     </div>
   </Panel>;
 }
+
+const revisionsTable = (ctx: ApiProps['ctx'], skillId: string, revisions: {revision_id: string; commit: string | null; source: string | null; created_at: string | null}[]) =>
+  <DataTable dense flush caption="Revisions stored for this skill" headings={['Revision', 'Commit', 'Origin', 'Created']}>
+    {revisions.map(entry => <tr key={entry.revision_id}>
+      <th scope="row" className={styles.hashCell}><Link to={ctx.href('skill', {skill: skillId, revision: entry.revision_id, tab: 'content'})}><code>{entry.revision_id}</code></Link></th>
+      <td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td>
+      <td>{unknown(entry.source)}</td>
+      <td>{unknown(entry.created_at)}</td>
+    </tr>)}
+  </DataTable>;
 
 export function ApiSkillRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
@@ -506,7 +563,7 @@ export function ApiSkillRoute({ctx}: ApiProps) {
   const revisionId = requested ?? detail.value?.revision_id ?? null;
   const revision = useAsync(() => source.getRevision(target, skillId ?? '', revisionId ?? ''), 'revision:' + org + '/' + repo + ':' + skillId + ':' + revisionId, ready && Boolean(skillId && revisionId));
   // The origin keeps its own filters in the address; only this view's selection is dropped.
-  const backLink = <Link className={styles.backLink} to={ctx.href(from, {tab: ctx.params.get('return_tab') || null, from: null, return_tab: null, skill: null, revision: null})}><ArrowLeft weight="regular" aria-hidden="true" />Back to {originNames[from]}</Link>;
+  const backLink = <div><ActionButton size="sm" href={ctx.href(from, {tab: ctx.params.get('return_tab') || null, from: null, return_tab: null, skill: null, revision: null})}><ArrowLeftIcon weight="regular" aria-hidden="true" />Back to {originNames[from]}</ActionButton></div>;
 
   if (!ready) return <RepositoryRequired ctx={ctx} />;
   if (!skillId) return <RouteState state="empty" title="No skill selected" description="Open a skill from the library or the map to read its exact revision." action={<ActionButton href={ctx.href('library', {skill: null, revision: null, tab: null, from: null})} tone="system">Open Library</ActionButton>} />;
@@ -520,21 +577,16 @@ export function ApiSkillRoute({ctx}: ApiProps) {
     <RouteState state="error" title="Revision not available"
       description="The requested revision is not stored for this skill. A newer revision is never shown in its place, because the body would then belong to a different file."
       action={<ActionButton href={ctx.href('skill', {skill: skillId, revision: skill.revision_id, tab: 'content'})} tone="system">Open the current revision</ActionButton>} />
-    <Panel title="Requested revision" eyebrow="Not substituted" icon={<FileText weight="regular" aria-hidden="true" />}>
-      <ProvenanceTrail entries={[
-        {label: 'Skill', value: skill.name},
-        {label: 'Requested revision', value: requested ?? 'Unknown', code: true},
-        {label: 'Current revision', value: unknown(skill.revision_id), code: true},
-        {label: 'Stored revisions', value: String(skill.revisions.length), detail: 'Every stored revision is immutable.'},
-      ]} />
-      {skill.revisions.length > 0 && <DataTable caption="Revisions stored for this skill" headings={['Revision', 'Commit', 'Origin', 'Created']}>
-        {skill.revisions.map(entry => <tr key={entry.revision_id}>
-          <th scope="row" className={styles.hashCell}><Link to={ctx.href('skill', {skill: skillId, revision: entry.revision_id, tab: 'content'})}><code>{entry.revision_id}</code></Link></th>
-          <td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td>
-          <td>{unknown(entry.source)}</td>
-          <td>{unknown(entry.created_at)}</td>
-        </tr>)}
-      </DataTable>}
+    <Panel title="Requested revision" eyebrow="Not substituted" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}>
+      <div className="grid gap-4">
+        <ProvenanceTrail entries={[
+          {label: 'Skill', value: skill.name},
+          {label: 'Requested revision', value: requested ?? 'Unknown', code: true},
+          {label: 'Current revision', value: unknown(skill.revision_id), code: true},
+          {label: 'Stored revisions', value: String(skill.revisions.length), detail: 'Every stored revision is immutable.'},
+        ]} />
+        {skill.revisions.length > 0 && revisionsTable(ctx, skillId, skill.revisions)}
+      </div>
     </Panel>
   </div>;
   if (revision.phase === 'error' && revision.error && !revision.value) return <div className={styles.stack}>{backLink}<ApiFailure error={revision.error} onRetry={revision.reload} retryLabel="Retry this revision" /></div>;
@@ -564,23 +616,30 @@ export function ApiSkillRoute({ctx}: ApiProps) {
     {degraded && <DegradedNotice>Membership could not be reconfirmed. The body below is the last confirmed read and no assessment can be recorded.</DegradedNotice>}
     {!body && revision.phase === 'loading' && <RouteState state="loading" title="Reading this revision" description="Waiting for the exact stored bytes of the selected revision." />}
     {requiredMissing.length > 0 && <PartialNotice>{requiredMissing.length + ' required package resources are missing from this revision. Publication stays blocked until they are present.'}</PartialNotice>}
-    <Panel title={skill.name} eyebrow="Immutable revision" icon={<FileText weight="regular" aria-hidden="true" />}
-      action={<div className={styles.panelActions}><FavoriteToggle active={favorites.has(skill.skill_id)} name={skill.name} onToggle={()=>toggleFavorite(skill.skill_id,skill.name)}/><StateBadge tone={skill.publication_status === 'published' ? 'system' : skill.publication_status === 'needs_review' ? 'warning' : 'neutral'}>{skill.publication_status}</StateBadge></div>}>
-      <div className={styles.panelBody}>
-        <p className={styles.description}>{skill.description}</p>
+    <Panel title={skill.name} eyebrow="Immutable revision" icon={<IconTile icon={<FileTextIcon weight="duotone" />} size="lg" />}
+      action={<><FavoriteToggle active={favorites.has(skill.skill_id)} name={skill.name} onToggle={()=>toggleFavorite(skill.skill_id,skill.name)}/><StateBadge tone={publicationTone(skill.publication_status)}>{skill.publication_status}</StateBadge></>}>
+      <div className="grid gap-4">
+        <p className="m-0 max-w-(--reading-width)">{skill.description}</p>
         {generated && <p className={styles.notice} role="status"><StateBadge tone="warning">Generated</StateBadge>This revision was inferred by a generator, not taken from the source file. Read the proposal that produced it before relying on it.</p>}
-        <dl className={styles.identityGrid}>
-          <div><dt>Scope</dt><dd>{skill.scope}</dd></div>
-          <div><dt>Owner from source</dt><dd>{unknown(skill.owner)}</dd></div>
-          <div><dt>Source status</dt><dd><StateBadge>{unknown(skill.source_status)}</StateBadge></dd></div>
-          <div><dt>Source layer</dt><dd>{unknown(skill.source_layer)}</dd></div>
-          <div><dt>Knowledge layer</dt><dd>{skill.knowledge_layer ?? 'Unknown'}</dd></div>
-          <div><dt>Provenance</dt><dd>{unknown(body?.provenance?.origin)}</dd></div>
+        <dl className="m-0 grid gap-x-6 gap-y-3 border-t border-line pt-3 sm:grid-cols-3">
+          <div className={styles.definition}><dt>Scope</dt><dd>{skill.scope}</dd></div>
+          <div className={styles.definition}><dt>Owner from source</dt><dd>{unknown(skill.owner)}</dd></div>
+          <div className={styles.definition}><dt>Source status</dt><dd><StateBadge>{unknown(skill.source_status)}</StateBadge></dd></div>
         </dl>
-        <dl className={styles.revisionStrip}>
-          <div><dt>Source path</dt><dd><code>{skill.path}</code></dd></div>
-          <div><dt>Revision</dt><dd><code>{unknown(revisionId)}</code></dd></div>
-          <div><dt>Content SHA-256</dt><dd><code>{unknown(body?.content_sha256 ?? skill.content_sha256)}</code></dd></div>
+      </div>
+    </Panel>
+    {/* Layers, hashes and the URN are for checking, not for reading: folded until asked for. */}
+    <Panel title="Identity" eyebrow="Layers, path, revision and URN" tone="quiet" collapsible defaultOpen={false}>
+      <div className="grid gap-4">
+        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+          <div className={styles.definition}><dt>Source layer</dt><dd>{unknown(skill.source_layer)}</dd></div>
+          <div className={styles.definition}><dt>Knowledge layer</dt><dd>{skill.knowledge_layer ?? 'Unknown'}</dd></div>
+          <div className={styles.definition}><dt>Provenance</dt><dd>{unknown(body?.provenance?.origin)}</dd></div>
+        </dl>
+        <dl className="m-0 grid gap-x-6 gap-y-3 text-[length:var(--font-size-small)] sm:grid-cols-2">
+          <div className={styles.definition}><dt>Source path</dt><dd><code>{skill.path}</code></dd></div>
+          <div className={styles.definition}><dt>Revision</dt><dd><code>{unknown(revisionId)}</code></dd></div>
+          <div className={styles.definition}><dt>Content SHA-256</dt><dd><code>{unknown(body?.content_sha256 ?? skill.content_sha256)}</code></dd></div>
         </dl>
         <Urn value={skill.skill_id} />
       </div>
@@ -590,50 +649,43 @@ export function ApiSkillRoute({ctx}: ApiProps) {
       {id: 'dependencies', label: 'Dependencies'}, {id: 'feedback', label: 'Feedback'},
     ].map(item => ({...item, href: ctx.href('skill', {skill: skillId, revision: requested, tab: item.id})}))} />
 
-    {tab === 'revisions' && <Panel title="Revision history" eyebrow="Immutable revisions" icon={<FileText weight="regular" aria-hidden="true" />}>
-      {skill.revisions.length > 0 ? <DataTable caption="Revisions stored for this skill" headings={['Revision', 'Commit', 'Origin', 'Created']}>
-        {skill.revisions.map(entry => <tr key={entry.revision_id}>
-          <th scope="row" className={styles.hashCell}><Link to={ctx.href('skill', {skill: skillId, revision: entry.revision_id, tab: 'content'})}><code>{entry.revision_id}</code></Link></th>
-          <td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td>
-          <td>{unknown(entry.source)}</td>
-          <td>{unknown(entry.created_at)}</td>
-        </tr>)}
-      </DataTable> : <p className={styles.muted}>No stored revision is available for this skill.</p>}
+    {tab === 'revisions' && <Panel title="Revision history" eyebrow="Immutable revisions" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}>
+      {skill.revisions.length > 0 ? revisionsTable(ctx, skillId, skill.revisions) : <p className={styles.muted}>No stored revision is available for this skill.</p>}
     </Panel>}
 
-    {tab === 'content' && <Panel title="Body" eyebrow="Exact stored revision" icon={<FileText weight="regular" aria-hidden="true" />}>
+    {tab === 'content' && <Panel title="Body" eyebrow="Exact stored revision" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}>
       {body?.body
-        ? <><div className={styles.panelIntro}><p>Markdown of this revision. Commands are inert here.</p></div><SkillContent content={body.body} /></>
+        ? <div className="grid gap-3"><p className={muted}>Markdown of this revision. Commands are inert here.</p><SkillContent content={body.body} /></div>
         : body
           ? <RouteState state="partial" title="Body not stored with this revision" description="The revision exists, but its body is not part of this response. Nothing is substituted from another revision." />
           : null}
     </Panel>}
 
     {tab === 'source' && <div className={styles.stack}>
-      <Panel title="Source and scope" eyebrow="Provenance" icon={<GitBranch weight="regular" aria-hidden="true" />}>
-        <ProvenanceTrail entries={[
-          {label: 'Repository', value: repo ?? 'Unknown'},
-          {label: 'Scope', value: skill.scope},
-          {label: 'Owner from source', value: unknown(skill.owner), detail: 'Ownership metadata; not an access grant.'},
-          {label: 'Source path', value: unknown(body?.source?.path ?? skill.path), code: true},
-          {label: 'Commit', value: unknown(body?.source?.commit ?? skill.commit), code: true},
-          {label: 'Content SHA-256', value: unknown(body?.content_sha256 ?? skill.content_sha256), code: true},
-        ]} />
-        <div className={styles.panelBody}>
+      <Panel title="Source and scope" eyebrow="Provenance" icon={<GitBranchIcon weight="duotone" aria-hidden="true" />}>
+        <div className="grid gap-4">
+          <ProvenanceTrail entries={[
+            {label: 'Repository', value: repo ?? 'Unknown'},
+            {label: 'Scope', value: skill.scope},
+            {label: 'Owner from source', value: unknown(skill.owner), detail: 'Ownership metadata; not an access grant.'},
+            {label: 'Source path', value: unknown(body?.source?.path ?? skill.path), code: true},
+            {label: 'Commit', value: unknown(body?.source?.commit ?? skill.commit), code: true},
+            {label: 'Content SHA-256', value: unknown(body?.content_sha256 ?? skill.content_sha256), code: true},
+          ]} />
           {sourceUrl
-            ? <a className={styles.sourceLink} href={sourceUrl} target="_blank" rel="noopener noreferrer">
-              <span>Open exact source revision</span><ArrowSquareOut weight="regular" aria-hidden="true" /><span className={styles.externalLabel}>{sourceUrl}</span>
+            ? <a className="inline-flex min-h-(--control-height) flex-wrap items-center gap-2 break-all" href={sourceUrl} target="_blank" rel="noopener noreferrer">
+              <span>Open exact source revision</span><ArrowSquareOutIcon weight="regular" aria-hidden="true" /><span className={styles.muted}>{sourceUrl}</span>
             </a>
             : <p className={styles.muted}>Source host not configured. The file lives at <code>{unknown(body?.source?.path ?? skill.path)}</code> in this repository; add a Git host URL to the repository to link it.</p>}
           <div className={styles.actions}>
-            <ActionButton onClick={download} disabled={!revisionId}><DownloadSimple weight="regular" aria-hidden="true" />Download exact SKILL.md</ActionButton>
+            <ActionButton onClick={download} disabled={!revisionId}><DownloadSimpleIcon weight="regular" aria-hidden="true" />Download exact SKILL.md</ActionButton>
           </div>
           <p className={styles.feedbackStatus} role="status">{raw?.ready ? 'Downloaded ' + raw.bytes + ' bytes. Declared SHA-256 ' + unknown(body?.content_sha256) + '.' : ''}</p>
           {rawError && <p className={styles.muted} role="alert">{rawError}</p>}
         </div>
       </Panel>
-      <Panel title="Declared references" icon={<LinkSimple weight="regular" aria-hidden="true" />}>
-        {body && body.references.length ? <DataTable caption="Package resources declared by this revision" headings={['Path', 'Type', 'Required', 'Available', 'SHA-256']}>
+      <Panel title="Declared references" icon={<LinkSimpleIcon weight="duotone" aria-hidden="true" />}>
+        {body && body.references.length ? <DataTable dense flush caption="Package resources declared by this revision" headings={['Path', 'Type', 'Required', 'Available', 'SHA-256']}>
           {body.references.map(reference => <tr key={reference.path}>
             <th scope="row" className={styles.pathCell}><code>{reference.path}</code></th>
             <td>{unknown(reference.type)}</td>
@@ -645,18 +697,18 @@ export function ApiSkillRoute({ctx}: ApiProps) {
       </Panel>
     </div>}
 
-    {tab === 'dependencies' && <Panel title="Declared relationships" eyebrow="From this revision" icon={<GitBranch weight="regular" aria-hidden="true" />}>
-      <div className={styles.panelBody}>
-        <p>These links are declarations in the revision. They do not prove delivery to an agent.</p>
-        <div className={styles.relations}>
-          {(['requires', 'refines'] as const).map(type => <section key={type}>
-            <h3 className={styles.relationHeading}><LinkSimple weight="regular" aria-hidden="true" />{type}</h3>
+    {tab === 'dependencies' && <Panel title="Declared relationships" eyebrow="From this revision" icon={<GitBranchIcon weight="duotone" aria-hidden="true" />}>
+      <div className="grid gap-4">
+        <p className="m-0">These links are declarations in the revision. They do not prove delivery to an agent.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(['requires', 'refines'] as const).map(type => <section key={type} className="min-w-0">
+            <h3 className={styles.relationHeading}><LinkSimpleIcon weight="duotone" aria-hidden="true" />{type}</h3>
             {body && body[type].length ? <ul className={styles.relationList}>{body[type].map(id => <li key={id}>
               <Link to={ctx.href('skill', {skill: id, revision: null, tab: 'content', from, return_tab: ctx.params.get('return_tab')})}>{id}</Link>
             </li>)}</ul> : <p className={styles.muted}>None declared in this revision.</p>}
           </section>)}
         </div>
-        {body && body.relations.length > 0 && <DataTable caption="Other declared relations" headings={['Relation', 'Target', 'Provenance']}>
+        {body && body.relations.length > 0 && <DataTable dense flush caption="Other declared relations" headings={['Relation', 'Target', 'Provenance']}>
           {body.relations.map(edge => <tr key={edge.type + ':' + edge.to}>
             <th scope="row"><code>{edge.type}</code></th>
             <td className={styles.pathCell}><Link to={ctx.href('skill', {skill: edge.to, revision: null, tab: 'content', from})}>{edge.to}</Link></td>

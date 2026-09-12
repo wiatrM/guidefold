@@ -2,6 +2,7 @@ package identity_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -766,6 +768,135 @@ func TestAuditRecordsEveryMutation(t *testing.T) {
 	// The audit log records the invitation, never the invited address.
 	if strings.Contains(mustJSON(t, body), "someone@example.test") {
 		t.Fatal("the audit log carries an e-mail address")
+	}
+}
+
+// TestAuditIsMemberScoped covers Contract 1.3.0's GET {org_base}/audit: an
+// owner still reads every row, a member reads only the rows whose actor is
+// their own principal id, and that filter composes with cursor paging.
+func TestAuditIsMemberScoped(t *testing.T) {
+	h := newHarness(t)
+	owner := h.signIn(t, "google", "scope-own", "scope-owner@example.test", "Owner")
+	orgID := owner.createOrg(t, "scoped", "Scoped")
+
+	status, invitation, _ := owner.call(t, call{method: http.MethodPost,
+		path: "/api/v1/orgs/scoped/invitations",
+		body: map[string]any{"email": "scope-member@example.test", "role": "member"}, key: "inv-scoped"})
+	if status != http.StatusCreated {
+		t.Fatalf("invite: %d %v", status, invitation)
+	}
+	acceptPath := mustURL(t, invitation["accept_url"].(string)).Path
+
+	member := h.signIn(t, "github", "scope-mem", "scope-member@example.test", "Member")
+	if status, body, _ := member.call(t, call{method: http.MethodPost, path: acceptPath, key: "accept-scoped"}); status != 200 {
+		t.Fatalf("accept: %d %v", status, body)
+	}
+	// invitation.accept above is audited under the member's own actor id; this
+	// installation.create is audited under the owner's — the org now has rows
+	// by two actors.
+	if status, body, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/orgs/scoped/installations",
+		body: map[string]any{"name": "A", "scopes": []string{"search"}}, key: "install-scoped"}); status != http.StatusCreated {
+		t.Fatalf("installation: %d %v", status, body)
+	}
+
+	ownerID := "user:" + owner.userID(t)
+	memberID := "user:" + member.userID(t)
+
+	// The owner reads rows by both actors.
+	status, body, _ := owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/scoped/audit"})
+	if status != 200 {
+		t.Fatalf("owner audit: %d %v", status, body)
+	}
+	actors := map[string]bool{}
+	for _, raw := range body["items"].([]any) {
+		actors[raw.(map[string]any)["actor"].(string)] = true
+	}
+	if !actors[ownerID] || !actors[memberID] {
+		t.Fatalf("the owner should see rows from both actors, saw: %v", actors)
+	}
+
+	// The member reads only their own rows.
+	status, body, _ = member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/scoped/audit"})
+	if status != 200 {
+		t.Fatalf("member audit: %d %v", status, body)
+	}
+	items, _ := body["items"].([]any)
+	if len(items) == 0 {
+		t.Fatal("the member's own invitation.accept row is missing")
+	}
+	for _, raw := range items {
+		entry := raw.(map[string]any)
+		if entry["actor"].(string) != memberID {
+			t.Fatalf("a member saw another actor's row: %v", entry)
+		}
+	}
+
+	// Seed extra rows directly in gfm.audit, interleaving actors, so the
+	// cursor parameter has to combine with the actor filter rather than just
+	// pass through an empty next_cursor.
+	ctx := context.Background()
+	insert := `INSERT INTO gfm.audit(org_id,actor,action,entity,request_id)
+ VALUES($1::uuid,$2,$3,$4,'seed') RETURNING audit_id`
+	var memberSeeded []int64
+	for i := 0; i < 3; i++ {
+		var id int64
+		if e := h.pool.QueryRow(ctx, insert, orgID, memberID, "seed.member", "seed:m").Scan(&id); e != nil {
+			t.Fatal(e)
+		}
+		memberSeeded = append(memberSeeded, id)
+		if e := h.pool.QueryRow(ctx, insert, orgID, ownerID, "seed.owner", "seed:o").Scan(&id); e != nil {
+			t.Fatal(e)
+		}
+	}
+
+	// Without a cursor the member sees their invitation.accept row plus all
+	// three seeded rows — four rows total, never an owner row.
+	status, body, _ = member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/scoped/audit"})
+	if status != 200 {
+		t.Fatalf("member audit: %d %v", status, body)
+	}
+	items, _ = body["items"].([]any)
+	if len(items) != 4 {
+		t.Fatalf("member audit has %d rows, want 4 (1 accept + 3 seeded): %v", len(items), items)
+	}
+	for _, raw := range items {
+		if raw.(map[string]any)["actor"].(string) != memberID {
+			t.Fatalf("saw another actor's row: %v", raw)
+		}
+	}
+
+	// A cursor set to the oldest seeded member row excludes it and the two
+	// newer seeded rows, and the owner rows interleaved between them, leaving
+	// only the member's earlier invitation.accept row — the actor filter and
+	// the cursor filter must both apply to the same page.
+	status, body, _ = member.call(t, call{method: http.MethodGet,
+		path: "/api/v1/orgs/scoped/audit?cursor=" + strconv.FormatInt(memberSeeded[0], 10)})
+	if status != 200 {
+		t.Fatalf("member audit with cursor: %d %v", status, body)
+	}
+	items, _ = body["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("cursor before the seeded rows should leave exactly the accept row, got %d: %v", len(items), items)
+	}
+	entry := items[0].(map[string]any)
+	if entry["actor"].(string) != memberID || entry["action"].(string) != "invitation.accept" {
+		t.Fatalf("cursor page returned the wrong row: %v", entry)
+	}
+
+	// The same cursor for the owner still returns rows by both actors, never
+	// filtered to one.
+	status, body, _ = owner.call(t, call{method: http.MethodGet,
+		path: "/api/v1/orgs/scoped/audit?cursor=" + strconv.FormatInt(memberSeeded[0], 10)})
+	if status != 200 {
+		t.Fatalf("owner audit with cursor: %d %v", status, body)
+	}
+	items, _ = body["items"].([]any)
+	ownerActors := map[string]bool{}
+	for _, raw := range items {
+		ownerActors[raw.(map[string]any)["actor"].(string)] = true
+	}
+	if !ownerActors[ownerID] || !ownerActors[memberID] {
+		t.Fatalf("the owner's cursor page should still show both actors: %v", ownerActors)
 	}
 }
 

@@ -1,5 +1,139 @@
 # guidefold.cloudfloo.io — deployment runbook
 
+## Material 3D and proof-carrying positioning — 2026-09-09 (current)
+
+Helm revision **12**, namespace `guidefold`, context `cloudfloo-context`.
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:2b29c9484b9c102afa5d23c4762c1b61c76ea118db1333ab6b1ea86372f8989e`.
+Tag `redesign-20260909-material3d-12`, built from `gf-waitlist-20260908`.
+Owner selected material 3D after rejecting the card animation; this release adds
+folding layers, camera motion, orange paths and an explicitly illustrative
+proof-gated LOAD/ASK control, plus the new product thesis and four research links.
+The scope-authority lattice is labelled research-only. No backend proof feature
+or task-success claim is introduced by this UI deployment.
+
+Read-only Helm comparison against the root chart confirmed only the UI image
+changed. Upgrade with reused values completed; rollout **2 updated, 2 ready,
+2 available / 2**. Public entry `/assets/index-CDUI313h.js`: HTTP 200;
+root and both evidence JSON files: 200. Browser verified WebGL, formed layers,
+ASK without a body, LOAD with a body, explicit review/publication and four
+research links; zero overflow and page errors. `/api/v1/me` remains **503**.
+
+QA: 29 landing browser tests + 8 unit tests PASS; final rebuild followed by
+7/7 pyramid tests, contracts and Docker build PASS. Three.js is lazy (~146kB
+gzip); its >500kB raw chunk warning is retained. No new Lighthouse, field CWV,
+full application-suite or real-agent task-success result. No Git commit/push.
+Rollback point: revision **11**, previous image recorded below.
+Evidence: combined worktree `reports/build-notes.md`, `ui/qa/spectrum-deployment.json`.
+
+## Pyramid deployment state — 2026-09-09 (previous)
+
+Helm revision **11**, namespace `guidefold`, context `cloudfloo-context`.
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:539ae7ef7b666e054cf3424ee0eb3fdbc3c1e5c8bd8ad638096058df777f1aae`.
+Cluster check: **2/2 ready**. Revision 10 was cancelled and marked failed;
+revision 11 completed through the Windows Helm client. Only the UI image changed.
+The owner rejected the explanation design. The subsequent local motion rewrite
+was also rejected; its pushed image `redesign-20260909-motion-12`
+(`sha256:50f764c748e0986f7e4cc699e9d7630d6f1d04fa56ab337d5c713024d1214b14`)
+is **NOT deployed and must not be treated as design-approved**.
+Do not infer a deployment from that rejected image tag. The owner subsequently
+selected the material 3D direction deployed above with a different image.
+Combined-worktree evidence: `reports/build-notes.md`.
+
+## Waitlist controls deployment — 2026-09-09 (previous)
+
+Helm revision **9**, namespace `guidefold`; UI image
+`ghcr.io/wiatrm/guidefold-ui@sha256:b3c757d068e563144156aaccc8db82727f9a10be916905eadfe1c25dc95e5268`.
+Tag `redesign-20260909-controls-09`, built from `gf-waitlist-20260908`; no commit/push.
+Scope: prevent waitlist CTA compression, align email/button at 52px, use shadcn
+buttonVariants for header/hero/hosted links, wire Spectrum MorphButton loading.
+
+Read-only preflight against the root checkout chart confirmed only the UI image changed.
+Upgrade with reused values succeeded; rollout completed, **2/2 ready and available**.
+Production browser verified entry `/assets/index-BRRisNfw.js`, three shadcn CTA links,
+185px-wide submit, 52px height, 25px content inset on both sides and zero overflow.
+No browser page errors. Root, entry bundle and `/licenses/shadcn-ui.txt`: HTTP 200.
+API `/api/v1/me` remains **503**; real subscription delivery is not established.
+
+Fresh scoped QA: **22 browser + 8 unit tests PASS**, build and contracts PASS.
+Four layout sizes: 1440/1024/768/390px. Includes axe, equal control heights, state
+transitions and error/retry with a stub API. Lighthouse was not rerun for this patch.
+Rollback: revision **8**, previous image `sha256:75160f39b8dea2b33d8e67a7a0371e85d39b30b88a3c777f741ff08485f8ab2e`.
+Source, license and screenshots: combined worktree `docs/ui/spectrum-migration.md`.
+
+## Material landing deployment — 2026-09-09 (previous)
+
+Helm release `guidefold`, namespace `guidefold`, revision **8**. UI image:
+`ghcr.io/wiatrm/guidefold-ui@sha256:75160f39b8dea2b33d8e67a7a0371e85d39b30b88a3c777f741ff08485f8ab2e`.
+Built from `gf-waitlist-20260908`, tag `redesign-20260909-material-08`; no Git commit/push.
+Scope: film-inspired orange/ivory material landing, two generated assets, pausable
+WebGL hero, interactive instruction reader with Spectrum CodeBlock, aligned mini-demos
+and custom footer. Logo and application navigation backgrounds are preserved.
+
+Read-only release preflight against `/home/mike/projects/guidefold/deploy/k8s/chart`
+confirmed only the UI container image changes. Upgrade used `--reuse-values --wait=false`.
+Rollout succeeded: **2/2 ready, 2 available**. No backend, database or secret changed.
+Public `/`, `/import`, `/assets/index-V-sgaQN3.js`, Spectrum license and both
+new WebP assets return HTTP 200. Both deployed asset SHA256 hashes match local files.
+The root document references the new entry bundle. API `/api/v1/me` remains **503**;
+production login/import/waitlist delivery has not been established.
+
+Fresh scoped QA: **17 browser tests, 8 unit tests PASS**; build and UI contracts PASS.
+Desktop Lighthouse: performance **99**, accessibility **100**, LCP **944 ms**,
+CLS **0.014**, TBT **0 ms**. Slow-phone experiments did not establish passing
+mobile Core Web Vitals; field INP was not measured.
+Evidence: combined worktree `docs/ui/spectrum-migration.md`,
+`ui/qa/spectrum-deployment.json` and `ui/qa/landing-generated-assets.json`.
+Rollback point: revision **7**, image ending
+`a81293cf1aeed9c2abf4731dbf6b7d20bb37e9636d127b72ebe6e462b34b402d`.
+
+## Spectrum UI deployment — 2026-09-09 (previous)
+
+Helm release `guidefold`, namespace `guidefold`, revision **7**. UI image:
+`ghcr.io/wiatrm/guidefold-ui@sha256:a81293cf1aeed9c2abf4731dbf6b7d20bb37e9636d127b72ebe6e462b34b402d`.
+Built from `gf-waitlist-20260908`, tag `redesign-20260909-spectrum-07`; no Git commit/push.
+Implemented scope: Spectrum metric cards, bar/pie charts, Tree Nav, Morph Button,
+BeamCard/BeamSearch mini-demos; existing Guidefold brand and video modal preserved.
+This is not a claim that every product renderer has been rewritten.
+
+Preflight against the combined worktree's chart blocked an unrelated ConfigMap change.
+The chart at `/home/mike/projects/guidefold/deploy/k8s/chart` was separately compared
+with the live Helm manifest using live values: only `Deployment/guidefold-ui` image changed.
+Upgrade used that verified chart, `--reuse-values --wait=false`; rollout succeeded,
+**2/2 UI replicas ready**. No API/worker/database/secret/configuration change was applied.
+
+Verified public `/`, `/import`, `/assets/index-Dab4VwiB.js` and
+`/licenses/spectrum-ui.txt`: HTTP 200. The production API `/api/v1/me` remains **503**.
+Local QA uses the stub API; it does not establish production login/import/waitlist delivery.
+Rollback point: revision **6**, UI image ending `497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe`.
+Migration evidence is in the combined worktree's `docs/ui/spectrum-migration.md`.
+
+## Previous deployment — 2026-09-09
+
+The fold-film landing, video Dialog, source Sheet and animated feature examples are deployed as Helm release
+`guidefold`, revision **6**, namespace `guidefold`. UI image:
+`ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe`.
+The Docker build used the combined `gf-waitlist-20260908` working tree, tag
+`redesign-20260909-fold-film-06`; no Git commit or push was made. The kubeconfig
+location supplied by the owner is recorded in [AGENTS.md](../../../../AGENTS.md).
+
+Before upgrade, rendering this checkout's chart with the live release values
+matched the live Helm manifest exactly. Adding the new `ui.image` changed only
+the UI container image. Upgrade used `--reuse-values --wait=false` because the
+API was already unavailable; UI readiness was checked separately using
+`kubectl -n guidefold rollout status deployment/guidefold-ui --timeout=50s`.
+Result: **2/2 UI replicas ready**, public `/`, `/import`, CSS/JS assets and
+`/licenses/shadcn-space.txt` return HTTP 200. The served entry bundle is
+`/assets/index-C1H_1Gpz.js`. No API, worker, database, ingress or secret changed.
+
+The API still returns **503** and logs `workos_requires_api_key_and_client_id`.
+This release does not fix authentication or activate hosted waitlist delivery.
+Do not report login/import/signup as production-tested. The previous UI image
+is `ghcr.io/wiatrm/guidefold-ui@sha256:4dee933b3d842c114dea531459a319b2f0386be103ad791d7232faf4874bab76`;
+revision 5 is the rollback point for this UI-only change. ArgoCD Application is
+still not installed. The sequence below is historical, not current readiness.
+
+## Initial deployment history
+
 Target: the existing ArgoCD-managed cluster at `192.168.8.128` (kubeconfig supplied
 by the owner out of band), temporary domain `guidefold.cloudfloo.io`. Per
 [ADR-0034](../../../docs/adr/ADR-0034-github-app-oauth-and-chrome-extension.md),

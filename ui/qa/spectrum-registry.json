@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-09-11",
-  "license": "Apache-2.0 (Spectrum components), MIT (shadcn/ui Button); see public/licenses/spectrum-ui.txt and shadcn-ui.txt",
+  "reviewedAt": "2026-09-12",
+  "license": "Apache-2.0 (Spectrum components), MIT (shadcn/ui Button); see public/licenses/spectrum-ui.txt and shadcn-ui.txt; shadcn-space blocks MIT (see public/licenses if added)",
   "scope": "Explicit owner-authorized Spectrum sources; CSS computed from data and measured DOM coordinates stays inline. Authored product CSS, imports and public component contracts remain checked. Any source edit invalidates the hash and requires review.",
   "components": [
     {
       "file": "src/components/ui/button.tsx",
-      "sha256": "d321f83520e6ffd1db6cba664ae580a379d70acc7f34991578d2a546b62446b1",
+      "sha256": "3042fe03197e2afbc1e5f53f1018439add52a66363bd85f2f439b7b2cfa9039a",
       "source": "https://ui.shadcn.com/r/styles/base-nova/button.json",
       "allowInlineGeometry": false
     },
@@ -125,6 +125,170 @@
       "file": "src/lib/ease.ts",
       "sha256": "081e5bceaed6470ca5aed22e7e4875892753969d869486fb122a39f249d26e88",
       "source": "https://ui.spectrumhq.in/r/number-ticker.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/input.tsx",
+      "sha256": "65848da76834211a6c0c24c226b9444421f42e8c96c8cada642137ebcdbc16c9",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/input.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/separator.tsx",
+      "sha256": "43800f854578a6ec3f031a38ef41ae761db25b80f9737e44a0249ae0ab895a28",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/separator.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/skeleton.tsx",
+      "sha256": "8110bba70d0cb9fe968c0b7bd092ad12258caef40b028b4a87f402bdab907faf",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/skeleton.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/tooltip.tsx",
+      "sha256": "148a49f38381d6ff9d844478d950e5fb68f37a27aa7e9c2606d5077b4b3e959e",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/tooltip.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/scroll-area.tsx",
+      "sha256": "379b3d4f3eaa17cfe1cf2fcb9ff2553daecbbd0f456e1e72c47e61784ccc6951",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/scroll-area.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/badge.tsx",
+      "sha256": "968ba07bf3bc8d65b1120eae9be0318c465932a5a795a6fdb678343f8fc167ed",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/badge.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/collapsible.tsx",
+      "sha256": "ead4349ff7b01d696ef89294a81d18ee1d3f732321398896462c834ab9b9e065",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/collapsible.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/dropdown-menu.tsx",
+      "sha256": "481e119e7d92a1980d7da0498ae34e0f2a42e532a756310ea138fe0b59da39f6",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/dropdown-menu.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/checkbox.tsx",
+      "sha256": "130f05cc4f62e362354024ce0d1d3d427a5299e9a401464c52ca299a6d045ca9",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/checkbox.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/table.tsx",
+      "sha256": "af2c73194ef5e018a595fee5d8422e70f944949dceaa9bd817ba0292e1139777",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/table.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/textarea.tsx",
+      "sha256": "fa0ce5e86f2d8315e120edcddf036f9c7d1c764fb3252576e42450786932c662",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/textarea.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/avatar.tsx",
+      "sha256": "9f47712a5a79348d7c0b7ce016c947ad0e9bea6b9e006d387521024d30a46a6e",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/avatar.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/sheet.tsx",
+      "sha256": "6e4daecf0ff11f6aba436e7ea71d87cb2d6afd749b49d834cba8293966173638",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/sheet.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/sidebar.tsx",
+      "sha256": "81bfaa297e21988537e44f01766bb702e92e133adc434902520cf740d87370a3",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/sidebar.json",
+      "allowInlineGeometry": true,
+      "adaptations": "2026-09-12: list reset (list-none m-0 p-0) on SidebarMenu/SidebarMenuSub <ul> and m-0 p-0 on their <li> because this app ships Tailwind without Preflight."
+    },
+    {
+      "file": "src/components/ui/chart.tsx",
+      "sha256": "c6b033450ab7b9192f73b70fd6c81448d1717f276515fc1935c8916b98640693",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/chart.json",
+      "allowInlineGeometry": true
+    },
+    {
+      "file": "src/components/ui/progress.tsx",
+      "sha256": "8b2b529f73b73f6a5b92ee2ce97c6385993aaaa940dcf49fb33564135daedcde",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/progress.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/input-group.tsx",
+      "sha256": "7e0b28c5c87c1615de06dd2edb6d4a5a85e076ce58a7610ba389c43a1588e14e",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/input-group.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/hooks/use-mobile.ts",
+      "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/sidebar.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/app-sidebar.tsx",
+      "sha256": "8492cab8f6cbecbc1b1935364ce16eb9da17717e54e2e33fc0c6fcc1e69617ec",
+      "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
+      "allowInlineGeometry": false,
+      "adaptations": null
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/site-header.tsx",
+      "sha256": "75e7e5c38887c55164b8ccbaa2ee0b001ba5f3bdf9efe91fbeefeeaf0a38319c",
+      "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/nav-main.tsx",
+      "sha256": "ba73d8d1f4d25c399d605b973729899a692a907a45d2edc23ae40c2385dd5ce8",
+      "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/user-dropdown.tsx",
+      "sha256": "8997ecd8c3d224f6c6bdfb198ae0b49fa3afb65398f6cb6bd5d706fef82867f1",
+      "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/statistics-01/statistics.tsx",
+      "sha256": "e2e6754d0220e23a2abf90c7456d0d4e869cad0c1bd15308c14b33264fcea763",
+      "source": "https://shadcnspace.com/r/statistics-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/chart-01/chart.tsx",
+      "sha256": "28bf6cb50dfc32827bd93002eec6e926a03880faaf0ab189b090e740cf66cc6a",
+      "source": "https://shadcnspace.com/r/chart-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/chart-02/chart.tsx",
+      "sha256": "b2ce276081c78e73d16115b7a478878dd9e6094447697a021e0750fe7f9fbb3a",
+      "source": "https://shadcnspace.com/r/chart-02.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/table-01/table.tsx",
+      "sha256": "eb5217baf66477f0f42a2ecb0b321d835baa14911dce3ec04956e4a9c65355a8",
+      "source": "https://shadcnspace.com/r/table-01.json",
+      "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/shadcn-space/blocks/empty-state-01/empty-state.tsx",
+      "sha256": "77f61a837788d635947f30e7fd69973dd3a0dd0e0da76e48a97529e5816dfc15",
+      "source": "https://shadcnspace.com/r/empty-state-01.json",
       "allowInlineGeometry": false
     }
   ]

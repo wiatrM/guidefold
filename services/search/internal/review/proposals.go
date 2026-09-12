@@ -46,12 +46,22 @@ func (s *Service) handleListProposals(c *mgmt.Context) error {
 		}
 		after, before = ts, parts[1]
 	}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT proposal_id::text,kind,state,scope,owner,
- target_skill_id,candidate_path,created_at FROM gfm.proposals
- WHERE org_id=$1::uuid AND repo_id=$2
-   AND ($3='' OR state=$3) AND ($4='' OR kind=$4) AND ($5='' OR scope=$5)
-   AND ($6::timestamptz IS NULL OR (created_at,proposal_id::text) < ($6::timestamptz,$7))
- ORDER BY created_at DESC,proposal_id DESC LIMIT $8`,
+	// The lateral join pulls each proposal's latest decision (gfm.decisions,
+	// ordered `at desc`, same column the INSERT in recordDecision writes) so the
+	// list page can show `decision` without an N+1 query per row.
+	rows, err := s.pool.Query(c.Ctx(), `SELECT p.proposal_id::text,p.kind,p.state,p.scope,p.owner,
+ p.target_skill_id,p.candidate_path,p.created_at,
+ d.decision,d.actor_user_id::text,d.at
+ FROM gfm.proposals p
+ LEFT JOIN LATERAL (
+   SELECT decision,actor_user_id,at FROM gfm.decisions
+   WHERE org_id=p.org_id AND proposal_id=p.proposal_id
+   ORDER BY at DESC LIMIT 1
+ ) d ON true
+ WHERE p.org_id=$1::uuid AND p.repo_id=$2
+   AND ($3='' OR p.state=$3) AND ($4='' OR p.kind=$4) AND ($5='' OR p.scope=$5)
+   AND ($6::timestamptz IS NULL OR (p.created_at,p.proposal_id::text) < ($6::timestamptz,$7))
+ ORDER BY p.created_at DESC,p.proposal_id DESC LIMIT $8`,
 		rc.Org.ID, rc.RepoID, state, kind, scope, nullableTime(after), before, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
@@ -62,12 +72,15 @@ func (s *Service) handleListProposals(c *mgmt.Context) error {
 		var id, kind, state, path string
 		var scope, owner, target *string
 		var createdAt time.Time
-		if err = rows.Scan(&id, &kind, &state, &scope, &owner, &target, &path, &createdAt); err != nil {
+		var decision, actor *string
+		var decidedAt *time.Time
+		if err = rows.Scan(&id, &kind, &state, &scope, &owner, &target, &path, &createdAt,
+			&decision, &actor, &decidedAt); err != nil {
 			return mgmt.Internal(err)
 		}
 		items = append(items, map[string]any{"proposal_id": id, "kind": kind, "state": state,
 			"scope": scope, "owner": owner, "target_skill_id": target, "path": path,
-			"created_at": createdAt})
+			"created_at": createdAt, "decision": lastDecisionSummary(decision, actor, decidedAt)})
 	}
 	if err = rows.Err(); err != nil {
 		return mgmt.Internal(err)
@@ -89,6 +102,25 @@ func nullableTime(t time.Time) any {
 		return nil
 	}
 	return t
+}
+
+// lastDecisionSummary is the `ProposalSummary.decision` shape (API-CONTRACT
+// 1.3.0 §5.4): `{decision, actor, at}` for the latest `gfm.decisions` row, or
+// `nil` for an undecided proposal. `actor` carries the same plain
+// `actor_user_id::text` string `handleProposal` reads via lastDecision, so a
+// list row and its detail page name the same person for the same decision.
+func lastDecisionSummary(decision, actor *string, at *time.Time) any {
+	if decision == nil {
+		return nil
+	}
+	out := map[string]any{"decision": *decision, "actor": nil, "at": nil}
+	if actor != nil {
+		out["actor"] = *actor
+	}
+	if at != nil {
+		out["at"] = *at
+	}
+	return out
 }
 
 func knownState(v string) bool {

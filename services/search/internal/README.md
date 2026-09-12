@@ -169,7 +169,9 @@ they are symmetric statements about two skills.
 **1.2 is additive and nothing else.** A `1.1` request answers byte for byte as it
 did before; the closure, the resource manifest and the `search_snapshot` check
 run only when the caller asked for `1.2`. The two versions have separate schema
-documents so a `1.1` request cannot carry a `1.2` field.
+documents so a `1.1` request cannot carry a `1.2` field. A 1.2 caller may
+opt into `delivery_policy: proof_gated`: only a complete source proof reaches
+the harness as `LOAD`; every other case is an empty-body `ASK`.
 
 **Cross-organisation access is 403, never 404.** A non-member and a nonexistent
 organisation must produce the same body, or the API becomes an existence oracle.

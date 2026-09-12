@@ -5,7 +5,7 @@
  */
 
 /** The management route an unauthenticated request falls back to when no target is carried. */
-export const DEFAULT_RETURN = '/import';
+export const DEFAULT_RETURN = '/home';
 
 /**
  * A `return` target is caller-supplied: it arrives in the URL and is handed to the API as

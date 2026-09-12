@@ -3,11 +3,13 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import App from './app';
+import Landing from './routes/landing';
 import { AccessController, AccessProvider } from './api/access';
 import { ApiClient, ApiError } from './api/client';
 import { createApiDataSource } from './data/apiSource';
 import { fakeResponse, fakeSource } from './test/fakes';
 import type { Me } from './api/decoders';
+vi.mock('./data/waitlist', async original => ({ ...await original<typeof import('./data/waitlist')>(), submitWaitlist: vi.fn() }));
 // Layout, zoom and reduced motion are covered by schema-navigation browser tests.
 vi.mock('./components/PyramidChart/SchemaFlow',()=>({SchemaFlow:()=> <div role="region" aria-label="Skill hierarchy"/>}));
 
@@ -35,15 +37,33 @@ describe('shell composition', () => {
     expect(screen.getByText(/Sample values from examples\/monorepo/)).toBeInTheDocument();
   });
 
+  test('the management shell renders inside .console, which carries the shadcn dark-neutral theme', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const { container } = render(<MemoryRouter initialEntries={['/home?org=meridian&repo=monorepo']}>
+      <AccessProvider controller={controller}><App source={fakeSource()} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(container.querySelector('.console')).not.toBeNull();
+  });
+
+  test('the landing route (rendered outside App by main.tsx) never carries .console', async () => {
+    // The landing route keeps the orange-branded `:root` tokens; only the management shell
+    // (app.tsx Shell) gets the shadcn dark-neutral override (tokens.css `.console`).
+    const { container } = render(<Landing />);
+    expect(await within(container).findAllByRole('link', { name: 'Guidefold home' }, { timeout: 4000 })).not.toHaveLength(0);
+    expect(container.querySelector('.console')).toBeNull();
+  });
+
   test('an unknown path lands on Import, and nothing but the hosted API is named in the footer', async () => {
     const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
     await controller.check(true);
     render(<MemoryRouter initialEntries={['/nowhere']}>
       <AccessProvider controller={controller}><App source={fakeSource({ getAuthProviders: async () => ({ mode: 'dev' as const, providers: [] }) })} /></AccessProvider>
     </MemoryRouter>);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
     expect(screen.getByText(/^Hosted API\./)).toBeInTheDocument();
-    expect(document.title).toBe('Import | Guidefold');
+    expect(document.title).toBe('Overview | Guidefold');
   });
 
   test('the shell shows the organisation from /me and the repository from the URL', async () => {

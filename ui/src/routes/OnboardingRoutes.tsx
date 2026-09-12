@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { BeamCard } from '../components/spectrumui/beam-card';
 import { cn } from '@/lib/utils';
 import { isStale, type ApiError } from '../api/client';
-import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, unknown, useAsync, type ApiProps } from './apiState';
+import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, shortId, unknown, useAsync, type ApiProps } from './apiState';
 import { proposalKinds } from '../api/decoders';
 import type { AuditEntry, Job, ImportStatus, Installation, Member, Org, ProposalKind, ProposalLimits, Repo } from '../api/decoders';
 import styles from './OnboardingRoutes.module.css';
@@ -134,8 +134,50 @@ function ShownOnce({ title, label, value, note }: { title: string; label: string
   </Panel>;
 }
 
+const generationPanelId = 'generate-proposals';
+const createInstallationPanelId = 'create-installation';
+
+/**
+ * The Integrations tab's "Set up an adapter" guide (Task 7): the owner asked what an adapter
+ * is after seeing "No adapter installed" on Overview. Every command here is quoted verbatim
+ * from `skills/guidefold/scripts/guidefold` — its usage block, `cmd_install`, `cmd_login`,
+ * `cmd_doctor`, `cmd_telemetry_flush` and the argparse definitions for those subcommands — never
+ * invented. `docs/HOWTO-adapter.md` carries the same five steps for a reader outside the UI,
+ * plus a troubleshooting table.
+ */
+const ADAPTER_STEPS: { title: string; detail: string; command: string }[] = [
+  {
+    title: 'Install the adapter',
+    detail: 'Run this from your checkout: it copies the CLI and wires the harness hook into .agents/skills/guidefold/ (harness is claude, copilot or gemini).',
+    command: 'guidefold install --harness claude',
+  },
+  {
+    title: 'Sign in',
+    detail: 'Starts the device flow; open the printed link and approve the code it shows, right here under Organization › Integrations.',
+    command: 'guidefold login',
+  },
+  {
+    title: 'Store the installation token',
+    detail: 'Paste the token an owner creates below into a file only you can read, then point the adapter at it.',
+    command: 'printf \'%s\' "<paste the installation token>" > ~/.config/guidefold/search-token '
+      + '&& chmod 600 ~/.config/guidefold/search-token '
+      + '&& export GUIDEFOLD_SEARCH_TOKEN_FILE=~/.config/guidefold/search-token',
+  },
+  {
+    title: 'Check the setup',
+    detail: 'Confirms org, repo, auth, API and the installed adapter, and prints a fix for anything still wrong.',
+    command: 'guidefold doctor',
+  },
+  {
+    title: 'Send telemetry',
+    detail: 'Posts queued SEARCH/USE events to /v1/events:batch; run this by hand or from CI, never from the hook.',
+    command: 'guidefold telemetry flush --url <api>',
+  },
+];
+
 function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
-  const { source, org, repo } = ctx;
+  const { source, org, repo, role } = ctx;
+  const owner = role === 'owner';
   const [status, setStatus] = useState<ImportStatus | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -174,12 +216,18 @@ function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
         two numbers differ on purpose and the shorter one is named as incomplete. */}
     {status.files_truncated && <PartialNotice>{'The API returned a shortened file list: ' + files.length + ' of ' + (counts?.files ?? files.length) + ' files are shown below. The counts above cover the whole import; the lists do not.'}</PartialNotice>}
     {degraded && <div className={styles.notice} role="status"><StateBadge tone="warning">Degraded</StateBadge><p>{error ? 'Showing the last status read at ' + unknown(status.updated_at) + '. The status could not be refreshed.' : 'Import files were read, but ' + (failedJobs.length ? failedJobs.length + ' job(s) failed.' : 'the publication step failed.')}</p></div>}
-    <MetricRow items={[
-      { label: 'Accepted', value: String(counts?.accepted ?? group('accepted').length), detail: 'Files stored for this import' },
-      { label: 'Omitted', value: String(counts?.omitted ?? group('omitted').length), detail: 'Excluded by scan rules' },
-      { label: 'Failed', value: String(counts?.failed ?? group('failed').length), detail: 'Parse errors, listed with a reason' },
-    ]} />
-    <Panel title="Import result" eyebrow="Files" icon={<FileCodeIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={status.state === 'failed' ? 'error' : status.state === 'partial' ? 'warning' : 'system'}>{status.state}</StateBadge>}>
+    <Panel title="Import result" eyebrow={'Import ' + shortId(status.import_id)} icon={<FileCodeIcon weight="regular" aria-hidden="true" />}
+      action={<>
+        <StateBadge tone={status.state === 'failed' ? 'error' : status.state === 'partial' ? 'warning' : 'system'}>{status.state}</StateBadge>
+        {owner && publication?.state === 'published'
+          ? <ActionButton tone="system" href={'#' + generationPanelId}>Generate proposals</ActionButton>
+          : <ActionButton tone="system" href={ctx.href('library', {})}>Open Library</ActionButton>}
+      </>}>
+      {/* The counts stay exact and labelled; the rest of the evidence folds below them. */}
+      <dl className={styles.statStrip}>
+        {([['Accepted', counts?.accepted ?? group('accepted').length], ['Omitted', counts?.omitted ?? group('omitted').length], ['Failed', counts?.failed ?? group('failed').length]] as const).map(([label, value]) => <div key={label} className={styles.stat}><dt>{label}</dt><dd>{String(value)}</dd></div>)}
+        <div className={styles.stat}><dt>Publication</dt><dd><StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge></dd></div>
+      </dl>
       <ProvenanceTrail entries={[
         { label: 'Import', value: <Urn value={status.import_id} /> },
         { label: 'Manifest digest', value: unknown(status.manifest_digest), code: true },
@@ -187,17 +235,18 @@ function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
         { label: 'Manifest completeness', value: status.complete ? 'Complete scan' : 'Partial scan', detail: 'A partial scan never produces deletions.' },
       ]} />
       {(['accepted', 'omitted', 'failed'] as const).map(state => <Disclosure key={state} summary={state[0].toUpperCase() + state.slice(1) + ' files (' + group(state).length + ')'}>
-        {group(state).length === 0 ? <p className={styles.help}>No files in this group.</p> : <DataTable caption={'Files with status ' + state} headings={['Source path', 'Kind', 'Reason']}>
+        {group(state).length === 0 ? <p className={styles.help}>No files in this group.</p> : <DataTable flush caption={'Files with status ' + state} headings={['Source path', 'Kind', 'Reason']}>
           {group(state).map(file => <tr key={file.path}><td className={styles.pathCell}><code>{file.path}</code></td><td>{unknown(file.kind)}</td><td>{unknown(file.reason)}</td></tr>)}
         </DataTable>}
       </Disclosure>)}
     </Panel>
-    <Panel title="Jobs" eyebrow="Worker" icon={<TerminalIcon weight="regular" aria-hidden="true" />}>
-      {status.jobs.length === 0 ? <p className={styles.help}>No jobs are recorded for this import.</p> : <DataTable caption="Jobs for this import" headings={['Job', 'Kind', 'State', 'Attempts', 'Error']}>
+    <Panel title="Jobs" eyebrow="Worker" tone="quiet" icon={<TerminalIcon weight="regular" aria-hidden="true" />} action={failedJobs.length ? <StateBadge tone="error">{failedJobs.length + ' failed'}</StateBadge> : undefined}>
+      {status.jobs.length === 0 ? <p className={styles.help}>No jobs are recorded for this import.</p> : <DataTable flush caption="Jobs for this import" headings={['Job', 'Kind', 'State', 'Attempts', 'Error']}>
         {status.jobs.map(item => <tr key={item.job_id}><th scope="row" className={styles.pathCell}><code>{item.job_id}</code></th><td>{item.kind}</td><td><StateBadge tone={item.state === 'failed' ? 'error' : item.state === 'done' ? 'system' : 'neutral'}>{item.state}</StateBadge></td><td>{item.attempts}</td><td>{unknown(item.error)}</td></tr>)}
       </DataTable>}
     </Panel>
-    <Panel title="Publication" eyebrow="Separate from import" icon={<CheckCircleIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>}>
+    {/* Folded once published: the summary strip already says so. Anything else stays open because it needs a look. */}
+    <Panel title="Publication" eyebrow="Separate from import" tone="quiet" collapsible defaultOpen={publication?.state !== 'published'} icon={<CheckCircleIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>}>
       <ProvenanceTrail entries={[
         { label: 'Publication state', value: publication?.state ?? 'none', detail: 'Import stores files; publication activates a snapshot.' },
         { label: 'Snapshot', value: unknown(publication?.snapshot_id), code: true },
@@ -292,12 +341,12 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
     finally { setBusy(false); }
   }
 
-  if (!owner) return <Panel title="Generate proposals" eyebrow="Owner" icon={<SparkleIcon weight="regular" aria-hidden="true" />}>
+  if (!owner) return <Panel id={generationPanelId} title="Generate proposals" eyebrow="Owner" icon={<SparkleIcon weight="regular" aria-hidden="true" />}>
     <OwnerNote role={role} />
   </Panel>;
 
-  return <Panel title="Generate proposals" eyebrow="Optional" icon={<SparkleIcon weight="regular" aria-hidden="true" />} action={jobIds ? <StateBadge tone="system">Started</StateBadge> : undefined}>
-    <p>Read the estimate before starting. Generation runs as a background job; nothing in Proposals changes until it finishes.</p>
+  return <Panel id={generationPanelId} title="Generate proposals" eyebrow="Optional" icon={<SparkleIcon weight="regular" aria-hidden="true" />} action={jobIds ? <StateBadge tone="system">Started</StateBadge> : undefined}>
+    <p>Runs as a background job. Nothing in Proposals changes until it finishes.</p>
     {plan.phase === 'loading' && <RouteState state="loading" title="Reading the plan" description="Estimating groups, inputs and cost before any generation starts." />}
     {plan.phase === 'error' && plan.error && <ApiFailure error={plan.error} onRetry={plan.reload} retryLabel="Retry the plan" />}
     {plan.phase === 'ready' && plan.value && <>
@@ -310,7 +359,7 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
       {/* `max_groups` cuts scopes out of the plan; the list below is then not every scope. */}
       {skippedGroups(plan.value.groups_skipped) > 0 && <PartialNotice>{'The plan limit of ' + plan.value.limits.max_groups + ' groups left out ' + skippedGroups(plan.value.groups_skipped) + ' scope(s): ' + describeSkipped(plan.value.groups_skipped) + '. The list below is not every scope of this import, and a run now covers only what it shows.'}</PartialNotice>}
       <Disclosure summary={'Groups and inputs (' + plan.value.groups.length + ')'}>
-        {plan.value.groups.length === 0 ? <p className={styles.help}>No groups are available for the selected kinds.</p> : <DataTable caption="Plan groups" headings={['Group', 'Kind', 'Inputs', 'Estimated tokens']}>
+        {plan.value.groups.length === 0 ? <p className={styles.help}>No groups are available for the selected kinds.</p> : <DataTable flush caption="Plan groups" headings={['Group', 'Kind', 'Inputs', 'Estimated tokens']}>
           {plan.value.groups.map(group => <tr key={group.group_id}><th scope="row"><code>{group.group_id}</code></th><td>{group.kind}</td><td className={styles.pathCell}>{formatList(group.inputs)}</td><td>{group.estimated_tokens ?? 'Unknown'}</td></tr>)}
         </DataTable>}
       </Disclosure>
@@ -323,24 +372,27 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
       </fieldset>
       {kinds.length === 0 && <p className={styles.help}>Select at least one proposal kind.</p>}
       <p className={styles.help}>Fixed by the API: at most {plan.value.limits.max_groups} groups, {plan.value.limits.max_proposals_per_group} proposals per group, {plan.value.limits.max_neighbours} neighbours.</p>
-      <div className={styles.twoColumns}>
-        <Field id="limit-max-tokens" label="Max tokens" hint={plan.value.limits.max_tokens != null ? 'Plan allows up to ' + plan.value.limits.max_tokens + '.' : 'No ceiling from the plan.'}>
-          <Input id="limit-max-tokens" inputMode="numeric" value={limitInputs.max_tokens} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_tokens', event.target.value)} className={inputClass} />
-        </Field>
-        <Field id="limit-max-calls" label="Max model calls" hint={plan.value.limits.max_calls != null ? 'Plan allows up to ' + plan.value.limits.max_calls + '.' : 'No ceiling from the plan.'}>
-          <Input id="limit-max-calls" inputMode="numeric" value={limitInputs.max_calls} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_calls', event.target.value)} className={inputClass} />
-        </Field>
-        <Field id="limit-max-usd" label="Max spend (USD)" hint={plan.value.limits.max_usd != null ? 'Plan allows up to ' + plan.value.limits.max_usd + '.' : 'No ceiling from the plan.'}>
-          <Input id="limit-max-usd" inputMode="decimal" value={limitInputs.max_usd} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_usd', event.target.value)} className={inputClass} />
-        </Field>
-      </div>
+      <Disclosure summary="Limits">
+        <p className={styles.help}>Optional. Empty fields use the plan ceilings shown as placeholders.</p>
+        <div className={styles.twoColumns}>
+          <Field id="limit-max-tokens" label="Max tokens" hint={plan.value.limits.max_tokens != null ? 'Plan allows up to ' + plan.value.limits.max_tokens + '.' : 'No ceiling from the plan.'}>
+            <Input id="limit-max-tokens" inputMode="numeric" value={limitInputs.max_tokens} placeholder={plan.value.limits.max_tokens != null ? String(plan.value.limits.max_tokens) : undefined} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_tokens', event.target.value)} className={inputClass} />
+          </Field>
+          <Field id="limit-max-calls" label="Max model calls" hint={plan.value.limits.max_calls != null ? 'Plan allows up to ' + plan.value.limits.max_calls + '.' : 'No ceiling from the plan.'}>
+            <Input id="limit-max-calls" inputMode="numeric" value={limitInputs.max_calls} placeholder={plan.value.limits.max_calls != null ? String(plan.value.limits.max_calls) : undefined} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_calls', event.target.value)} className={inputClass} />
+          </Field>
+          <Field id="limit-max-usd" label="Max spend (USD)" hint={plan.value.limits.max_usd != null ? 'Plan allows up to ' + plan.value.limits.max_usd + '.' : 'No ceiling from the plan.'}>
+            <Input id="limit-max-usd" inputMode="decimal" value={limitInputs.max_usd} placeholder={plan.value.limits.max_usd != null ? String(plan.value.limits.max_usd) : undefined} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_usd', event.target.value)} className={inputClass} />
+          </Field>
+        </div>
+      </Disclosure>
       {limitError && <p className={styles.feedback} role="alert">{limitError}</p>}
       {formError && <p className={styles.feedback} role="alert">{formError}</p>}
       <ActionButton tone="human" disabled={busy || kinds.length === 0 || Boolean(jobIds)} onClick={() => { void generate(); }}>
         {jobIds ? 'Generation started' : 'Generate proposals'}
       </ActionButton>
     </>}
-    {jobIds && <DataTable caption="Generation jobs" headings={['Job', 'State', 'Error']}>
+    {jobIds && <DataTable flush caption="Generation jobs" headings={['Job', 'State', 'Error']}>
       {jobIds.map(id => {
         const job = jobs.find(item => item.job_id === id);
         const state = job?.state ?? 'queued';
@@ -433,7 +485,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
         {orgs.phase === 'loading' && <RouteState state="loading" title="Reading organizations" description="Waiting for the membership list." />}
         {orgs.phase === 'error' && orgs.error && <ApiFailure error={orgs.error} onRetry={orgs.reload} retryLabel="Retry the organization list" />}
         {orgs.phase === 'ready' && (orgs.value?.length
-          ? <DataTable caption="Organizations you belong to" headings={['Organization', 'Role', 'Action']}>
+          ? <DataTable flush caption="Organizations you belong to" headings={['Organization', 'Role', 'Action']}>
             {orgs.value.map(entry => <tr key={entry.org_id}><th scope="row">{entry.name}<span className={styles.linkHint}>{entry.slug}</span></th><td><StateBadge tone={entry.my_role === 'owner' ? 'human' : 'neutral'}>{entry.my_role ?? 'member'}</StateBadge></td><td><Link to={ctx.href('import', { org: entry.slug, repo: null, step: 'preview' })}>Use this organization</Link></td></tr>)}
           </DataTable>
           : <RouteState state="empty" title="No organization yet" description="Create one to hold a repository, its skills and its members." />)}
@@ -452,7 +504,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
         {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
         {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
         {repos.phase === 'ready' && (repos.value?.length
-          ? <DataTable caption="Repositories in this organization" headings={['Repository', 'Git host', 'Action']}>
+          ? <DataTable flush caption="Repositories in this organization" headings={['Repository', 'Git host', 'Action']}>
             {repos.value.map(entry => <tr key={entry.repo_id}><th scope="row"><code>{entry.repo_id}</code></th><td className={styles.pathCell}>{unknown(entry.git_host_url)}</td><td><Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link></td></tr>)}
           </DataTable>
           : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={<ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>} />)}
@@ -474,8 +526,8 @@ export function ApiImportRoute({ ctx }: ApiProps) {
         {imports.phase === 'loading' && <RouteState state="loading" title="Reading imports" description="Waiting for the import list of this repository." />}
         {imports.phase === 'error' && imports.error && <ApiFailure error={imports.error} onRetry={imports.reload} retryLabel="Retry the import list" />}
         {imports.phase === 'ready' && (imports.value?.length
-          ? <Panel title="Imports" eyebrow="Newest first" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
-            <DataTable caption="Imports for this repository" headings={['Import', 'State', 'Commit', 'Action']}>
+          ? <Panel title="Imports" eyebrow={imports.value.length + ' for this repository, newest first'} tone={imports.value.length === 1 && ctx.params.get('import_id') ? 'quiet' : 'card'} collapsible={imports.value.length === 1 && Boolean(ctx.params.get('import_id'))} defaultOpen={!(imports.value.length === 1 && ctx.params.get('import_id'))} icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
+            <DataTable flush caption="Imports for this repository" headings={['Import', 'State', 'Commit', 'Action']}>
               {imports.value.map(entry => <tr key={entry.import_id}><th scope="row"><code>{entry.import_id}</code></th><td><StateBadge tone={entry.state === 'failed' ? 'error' : entry.state === 'partial' ? 'warning' : 'neutral'}>{entry.state}</StateBadge></td><td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td><td><Link to={ctx.href('import', { step: 'result', import_id: entry.import_id })}>Read this import</Link></td></tr>)}
             </DataTable>
           </Panel>
@@ -620,7 +672,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}
         {audit.phase === 'ready' && (audit.value?.items.length
           ? <>
-            <DataTable dense caption="Audit entries for this organization" headings={['At', 'Actor', 'Action', 'Entity', 'Revision', 'Request']}>
+            <DataTable flush dense caption="Audit entries for this organization" headings={['At', 'Actor', 'Action', 'Entity', 'Revision', 'Request']}>
               {audit.value.items.map((entry: AuditEntry, index: number) => <tr key={entry.request_id ?? index}>
                 <td>{unknown(entry.at)}</td>
                 <td>{unknown(entry.actor)}</td>
@@ -638,7 +690,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       <Panel title="Members" eyebrow="Organization access" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
         {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the membership list." />}
         {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
-        {members.phase === 'ready' && members.value && <DataTable caption="Members of this organization" headings={['Member', 'Role', 'Joined', 'Action']}>
+        {members.phase === 'ready' && members.value && <DataTable flush caption="Members of this organization" headings={['Member', 'Role', 'Joined', 'Action']}>
           {members.value.map(entry => <tr key={entry.user_id}>
             <th scope="row" className={styles.pathCell}>{entry.email}<span className={styles.linkHint}>{unknown(entry.name)}</span></th>
             <td>{owner
@@ -677,12 +729,34 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </div>
         <p className={styles.feedback} role="status">{deviceStatus}</p>
       </Panel>}
+      <Panel title="Set up an adapter" eyebrow="Consumer repo" icon={<PlugsConnectedIcon weight="regular" aria-hidden="true" />}>
+        <div className={styles.shownOnce}>
+          <IconTile icon={<PlugsConnectedIcon weight="duotone" />} size="lg" tone="system" />
+          <div className={styles.shownOnceBody}>
+            <p>An adapter is the CLI package copied into your repo (<code>skills/guidefold/</code> to <code>.agents/skills/guidefold/</code>) that runs SEARCH and USE against this organization with an installation token, and queues the telemetry events this console reads.</p>
+            <ol className="grid gap-5">
+              {ADAPTER_STEPS.map((step, index) => <li key={step.title} className={styles.stack}>
+                <div className={styles.stepText}>
+                  <span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <strong>{step.title}</strong>
+                  <span className={styles.stepDetail}>{step.detail}</span>
+                </div>
+                <CommandBlock commands={step.command} />
+                {index === 2 && (owner
+                  ? <ActionButton size="sm" tone="system" href={'#' + createInstallationPanelId}>Open Create an installation</ActionButton>
+                  : <p className={styles.help}>Only an owner can create an installation token here; ask one to run this step.</p>)}
+              </li>)}
+            </ol>
+            <p>Once the adapter runs and flushes, <Link to={ctx.href('home', {})}>Overview</Link> stops showing &ldquo;No adapter installed&rdquo; and &ldquo;No telemetry in the last 30d&rdquo;, and <Link to={ctx.href('usage', {})}>Usage &amp; quality</Link> begins to fill in.</p>
+          </div>
+        </div>
+      </Panel>
       <div className={styles.asideColumns}>
         <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimpleIcon weight="regular" aria-hidden="true" />}>
           {installations.phase === 'loading' && <RouteState state="loading" title="Reading installations" description="Waiting for the installation list." />}
           {installations.phase === 'error' && installations.error && <ApiFailure error={installations.error} onRetry={installations.reload} retryLabel="Retry the installation list" />}
           {installations.phase === 'ready' && (installations.value?.length
-            ? <DataTable caption="Installations and adapter health" headings={['Installation', 'Scopes', 'Last seen', 'Adapter version', 'Capabilities', 'Action']}>
+            ? <DataTable flush caption="Installations and adapter health" headings={['Installation', 'Scopes', 'Last seen', 'Adapter version', 'Capabilities', 'Action']}>
               {installations.value.map(entry => <tr key={entry.installation_id}>
                 <th scope="row">{entry.name}<span className={styles.linkHint}>{unknown(entry.repo_id)}</span></th>
                 <td>{formatList(entry.scopes)}</td>
@@ -695,7 +769,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
             : <RouteState state="empty" title="No installation yet" description="Create one to let an adapter read this organization. Absent health values stay Unknown." />)}
           <p className={styles.feedback} role="status">{integrationStatus}</p>
         </Panel>
-        <Panel title="Create an installation" eyebrow="Owner" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
+        <Panel id={createInstallationPanelId} title="Create an installation" eyebrow="Owner" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
           <form className={styles.form} onSubmit={createInstallation}>
             <Field id="installation-name" label="Installation name" hint="Names the machine or harness this token belongs to."><Input id="installation-name" name="name" value={installationName} onChange={event => setInstallationName(event.target.value)} required maxLength={80} disabled={!owner} className={inputClass} /></Field>
             <Field id="installation-harness" label="Harness"><select id="installation-harness" className={selectClass} value={harness} onChange={event => setHarness(event.target.value)} disabled={!owner}><option value="claude">Claude Code</option><option value="copilot">Copilot CLI</option></select></Field>

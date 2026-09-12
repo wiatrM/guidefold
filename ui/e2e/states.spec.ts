@@ -10,6 +10,7 @@ const skillView = '&skill=' + encodeURIComponent(chosen.id) + '&revision=' + cho
 /** The address each view is opened at per scenario: an empty organisation has no skill or
  * proposal to name, and a failing one must not echo an identifier from the address as content. */
 const viewsFor = (state: Scenario): [string, string][] => [
+  ['home', ''],
   ['import', '&step=result'],
   ['library', state === 'partial' ? '&scope=not-a-scope' : ''],
   ['map', state === 'partial' ? '&tab=repository&skill=' + encodeURIComponent(chosen.id) : '&tab=repository'],
@@ -38,7 +39,7 @@ for (const state of ['empty', 'loading', 'partial', 'error'] as const) test('sev
     const main = page.locator('main');
     if (state === 'empty') {
       // An absence is named as one; nothing reads as a count of zero observations.
-      await expect(main.getByText(/No (skills yet|import yet|proposals to review|observations|installation yet|skill selected)|This directory holds no imported object/).first()).toBeVisible();
+      await expect(main.getByText(/No (skills yet|import yet|proposals to review|observations|installation yet|skill selected|telemetry in the last)|This directory holds no imported object/).first()).toBeVisible();
       expect(await main.innerText(), view).not.toMatch(content);
     }
     if (state === 'loading') {

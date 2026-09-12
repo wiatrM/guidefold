@@ -18,7 +18,19 @@ For hosted UI, use `docs/ui/IA.md`, `UX.md`, `UI.md` and the relevant entry in
 Decisions are recorded in `docs/adr/`. `docs/ASSESSMENT.md` records dated registry API evidence;
 verify time-sensitive claims before relying on them.
 
-## Layout
+## Mandatory Spectrum UI components
+
+Owner instruction, 2026-09-09: **Spectrum UI components are mandatory for new, redesigned or migrated Guidefold UI.** Read [.agents/skills/spectrum-ui-workflow/SKILL.md](.agents/skills/spectrum-ui-workflow/SKILL.md) before implementation. Browse/search the [Spectrum MCP registry](https://ui.spectrumhq.in/docs/mcp), inspect actual source/dependencies, install the matching item and verify behavior. Do not substitute a handmade lookalike when a suitable component exists. Record a concrete exception for missing or framework-incompatible items. This overrides the older shadcn/Tailwind prohibition for this integration, not security, accessibility or deployment authority. Whole-registry access is not blanket installation or compatibility certification.
+
+## Mandatory Spectrum Charts migration
+
+Owner instruction, 2026-09-09: **migrate ALL existing telemetry visualizations and charting to actual Spectrum UI Charts; use Spectrum for all new charts and metric cards.** Read [spectrum-charts-migration](.agents/skills/spectrum-charts-migration/SKILL.md) and follow the canonical acceptance requirements in [UI §7](docs/ui/UI.md#7-obowiązkowa-migracja-spectrum-charts). This includes pie/donut, trends, distributions and sparklines, with the chart type matched to the data. Preserve telemetry semantics, tenant isolation, unknown-versus-zero and accessibility. Do not rewrite backend collection/storage into a UI library. A written requirement or installed component is not a completed migration.
+
+## Mandatory shadcn console (2026-09-12)
+
+Owner instruction, 2026-09-12: **the management UI (every route after sign-in) is built on shadcn/ui primitives** (`ui/src/components/ui/*`, base-nova style on Base UI, installed with the pinned `pnpm exec shadcn`), composed through the public components in `ui/src/components/*` and Spectrum items where they fit. Every view leads with a large `IconTile`; the console follows the quickstart clarity of a documentation site, not a dense admin table. Values still come only from `ui/src/tokens/tokens.css` (shadcn semantic tokens are references into the Industrial Surveyor palette; `ui/src/registry.css` maps them into Tailwind). This lifts the earlier "no component library" rule for `ui/`; security, accessibility, honesty of states and the data boundary stay binding. Record: [docs/reports/ui/console-shadcn-20260912.md](docs/reports/ui/console-shadcn-20260912.md).
+
+## Repository layout
 
 | Path | What |
 |------|------|

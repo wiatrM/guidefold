@@ -34,6 +34,8 @@ Wszystko pod `.guidefold/telemetry/` (gitignored): `spool/<tenant|local>/<env>/e
 
 ## Raportuj z identyfikatorem przebiegu
 
+Warstwę wizualizacji telemetrii obowiązkowo migruj według [spectrum-charts-migration](../spectrum-charts-migration/SKILL.md) i [UI §7](../../../docs/ui/UI.md#7-obowiązkowa-migracja-spectrum-charts); nie zmienia to powyższego kontraktu zdarzeń.
+
 Raport podaje komendę, środowisko, fixture lub dane rzeczywiste, identyfikator przebiegu (`search_id`, `import_id`, run id), rezultat i ograniczenia. Guardrails: p50/p95 klienta i całego hooka, timeouty/fallback, ukończenie load, kolejka, koszt na 1 000 żądań; obok nieautoryzowane ujawnienia (cel zero) i pokrycie dostarczania zdarzeń. Slice offline/denied/error publikowane, nie usuwane z mianownika. Koszt LLM łączony przez `import_id`: tokeny, wywołania, retry, opłaty pewne i niepewne (timeout), wall time, minuty review; koszt na zaakceptowany skill przy zerze akceptacji jest niedostępny.
 
 ## Sprawdź przed zakończeniem

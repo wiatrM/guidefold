@@ -429,3 +429,42 @@
 
 /* OnboardingRoutes (2026-09-12): a one-time secret or device code beside its human-tone tile. */
 :root{ --lead-columns:auto minmax(0,1fr); }
+
+/* HomeRoute (2026-09-12): Overview after sign-in. KPI links mirror the four stat cards; small
+ * donuts sit beside their legend; scope bars are a label, a bar and a count. */
+:root{ --kpi-columns:repeat(4,minmax(0,1fr)); --home-chart-small:200px; --home-donut-columns:minmax(0,1fr) minmax(0,1fr); --home-bar-columns:minmax(0,1.2fr) minmax(0,2fr) auto; --home-swatch:10px; --home-bar-opacity:.85; --home-action-columns:auto minmax(0,1fr) auto; --kpi-main-span:2; }
+@media(max-width:1080px){:root{--kpi-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){:root{--kpi-columns:minmax(0,1fr);--home-donut-columns:minmax(0,1fr);--kpi-main-span:1;}}
+
+/* ---------------------------------------------------------------------------
+ * .console shadcn dark-neutral theme (owner instruction 2026-09-12: the reference is
+ * https://dashboard.shadcnspace.com/, dark variant). `.console` is the management shell
+ * root (app.tsx Shell); the landing route (`/`) never carries this class, so it keeps the
+ * Industrial Surveyor `:root` values above untouched. Values are shadcn's documented
+ * base-nova/default dark-neutral oklch palette: the style-scoped registry endpoints
+ * (`r/styles/base-nova/theme-neutral.json`, and `sidebar.json`'s `cssVars`) answered 404 /
+ * an empty object when fetched live on 2026-09-12 (the base-nova style ships its variables
+ * through the private `shadcn` npm package, not the public registry JSON), so these are
+ * copied from shadcn's canonical dark-neutral theme and cross-checked against the live
+ * HSL values at https://ui.shadcn.com/r/themes/neutral.json (same palette, older colour
+ * space). Every value here is a literal shadcn token, not a reference into the graphite
+ * palette above — that is the point of this block (docs/reports/ui/console-shadcn-20260912.md §9).
+ * Effect: --primary moves from the orange brand accent to shadcn's near-white neutral for
+ * every control inside `.console` (every route after sign-in); the landing page keeps the
+ * orange brand identity because it is outside `.console`. */
+.console{
+ --background:oklch(0.145 0 0); --foreground:oklch(0.985 0 0);
+ --card:oklch(0.205 0 0); --card-foreground:oklch(0.985 0 0);
+ --popover:oklch(0.205 0 0); --popover-foreground:oklch(0.985 0 0);
+ --primary:oklch(0.922 0 0); --primary-foreground:oklch(0.205 0 0);
+ --secondary:oklch(0.269 0 0); --secondary-foreground:oklch(0.985 0 0);
+ --muted:oklch(0.269 0 0); --muted-foreground:oklch(0.708 0 0);
+ --accent:oklch(0.269 0 0); --accent-foreground:oklch(0.985 0 0);
+ --destructive:oklch(0.704 0.191 22.216); --destructive-foreground:oklch(0.985 0 0);
+ --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(0.556 0 0);
+ --chart-1:oklch(0.488 0.243 264.376); --chart-2:oklch(0.696 0.17 162.48); --chart-3:oklch(0.769 0.188 70.08); --chart-4:oklch(0.627 0.265 303.9); --chart-5:oklch(0.645 0.246 16.439);
+ --sidebar:oklch(0.205 0 0); --sidebar-foreground:oklch(0.985 0 0);
+ --sidebar-primary:oklch(0.488 0.243 264.376); --sidebar-primary-foreground:oklch(0.985 0 0);
+ --sidebar-accent:oklch(0.269 0 0); --sidebar-accent-foreground:oklch(0.985 0 0);
+ --sidebar-border:oklch(1 0 0 / 10%); --sidebar-ring:oklch(0.439 0 0);
+}

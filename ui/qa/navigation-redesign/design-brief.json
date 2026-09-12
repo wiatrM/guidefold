@@ -1,0 +1,83 @@
+{
+  "status": "frontend_deployed_api_authentication_blocked",
+  "date": "2026-09-09",
+  "scope": "Seven hosted U4 views and their shared navigation/component system; URLs, data contracts and actions are preserved.",
+  "designRead": "Owner-facing developer platform: dense operational information, explicit evidence and calm navigation. Shadcnspace supplies interaction composition, while Guidefold keeps its graphite, teal/orange and compact geometry.",
+  "dials": {
+    "designVariance": 4,
+    "motionIntensity": 4,
+    "visualDensity": 8
+  },
+  "sourceAudit": [
+    "Production /import showed an oversized clipped wordmark, decorative survey image in the sidebar, a flat seven-item hierarchy and large unused content width.",
+    "Shadcnspace Sidebar 01 contributed grouped navigation, collapsed icon mode, active-row treatment and an account footer. Its promo card and default skin were rejected.",
+    "Shadcnspace dashboard, Card, Accordion and Shine Border references supplied composition patterns, not product copy, invented data or a replacement palette."
+  ],
+  "componentMigration": {
+    "ActionButton": "Button (Base UI for button semantics)",
+    "BrandMark": "Brand; account identity uses Base UI Avatar",
+    "Panel": "Card",
+    "StateBadge": "Badge",
+    "RouteState": "Alert + Skeleton",
+    "Tabs": "route-safe Tabs list and triggers",
+    "ProvenanceTrail": "Item group + Separator",
+    "ScopeTree": "Base UI Collapsible",
+    "DataTable": "Table container",
+    "SkillDiff": "Code Block",
+    "MetricRow": "Statistics bar",
+    "Urn": "Input Group + copy Button",
+    "SkillContent": "Typography + Code Block",
+    "Field": "Field / Label / Description / Error",
+    "PyramidChart": "Lazy React Flow database schema cards, directed refines edges, Graph/List, zoom/fit, motion controls"
+  },
+  "uiUxProMaxEvidence": [
+    {
+      "query": "developer platform skill governance owner operational industrial --design-system --variance 4 --density 8 -p guidefold-navigation",
+      "accepted": [
+        "flat surfaces",
+        "no decorative gradients or glow",
+        "fast state transitions",
+        "dense 2/4/8/12/16/24/32 spacing"
+      ],
+      "rejected": [
+        "Freelancer/App Store product pattern",
+        "green marketplace palette",
+        "Inter recommendation"
+      ],
+      "reason": "The database product archetype conflicted with Guidefold's preserved source and product requirements."
+    },
+    {
+      "query": "collapsible sidebar dark developer platform profile dropdown reduced motion --domain ux --max-results 8",
+      "accepted": [
+        "prefers-reduced-motion",
+        "one or two animated elements per view",
+        "ease-out entry motion",
+        "no parallax or scroll-jacking"
+      ],
+      "implementation": "Motion is limited to fold labels and whole-title entry; Base UI transitions handle menu, context menu, collapsible and sheet entry; a one-shot route Shine Border marks navigation. Reduced motion removes transforms and the shine."
+    }
+  ],
+  "explicitException": "The owner explicitly requested Shadcnspace Shine Border, animated schema flows and Mintlify/Airuncode direction. Shine stays one-shot. The illustrative landing flow loops only while visible and may be paused; application flow is paused by default. Reduced motion disables both. Marketing changes live in the existing gf-waitlist-20260908 checkout alongside its waitlist implementation.",
+  "referenceContinuation": {
+    "sources": [
+      "https://www.mintlify.com/",
+      "https://airuncode.com/",
+      "https://reactflow.dev/ui/components/database-schema-node"
+    ],
+    "captures": "references/; the initial incorrect schema demo capture was rejected and replaced with the actual registry component page.",
+    "decisions": "Airuncode's centered headline and near-black surfaces; Mintlify's restrained green and explanatory connecting lines; xyflow's MIT schema-node header/table/handles. Original brand, API and truthful availability copy remain.",
+    "responsive": "A narrow viewport focuses a readable selected schema card; step buttons preserve access to every workflow stage. Large application graphs focus the selected node and retain the complete List alternative.",
+    "limits": "Illustrative animations are not transport telemetry. Combined landing and management UI deployed as Helm revision 4 on 2026-09-09; API remains unavailable due to pre-existing missing WorkOS key/client ID. See deployment-report.json."
+  },
+  "supportingPatterns": {
+    "favorites": "Interactive Badge in Library and Skill, repeated in the row Context Menu; browser-persistent and isolated by user, organization and repository.",
+    "rating": "Icon-led four-state control that preserves the API verdict domain instead of inventing a five-star score.",
+    "sonner": "Short success/error confirmation for favorites, assessments and sign-out failure; critical and field-specific errors remain inline."
+  },
+  "outOfScope": [
+    "No eighth Editions route: editions remain revision history in Skill and Proposals.",
+    "No invented profile backend: Profile links to the existing Organization Members view and logout uses the existing auth endpoint."
+  ],
+  "deploymentEvidence": "deployment-report.json",
+  "motionFollowup": "User explicitly requested animated feature mini-demos on 2026-09-09. Combined landing has a split hero with four-stage preview, scope and review cards, reactive reduced motion, manual controls and offscreen/hidden-document pause. Seven browser checks pass at 1440/390. CSS recipes adapt MIT Shadcn Space animated-text-06 and animated-list-02; no new dependency."
+}

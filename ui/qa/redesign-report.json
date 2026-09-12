@@ -1,0 +1,517 @@
+{
+  "config": {
+    "argv": [
+      "/home/mike/.nvm/versions/node/v22.14.0/bin/node",
+      "/home/mike/projects/gf-waitlist-20260908/ui/node_modules/.pnpm/@playwright+test@1.63.0/node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "playwright.redesign.config.ts",
+      "accessibility.spec.ts",
+      "owner-keyboard.spec.ts"
+    ],
+    "configFile": "/home/mike/projects/gf-waitlist-20260908/ui/playwright.redesign.config.ts",
+    "rootDir": "/home/mike/projects/gf-waitlist-20260908/ui/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/mike/projects/gf-waitlist-20260908/ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/mike/projects/gf-waitlist-20260908/ui/e2e",
+        "testIgnore": [
+          "**/live/**",
+          "**/landing-flow.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "qa/redesign-report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 8,
+    "webServer": {
+      "command": "pnpm exec vite --host 127.0.0.1 --port 4332",
+      "url": "http://127.0.0.1:4332",
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "accessibility.spec.ts",
+      "file": "accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "seven views and gallery axe at 1280",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 98868,
+                  "error": {
+                    "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m",
+                    "stack": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                      "column": 53,
+                      "line": 23
+                    },
+                    "snippet": "  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                        "column": 53,
+                        "line": 23
+                      },
+                      "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53"
+                    },
+                    {
+                      "message": "Error: apiRequestContext._wrapApiCall: ENOENT: no such file or directory, copyfile '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-0/traces/ddd864604af8a6a0198f-cc57a4893ab84c6135ff-recording1.network' -> '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-0/traces/ddd864604af8a6a0198f-cc57a4893ab84c6135ff-recording1-pwnetcopy-1.network'"
+                    },
+                    {
+                      "message": "Error: browserContext._wrapApiCall: ENOENT: no such file or directory, open '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-0/traces/ddd864604af8a6a0198f-cc57a4893ab84c6135ff.network'"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:40:40.553Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-seven-views-and-gallery-axe-at-1280/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                    "column": 53,
+                    "line": 23
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-cc57a4893ab84c6135ff",
+          "file": "accessibility.spec.ts",
+          "line": 10,
+          "column": 39
+        },
+        {
+          "title": "seven views and gallery axe at 820",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 55196,
+                  "error": {
+                    "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m",
+                    "stack": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                      "column": 53,
+                      "line": 23
+                    },
+                    "snippet": "  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                        "column": 53,
+                        "line": 23
+                      },
+                      "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:42:21.668Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-seven-views-and-gallery-axe-at-820/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-seven-views-and-gallery-axe-at-820/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                    "column": 53,
+                    "line": 23
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-e881391c8f2b8347f826",
+          "file": "accessibility.spec.ts",
+          "line": 10,
+          "column": 39
+        },
+        {
+          "title": "seven views and gallery axe at 390",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 48766,
+                  "error": {
+                    "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m",
+                    "stack": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                      "column": 53,
+                      "line": 23
+                    },
+                    "snippet": "  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                        "column": 53,
+                        "line": 23
+                      },
+                      "message": "Error: __components\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 33\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"definition-list\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".spectrum-stat-list\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"id\": \"dlitem\",\u001b[39m\n\u001b[31m+     \"nodes\": Array [\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(1) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(2) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .text-\\\\[13px\\\\].text-neutral-500.dark\\\\:text-neutral-400\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+       Array [\u001b[39m\n\u001b[31m+         \".items-stretch.gap-5.border-black\\\\/8:nth-child(3) > .min-w-0.flex-col.flex > .spectrum-stat-value.mt-1\\\\.5.text-\\\\[27px\\\\]\",\u001b[39m\n\u001b[31m+       ],\u001b[39m\n\u001b[31m+     ],\u001b[39m\n\u001b[31m+   },\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n  21 |   await page.goto('/__components');\n  22 |   await page.locator('[data-component=Field]').waitFor();\n> 23 |   expect(await axeViolations(page), '__components').toEqual([]);\n     |                                                     ^\n  24 |   expect(await noHorizontalScroll(page), '__components').toBe(true);\n  25 | });\n  26 |\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:23:53"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:43:19.129Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-seven-views-and-gallery-axe-at-390/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-seven-views-and-gallery-axe-at-390/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                    "column": 53,
+                    "line": 23
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-5e8889a0d39354bce497",
+          "file": "accessibility.spec.ts",
+          "line": 10,
+          "column": 39
+        },
+        {
+          "title": "revealed proposal bodies and the mobile menu remain accessible",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 10772,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:36:42",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                      "column": 42,
+                      "line": 36
+                    },
+                    "snippet": "  34 |   await page.getByRole('button', {name:'Menu',exact:true}).click();\n  35 |   expect(await axeViolations(page)).toEqual([]);\n> 36 |   expect(await noHorizontalScroll(page)).toBe(true);\n     |                                          ^\n  37 | });\n  38 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                        "column": 42,
+                        "line": 36
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m\n\n  34 |   await page.getByRole('button', {name:'Menu',exact:true}).click();\n  35 |   expect(await axeViolations(page)).toEqual([]);\n> 36 |   expect(await noHorizontalScroll(page)).toBe(true);\n     |                                          ^\n  37 | });\n  38 |\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts:36:42"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:44:09.630Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-revealed-pro-f4c0a-bile-menu-remain-accessible/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/accessibility-revealed-pro-f4c0a-bile-menu-remain-accessible/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/accessibility.spec.ts",
+                    "column": 42,
+                    "line": 36
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-b614b60e6017e58747ac",
+          "file": "accessibility.spec.ts",
+          "line": 27,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "owner-keyboard.spec.ts",
+      "file": "owner-keyboard.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "owner completes sign-in, import, library, review and export with keyboard only",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "failed",
+                  "duration": 33545,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: 'Use this organization', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('link', { name: 'Use this organization', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: 'Use this organization', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: 'Use this organization', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('link', { name: 'Use this organization', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: 'Use this organization', exact: true })\u001b[22m\n\n    at tabTo (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:350:24)\n    at enter (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:359:9)\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/owner-keyboard.spec.ts:16:9",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                      "column": 24,
+                      "line": 350
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39mstub.ts:350\n\n  348 |\n  349 | export async function tabTo(page: Page, target: Locator) {\n> 350 |   await expect(target).toBeVisible();\n      |                        ^\n  351 |   for (let step = 0; step < 200; step += 1) {\n  352 |     if (await target.evaluate(element => element === document.activeElement)) return;\n  353 |     await page.keyboard.press('Tab');"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                        "column": 24,
+                        "line": 350
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: 'Use this organization', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('link', { name: 'Use this organization', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: 'Use this organization', exact: true })\u001b[22m\n\n\n   at stub.ts:350\n\n  348 |\n  349 | export async function tabTo(page: Page, target: Locator) {\n> 350 |   await expect(target).toBeVisible();\n      |                        ^\n  351 |   for (let step = 0; step < 200; step += 1) {\n  352 |     if (await target.evaluate(element => element === document.activeElement)) return;\n  353 |     await page.keyboard.press('Tab');\n    at tabTo (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:350:24)\n    at enter (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:359:9)\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/owner-keyboard.spec.ts:16:9"
+                    },
+                    {
+                      "message": "Error: apiRequestContext._wrapApiCall: ENOENT: no such file or directory, copyfile '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-1/traces/4dbfa2c584605e2d4d51-1e386adedf717a2fc9b4-recording1.network' -> '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-1/traces/4dbfa2c584605e2d4d51-1e386adedf717a2fc9b4-recording1-pwnetcopy-1.network'"
+                    },
+                    {
+                      "message": "Error: browserContext._wrapApiCall: ENOENT: no such file or directory, open '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-1/traces/4dbfa2c584605e2d4d51-1e386adedf717a2fc9b4.trace'"
+                    },
+                    {
+                      "message": "Error: ENOENT: no such file or directory, open '/home/mike/projects/gf-waitlist-20260908/ui/test-results/.playwright-artifacts-1/f519418b3d98e4fb928fd71965dcb3b5.zip'"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:40:40.755Z",
+                  "annotations": [],
+                  "attachments": [],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                    "column": 24,
+                    "line": 350
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "4dbfa2c584605e2d4d51-1e386adedf717a2fc9b4",
+          "file": "owner-keyboard.spec.ts",
+          "line": 10,
+          "column": 1
+        },
+        {
+          "title": "focus lands in main on a route change, and the skip link reaches it from the top",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 1,
+                  "status": "failed",
+                  "duration": 22004,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\u001b[22m\n\n    at tabTo (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:350:24)\n    at enter (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:359:9)\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/owner-keyboard.spec.ts:65:9",
+                    "location": {
+                      "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                      "column": 24,
+                      "line": 350
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39mstub.ts:350\n\n  348 |\n  349 | export async function tabTo(page: Page, target: Locator) {\n> 350 |   await expect(target).toBeVisible();\n      |                        ^\n  351 |   for (let step = 0; step < 200; step += 1) {\n  352 |     if (await target.evaluate(element => element === document.activeElement)) return;\n  353 |     await page.keyboard.press('Tab');"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                        "column": 24,
+                        "line": 350
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Map', exact: true })\u001b[22m\n\n\n   at stub.ts:350\n\n  348 |\n  349 | export async function tabTo(page: Page, target: Locator) {\n> 350 |   await expect(target).toBeVisible();\n      |                        ^\n  351 |   for (let step = 0; step < 200; step += 1) {\n  352 |     if (await target.evaluate(element => element === document.activeElement)) return;\n  353 |     await page.keyboard.press('Tab');\n    at tabTo (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:350:24)\n    at enter (/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts:359:9)\n    at /home/mike/projects/gf-waitlist-20260908/ui/e2e/owner-keyboard.spec.ts:65:9"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T11:41:19.240Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/owner-keyboard-focus-lands-8c82f-ink-reaches-it-from-the-top/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/mike/projects/gf-waitlist-20260908/ui/test-results/owner-keyboard-focus-lands-8c82f-ink-reaches-it-from-the-top/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/mike/projects/gf-waitlist-20260908/ui/e2e/stub.ts",
+                    "column": 24,
+                    "line": 350
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "4dbfa2c584605e2d4d51-7e5eaef41e4a76eeffd9",
+          "file": "owner-keyboard.spec.ts",
+          "line": 61,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-09T11:40:37.609Z",
+    "duration": 224642.981,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}

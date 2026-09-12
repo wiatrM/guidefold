@@ -23,4 +23,14 @@ describe('Panel',()=>{
   await userEvent.click(within(region).getByRole('button',{name:'Open exact source revision'}));
   expect(action).toHaveBeenCalledOnce();
  });
+
+ it('folds a collapsible panel without unmounting its content and names the toggle after the title',async()=>{
+  render(<Panel title="Jobs" collapsible defaultOpen={false}><p>publish.build</p></Panel>);
+  const toggle=screen.getByRole('button',{name:'Expand Jobs'});
+  expect(toggle).toHaveAttribute('aria-expanded','false');
+  expect(screen.getByText('publish.build')).toBeInTheDocument();
+  await userEvent.click(toggle);
+  expect(screen.getByRole('button',{name:'Collapse Jobs'})).toHaveAttribute('aria-expanded','true');
+  expect(screen.getByRole('region',{name:'Jobs'})).toBeInTheDocument();
+ });
 });

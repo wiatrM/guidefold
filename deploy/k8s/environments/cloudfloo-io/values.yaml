@@ -71,7 +71,7 @@ portal:
 # itself loads and should degrade to its own "not signed in" state, not a blank page.
 ui:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-ui@sha256:57e625c3dc8c160c7af3c491b339aa74d9b16fa500315958e4a25c517de7b858"
+  image: "ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe"
   replicas: 2
 
 networkPolicy:

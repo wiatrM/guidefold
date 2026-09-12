@@ -1,4 +1,4 @@
-import {lazy,Suspense,useState} from 'react';
+import {lazy,Suspense,useEffect,useState} from 'react';
 import {BrowserRouter} from 'react-router-dom';
 import {AccessProvider} from './api/access';
 import {createApiRuntime} from './data/apiSource';
@@ -17,6 +17,9 @@ const App=lazy(()=>import('./app'));
  */
 export default function Management(){
  const [{source,access}]=useState(createApiRuntime);
+ // index.html's loader waits for this flag (or the landing hero's); without it every
+ // management route sat behind the 4 s CSS fallback.
+ useEffect(()=>{document.documentElement.dataset.appMounted='true';return()=>{delete document.documentElement.dataset.appMounted;};},[]);
  return <BrowserRouter><AccessProvider controller={access}>
   <Suspense fallback={<main><h1>Guidefold</h1><p>Loading your workspace…</p></main>}><App source={source}/></Suspense>
  </AccessProvider></BrowserRouter>;

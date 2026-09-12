@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "shadcn": { "command": "pnpm", "args": ["--dir", "ui", "exec", "shadcn", "mcp"] },
+    "spectrum-ui": { "command": "pnpm", "args": ["--dir", "ui", "exec", "spectrumui-mcp"] }
+  }
+}

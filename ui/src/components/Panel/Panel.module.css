@@ -1,10 +1,12 @@
-.panel{min-width:var(--zero);padding:var(--zero);border:var(--border-width) solid var(--line-strong);border-radius:var(--flow-radius);background:var(--graphite-900);scroll-margin-top:var(--scroll-offset);}
-.content{margin:var(--zero);}
-.panelHeader{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;padding:var(--space-3);border-bottom:var(--border-width) solid var(--line);}
-.panelHeader h2{display:flex;align-items:center;gap:var(--space-2);margin:var(--zero);font-family:var(--font-display);font-size:var(--font-size-section);line-height:var(--line-height-heading);letter-spacing:var(--tracking-title);font-weight:var(--weight-semibold);}
-.panelHeader h2>span{display:inline-flex;color:var(--survey-teal);}
-.eyebrow{display:block;color:var(--stone-300);font:var(--weight-medium) var(--font-size-small)/var(--line-height-body) var(--font-display);margin-bottom:var(--space-1);}
-.panelBody{padding:var(--space-3);min-width:var(--zero);}
-.panelBody>:first-child{margin-top:var(--zero);}
-.panelBody>:last-child{margin-bottom:var(--zero);}
-.region{min-width:var(--zero);}
+.panel{min-width:var(--zero);scroll-margin-top:var(--scroll-offset);}
+.header{min-width:var(--zero);}
+.title{margin:var(--zero);line-height:var(--line-height-heading);overflow-wrap:anywhere;}
+.body{min-width:var(--zero);}
+.body>:first-child{margin-top:var(--zero);}
+.body>:last-child{margin-bottom:var(--zero);}
+.fold{flex:none;}
+/* Base UI writes the measured height into --collapsible-panel-height; the fold is a height
+   transition, so the content below moves with it instead of jumping. */
+.foldBody{overflow:hidden;height:var(--collapsible-panel-height);transition:height var(--duration-drawer) var(--ease-drawer);}
+.foldBody[data-starting-style],.foldBody[data-ending-style]{height:var(--zero);}
+@media(prefers-reduced-motion:reduce){.foldBody{transition:none;}}

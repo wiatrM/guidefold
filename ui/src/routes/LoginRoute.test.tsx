@@ -37,7 +37,7 @@ describe('the return target is a path, never a second origin', () => {
 
   test('the login address carries the target, and leaves the default implicit', () => {
     expect(loginHref('/usage?window=30d')).toBe('/login?return=' + encodeURIComponent('/usage?window=30d'));
-    expect(loginHref('/import')).toBe('/login');
+    expect(loginHref('/home')).toBe('/login');
   });
 });
 

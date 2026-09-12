@@ -84,10 +84,12 @@ func parseEventTime(value string) (time.Time, bool) {
 
 // view is one assembled answer: the aggregate, the queue and the adapters.
 type view struct {
-	report  domain.Report
-	queue   []queueItem
-	health  []adapterHealth
-	filters domain.Filter
+	report     domain.Report
+	previous   domain.Totals
+	prevWindow domain.Window
+	queue      []queueItem
+	health     []adapterHealth
+	filters    domain.Filter
 }
 
 // build reads everything one usage answer needs.
@@ -144,7 +146,35 @@ func (s *Service) build(ctx context.Context, c *mgmt.Context, orgID, repoID stri
 	if e != nil {
 		return nil, e
 	}
-	return &view{report: report, queue: queue, health: health, filters: filter}, nil
+	prevWindow, prevTotals := previousTotals(events, meta, revisions, filter, window, c.Now().UTC())
+	return &view{report: report, previous: prevTotals, prevWindow: prevWindow,
+		queue: queue, health: health, filters: filter}, nil
+}
+
+// previousTotals answers contract 1.3.0's `previous`: the window of the same
+// length that ends where the requested window begins, counted the same way
+// and under the same filters (API-CONTRACT §5.5).
+//
+// domain.Aggregate only enforces the window's lower bound — it trusts that
+// `Window.To` is the watermark, so nothing in `Events` can be newer than
+// "now". That trust does not hold for a window anchored in the past, so this
+// function enforces the upper bound itself before handing the events to
+// Aggregate; otherwise a "previous" window would silently absorb every event
+// between its end and the watermark, double-counting the current window.
+func previousTotals(events []domain.Event, meta map[string]domain.SkillMeta,
+	revisions domain.Revisions, filter domain.Filter, window domain.Window,
+	now time.Time) (domain.Window, domain.Totals) {
+	prevWindow := domain.Window{From: window.From.Add(-window.To.Sub(window.From)),
+		To: window.From, Watermark: window.From}
+	prevEvents := make([]domain.Event, 0, len(events))
+	for _, e := range events {
+		if e.OccurredAt.Before(prevWindow.To) {
+			prevEvents = append(prevEvents, e)
+		}
+	}
+	prevReport := domain.Aggregate(domain.Input{Events: prevEvents, Meta: meta,
+		Window: prevWindow, Filter: filter, Revisions: revisions, Now: now})
+	return prevWindow, prevReport.Totals
 }
 
 // watermark is the newest received_at in the ledger. With no events at all the
@@ -298,12 +328,32 @@ type usageResponse struct {
 	Queue         []queueItem      `json:"queue"`
 	Health        *healthDTO       `json:"health"`
 	Filters       domain.Filter    `json:"filters"`
+	Previous      *previousDTO     `json:"previous"`
 }
 
 type windowDTO struct {
 	From      string `json:"from"`
 	To        string `json:"to"`
 	Watermark string `json:"watermark"`
+}
+
+// previousDTO is the `previous` object contract 1.3.0 adds to `Usage`
+// (API-CONTRACT §5.5): the window of the same length ending where the
+// requested window begins, and the totals counted over it, same filters. It
+// is nil only when the report carries no totals at all.
+type previousDTO struct {
+	Window struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	} `json:"window"`
+	Totals domain.Totals `json:"totals"`
+}
+
+func previousOf(w domain.Window, totals domain.Totals) *previousDTO {
+	p := &previousDTO{Totals: totals}
+	p.Window.From = w.From.Format(time.RFC3339)
+	p.Window.To = w.To.Format(time.RFC3339)
+	return p
 }
 
 type healthDTO struct {
@@ -337,6 +387,7 @@ func (s *Service) handleUsage(c *mgmt.Context) error {
 		Queue:         v.queue,
 		Health:        &healthDTO{Adapters: v.health},
 		Filters:       v.filters,
+		Previous:      previousOf(v.prevWindow, v.previous),
 	})
 }
 

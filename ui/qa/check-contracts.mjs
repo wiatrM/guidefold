@@ -12,7 +12,13 @@ import {SyntaxKind as K} from '../node_modules/typescript/dist/ast/index.js';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),src=resolve(root,'src');
 const tokenFile=resolve(src,'tokens/tokens.css');
-const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart'];
+// IconTile (2026-09-12) is the sixteenth public component: the owner asked for large icons on
+// every console surface, and one tile with a fixed size/tone contract keeps that from becoming
+// per-route <svg> sizing (docs/ui/UI.md §4, docs/ui/pipeline/08-components.md).
+const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile'];
+// registry.css may declare Tailwind theme entries, but only as references into tokens.css.
+const registryCss=resolve(src,'registry.css');
+function themeRanges(text){const out=[];const re=/@theme\b[^{]*\{/g;let m;while((m=re.exec(text))){let depth=1,i=re.lastIndex;for(;i<text.length&&depth;i++){if(text[i]==='{')depth++;else if(text[i]==='}')depth--;}out.push([m.index,i]);}return out;}
 const diagnostics=[],components=[],imports=new Map(),inlineStyles=[],reviewedInlineStyles=[];
 const pathLabel=p=>relative(root,p).replaceAll('\\','/');
 const issue=(file,line,rule,message)=>diagnostics.push({file:pathLabel(file),line,rule,message});
@@ -107,7 +113,9 @@ for(const file of cssFiles){
  const text=texts.get(file);
  for(const declaration of cssDeclarations(text)){
   const line=lineAt(text,declaration.offset);
-  if(file!==tokenFile&&declaration.property.startsWith('--'))issue(file,line,'token-location','Custom property '+declaration.property+' must be declared in src/tokens/tokens.css');
+  const inTheme=file===registryCss&&themeRanges(text).some(([a,b])=>declaration.offset>=a&&declaration.offset<b);
+  if(inTheme&&!/^var\(--[\w-]+\)$/.test(declaration.value.trim()))issue(file,line,'theme-reference','@theme entry '+declaration.property+' must be a single var(--token) reference into src/tokens/tokens.css');
+  if(file!==tokenFile&&declaration.property.startsWith('--')&&!inTheme)issue(file,line,'token-location','Custom property '+declaration.property+' must be declared in src/tokens/tokens.css');
   checkValue(file,line,declaration.property,declaration.value,file===tokenFile);
  }
  if(file!==tokenFile)for(const m of text.matchAll(/@(?:media|container)[^{]*\{/g)){
@@ -118,7 +126,7 @@ for(const file of cssFiles){
 // Their source remains in the AST/token scan; runtime behavior is browser-tested.
 const registryDirs=new Set(['spectrumui','ui']);
 const dirs=(await readdir(resolve(src,'components'),{withFileTypes:true})).filter(d=>d.isDirectory()&&!registryDirs.has(d.name)).map(d=>d.name).sort();
-if(dirs.length!==15)issue(resolve(src,'components'),1,'component-count','Expected exactly 15 public component directories; found '+dirs.length);
+if(dirs.length!==expected.length)issue(resolve(src,'components'),1,'component-count','Expected exactly '+expected.length+' public component directories; found '+dirs.length);
 for(const name of dirs)if(!expected.includes(name))issue(resolve(src,'components',name),1,'component-name','Unexpected public component '+name);
 for(const name of expected){
  const folder=resolve(src,'components',name),required=['index.tsx',name+'.module.css',name+'.test.tsx',name+'.stories.tsx'];

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import { axeViolations, chosen, noHorizontalScroll, query, stubApi } from './stub';
 
 const views: [string, string][] = [
-  ['import', '&step=result'], ['library', ''], ['map', '&tab=repository'],
+  ['home', ''], ['import', '&step=result'], ['library', ''], ['map', '&tab=repository'],
   ['skill', '&skill=' + encodeURIComponent(chosen.id) + '&revision=' + chosen.revision],
   ['proposals', '&proposal=p-1'], ['usage', ''], ['organization', ''],
 ];
