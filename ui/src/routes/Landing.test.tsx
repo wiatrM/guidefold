@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import Landing from './landing';
 import {submitWaitlist,WaitlistError} from '../data/waitlist';
+import evidence from '../data/research-evidence.json';
 
 vi.mock('../data/waitlist',async original=>({...await original<typeof import('../data/waitlist')>(),submitWaitlist:vi.fn()}));
 
@@ -48,6 +49,15 @@ describe('public landing',()=>{
   expect(screen.getAllByText('Delivery boundary, deterministic, source-backed; not a task-success claim. 2026-09-11.').length).toBeGreaterThan(0);
   expect(screen.getByText('+8.53 pp Recall@10 on SRA-Bench.')).toBeVisible();
   expect(screen.getByText('Measured, exploratory offline retrieval. 10 September 2026.')).toBeVisible();
+ });
+
+ // Final review I1: the hero figure used to be typed into the markup, so a refreshed
+ // mirror would have left it announcing a superseded count. The expectation is built from
+ // the same JSON the component reads, so only the coupling can keep this green.
+ it('derives the hero refusal figure from the evidence mirror',()=>{
+  render(<Landing/>);
+  const m=evidence.proof_gate.matrix;
+  expect(screen.getByText(`${m.harmful_mutations} of ${m.harmful_asked} harmful rules refused.`)).toBeVisible();
  });
 
  it('gives the scroll cue one agreeing label, name and destination',()=>{

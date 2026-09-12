@@ -46,7 +46,7 @@
  box-shadow:none!important;
  transform:none!important;
 }
-.tileCard:hover{border-color:var(--line-hover)!important;}
+@media(hover:hover) and (pointer:fine){.tileCard:hover{border-color:var(--line-hover)!important;}}
 
 .bentoChart{min-block-size:var(--landing-chart-min-height);}
 .tileLabel{margin:var(--zero) var(--zero) var(--space-2);color:var(--stone-100);font-weight:var(--weight-semibold);}

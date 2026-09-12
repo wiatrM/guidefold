@@ -153,8 +153,17 @@ test.describe('reduced motion',()=>{
   await page.waitForTimeout(500);
   expect(media).toEqual([]);
   await expect(page.locator('video')).toHaveCount(0);
-  const offset=await page.locator('[data-tier-route]').evaluate(node=>getComputedStyle(node).strokeDashoffset);
-  expect(offset).toBe('0px');
+  // Final review I4: this used to read `stroke-dashoffset` and assert '0px'. The markup
+  // pins that attribute at 0 and no rule anywhere moves it (the draw moves
+  // `stroke-dasharray`), so the assertion returned '0px' whether or not the scroll sampler
+  // had been installed — it could not fail. What must hold under reduced motion is that no
+  // sampler ran at all: the track never gets `data-p-ready`, and without it none of the
+  // pinned rules apply, so the tier route keeps the full run `2000` from its presentation
+  // attribute rather than the `calc(2000 * p) 2000` the pinned rule computes.
+  const pReady=await page.locator('#extraction [class*="track"]').evaluate(node=>node.hasAttribute('data-p-ready'));
+  expect(pReady,'the reduced-motion path must install no scroll sampler').toBe(false);
+  const dasharray=await page.locator('[data-tier-route]').evaluate(node=>getComputedStyle(node).strokeDasharray);
+  expect(dasharray,'the tier route must rest at its full run, undrawn').toBe('2000px');
   expect(await axeViolations(page)).toEqual([]);
  });
 });
@@ -191,15 +200,36 @@ test('the extraction chapter pins at 1440 and stacks at 390',async({page})=>{
  expect(await noHorizontalScroll(page)).toBe(true);
 });
 
-test('every control meets 44px at 390',async({page})=>{
+// Final review I6: the old version selected inside `main` only (so the header, where the
+// brand link measured 128x28, was never measured), asserted height alone, and skipped any
+// control whose box was missing. It is now the whole document, both dimensions, and a
+// missing box on a visible control is a failure.
+//
+// Two deliberate exclusions, both written out rather than filtered by accident:
+//   - inline text links inside a running sentence (`p a`, and the consent sentence's
+//     Privacy link) take the line-height of their own text; enlarging them would break the
+//     paragraph. WCAG 2.5.8 exempts a target inline in a block of text.
+//   - `input[type=checkbox]`: the consent box is 18px, but the whole `label.consent`
+//     wrapping it is the tap target (a label toggles its control) and that label carries
+//     min-height 44. The label is measured below as part of no selector, so the check is
+//     stated here instead.
+const inlineTextLinks='p a, [class*="consent"] a';
+test('every link and button meets 44px at 390',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
- const controls=page.locator('main a[href], main button:not([disabled]), main input[type="checkbox"]');
+ const consent=await page.locator('label[class*="consent"]').boundingBox();
+ expect(consent?.height,'the consent label is the checkbox tap target').toBeGreaterThanOrEqual(44);
+ const controls=page.locator(`a[href]:not(${inlineTextLinks}), button:not([disabled])`);
  const count=await controls.count();
+ expect(count).toBeGreaterThan(10);
  for(let i=0;i<count;i++){
-  const box=await controls.nth(i).boundingBox();
-  if(!box)continue;
-  expect(box.height,`control ${i} height`).toBeGreaterThanOrEqual(44);
+  const control=controls.nth(i);
+  if(!await control.isVisible())continue;
+  const label=(await control.getAttribute('aria-label'))??(await control.textContent())??'';
+  const box=await control.boundingBox();
+  expect(box,`visible control ${i} (${label.trim().slice(0,40)}) has no box`).not.toBeNull();
+  expect(box!.width,`control ${i} (${label.trim().slice(0,40)}) width`).toBeGreaterThanOrEqual(44);
+  expect(box!.height,`control ${i} (${label.trim().slice(0,40)}) height`).toBeGreaterThanOrEqual(44);
  }
 });
 

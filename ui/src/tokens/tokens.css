@@ -23,7 +23,7 @@
  --tracking-label:.14em; --tracking-title:-.02em;
  --space-1:4px; --space-2:8px; --space-3:16px; --space-4:24px; --space-5:32px; --space-6:48px; --space-7:64px;
  --border-width:1px; --focus-width:2px; --focus-offset:3px; --radius:6px; --radius-small:4px;
- --table-min-width:640px; --table-first-column:240px; --source-disclosure-width:112px; --row-height:40px; --control-height:40px; --touch-height:44px; --icon-size:18px; --icon-size-small:14px; --icon-size-large:24px; --brand-size:40px; --brand-size-compact:28px; --avatar-size:32px;
+ --table-min-width:640px; --table-first-column:240px; --source-disclosure-width:112px; --row-height:40px; --control-height:40px; --touch-height:44px; --touch-width:44px; --icon-size:18px; --icon-size-small:14px; --icon-size-large:24px; --brand-size:40px; --brand-size-compact:28px; --avatar-size:32px;
  --desktop-display:flex; --mobile-display:none; --rail-padding:8px 12px 12px; --context-padding:16px 0; --rail-width:264px; --rail-width-collapsed:64px; --rail-height:100dvh; --rail-position:sticky; --rail-top:0; --rail-columns:1fr;
  --shell-columns:var(--rail-width) minmax(0,1fr); --shell-collapsed-columns:var(--rail-width-collapsed) minmax(0,1fr); --page-padding:32px; --topbar-height:56px; --content-max-width:1480px; --account-menu-width:240px; --context-menu-width:224px; --sheet-width:320px; --navigation-indicator-width:2px; --navigation-arrow-opacity:.45; --caret-turn:-90deg; --quarter-turn:90deg; --transform-origin:center bottom;
  --two-columns:repeat(2,minmax(0,1fr)); --aside-columns:minmax(0,1.8fr) minmax(0,1fr); --filter-form-columns:minmax(0,1fr) auto; --filter-form-areas:"search search" "filters actions"; --filter-columns:repeat(4,minmax(0,1fr)); --field-columns:repeat(3,minmax(0,1fr)); --steps-columns:repeat(4,minmax(0,1fr));
@@ -185,6 +185,20 @@
  --landing-grid:repeat(12,minmax(0,1fr));
  --landing-hero-body-display:block;
  --landing-hero-cue-display:inline-flex;
+ /* The hero body has its own size/leading/margin because it is the one paragraph that has
+  * to fit above the fold with the proof rail; `--landing-body` is shared by six other
+  * sections and must not shrink with it. */
+ --landing-hero-body-size:var(--landing-body);
+ --landing-hero-body-leading:var(--line-height-body);
+ --landing-hero-body-margin:var(--space-3);
+ /* The lede and the action row carry their own hero spacing tokens for the same reason:
+  * they are the two largest gaps between the headline and the proof rail, and 390 buys the
+  * fold back from them rather than from the copy itself. */
+ /* The brand link is a logo, not a control, at desktop widths; at 720 and below the
+  * header is static and both wordmarks are real tap targets, so they take the 44px floor. */
+ --landing-brand-min-height:auto;
+ --landing-hero-lede-margin:var(--space-3);
+ --landing-hero-actions-margin:var(--space-4);
  --landing-rail-pad:var(--landing-panel-pad);
  --landing-rail-gap:var(--landing-panel-pad);
  --landing-rail-qualifier-gap:var(--space-2);
@@ -226,6 +240,10 @@
  --glass-panel:rgba(12,16,20,.62);
  --glass-panel-strong:rgba(12,16,20,.86);
  --glass-blur:14px;
+ /* One backdrop declaration, not a radius: `blur(0px)` is still a live backdrop-filter
+  * (the compositor allocates a backdrop root and reads back the full viewport), so the
+  * film swaps this to `none` rather than shrinking the radius to zero. */
+ --glass-backdrop:blur(var(--glass-blur));
  --glass-ground:var(--glass-panel);
  --glass-border:rgba(163,173,182,.16);
  --glass-highlight:linear-gradient(180deg,rgba(238,241,243,.06),rgba(238,241,243,0) 38%);
@@ -285,7 +303,7 @@
  --parallax-chapter:32px;
  --film-lerp:.14;
 }
-[data-film="on"]{--glass-blur:0px;--glass-ground:var(--glass-panel-strong);}
+[data-film="on"]{--glass-backdrop:none;--glass-ground:var(--glass-panel-strong);}
 @media(max-width:1080px){:root{
  --landing-media-band:62vh;
  --landing-hero-copy-width:100%;
@@ -387,19 +405,25 @@
  --landing-rail-columns:minmax(0,1fr);
  --landing-rail-rule:none;
  --landing-rail-rule-top:var(--border-width) solid var(--glass-border);
- --landing-rail-figure:19px;
+ --landing-rail-figure:18px;
  --landing-rail-stack-pad:var(--landing-panel-pad);
  --landing-rail-indent:0px;
  /* DESIGN.md 3.1: the hero scrim rotates to vertical at 390, because the copy runs the
   * full height of the frame and the 74% framing puts a lit ridge behind the headline. */
  --film-scrim-hero:linear-gradient(180deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.86) 38%,rgba(7,9,12,.66) 74%,rgba(7,9,12,.44) 100%);
- /* Value at first sight wins at 390: the hero body paragraph and the scroll cue are
-  * dropped whole so both proof cells clear the fold. A dropped item is never partial. */
- --landing-hero-body-display:none;
+ /* Controller ruling, 2026-09-12 (C1): the hero body paragraph stays in the DOM and
+  * visible at every width; only the scroll cue is dropped at 390, and it is dropped whole.
+  * The fold is recovered with hero spacing and the body's own type tokens instead. */
  --landing-hero-cue-display:none;
- --landing-rail-pad:12px;
- --landing-rail-gap:8px;
- --landing-rail-stack-pad:8px;
+ --landing-hero-body-size:14px;
+ --landing-hero-body-leading:1.4;
+ --landing-hero-body-margin:var(--space-2);
+ --landing-brand-min-height:var(--touch-height);
+ --landing-hero-lede-margin:12px;
+ --landing-hero-actions-margin:12px;
+ --landing-rail-pad:8px;
+ --landing-rail-gap:4px;
+ --landing-rail-stack-pad:6px;
  --landing-rail-qualifier-gap:var(--space-1);
  --landing-hero-row-gap:var(--space-2);
  --landing-hero-pad-top:var(--space-2);

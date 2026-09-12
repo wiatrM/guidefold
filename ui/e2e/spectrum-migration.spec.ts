@@ -32,15 +32,9 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
  }
 });
 
-test('Spectrum search filters only the labelled landing fixture',async({page})=>{
- await page.goto('/');
- const search=page.getByRole('searchbox',{name:'Search example instructions'});
- await search.fill('rbac');
- const demo=page.locator('[data-slot="scope-mini-demo"]');
- await expect(demo.getByText('rbac-policies',{exact:true})).toBeVisible();
- await expect(demo.getByText('postgres-auth',{exact:true})).toHaveCount(0);
- await search.fill('no-such-instruction');
- await expect(demo.getByRole('status')).toContainText('No example instructions match');
- await demo.getByRole('button',{name:'Clear'}).click();
- await expect(demo.getByText('postgres-auth',{exact:true})).toBeVisible();
-});
+// Removed 2026-09-12 (final review C2): 'Spectrum search filters only the labelled landing
+// fixture' guarded the v1 landing scope mini demo — a Spectrum searchbox filtering
+// [data-slot="scope-mini-demo"] down to the matching example instruction, its empty-state
+// status line and its Clear button. The landing v2 rebuild removed that surface entirely,
+// so the test had no target left. The Spectrum surfaces that still exist on the product
+// views are covered by the visual packet above; nothing on landing v2 is a Spectrum search.

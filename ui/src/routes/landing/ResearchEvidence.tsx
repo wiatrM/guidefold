@@ -49,7 +49,9 @@ export function ResearchEvidence(){
  return <section id="research-results" className={css.research} aria-labelledby="research-title">
   <div className={css.copy}>
    <p className={css.eyebrow}>Research update · 10 September 2026</p>
-   <h2 id="research-title">Plus 8.53 points of recall over flat.</h2>
+   {/* copy.md 6: the headline figure comes from the same row and the same formatter the
+     table below uses, so a refreshed mirror moves both together. */}
+   <h2 id="research-title">{`Plus ${number(evidence.vs_flat.recall10.delta_pp)} points of recall over flat.`}</h2>
    <p className={css.subline}>{evidence.queries.toLocaleString('en-US')}{' queries across '}{evidence.skills.toLocaleString('en-US')}{' skills on SRA-Bench, against flat dense search.'}</p>
   </div>
 

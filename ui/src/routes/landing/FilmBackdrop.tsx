@@ -36,15 +36,17 @@ export type Anchor = {id:string;second:number;at:number};
  * fan belongs to `how-it-works`, the tier-edge crossing to `proof-gate`.
  *
  * Where a second differs from DESIGN.md's table it is because the film's own cut is the
- * truth and the design second was a target: an anchor is the cut plus ~0.09 s, which is
- * wider than the one-frame deadband the delta gate leaves behind, so the section opens on
- * its own shot rather than on the last frame of the previous one.
+ * truth and the design second was a target: an anchor is the cut plus ~0.19 s. Final
+ * review I2 measured the settle at 4.2002 and 5.6686, i.e. still on the tail of the
+ * previous shot at the ~0.09 s margin, so both were moved +0.10 s. The margin is applied
+ * to the anchor second rather than to the navigation offset because the header computes
+ * `position: static` at 720 and below, where there is no sticky offset to subtract.
  */
 export const FILM_ANCHORS:readonly Omit<Anchor,'at'>[] = [
  {id:'hero',second:0},               // table above the clouds, the drawn orange route, sunrise window
  {id:'extraction',second:1.4},       // the fall into the terrain: contour valley, teal rings, map sheet lifting
- {id:'how-it-works',second:4.3},     // four cream cards standing in a fan around one lit orange marker (cut 4.2083)
- {id:'proof-gate',second:5.75},      // the route crossing a plateau edge, teal rim light on the boundary
+ {id:'how-it-works',second:4.4},     // four cream cards standing in a fan around one lit orange marker (cut 4.2083)
+ {id:'proof-gate',second:5.85},      // the route crossing a plateau edge, teal rim light on the boundary
  {id:'telemetry',second:6.8},        // stacked plateaus held wide, cubes across the lower tiers
  {id:'research-results',second:7.8}, // upper plateau, sparse cubes, route arriving at the top tier
  {id:'availability',second:8.6},     // pull back begins, the terrain reads as a map again

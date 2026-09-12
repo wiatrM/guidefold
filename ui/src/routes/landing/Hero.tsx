@@ -51,7 +51,9 @@ export function Hero(){
 
   <Reveal pattern="p3" as="div" className={css.proofRail}>
    {evidence.proof_gate&&<div className={css.cell}>
-    <p className={css.figure}>{'76 of 76 harmful rules refused.'}</p>
+    {/* copy.md 6: a citable figure is rendered from the evidence mirror, never typed into
+      * the markup. Same source ProofGate reads, so the two can never disagree. */}
+    <p className={css.figure}>{`${evidence.proof_gate.matrix.harmful_mutations} of ${evidence.proof_gate.matrix.harmful_asked} harmful rules refused.`}</p>
     <p className={css.qualifier}>{evidence.proof_gate.microcopy}</p>
    </div>}
    <div className={css.cell}>

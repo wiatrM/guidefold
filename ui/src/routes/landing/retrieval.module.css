@@ -63,7 +63,7 @@
  border:var(--border-width) solid var(--glass-border);
  border-radius:var(--landing-radius-panel);
  background:var(--glass-highlight),var(--glass-ground);
- backdrop-filter:blur(var(--glass-blur));
+ backdrop-filter:var(--glass-backdrop);
  box-shadow:var(--glow-system);
 }
 .zone{
@@ -130,6 +130,9 @@
 }
 .cardScope{
  margin:var(--space-1) var(--zero) var(--zero);
+ /* Dotted fixture paths are one unbroken mono token with no hyphen, so without this the
+  * longest scope ran ~48px past the card border at 1440 (final review I5). */
+ overflow-wrap:anywhere;
  font-family:var(--font-mono);
  font-size:var(--font-size-small);
  color:var(--landing-muted-ink);

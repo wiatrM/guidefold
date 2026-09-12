@@ -11,6 +11,15 @@ describe('evidence section',()=>{
   expect(screen.getByText(/Four of six datasets improved; CHAMP and TheoremQA regressed\./)).toBeVisible();
  });
 
+ // Final review I1: the headline figure was typed into the h2 while the table two lines
+ // below read the mirror. The expectation is formatted from the JSON with the table's own
+ // formatter, so it fails if the two ever drift apart.
+ it('derives the headline figure from the same row and formatter as the table',()=>{
+  render(<ResearchEvidence/>);
+  const expected=evidence.vs_flat.recall10.delta_pp.toFixed(2);
+  expect(screen.getByRole('heading',{level:2})).toHaveTextContent(`Plus ${expected} points of recall over flat.`);
+ });
+
  it('keeps the open question and the scale envelope, neither carrying a figure',()=>{
   render(<ResearchEvidence/>);
   const open=screen.getByText(/Task-level value is not settled\./);

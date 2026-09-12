@@ -7,7 +7,7 @@ describe('film anchor map',()=>{
   // Shipped anchors, not DESIGN.md's targets: `how-it-works` and `proof-gate` sit on the
   // film's measured cuts so each section opens on its own shot (DESIGN.md 3.0, "Implemented
   // anchors"). Controller ruling, 2026-09-11: the film's cuts are the truth.
-  expect(FILM_ANCHORS.map(a=>a.second)).toEqual([0,1.4,4.3,5.75,6.8,7.8,8.6,9.1,9.7]);
+  expect(FILM_ANCHORS.map(a=>a.second)).toEqual([0,1.4,4.4,5.85,6.8,7.8,8.6,9.1,9.7]);
  });
 
  it('interpolates piecewise linearly between measured anchors',()=>{

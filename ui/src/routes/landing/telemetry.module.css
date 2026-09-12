@@ -70,7 +70,7 @@
  border:var(--border-width) solid var(--glass-border);
  border-radius:var(--landing-radius-panel);
  background:var(--glass-highlight),var(--glass-ground);
- backdrop-filter:blur(var(--glass-blur));
+ backdrop-filter:var(--glass-backdrop);
 }
 .fixtureLabel{
  margin:var(--zero) var(--zero) var(--space-4);

@@ -45,7 +45,7 @@
 }
 
 .subline{
- margin:var(--space-3) var(--zero) var(--zero);
+ margin:var(--landing-hero-lede-margin) var(--zero) var(--zero);
  max-width:var(--landing-kicker-measure);
  font-size:var(--landing-kicker);
  line-height:var(--line-height-heading);
@@ -54,10 +54,10 @@
 
 .body{
  display:var(--landing-hero-body-display);
- margin:var(--space-3) var(--zero) var(--zero);
+ margin:var(--landing-hero-body-margin) var(--zero) var(--zero);
  max-width:var(--landing-copy-width);
- font-size:var(--landing-body);
- line-height:var(--line-height-body);
+ font-size:var(--landing-hero-body-size);
+ line-height:var(--landing-hero-body-leading);
  color:var(--stone-300);
 }
 
@@ -65,7 +65,7 @@
  display:grid;
  grid-template-columns:var(--landing-action-columns);
  gap:var(--space-3);
- margin-top:var(--space-4);
+ margin-top:var(--landing-hero-actions-margin);
  scroll-margin-top:var(--space-7);
 }
 
@@ -103,8 +103,8 @@
  .scrollCue:hover .scrollCueIcon{transform:translateY(var(--space-1));}
 }
 
-/* The proof rail: one glass strip, two cells, one hairline. --glass-blur is 0px while
- * [data-film="on"], so the blur is live only over the static poster. */
+/* The proof rail: one glass strip, two cells, one hairline. --glass-backdrop is `none`
+ * while [data-film="on"], so no backdrop-filter runs at all over the moving film. */
 .proofRail{
  grid-column:var(--landing-hero-rail-span);
  grid-row:var(--landing-hero-rail-row);
@@ -115,7 +115,7 @@
  border:var(--border-width) solid var(--glass-border);
  border-radius:var(--landing-radius-panel);
  background:var(--glass-highlight),var(--glass-ground);
- backdrop-filter:blur(var(--glass-blur));
+ backdrop-filter:var(--glass-backdrop);
 }
 .cell{min-width:var(--zero);}
 .cell+.cell{

@@ -16,10 +16,10 @@
 
 /* ------------------------------------------------------------------- header */
 .nav{position:var(--landing-nav-position);top:var(--space-2);z-index:var(--layer-header);display:flex;align-items:center;justify-content:space-between;gap:var(--landing-nav-gap);flex-wrap:var(--landing-nav-wrap);min-height:var(--landing-nav-height);margin-bottom:var(--space-3);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);background:var(--landing-nav-ground);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);box-shadow:var(--shadow-control);}
-.brand{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--stone-100);font:var(--weight-semibold) var(--landing-brand)/var(--line-height-heading) var(--font-display);text-decoration:none;white-space:nowrap;}
+.brand{display:inline-flex;align-items:center;min-height:var(--landing-brand-min-height);gap:var(--space-2);color:var(--stone-100);font:var(--weight-semibold) var(--landing-brand)/var(--line-height-heading) var(--font-display);text-decoration:none;white-space:nowrap;}
 .brand img{width:var(--landing-mark-size);height:var(--landing-mark-size);object-fit:contain;}
 .nav nav{display:var(--landing-nav-display);flex-basis:var(--landing-nav-basis);align-items:center;gap:var(--landing-nav-gap);}
-.nav nav a{position:relative;display:inline-flex;align-items:center;gap:var(--space-1);min-height:var(--touch-height);color:var(--stone-300);font-size:var(--landing-nav-font);text-decoration:none;white-space:nowrap;}
+.nav nav a{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);min-height:var(--touch-height);min-width:var(--touch-width);color:var(--stone-300);font-size:var(--landing-nav-font);text-decoration:none;white-space:nowrap;}
 .nav nav a::after{position:absolute;right:var(--zero);bottom:var(--space-1);left:var(--zero);height:var(--border-width);background:var(--survey-teal);content:"";transform:scaleX(var(--zero));transform-origin:right center;transition:transform var(--duration) var(--ease-out);}
 
 /* --------------------------------------------------------------- one button */
