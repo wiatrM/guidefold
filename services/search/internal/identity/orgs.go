@@ -128,6 +128,123 @@ func (s *Service) handleListMembers(c *mgmt.Context) error {
 		"schema_version": mgmt.SchemaVersion, "org_id": org.ID, "items": items})
 }
 
+type teamRequest struct {
+	Name           string `json:"name"`
+	IdempotencyKey string `json:"idempotency_key"`
+}
+
+func (s *Service) handleListTeams(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleAny)
+	if e != nil {
+		return e
+	}
+	rows, err := s.pool.Query(c.Ctx(), `SELECT t.team_id::text,t.name,t.created_at,u.user_id::text,u.email,u.name
+ FROM gfm.teams t LEFT JOIN gfm.team_members tm ON tm.org_id=t.org_id AND tm.team_id=t.team_id
+ LEFT JOIN gfm.users u ON u.user_id=tm.user_id WHERE t.org_id=$1::uuid ORDER BY t.name,u.email`, org.ID)
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	defer rows.Close()
+	type team struct {
+		ID        string
+		Name      string
+		CreatedAt time.Time
+		Members   []map[string]any
+	}
+	byID := map[string]*team{}
+	order := []string{}
+	for rows.Next() {
+		var id, name string
+		var created time.Time
+		var userID, email, userName *string
+		if err := rows.Scan(&id, &name, &created, &userID, &email, &userName); err != nil {
+			return mgmt.Internal(err)
+		}
+		item := byID[id]
+		if item == nil {
+			item = &team{ID: id, Name: name, CreatedAt: created, Members: []map[string]any{}}
+			byID[id] = item
+			order = append(order, id)
+		}
+		if userID != nil {
+			item.Members = append(item.Members, map[string]any{"user_id": *userID, "email": deref(email), "name": deref(userName)})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return mgmt.Internal(err)
+	}
+	items := make([]map[string]any, 0, len(order))
+	for _, id := range order {
+		item := byID[id]
+		items = append(items, map[string]any{"team_id": item.ID, "name": item.Name, "created_at": item.CreatedAt, "members": item.Members})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"schema_version": mgmt.SchemaVersion, "items": items})
+}
+
+func (s *Service) handleCreateTeam(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleOwner)
+	if e != nil {
+		return e
+	}
+	var req teamRequest
+	if err := c.Decode(&req); err != nil {
+		return err
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || len(req.Name) > 80 {
+		return mgmt.Invalid("invalid_team", "Team name must contain 1 to 80 characters.")
+	}
+	id := NewID()
+	var createdAt time.Time
+	if err := s.pool.QueryRow(c.Ctx(), `INSERT INTO gfm.teams(org_id,team_id,name) VALUES($1::uuid,$2::uuid,$3) RETURNING created_at`, org.ID, id, req.Name).Scan(&createdAt); err != nil {
+		if isUniqueViolation(err) {
+			return mgmt.Conflict("team_exists", "A team with that name already exists.")
+		}
+		return mgmt.Internal(err)
+	}
+	return c.JSON(http.StatusCreated, map[string]any{"schema_version": mgmt.SchemaVersion, "team_id": id, "org_id": org.ID, "name": req.Name, "created_at": createdAt, "members": []any{}})
+}
+
+func (s *Service) handleAddTeamMember(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleOwner)
+	if e != nil {
+		return e
+	}
+	teamID, userID := c.Param("team_id"), c.Param("user_id")
+	var exists bool
+	if err := s.pool.QueryRow(c.Ctx(), `SELECT EXISTS(SELECT 1 FROM gfm.teams WHERE org_id=$1::uuid AND team_id=$2::uuid)`, org.ID, teamID).Scan(&exists); err != nil {
+		return mgmt.Internal(err)
+	}
+	if !exists {
+		return mgmt.NotFound("team_not_found", "That team does not exist.")
+	}
+	if err := s.pool.QueryRow(c.Ctx(), `SELECT EXISTS(SELECT 1 FROM gfm.memberships WHERE org_id=$1::uuid AND user_id=$2::uuid)`, org.ID, userID).Scan(&exists); err != nil {
+		return mgmt.Internal(err)
+	}
+	if !exists {
+		return mgmt.NotFound("member_not_found", "That person is not a member of this organization.")
+	}
+	if _, err := s.pool.Exec(c.Ctx(), `INSERT INTO gfm.team_members(org_id,team_id,user_id) VALUES($1::uuid,$2::uuid,$3::uuid) ON CONFLICT DO NOTHING`, org.ID, teamID, userID); err != nil {
+		return mgmt.Internal(err)
+	}
+	return c.NoContent()
+}
+
+func (s *Service) handleRemoveTeamMember(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleOwner)
+	if e != nil {
+		return e
+	}
+	result, err := s.pool.Exec(c.Ctx(), `DELETE FROM gfm.team_members tm USING gfm.teams t WHERE tm.org_id=t.org_id AND tm.team_id=t.team_id AND t.org_id=$1::uuid AND t.team_id=$2::uuid AND tm.user_id=$3::uuid`, org.ID, c.Param("team_id"), c.Param("user_id"))
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	if result.RowsAffected() == 0 {
+		return mgmt.NotFound("team_member_not_found", "That person is not in this team.")
+	}
+	return c.NoContent()
+}
+
 type roleRequest struct {
 	Role           string `json:"role"`
 	IdempotencyKey string `json:"idempotency_key"`
@@ -302,6 +419,95 @@ func (s *Service) handleInvite(c *mgmt.Context) error {
 		"accept_url":     s.cfg.PublicURL + "/api/v1/invitations/" + token + "/accept",
 		"expires_at":     expires,
 	})
+}
+
+// handleListInvitations exposes lifecycle state without ever returning the
+// capability token. Owners use it to see pending, accepted, expired and
+// revoked links before deciding whether to issue a replacement.
+func (s *Service) handleListInvitations(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleOwner)
+	if e != nil {
+		return e
+	}
+	rows, err := s.pool.Query(c.Ctx(), `SELECT invitation_id::text,email,role,created_at,expires_at,accepted_at,revoked_at
+ FROM gfm.invitations WHERE org_id=$1::uuid ORDER BY created_at DESC`, org.ID)
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	defer rows.Close()
+	items := make([]map[string]any, 0)
+	for rows.Next() {
+		var id, email, role string
+		var created, expires time.Time
+		var accepted, revoked *time.Time
+		if err := rows.Scan(&id, &email, &role, &created, &expires, &accepted, &revoked); err != nil {
+			return mgmt.Internal(err)
+		}
+		status := "pending"
+		if revoked != nil {
+			status = "revoked"
+		} else if accepted != nil {
+			status = "accepted"
+		} else if !expires.After(s.now()) {
+			status = "expired"
+		}
+		items = append(items, map[string]any{"invitation_id": id, "email": email, "role": role,
+			"status": status, "created_at": created, "expires_at": expires,
+			"accepted_at": accepted, "revoked_at": revoked})
+	}
+	if err := rows.Err(); err != nil {
+		return mgmt.Internal(err)
+	}
+	return c.JSON(http.StatusOK, map[string]any{"schema_version": mgmt.SchemaVersion, "items": items})
+}
+
+// handleRevokeInvitation invalidates a pending link. Revoke is explicit and
+// idempotent: already revoked links replay as a successful no-op, while an
+// accepted or unknown invitation is named so the owner can reissue safely.
+func (s *Service) handleRevokeInvitation(c *mgmt.Context) error {
+	org, e := c.Authorize("org", mgmt.RoleOwner)
+	if e != nil {
+		return e
+	}
+	id := strings.TrimSpace(c.Param("invitation_id"))
+	tx, err := s.tx(c.Ctx())
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	defer tx.Rollback(c.Ctx())
+	var accepted, revoked *time.Time
+	err = tx.QueryRow(c.Ctx(), `SELECT accepted_at,revoked_at FROM gfm.invitations
+ WHERE org_id=$1::uuid AND invitation_id=$2::uuid FOR UPDATE`, org.ID, id).Scan(&accepted, &revoked)
+	if err == pgx.ErrNoRows {
+		return mgmt.NotFound("invitation_not_found", "That invitation does not exist.")
+	}
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	if accepted != nil {
+		return mgmt.Conflict("invitation_used", "An accepted invitation cannot be revoked.")
+	}
+	if revoked == nil {
+		if _, err = tx.Exec(c.Ctx(), `UPDATE gfm.invitations SET revoked_at=now()
+ WHERE org_id=$1::uuid AND invitation_id=$2::uuid`, org.ID, id); err != nil {
+			return mgmt.Internal(err)
+		}
+		if err = c.Audit(c.Ctx(), tx, org.ID, "invitation.revoke", "invitation:"+id, ""); err != nil {
+			return mgmt.Internal(err)
+		}
+	}
+	if err = tx.Commit(c.Ctx()); err != nil {
+		return mgmt.Internal(err)
+	}
+	return c.NoContent()
+}
+
+func (s *Service) handleInvitationLanding(c *mgmt.Context) error {
+	token := strings.TrimSpace(c.Param("token"))
+	if token == "" || len(token) > 256 {
+		return mgmt.NotFound("invitation_not_found", "This invitation is not valid.")
+	}
+	return c.RedirectTo(s.cfg.PublicURL + "/invitations/" + token + "/accept")
 }
 
 // handleAcceptInvitation joins the signed-in user. The invited address is not

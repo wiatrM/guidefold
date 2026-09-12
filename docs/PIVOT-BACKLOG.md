@@ -1,5 +1,7 @@
 # Backlog propozycji pivotu Guidefold
 
+Propozycja priorytetów z 2026-09-09: [wejście zespołu i pierwsza wartość — 10 Must / 50 MoSCoW](reports/product/2026-09-09-value-first-moscow.md). Zawiera audyt produkcyjnego logowania, stan kodu i AC/DoD. Status Proposed: materiał decyzyjny na zlecenie właściciela, jeszcze nie zastępuje wymagań U1–U11 ani kolejności P01–P15 poniżej.
+
 Reguły odczytu i aktualizacji: [DOCUMENTATION-RULES](DOCUMENTATION-RULES.md). Ten dokument porządkuje zadania i zależności. Szczegółowe kryteria pozostają w PRD; ukończenie makiety nie oznacza ukończenia historii backendowej.
 
 **Status: propozycja po recenzji pięciu ról, 2026-09-06.** Szczegóły wymagań i AC: [PRODUCT-PIVOT](PRODUCT-PIVOT.md). P01–P15 to lokalne ID, nie numery GitHub Issues. Obecne issue'y pozostają historycznym/operacyjnym backlogiem do aktualizacji po przyjęciu nowej decyzji. Ten dokument nie deklaruje wykonania nowych funkcji.

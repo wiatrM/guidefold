@@ -27,7 +27,7 @@ importers:
         specifier: 12.11.6
         version: 12.11.6(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       border-beam:
-        specifier: ^1.3.0
+        specifier: 1.3.0
         version: 1.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       class-variance-authority:
         specifier: 0.7.1
@@ -36,10 +36,10 @@ importers:
         specifier: 2.1.1
         version: 2.1.1
       framer-motion:
-        specifier: ^13.2.0
+        specifier: 13.2.0
         version: 13.2.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       lucide-react:
-        specifier: ^1.43.0
+        specifier: 1.43.0
         version: 1.43.0(react@19.2.8)
       motion:
         specifier: 13.2.0
@@ -57,7 +57,7 @@ importers:
         specifier: 7.18.3
         version: 7.18.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       recharts:
-        specifier: ^3.10.1
+        specifier: 3.10.1
         version: 3.10.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-is@17.0.2)(react@19.2.8)(redux@5.0.1)
       sonner:
         specifier: 2.0.8
@@ -65,9 +65,6 @@ importers:
       tailwind-merge:
         specifier: 3.6.0
         version: 3.6.0
-      three:
-        specifier: 0.186.0
-        version: 0.186.0
     devDependencies:
       '@playwright/test':
         specifier: 1.63.0
@@ -2470,9 +2467,6 @@ packages:
   reselect@5.2.0:
     resolution: {integrity: sha512-AgZ3UOZm3YndfrJ4OYjgrT7bmCm/1iqkjvEfH/oYjzh6PD2qw4QuT3jjnXIrpdt4MTpMXclMT3lXbmRY+XRakw==}
 
-  reselect@5.3.0:
-    resolution: {integrity: sha512-XGoLeRAVzUTcJ1qkxPQhDJyIZ5d6zzZD9nT7AEZOaaU9UbWclhycElmhO+VD5bFeLuzhPBaOV2oXC8uG35ZSpg==}
-
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -2681,9 +2675,6 @@ packages:
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
-
-  three@0.186.0:
-    resolution: {integrity: sha512-cr/fIM2ddMSVbYVgkfD4jLJv7Fh/8ZTjvo+7gQeSVGUZHxpx9FDwoL5iC7hUz/LiRA8wMbqfnb90xKfm1/HHkQ==}
 
   tiny-invariant@1.3.3:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
@@ -3220,7 +3211,7 @@ snapshots:
       '@floating-ui/utils': 0.2.12
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
-      reselect: 5.3.0
+      reselect: 5.2.0
       use-sync-external-store: 1.6.0(react@19.2.8)
     optionalDependencies:
       '@types/react': 19.2.18
@@ -3366,7 +3357,7 @@ snapshots:
       immer: 11.1.18
       redux: 5.0.1
       redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.3.0
+      reselect: 5.2.0
     optionalDependencies:
       react: 19.2.8
       react-redux: 9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1)
@@ -5258,8 +5249,6 @@ snapshots:
 
   reselect@5.2.0: {}
 
-  reselect@5.3.0: {}
-
   resolve-from@4.0.0: {}
 
   restore-cursor@5.1.0:
@@ -5512,8 +5501,6 @@ snapshots:
   tailwindcss@4.3.3: {}
 
   tapable@2.3.3: {}
-
-  three@0.186.0: {}
 
   tiny-invariant@1.3.3: {}
 

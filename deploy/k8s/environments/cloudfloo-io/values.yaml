@@ -10,6 +10,10 @@
 tenant: cloudfloo    # legacy Store default (services/search/store.go); the
 repository: guidefold # multi-tenant mgmt/import/review API resolves org/repo per
                        # request instead and does not read these two fields.
+publicURL: https://guidefold.cloudfloo.io
+workos:
+  clientID: "" # fill from the WorkOS project; never commit the API key
+  secretName: guidefold-workos
 
 database:
   host: guidefold-postgres-rw.guidefold.svc.cluster.local
@@ -66,12 +70,12 @@ portal:
   replicas: 1
 
 # The hosted U4 React app: real login/import/catalog/review screens. Served at /.
-# The API is still auth: workos with no WorkOS secret wired (see README.md step 3),
-# so /api/v1/me and everything behind it will 503 until that's done — the app shell
-# itself loads and should degrade to its own "not signed in" state, not a blank page.
+# The serving API requires the WorkOS client ID and `guidefold-workos` Secret
+# described in README.md step 3; Helm validates both before a release is applied.
+# The UI still renders its sign-in route during a transient API outage.
 ui:
   enabled: true
-  image: "ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe"
+  image: "ghcr.io/wiatrm/guidefold-ui@sha256:4b4c345b924fd93328b41497eadb9c07d113b73b6112de89eab44ecba4b0b628"
   replicas: 2
 
 networkPolicy:

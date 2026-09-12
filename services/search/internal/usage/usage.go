@@ -50,16 +50,18 @@ func (s *Service) Register(r *mgmt.Router) {
 		s.handleDecision, mgmt.Idempotent())
 }
 
-// measuredTypes are the ledger rows the report reads. `search_requested`,
-// `search_results` and `skill_load_requested` are deliberately absent: an
-// intention to load is not a load, and a served result is not an exposure.
-var measuredTypes = []string{"card_injected", "skill_load_completed", "skill_use_reported",
-	"skill_use_observed", "skill_feedback", "task_started", "task_finished", "telemetry_health"}
+// measuredTypes are the ledger rows the report reads. Routing and load intent
+// events are included for the execution scorecards; they still do not change
+// the delivery funnel (an intention to load is not a load, and a served result
+// is not an exposure).
+var measuredTypes = []string{"search_requested", "search_results", "card_injected",
+	"skill_load_requested", "skill_load_completed", "skill_use_reported", "skill_use_observed",
+	"skill_feedback", "task_started", "task_finished", "telemetry_health"}
 
 // unattributedTypes carry no skill_id, so a per-skill filter must not remove
 // them: they answer "how much did we lose" and "are task identifiers present",
 // which are properties of the window and not of one skill.
-const unattributedTypes = "('telemetry_health','task_started','task_finished')"
+const unattributedTypes = "('search_requested','search_results','telemetry_health','task_started','task_finished')"
 
 // receivedLayout is the format ingestEvents writes into gf.events.received_at.
 // It is server-generated and therefore the one timestamp column that can be

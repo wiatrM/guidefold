@@ -75,6 +75,8 @@ export interface RequestSpec<T> {
   retries?: number;
   signal?: AbortSignal;
   responseType?: 'json' | 'text';
+  /** Optional non-JSON body for the import blob endpoint. */
+  contentType?: string;
   /** Re-read used after a mutation timeout. `null` means "the change is not there". */
   confirm?: () => Promise<T | null>;
 }
@@ -288,7 +290,7 @@ export class ApiClient {
         Accept: spec.responseType === 'text' ? 'application/octet-stream, text/plain' : 'application/json',
         'Cache-Control': 'no-store',
       };
-      if (spec.body !== undefined) headers['Content-Type'] = 'application/json';
+      if (spec.body !== undefined) headers['Content-Type'] = spec.contentType ?? 'application/json';
       if (mutation) {
         headers['Idempotency-Key'] = spec.idempotencyKey as string;
         headers['X-CSRF-Token'] = this.csrf as string;
@@ -299,7 +301,7 @@ export class ApiClient {
         credentials: 'include',
         cache: 'no-store',
         signal: controller.signal,
-        body: spec.body === undefined ? undefined : JSON.stringify(spec.body),
+        body: spec.body === undefined ? undefined : spec.contentType ? spec.body as BodyInit : JSON.stringify(spec.body),
       });
       return await this.readResponse(spec, response);
     } catch (error) {

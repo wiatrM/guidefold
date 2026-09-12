@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, GoogleLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,15 +9,74 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { BeamCard } from '../components/spectrumui/beam-card';
 import { cn } from '@/lib/utils';
 import { isStale, type ApiError } from '../api/client';
-import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, shortId, unknown, useAsync, type ApiProps } from './apiState';
+import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, formatNumber, shortId, unknown, useAsync, type ApiProps } from './apiState';
+import { formatDay, ScorecardPanel } from './ReviewRoutes';
 import { proposalKinds } from '../api/decoders';
-import type { AuditEntry, Job, ImportStatus, Installation, Member, Org, ProposalKind, ProposalLimits, Repo } from '../api/decoders';
+import type { AuditEntry, Job, ImportStatus, Installation, InvitationLifecycle, Member, Org, ProposalKind, ProposalLimits, Repo, RepoAccessLevel, Team, GitHubInstallation } from '../api/decoders';
+import type { AccessState } from '../api/access';
+import type { DataSource } from '../data/source';
+import type { Me } from '../api/decoders';
 import styles from './OnboardingRoutes.module.css';
 
 type ImportStep = 'organization' | 'preview' | 'result';
 /** shadcn Input on the product's control height; the native select is styled to match (tests use selectOptions). */
 const inputClass = 'min-h-(--control-height) rounded-md border-input bg-graphite-950 px-2.5 text-[length:var(--font-size-body)] shadow-(--shadow-control) focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-(--focus-offset) focus-visible:outline-human focus-visible:border-input';
 const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-[length:var(--font-size-body)] shadow-(--shadow-control)';
+
+/** Browser landing page for the one-time invitation capability returned by the API. */
+export function ApiInvitationRoute({ source, access, me, token, onRecheck, onAccepted }: {
+  source: DataSource; access: AccessState; me: Me | null; token: string;
+  onRecheck: () => Promise<unknown>; onAccepted: (orgID: string) => void;
+}) {
+  const providers = useAsync(() => source.getAuthProviders(), 'invitation-providers');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const acceptKey = useRef('accept-invitation:' + Math.random().toString(36).slice(2));
+
+  async function signIn(provider: string) {
+    setBusy(true);
+    try {
+      const redirect = await source.startLogin(provider, window.location.pathname);
+      if (!redirect.loginUrl) throw new Error('missing login redirect');
+      window.location.assign(redirect.loginUrl);
+    } catch (error) {
+      setMessage('Sign-in could not start (' + asApiError(error).code + '). The invitation remains unused.');
+      setBusy(false);
+    }
+  }
+  async function accept() {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await source.acceptInvitation(token, acceptKey.current);
+      await onRecheck();
+      onAccepted(result.org_id);
+    } catch (error) {
+      setMessage('The invitation was not accepted (' + asApiError(error).code + '). Nothing was changed.');
+      setBusy(false);
+    }
+  }
+
+  return <div className={styles.route}>
+    <Panel title="Join your organization" eyebrow="Invitation" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+      {!me ? <>
+        <p>Sign in with the account that should join this organization. The invitation is not consumed until you confirm it.</p>
+        {providers.phase === 'loading' && <RouteState state="loading" title="Reading providers" description="Asking the API which identity providers are configured." />}
+        {providers.phase === 'error' && providers.error && <ApiFailure error={providers.error} onRetry={providers.reload} retryLabel="Retry the provider list" />}
+        {providers.phase === 'ready' && (providers.value?.providers.length
+          ? <div className={styles.providers}>{providers.value.providers.map(provider => <ActionButton key={provider.id} tone="human" onClick={() => { void signIn(provider.id); }} disabled={busy}>
+            {provider.id === 'github' ? <GithubLogoIcon weight="regular" aria-hidden="true" /> : <GoogleLogoIcon weight="regular" aria-hidden="true" />}Continue with {provider.label}
+          </ActionButton>)}</div>
+          : <p className={styles.help}>No identity provider is configured on this API.</p>)}
+      </> : access.status !== 'confirmed' ? <RouteState state="loading" title="Confirming access" description="Checking your membership before the invitation can be accepted." action={<ActionButton onClick={() => { void onRecheck(); }}>Check access now</ActionButton>} />
+        : <>
+          <p>You are signed in as <strong>{me.user.email}</strong>. Accepting adds this account to the organization with the role chosen by its owner.</p>
+          <ActionButton tone="human" onClick={() => { void accept(); }} disabled={busy}>Accept invitation<CheckCircleIcon weight="regular" aria-hidden="true" /></ActionButton>
+        </>}
+      {message && <p className={styles.feedback} role="alert">{message}</p>}
+    </Panel>
+  </div>;
+}
 
 function CommandBlock({ commands }: { commands: string }) {
   const [status, setStatus] = useState('');
@@ -427,11 +486,21 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const current = apiSteps.findIndex(item => item.id === step);
   const orgs = useAsync(() => source.listOrgs(), 'orgs:' + (me?.user.id ?? ''), signedIn && step === 'organization');
   const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'result'));
+  const members = useAsync(() => source.listMembers(org ?? ''), 'repo-members:' + (org ?? ''), owner && Boolean(org) && step === 'preview');
+  const repoAccess = useAsync(() => source.listRepoAccess({ org: org ?? '', repo: repo ?? '' }), 'repo-access:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
+  const reviewers = useAsync(() => source.listReviewers({ org: org ?? '', repo: repo ?? '' }), 'repo-reviewers:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
   const imports = useAsync(() => source.listImports({ org: org ?? '', repo: repo ?? '' }), 'imports:' + org + '/' + repo, Boolean(org && repo) && step === 'result');
   const [orgName, setOrgName] = useState('');
   const [orgSlug, setOrgSlug] = useState('');
   const [repoId, setRepoId] = useState('');
   const [gitUrl, setGitUrl] = useState('');
+  const [accessUserId, setAccessUserId] = useState('');
+  const [accessLevel, setAccessLevel] = useState<RepoAccessLevel>('read');
+  const [reviewerUserId, setReviewerUserId] = useState('');
+  const [accessStatus, setAccessStatus] = useState('');
+  const [localPackage, setLocalPackage] = useState<File[]>([]);
+  const [localPackageError, setLocalPackageError] = useState('');
+  const [localPackageStatus, setLocalPackageStatus] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   const importId = ctx.params.get('import_id') ?? imports.value?.[0]?.import_id ?? null;
@@ -473,6 +542,88 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     } catch (error) { setFormError('The repository was not registered (' + asApiError(error).code + '). Nothing was saved and no import was started.'); }
     finally { setBusy(false); }
   }
+  async function saveRepoAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || !repo || !accessUserId || busy) return;
+    setBusy(true); setAccessStatus('');
+    try {
+      await source.setRepoAccess({ org, repo }, accessUserId, accessLevel, 'repo-access:' + org + ':' + repo + ':' + accessUserId + ':' + accessLevel);
+      setAccessStatus('Repository access saved.');
+      repoAccess.reload();
+    } catch (error) { setAccessStatus('Access was not saved (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function removeRepoAccess(userId: string) {
+    if (!org || !repo || busy) return;
+    setBusy(true); setAccessStatus('');
+    try {
+      await source.removeRepoAccess({ org, repo }, userId, 'repo-access-remove:' + org + ':' + repo + ':' + userId);
+      setAccessStatus('Repository access removed.');
+      repoAccess.reload();
+    } catch (error) { setAccessStatus('Access was not removed (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function assignRepoReviewer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || !repo || !reviewerUserId || busy) return;
+    setBusy(true); setAccessStatus('');
+    try {
+      await source.assignReviewer({ org, repo }, reviewerUserId, 'repo-reviewer:' + org + ':' + repo + ':' + reviewerUserId);
+      setAccessStatus('Reviewer assigned.');
+      reviewers.reload();
+    } catch (error) { setAccessStatus('Reviewer was not assigned (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function removeRepoReviewer(userId: string) {
+    if (!org || !repo || busy) return;
+    setBusy(true); setAccessStatus('');
+    try {
+      await source.removeReviewer({ org, repo }, userId, 'repo-reviewer-remove:' + org + ':' + repo + ':' + userId);
+      setAccessStatus('Reviewer removed.');
+      reviewers.reload();
+    } catch (error) { setAccessStatus('Reviewer was not removed (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function importLocalPackage() {
+    if (!org || !repo || !localPackage.length || busy) return;
+    setBusy(true); setLocalPackageError(''); setLocalPackageStatus('Reading files locally…');
+    try {
+      const entries: { path: string; sha256: string; size: number; kind: string; mode: string; source?: null }[] = [];
+      const bytesByDigest = new Map<string, Uint8Array>();
+      const seenPaths = new Set<string>();
+      for (const file of localPackage) {
+        const path = (file.webkitRelativePath || file.name).replaceAll('\\', '/').replace(/^\/+/, '');
+        if (!path || path.split('/').some(part => part === '..' || part === '.') || path.includes('\u0000') || path.length > 1024) throw new Error('unsafe path: ' + path);
+        if (seenPaths.has(path)) throw new Error('duplicate path: ' + path);
+        seenPaths.add(path);
+        const basename = path.split('/').pop()?.toLowerCase() ?? '';
+        if (basename === '.env' || basename.startsWith('.env.') || basename.endsWith('.pem') || basename.endsWith('.key') || basename === 'id_rsa' || basename === 'id_ed25519') {
+          throw new Error('sensitive file rejected: ' + path);
+        }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))).map(value => value.toString(16).padStart(2, '0')).join('');
+        const lower = path.toLowerCase();
+        const kind = lower.endsWith('skill.md') || lower.endsWith('.skill.md') ? 'skill' : lower.endsWith('.md') || lower.endsWith('.txt') ? 'document' : lower.endsWith('.json') || lower.endsWith('.yaml') || lower.endsWith('.yml') ? 'config' : 'resource';
+        entries.push({ path, sha256: digest, size: bytes.byteLength, kind, mode: '100644', source: null });
+        bytesByDigest.set(digest, bytes);
+      }
+      const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+      if (entries.length > 10000 || total > 100 * 1024 * 1024) throw new Error('the browser package is larger than the 10,000 file / 100 MiB limit');
+      const manifest = { format: 'guidefold-import-manifest-v1', org, repo, commit: null, complete: true, dirty: false, publish: true, cli_version: 'browser', scan_profile: 'default', root: '.', files: entries, excluded: [], aliases: [], suggestions: [], limits: { max_files: 10000, max_bytes: 104857600 } };
+      const created = await source.createImport({ org, repo }, manifest, 'browser-import:' + org + ':' + repo + ':' + entries.map(entry => entry.sha256).join(','));
+      for (const digest of created.missing_blobs) {
+        const bytes = bytesByDigest.get(digest);
+        if (!bytes) throw new Error('API requested a blob that was not in the local package');
+        await source.uploadImportBlob({ org, repo }, created.import_id, digest, bytes);
+      }
+      await source.finalizeImport({ org, repo }, created.import_id, 'browser-finalize:' + created.import_id);
+      setLocalPackageStatus('Package uploaded. Reading import status.');
+      ctx.go('import', { step: 'result', import_id: created.import_id });
+    } catch (error) {
+      setLocalPackageError(error instanceof Error ? error.message : 'The browser package could not be imported.');
+      setLocalPackageStatus('Nothing was published. Fix the package and retry.');
+    } finally { setBusy(false); }
+  }
 
   const stepDone = (index: number) => index === 0 ? Boolean(org) : index === 1 ? Boolean(org && repo) : Boolean(org && repo && importId);
   return <div className={styles.route}>
@@ -500,6 +651,18 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     </div>}
 
     {step === 'preview' && <div className={styles.asideColumns}>
+      {owner && !repo && <Panel title="Register a repository" eyebrow="Repository" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
+        <p>Give this organization a stable repository id before uploading a local package. This only registers the target; it does not read or execute anything from your checkout.</p>
+        <form className={styles.form} onSubmit={createRepo}>
+          <Field id="repository-id" label="Repository id" hint="1 to 64 letters, digits, dot, underscore or hyphen.">
+            <Input id="repository-id" name="repo_id" value={repoId} onChange={event => { setRepoId(event.target.value); setFormError(''); }} maxLength={64} required className={inputClass} />
+          </Field>
+          <Field id="git-host-url" label="Git host URL (optional)" hint="Used only as provenance for a registered source.">
+            <Input id="git-host-url" name="git_host_url" value={gitUrl} onChange={event => setGitUrl(event.target.value)} className={inputClass} />
+          </Field>
+          <ActionButton tone="human" type="submit" disabled={busy}>Register repository<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton>
+        </form>
+      </Panel>}
       <Panel title="Repositories" eyebrow="Repository" icon={<GitBranchIcon weight="regular" aria-hidden="true" />}>
         {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
         {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
@@ -514,9 +677,54 @@ export function ApiImportRoute({ ctx }: ApiProps) {
           <ActionButton size="sm" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
         </div>}
       </Panel>
+      {owner && repo && <Panel title="Repository access" eyebrow="Owner controls" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+        <p>Limit this repository to named organization members and assign who can review proposals. Owners always retain access.</p>
+        {accessStatus && <p className={styles.feedback} role="status">{accessStatus}</p>}
+        {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the organization membership list." />}
+        {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
+        {members.phase === 'ready' && <div className={styles.stack}>
+          <form className={styles.form} onSubmit={saveRepoAccess}>
+            <Field id="repo-access-user" label="Member" hint="Grant read or write access to one organization member.">
+              <select id="repo-access-user" className={selectClass} value={accessUserId} onChange={event => setAccessUserId(event.target.value)} required>
+                <option value="">Choose a member</option>
+                {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email} ({member.role})</option>)}
+              </select>
+            </Field>
+            <Field id="repo-access-level" label="Access level"><select id="repo-access-level" className={selectClass} value={accessLevel} onChange={event => setAccessLevel(event.target.value as RepoAccessLevel)}><option value="read">Read</option><option value="write">Write</option></select></Field>
+            <ActionButton tone="human" type="submit" disabled={busy || !accessUserId}>Save repository access</ActionButton>
+          </form>
+          {repoAccess.phase === 'loading' && <RouteState state="loading" title="Reading repository access" description="Waiting for the access policy." />}
+          {repoAccess.phase === 'error' && repoAccess.error && <ApiFailure error={repoAccess.error} onRetry={repoAccess.reload} retryLabel="Retry repository access" />}
+          {repoAccess.phase === 'ready' && <DataTable flush caption="Repository access grants" headings={['Member', 'Access', 'Action']}>
+            {repoAccess.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><StateBadge tone={entry.access === 'write' ? 'human' : 'neutral'}>{entry.access}</StateBadge></td><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoAccess(entry.user_id); }}>Remove</ActionButton></td></tr>)}
+          </DataTable>}
+          <form className={styles.form} onSubmit={assignRepoReviewer}>
+            <Field id="repo-reviewer-user" label="Reviewer" hint="Reviewers can decide and export proposals for this repository.">
+              <select id="repo-reviewer-user" className={selectClass} value={reviewerUserId} onChange={event => setReviewerUserId(event.target.value)} required>
+                <option value="">Choose a reviewer</option>
+                {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email}</option>)}
+              </select>
+            </Field>
+            <ActionButton type="submit" disabled={busy || !reviewerUserId}>Assign reviewer</ActionButton>
+          </form>
+          {reviewers.phase === 'loading' && <RouteState state="loading" title="Reading reviewers" description="Waiting for reviewer assignments." />}
+          {reviewers.phase === 'error' && reviewers.error && <ApiFailure error={reviewers.error} onRetry={reviewers.reload} retryLabel="Retry reviewers" />}
+          {reviewers.phase === 'ready' && <DataTable flush caption="Assigned reviewers" headings={['Reviewer', 'Action']}>
+            {reviewers.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoReviewer(entry.user_id); }}>Remove</ActionButton></td></tr>)}
+          </DataTable>}
+        </div>}
+      </Panel>}
       <Panel title="Upload from your checkout" eyebrow="CLI" icon={<TerminalIcon weight="regular" aria-hidden="true" />}>
         <p>The browser never reads your repository. The CLI builds the manifest and uploads it for <strong>{org ?? 'your organization'}</strong>.</p>
         <CommandBlock commands={commands} />
+      </Panel>
+      <Panel title="Import a local package" eyebrow="Browser fallback" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
+        <p>Select files from a local checkout when GitHub App access and the CLI are unavailable. The browser sends file bytes only after showing the selection; it never follows symlinks or runs package code.</p>
+        <Field id="local-package" label="Files" hint="Up to 10,000 files and 100 MiB. Paths containing . or .. are rejected."><input id="local-package" type="file" multiple onChange={event => { setLocalPackage(Array.from(event.target.files ?? [])); setLocalPackageError(''); setLocalPackageStatus(''); }} /></Field>
+        {localPackage.length > 0 && <p className={styles.feedback} role="status">{localPackage.length} file(s) selected.</p>}
+        {localPackageError && <p className={styles.feedback} role="alert">{localPackageError}</p>}
+        {localPackageStatus && <p className={styles.feedback} role="status">{localPackageStatus}</p>}
+        <ActionButton tone="human" disabled={!localPackage.length || busy} onClick={() => { void importLocalPackage(); }}>Import selected files</ActionButton>
       </Panel>
     </div>}
 
@@ -541,29 +749,57 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const { source, org, role, me } = ctx;
   const owner = role === 'owner';
   const tabParam = ctx.params.get('tab');
-  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : 'members';
+  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : tabParam === 'telemetry' ? 'telemetry' : 'members';
   const deviceCode = ctx.params.get('device');
   const auditCursor = ctx.params.get('cursor');
   const members = useAsync(() => source.listMembers(org ?? ''), 'members:' + org, Boolean(org) && tab === 'members');
+  const teams = useAsync(() => source.listTeams(org ?? ''), 'teams:' + org, Boolean(org) && tab === 'members');
+  const invitations = useAsync(() => source.listInvitations(org ?? ''), 'invitations:' + org, owner && Boolean(org) && tab === 'members');
   const installations = useAsync(() => source.listInstallations(org ?? ''), 'installations:' + org, Boolean(org) && tab === 'integrations');
+  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, owner && Boolean(org) && tab === 'integrations');
   const audit = useAsync(
     () => source.getAudit(org ?? '', auditCursor ?? undefined),
     'audit:' + org + ':' + (auditCursor ?? ''),
     owner && Boolean(org) && tab === 'audit',
   );
+  const telemetry = useAsync(
+    () => source.getUsage({ org: org ?? '', repo: ctx.repo ?? '' }, { window: ctx.params.get('window') || undefined }),
+    'organization-telemetry:' + org + '/' + (ctx.repo ?? '') + ':' + (ctx.params.get('window') ?? ''),
+    Boolean(org && ctx.repo && tab === 'telemetry'),
+  );
   const [linkStatus, setLinkStatus] = useState('');
+  const [profileName, setProfileName] = useState(me?.user.name ?? '');
+  const [profileStatus, setProfileStatus] = useState('');
   const [email, setEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'owner' | 'member'>('member');
   const [inviteError, setInviteError] = useState('');
   const [acceptUrl, setAcceptUrl] = useState('');
   const [rowError, setRowError] = useState<{ userId: string; message: string } | null>(null);
   const [memberStatus, setMemberStatus] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [teamMemberId, setTeamMemberId] = useState('');
+  const [teamStatus, setTeamStatus] = useState('');
   const [installationName, setInstallationName] = useState('');
   const [harness, setHarness] = useState('claude');
   const [secret, setSecret] = useState('');
   const [integrationStatus, setIntegrationStatus] = useState('');
   const [deviceStatus, setDeviceStatus] = useState('');
   const [busy, setBusy] = useState(false);
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = profileName.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setProfileStatus('');
+    try {
+      await source.updateProfile(name, 'profile:' + (me?.user.id ?? '') + ':' + name);
+      await ctx.recheckAccess?.();
+      setProfileStatus('Profile name saved.');
+    } catch (error) {
+      setProfileStatus('The profile was not saved (' + asApiError(error).code + ').');
+    } finally { setBusy(false); }
+  }
 
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -578,8 +814,19 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       setInviteError('');
       setMemberStatus('Invitation created for ' + value + '. The link below is shown once.');
       members.reload();
+      invitations.reload();
     } catch (error) { setInviteError('The invitation was not created (' + asApiError(error).code + '). Nobody was invited and the address above is kept.'); }
     finally { setBusy(false); }
+  }
+  async function revokeInvitation(invitation: InvitationLifecycle) {
+    if (!org || invitation.status !== 'pending') return;
+    try {
+      await source.revokeInvitation(org, invitation.invitation_id, 'revoke-invitation:' + org + ':' + invitation.invitation_id);
+      setMemberStatus('Invitation for ' + invitation.email + ' was revoked.');
+      invitations.reload();
+    } catch (error) {
+      setMemberStatus('The invitation was not revoked (' + asApiError(error).code + '). It remains unchanged.');
+    }
   }
   async function changeRole(target: Member, next: 'owner' | 'member') {
     if (!org || next === target.role) return;
@@ -615,6 +862,34 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       });
     }
   }
+  async function createTeam(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || !owner || busy || !teamName.trim()) return;
+    setBusy(true); setTeamStatus('');
+    try {
+      await source.createTeam(org, teamName.trim(), 'team:' + org + ':' + teamName.trim());
+      setTeamName(''); setTeamStatus('Team created.'); teams.reload();
+    } catch (error) { setTeamStatus('The team was not created (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function addMemberToTeam(team: Team) {
+    if (!org || !owner || !teamMemberId || busy) return;
+    setBusy(true); setTeamStatus('');
+    try {
+      await source.addTeamMember(org, team.team_id, teamMemberId, 'team-member:' + org + ':' + team.team_id + ':' + teamMemberId);
+      setTeamStatus('Member added to ' + team.name + '.'); setTeamMemberId(''); teams.reload();
+    } catch (error) { setTeamStatus('The team membership was not changed (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  async function removeMemberFromTeam(team: Team, userId: string) {
+    if (!org || !owner || busy) return;
+    setBusy(true); setTeamStatus('');
+    try {
+      await source.removeTeamMember(org, team.team_id, userId, 'team-member-remove:' + org + ':' + team.team_id + ':' + userId);
+      setTeamStatus('Member removed from ' + team.name + '.'); teams.reload();
+    } catch (error) { setTeamStatus('The team membership was not changed (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
   async function createInstallation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!org || busy) return;
@@ -639,6 +914,16 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       installations.reload();
     } catch (error) { setIntegrationStatus('The installation was not revoked (' + asApiError(error).code + '). Its token still works.'); }
   }
+  async function removeGitHubInstallation(installation: GitHubInstallation) {
+    if (!org || !owner || busy) return;
+    setBusy(true); setIntegrationStatus('');
+    try {
+      await source.deleteGitHubInstallation(org, installation.installation_id, 'github-installation:' + org + ':' + installation.installation_id);
+      setIntegrationStatus('GitHub installation removed. Future webhook updates are ignored until it is installed again.');
+      githubInstallations.reload();
+    } catch (error) { setIntegrationStatus('The GitHub installation was not removed (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
   async function decideDevice(approve: boolean) {
     if (!deviceCode) return;
     try {
@@ -662,11 +947,28 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     <Tabs label="Organization sections" current={tab} items={[
       { id: 'members', label: 'Members', href: ctx.href('organization', { tab: 'members', cursor: null }) },
       { id: 'integrations', label: 'Integrations', href: ctx.href('organization', { tab: 'integrations', cursor: null }) },
+      { id: 'telemetry', label: 'Telemetry', href: ctx.href('organization', { tab: 'telemetry', cursor: null }) },
       { id: 'audit', label: 'Audit', href: ctx.href('organization', { tab: 'audit', cursor: null }) },
     ]} />
     <OwnerNote role={role} />
 
-    {tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
+    {tab === 'telemetry' ? <>
+      {!ctx.repo && <RouteState state="empty" title="No repository selected" description="Choose a repository before reading task and harness telemetry." action={<ActionButton href={ctx.href('import', { step: 'organization' })} tone="system">Choose a repository</ActionButton>} />}
+      {ctx.repo && telemetry.phase === 'loading' && <RouteState state="loading" title="Reading telemetry" description="Waiting for the execution metrics for this repository." />}
+      {ctx.repo && telemetry.phase === 'error' && telemetry.error && <ApiFailure error={telemetry.error} onRetry={telemetry.reload} retryLabel="Retry telemetry" />}
+      {ctx.repo && telemetry.value && <>
+        <ScorecardPanel metrics={telemetry.value.totals.metrics} />
+        <Panel title="Telemetry context" eyebrow={'Repository ' + ctx.repo} icon={<PulseIcon weight="regular" aria-hidden="true" />}>
+          <ProvenanceTrail entries={[
+            { label: 'Window', value: (ctx.params.get('window') || '30d') + ' · ' + formatDay(telemetry.value.window.from) + ' to ' + formatDay(telemetry.value.window.to), detail: 'The period is anchored to the ledger watermark, not this browser clock.' },
+            { label: 'Events received', value: telemetry.value.coverage ? formatNumber(telemetry.value.coverage.events_received) : 'Unknown', detail: telemetry.value.coverage?.dropped_reported ? formatNumber(telemetry.value.coverage.dropped_reported) + ' reported dropped events; counts are lower bounds.' : 'No drops reported by adapters.' },
+            { label: 'Task identifiers', value: telemetry.value.coverage ? (telemetry.value.coverage.task_ids_present ? 'Present' : 'Absent') : 'Unknown', detail: 'Without task IDs, task-level success and episode rates remain Unknown.' },
+            { label: 'Detail', value: 'Usage & quality', href: ctx.href('usage', { window: ctx.params.get('window') || null }) },
+          ]} />
+          <p className={styles.help}>These cards help an owner decide whether the integration is producing usable evidence. They do not certify that a model followed a skill or that a successful task was caused by retrieval.</p>
+        </Panel>
+      </>}
+    </> : tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
       {owner && <>
         {audit.phase === 'loading' && <RouteState state="loading" title="Reading audit entries" description="Waiting for the audit log of this organization." />}
         {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}
@@ -686,7 +988,15 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
           </>
           : <RouteState state="empty" title="No audit entries yet" description="No action has been recorded for this organization yet." />)}
       </>}
-    </Panel> : tab === 'members' ? <div className={styles.asideColumns}>
+    </Panel> : tab === 'members' ? <>
+      <Panel title="Your profile" eyebrow="Account" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+        <form className={styles.memberForm} onSubmit={saveProfile}>
+          <Field id="profile-name" label="Display name" hint="Your e-mail and provider identities remain managed by the identity provider."><Input id="profile-name" className={inputClass} value={profileName} onChange={event => setProfileName(event.target.value)} maxLength={120} required /></Field>
+          <ActionButton type="submit" tone="human" disabled={busy}>Save profile</ActionButton>
+        </form>
+        {profileStatus && <p className={styles.feedback} role="status">{profileStatus}</p>}
+      </Panel>
+      <div className={styles.asideColumns}>
       <Panel title="Members" eyebrow="Organization access" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
         {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the membership list." />}
         {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
@@ -709,6 +1019,26 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </div>)}
         {linkStatus && <p className={styles.feedback} role="alert">{linkStatus}</p>}
       </Panel>
+      <Panel title="Teams" eyebrow="Grouping only" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+        <p className={styles.help}>Teams organize work for this organization. Team membership does not grant access.</p>
+        {owner && <form className={styles.memberForm} onSubmit={createTeam}>
+          <Field id="team-name" label="Team name"><Input id="team-name" className={inputClass} value={teamName} onChange={event => setTeamName(event.target.value)} maxLength={80} required /></Field>
+          <ActionButton type="submit" tone="human" disabled={busy}>Create team</ActionButton>
+        </form>}
+        {teams.phase === 'loading' && <RouteState state="loading" title="Reading teams" description="Waiting for the organization teams." />}
+        {teams.phase === 'error' && teams.error && <ApiFailure error={teams.error} onRetry={teams.reload} retryLabel="Retry teams" />}
+        {teams.phase === 'ready' && teams.value && <div className={styles.stack}>
+          {owner && members.value && members.value.length > 0 && <div className={styles.memberForm}>
+            <Field id="team-member" label="Add member to a team"><select id="team-member" className={selectClass} value={teamMemberId} onChange={event => setTeamMemberId(event.target.value)}><option value="">Choose a member</option>{members.value.map(member => <option key={member.user_id} value={member.user_id}>{member.email}</option>)}</select></Field>
+          </div>}
+          {teams.value.length === 0 ? <p className={styles.help}>No teams yet.</p> : teams.value.map(team => <div key={team.team_id} className={styles.notice}>
+            <strong>{team.name}</strong>
+            {owner && <ActionButton size="sm" disabled={!teamMemberId || busy} onClick={() => { void addMemberToTeam(team); }}>Add selected member</ActionButton>}
+            {team.members.length ? <span>{team.members.map(member => <span key={member.user_id} className={styles.linkHint}>{member.email}{owner && <ActionButton size="sm" onClick={() => { void removeMemberFromTeam(team, member.user_id); }} disabled={busy}>Remove</ActionButton>}</span>)}</span> : <span className={styles.linkHint}>No members</span>}
+          </div>)}
+        </div>}
+        {teamStatus && <p className={styles.feedback} role="status">{teamStatus}</p>}
+      </Panel>
       <Panel title="Invite a member" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
         <form className={styles.memberForm} onSubmit={invite}>
           <Field id="invite-email" label="E-mail address" hint="The invitation link is returned once and is not stored here." error={inviteError || undefined}><Input id="invite-email" name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setInviteError(''); }} required maxLength={200} disabled={!owner} aria-invalid={Boolean(inviteError)} className={inputClass} /></Field>
@@ -717,7 +1047,23 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </form>
         {acceptUrl && <ShownOnce title="Invitation link" label="Invitation accept URL" value={acceptUrl} note="Send this link to the invited person. It is not shown again and is not stored in this browser." />}
       </Panel>
-    </div> : <>
+      {owner && <Panel title="Invitation lifecycle" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
+        {invitations.phase === 'loading' && <RouteState state="loading" title="Reading invitations" description="Waiting for pending and completed invitation links." />}
+        {invitations.phase === 'error' && invitations.error && <ApiFailure error={invitations.error} onRetry={invitations.reload} retryLabel="Retry invitations" />}
+        {invitations.phase === 'ready' && invitations.value && (invitations.value.length
+          ? <DataTable flush caption="Invitation lifecycle" headings={['Address', 'Role', 'Status', 'Expires', 'Action']}>
+            {invitations.value.map(invitation => <tr key={invitation.invitation_id}>
+              <th scope="row" className={styles.pathCell}>{invitation.email}</th>
+              <td>{invitation.role}</td>
+              <td><StateBadge tone={invitation.status === 'pending' ? 'human' : invitation.status === 'revoked' ? 'warning' : 'neutral'}>{invitation.status}</StateBadge></td>
+              <td>{invitation.expires_at}</td>
+              <td><ActionButton size="sm" disabled={invitation.status !== 'pending' || busy} onClick={() => { void revokeInvitation(invitation); }}>Revoke</ActionButton></td>
+            </tr>)}
+          </DataTable>
+          : <RouteState state="empty" title="No invitations yet" description="Created links will appear here without exposing their capability token." />)}
+      </Panel>}
+      </div>
+    </> : <>
       {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<KeyIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Pending</StateBadge>}>
         <div className={styles.shownOnce}>
           <IconTile icon={<KeyIcon weight="duotone" />} size="lg" tone="human" />
@@ -752,6 +1098,15 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </div>
       </Panel>
       <div className={styles.asideColumns}>
+        {owner && <Panel title="GitHub App installations" eyebrow="Source connection" icon={<GithubLogoIcon weight="regular" aria-hidden="true" />}>
+          {githubInstallations.phase === 'loading' && <RouteState state="loading" title="Reading GitHub installations" description="Waiting for the source connections for this organization." />}
+          {githubInstallations.phase === 'error' && githubInstallations.error && <ApiFailure error={githubInstallations.error} onRetry={githubInstallations.reload} retryLabel="Retry GitHub installations" />}
+          {githubInstallations.phase === 'ready' && (githubInstallations.value?.length
+            ? <DataTable flush caption="GitHub App installations" headings={['Account', 'Repositories', 'Status', 'Action']}>
+              {githubInstallations.value.map(entry => <tr key={entry.installation_id}><th scope="row">{entry.account}<span className={styles.linkHint}>Installation {entry.installation_id}</span></th><td>{entry.repositories.length ? entry.repositories.map(repo => repo.full_name).join(', ') : 'No repository list received'}</td><td><StateBadge tone={entry.suspended ? 'warning' : 'system'}>{entry.suspended ? 'suspended' : 'active'}</StateBadge></td><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeGitHubInstallation(entry); }}>Remove</ActionButton></td></tr>)}
+            </DataTable>
+            : <RouteState state="empty" title="No GitHub App installation" description="Install the Guidefold GitHub App for an organization before choosing repositories. The CLI remains available as a fallback." />)}
+        </Panel>}
         <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimpleIcon weight="regular" aria-hidden="true" />}>
           {installations.phase === 'loading' && <RouteState state="loading" title="Reading installations" description="Waiting for the installation list." />}
           {installations.phase === 'error' && installations.error && <ApiFailure error={installations.error} onRetry={installations.reload} retryLabel="Retry the installation list" />}

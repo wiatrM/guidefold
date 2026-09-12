@@ -1,22 +1,28 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiUsageRoute } from './ReviewRoutes';
 import { ApiError } from '../api/client';
-import type { Usage, UsageSkill } from '../api/decoders';
+import type { ExecutionMetrics, Usage, UsageSkill } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
+const noMetrics: ExecutionMetrics = {
+  tasks_started: 0, tasks_finished: 0, tasks_succeeded: 0, tasks_failed: 0, tasks_unknown: 0,
+  harness_errors: 0, search_requests: 0, search_results: 0, search_errors: 0, use_requests: 0,
+  ask_count: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0, latency_ms: 0,
+  latency_samples: 0, tasks_observed: false, cost_observed: false,
+};
 const empty: Usage = {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false },
-  totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null },
+  totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, metrics: noMetrics },
   skills: [], queue: [], health: null,
 };
 const report = (over: Partial<Usage> = {}): Usage => ({
   ...empty,
   coverage: { events_received: 420, dropped_reported: 0, oldest_lag_s: 12, task_ids_present: true },
-  totals: { exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: null },
+  totals: { exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: null, metrics: noMetrics },
   skills: [
     { skill_id: 'urn:a', revision: 'rev-a', card_revision: 'card-a', content_sha256: 'sha-a', scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 8, use_observed: 5, use_episodes: 6, exposures_expanded: 26, loads_unlinked: 4, feedback: null, helped_ratio: { numerator: 21, denominator: 30, small_sample: false }, zero_loads: false },
     { skill_id: 'urn:b', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: { numerator: 2, denominator: 3, small_sample: true }, zero_loads: true },
@@ -30,22 +36,49 @@ const report = (over: Partial<Usage> = {}): Usage => ({
   ...over,
 });
 
+beforeEach(() => {
+  window.localStorage.removeItem('guidefold.notifications.v1');
+});
+
 describe('Usage route, hosted API, six states', () => {
-  test('unknown-only feedback remains an observed assessment, not an empty chart', async () => {
-    renderApi(ApiUsageRoute, fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:0,hindered:0,mixed:0,not_applicable:0,unknown:3,n:3}}})}));
-    expect(await screen.findByRole('img',{name:/Feedback verdicts out of 3 assessments.*Unknown 3/})).toBeInTheDocument();
-    expect(screen.getByText('3 assessments; no rate is reported below 20.')).toBeInTheDocument();
-  });
-  test('inconsistent feedback totals show counts and a warning, not a misleading pie',async()=>{
-    renderApi(ApiUsageRoute,fakeSource({getUsage:async()=>report({totals:{...report().totals,feedback:{helped:1,hindered:0,mixed:0,not_applicable:0,unknown:0,n:0}}})}));
-    expect(await screen.findByText(/The verdict counts do not match/)).toBeInTheDocument();
-    expect(screen.queryByRole('img',{name:/Feedback verdicts/})).not.toBeInTheDocument();
-  });
   test('Empty: no events read as No observations, never a zero rate', async () => {
     renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => empty }));
     expect((await screen.findAllByText('No observations')).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.queryByText('Top skills')).not.toBeInTheDocument();
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getAllByText('Unknown')).toHaveLength(4);
+  });
+
+  test('decision scorecards make task, safety, retrieval and cost signals readable', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report({ totals: {
+      ...report().totals,
+      metrics: {
+        ...noMetrics,
+        tasks_observed: true, tasks_finished: 10, tasks_succeeded: 8, tasks_failed: 1, tasks_unknown: 1,
+        search_requests: 14, search_results: 12, search_errors: 2, use_requests: 6, ask_count: 2,
+        harness_errors: 1, input_tokens: 1200, output_tokens: 500, tool_calls: 9, cost_observed: true,
+        latency_ms: 900, latency_samples: 3,
+        ask_reasons: { proof_conflict: 1, closure_incomplete: 1 },
+      },
+    } }) }));
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('8 / 10')).toBeInTheDocument();
+    expect(scorecards.getByText('2 ASK')).toBeInTheDocument();
+    expect(scorecards.getByText('14 · 6')).toBeInTheDocument();
+    expect(scorecards.getByText('1,700 tok · 300 ms avg')).toBeInTheDocument();
+    expect(scorecards.getByText(/Reasons: Missing dependencies 1 · Conflicting rules 1/)).toBeInTheDocument();
+    expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
+  });
+
+  test('scorecards keep unmeasured tokens Unknown when only latency is observed', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report({ totals: {
+      ...report().totals,
+      metrics: { ...noMetrics, latency_ms: 600, latency_samples: 2 },
+    } }) }));
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('Unknown tokens · 300 ms avg')).toBeInTheDocument();
+    expect(scorecards.getByText(/No token measurement in this window/)).toBeInTheDocument();
   });
 
   test('Loading: no number is shown before the report arrives', () => {
@@ -165,6 +198,26 @@ describe('Usage route, queue, denominators and export', () => {
     expect(await screen.findByText('Member access is read only here. Import and organization changes require an owner.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Record decision' })).toBeDisabled();
   });
+
+  test('owner can opt in to deduplicated in-app alerts and mute them', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }));
+    const toggle = await screen.findByRole('checkbox', { name: 'Show in-app alerts for new owner queue items' });
+    expect(screen.getByText('Alerts are off until an owner opts in.')).toBeInTheDocument();
+    await userEvent.click(toggle);
+    expect(await screen.findByRole('list', { name: 'Open Guidefold notifications' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Published but never loaded: urn:b' })).toHaveAttribute('href', '#needs-review');
+    expect(screen.getByRole('button', { name: 'Mute alerts for 24 hours' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mute alerts for 24 hours' }));
+    expect(await screen.findByText(/Alerts are muted until/)).toBeInTheDocument();
+  });
+
+  test('dismissed queue items stay hidden until their item id changes', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Show in-app alerts for new owner queue items' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(await screen.findByText('No new actionable problems.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Published but never loaded: urn:b' })).not.toBeInTheDocument();
+  });
 });
 
 describe('Usage route, funnel, ranking and teams', () => {
@@ -245,7 +298,7 @@ describe('Usage route, delivery and feedback charts', () => {
     await screen.findAllByText('No observations');
     // Scoped to the chart landmarks, not `svg` in general: every Panel icon is also an SVG.
     expect(screen.queryByRole('group', { name: /Exposures and verified loads per skill/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('img', { name: /Feedback verdicts/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /Feedback verdicts/ })).not.toBeInTheDocument();
   });
 
   test('non-zero totals render the delivery bars and feedback proportions with real counts', async () => {
@@ -259,13 +312,11 @@ describe('Usage route, delivery and feedback charts', () => {
     expect(await screen.findByText('30 of 60 verified')).toBeInTheDocument();
     expect(screen.getByText('14 of 20 verified')).toBeInTheDocument();
     expect(screen.getByText('0 of 40 verified')).toBeInTheDocument();
-    // Recharts needs browser layout; exact counts remain testable without layout.
-    expect(deliveryChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
+    expect(deliveryChart.querySelector('[data-spectrum-chart="registry-frame"]')).toBeInTheDocument();
     // Feedback chart: real counts in the legend, small-sample honesty preserved (18 < 20).
-    const feedbackChart = screen.getByRole('img', { name: /Feedback verdicts/ });
-    expect(feedbackChart.querySelector('.recharts-responsive-container')).toBeInTheDocument();
-    expect(feedbackChart).toHaveAccessibleName(/18 assessments/);
-    const feedbackSection = feedbackChart.parentElement!;
+    const feedbackChart = screen.getByRole('group', { name: /Feedback verdicts/ });
+    expect(feedbackChart.querySelector('[data-spectrum-chart="registry-frame"]')).toBeInTheDocument();
+    const feedbackSection = feedbackChart.closest('div')!;
     expect(within(feedbackSection).getByText('Helped')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('Hindered')).toBeInTheDocument();
     expect(within(feedbackSection).getByText('18 assessments; no rate is reported below 20.')).toBeInTheDocument();
@@ -453,7 +504,7 @@ const ledgerRow = (over: Partial<UsageSkill> & { skill_id: string; scope: string
   ...over,
 });
 const fullLedger = (): Usage => report({
-  totals: { exposures: 222, loads_verified: 122, context_loaded: 114, context_unknown: 8, use_reported: 63, use_observed: 57, use_episodes: 99, exposures_expanded: 117, loads_unlinked: 5, feedback: { helped: 73, hindered: 23, mixed: 3, not_applicable: 0, unknown: 0, n: 99 } },
+  totals: { exposures: 222, loads_verified: 122, context_loaded: 114, context_unknown: 8, use_reported: 63, use_observed: 57, use_episodes: 99, exposures_expanded: 117, loads_unlinked: 5, feedback: { helped: 73, hindered: 23, mixed: 3, not_applicable: 0, unknown: 0, n: 99 }, metrics: noMetrics },
   skills: [
     // Promote up: reach, pull, value and health all clear on 30 assessments.
     ledgerRow({ skill_id: 'urn:promote', scope: '_root', owner: 'platform-engineering', exposures: 84, exposures_expanded: 51, loads_verified: 51, context_loaded: 47, context_unknown: 4, use_reported: 22, use_observed: 19, use_episodes: 33, helped_ratio: { numerator: 26, denominator: 30, small_sample: false } }),

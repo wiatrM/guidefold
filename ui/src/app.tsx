@@ -15,7 +15,9 @@ import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiHomeRoute=lazy(()=>import('./routes/HomeRoute').then(m=>({default:m.ApiHomeRoute})));
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
+const ApiInvitationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiInvitationRoute})));
 const ApiOrganizationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiOrganizationRoute})));
+const DemoRoute=lazy(()=>import('./routes/DemoRoute').then(m=>({default:m.DemoRoute})));
 const ApiLibraryRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiLibraryRoute})));
 const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiMapRoute})));
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
@@ -106,6 +108,7 @@ function ApiApp({source}:{source:DataSource}){
  const view=views.includes(name as View)?name as View:'home';
  const requestedOrg=params.get('org'),repo=params.get('repo');
  const me=access.me;
+ const invitationToken=location.pathname.match(/^\/invitations\/([^/]+)\/accept\/?$/)?.[1] ?? null;
  const membership=me?(requestedOrg?me.orgs.find(o=>o.slug===requestedOrg||o.org_id===requestedOrg)??null:me.orgs[0]??null):null;
  const foreign=Boolean(requestedOrg&&me&&!membership);
  const org=membership?.slug??null;
@@ -117,11 +120,30 @@ function ApiApp({source}:{source:DataSource}){
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // An invitation link must render for a visitor who has no session yet, so it is checked before
+ // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
+ if(invitationToken)return <Shell view="import" href={href}
+  railContext="Invitation"
+  workspace="Invitation" repo={null} masked={false}
+  account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role="Member" profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/import?step=login',{replace:true});}}/>:<Link className={css.signInLink} to={href('import',{step:'login'})}>Sign in</Link>}
+  pageFoot="Invitation links are one-time capabilities. Membership changes are confirmed by the API.">
+  <RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading invitation" description="Preparing the invitation screen."/>}><ApiInvitationRoute
+   source={source} access={access} me={me} token={decodeURIComponent(invitationToken)} onRecheck={() => controller?.check(true) ?? Promise.resolve()}
+   onAccepted={orgID => navigate('/import?step=organization&org=' + encodeURIComponent(orgID))}/></Suspense></RouteErrorBoundary>
+ </Shell>;
  // A session that does not exist is not a view state: every management route is private, so the
  // request leaves the shell for the full-width login page carrying where it was going (IA 3,
  // "Login jest stanem wejscia"). Import used to keep its own inline sign-in step; it does not.
  // A 403 on a resource is the opposite case and must NOT redirect: the session is live, so the
  // login page would send the operator straight back to the forbidden address and round again.
+ // `denied` (an actual 401/403 on /me) is the only settled "no session" result access.ts ever
+ // reports; access.ts's own contract keeps the session on a bare network failure ("A network
+ // failure without a denial keeps the session but never reveals unconfirmed data"), and `offline`
+ // is exactly that ambiguous case — a lapsed reconfirmation and a request that never had a
+ // session look identical to this controller (fresh mount, `me` null either way) until /me
+ // actually answers. So only `denied` may leave the shell for /login; `offline` falls through to
+ // the masked "Access not reconfirmed" state below like any other unconfirmed status, on every
+ // view including Import (IA §6; e2e/states.spec.ts "degraded" exercises exactly this).
  if(access.status==='denied'&&access.denial!=='forbidden')return <Navigate to={loginHref(location.pathname+location.search)} replace/>;
  if(!views.includes(name as View))return <Navigate to="/home" replace/>;
  const masked=foreign||access.status!=='confirmed';
@@ -147,6 +169,9 @@ function ApiApp({source}:{source:DataSource}){
  {access.status==='denied'?<RouteState state="restricted" title="Not available to your account" description="This organization or repository refused the request while you are signed in. Nothing about its content is shown, and cached data and drafts for it were dropped. Your account itself is unchanged." action={<><ActionButton onClick={()=>{controller?.reset();navigate(ownHref,{replace:true});}}>{me?.orgs.length?'Open your organization':'Choose an organization'}</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
  :foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<><ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
  :access.status==='checking'?<RouteState state="loading" title="Confirming access" description="Checking membership before anything is shown."/>
+ // `offline` lands here too, whether it is a lapsed reconfirmation or a first check that failed
+ // before ever confirming anything: the manual re-check offered here is the only way forward
+ // either way, never a redirect (see the `denied` branch above).
  :access.status!=='confirmed'?<RouteState state="restricted" title="Access not reconfirmed" description="Membership was last confirmed more than 45 seconds ago, so organization data stays hidden. This is not a statement about your permissions." action={<ActionButton onClick={()=>{void controller?.check(true);}}>Check access now</ActionButton>}/>
  // Keyed by organisation and repository: a switch remounts the view, so no row, tree branch or
  // filter prepared for the previous organisation survives into the next one.
@@ -176,5 +201,9 @@ export default function App({source}:{source:DataSource}){
  const path=location.pathname.replace(/^\//,'').replace(/\/$/,'');
  if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
  if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
+ // Its own top-level branch, not a check inside ApiApp: ApiApp calls useAccess/useAccessController
+ // and other hooks unconditionally, and an early return above those would change the Hook order
+ // between /demo and every other address for what React treats as the same component instance.
+ if(path==='demo')return <><Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }

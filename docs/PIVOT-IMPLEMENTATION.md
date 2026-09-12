@@ -5,7 +5,7 @@ co jest zaimplementowane i przetestowane w kodzie na dany dzień; nie zastępuje
 ani backlogu i sam w sobie nie jest dowodem pilota (R/Q, nie P — patrz
 [eval-evidence-rules](../.agents/skills/eval-evidence-rules/SKILL.md)).
 
-**Status: implementacja w toku, niecommitowana. Data: 2026-09-08 (trzecia aktualizacja: real-repo
+**Status: implementacja w toku, niecommitowana. Data: 2026-09-09 (czwarta aktualizacja: real-repo
 test poza fixture Meridian znalazł i tej samej sesji naprawił realny defekt, ACC 41/41 bez fail).**
 Cel: jeden przegląd stanu historii P01–P15 wobec kodu, testów i kontraktu, żeby decyzje przed
 pilotem (§h) nie wymagały ponownego przeszukiwania repozytorium.
@@ -43,8 +43,8 @@ jest w kolumnie Uwaga.
 | P07 | `internal/review` (`approve.go`, `export.go`) | UT/API, UI (`ProposalsRoute.test.tsx`) | zaimplementowano + testy | brak |
 | P08 | `internal/review` (kind `consolidation` grupowany po scope nadrzędnym, `consolidation_sources_insufficient`, `profile: one_shot`), `internal/review/generator` (`layer.go`: wnioskowanie `knowledge_layer` — 5 reguł, `origin: inferred`, nadpisywalne przez ownera na `origin: human`; `refines` w obu kierunkach), `internal/graph` (acykliczność), `family12.go` (addytywne `family` w 1.2, dowiedziony bit-identyczny ranking), CLI `guidefold extract --all [--personal ...]` (jedna komenda „scan → import → plan one_shot → generate wszystkich rodzajów") | UT (`generator/consolidation_test.go` na zaplantowanym fixture — dwa runbooki ze wspólną procedurą + jeden językowo podobny, poprawnie odrzucony jako `contradictory_steps`; `review/oneshot_test.go`, `review/p08_test.go`, `family12_test.go`), ACC (`test_p08_pyramid.py`, przechodzi na żywym stosie: 30 grup w trybie one-shot vs 15 domyślnie, jeden wspólny element z `derived_from`/`refines` do obu źródeł), UI (Map → Pyramid: pasma Abstract/Task/Atomic zamiast płaskiej listy, rodzic przez `refines` pokazany inline, rozwijalne „N specjalizacji") | zaimplementowano + testy | UI nie czyta jeszcze addytywnego pola `family` z odpowiedzi 1.2 (to pole służy agentom/adapterom, nie przeglądarce — Map/Pyramid już renderuje ten sam graf przez `/map/layers` i `/map/relations`, więc funkcjonalnie równoważne); real-repo (`wshobson/agents`, 183 skille, poza fixture Meridian, 2026-09-08 §h) potwierdził propagację hierarchii i uruchomienie mechanizmu konsolidacji na żywo, ale det-1 abstynował na wszystkich grupach (`too_few_procedures`) — ten korpus jest dokumentacją referencyjną, nie runbookami, więc to trafny werdykt generatora, nie luka; `GET /health/ready` ogłasza `"1.2"` od 2026-09-08 (naprawione tej sesji) |
 | P09 | `internal/review` (`publication.go`, snapshot), bramka 3: `publisher.go`, `publication_test.go`; opt-in source-proof delivery: `services/search/proof_gate.go`, USE 1.2 `delivery_policy`, CLI `load --delivery-policy proof_gated` | UT/API, UI (aktywacja z powodem w Proposals), CLI transport (`test_service_backend.py`), independent contract replay (`research/proof-gated-delivery-2026-09-09`) | zaimplementowano + kontrakt/schema replay + publisher binding placeholderów + fetch i weryfikacja blobów źródłowych | proof gate proves source binding, source-byte availability and safe `ASK` on synthetic mutations; it does not prove claim truth, execution or user value; targeted Go proof tests pass, while the full suite has one pre-existing stale BM25F fixture failure |
-| P10 | CLI `install`/`uninstall`, dwa harnessy (Claude Code, Copilot CLI) | UT (`test_pivot_cli_install.py`) | zaimplementowano + testy | poza zasięgiem tej sesji: realne sesje harnessów na repo partnera (ACT-01 live) |
-| P11 | `internal/usage` (`export.go`, `health.go`, `queue.go`) | UT/API, UI (`UsageRoute.test.tsx`) | zaimplementowano + testy | brak |
+| P10 | CLI `install`/`uninstall`, trzy harnessy (Claude Code, Copilot CLI, Gemini CLI) | UT (`test_pivot_cli_install.py`) | zaimplementowano + testy | poza zasięgiem tej sesji: realne sesje harnessów na repo partnera (ACT-01 live) |
+| P11 | `internal/usage` (`export.go`, `health.go`, `queue.go`) oraz `ExecutionMetrics` (task success, harness errors, SEARCH/USE/ASK, tokeny, czas) | UT/API, UI (`UsageRoute.test.tsx`) | zaimplementowano + testy | brak |
 | P12 | CLI `guidefold report`/`validate` (sprzed pivotu, współdzielone) | UT (`test_report.py`) | zaimplementowano + testy (mechanizm) | dowód „10 realnych PR-ów" to dowód pilota, niezmierzony |
 | P13 | `importer/drift_test.go` (`source_changed`/`source_removed`), `usage` (`negative_feedback`/`zero_loads`), `gfm.owner_queue` | UT/API, ACC (`test_act01_end_to_end.py`, U1.5/U9 partial-scan-never-implies-removal, pass 2026-09-08) | zaimplementowano + testy | 2026-09-08: znaleziono i naprawiono realny false-positive w "brak false deletion przy partial" — nie w drifcie samym (poprawny), lecz w `candidatePath()` generatora (§b P08, §i) wypychającym ekstrahowany skill pod złą ścieżkę, którą importer poprawnie (dla siebie) czytał jako inną tożsamość i archiwizował starą |
 | P14 | `internal/knowledge` (strona modułu) | UT/API | częściowo | scenariusz „5 zadań, potwierdzone ponowne użycie" to dowód pilota, poza zasięgiem tej sesji |
@@ -78,6 +78,7 @@ jest w kolumnie Uwaga.
 | `proposals list`/`show`/`apply` (walidacja ścieżki eksportu przeciw path traversal) | `tests/test_pivot_cli_import.py` |
 | `doctor` (rozszerzenie sieciowe) | `tests/test_doctor.py` |
 | `report --base <ref>` (P12, deterministyczny diff skilli w CI; błędy struktury blokują, kolizje triggerów ostrzegają, przykłady retrievalu nigdy nie blokują) | `tests/test_report.py` (20) |
+| `procedure <SKILL.md> [--run]` (S20, kontrakt wejść/wyjść/warunków/kroków/weryfikacji i jawny lokalny verifier) | `tests/test_procedure.py` |
 | `extract [--all] [--personal claude,codex,copilot]` (P08 one-shot: scan → import → plan `profile=one_shot` → generate wszystkich rodzajów; `--personal` wymusza `publish:false`) | `tests/test_pivot_cli_extract.py` (21) |
 
 ## e) UI: tryby i siedem widoków
@@ -91,6 +92,15 @@ Usage & quality, Organization) ma testy Vitest i jest pokryte przez `ui/e2e/api-
 `AccessController` (`ui/src/api/access.ts`, `/me` co najwyżej co 25 s, maskowanie po 45 s,
 timeout 5 s), zgodnie z opisem w [ui/README](../ui/README.md).
 
+Usage & quality zawiera także opt-inowy panel powiadomień właściciela: alerty są deduplikowane po
+`owner_queue.item_id`, można je wyciszyć na 24 godziny lub odrzucić lokalnie, a każdy alert prowadzi
+do istniejącej kolejki decyzji; nie ma automatycznej akceptacji ani publikacji.
+
+Na początku widoku Usage & quality znajduje się panel **Decision scorecards**. Cztery karty pokazują
+obserwowany sukces zadań, liczbę zatrzymań `ASK` i błędów harnessu, przepływ `SEARCH → USE` oraz
+tokeny i średnie opóźnienie. Karty są kierunkowymi sygnałami dla organizacji; brak danych jest
+wyświetlany jako `Unknown`, nigdy jako zero.
+
 „Playwright live" (prawdziwa przeglądarka wobec działającego Go API + Postgres) **istnieje i
 przechodzi**: `ui/playwright.live.config.ts` + `ui/e2e/live/*.spec.ts` (`pnpm test:e2e:live`,
 25/25) uruchamiają przeglądarkę przez `pnpm dev` z proxy `/api`+`/v1` → `127.0.0.1:8765`
@@ -101,11 +111,11 @@ odwołania członkostwa działa natychmiast na API (0,02 s), UI maskuje dane po 
 (25,4 s — cykl 25 s, nie SLA).
 
 Po sesji audytu UX (2026-09-07, patrz niżej) trzy niezależne przebiegi naprawcze objęły
-Import/Organization, Map/Usage & quality (w tym prawdziwe wykresy SVG ekspozycji/ładowań i
+Import/Organization, Map/Usage & quality (w tym prawdziwe komponenty Spectrum Charts dla ekspozycji/ładowań i
 rozkładu ocen, renderowane wyłącznie przy niezerowych danych) i Library/Skill/Proposals — 23
 zweryfikowane znaleziska źródłowe (interaktywność, grupowanie, progresywne ujawnianie,
-odkrywalność), wszystkie naprawione. Stan po naprawach: `pnpm test` 260/260, `pnpm test:contracts`
-0 diagnostyk, `pnpm test:e2e` 30/30 (fixture), `pnpm test:e2e:live` 25/25 (API na żywo).
+odkrywalność), wszystkie naprawione. Stan po naprawach: `pnpm test` 297/297, `pnpm test:contracts`
+0 diagnostyk, `pnpm test:e2e` 33/33 (fixture), `pnpm test:e2e:live` 25/25 (API na żywo).
 
 ## f) Kontrakt
 

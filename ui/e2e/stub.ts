@@ -116,7 +116,17 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
 } : {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 210, dropped_reported: scenario === 'partial' ? 9 : 0, oldest_lag_s: 4, task_ids_present: true },
-  totals: { exposures: 40, loads_verified: 18, context_loaded: 16, context_unknown: 2, use_reported: 5, use_observed: 3, use_episodes: 4, feedback: null },
+  totals: {
+    exposures: 40, loads_verified: 18, context_loaded: 16, context_unknown: 2,
+    use_reported: 5, use_observed: 3, use_episodes: 4,
+    feedback: { helped: 12, hindered: 4, mixed: 2, not_applicable: 0, unknown: 1, n: 19 },
+    metrics: {
+      tasks_started: 8, tasks_finished: 8, tasks_succeeded: 6, tasks_failed: 1, tasks_unknown: 1,
+      harness_errors: 1, search_requests: 14, search_results: 42, search_errors: 1,
+      use_requests: 9, ask_count: 2, input_tokens: 1200, output_tokens: 500, tool_calls: 18,
+      latency_ms: 2400, latency_samples: 8, tasks_observed: true, cost_observed: true,
+    },
+  },
   skills: [
     { skill_id: chosen.id, revision: chosen.revision, exposures: 12, loads_verified: 6, context_loaded: 6, use_reported: 2, use_observed: 1, feedback: null, helped_ratio: { numerator: 2, denominator: 4, small_sample: true }, zero_loads: false },
     { skill_id: skills[1].id, revision: skills[1].revision, exposures: 8, loads_verified: 0, context_loaded: 0, use_reported: 0, use_observed: 0, feedback: null, helped_ratio: null, zero_loads: true },
@@ -369,6 +379,9 @@ export async function enter(page: Page, target: Locator) {
 
 export async function axeViolations(page: Page) {
   await page.evaluate(() => document.fonts.ready);
+  // Route headings animate in on every hosted view. Let the first paint settle
+  // before axe samples contrast, otherwise it can inspect a transparent frame.
+  await page.waitForTimeout(250);
   await page.addScriptTag({ path: path.resolve('node_modules/axe-core/axe.min.js') });
   return page.evaluate(async () => {
     const result = await (window as unknown as { axe: { run: (root: Document, options: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } })

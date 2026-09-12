@@ -21,8 +21,13 @@ func (s *Service) handleListRepos(c *mgmt.Context) error {
 	if e != nil {
 		return e
 	}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT repo_id,name,git_host_url,created_at
- FROM gfm.repos WHERE org_id=$1::uuid ORDER BY repo_id`, org.ID)
+	rows, err := s.pool.Query(c.Ctx(), `SELECT r.repo_id,r.name,r.git_host_url,r.created_at
+ FROM gfm.repos r WHERE r.org_id=$1::uuid
+   AND ($2='owner'
+     OR (NOT EXISTS(SELECT 1 FROM gfm.repo_acl_policies p WHERE p.org_id=r.org_id AND p.repo_id=r.repo_id AND p.enabled)
+         AND NOT EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id))
+     OR EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id AND m.user_id=$3::uuid))
+ ORDER BY r.repo_id`, org.ID, org.Role, c.Principal.UserID)
 	if err != nil {
 		return mgmt.Internal(err)
 	}

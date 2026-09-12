@@ -30,6 +30,29 @@ Owner instruction, 2026-09-09: **migrate ALL existing telemetry visualizations a
 
 Owner instruction, 2026-09-12: **the management UI (every route after sign-in) is built on shadcn/ui primitives** (`ui/src/components/ui/*`, base-nova style on Base UI, installed with the pinned `pnpm exec shadcn`), composed through the public components in `ui/src/components/*` and Spectrum items where they fit. Every view leads with a large `IconTile`; the console follows the quickstart clarity of a documentation site, not a dense admin table. Values still come only from `ui/src/tokens/tokens.css` (shadcn semantic tokens are references into the Industrial Surveyor palette; `ui/src/registry.css` maps them into Tailwind). This lifts the earlier "no component library" rule for `ui/`; security, accessibility, honesty of states and the data boundary stay binding. Record: [docs/reports/ui/console-shadcn-20260912.md](docs/reports/ui/console-shadcn-20260912.md).
 
+## Positioning: what we sell
+
+Owner decision, 2026-09-09. Binding on every piece of marketing copy, the
+landing page, the README intro and any deck. Full version:
+[guidefold-positioning](.agents/skills/guidefold-positioning/SKILL.md).
+
+We do not sell "team rules right where agents work". That is generic and says
+nothing. We sell the problem a large organisation has:
+
+- roughly **30,000 skills** across many repositories and a monorepo, in many
+  folders, every team writing its own,
+- **duplication** of the same rule in several places,
+- no **management**: nobody can see the whole set,
+- **extraction of knowledge into the organisation's pyramid**, from the specific
+  up to the general.
+
+Guidefold solves and automates that: the **search and USE** service, **harness
+integration**, and **automatic CI**.
+
+A reader has five seconds to learn the pain and what we solve. The rest of the
+text is secondary. The landing page runs in one column, hero first; the
+two-column layout was rejected by the owner.
+
 ## Repository layout
 
 | Path | What |

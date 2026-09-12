@@ -12,9 +12,10 @@ import { AccessController } from '../api/access';
 import * as d from '../api/decoders';
 import type {
   AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, ExportPayload, Facets, FacetLookup,
-  ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, Judgment, MapLayers, MapRepository, MapScopes,
-  Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
+  ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
+  Me, Member, ModulePage, Org, Profile, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
+  Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
 } from '../api/decoders';
 import type { Session } from '../domain';
 import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, RelationQuery, SkillQuery, UsageQuery } from './source';
@@ -124,6 +125,9 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
       });
       return { provider, loginUrl: result.login_url };
     },
+    updateProfile(name: string, idempotencyKey: string): Promise<Profile> {
+      return write({ path: '/me/profile', method: 'PATCH', body: { name }, decode: d.profile, resource: 'profile', idempotencyKey });
+    },
 
     // Organizations ---------------------------------------------------------
     listOrgs(): Promise<Org[]> {
@@ -138,8 +142,29 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     listMembers(org: string): Promise<Member[]> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/members', decode: d.memberList, resource: 'members/' + org });
     },
+    listTeams(org: string): Promise<Team[]> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/teams', decode: d.teamList, resource: 'teams/' + org });
+    },
+    createTeam(org: string, name: string, idempotencyKey: string): Promise<Team> {
+      return write({ path: '/orgs/' + encodeURIComponent(org) + '/teams', method: 'POST', body: { name }, decode: d.team, resource: 'create-team/' + org + '/' + name, idempotencyKey });
+    },
+    async addTeamMember(org: string, teamId: string, userId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: '/orgs/' + encodeURIComponent(org) + '/teams/' + encodeURIComponent(teamId) + '/members/' + encodeURIComponent(userId), method: 'PUT', decode: d.ok, resource: 'team-member/' + org + '/' + teamId + '/' + userId, idempotencyKey });
+    },
+    async removeTeamMember(org: string, teamId: string, userId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: '/orgs/' + encodeURIComponent(org) + '/teams/' + encodeURIComponent(teamId) + '/members/' + encodeURIComponent(userId), method: 'DELETE', decode: d.ok, resource: 'team-member/' + org + '/' + teamId + '/' + userId, idempotencyKey });
+    },
     inviteMember(org: string, input: { email: string; role: Role }, idempotencyKey: string): Promise<Invitation> {
       return write({ path: '/orgs/' + encodeURIComponent(org) + '/invitations', method: 'POST', body: input, decode: d.invitation, resource: 'invite/' + org + '/' + input.email, idempotencyKey });
+    },
+    listInvitations(org: string): Promise<InvitationLifecycle[]> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/invitations', decode: d.invitationLifecycleList, resource: 'invitations/' + org });
+    },
+    async revokeInvitation(org: string, invitationId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: '/orgs/' + encodeURIComponent(org) + '/invitations/' + encodeURIComponent(invitationId), method: 'DELETE', decode: d.ok, resource: 'invitation/' + org + '/' + invitationId, idempotencyKey });
+    },
+    acceptInvitation(token: string, idempotencyKey: string): Promise<InvitationAccepted> {
+      return write({ path: '/invitations/' + encodeURIComponent(token) + '/accept', method: 'POST', decode: d.invitationAccepted, resource: 'accept-invitation/' + token, idempotencyKey });
     },
     changeMemberRole(org: string, userId: string, role: Role, idempotencyKey: string): Promise<Member> {
       return write({
@@ -167,6 +192,12 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
         method: 'DELETE', decode: d.nothing, resource: 'installation/' + org + '/' + installationId, idempotencyKey,
       });
     },
+    listGitHubInstallations(org: string): Promise<GitHubInstallation[]> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/github/installations', decode: d.githubInstallationList, resource: 'github-installations/' + org });
+    },
+    async deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void> {
+      await write({ path: '/orgs/' + encodeURIComponent(org) + '/github/installations/' + encodeURIComponent(String(installationId)), method: 'DELETE', decode: d.ok, resource: 'github-installation/' + org + '/' + installationId, idempotencyKey });
+    },
     getAudit(org: string, cursor?: string): Promise<AuditPage> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/audit', query: { cursor }, decode: d.auditPage, resource: 'audit/' + org });
     },
@@ -182,6 +213,24 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
         confirm: async () => (await source.listRepos(org)).find(entry => entry.repo_id === input.repo_id) ?? null,
       });
     },
+    listRepoAccess(t: OrgRepo): Promise<RepoAccess[]> {
+      return read({ path: target(t) + '/access', decode: d.repoAccessList, resource: 'repo-access/' + t.org + '/' + t.repo });
+    },
+    setRepoAccess(t: OrgRepo, userId: string, access: RepoAccessLevel, idempotencyKey: string): Promise<RepoAccess> {
+      return write({ path: target(t) + '/access/' + encodeURIComponent(userId), method: 'PUT', body: { access }, decode: d.repoAccess, resource: 'repo-access/' + t.org + '/' + t.repo + '/' + userId, idempotencyKey });
+    },
+    async removeRepoAccess(t: OrgRepo, userId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: target(t) + '/access/' + encodeURIComponent(userId), method: 'DELETE', decode: d.ok, resource: 'repo-access/' + t.org + '/' + t.repo + '/' + userId, idempotencyKey });
+    },
+    listReviewers(t: OrgRepo): Promise<Reviewer[]> {
+      return read({ path: target(t) + '/reviewers', decode: d.reviewerList, resource: 'repo-reviewers/' + t.org + '/' + t.repo });
+    },
+    async assignReviewer(t: OrgRepo, userId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: target(t) + '/reviewers/' + encodeURIComponent(userId), method: 'PUT', decode: d.ok, resource: 'repo-reviewers/' + t.org + '/' + t.repo + '/' + userId, idempotencyKey });
+    },
+    async removeReviewer(t: OrgRepo, userId: string, idempotencyKey: string): Promise<void> {
+      await write({ path: target(t) + '/reviewers/' + encodeURIComponent(userId), method: 'DELETE', decode: d.ok, resource: 'repo-reviewers/' + t.org + '/' + t.repo + '/' + userId, idempotencyKey });
+    },
     listImports(t: OrgRepo, cursor?: string): Promise<ImportStatus[]> {
       return read({ path: target(t) + '/imports', query: { cursor }, decode: d.importStatusList, resource: 'imports/' + t.org + '/' + t.repo });
     },
@@ -191,6 +240,12 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
         body: { idempotency_key: idempotencyKey, manifest },
         decode: d.importCreated, resource: 'create-import/' + t.org + '/' + t.repo, idempotencyKey,
       });
+    },
+    async uploadImportBlob(t: OrgRepo, importId: string, sha256: string, bytes: Uint8Array): Promise<void> {
+      await write({ path: target(t) + '/imports/' + encodeURIComponent(importId) + '/blobs/' + encodeURIComponent(sha256), method: 'PUT', body: bytes, decode: d.ok, resource: 'blob/' + t.org + '/' + t.repo + '/' + importId + '/' + sha256, contentType: 'application/octet-stream', idempotencyKey: 'blob:' + importId + ':' + sha256 });
+    },
+    finalizeImport(t: OrgRepo, importId: string, idempotencyKey: string): Promise<ImportStatus> {
+      return write({ path: target(t) + '/imports/' + encodeURIComponent(importId) + '/finalize', method: 'POST', body: {}, decode: d.importStatus, resource: 'finalize-import/' + t.org + '/' + t.repo + '/' + importId, idempotencyKey });
     },
     getImport(t: OrgRepo, importId: string): Promise<ImportStatus> {
       return read({ path: target(t) + '/imports/' + encodeURIComponent(importId), decode: d.importStatus, resource: 'import/' + t.org + '/' + t.repo + '/' + importId });

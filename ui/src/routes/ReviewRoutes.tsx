@@ -8,6 +8,7 @@ import {Button} from '@/components/ui/button';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {cn} from '@/lib/utils';
+import {SpectrumTelemetryChart, SpectrumTelemetryStackedBar} from '../components/MetricRow/SpectrumTelemetryChart';
 import {assessSkills, countRecommendations, queueReasonLabels, sortKeys, type Gate, type GateState, type Recommendation, type SkillHealth, type SortKey} from '../domain/skillHealth';
 import {isStale} from '../api/client';
 import {proposalKinds, proposalStates, queueActions} from '../api/decoders';
@@ -15,7 +16,7 @@ import {
   ApiFailure, DegradedNotice, OwnerNote, PartialNotice, RepositoryRequired, asApiError, downloadText,
   formatNumber, readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
-import type {ExportPayload, FeedbackTotals, HelpedRatio, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
+import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
 import type {Params, View} from '../domain';
 import styles from './ReviewRoutes.module.css';
 
@@ -36,9 +37,6 @@ function Disclosure({label, children, contentClassName}: {label: string; childre
     </CollapsibleContent>
   </Collapsible>;
 }
-
-import {BarChart as SpectrumBarChart} from '../components/spectrumui/charts/bar-chart';
-import {PieChart as SpectrumPieChart} from '../components/spectrumui/charts/pie-chart';
 
 // ---------------------------------------------------------------------------
 // Usage · Skill health: gates, recommendation, ranking and a per-skill funnel.
@@ -152,6 +150,9 @@ function ProposalQueue({ctx}: ApiProps) {
   }
   const value = list.value;
   const activeCount = proposalKeys.filter(key => Boolean(at(key))).length;
+  const [selected, setSelected] = useState<string[]>([]);
+  const selectedOnPage = value?.items.filter(item => selected.includes(item.proposal_id)) ?? [];
+  const toggle = (proposalId: string) => setSelected(current => current.includes(proposalId) ? current.filter(id => id !== proposalId) : [...current, proposalId]);
   return <>
     <Panel title="Filters" eyebrow={activeCount ? activeCount + ' active' : 'None active'} icon={<FunnelIcon aria-hidden="true" />} collapsible defaultOpen={activeCount > 0} tone="quiet">
       <form id="proposal-filters" className={styles.filters} onSubmit={applyFilters} key={ctx.params.toString()}>
@@ -169,8 +170,10 @@ function ProposalQueue({ctx}: ApiProps) {
       {list.phase === 'loading' && !value && <RouteState state="loading" title="Reading proposals" description="Waiting for the candidate list of this repository." />}
       {list.phase === 'error' && list.error && !value && <ApiFailure error={list.error} onRetry={list.reload} retryLabel="Retry the queue" />}
       {value && (value.items.length ? <>
-        <DataTable flush caption="Proposals in this repository" headings={['Proposal', 'Kind', 'State', 'Scope', 'Target file']}>
+        {selected.length > 0 && <div className={styles.notice} role="status"><StateBadge tone="system">{selected.length} selected</StateBadge><span>Select candidates to compare their scope, source and generated body together.</span><ActionButton onClick={() => setSelected([])}>Clear selection</ActionButton></div>}
+        <DataTable caption="Proposals in this repository" headings={['Select', 'Proposal', 'Kind', 'State', 'Scope', 'Target file']}>
           {value.items.map(item => <tr key={item.proposal_id}>
+            <td><input type="checkbox" aria-label={'Select proposal ' + item.proposal_id} checked={selected.includes(item.proposal_id)} onChange={() => toggle(item.proposal_id)} /></td>
             <th scope="row" className={styles.pathCell}><Link to={ctx.href('proposals', {proposal: item.proposal_id})}>{item.proposal_id}</Link></th>
             <td><StateBadge>{item.kind}</StateBadge></td>
             <td><StateBadge tone={item.state === 'published' ? 'system' : item.state === 'rejected' ? 'warning' : item.state === 'draft' ? 'human' : 'neutral'}>{item.state}</StateBadge></td>
@@ -183,7 +186,30 @@ function ProposalQueue({ctx}: ApiProps) {
         description="No candidate matches these filters. An absence of candidates is a valid result; the imported sources stay readable."
         action={<ActionButton href={ctx.href('library', {})} tone="system">Browse sources</ActionButton>} />)}
     </Panel>
+    {selectedOnPage.length > 0 && <BatchReviewPanel ctx={ctx} proposalIds={selectedOnPage.map(item => item.proposal_id)} onClear={() => setSelected([])} />}
   </>;
+}
+
+function BatchReviewPanel({ctx, proposalIds, onClear}: ApiProps & {proposalIds: string[]; onClear: () => void}) {
+  const {source, org, repo} = ctx;
+  const details = useAsync<ProposalDetail[]>(
+    () => Promise.all(proposalIds.map(id => source.getProposal({org: org ?? '', repo: repo ?? ''}, id))),
+    'batch-proposals:' + org + '/' + repo + ':' + proposalIds.join(','),
+    Boolean(org && repo && proposalIds.length),
+  );
+  return <Panel title="Compare selected proposals" eyebrow="Batch review" icon={<ListNumbersIcon aria-hidden="true" />} action={<ActionButton onClick={onClear}>Close comparison</ActionButton>}>
+    <p>Differences remain visible per candidate. Open each row to record its own decision and reason; this comparison never approves or rejects automatically.</p>
+    {details.phase === 'loading' && <RouteState state="loading" title="Reading selected proposals" description="Fetching the candidates and their source context." />}
+    {details.phase === 'error' && details.error && <ApiFailure error={details.error} onRetry={details.reload} retryLabel="Retry comparison" />}
+    {details.phase === 'ready' && <DataTable caption="Selected proposal comparison" headings={['Proposal', 'Kind', 'Scope', 'Target file', 'Candidate excerpt', 'Decision']}>
+      {details.value?.map(item => <tr key={item.proposal_id}>
+        <th scope="row"><Link to={ctx.href('proposals', {proposal: item.proposal_id})}>{item.proposal_id}</Link></th>
+        <td>{item.kind}</td><td>{item.scope ?? 'Unknown'}</td><td className={styles.pathCell}><code>{item.candidate.path || 'Unknown'}</code></td>
+        <td><pre className={styles.raw}><code>{item.candidate.body.slice(0, 600)}{item.candidate.body.length > 600 ? '…' : ''}</code></pre></td>
+        <td><StateBadge tone={item.decision ? 'system' : 'neutral'}>{item.decision?.decision ?? 'pending'}</StateBadge></td>
+      </tr>)}
+    </DataTable>}
+  </Panel>;
 }
 
 function ExportPanel({ctx, proposalId, state, onExported}: ApiProps & {proposalId: string; state: string; onExported: () => void}) {
@@ -620,56 +646,103 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
   </tr>;
 }
 
+type NotificationSettings = {enabled: boolean; mutedUntil: number; dismissed: string[]};
+const NOTIFICATION_SETTINGS_KEY = 'guidefold.notifications.v1';
+const attentionReasons = new Set(['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency']);
+
+function readNotificationSettings(): NotificationSettings {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(NOTIFICATION_SETTINGS_KEY) ?? '{}') as Partial<NotificationSettings>;
+    return {enabled: parsed.enabled === true, mutedUntil: typeof parsed.mutedUntil === 'number' ? parsed.mutedUntil : 0,
+      dismissed: Array.isArray(parsed.dismissed) ? parsed.dismissed.filter(item => typeof item === 'string') : []};
+  } catch { return {enabled: false, mutedUntil: 0, dismissed: []}; }
+}
+
+/** S25: an opt-in, in-app notification surface for actionable owner-queue changes.
+ * Dedupe is by queue item id and mute/dismiss state stays in the browser only; no task content,
+ * tokens or conversation traces are persisted. External email/chat channels remain integrations. */
+function NotificationPanel({queue, role}: {queue: QueueItem[]; role: ApiProps['ctx']['role']}) {
+  const [settings, setSettings] = useState<NotificationSettings>(() => readNotificationSettings());
+  if (role !== 'owner') return null;
+  const open = queue.filter(item => !item.decision && attentionReasons.has(item.reason));
+  const visible = settings.enabled && settings.mutedUntil <= Date.now()
+    ? open.filter(item => !settings.dismissed.includes(item.item_id)) : [];
+  function save(next: NotificationSettings) {
+    setSettings(next);
+    try { window.localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  }
+  return <Panel title="Notifications" eyebrow="Opt-in owner alerts" icon={<PulseIcon aria-hidden="true" />}>
+    <label className={styles.notificationToggle}>
+      <input type="checkbox" checked={settings.enabled} onChange={event => save({...settings, enabled: event.target.checked})} />
+      <span>Show in-app alerts for new owner queue items</span>
+    </label>
+    {settings.enabled && settings.mutedUntil > Date.now() && <p className={styles.muted} role="status">Alerts are muted until {new Date(settings.mutedUntil).toLocaleString()}.</p>}
+    {settings.enabled && settings.mutedUntil <= Date.now() && visible.length > 0 ? <>
+      <ul className={styles.notifications} aria-label="Open Guidefold notifications">
+        {visible.map(item => <li key={item.item_id}>
+          <a href="#needs-review">{queueReasonLabels[item.reason] ?? item.reason}: {item.skill_id}</a>
+          <button type="button" onClick={() => save({...settings, dismissed: [...settings.dismissed, item.item_id]})}>Dismiss</button>
+        </li>)}
+      </ul>
+      <ActionButton onClick={() => save({...settings, mutedUntil: Date.now() + 24 * 60 * 60 * 1000})}>Mute alerts for 24 hours</ActionButton>
+    </> : <p className={styles.muted}>{settings.enabled ? 'No new actionable problems.' : 'Alerts are off until an owner opts in.'}</p>}
+    <p className={styles.panelNote}>Alerts link to the existing owner decision queue. They are deduplicated by queue item and never auto-approve or publish changes.</p>
+  </Panel>;
+}
+
 /** Usage · Delivery chart: top skills by exposures, ranked so the busiest cards read first. */
 const DELIVERY_CHART_LIMIT = 8;
 /** Usage · Feedback chart: below this total, `HelpedCell` already refuses a percentage (small
  * sample); the aggregate chart applies the same floor instead of inventing its own threshold. */
 const FEEDBACK_SMALL_SAMPLE = 20;
 
-/** Spectrum renderers use the same source values as the exact text below them. */
+/** Horizontal Spectrum bar per skill: exposures and verified loads share one scale. Exact counts
+ * stay beside the chart and the full numbers remain in the "Per skill" table below. */
 function DeliveryChart({skills}: {skills: UsageSkill[]}) {
-  const ranked = [...skills].sort((a,b) => b.exposures-a.exposures).slice(0,DELIVERY_CHART_LIMIT);
-  if (!ranked.some(item => item.exposures > 0 || item.loads_verified > 0)) return null;
-  return <div className={styles.deliveryChart} role="group" aria-label="Exposures and verified loads per skill, top skills by exposures">
-    <h3>Exposures and verified loads</h3>
-    <SpectrumBarChart layout="horizontal" data={ranked.map((item,index)=>({category:String(index+1),first:item.exposures,second:item.loads_verified}))} series={[{label:'Exposed',color:'var(--steel)'},{label:'Verified loads',color:'var(--survey-teal)'}]}/>
-    <ol className={styles.deliveryRows}>{ranked.map(item=><li key={item.skill_id+':'+(item.revision??'')} className={styles.deliveryRow}><span className={styles.deliveryLabel}>{item.skill_id}</span><span className={styles.deliveryValue}>{formatNumber(item.loads_verified)} of {formatNumber(item.exposures)} verified</span></li>)}</ol>
-    <p className={styles.chartLegend}>Counts per skill, in list order. Loads and exposures are independent observations; a load can be recorded without an exposure.</p>
-  </div>;
+  const ranked = [...skills].sort((a, b) => b.exposures - a.exposures).slice(0, DELIVERY_CHART_LIMIT);
+  return <SpectrumTelemetryChart ariaLabel="Exposures and verified loads per skill, top skills by exposures" max={Math.max(0, ...ranked.map(item => item.exposures))} points={ranked.map(item => ({
+    id: item.skill_id + ':' + (item.revision ?? ''), label: item.skill_id, value: Math.min(item.loads_verified, item.exposures), trackValue: item.exposures,
+    detail: formatNumber(item.loads_verified) + ' of ' + formatNumber(item.exposures) + ' verified', color: 'var(--survey-teal)',
+  }))} />;
 }
 
+/** Feedback verdicts as one Spectrum donut plus a label/count legend. Colours reuse the
+ * verdict tones already established for `StateBadge` elsewhere (helped=system, hindered=warning,
+ * mixed/not_applicable=neutral) so the chart does not invent a second meaning for an existing hue. */
 const feedbackSegments = [
-  {key:'helped',label:'Helped',fill:'var(--survey-teal)',swatch:'legendSwatchHelped'},
-  {key:'hindered',label:'Hindered',fill:'var(--warning)',swatch:'legendSwatchHindered'},
-  {key:'mixed',label:'Mixed',fill:'var(--steel)',swatch:'legendSwatchMixed'},
-  {key:'not_applicable',label:'Not applicable',fill:'var(--stone-300)',swatch:'legendSwatchNotApplicable'},
-  {key:'unknown',label:'Unknown',fill:'var(--series-3)',swatch:'legendSwatchUnknown'},
+  {key: 'helped', label: 'Helped', fill: 'var(--survey-teal)', swatch: 'legendSwatchHelped'},
+  {key: 'hindered', label: 'Hindered', fill: 'var(--warning)', swatch: 'legendSwatchHindered'},
+  {key: 'mixed', label: 'Mixed', fill: 'var(--steel)', swatch: 'legendSwatchMixed'},
+  {key: 'not_applicable', label: 'Not applicable', fill: 'var(--stone-300)', swatch: 'legendSwatchNotApplicable'},
 ] as const;
 
+/** Usage · context confirmation chart: verified loads split into confirmed context and
+ * unknown context outcome. The denominator is the verified-load count, so an unknown
+ * outcome is never rendered as a failed load. The per-row text is the accessible exact
+ * representation; Spectrum is the compact comparison aid. */
 function ContextChart({skills}: {skills: UsageSkill[]}) {
-  const ranked=[...skills].filter(item=>item.loads_verified>0).sort((a,b)=>b.loads_verified-a.loads_verified).slice(0,DELIVERY_CHART_LIMIT);
-  if (!ranked.length) return null;
+  const ranked = [...skills]
+    .filter(item => item.loads_verified > 0)
+    .sort((a, b) => b.loads_verified - a.loads_verified)
+    .slice(0, DELIVERY_CHART_LIMIT);
   return <div className={styles.contextChart} role="group" aria-label="Verified loads split into confirmed and unknown context outcome, top skills by verified loads">
-    <h3>Context confirmation</h3>
-    <SpectrumBarChart layout="horizontal" stackType="stacked" data={ranked.map((item,index)=>({category:String(index+1),first:item.context_loaded,second:item.context_unknown}))} series={[{label:'Confirmed',color:'var(--survey-teal)'},{label:'Unknown',color:'var(--steel)'}]}/>
-    <ol className={styles.deliveryRows}>{ranked.map(item=><li key={item.skill_id+':'+(item.revision??'')} className={styles.deliveryRow}><span className={styles.deliveryLabel}>{item.skill_id}</span><span className={styles.deliveryValue}>{formatNumber(item.context_loaded)} confirmed · {formatNumber(item.context_unknown)} unknown of {formatNumber(item.loads_verified)}</span></li>)}</ol>
+    <SpectrumTelemetryChart ariaLabel="Context outcome bars" max={Math.max(0, ...ranked.map(item => item.loads_verified))} points={ranked.map(item => {
+      const loaded = Math.min(Math.max(item.context_loaded, 0), item.loads_verified);
+      const unknownOutcome = Math.min(Math.max(item.context_unknown, 0), Math.max(item.loads_verified - loaded, 0));
+      return {id: item.skill_id + ':' + (item.revision ?? ''), label: item.skill_id, value: loaded, trackValue: item.loads_verified,
+        detail: formatNumber(loaded) + ' confirmed · ' + formatNumber(unknownOutcome) + ' unknown of ' + formatNumber(item.loads_verified), color: 'var(--survey-teal)'};
+    })} />
     <p className={styles.chartLegend}><strong>Confirmed</strong> means the adapter reported that the card reached model context. <strong>Unknown</strong> means no confirmation was available; it is not a failure.</p>
   </div>;
 }
 
 function FeedbackChart({feedback}: {feedback: FeedbackTotals}) {
-  const counted=feedbackSegments.map(segment=>({...segment,value:feedback[segment.key]}));
-  const total=feedback.n;
-  const valid=counted.every(segment=>Number.isFinite(segment.value)&&segment.value>=0)&&counted.reduce((sum,segment)=>sum+segment.value,0)===total;
-  if(valid&&total===0)return null;
+  const counted = feedbackSegments.map(segment => ({...segment, value: feedback[segment.key]}));
+  const total = counted.reduce((sum, segment) => sum + segment.value, 0);
   return <div className={styles.feedbackChart}>
-    <h3>Feedback verdicts</h3>
-    {!valid&&<p role="status">The verdict counts do not match the assessment total. Showing the reported counts without a chart.</p>}
-    {valid&&<div role="img" aria-label={`Feedback verdicts out of ${total} assessments: ${counted.map(segment=>`${segment.label} ${segment.value}`).join(', ')}`}>
-      <SpectrumPieChart innerRadius={62} showLegend={false} data={counted.filter(segment=>segment.value>0).map(segment=>({name:segment.label,value:segment.value,fill:segment.fill}))}/>
-    </div>}
-    <ul className={styles.feedbackLegend}>{counted.map(segment=><li key={segment.key}><span className={[styles.legendSwatch,styles[segment.swatch]].join(' ')} aria-hidden="true"/><span>{segment.label}</span><strong>{formatNumber(segment.value)}</strong></li>)}</ul>
-    <p className={styles.muted}>{total<FEEDBACK_SMALL_SAMPLE?`${formatNumber(total)} assessments; no rate is reported below ${FEEDBACK_SMALL_SAMPLE}.`:`${formatNumber(total)} assessments recorded.`}</p>
+    <SpectrumTelemetryStackedBar ariaLabel={`Feedback verdicts out of ${total} assessments: ${counted.map(segment => `${segment.label} ${segment.value}`).join(', ')}`} totalLabel={total < FEEDBACK_SMALL_SAMPLE
+      ? `${formatNumber(total)} assessments; no rate is reported below ${FEEDBACK_SMALL_SAMPLE}.`
+      : `${formatNumber(total)} assessments recorded.`} segments={counted.map(segment => ({id: segment.key, label: segment.label, value: segment.value, color: segment.fill}))} />
   </div>;
 }
 
@@ -683,7 +756,7 @@ function shareText(numerator: number, denominator: number, smallSample: boolean)
 }
 
 /** ISO timestamp to its calendar day; an absent bound stays Unknown. */
-function formatDay(iso: string | null): string {
+export function formatDay(iso: string | null): string {
   if (!iso) return 'Unknown';
   const day = iso.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : iso;
@@ -779,7 +852,7 @@ function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
   const rows = groupByScope(skills);
   return <Panel title="By team" eyebrow="One row per scope; a scope has one owner" icon={<UsersThreeIcon aria-hidden="true" />}>
     <DataTable flush caption="Delivery and feedback per scope" headings={['Team (scope)', 'Owner', 'Skills', 'Exposed', 'Loaded', 'Context confirmed', 'Applied episodes', 'Helped', 'Needs attention']}>
-      {rows.map(row => <tr key={row.scope ?? ' '}>
+      {rows.map(row => <tr key={row.scope ?? ' '}>
         <th scope="row" className={styles.pathCell}>{row.scope ?? <span className={styles.muted}>No scope in catalog</span>}</th>
         <td>{row.owners.length ? row.owners.join(', ') : 'Unknown'}</td>
         <td>{formatNumber(row.skills)}</td>
@@ -792,6 +865,79 @@ function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
       </tr>)}
     </DataTable>
     <p className={styles.panelNote}>Needs attention counts skills exposed but never loaded and skills with a hindered assessment. Unknown scope means the ledger saw a skill the catalog does not know.</p>
+  </Panel>;
+}
+
+export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
+  const taskObserved = metrics.tasks_observed && metrics.tasks_finished > 0;
+  const safetyObserved = metrics.use_requests > 0 || metrics.ask_count > 0 || metrics.harness_errors > 0;
+  const retrievalObserved = metrics.search_requests > 0 || metrics.use_requests > 0 || metrics.search_results > 0;
+  const averageLatency = metrics.latency_samples > 0 ? Math.round(metrics.latency_ms / metrics.latency_samples) : null;
+  const costObserved = metrics.cost_observed;
+  const timeObserved = averageLatency !== null;
+  const askReasons = Object.entries(metrics.ask_reasons ?? {})
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const askReasonLabel = (reason: string) => ({
+    proof_conflict: 'Conflicting rules',
+    proof_missing: 'No source proof',
+    proof_revision_mismatch: 'Revision changed',
+    proof_snapshot_mismatch: 'Snapshot changed',
+    proof_body_hash_mismatch: 'Source changed',
+    proof_scope_incomplete: 'Scope not covered',
+    proof_claim_incomplete: 'Claim not supported',
+    closure_incomplete: 'Missing dependencies',
+    proof_source_unavailable: 'Source unavailable',
+    proof_source_hash_mismatch: 'Source changed',
+    proof_source_line_range: 'Source lines unavailable',
+    proof_schema_invalid: 'Invalid proof',
+    proof_identity_mismatch: 'Wrong skill identity',
+    proof_source_ref_invalid: 'Invalid source reference',
+    proof_recursive_invalid: 'Invalid child proof',
+    unknown: 'Unspecified reason',
+  } as Record<string, string>)[reason] ?? 'Unrecognised reason';
+  const askReasonText = askReasons.length
+    ? 'Reasons: ' + askReasons.slice(0, 3).map(([reason, count]) => askReasonLabel(reason) + ' ' + formatNumber(count)).join(' · ')
+    : 'Reason breakdown unavailable';
+
+  return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<PulseIcon aria-hidden="true" />}>
+    <MetricRow items={[
+      {
+        label: 'Task success',
+        value: taskObserved ? formatNumber(metrics.tasks_succeeded) + ' / ' + formatNumber(metrics.tasks_finished) : 'Unknown',
+        detail: taskObserved
+          ? formatNumber(metrics.tasks_failed) + ' failed · ' + formatNumber(metrics.tasks_unknown) + ' without a verdict'
+          : 'No finished tasks with an observed outcome in this window',
+      },
+      {
+        label: 'Safety boundary',
+        value: safetyObserved ? formatNumber(metrics.ask_count) + ' ASK' : 'Unknown',
+        detail: safetyObserved
+          ? 'Uncertain deliveries stopped · ' + formatNumber(metrics.harness_errors) + ' harness errors · ' + askReasonText
+          : 'No USE, ASK or harness-error observation in this window',
+      },
+      {
+        label: 'SEARCH → USE',
+        value: retrievalObserved ? formatNumber(metrics.search_requests) + ' · ' + formatNumber(metrics.use_requests) : 'Unknown',
+        detail: retrievalObserved
+          ? formatNumber(metrics.search_results) + ' results · ' + formatNumber(metrics.search_errors) + ' search errors'
+          : 'No retrieval activity observed in this window',
+      },
+      {
+        label: 'Cost and time',
+        value: costObserved || timeObserved
+          ? (costObserved ? formatNumber(metrics.input_tokens + metrics.output_tokens) + ' tok' : 'Unknown tokens')
+            + (timeObserved ? ' · ' + formatNumber(averageLatency!) + ' ms avg' : '')
+          : 'Unknown',
+        detail: costObserved || timeObserved
+          ? (costObserved
+            ? formatNumber(metrics.input_tokens) + ' input · ' + formatNumber(metrics.output_tokens) + ' output · ' + formatNumber(metrics.tool_calls) + ' tool calls'
+            : 'No token measurement in this window')
+            + (timeObserved ? ' · ' + formatNumber(metrics.latency_samples) + ' latency samples' : ' · No latency measurement in this window')
+          : 'No token or latency measurements in this window',
+      },
+    ]} />
+    <p className={styles.panelNote}>To sygnał kierunkowy, nie jeden wynik jakości. Unknown oznacza brak obserwacji, a nie zero.</p>
   </Panel>;
 }
 
@@ -833,11 +979,14 @@ export function ApiUsageRoute({ctx}: ApiProps) {
   if (!value) return <RouteState state="loading" title="Reading the usage report" description="Waiting for the aggregate over the selected window. No number is shown before it arrives." />;
 
   const totals = value.totals;
+  const metrics = totals.metrics;
   const feedback = totals.feedback;
   // Feedback recorded in the UI arrives without any adapter event, so "nothing observed" must
   // include it: a judged skill is an observation even when no card was ever delivered.
+  const noMetrics = !metrics.tasks_observed && metrics.search_requests === 0 && metrics.search_results === 0
+    && metrics.use_requests === 0 && metrics.ask_count === 0 && metrics.harness_errors === 0;
   const noObservations = totals.exposures === 0 && totals.loads_verified === 0 && totals.use_reported === 0
-    && totals.use_observed === 0 && (feedback?.n ?? 0) === 0;
+    && totals.use_observed === 0 && (feedback?.n ?? 0) === 0 && noMetrics;
   const open = value.queue.filter(item => !item.decision);
   const windowLabel = at('window') || '30d';
   const taskIds = value.coverage?.task_ids_present ?? false;
@@ -859,12 +1008,15 @@ export function ApiUsageRoute({ctx}: ApiProps) {
     {value.coverage && value.coverage.dropped_reported > 0 && <PartialNotice>{'Adapters reported ' + value.coverage.dropped_reported + ' dropped events in this window. Every count below is a lower bound.'}</PartialNotice>}
     {/* One page, one main state: with nothing in the ledger the reader sees why and where the data comes from, once. Every other empty section below folds or shrinks to a line. */}
     {noObservations && <RouteState state="empty" title="No telemetry for this window" description="No adapter event and no assessment reached the ledger for this window and these filters. Usefulness is Unknown, not zero." action={<ActionButton href={ctx.href('organization', {tab: 'integrations'})} tone="system">Set up an adapter</ActionButton>} />}
+    <ScorecardPanel metrics={metrics} />
     {value.queue.length ? <Panel id="needs-review" title="Needs review" icon={<ListChecksIcon aria-hidden="true" />} action={<StateBadge tone={open.length ? 'warning' : 'neutral'}>{open.length} open</StateBadge>}>
       <DataTable flush caption="Skills that need an owner decision" headings={['Skill and revision', 'Reason', 'Since', 'Evidence', 'Owner decision']}>
         {value.queue.map(item => <QueueRow key={item.item_id} ctx={ctx} item={item} onDecided={report.reload} />)}
       </DataTable>
       <OwnerNote role={ctx.role} />
     </Panel> : <div id="needs-review"><RouteState compact state="empty" title="No observations" description="Nothing needs an owner decision: no drift, feedback or dependency problem is recorded for this repository." /></div>}
+
+    <NotificationPanel queue={value.queue} role={ctx.role} />
 
     {!noObservations && <Panel title="From delivery to value" eyebrow={windowText} icon={<FunnelIcon aria-hidden="true" />}>
       <MetricRow layout="funnel" items={[

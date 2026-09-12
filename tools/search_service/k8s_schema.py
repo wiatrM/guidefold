@@ -19,6 +19,10 @@ def main():
         "tenant": "schema",
         "repository": "fixture",
         "snapshotID": "repository:" + "b" * 64,
+        "publicURL": "https://guidefold.example.test",
+        # Schema validation uses the production auth path; a non-secret dummy
+        # client ID keeps Helm's required WorkOS configuration deterministic.
+        "workos": {"clientID": "schema-client"},
         "database": {
             "host": "postgres.internal",
             "networkPeers": [{"ipBlock": {"cidr": "10.20.0.0/24"}}],

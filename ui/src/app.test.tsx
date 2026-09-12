@@ -334,6 +334,41 @@ describe('shell composition', () => {
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).not.toBeInTheDocument();
   });
 
+  test('a temporarily unavailable API masks the view instead of bouncing an anonymous visitor to sign-in', async () => {
+    // A bare 503 never reaches AccessController.denied (only an actual 401/403 on /me does), so
+    // this settles as 'offline' with no identity ever confirmed — the same shape a lapsed
+    // reconfirmation has on a fresh page load (e2e/states.spec.ts "degraded"). access.ts's own
+    // contract is to keep the session on a network failure, never reveal unconfirmed data: this
+    // is not a settled "no session" result, so it must mask and offer a manual re-check, not
+    // redirect to /login on a guess.
+    const controller = new AccessController({
+      fetchMe: async () => { throw new ApiError({ status: 503, code: 'database_unavailable', message: 'temporarily unavailable' }); },
+      onDenied: vi.fn(),
+    });
+    await controller.check(true);
+    const source = fakeSource({ getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'google', label: 'Google', login_url: '/api/v1/auth/login/google' }] }) });
+    render(<MemoryRouter initialEntries={['/import']}>
+      <AccessProvider controller={controller}><App source={source} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByText('Access not reconfirmed')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Check access now' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
+  });
+
+  test('an authenticated user can accept an invitation from its browser landing page', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const acceptInvitation = vi.fn(async () => ({ org_id: 'o2', role: 'member' as const, joined: true }));
+    const source = fakeSource({ acceptInvitation });
+    render(<MemoryRouter initialEntries={['/invitations/invite-token/accept']}>
+      <AccessProvider controller={controller}><App source={source} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByText('ada@example.com')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
+    await waitFor(() => expect(acceptInvitation).toHaveBeenCalledWith('invite-token', expect.stringMatching(/^accept-invitation:/)));
+  });
+
   test('an unconfirmed session masks the view instead of revealing stale data', async () => {
     let clock = 1_000_000;
     let answered = false;

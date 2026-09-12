@@ -1,138 +1,89 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## Material 3D and proof-carrying positioning — 2026-09-09 (current)
+## Pinned-reveal landing, image built and pushed locally — 2026-09-10 (current)
 
-Helm revision **12**, namespace `guidefold`, context `cloudfloo-context`.
-UI image `ghcr.io/wiatrm/guidefold-ui@sha256:2b29c9484b9c102afa5d23c4762c1b61c76ea118db1333ab6b1ea86372f8989e`.
-Tag `redesign-20260909-material3d-12`, built from `gf-waitlist-20260908`.
-Owner selected material 3D after rejecting the card animation; this release adds
-folding layers, camera motion, orange paths and an explicitly illustrative
-proof-gated LOAD/ASK control, plus the new product thesis and four research links.
-The scope-authority lattice is labelled research-only. No backend proof feature
-or task-success claim is introduced by this UI deployment.
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:4b4c345b924fd93328b41497eadb9c07d113b73b6112de89eab44ecba4b0b628`,
+built locally with Docker (now available in this environment) from
+`landing-fixes-2` at commit `8487708`, merged to main as PR #133 (`62091ec`).
+Pushed to GHCR directly; not built by `publish-images.yml`, so there is no
+CI artifact digest to cross-check against — the value above is read back
+from the deployed `Deployment/guidefold-ui`, not copied from a workflow log.
 
-Read-only Helm comparison against the root chart confirmed only the UI image
-changed. Upgrade with reused values completed; rollout **2 updated, 2 ready,
-2 available / 2**. Public entry `/assets/index-CDUI313h.js`: HTTP 200;
-root and both evidence JSON files: 200. Browser verified WebGL, formed layers,
-ASK without a body, LOAD with a body, explicit review/publication and four
-research links; zero overflow and page errors. `/api/v1/me` remains **503**.
+Scope: the `why` and `value` sections now pin in the viewport while their
+content reveals, released once the reveal settles; a shadcn-style scroll cue
+hints the page continues; the background film is fully opaque with the poster
+retired once it starts, instead of sitting underneath at partial opacity.
+Full detail in the landing-fixes-2 commits.
 
-QA: 29 landing browser tests + 8 unit tests PASS; final rebuild followed by
-7/7 pyramid tests, contracts and Docker build PASS. Three.js is lazy (~146kB
-gzip); its >500kB raw chunk warning is retained. No new Lighthouse, field CWV,
-full application-suite or real-agent task-success result. No Git commit/push.
-Rollback point: revision **11**, previous image recorded below.
-Evidence: combined worktree `reports/build-notes.md`, `ui/qa/spectrum-deployment.json`.
+While this branch was in flight, a separate session fixed the API's
+CrashLoopBackOff by supplying `workos.clientID`, `publicURL` and the
+`guidefold-workos` secret, and repointed `Application/guidefold`'s
+`targetRevision` at a commit on `codex/release-presentation-20260910`
+(`7b0958c`) — off the tag this file previously pinned to, and off `main`.
+That fix is real and verified (`/api/v1/me` now returns 401, not 503; all
+pods 1/1). This deploy did not touch that: the live `ui.image` was updated
+with a `kubectl patch` against the Application actually running in the
+cluster, changing only that one field, confirmed by a structural diff of
+the full values block before and after. `values.yaml` in this directory is
+updated to match so it stays the readable record, but it no longer matches
+`argocd-application.yaml`'s `targetRevision`, which still names the old tag.
+Reconciling `targetRevision` onto a shared, permanent ref is the other
+session's fix to land, not this one's to redo mid-flight.
 
-## Pyramid deployment state — 2026-09-09 (previous)
+Verified against production: root, entry bundle 200; axe 0 violations; 0
+horizontal overflow at 390/1440; scroll-to-playhead mapping 0/2.5/5.0/7.5/10.0s
+forward and a quarter-frame-accurate reverse; reduced motion serves 0 video
+requests. Rollback image: `sha256:4359c65505d766caa75068cb91424162a2149846bc00f504876a4a0bb5ae035c`
+(the digest running immediately before this change).
 
-Helm revision **11**, namespace `guidefold`, context `cloudfloo-context`.
-UI image `ghcr.io/wiatrm/guidefold-ui@sha256:539ae7ef7b666e054cf3424ee0eb3fdbc3c1e5c8bd8ad638096058df777f1aae`.
-Cluster check: **2/2 ready**. Revision 10 was cancelled and marked failed;
-revision 11 completed through the Windows Helm client. Only the UI image changed.
-The owner rejected the explanation design. The subsequent local motion rewrite
-was also rejected; its pushed image `redesign-20260909-motion-12`
-(`sha256:50f764c748e0986f7e4cc699e9d7630d6f1d04fa56ab337d5c713024d1214b14`)
-is **NOT deployed and must not be treated as design-approved**.
-Do not infer a deployment from that rejected image tag. The owner subsequently
-selected the material 3D direction deployed above with a different image.
-Combined-worktree evidence: `reports/build-notes.md`.
 
-## Waitlist controls deployment — 2026-09-09 (previous)
+## ArgoCD adoption and the why/how/value landing — 2026-09-09 (previous)
 
-Helm revision **9**, namespace `guidefold`; UI image
-`ghcr.io/wiatrm/guidefold-ui@sha256:b3c757d068e563144156aaccc8db82727f9a10be916905eadfe1c25dc95e5268`.
-Tag `redesign-20260909-controls-09`, built from `gf-waitlist-20260908`; no commit/push.
-Scope: prevent waitlist CTA compression, align email/button at 52px, use shadcn
-buttonVariants for header/hero/hosted links, wire Spectrum MorphButton loading.
+The release is now managed by ArgoCD. `Application/guidefold` in namespace
+`argocd` under its own `AppProject`, automated sync with prune and selfHeal,
+destination namespace `guidefold`. First sync reported **Synced**; health is
+**Degraded**, which is the pre-existing API crash described below and not a
+result of this change.
 
-Read-only preflight against the root checkout chart confirmed only the UI image changed.
-Upgrade with reused values succeeded; rollout completed, **2/2 ready and available**.
-Production browser verified entry `/assets/index-BRRisNfw.js`, three shadcn CTA links,
-185px-wide submit, 52px height, 25px content inset on both sides and zero overflow.
-No browser page errors. Root, entry bundle and `/licenses/shadcn-ui.txt`: HTTP 200.
-API `/api/v1/me` remains **503**; real subscription delivery is not established.
+UI image `ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627`,
+built by `publish-images.yml` from merge commit `b195845`. Rollback image:
+`sha256:2b29c9484b9c102afa5d23c4762c1b61c76ea118db1333ab6b1ea86372f8989e`
+(Helm revision 12, material 3D).
 
-Fresh scoped QA: **22 browser + 8 unit tests PASS**, build and contracts PASS.
-Four layout sizes: 1440/1024/768/390px. Includes axe, equal control heights, state
-transitions and error/retry with a stub API. Lighthouse was not rerun for this patch.
-Rollback: revision **8**, previous image `sha256:75160f39b8dea2b33d8e67a7a0371e85d39b30b88a3c777f741ff08485f8ab2e`.
-Source, license and screenshots: combined worktree `docs/ui/spectrum-migration.md`.
+The landing page now answers why, how and what a team gets, in that order. The
+3D pyramid is replaced by a flat scope ladder with readable organisation and
+skill names. A ten-second camera flight generated with Seedance 2.0 sits behind
+the page with its playhead tied to scroll. Poster-first: reduced motion,
+Save-Data, a decoder error, a missing file or no `canplay` inside eight seconds
+all leave the still in place with no layout shift.
 
-## Material landing deployment — 2026-09-09 (previous)
+The Application pins `targetRevision` to the tag `deploy-cloudfloo-chart-r12`,
+not `main`. Rendering the chart on main fails with
+`workos.clientID is required when auth=workos`, and the live ConfigMap is
+`immutable: true`, so a render that adds `WORKOS_CLIENT_ID` and
+`GUIDEFOLD_PUBLIC_URL` could not be applied in place either. Rendering the
+tagged chart with the release's own values differs from the live manifest by a
+single line, the UI image; that diff was checked before applying.
 
-Helm release `guidefold`, namespace `guidefold`, revision **8**. UI image:
-`ghcr.io/wiatrm/guidefold-ui@sha256:75160f39b8dea2b33d8e67a7a0371e85d39b30b88a3c777f741ff08485f8ab2e`.
-Built from `gf-waitlist-20260908`, tag `redesign-20260909-material-08`; no Git commit/push.
-Scope: film-inspired orange/ivory material landing, two generated assets, pausable
-WebGL hero, interactive instruction reader with Spectrum CodeBlock, aligned mini-demos
-and custom footer. Logo and application navigation backgrounds are preserved.
+Three things are needed to move the Application back to `main`, and the first
+two also fix the API:
 
-Read-only release preflight against `/home/mike/projects/guidefold/deploy/k8s/chart`
-confirmed only the UI container image changes. Upgrade used `--reuse-values --wait=false`.
-Rollout succeeded: **2/2 ready, 2 available**. No backend, database or secret changed.
-Public `/`, `/import`, `/assets/index-V-sgaQN3.js`, Spectrum license and both
-new WebP assets return HTTP 200. Both deployed asset SHA256 hashes match local files.
-The root document references the new entry bundle. API `/api/v1/me` remains **503**;
-production login/import/waitlist delivery has not been established.
+1. A real `workos.clientID` and `publicURL` in the values.
+2. The `guidefold-workos` secret created in the namespace; it does not exist.
+3. The immutable `ConfigMap/guidefold` deleted so it can be recreated.
 
-Fresh scoped QA: **17 browser tests, 8 unit tests PASS**; build and UI contracts PASS.
-Desktop Lighthouse: performance **99**, accessibility **100**, LCP **944 ms**,
-CLS **0.014**, TBT **0 ms**. Slow-phone experiments did not establish passing
-mobile Core Web Vitals; field INP was not measured.
-Evidence: combined worktree `docs/ui/spectrum-migration.md`,
-`ui/qa/spectrum-deployment.json` and `ui/qa/landing-generated-assets.json`.
-Rollback point: revision **7**, image ending
-`a81293cf1aeed9c2abf4731dbf6b7d20bb37e9636d127b72ebe6e462b34b402d`.
+The API deployment has been in CrashLoopBackOff for 34 hours, failing on
+`workos_requires_api_key_and_client_id`. It predates this deploy and is
+unrelated to the UI.
 
-## Spectrum UI deployment — 2026-09-09 (previous)
+Verified after sync: UI rollout 2/2, both pods on the new digest, public root
+200 serving entry `/assets/index-D_C6sqQn.js`, `hero-flight.mp4` and
+`hero-poster.webp` 200. Gates before merge: typecheck, build, contracts,
+321 unit tests across 34 files, 7 landing browser tests, axe with zero
+violations and zero horizontal overflow at 390 and 1440. Playhead against
+scroll measured in Chromium at 1440 and WebKit at 390. Repository CI on the
+pull request was bypassed at the owner's explicit instruction.
 
-Helm release `guidefold`, namespace `guidefold`, revision **7**. UI image:
-`ghcr.io/wiatrm/guidefold-ui@sha256:a81293cf1aeed9c2abf4731dbf6b7d20bb37e9636d127b72ebe6e462b34b402d`.
-Built from `gf-waitlist-20260908`, tag `redesign-20260909-spectrum-07`; no Git commit/push.
-Implemented scope: Spectrum metric cards, bar/pie charts, Tree Nav, Morph Button,
-BeamCard/BeamSearch mini-demos; existing Guidefold brand and video modal preserved.
-This is not a claim that every product renderer has been rewritten.
-
-Preflight against the combined worktree's chart blocked an unrelated ConfigMap change.
-The chart at `/home/mike/projects/guidefold/deploy/k8s/chart` was separately compared
-with the live Helm manifest using live values: only `Deployment/guidefold-ui` image changed.
-Upgrade used that verified chart, `--reuse-values --wait=false`; rollout succeeded,
-**2/2 UI replicas ready**. No API/worker/database/secret/configuration change was applied.
-
-Verified public `/`, `/import`, `/assets/index-Dab4VwiB.js` and
-`/licenses/spectrum-ui.txt`: HTTP 200. The production API `/api/v1/me` remains **503**.
-Local QA uses the stub API; it does not establish production login/import/waitlist delivery.
-Rollback point: revision **6**, UI image ending `497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe`.
-Migration evidence is in the combined worktree's `docs/ui/spectrum-migration.md`.
-
-## Previous deployment — 2026-09-09
-
-The fold-film landing, video Dialog, source Sheet and animated feature examples are deployed as Helm release
-`guidefold`, revision **6**, namespace `guidefold`. UI image:
-`ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe`.
-The Docker build used the combined `gf-waitlist-20260908` working tree, tag
-`redesign-20260909-fold-film-06`; no Git commit or push was made. The kubeconfig
-location supplied by the owner is recorded in [AGENTS.md](../../../../AGENTS.md).
-
-Before upgrade, rendering this checkout's chart with the live release values
-matched the live Helm manifest exactly. Adding the new `ui.image` changed only
-the UI container image. Upgrade used `--reuse-values --wait=false` because the
-API was already unavailable; UI readiness was checked separately using
-`kubectl -n guidefold rollout status deployment/guidefold-ui --timeout=50s`.
-Result: **2/2 UI replicas ready**, public `/`, `/import`, CSS/JS assets and
-`/licenses/shadcn-space.txt` return HTTP 200. The served entry bundle is
-`/assets/index-C1H_1Gpz.js`. No API, worker, database, ingress or secret changed.
-
-The API still returns **503** and logs `workos_requires_api_key_and_client_id`.
-This release does not fix authentication or activate hosted waitlist delivery.
-Do not report login/import/signup as production-tested. The previous UI image
-is `ghcr.io/wiatrm/guidefold-ui@sha256:4dee933b3d842c114dea531459a319b2f0386be103ad791d7232faf4874bab76`;
-revision 5 is the rollback point for this UI-only change. ArgoCD Application is
-still not installed. The sequence below is historical, not current readiness.
-
-## Initial deployment history
 
 Target: the existing ArgoCD-managed cluster at `192.168.8.128` (kubeconfig supplied
 by the owner out of band), temporary domain `guidefold.cloudfloo.io`. Per
@@ -216,11 +167,10 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
      kubectl create secret generic guidefold-workos -n guidefold \
        --from-literal=api-key="<the real WorkOS API key>"
      ```
-     and set `WORKOS_API_KEY_FILE=/run/workos/api-key` (mounted from that secret) —
-     `values.yaml` in this directory does not yet wire this mount in; it's the one
-     piece still to add once the secret exists, since the chart's `api.yaml`
-     currently has no WorkOS volume mount at all (only `credentialsSecret` and
-     `operatorCredentialsSecret` are mounted today).
+     The chart mounts this secret at `/run/workos/api-key` and sets
+     `WORKOS_API_KEY_FILE` automatically. Set `workos.clientID` in this values
+     file (or in the ArgoCD Application) before syncing; keep the API key only
+     in the Kubernetes Secret.
 
 4. **Pinned image digests** (done — 2026-09-08, `publish-images.yml` on
    `fix/ghcr-lowercase-owner`, dispatched directly rather than waiting for a
@@ -262,13 +212,10 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
    `migrate` — pass `--set portal.enabled=false` for one-off Job releases or
    you'll get a stray duplicate portal Deployment.
 
-   Result: `guidefold-portal` and `guidefold-worker` pods Running; `guidefold`
-   (api) pods correctly CrashLoopBackOff with `workos_requires_api_key_and_client_id`
-   — expected, not a bug: `auth: workos` with no WorkOS secret wired yet (see
-   step 3's still-open WorkOS mount). Harmless to leave crash-looping until
-   WorkOS is wired — **except** that step 10 below routes `/api` and `/v1` to
-   it, so once the UI is live, every API call it makes will 503 until this is
-   fixed. That's expected too, not a new failure — see step 10.
+   Result: `guidefold-portal` and `guidefold-worker` pods should be Running. The
+   API becomes Ready only after `workos.clientID` and the `guidefold-workos`
+   Secret from step 3 are present; otherwise Helm fails validation before an
+   unusable serving release is applied.
 
 7. **Apply the ArgoCD Application** (not yet done — the live release above was
    installed directly with `helm install`, bypassing GitOps for speed):
@@ -329,11 +276,9 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
     - Build/deploy is the same `helm install`-then-`upgrade` pattern as
       before, with a new `ui` job in `publish-images.yml`; `ui.image` follows
       the same "TODO: pin from the run's Summary" placeholder pattern.
-    - **Still true after this step**: the API is still `auth: workos` with no
-      WorkOS secret (step 3), so the UI's app shell loads but every
-      `/api/v1/...` call — including the one on load that checks whether
-      you're signed in — gets a 503 from an all-unready backend. Real
-      login/import through the UI needs step 3's WorkOS piece finished first.
+    - The UI's app shell renders the sign-in route even while the API is
+      temporarily unavailable, but real login/import requires the serving API
+      to pass WorkOS validation and reach Ready.
 
 ## What this does not cover
 
@@ -342,7 +287,7 @@ here is scoped to a new `guidefold` namespace and its own ArgoCD AppProject.
   trigger) — confirmed absent from the code in this pass, not merely unverified.
   ADR-0034 is an accepted design, not a built feature; this deploy stands up the
   infrastructure it will eventually run on, not the feature.
-- The WorkOS secret mount (`WORKOS_API_KEY_FILE`) — the chart doesn't wire this
-  volume in yet (see step 3); add it alongside building the GitHub App backend.
+- The WorkOS provider project setup and secret creation remain operator steps;
+  the chart wiring and validation are now included here.
 - Raising `instances`/replica counts for real production load — this sizing is
   deliberately pilot-scale.

@@ -11,7 +11,7 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
   await expect(page.locator('main [aria-busy=true]')).toHaveCount(0);
   await expect(page.locator('main h1')).toBeVisible();
   if(view==='usage'){
-   const charts=page.locator('.spectrum-charts .recharts-surface');
+   const charts=page.locator('[data-spectrum-chart="registry-frame"] .recharts-surface');
    await expect(charts.first()).toBeVisible();
    for(const chart of await charts.all()){
     const box=await chart.boundingBox();
@@ -38,3 +38,7 @@ for(const width of [1440,390])test('Spectrum migration visual packet at '+width,
 // status line and its Clear button. The landing v2 rebuild removed that surface entirely,
 // so the test had no target left. The Spectrum surfaces that still exist on the product
 // views are covered by the visual packet above; nothing on landing v2 is a Spectrum search.
+// A main-side 'landing exposes the current retrieval story and docs entry' test (asserting
+// the 'What Guidefold does about it' heading and 'Selected by task and place' copy) is not
+// carried forward here for the same reason: the why/how/value v3 rebuild on this branch
+// replaced that heading and copy, and landing coverage stays in e2e/landing-flow.spec.ts.

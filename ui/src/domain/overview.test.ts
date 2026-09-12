@@ -1,5 +1,6 @@
 import {describe, expect, test} from 'vitest';
 import type {ImportStatus, Installation, ProposalSummary, SkillSummary, Usage, UsageSkill} from '../api/decoders';
+import {emptyExecutionMetrics} from '../api/decoders';
 import {adapterRows, coverageOf, funnelSteps, hasObservations, helpedShare, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topScopes, topSkills} from './overview';
 
 const NOW = Date.parse('2026-09-12T12:00:00Z');
@@ -11,7 +12,7 @@ const usageSkill = (id: string, over: Partial<UsageSkill> = {}): UsageSkill => (
 const usage = (over: Partial<Usage> = {}): Usage => ({
   window: {from: '2026-08-13T00:00:00Z', to: '2026-09-12T00:00:00Z', watermark: null},
   coverage: {events_received: 120, dropped_reported: 0, oldest_lag_s: 30, task_ids_present: true},
-  totals: {exposures: 100, loads_verified: 40, context_loaded: 30, context_unknown: 10, use_reported: 5, use_observed: 3, use_episodes: 7, exposures_expanded: 35, loads_unlinked: 5, feedback: null},
+  totals: {exposures: 100, loads_verified: 40, context_loaded: 30, context_unknown: 10, use_reported: 5, use_observed: 3, use_episodes: 7, exposures_expanded: 35, loads_unlinked: 5, feedback: null, metrics: emptyExecutionMetrics},
   skills: [], queue: [], health: null, ...over,
 });
 

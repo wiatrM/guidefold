@@ -51,6 +51,11 @@
 .filterAction { display: flex; align-items: end; }
 .contextSummary { display: grid; gap: var(--space-2); padding-block: var(--space-3); }
 .contextSummary p { margin: var(--zero); overflow-wrap: anywhere; }
+.notificationToggle { display: flex; align-items: flex-start; gap: var(--space-2); min-height: var(--control-height); cursor: pointer; }
+.notificationToggle input { margin-top: var(--space-1); accent-color: var(--safety-orange); }
+.notifications { display: grid; gap: var(--space-2); list-style: none; padding: var(--zero); margin: var(--space-3) var(--zero); }
+.notifications li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-2); border: var(--border-width) solid var(--warning); background: var(--graphite-950); }
+.notifications button { min-height: var(--control-height); color: var(--stone-100); background: var(--graphite-950); border: var(--border-width) solid var(--line-strong); padding-inline: var(--space-2); cursor: pointer; }
 
 .summary .actions { padding-block: var(--zero); }
 
@@ -59,7 +64,7 @@
 .pathCell code { font-size: var(--font-size-small); }
 .stack { display: grid; gap: var(--space-2); min-width: var(--zero); }
 
-/* Usage · delivery and feedback charts: plain inline SVG, flat fills from tokens.css only. */
+/* Usage · delivery and feedback charts use the Spectrum registry adapters. */
 .deliveryChart { display: grid; gap: var(--space-2); min-width: var(--zero); }
 .deliveryAxis { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--stone-300); font-size: var(--font-size-small); }
 .deliveryRows { display: grid; gap: var(--space-2); list-style: none; margin: var(--zero); padding: var(--zero); }
@@ -72,7 +77,6 @@
 .contextChart { display: grid; gap: var(--space-2); min-width: var(--zero); padding-bottom: var(--space-3); border-bottom: var(--border-width) solid var(--line); }
 .chartLegend { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
 .feedbackChart { display: grid; gap: var(--space-2); min-width: var(--zero); padding-top: var(--space-3); border-top: var(--border-width) solid var(--line); }
-.feedbackChart svg.recharts-surface { width: var(--full); height: var(--full); display: block; }
 .feedbackLegend { display: flex; flex-wrap: wrap; gap: var(--space-3); list-style: none; margin: var(--zero); padding: var(--zero); font-size: var(--font-size-small); }
 .feedbackLegend li { display: flex; align-items: center; gap: var(--space-1); }
 .legendSwatch { display: inline-block; width: var(--space-2); height: var(--space-2); flex: none; border: var(--border-width) solid var(--line-strong); }
@@ -80,7 +84,6 @@
 .legendSwatchHindered { background: var(--warning); }
 .legendSwatchMixed { background: var(--steel); }
 .legendSwatchNotApplicable { background: var(--stone-300); }
-.legendSwatchUnknown { background: var(--series-3); }
 
 /* Usage · Skill health: a gate is a badge plus its reason; the funnel is four numbers, not a chart.
    Cells carry a minimum width so the auto-layout table never squeezes a column into one word per line. */

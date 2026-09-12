@@ -16,6 +16,7 @@ func proofFixture() (*Catalog, string, []string) {
 		Cards:     map[string]M{},
 	}
 	c.Cards[id] = M{
+		"_body": body,
 		"proof": M{
 			"schema":      sourceProofSchema,
 			"verified":    true,
@@ -174,6 +175,9 @@ func TestBoundProofPassesTheDeliveryGate(t *testing.T) {
 	proof := c.Cards[id]["proof"].(M)
 	proof["snapshot"], proof["revision"], proof["body_sha256"] = "pending", "pending", "pending"
 	bindProofPlaceholders(c.Cards[id], c.ID)
+	// Publisher binding derives the proof revision from the card identity. Keep
+	// the catalog's published revision in sync with that deterministic value.
+	c.Revisions[id] = str(proof["revision"])
 	decision := proofGate(c, id, "# Source-grounded procedure\nRun the verifier.\n", scopes, "complete")
 	if str(decision["action"]) != "LOAD" {
 		t.Fatalf("a verified proof with publisher bindings must load: %v", decision)

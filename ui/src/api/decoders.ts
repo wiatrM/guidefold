@@ -105,6 +105,9 @@ export const authProviders = object<AuthProviders>({
 export interface IdentityLinkStart { login_url: string }
 export const identityLinkStart = object<IdentityLinkStart>({ login_url: str });
 
+export interface Profile { user: { id: string; email: string; name: string } }
+export const profile = object<Profile>({ user: object({ id: str, email: str, name: str }) });
+
 export interface DeviceApproval { user_code: string; state: 'approved' | 'denied' | 'pending' | 'expired'; expires_at: string | null }
 export const deviceApproval = object<DeviceApproval>({
   user_code: fallback(str, ''),
@@ -144,11 +147,30 @@ export const member = object<Member>({
 export const memberList: Decoder<Member[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(member)(value, path) : field('items', arrayOf(member))(value, path);
 
+export interface TeamMember { user_id: string; email: string; name: string }
+export const teamMember = object<TeamMember>({ user_id: str, email: str, name: str });
+export interface Team { team_id: string; name: string; created_at: string; members: TeamMember[] }
+export const team = object<Team>({ team_id: str, name: str, created_at: str, members: listOf(teamMember) });
+export const teamList: Decoder<Team[]> = value => field('items', arrayOf(team))(value);
+
 export interface Invitation { invitation_id: string; accept_url: string; expires_at: string | null; email: string | null; role: Role | null }
 export const invitation = object<Invitation>({
   invitation_id: str, accept_url: str, expires_at: nullable(str),
   email: nullable(str), role: nullable(oneOf(roles)),
 });
+
+export interface InvitationAccepted { org_id: string; role: Role; joined: boolean }
+export const invitationAccepted = object<InvitationAccepted>({
+  org_id: str, role: oneOf(roles), joined: bool,
+});
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+export interface InvitationLifecycle { invitation_id: string; email: string; role: Role; status: InvitationStatus; created_at: string; expires_at: string; accepted_at: string | null; revoked_at: string | null }
+export const invitationLifecycle = object<InvitationLifecycle>({
+  invitation_id: str, email: str, role: oneOf(roles), status: oneOf(['pending', 'accepted', 'expired', 'revoked'] as const),
+  created_at: str, expires_at: str, accepted_at: nullable(str), revoked_at: nullable(str),
+});
+export const invitationLifecycleList: Decoder<InvitationLifecycle[]> = value => field('items', arrayOf(invitationLifecycle))(value);
 
 export interface Installation {
   installation_id: string; name: string; repo_id: string | null;
@@ -166,6 +188,17 @@ export const installation = object<Installation>({
 });
 export const installationList: Decoder<Installation[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(installation)(value, path) : field('items', arrayOf(installation))(value, path);
+
+export interface GitHubInstallation {
+  installation_id: number; account: string; repositories: { full_name: string; repo_id: string | null }[];
+  suspended: boolean; created_at: string | null; updated_at: string | null;
+}
+export const githubInstallation = object<GitHubInstallation>({
+  installation_id: num, account: str,
+  repositories: listOf(object({ full_name: str, repo_id: nullable(str) })),
+  suspended: bool, created_at: nullable(str), updated_at: nullable(str),
+});
+export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
 export interface AuditEntry { at: string; actor: string | null; action: string; entity: string | null; revision: string | null; request_id: string | null }
 export const auditEntry = object<AuditEntry>({
@@ -193,6 +226,19 @@ export const repo = object<Repo>({
 });
 export const repoList: Decoder<Repo[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(repo)(value, path) : field('items', arrayOf(repo))(value, path);
+
+export type RepoAccessLevel = 'read' | 'write';
+export interface RepoAccess { user_id: string; email: string; name: string | null; access: RepoAccessLevel; created_at: string | null }
+export const repoAccess = object<RepoAccess>({
+  user_id: str, email: str, name: nullable(str), access: oneOf(['read', 'write'] as const), created_at: nullable(str),
+});
+export const repoAccessList: Decoder<RepoAccess[]> = (value, path = '') =>
+  Array.isArray(value) ? arrayOf(repoAccess)(value, path) : field('items', arrayOf(repoAccess))(value, path);
+
+export interface Reviewer { user_id: string; email: string; name: string | null; assigned_at: string | null }
+export const reviewer = object<Reviewer>({ user_id: str, email: str, name: nullable(str), assigned_at: nullable(str) });
+export const reviewerList: Decoder<Reviewer[]> = (value, path = '') =>
+  Array.isArray(value) ? arrayOf(reviewer)(value, path) : field('items', arrayOf(reviewer))(value, path);
 
 export interface ImportLimits { max_blob_bytes: number; max_total_bytes: number; max_files: number }
 export const importLimits = object<ImportLimits>({
@@ -678,9 +724,40 @@ export interface Usage {
     exposures: number; loads_verified: number; context_loaded: number; context_unknown: number;
     use_reported: number; use_observed: number; use_episodes: number;
     exposures_expanded: number; loads_unlinked: number; feedback: FeedbackTotals | null;
+    metrics: ExecutionMetrics;
   };
   skills: UsageSkill[]; queue: QueueItem[]; health: { adapters: AdapterHealth[] } | null;
 }
+
+export interface ExecutionMetrics {
+  tasks_started: number; tasks_finished: number; tasks_succeeded: number;
+  tasks_failed: number; tasks_unknown: number; harness_errors: number;
+  search_requests: number; search_results: number; search_errors: number;
+  use_requests: number; ask_count: number; input_tokens: number;
+  output_tokens: number; tool_calls: number; latency_ms: number;
+  latency_samples: number; tasks_observed: boolean; cost_observed: boolean;
+  /** Optional for backwards-compatible reports; decoded responses default it to an empty map. */
+  ask_reasons?: Record<string, number>;
+}
+export const emptyExecutionMetrics: ExecutionMetrics = {
+  tasks_started: 0, tasks_finished: 0, tasks_succeeded: 0, tasks_failed: 0, tasks_unknown: 0,
+  harness_errors: 0, search_requests: 0, search_results: 0, search_errors: 0, use_requests: 0,
+  ask_count: 0, input_tokens: 0, output_tokens: 0, tool_calls: 0, latency_ms: 0,
+  latency_samples: 0, tasks_observed: false, cost_observed: false,
+  ask_reasons: {},
+};
+export const executionMetrics = object<ExecutionMetrics>({
+  tasks_started: fallback(num, 0), tasks_finished: fallback(num, 0),
+  tasks_succeeded: fallback(num, 0), tasks_failed: fallback(num, 0),
+  tasks_unknown: fallback(num, 0), harness_errors: fallback(num, 0),
+  search_requests: fallback(num, 0), search_results: fallback(num, 0),
+  search_errors: fallback(num, 0), use_requests: fallback(num, 0),
+  ask_count: fallback(num, 0), input_tokens: fallback(num, 0),
+  output_tokens: fallback(num, 0), tool_calls: fallback(num, 0),
+  latency_ms: fallback(num, 0), latency_samples: fallback(num, 0),
+  tasks_observed: fallback(bool, false), cost_observed: fallback(bool, false),
+  ask_reasons: fallback(dictionary(num), {}),
+});
 export const usage = object<Usage>({
   window: fallback(object({ from: nullable(str), to: nullable(str), watermark: nullable(str) }), { from: null, to: null, watermark: null }),
   coverage: nullable(object({
@@ -692,9 +769,11 @@ export const usage = object<Usage>({
     context_unknown: fallback(num, 0), use_reported: fallback(num, 0), use_observed: fallback(num, 0),
     use_episodes: fallback(num, 0), exposures_expanded: fallback(num, 0), loads_unlinked: fallback(num, 0),
     feedback: nullable(feedbackTotals),
+    metrics: fallback(executionMetrics, emptyExecutionMetrics),
   }), {
     exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
     use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
+    metrics: emptyExecutionMetrics,
   }),
   skills: listOf(usageSkill), queue: listOf(queueItem),
   health: nullable(object({ adapters: listOf(adapterHealth) })),

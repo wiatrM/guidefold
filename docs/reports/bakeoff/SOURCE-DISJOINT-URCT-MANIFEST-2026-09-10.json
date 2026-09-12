@@ -1,0 +1,204 @@
+{
+  "schema": "source-disjoint-urct-1",
+  "status": "PREPARED_NOT_ANNOTATED",
+  "frozen_at": "2026-09-10",
+  "families": [
+    "documentation",
+    "engineering"
+  ],
+  "records": [
+    {
+      "record_id": "engineering-A",
+      "family_id": "engineering",
+      "role": "A",
+      "repo_id": "obra/superpowers",
+      "source_path": "skills/test-driven-development/SKILL.md",
+      "git_remote": "https://github.com/obra/superpowers.git",
+      "git_revision_observed": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+      "source_owner": "obra",
+      "source_sha256": "bf1b8216e523851a411e91d429a7c1c2a173e79d88957bc78e348218d50edd54",
+      "line_count": 320,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/engineering/A.SKILL.md",
+      "lineage_group": "obra/superpowers@b36e0829c6d0140e93cfef2ca599b1b07d4a7797"
+    },
+    {
+      "record_id": "engineering-B",
+      "family_id": "engineering",
+      "role": "B",
+      "repo_id": "wshobson/agents",
+      "source_path": "plugins/backend-development/skills/architecture-patterns/SKILL.md",
+      "git_remote": "https://github.com/wshobson/agents.git",
+      "git_revision_observed": "a30778f8c4e6b0a87567941b7cca4f534bf642b6",
+      "source_owner": "wshobson",
+      "source_sha256": "350caf22b856b7d2908a10a69a8cc13e743c757ba9838716051b4e29fc1d7595",
+      "line_count": 164,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/engineering/B.SKILL.md",
+      "lineage_group": "wshobson/agents@a30778f8c4e6b0a87567941b7cca4f534bf642b6"
+    },
+    {
+      "record_id": "engineering-C",
+      "family_id": "engineering",
+      "role": "C",
+      "repo_id": "Jeffallan/claude-skills",
+      "source_path": "skills/architecture-designer/SKILL.md",
+      "git_remote": "https://github.com/Jeffallan/claude-skills.git",
+      "git_revision_observed": "882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf",
+      "source_owner": "jeffallan",
+      "source_sha256": "5235b031e8fadacf01f39ad9db7b8d5ec9d6f83460ebcef78da95d31c9f36276",
+      "line_count": 118,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/engineering/C.SKILL.md",
+      "lineage_group": "Jeffallan/claude-skills@882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf"
+    },
+    {
+      "record_id": "engineering-C_prime",
+      "family_id": "engineering",
+      "role": "C_prime",
+      "repo_id": "Jeffallan/claude-skills#controlled-C-prime",
+      "base_repo_id": "Jeffallan/claude-skills",
+      "source_path": "skills/architecture-designer/SKILL.md (controlled derivative)",
+      "git_remote": "https://github.com/Jeffallan/claude-skills.git",
+      "git_revision_observed": "882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf+controlled-drift",
+      "source_owner": "jeffallan",
+      "source_sha256": "282aebcb3fdd2a8b493e6f1e46c09769cf76969030d56c1b8598e7b992dcb5a8",
+      "line_count": 122,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/engineering/C_prime.SKILL.md",
+      "lineage_group": "Jeffallan/claude-skills@882ef55e377dbf9a4dbe496bb41ac6ccd0e555cf",
+      "drift": {
+        "base_record_id": "engineering-C",
+        "before_sha256": "5235b031e8fadacf01f39ad9db7b8d5ec9d6f83460ebcef78da95d31c9f36276",
+        "after_sha256": "282aebcb3fdd2a8b493e6f1e46c09769cf76969030d56c1b8598e7b992dcb5a8",
+        "semantic_change": "adds a mandatory recorded verification result before completion",
+        "append_text": "\n\n## Controlled C-prime revision\nBefore completing the procedure, record the verification result and stop if the check is not green.\n"
+      }
+    },
+    {
+      "record_id": "documentation-A",
+      "family_id": "documentation",
+      "role": "A",
+      "repo_id": "anthropics/skills",
+      "source_path": "skills/doc-coauthoring/SKILL.md",
+      "git_remote": "https://github.com/anthropics/skills.git",
+      "git_revision_observed": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
+      "source_owner": "anthropics",
+      "source_sha256": "2e47d78846faeea4a56e9809c52700087a15a2155a3f293a3efbaded81398ef4",
+      "line_count": 375,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/documentation/A.SKILL.md",
+      "lineage_group": "anthropics/skills@41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f"
+    },
+    {
+      "record_id": "documentation-B",
+      "family_id": "documentation",
+      "role": "B",
+      "repo_id": "K-Dense-AI/claude-scientific-skills",
+      "source_path": "skills/literature-review/SKILL.md",
+      "git_remote": "https://github.com/K-Dense-AI/claude-scientific-skills.git",
+      "git_revision_observed": "9cf7d9aea7d84754db4c167ab04b299d33c444bc",
+      "source_owner": "k-dense-ai",
+      "source_sha256": "950a6d0863ef657523813b985fe86599ac6bb99b695eee5953612d7e20c78011",
+      "line_count": 280,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/documentation/B.SKILL.md",
+      "lineage_group": "K-Dense-AI/claude-scientific-skills@9cf7d9aea7d84754db4c167ab04b299d33c444bc"
+    },
+    {
+      "record_id": "documentation-C",
+      "family_id": "documentation",
+      "role": "C",
+      "repo_id": "wshobson/agents",
+      "source_path": "plugins/documentation-standards/skills/grounded-vault/SKILL.md",
+      "git_remote": "https://github.com/wshobson/agents.git",
+      "git_revision_observed": "a30778f8c4e6b0a87567941b7cca4f534bf642b6",
+      "source_owner": "wshobson",
+      "source_sha256": "8c646c8dd078029950f9d6292a1b79a8c97cb290c02c496d869c80c8089ae80b",
+      "line_count": 104,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/documentation/C.SKILL.md",
+      "lineage_group": "wshobson/agents@a30778f8c4e6b0a87567941b7cca4f534bf642b6"
+    },
+    {
+      "record_id": "documentation-C_prime",
+      "family_id": "documentation",
+      "role": "C_prime",
+      "repo_id": "wshobson/agents#controlled-C-prime",
+      "base_repo_id": "wshobson/agents",
+      "source_path": "plugins/documentation-standards/skills/grounded-vault/SKILL.md (controlled derivative)",
+      "git_remote": "https://github.com/wshobson/agents.git",
+      "git_revision_observed": "a30778f8c4e6b0a87567941b7cca4f534bf642b6+controlled-drift",
+      "source_owner": "wshobson",
+      "source_sha256": "bcbbfd94eb2f5a4e91c29001cbae0a327e55086c1f2e194633de36fee5f623a3",
+      "line_count": 108,
+      "snapshot_path": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots/documentation/C_prime.SKILL.md",
+      "lineage_group": "wshobson/agents@a30778f8c4e6b0a87567941b7cca4f534bf642b6",
+      "drift": {
+        "base_record_id": "documentation-C",
+        "before_sha256": "8c646c8dd078029950f9d6292a1b79a8c97cb290c02c496d869c80c8089ae80b",
+        "after_sha256": "bcbbfd94eb2f5a4e91c29001cbae0a327e55086c1f2e194633de36fee5f623a3",
+        "semantic_change": "adds a mandatory recorded verification result before completion",
+        "append_text": "\n\n## Controlled C-prime revision\nBefore completing the procedure, record the verification result and stop if the check is not green.\n"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "engineering-C",
+      "family_id": "engineering",
+      "target_repo": "Jeffallan/claude-skills",
+      "source_repos": [
+        "obra/superpowers",
+        "wshobson/agents"
+      ],
+      "task_prompt": "Review a service change and state the test boundary, architecture boundary, and required verification steps.",
+      "target_role": "C"
+    },
+    {
+      "case_id": "engineering-C-prime",
+      "family_id": "engineering",
+      "target_repo": "Jeffallan/claude-skills#controlled-C-prime",
+      "source_repos": [
+        "obra/superpowers",
+        "wshobson/agents"
+      ],
+      "task_prompt": "Review a service change and state the test boundary, architecture boundary, and required verification steps.",
+      "target_role": "C_prime"
+    },
+    {
+      "case_id": "documentation-C",
+      "family_id": "documentation",
+      "target_repo": "wshobson/agents",
+      "source_repos": [
+        "anthropics/skills",
+        "K-Dense-AI/claude-scientific-skills"
+      ],
+      "task_prompt": "Produce source-grounded technical documentation from procedures and make uncertainty explicit.",
+      "target_role": "C"
+    },
+    {
+      "case_id": "documentation-C-prime",
+      "family_id": "documentation",
+      "target_repo": "wshobson/agents#controlled-C-prime",
+      "source_repos": [
+        "anthropics/skills",
+        "K-Dense-AI/claude-scientific-skills"
+      ],
+      "task_prompt": "Produce source-grounded technical documentation from procedures and make uncertainty explicit.",
+      "target_role": "C_prime"
+    }
+  ],
+  "source_owner_gate": {
+    "status": "PASS",
+    "rule": "A, B and C owners are pairwise distinct within each family"
+  },
+  "human_annotation": {
+    "status": "PENDING",
+    "reviewers_required": 2,
+    "model_calls_allowed": false
+  },
+  "limitations": [
+    "C_prime is a controlled semantic drift derivative, not a historical upstream commit.",
+    "No task execution or semantic labels have been collected."
+  ],
+  "snapshot_root": ".guidefold/checks/source-disjoint-urct-2026-09-10/snapshots",
+  "reproduction": {
+    "command": "python3 tools/pilot/fetch_source_disjoint_urct.py --manifest docs/reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json --output .guidefold/checks/source-disjoint-urct-2026-09-10 --repo-cache /tmp/guidefold-urct-cache",
+    "hash_check": "sha256(snapshot_bytes) == source_sha256",
+    "snapshot_storage": "local ignored check artifact; not committed"
+  }
+}

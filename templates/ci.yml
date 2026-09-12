@@ -56,6 +56,8 @@ on:
     paths: ["**/SKILL.md", "**/.agents/skills/**", "guidefold.yaml"]
   push:
     branches: [main]   # your default branch — only quality-gate's baseline refresh reacts to this
+  schedule:
+    - cron: '17 3 * * 1' # weekly, deterministic minute; no duplicate run is created by retries
 
 jobs:
   skill-authoring-report:
@@ -300,6 +302,65 @@ jobs:
           git add docs/reports/golden/eval-baseline.json
           git commit -m "chore: refresh guidefold eval baseline [skip ci]"
           git push
+
+  # C39 / U11: a scheduled quality check uses the committed query set and baseline, but never
+  # changes the baseline or publishes content. The JSON artifact contains the exact tool ref,
+  # query path and run outcome so an owner can compare revisions without treating a missing
+  # query set as zero quality.
+  scheduled-quality:
+    name: guidefold scheduled quality check
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout this monorepo
+        uses: actions/checkout@v4
+
+      - name: Checkout the guidefold tooling (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GUIDEFOLD_TOOLS_REPO || 'wiatrM/guidefold' }}
+          ref: ${{ vars.GUIDEFOLD_TOOLS_REF || 'main' }}
+          path: .guidefold-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Read configured queries
+        id: cfg
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import yaml
+          cfg = yaml.safe_load(open("guidefold.yaml")) or {}
+          print(f"queries={((cfg.get('eval') or {}).get('queries') or '').strip()}")
+          PY
+
+      - name: Run the scheduled quality check
+        if: steps.cfg.outputs.queries != ''
+        run: |
+          python3 .guidefold-tools/skills/guidefold/scripts/guidefold eval \
+            --queries "${{ steps.cfg.outputs.queries }}" \
+            --baseline docs/reports/golden/eval-baseline.json \
+            --json scheduled-quality.json
+
+      - name: Record an honest no-data result
+        if: steps.cfg.outputs.queries == ''
+        run: |
+          python3 - <<'PY'
+          import json
+          json.dump({"schema": "guidefold-scheduled-quality-v1", "state": "unknown", "reason": "eval.queries_not_configured"}, open("scheduled-quality.json", "w"), indent=2)
+          PY
+
+      - name: Upload scheduled evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: guidefold-scheduled-quality
+          path: scheduled-quality.json
 
   # P08 / U2: one-shot extraction on the default branch.
   #

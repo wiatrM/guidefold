@@ -29,7 +29,8 @@
  --two-columns:repeat(2,minmax(0,1fr)); --aside-columns:minmax(0,1.8fr) minmax(0,1fr); --filter-form-columns:minmax(0,1fr) auto; --filter-form-areas:"search search" "filters actions"; --filter-columns:repeat(4,minmax(0,1fr)); --field-columns:repeat(3,minmax(0,1fr)); --steps-columns:repeat(4,minmax(0,1fr));
  --metric-columns:repeat(3,minmax(0,1fr)); --form-width:560px; --reading-width:80ch; --source-width:40ch;
  --min-page-width:320px; --text-area-height:160px; --body-editor-height:360px; --scroll-offset:24px; --raw-max-height:400px;
- --grid-tile:660px; --shine-width:96px; --shine-start:-96px; --shine-travel:calc(100vw + var(--shine-width)); --duration:120ms; --duration-menu:180ms; --duration-drawer:240ms; --duration-shine:900ms; --duration-reduced:80ms; --ease:ease-out; --ease-out:cubic-bezier(.23,1,.32,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --disabled-opacity:.65; --press-scale:.98;
+ --grid-tile:660px; --chart-height:280px; --telemetry-chart-height:220px; --chart-dot-size:.55px; --chart-grid-size:12px; --chart-tooltip-width:120px; --chart-tooltip-height:40px; --chart-sweep-width:33%; --chart-sweep-angle:90deg; --chart-sweep-color:rgba(255,255,255,.12); --chart-shimmer-0:42%; --chart-shimmer-1:68%; --chart-shimmer-2:51%; --chart-shimmer-3:79%; --chart-shimmer-4:46%; --chart-shimmer-5:88%; --chart-shimmer-6:57%; --chart-shimmer-7:73%; --transparent:transparent; --shine-width:96px; --shine-start:-96px; --shine-travel:calc(100vw + var(--shine-width)); --duration:120ms; --duration-menu:180ms; --duration-drawer:240ms; --duration-shine:900ms; --duration-reduced:80ms; --ease:ease-out; --ease-out:cubic-bezier(.23,1,.32,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --disabled-opacity:.65; --press-scale:.98;
+ --spectrum-chart-1:var(--survey-teal); --spectrum-chart-2:var(--safety-orange); --spectrum-chart-3:var(--warning); --spectrum-chart-4:var(--series-3); --spectrum-chart-5:var(--stone-300); --spectrum-chart-surface:var(--graphite-850);
  --rail-border:var(--border-width) solid var(--line-strong); --rail-bottom:none;
  --delivery-bar-align:center; --delivery-bar-direction:row; --delivery-bar-flex:1 1 auto; --delivery-value-wrap:nowrap; --delivery-value-overflow:normal;
  --funnel-metric-columns:repeat(5,minmax(0,1fr));
@@ -315,6 +316,7 @@
  --landing-nav-basis:100%;
  --landing-nav-height:56px;
  --landing-nav-font:12px;
+ --landing-nav-columns:minmax(0,1fr) auto;
  --landing-nav-gap:8px;
  --landing-brand:20px;
  --landing-mark-size:28px;

@@ -1,22 +1,22 @@
-# ArgoCD AppProject + Application for guidefold.cloudfloo.io, matching the pattern
-# already used on this cluster for every other app (one dedicated AppProject per app,
-# scoped destination namespace, CreateNamespace=true, automated prune+selfHeal —
-# modelled directly on the existing "quackback" Application).
+# ArgoCD AppProject + Application for guidefold.cloudfloo.io.
 #
-# Values are inlined below (spec.source.helm.values) rather than referenced via
-# valueFiles pointing at ../values.yaml in this directory: ArgoCD's Helm value-file
-# resolution security model is version-sensitive about paths that escape the chart's
-# own directory, and this file needs to work without assuming a specific ArgoCD
-# version. values.yaml in this directory stays the readable, `helm template`-tested
-# source of truth (see README.md) — if you change one, change the other; they must
-# not drift.
+# targetRevision is the tag deploy-cloudfloo-chart-r12, not main. The chart on
+# main carries the OAuth guard added in #130: it renders WORKOS_CLIENT_ID and
+# GUIDEFOLD_PUBLIC_URL into the ConfigMap and fails template rendering when
+# workos.clientID is empty. This environment has no WorkOS client id and no
+# guidefold-workos secret, which is also why the API container has been in
+# CrashLoopBackOff on workos_requires_api_key_and_client_id. On top of that the
+# live ConfigMap is immutable, so a render that adds keys cannot be applied in
+# place. The tag pins the chart revision the live release was built from; its
+# render is byte-identical to the live manifest apart from the UI image.
 #
-# NOT applied by the assistant session that authored this file. Apply with:
-#   kubectl apply -f argocd-application.yaml -n argocd
-# only after Postgres, secrets and the pinned image digests are in place (this
-# directory's README.md has the full sequence) — ArgoCD will otherwise sync a
-# release that immediately CrashLoopBackOffs on gf.validate's own required-field
-# checks, which is a noisy but harmless failure mode, not a dangerous one.
+# Moving this back to main needs three things, in order: a real workos.clientID
+# and publicURL in the values, the guidefold-workos secret created in the
+# namespace, and the immutable ConfigMap deleted so it can be recreated.
+#
+# The values below are the release's own computed values, read back from the
+# cluster, with only ui.image advanced. Verified by rendering the tagged chart
+# locally: the diff against the live manifest is one line, the UI image.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -44,51 +44,135 @@ spec:
   project: guidefold
   source:
     repoURL: https://github.com/wiatrM/guidefold.git
-    targetRevision: main
+    targetRevision: deploy-cloudfloo-chart-r12
     path: deploy/k8s/chart
     helm:
       values: |
-        tenant: cloudfloo
-        repository: guidefold
+        artifactImage: ''
+        auth: workos
+        autoscaling:
+          cpuUtilization: 70
+          enabled: true
+          inflightMetric: ''
+          inflightTarget: '4'
+          maxReplicas: 3
+          minReplicas: 2
+        credentialsSecret: guidefold-credentials
         database:
+          adminUser: postgres
+          connectionBudget: 128
           host: guidefold-postgres-rw.guidefold.svc.cluster.local
           name: guidefold
+          networkPeers:
+          - podSelector:
+              matchLabels:
+                cnpg.io/cluster: guidefold-postgres
+          port: 5432
+          reservedConnections: 16
           sslMode: verify-full
           tlsSecret: guidefold-postgres-ca
-          networkPeers:
-            - podSelector:
-                matchLabels: {cnpg.io/cluster: guidefold-postgres}
-          connectionBudget: 128
-          reservedConnections: 16
-        image: "ghcr.io/wiatrm/guidefold-search@sha256:cbcc19478240567dcf848f621bedbcb06595133b32d7907840cbbe8af7520702"
-        snapshotID: unpublished
-        replicas: 2
-        autoscaling:
-          minReplicas: 2
-          maxReplicas: 3
-        worker:
-          enabled: true
-          image: "ghcr.io/wiatrm/guidefold-worker@sha256:09b89b02de57c73224135c6ac8d8206491a5cfd10e33940dbfceadf5145ca28a"
+          user: guidefold_api
+        developmentMode: false
+        gpu:
+          autoscaling:
+            enabled: false
+            maxReplicas: 2
+            minReplicas: 1
+            queueMetric: ''
+            queueTarget: '4'
+          batchRequests: 1
+          enabled: false
+          encoderID: ''
+          image: ''
+          nodeSelector:
+            kubernetes.io/arch: amd64
           replicas: 1
-          generator: deterministic
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '1'
+              memory: 2Gi
+              nvidia.com/gpu: 1
+          tolerations: []
+        image: ghcr.io/wiatrm/guidefold-search@sha256:cbcc19478240567dcf848f621bedbcb06595133b32d7907840cbbe8af7520702
+        imagePullPolicy: IfNotPresent
+        imagePullSecrets: []
         ingress:
-          enabled: true
+          annotations: {}
           className: nginx
+          enabled: true
           host: guidefold.cloudfloo.io
-          tlsSecret: ""
+          tlsSecret: ''
+        job:
+          timeoutSeconds: 1800
+          ttlSecondsAfterFinished: 86400
+        metrics:
+          additionalLabels: {}
+          serviceMonitor: false
+        networkPolicy:
+          clientPeers:
+          - podSelector:
+              matchLabels:
+                guidefold.client: 'true'
+          enabled: true
+        nodeSelector: {}
+        operatorCredentialsSecret: guidefold-operator-credentials
         portal:
           enabled: true
-          image: "ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b"
+          image: ghcr.io/wiatrm/guidefold-portal@sha256:5ef818b9f8a58a82505662ce12bb91e36408488ff803cabf28972c5195d2975b
           replicas: 1
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        replicas: 2
+        repository: guidefold
+        resources:
+          limits:
+            cpu: '2'
+            ephemeral-storage: 256Mi
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            ephemeral-storage: 64Mi
+            memory: 512Mi
+        snapshotID: unpublished
+        tenant: cloudfloo
+        tolerations: []
         ui:
           enabled: true
-          image: "ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe"
+          image: ghcr.io/wiatrm/guidefold-ui@sha256:6cb8100637e6150bde1893d49dd5ced9b70781f062b2fc25b6446757025db627
           replicas: 2
-        networkPolicy:
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        worker:
           enabled: true
-          clientPeers:
-            - podSelector:
-                matchLabels: {guidefold.client: "true"}
+          generator: deterministic
+          image: ghcr.io/wiatrm/guidefold-worker@sha256:09b89b02de57c73224135c6ac8d8206491a5cfd10e33940dbfceadf5145ca28a
+          nodeSelector: {}
+          replicas: 1
+          resources:
+            limits:
+              cpu: '1'
+              ephemeral-storage: 512Mi
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              ephemeral-storage: 64Mi
+              memory: 256Mi
+          tolerations: []
+        workload: serve
   destination:
     server: https://kubernetes.default.svc
     namespace: guidefold

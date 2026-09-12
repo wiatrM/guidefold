@@ -50,10 +50,10 @@ type PortMethods = Omit<DataSource, 'drafts' | 'setContext' | 'revoke'>;
  * hands routes an `undefined`.
  */
 export const portMethods = [
-  'getAuthProviders', 'startLogin', 'getMe', 'logout', 'startDeviceAuthorization', 'decideDevice', 'startIdentityLink',
-  'listOrgs', 'getOrg', 'createOrg', 'listMembers', 'inviteMember', 'changeMemberRole', 'removeMember',
-  'listInstallations', 'createInstallation', 'revokeInstallation', 'getAudit',
-  'listRepos', 'createRepo', 'listImports', 'createImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
+  'getAuthProviders', 'startLogin', 'getMe', 'logout', 'startDeviceAuthorization', 'decideDevice', 'startIdentityLink', 'updateProfile',
+  'listOrgs', 'getOrg', 'createOrg', 'listMembers', 'listTeams', 'createTeam', 'addTeamMember', 'removeTeamMember', 'inviteMember', 'listInvitations', 'revokeInvitation', 'acceptInvitation', 'changeMemberRole', 'removeMember',
+  'listInstallations', 'createInstallation', 'revokeInstallation', 'listGitHubInstallations', 'deleteGitHubInstallation', 'getAudit',
+  'listRepos', 'createRepo', 'listRepoAccess', 'setRepoAccess', 'removeRepoAccess', 'listReviewers', 'assignReviewer', 'removeReviewer', 'listImports', 'createImport', 'uploadImportBlob', 'finalizeImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
   'listSkills', 'getFacets', 'lookupFacet', 'getSkill', 'getRevision', 'getRevisionRaw', 'sendFeedback',
   'getMapRepository', 'getMapScopes', 'getMapLayers', 'getRelations', 'getModule',
   'listProposals', 'getProposal', 'decideProposal', 'exportProposal', 'getProposalPublication',

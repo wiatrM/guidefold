@@ -3,19 +3,20 @@ import {screen, within} from '@testing-library/react';
 import {ApiHomeRoute} from './HomeRoute';
 import {ApiError} from '../api/client';
 import type {ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
+import {emptyExecutionMetrics} from '../api/decoders';
 import {fakeSource} from '../test/fakes';
 import {renderApi} from '../test/apiRoute';
 
 const emptyUsage: Usage = {
   window: {from: '2026-08-13T00:00:00Z', to: '2026-09-12T00:00:00Z', watermark: null},
   coverage: {events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false},
-  totals: {exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null},
+  totals: {exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, metrics: emptyExecutionMetrics},
   skills: [], queue: [], health: null,
 };
 const usage: Usage = {
   ...emptyUsage,
   coverage: {events_received: 300, dropped_reported: 0, oldest_lag_s: 12, task_ids_present: true},
-  totals: {exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: {helped: 18, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 23}},
+  totals: {exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: {helped: 18, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 23}, metrics: emptyExecutionMetrics},
   skills: [
     {skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', revision: 'rev-a', card_revision: null, content_sha256: null, scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 6, use_observed: 4, use_episodes: 5, exposures_expanded: 30, loads_unlinked: 0, feedback: {helped: 18, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 23}, helped_ratio: {numerator: 18, denominator: 22, small_sample: false}, zero_loads: false},
     {skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: null, zero_loads: true},
