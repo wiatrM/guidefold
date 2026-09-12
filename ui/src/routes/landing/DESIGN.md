@@ -304,7 +304,7 @@ table and limits in `ui/qa/landing-v2-gate.json`.
 | First-scroll long task | 0 at 1× CPU; at 4× two tasks that both land before the scroll | — | not the sampler |
 | Contrast over film | worst case per section 4.66 – 12.18:1; hero display 10.92:1 at the sunrise anchor | body 4.5, large 3, display 7 | pass |
 | Film scrub | 302 forward samples, 0 backward steps; fast reverse settles to 0.002 s | — | pass |
-| Film anchors | `#how-it-works` settles at 4.317 s (cut 4.2083), `#proof-gate` at 5.770 s (cut ≈5.67) | past its own cut | pass |
+| Film anchors | at 1440 `#how-it-works` settles at 4.317 s (cut 4.2083) and `#proof-gate` at 5.770 s (cut ≈5.67); at 390 the same navigation gives 4.264 s and 5.781 s | past its own cut | pass |
 | Observers and listeners | 2 scroll, 5 resize, 6 IntersectionObserver, 5 ResizeObserver | the page's own code opens one scroll sampler and the two-observer entrance pool; the remainder belong to the two recorded exceptions, motion's `scroll()` and the Spectrum bento's `whileInView`, neither of which the wiring layer can collapse without editing a hash-pinned file | pass, as built |
 | `content-visibility: auto` | 0 | 0 | pass |
 | `backdrop-filter` with `data-film="on"` | **0 live surfaces** (`--glass-backdrop: none`; swept with `getComputedStyle` over every element) | none | pass |

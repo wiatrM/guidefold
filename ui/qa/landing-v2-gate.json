@@ -142,8 +142,8 @@
     {
       "id": "film-anchors",
       "status": "pass",
-      "evidence": "Shipped anchors how-it-works 4.40 and proof-gate 5.85 (was 4.30 and 5.75). Settled playhead with each section parked at its own top (scrollIntoView block:start, which leaves 80 px of scroll-margin): how-it-works 4.317 s against the 4.2083 cut, proof-gate 5.770 s against the ~5.67 cut, both stable from 1.5 s onward. Each section now opens on its own shot; qa/landing-v2/retrieval-1440.png was re-taken and shows the four-card fan behind 'Thirty thousand rules. Four reach the agent.'",
-      "remediation": "The margin is carried by the anchor second, not by a navigation-offset subtraction: the header computes position: static at 720 and below, so subtracting a sticky offset would over-correct at 390. Scope: measured on the anchor-navigation path, not free scrolling."
+      "evidence": "Shipped anchors how-it-works 4.40 and proof-gate 5.85 (was 4.30 and 5.75). Settled playhead with each section parked at its own top (scrollIntoView block:start, which leaves 80 px of scroll-margin): how-it-works 4.317 s against the 4.2083 cut, proof-gate 5.770 s against the ~5.67 cut, both stable from 1.5 s onward. Re-measured the same way at 390 x 844, where the header is static and the scroll margin is 56 px: how-it-works 4.2635 s and proof-gate 5.7806 s, both past their own cut as well (the how-it-works margin is 0.055 s there, wider than the 0.042 s one-frame deadband but thinner than at 1440). Each section now opens on its own shot; qa/landing-v2/retrieval-1440.png was re-taken and shows the four-card fan behind 'Thirty thousand rules. Four reach the agent.'",
+      "remediation": "The margin is carried by the anchor second, not by a navigation-offset subtraction: the header computes position: static at 720 and below, so subtracting a sticky offset would over-correct at 390. Scope: measured on the anchor-navigation path at 1440 and 390, not free scrolling."
     },
     {
       "id": "radius",
