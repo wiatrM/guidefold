@@ -59,6 +59,9 @@ spec:
             {{- if .Values.github.webhookSecretName }}
             - {name: GITHUB_WEBHOOK_SECRET_FILE, value: /run/github/webhook-secret}
             {{- end }}
+            {{- if .Values.secretKeyringSecretName }}
+            - {name: GUIDEFOLD_SECRET_KEY_FILE, value: /run/keyring/keyring}
+            {{- end }}
           ports: [{name: http, containerPort: 8080}]
           startupProbe:
             httpGet: {path: /health/live, port: http}
@@ -85,6 +88,9 @@ spec:
             {{- if .Values.github.webhookSecretName }}
             - {name: github, mountPath: /run/github, readOnly: true}
             {{- end }}
+            {{- if .Values.secretKeyringSecretName }}
+            - {name: keyring, mountPath: /run/keyring, readOnly: true}
+            {{- end }}
             - {name: tmp, mountPath: /tmp}
             {{- include "gf.tlsMount" . | nindent 12 }}
       volumes:
@@ -110,6 +116,18 @@ spec:
             defaultMode: 0440
             items:
               - {key: webhook-secret, path: webhook-secret}
+        {{- end }}
+        {{- if .Values.secretKeyringSecretName }}
+        # ADR-0045: the deployment's AES-256 master keyring (internal/secrets.LoadKeyring's
+        # JSON shape: {"active": "<key_id>", "keys": {"<key_id>": "<base64 32 bytes>", ...}}).
+        # No master key means no stored credential, not a plaintext fallback, so this is the
+        # one Secret the whole encrypted-at-rest feature depends on existing.
+        - name: keyring
+          secret:
+            secretName: {{ .Values.secretKeyringSecretName }}
+            defaultMode: 0440
+            items:
+              - {key: keyring, path: keyring}
         {{- end }}
         - {name: tmp, emptyDir: {sizeLimit: 32Mi}}
         {{- include "gf.tlsVolume" . | nindent 8 }}

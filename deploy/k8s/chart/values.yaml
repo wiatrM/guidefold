@@ -12,6 +12,29 @@ workos:
   secretName: guidefold-workos # key: api-key
 github:
   webhookSecretName: "" # optional GitHub App webhook secret; key: webhook-secret
+# Optional deployment master keyring for organisation-supplied provider credentials
+# (ADR-0045). Empty means no keyring is mounted and GUIDEFOLD_SECRET_KEY_FILE is left
+# unset: internal/secrets.LoadKeyring then returns no keyring, credential PUT answers
+# 503 secret_encryption_unavailable, and the Model keys screen says so instead of
+# storing anything in the clear. Set it to run the Live Agent or PR review model calls.
+# Secret key: `keyring`, whose value is the whole JSON file
+# internal/secrets.LoadKeyring reads: {"active": "<key_id>", "keys": {"<key_id>":
+# "<base64 of 32 random bytes>", ...}} (see tools/dev/stack.py's generate_keyring()
+# for the same shape used locally). Mounted identically by the API and the worker.
+secretKeyringSecretName: ""
+api:
+  # Peers the API may open TLS to. This is a much smaller need than the worker's
+  # externalEgress below: PUT {org_base}/credentials/{provider} makes one
+  # short-lived authenticated call to the organisation's model provider to
+  # verify a key an owner just typed, before sealing it (ADR-0045 point 5,
+  # secrets.NewHTTPVerifier in main.go) — not a job that reads a repository or
+  # does real model work. A NetworkPolicy matches peers, never hostnames, so
+  # the operator names them here rather than the chart guessing a CIDR that
+  # will rot. Empty is a supported state, not an oversight: the API then
+  # reaches only DNS, the database and (if enabled) the GPU shadow, and
+  # storing a credential answers `provider_unavailable` instead of hanging on
+  # a connection that will never open.
+  externalEgress: []
 image: "" # registry/image@sha256:... (Go runtime)
 artifactImage: "" # same runtime with /input/snapshot.json and optional embeddings.json
 imagePullPolicy: IfNotPresent
@@ -87,11 +110,22 @@ worker:
     limits: {cpu: "1", memory: 1Gi, ephemeral-storage: 512Mi}
   nodeSelector: {}
   tolerations: []
-  # Peers the worker may open TLS to: api.github.com for reading a repository and
-  # the organisation's model provider (ADR-0046). A NetworkPolicy matches peers,
-  # never hostnames, so the operator names them. Empty is a supported state: the
-  # worker then reaches only DNS and the database, and live.repo / ascend.run end
-  # `skipped` with a named reason rather than hanging.
+  # Peers the worker may open TLS to. Both destinations below are needed together,
+  # not one or the other: api.github.com (read a repository for `live.repo`, read
+  # a diff and post the sticky PR comment for `pr.report`, and — with github.com —
+  # push the branch and open the PR for `ascend.run`) and the organisation's model
+  # provider endpoint (opened directly by `pr.report` and by the `proposal.generate`
+  # job `live.repo` waits on, both through internal/secrets.OpenFor with the
+  # organisation's own key from ADR-0045; `ascend.run` calls the deployment's own
+  # generator key the same way). See ADR-0046 §2/§9, ADR-0036 and API-CONTRACT §8.
+  # A NetworkPolicy matches peers, never hostnames, so the operator names them here
+  # rather than the chart guessing a CIDR that will rot. Empty is a supported
+  # state, not an oversight: the worker then reaches only DNS and the database,
+  # and every one of those job kinds terminates `skipped` with a named reason
+  # (`github_app_not_configured`) instead of hanging on a connection that will
+  # never open. This is separate from, and larger than, `api.externalEgress`
+  # above: the API only ever checks a key someone just typed; the worker does
+  # the actual repository reads and model calls.
   externalEgress: []
 job:
   timeoutSeconds: 1800
