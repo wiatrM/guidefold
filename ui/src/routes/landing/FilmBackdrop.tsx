@@ -7,15 +7,15 @@ import css from './landing.module.css';
  * with the playhead tied to scroll position rather than to a clock, so the visitor drives
  * it and it runs backwards exactly as it runs forwards.
  *
- * Poster first and always: the still is the LCP element, it is never removed, and every
- * failure path (reduced motion, Save-Data, a decoder error, a file that is not on disk,
- * no `canplay` inside eight seconds) simply leaves the poster in place with no layout
- * shift. `data-film` on the page root tells the section planes to step aside once the
- * film is actually running, so two backgrounds never compete.
+ * The field first and always: v3 removed the poster still, so the layer opens on the flat
+ * graphite ground `.film` already paints and the film fades up over it once it can seek.
+ * Every failure path — reduced motion, Save-Data, a decoder error, a file that is not on
+ * disk, no `canplay` inside eight seconds — simply leaves that field on screen with no
+ * layout shift and nothing to load. `data-film` on the page root tells the section planes
+ * to step aside once the film is actually running, so two backgrounds never compete.
  *
- * Seeking is damped and rate limited: the playhead eases toward the scroll target and is
- * only written when it has moved more than a frame, which keeps a scrub from queueing a
- * seek per rAF tick.
+ * Seeking is damped, rate limited and gated on the previous seek having presented; see
+ * `SEEK_INTERVAL_MS` and `SEEK_STALL_MS` below for the measured reason.
  *
  * The mapping from scroll to playhead is the anchor map (DESIGN.md 3.0): whole-document
  * progress is not stretched linearly over the duration, because the beats are not evenly
@@ -26,32 +26,63 @@ import css from './landing.module.css';
 const TERMINAL = 10.04;
 const DURATION_FALLBACK = TERMINAL;
 const FRAME = 1 / 24;
+/**
+ * R1, the measured seek fix. Scrubbing used to write `currentTime` on every rAF tick that
+ * cleared `!node.seeking`: ~66 writes a second into a decoder that was only presenting
+ * 21-28 frames a second. Measured on this page, disabling those writes alone removed
+ * 41-44 % of all main-thread busy time during a scroll pass and 80 % of paint time, and
+ * the film's visible cadence did not change — every extra seek was thrown away.
+ *
+ * So a write now waits for the previous one to have *presented*, not merely to have
+ * stopped seeking, and for a wall clock of `SEEK_INTERVAL_MS` to have passed. The two
+ * bound the seek rate from both sides.
+ */
+const SEEK_INTERVAL_MS = 33;
+/**
+ * The escape hatch, and it is not optional. A seek that resolves to the frame already on
+ * screen fires no `requestVideoFrameCallback` at all; so does a decoder stall or a tab the
+ * browser has throttled. A naive in-flight flag would then never clear and the film would
+ * freeze permanently — with the layer still mounted, no error fired and `data-film` still
+ * `on`, which is worse than the judder and would pass every test in the suite. The flag is
+ * therefore cleared by whichever of the frame callback and this timer fires first.
+ */
+const SEEK_STALL_MS = 100;
+/** Below this the damper has arrived and the loop has nothing left to do until the next scroll. */
+const SETTLED = FRAME / 4;
+
+type FrameCallbackVideo = HTMLVideoElement & {
+ requestVideoFrameCallback?(callback:()=>void):number;
+ cancelVideoFrameCallback?(handle:number):void;
+};
 
 export type Anchor = {id:string;second:number;at:number};
 
 /**
- * The nine sections in DOM order with the playhead second each one opens on
- * (DESIGN.md 3.0, "Implemented anchors"). Seconds are fixed; the scroll positions they
- * sit at are measured. Two beats are literal and must not be re-assigned: the four-card
- * fan belongs to `how-it-works`, the tier-edge crossing to `proof-gate`.
+ * The ten sections of v3 in DOM order with the playhead second each one opens on. Seconds
+ * are fixed; the scroll positions they sit at are measured. One beat is still literal and
+ * is not re-assigned: the four-card fan at 4.4 belongs to `how-it-works`, which is the
+ * chapter about four cards reaching the agent.
  *
- * Where a second differs from DESIGN.md's table it is because the film's own cut is the
- * truth and the design second was a target: an anchor is the cut plus ~0.19 s. Final
- * review I2 measured the settle at 4.2002 and 5.6686, i.e. still on the tail of the
- * previous shot at the ~0.09 s margin, so both were moved +0.10 s. The margin is applied
- * to the anchor second rather than to the navigation offset because the header computes
- * `position: static` at 720 and below, where there is no sticky offset to subtract.
+ * v3 removed four sections (`proof-gate`, `telemetry`, `research-results`,
+ * `availability`) and added three (`why`, `portal`, `under-the-hood`) plus the footer as
+ * its own anchor, so the table is rebuilt rather than edited. The seconds of the sections
+ * that stayed are unchanged where the shot still fits — hero 0, extraction 1.4,
+ * how-it-works 4.4 — and the seconds freed by the removed sections are redistributed over
+ * the new ones so the film still spans the whole page end to end. The tier-edge crossing
+ * that used to open `proof-gate` at 5.85 now opens `under-the-hood`; that reassignment is
+ * deliberate and recorded in DESIGN.md rather than left to read as a stale comment.
  */
 export const FILM_ANCHORS:readonly Omit<Anchor,'at'>[] = [
  {id:'hero',second:0},               // table above the clouds, the drawn orange route, sunrise window
+ {id:'why',second:0.7},              // the first push towards the terrain, horizon still wide
  {id:'extraction',second:1.4},       // the fall into the terrain: contour valley, teal rings, map sheet lifting
+ {id:'portal',second:3.1},           // the sheet settling over the valley, tiers reading as one surface
  {id:'how-it-works',second:4.4},     // four cream cards standing in a fan around one lit orange marker (cut 4.2083)
- {id:'proof-gate',second:5.85},      // the route crossing a plateau edge, teal rim light on the boundary
- {id:'telemetry',second:6.8},        // stacked plateaus held wide, cubes across the lower tiers
- {id:'research-results',second:7.8}, // upper plateau, sparse cubes, route arriving at the top tier
- {id:'availability',second:8.6},     // pull back begins, the terrain reads as a map again
- {id:'waitlist',second:9.1},         // the map rising into its folds
- {id:'questions',second:9.7},        // the folded map on the desk beside the wordmark
+ {id:'under-the-hood',second:5.85},  // the route crossing a plateau edge, teal rim light on the boundary
+ {id:'proof',second:7.0},            // stacked plateaus held wide, cubes across the lower tiers
+ {id:'waitlist',second:8.4},         // pull back begins, the terrain reads as a map again
+ {id:'questions',second:9.1},        // the map rising into its folds
+ {id:'footer',second:9.7},           // the folded map on the desk beside the wordmark
 ] as const;
 
 /**
@@ -130,9 +161,10 @@ export function FilmBackdrop(){
  const target = useRef(0);
  const current = useRef(0);
  const raf = useRef(0);
+ /** Restarts the parked seek loop; null exactly while the loop is already running. */
+ const wake = useRef<null|(()=>void)>(null);
  const anchorsRef = useRef<Anchor[]>([]);
  const [allowed,setAllowed] = useState(false);
- const [decoded,setDecoded] = useState(false);
  const [failed,setFailed] = useState(false);
  const [ready,setReady] = useState(false);
  const [paused,setPaused] = useState(false);
@@ -146,7 +178,7 @@ export function FilmBackdrop(){
   return ()=>query?.removeEventListener('change',update);
  },[]);
 
- const mounted = allowed && decoded && !failed;
+ const mounted = allowed && !failed;
 
  // Fail closed: no `canplay` inside eight seconds is treated exactly like a decoder error.
  useEffect(()=>{
@@ -188,7 +220,10 @@ export function FilmBackdrop(){
   };
  },[mounted,remeasure]);
 
- useDocumentProgress((progress)=>{target.current=playheadAt(progress,anchorsRef.current);},mounted&&ready);
+ useDocumentProgress((progress)=>{
+  target.current=playheadAt(progress,anchorsRef.current);
+  wake.current?.();
+ },mounted&&ready);
 
  /**
   * DESIGN.md 4.4: the film stops costing anything while the tab is hidden, while the film
@@ -242,23 +277,67 @@ export function FilmBackdrop(){
   };
  },[mounted]);
 
- // One eased writer, started only once the film can actually seek.
+ /**
+  * One eased writer, started only once the film can actually seek, and stopped again the
+  * moment the damper has arrived. Before R1 this rAF ran every frame forever once `ready`
+  * — on a page at rest, with nothing to seek to, for as long as the tab was open.
+  *
+  * The restart lives in the scroll callback below rather than in a `lastScrollAt` clock in
+  * `scroll.ts`: that module is shared by every registered section and the wake-up only
+  * concerns this one consumer, so the simpler containment wins.
+  */
  useEffect(()=>{
   if(!mounted||!ready)return;
-  const node = media.current;
+  const node = media.current as FrameCallbackVideo|null;
   if(!node)return;
   if(paused){try{node.pause();}catch{/* a scrubbed film is never playing anyway */}return;}
+
+  let pending=false;         // a seek is in flight and has not presented
+  let lastWrite=0;           // wall clock of the last `currentTime` write
+  let stall=0;               // the escape-hatch timer for that write
+  let presented=0;           // the rVFC handle for that write
+  let running=false;
+  const settle=()=>{
+   pending=false;
+   if(stall){window.clearTimeout(stall);stall=0;}
+   if(presented&&node.cancelVideoFrameCallback){node.cancelVideoFrameCallback(presented);presented=0;}
+  };
+  const onSeeked=()=>settle();
+  node.addEventListener('seeked',onSeeked);
+
   const step = ()=>{
    const duration = Number.isFinite(node.duration)&&node.duration>0 ? node.duration : DURATION_FALLBACK;
    const wanted = Math.min(target.current,duration);
    current.current += (wanted-current.current) * 0.14;
-   if(Math.abs(current.current-node.currentTime) > FRAME && !node.seeking){
-    try{node.currentTime = current.current;}catch{setFailed(true);}
+   const now = performance.now();
+   if(!pending && now-lastWrite >= SEEK_INTERVAL_MS && Math.abs(current.current-node.currentTime) > FRAME){
+    lastWrite=now;
+    pending=true;
+    // `seeked` is the fallback where requestVideoFrameCallback does not exist; the timer
+    // is the guard for the seek that presents nothing and fires neither.
+    if(node.requestVideoFrameCallback)presented=node.requestVideoFrameCallback(()=>{presented=0;settle();});
+    stall=window.setTimeout(settle,SEEK_STALL_MS);
+    try{node.currentTime = current.current;}catch{settle();setFailed(true);}
+   }
+   if(!pending && Math.abs(wanted-current.current) < SETTLED){
+    // Arrived. Park the loop and let the next scroll sample start it again.
+    running=false;
+    raf.current=0;
+    return;
    }
    raf.current = requestAnimationFrame(step);
   };
-  raf.current = requestAnimationFrame(step);
-  return ()=>cancelAnimationFrame(raf.current);
+  const start=()=>{if(running)return;running=true;raf.current=requestAnimationFrame(step);};
+  wake.current=start;
+  start();
+  return ()=>{
+   wake.current=null;
+   running=false;
+   settle();
+   node.removeEventListener('seeked',onSeeked);
+   if(raf.current)cancelAnimationFrame(raf.current);
+   raf.current=0;
+  };
  },[mounted,ready,paused]);
 
  useEffect(()=>{
@@ -269,17 +348,6 @@ export function FilmBackdrop(){
  },[mounted,ready]);
 
  return <div ref={film} className={css.film} aria-hidden="true">
-  <img
-   className={css.filmPoster}
-   src="/assets/landing/hero-poster.webp"
-   alt=""
-   width="1920"
-   height="1080"
-   fetchPriority="high"
-   ref={node=>{if(node?.complete&&node.naturalWidth>0)setDecoded(true);}}
-   onLoad={()=>setDecoded(true)}
-   onError={event=>{event.currentTarget.hidden=true;}}
-  />
   {mounted&&<video
    ref={media}
    className={css.filmVideo}

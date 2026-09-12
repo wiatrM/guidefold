@@ -82,10 +82,10 @@
  --landing-nav-font:14px;
  --landing-nav-ground:rgba(7,9,12,.92);
 
- --landing-section-padding:clamp(104px,9vw,168px);
+ --landing-section-padding:clamp(36px,2.3vw,44px);
  --landing-title:clamp(38px,4.5vw,64px);
  --landing-title-leading:1.08;
- --landing-heading:clamp(30px,3.2vw,46px);
+ --landing-heading:clamp(26px,2.5vw,36px);
  --landing-heading-leading:1.15;
  --landing-lede:18px;
  --landing-copy-width:46ch;
@@ -104,7 +104,7 @@
  --landing-field-inset:-48px;
  --landing-media-inset:-24px;
 
- --landing-media-band:78vh;
+ --landing-media-band:62vh;
  --landing-hero-min:520px;
  --landing-hero-object:62% 50%;
  --landing-hero-copy-width:55%;
@@ -168,7 +168,7 @@
  --landing-enter-delay-3:80ms;
  --landing-enter-delay-4:120ms;
 
- --landing-display:clamp(46px,6.4vw,92px);
+ --landing-display:clamp(32px,3.3vw,48px);
  --landing-display-leading:1.02;
  --landing-display-tracking:-.035em;
  --landing-kicker:clamp(19px,1.5vw,23px);
@@ -234,6 +234,61 @@
  --landing-retrieval-rule:var(--border-width) solid var(--line);
  --landing-retrieval-rule-top:none;
 
+ /* --------------------------------------------------------------- Landing v3
+  * The rebuilt page (ui/design/landing/v3/SPEC.md). One 12-column grid as before;
+  * every responsive change below is a span or a template swap in the 1080/720 blocks,
+  * never a media query inside a section's own module. */
+ /* Beat opacity, written per element by Extraction.tsx since R2. It rests at 1, which is
+  * the stacked fallback: all three beats visible with no sampler installed. */
+ --o:1;
+ --landing-hero-copy-v3:1/7;
+ --landing-hero-screen-v3:7/13;
+ --landing-hero-screen-row:1;
+ --landing-block-copy:1/-1;
+ --landing-block-screen:3/11;
+ --landing-screen-margin:var(--space-4);
+ /* Real UI captures are 1.6:1; at full column width that is 900 px of page each and four
+  * of them would own half the document. They are cropped to a letterbox from the top
+  * instead, which is the part of a product screen that carries the argument. */
+ --landing-screen-ratio:2.6;
+ --landing-screen-position:top center;
+ --landing-device-shadow:var(--shadow-raised);
+ --landing-caption-align:left;
+ --landing-value-margin:var(--space-4);
+ /* The value panel. The rule is inset by the panel's own border so the two do not sit on
+  * the same pixel; the glow is a teal wash that the entrance animates out of. */
+ --landing-value-inset:calc(var(--landing-panel-pad) + var(--space-3));
+ --landing-value-rule-inset:var(--landing-panel-pad);
+ --landing-value-origin:top;
+ --landing-value-delay-label:80ms;
+ --landing-value-delay-sentence:160ms;
+ --landing-value-glow-duration:900ms;
+ --landing-value-glow:0 0 18px 1px rgba(63,184,177,.7);
+ --landing-value-glow-rest:0 0 0 0 rgba(63,184,177,0);
+ --landing-why-columns:minmax(0,4fr) minmax(0,8fr);
+ --landing-role-columns:minmax(0,1fr) minmax(0,2.2fr);
+ --landing-role-gap:var(--space-4);
+ --landing-role-pad:var(--space-4);
+ --landing-instrument-columns:minmax(0,1fr) minmax(0,1.5fr);
+ --landing-instrument-rule:var(--border-width) solid var(--line);
+ --landing-instrument-rule-top:none;
+ --landing-step-gap:var(--space-3);
+ --landing-cards-columns:minmax(0,1fr);
+ --landing-card-gap:var(--space-2);
+ --landing-card-row:minmax(0,1.1fr) minmax(0,2fr) max-content;
+ --landing-hood-columns:repeat(3,minmax(0,1fr));
+ --landing-hood-rule:var(--border-width) solid var(--line);
+ --landing-hood-rule-top:none;
+ --landing-hood-pad:var(--landing-panel-pad);
+ --landing-proof-columns:repeat(2,minmax(0,1fr));
+ --landing-proof-rule:var(--border-width) solid var(--line-strong);
+ --landing-proof-rule-top:none;
+ --landing-proof-figure:clamp(24px,2.2vw,34px);
+ --landing-proof-pad:var(--space-5);
+ --landing-details-gap:var(--space-4);
+ --landing-dot-size:6px;
+ --landing-loader-mark:64px;
+
  --film-scrim-hero:linear-gradient(100deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.8) 34%,rgba(7,9,12,.1) 66%,rgba(7,9,12,0) 100%);
  --film-scrim-chapter:radial-gradient(120% 90% at 30% 55%,rgba(7,9,12,.86) 0%,rgba(7,9,12,.52) 48%,rgba(7,9,12,.24) 100%);
  --film-scrim-band:linear-gradient(180deg,rgba(7,9,12,.58) 0%,rgba(7,9,12,.86) 100%);
@@ -258,7 +313,7 @@
  --landing-panel-pad:clamp(20px,2vw,32px);
  --landing-bento-gap:12px;
  --landing-stage-height:100dvh;
- --landing-stage-scroll:260vh;
+ --landing-stage-scroll:150vh;
  --landing-measure-gutter:clamp(24px,6vw,120px);
  --landing-radius-panel:16px;
  --landing-chart-min-height:280px;
@@ -334,6 +389,16 @@
  --landing-retrieval-cards:minmax(0,1fr);
  --landing-retrieval-rule:none;
  --landing-retrieval-rule-top:var(--border-width) solid var(--line);
+ /* v3: the hero screen drops under the copy, and every two-column block becomes one. */
+ --landing-hero-copy-v3:1/-1;
+ --landing-hero-screen-v3:1/-1;
+ --landing-hero-screen-row:auto;
+ --landing-block-copy:1/-1;
+ --landing-block-screen:1/-1;
+ --landing-why-columns:minmax(0,1fr);
+ --landing-instrument-columns:minmax(0,1fr);
+ --landing-instrument-rule:none;
+ --landing-instrument-rule-top:var(--border-width) solid var(--line);
 }}
 @media(max-width:720px){:root{
  --landing-film-opacity:.7;
@@ -364,8 +429,8 @@
  --landing-brand:20px;
  --landing-mark-size:28px;
  --landing-lede:16px;
- --landing-section-padding:72px;
- --landing-display:clamp(34px,9vw,46px);
+ --landing-section-padding:40px;
+ --landing-display:clamp(30px,7.6vw,38px);
  --landing-band-gap:24px;
  --landing-panel-pad:16px;
  --landing-bento-gap:10px;
@@ -429,6 +494,24 @@
  --landing-hero-pad-top:var(--space-2);
  --landing-glyph-width:auto;
  --landing-glyph-height:var(--landing-tier-glyph-height);
+ /* v3 at 390: every row, card, panel and figure pair becomes one column. */
+ --landing-role-columns:minmax(0,1fr);
+ --landing-role-gap:var(--space-2);
+ --landing-cards-columns:minmax(0,1fr);
+ --landing-card-row:minmax(0,1fr);
+ --landing-hood-columns:minmax(0,1fr);
+ --landing-hood-rule:none;
+ --landing-hood-rule-top:var(--border-width) solid var(--line);
+ --landing-proof-columns:minmax(0,1fr);
+ --landing-proof-rule:none;
+ --landing-proof-rule-top:var(--border-width) solid var(--line-strong);
+ --landing-proof-pad:var(--space-4);
+ --landing-screen-margin:var(--space-4);
+ --landing-screen-ratio:16/10;
+ --landing-value-margin:var(--space-4);
+ --landing-value-inset:calc(var(--landing-panel-pad) + var(--space-2));
+ --landing-value-rule-inset:var(--space-3);
+ --landing-loader-mark:48px;
 }}
 
 /* ---------------------------------------------------------------------------
@@ -444,4 +527,5 @@
  --parallax-panel:0px;--parallax-chapter:0px;
  --landing-stage-height:auto;
  --landing-stage-scroll:auto;
+ --landing-value-glow-duration:0ms;
 }}

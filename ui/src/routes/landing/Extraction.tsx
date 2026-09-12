@@ -1,6 +1,7 @@
 import {useLayoutEffect,useRef,useState,type ReactNode} from 'react';
 import {scroll} from 'motion';
 import {Reveal} from './Reveal';
+import {ValuePanel} from './ValuePanel';
 import css from './extraction.module.css';
 
 /**
@@ -29,10 +30,11 @@ import css from './extraction.module.css';
 
 /**
  * DESIGN.md 4.2: beat windows at 0.0-0.33, 0.33-0.66 and 0.66-1.0, each handover a
- * crossfade of `BEAT_FADE` centred on the boundary. Exported with `beatOpacity` because
- * `extraction.module.css` evaluates exactly this expression in `clamp()`/`min()` and the
- * two must not drift; `Extraction.test.tsx` asserts both the shape of the curve and that
- * the stylesheet still spells the same numbers.
+ * crossfade of `BEAT_FADE` centred on the boundary. Since R2 this is the only place the
+ * window arithmetic exists: the stylesheet reads the `--o` these numbers produce instead
+ * of spelling them again in `clamp()`/`min()`, so the two can no longer drift.
+ * `Extraction.test.tsx` asserts the shape of the curve and that the writer really puts
+ * that curve on the beats and the ticks.
  */
 export const BEAT_EDGES=[0.33,0.66] as const;
 export const BEAT_FADE=0.06;
@@ -161,11 +163,32 @@ export function Extraction(){
   if(!track||!stage)return;
   let stop:VoidFunction|null=null;
   let beat=0;
+  /**
+   * R2: the sampler used to write one `--p` on the stage, which invalidated style for the
+   * whole pinned subtree every frame. It now writes onto the elements that actually read
+   * a value: `--o` on the three beats and the three ticks (the crossfade, evaluated here
+   * with the same exported `beatOpacity` the stylesheet used to spell in `clamp()`), and
+   * `--p` on the three panels, which are the common wrapper of the chapter parallax and,
+   * for the third one, of the tier route's draw. Nine leaf writes instead of one write
+   * with a subtree behind it.
+   */
+  const lit=(selector:string)=>[...stage.querySelectorAll<HTMLElement>(selector)];
+  const beats=lit('[data-beat]'),ticks=lit('[data-tick]'),panels=lit('[data-panel]');
+  const clear=()=>{
+   for(const node of [...beats,...ticks])node.style.removeProperty('--o');
+   for(const node of panels)node.style.removeProperty('--p');
+  };
   const sync=()=>{
    const want=samplerAllowed()&&stageIsPinned();
    if(want&&!stop){
     stop=scroll((progress:number)=>{
-     stage.style.setProperty('--p',progress.toFixed(4));
+     const p=progress.toFixed(4);
+     for(const node of panels)node.style.setProperty('--p',p);
+     for(let i=0;i<3;i++){
+      const o=beatOpacity((i+1) as 1|2|3,progress).toFixed(3);
+      beats[i]?.style.setProperty('--o',o);
+      ticks[i]?.style.setProperty('--o',o);
+     }
      const next=activeBeat(progress);
      if(next!==beat){beat=next;track.dataset.activeBeat=String(next);}
     },{target:track,offset:['start start','end end']});
@@ -173,7 +196,7 @@ export function Extraction(){
     stop();
     stop=null;
     beat=0;
-    stage.style.removeProperty('--p');
+    clear();
     delete track.dataset.activeBeat;
    }
    setPinned(want);
@@ -188,7 +211,7 @@ export function Extraction(){
    window.removeEventListener('resize',sync);
    reduced?.removeEventListener('change',sync);
    stop?.();
-   stage.style.removeProperty('--p');
+   clear();
    delete track.dataset.activeBeat;
   };
  },[]);
@@ -209,9 +232,9 @@ export function Extraction(){
        * the stage is actually pinned and there is a position to mark. */}
      <div className={css.rail} aria-hidden="true">
       <div className={css.railLine}>
-       <span className={css.tick1}/>
-       <span className={css.tick2}/>
-       <span className={css.tick3}/>
+       <span className={css.tick1} data-tick="1"/>
+       <span className={css.tick2} data-tick="2"/>
+       <span className={css.tick3} data-tick="3"/>
       </div>
      </div>
 
@@ -221,8 +244,8 @@ export function Extraction(){
        <p className={css.beatLede}>{'Guidefold finds the reusable part of a service rule,'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel}>
-        <p className={css.panelLabel}>{'Meridian fixture'}</p>
+       <div className={css.panel} data-panel="">
+        <p className={css.panelLabel}>{'Sample data'}</p>
         <ol className={css.crumbs}>
          {FIXTURE_PATH.map(part=><li key={part}>{part}</li>)}
         </ol>
@@ -241,7 +264,7 @@ export function Extraction(){
        <p className={css.beatBody}>{'Service, then team, then organisation.'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel}>
+       <div className={css.panel} data-panel="">
         <p className={css.panelLabel}>{'postgres-auth'}</p>
         <div className={css.diff}>
          <div className={css.diffColumn}>
@@ -262,7 +285,7 @@ export function Extraction(){
           <p className={css.diffScope}>{'atlas.identity'}</p>
          </div>
         </div>
-        <p className={css.panelNote}>{'Meridian fixture'}</p>
+        <p className={css.panelNote}>{'Sample data'}</p>
        </div>
       </Instrument>
      </div>
@@ -274,7 +297,7 @@ export function Extraction(){
        <p className={css.beatBody}>{'Promotion is a proposal. An owner approves it in Git, and Guidefold never edits a rule on its own.'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel}>
+       <div className={css.panel} data-panel="">
         <p className={css.panelLabel}>{'Where the rules sit today'}</p>
         {/* Bar length and the number beside it encode different things and disagree on
           * purpose: team owns 13 rules on a narrower bar than service's 3, because the
@@ -306,13 +329,20 @@ export function Extraction(){
            points={ROUTE_POINTS} strokeDasharray={ROUTE_RUN} strokeDashoffset={0}/>
          </svg>
         </div>
-        <p className={css.panelNote}>{'Meridian fixture, 26 rules across 17 nodes. Bar length is scope breadth.'}</p>
+        <p className={css.panelNote}>{'Sample data, 26 rules across 17 nodes. Bar length is scope breadth.'}</p>
        </div>
       </Instrument>
      </div>
 
     </div>
    </div>
+  </div>
+
+  {/* The chapter's own answer to "what do I get", after the last beat and outside the
+    * pinned track, so it is read once the three beats have finished rather than fading
+    * with them. */}
+  <div className={css.tail}>
+   <ValuePanel>{"What you get: a fix written once by one team reaches every team that needs it, with an owner's approval, never by copy-paste."}</ValuePanel>
   </div>
  </section>;
 }

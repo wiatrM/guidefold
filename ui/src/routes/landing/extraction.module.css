@@ -15,6 +15,8 @@
  * beats. Extraction.tsx sets the flag only when it has actually installed a sampler. */
 
 .section{padding-block:var(--landing-section-padding);}
+/* The chapter's value line, after the pinned track and aligned to the page column. */
+.tail{min-width:var(--zero);}
 
 .track{position:relative;}
 .stage{
@@ -135,7 +137,6 @@
  justify-content:center;
  min-height:var(--landing-stage-height);
  padding-block:var(--space-4);
- will-change:transform;
 }
 /* The row reserves the tallest beat so no caption moves during a handover, which is the
  * one motion a reader is actually reading through. The caption therefore starts at the
@@ -154,22 +155,24 @@
 .track[data-p-ready="true"][data-active-beat="3"] .beat[data-beat="3"]{pointer-events:auto;user-select:auto;}
 
 /* Beat crossfade, DESIGN.md 4.2: windows at 0.0-0.33, 0.33-0.66 and 0.66-1.0, each
- * handover a 0.06-wide crossfade centred on the boundary. Linear in `--p`, so reverse
- * scroll lands on exactly the value the forward pass had. */
-.track[data-p-ready="true"] .beat[data-beat="1"]{opacity:clamp(0,(0.36 - var(--p)) / 0.06,1);}
-.track[data-p-ready="true"] .beat[data-beat="2"]{
- opacity:min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1));
-}
-.track[data-p-ready="true"] .beat[data-beat="3"]{opacity:clamp(0,(var(--p) - 0.63) / 0.06,1);}
+ * handover a 0.06-wide crossfade centred on the boundary. Linear in progress, so reverse
+ * scroll lands on exactly the value the forward pass had.
+ *
+ * R2, the measured recalc remedy: the window arithmetic used to be spelled here in
+ * `clamp()` over a `--p` inherited from the stage, so one write per frame invalidated
+ * style for the whole pinned subtree (measured: -90 % style-recalc time and -94 %
+ * invalidated elements per frame once it stopped). Extraction.tsx now evaluates the same
+ * exported `beatOpacity()` and writes `--o` straight onto the three beats and the three
+ * ticks, six small writes that invalidate only themselves. `--o` rests at 1 in tokens.css,
+ * so with JavaScript off, under reduced motion and before the first frame all three beats
+ * are simply visible, which is the stacked fallback this file already renders. */
+.track[data-p-ready="true"] .beat{opacity:var(--o);}
 
 /* The ticks read the same three windows, so the rail says which beat is on screen without
  * a number and without a second colour. Opacity, not a colour swap, keeps it one value. */
 .track[data-p-ready="true"] .tick1,
 .track[data-p-ready="true"] .tick2,
-.track[data-p-ready="true"] .tick3{background:var(--survey-teal);}
-.track[data-p-ready="true"] .tick1{opacity:calc(0.3 + 0.7 * clamp(0,(0.36 - var(--p)) / 0.06,1));}
-.track[data-p-ready="true"] .tick2{opacity:calc(0.3 + 0.7 * min(clamp(0,(var(--p) - 0.30) / 0.06,1),clamp(0,(0.69 - var(--p)) / 0.06,1)));}
-.track[data-p-ready="true"] .tick3{opacity:calc(0.3 + 0.7 * clamp(0,(var(--p) - 0.63) / 0.06,1));}
+.track[data-p-ready="true"] .tick3{background:var(--survey-teal);opacity:calc(0.3 + 0.7 * var(--o));}
 
 /* Chapter parallax on the instrument layer only, DESIGN.md 4.2. It lands on the panel
  * rather than on the Reveal element, whose P3 entrance already owns that element's
@@ -177,6 +180,11 @@
 .track[data-p-ready="true"] .panel{
  transform:translate3d(var(--zero-length),calc((var(--p) - .5) * var(--parallax-chapter)),var(--zero-length));
 }
+
+/* Containment, R2: a panel's own invalidation has no reason to escape its column. Layout
+ * and style only — `paint` would clip the glass panel's backdrop and its border radius is
+ * not the clip this chapter wants. */
+.instrument{contain:layout style;}
 
 /* --------------------------------------------------------------- glass panels */
 .panel{

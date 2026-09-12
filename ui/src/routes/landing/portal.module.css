@@ -1,0 +1,43 @@
+/* Chapter 2, SPEC v3 screen 4. Copy in the narrow column, one real screen underneath at
+ * full width. Every value is a token; the responsive change is the span swap in tokens.css. */
+.section{
+ display:grid;
+ grid-template-columns:var(--landing-grid);
+ padding-block:var(--landing-section-padding);
+}
+.copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
+.section p.eyebrow{
+ display:flex;
+ align-items:center;
+ gap:var(--space-2);
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.section p.eyebrow::before{
+ content:"";
+ display:block;
+ flex:none;
+ inline-size:var(--landing-eyebrow-rule);
+ block-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.section h2.heading{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+.section p.lede{
+ margin:var(--space-4) var(--zero) var(--zero);
+ font-size:var(--landing-lede);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+.screen{grid-column:var(--landing-block-screen);min-width:var(--zero);margin-top:var(--landing-screen-margin);}

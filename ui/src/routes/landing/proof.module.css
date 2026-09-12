@@ -1,0 +1,46 @@
+/* Proof, SPEC v3 screen 7. One band, two figures, one hairline between them, one link.
+ * A solid ground over the film scrim: these two sentences are the ones a reader is most
+ * likely to re-read, so reading beats atmosphere here. Every value is a token. */
+.section{
+ padding-block:var(--landing-section-padding);
+ background:var(--film-scrim-band),var(--graphite-900);
+}
+.figures{
+ display:grid;
+ grid-template-columns:var(--landing-proof-columns);
+}
+.figure{min-width:var(--zero);}
+.figure+.figure{
+ padding-left:var(--landing-proof-pad);
+ padding-top:var(--landing-proof-pad);
+ border-left:var(--landing-proof-rule);
+ border-top:var(--landing-proof-rule-top);
+}
+.figure:first-child{padding-right:var(--landing-proof-pad);}
+.section p.figureLine{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-proof-figure);
+ font-weight:var(--weight-semibold);
+ line-height:var(--landing-heading-leading);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+.count{
+ font-family:var(--font-mono);
+ font-variant-numeric:tabular-nums;
+ color:var(--survey-teal);
+}
+.section p.small{
+ margin:var(--space-3) var(--zero) var(--zero);
+ color:var(--landing-muted-ink);
+ font-size:var(--font-size-small);
+}
+.textLink{
+ display:inline-flex;
+ align-items:center;
+ min-height:var(--touch-height);
+ margin-top:var(--space-3);
+ color:var(--system-ink);
+}

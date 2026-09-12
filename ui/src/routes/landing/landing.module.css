@@ -47,13 +47,28 @@
 
 .textLink{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);color:var(--system-ink);}
 
-/* ------------------------------------------------------------- intro figure */
-.introFigure{margin:var(--zero);min-width:var(--zero);}
-.introFrame{position:relative;aspect-ratio:var(--landing-video-ratio);overflow:hidden;border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-900);}
-.introVideo{display:block;width:var(--full);height:var(--full);object-fit:cover;}
-.introCaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2);margin-top:var(--space-3);color:var(--stone-300);font-size:var(--font-size-small);}
-.replay{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);padding:var(--zero) var(--space-2);border:var(--zero);border-radius:var(--landing-radius);background:var(--transparent);color:var(--system-ink);cursor:pointer;font-size:var(--font-size-small);transition:color var(--duration) var(--ease);}
-@media(hover:hover) and (pointer:fine){.replay:hover{color:var(--stone-100);}}
+/* ------------------------------------------------------------- device frame */
+/* Every screen on this page is a real capture of the hosted UI against the Meridian
+ * fixture. One hairline, the panel radius, one shadow token and a plain caption; no
+ * notch, no browser chrome, no perspective. The image carries its intrinsic size so the
+ * frame reserves its box before the file decodes and nothing shifts. */
+.deviceFigure{margin:var(--zero);min-width:var(--zero);}
+.deviceFrame{
+ aspect-ratio:var(--landing-screen-ratio);
+ overflow:hidden;
+ border:var(--border-width) solid var(--line-strong);
+ border-radius:var(--landing-radius-panel);
+ background:var(--graphite-900);
+ box-shadow:var(--landing-device-shadow);
+}
+.deviceShot{display:block;width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-screen-position);}
+.deviceCaption{
+ margin-top:var(--space-3);
+ text-align:var(--landing-caption-align);
+ color:var(--landing-muted-ink);
+ font-size:var(--font-size-small);
+}
+
 
 /* --------------------------------------------------------- instruction reader */
 .reader{min-width:var(--zero);}
@@ -84,6 +99,11 @@
 .waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-band-gap);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
 .waitlistCopy{padding-right:var(--landing-waitlist-inset);border-right:var(--landing-waitlist-rule);}
 .waitlistCopy p{margin:var(--space-3) var(--zero) var(--zero);}
+/* The two protected availability statements, moved into this band from the former
+ * availability section. Two facts, so two statements and no third for symmetry. */
+.availabilityStatements{margin-top:var(--space-5);}
+.page .availabilityStatements p{margin:var(--space-2) var(--zero) var(--zero);color:var(--stone-300);}
+.availabilityStatements strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
 .form{min-width:var(--zero);padding-left:var(--landing-waitlist-inset);scroll-margin-top:var(--space-7);}
 .page .signupNote{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-small);}
 .signupNote strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
@@ -136,14 +156,14 @@
  * reveal.module.css and tokens.css; what is left here is press and transition. */
 @media(prefers-reduced-motion:reduce){
  .action:active:not(:disabled),.navAction:active{transform:none;}
- .action,.navAction,.tab,.replay{transition-duration:var(--duration-reduced);}
+ .action,.navAction,.tab{transition-duration:var(--duration-reduced);}
  .backdrop,.cinema{transition-duration:var(--duration-reduced);}
  .cinema[data-starting-style],.cinema[data-ending-style]{transform:translate(var(--negative-half),var(--negative-half)) scale(1);}
 }
 
 /* ---------------------------------------------------------------- film layer */
 .film{position:fixed;inset:var(--zero);z-index:-1;overflow:hidden;pointer-events:none;background:var(--graphite-950);}
-.filmPoster,.filmVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-hero-object);opacity:var(--landing-film-opacity);}
+.filmVideo{position:absolute;inset:var(--zero);width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-hero-object);opacity:var(--landing-film-opacity);}
 .filmVideo{opacity:var(--zero);transition:opacity var(--duration-drawer) var(--ease-out);}
 .filmVideo[data-ready]{opacity:var(--landing-film-opacity);}
 .filmScrim{position:absolute;inset:var(--zero);background:var(--landing-film-scrim);}

@@ -1,2 +1,38 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><style>#root{display:flow-root}</style><link rel="preload" href="/node_modules/@fontsource/manrope/files/manrope-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/manrope/files/manrope-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="icon" href="/assets/guidefold-mark-web.webp"><title>Guidefold | Team instructions for coding agents</title><meta name="description" content="Keep team instructions in Git and select them by task and repository location. Try Guidefold open source or join the paid hosted waitlist."><meta property="og:title" content="Guidefold | Team rules. Right where agents work."><meta property="og:description" content="Open-source tools today. Paid hosting planned. Watch the demo and join the hosted waitlist."><meta property="og:type" content="website"></head><body><div id="root"><main><h1>Guidefold</h1><p>Team rules. Right where agents work.</p><p>Guidefold selects instructions from Git by task and repository location. Open source is available today; paid hosting is planned.</p><a href="https://www.youtube.com/watch?v=e350wBr1W8c">Play demo</a> <a href="https://github.com/wiatrM/guidefold">Try open source</a><p>Loading the hosted waitlist…</p></main></div><noscript>Enable JavaScript to join the waitlist, or email hello@cloudfloo.io about hosted Guidefold.</noscript><script type="module" src="/src/main.tsx"></script></body></html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><link rel="preload" href="/assets/guidefold-mark-web.webp" as="image" fetchpriority="high"><style>#root{display:flow-root}
+/* The loader, ui/design/landing/v3/SPEC.md. It lives here rather than in a component
+   because its whole job is to hold the graphite field for the one moment nothing else
+   can paint: the page has no pre-JS text shell any more, so without it a visitor sees an
+   empty white document until React commits.
+
+   It is `position:fixed` and `pointer-events:none`, so it contributes no layout and traps
+   no click: removing it shifts nothing and CLS stays 0.000. The values are literals
+   because this rule must be in the first bytes of the document, before tokens.css exists;
+   the field and the mark size match --graphite-950 and --landing-loader-mark.
+
+   Two ways out, and the page is never trapped by either. The default is the CSS-only
+   fallback: fade after 4 s, whatever JavaScript did or did not do. The normal path is
+   `data-gone`, set once `document.fonts.ready` has resolved and the hero has committed;
+   it restates the whole `animation` shorthand with no delay, so it cannot race the
+   fallback, it replaces it. A `noscript` rule removes the overlay outright. */
+#loader{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#07090c;pointer-events:none;animation:gf-loader-out 240ms ease-out 4s both}
+#loader[data-gone]{animation:gf-loader-out 240ms ease-out 0s both}
+#loader img{width:64px;height:64px;object-fit:contain;animation:gf-loader-breathe 900ms ease-in-out infinite alternate}
+@keyframes gf-loader-breathe{from{opacity:.4}to{opacity:1}}
+@keyframes gf-loader-out{to{opacity:0;visibility:hidden}}
+@media(prefers-reduced-motion:reduce){#loader img{animation:none;opacity:1}}</style><link rel="preload" href="/node_modules/@fontsource/manrope/files/manrope-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/manrope/files/manrope-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/instrument-sans/files/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="icon" href="/assets/guidefold-mark-web.webp"><title>Guidefold | Team instructions for coding agents</title><meta name="description" content="Keep team instructions in Git and select them by task and repository location. Try Guidefold open source or join the paid hosted waitlist."><meta property="og:title" content="Guidefold | Team rules. Right where agents work."><meta property="og:description" content="Open-source tools today. Paid hosting planned. Watch the demo and join the hosted waitlist."><meta property="og:type" content="website"></head><body><div id="loader"><img src="/assets/guidefold-mark-web.webp" width="64" height="64" alt="Guidefold" fetchpriority="high"></div><div id="root"></div><noscript><style>#loader{display:none}</style>Enable JavaScript to join the waitlist, or email hello@cloudfloo.io about hosted Guidefold.</noscript><script>
+(function(){
+ var overlay=document.getElementById('loader');
+ if(!overlay)return;
+ var root=document.documentElement;
+ var hero=new Promise(function(done){
+  if(root.dataset.heroMounted)return done();
+  if(typeof MutationObserver!=='function')return done();
+  var seen=new MutationObserver(function(){if(root.dataset.heroMounted){seen.disconnect();done();}});
+  seen.observe(root,{attributes:true,attributeFilter:['data-hero-mounted']});
+ });
+ var fonts=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
+ overlay.addEventListener('animationend',function(event){if(event.animationName==='gf-loader-out')overlay.remove();});
+ Promise.all([hero,fonts]).then(function(){overlay.setAttribute('data-gone','');}).catch(function(){overlay.setAttribute('data-gone','');});
+})();
+</script><script type="module" src="/src/main.tsx"></script></body></html>

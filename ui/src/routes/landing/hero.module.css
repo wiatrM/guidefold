@@ -1,16 +1,18 @@
-/* Hero, DESIGN.md 3.1. Copy sits on the film over a bounded local scrim; the proof
- * rail is the only glass surface in this section. Every value is a token and every
- * breakpoint change is a token swap in the 1080/720 blocks of tokens.css. */
+/* Hero, SPEC v3 screen 1. Copy on the film over a bounded local scrim, one real screen of
+ * the product beside it. No glass in this section at all: the proof rail, the tier glyph
+ * and the demo stage are gone, so what is left is type, two controls and a framed
+ * screenshot. Every value is a token and every breakpoint change is a token swap in the
+ * 1080/720 blocks of tokens.css. */
 
 .hero{
  position:relative;
  isolation:isolate;
  display:grid;
  grid-template-columns:var(--landing-grid);
- align-content:end;
- gap:var(--landing-hero-row-gap) var(--landing-bento-gap);
+ align-content:center;
+ gap:var(--landing-band-gap) var(--landing-bento-gap);
  min-height:var(--landing-media-band);
- padding-block:var(--landing-hero-pad-top) var(--space-4);
+ padding-block:var(--landing-hero-pad-top) var(--space-5);
 }
 
 /* The scrim spans the page container's padding box, which is the whole viewport at any
@@ -26,8 +28,8 @@
 }
 
 .heroCopy{
- grid-column:var(--landing-hero-copy-span);
- grid-row:var(--landing-hero-copy-row);
+ grid-column:var(--landing-hero-copy-v3);
+ grid-row:var(--landing-hero-screen-row);
  display:flex;
  flex-direction:column;
  align-items:var(--landing-hero-items);
@@ -46,19 +48,9 @@
 
 .subline{
  margin:var(--landing-hero-lede-margin) var(--zero) var(--zero);
- max-width:var(--landing-kicker-measure);
  font-size:var(--landing-kicker);
  line-height:var(--line-height-heading);
  color:var(--stone-100);
-}
-
-.body{
- display:var(--landing-hero-body-display);
- margin:var(--landing-hero-body-margin) var(--zero) var(--zero);
- max-width:var(--landing-copy-width);
- font-size:var(--landing-hero-body-size);
- line-height:var(--landing-hero-body-leading);
- color:var(--stone-300);
 }
 
 .heroActions{
@@ -70,99 +62,33 @@
 }
 
 .trust{
- margin:var(--space-2) var(--zero) var(--zero);
+ margin:var(--space-3) var(--zero) var(--zero);
  font-size:var(--font-size-small);
  color:var(--stone-300);
 }
 
-.textLink{
- display:inline-flex;
- align-items:center;
- min-height:var(--touch-height);
- margin-top:var(--zero);
- color:var(--system-ink);
-}
-
-/* Sentence case, no ring, no ambient bob: the cue reads as a sentence with a
- * direction, and it only moves when the pointer is on it. */
+/* The cue is an arrow and nothing else: SPEC v3 allows a bare icon link and no sentence.
+ * Its accessible name carries the destination, so it reads as a control rather than as
+ * decoration, and it only moves when the pointer is on it. */
 .scrollCue{
  display:var(--landing-hero-cue-display);
  align-items:center;
- gap:var(--space-2);
- align-self:var(--landing-hero-items);
+ justify-content:center;
  min-height:var(--touch-height);
- margin-top:var(--space-2);
- color:var(--stone-300);
- font-size:var(--font-size-small);
+ min-width:var(--touch-width);
+ margin-top:var(--space-4);
+ color:var(--survey-teal);
  text-decoration:none;
+ transition:transform var(--duration) var(--ease-out);
 }
-.scrollCueIcon{display:inline-flex;color:var(--survey-teal);transition:transform var(--duration) var(--ease-out);}
 .scrollCue svg{width:var(--icon-size);height:var(--icon-size);}
 @media(hover:hover) and (pointer:fine){
- .scrollCue:hover{color:var(--stone-100);}
- .scrollCue:hover .scrollCueIcon{transform:translateY(var(--space-1));}
+ .scrollCue:hover{transform:translateY(var(--space-1));}
 }
 
-/* The proof rail: one glass strip, two cells, one hairline. --glass-backdrop is `none`
- * while [data-film="on"], so no backdrop-filter runs at all over the moving film. */
-.proofRail{
- grid-column:var(--landing-hero-rail-span);
- grid-row:var(--landing-hero-rail-row);
- display:grid;
- grid-template-columns:var(--landing-rail-columns);
- gap:var(--landing-rail-gap);
- padding:var(--landing-rail-pad);
- border:var(--border-width) solid var(--glass-border);
- border-radius:var(--landing-radius-panel);
- background:var(--glass-highlight),var(--glass-ground);
- backdrop-filter:var(--glass-backdrop);
-}
-.cell{min-width:var(--zero);}
-.cell+.cell{
- padding-left:var(--landing-rail-gap);
- padding-top:var(--landing-rail-stack-pad);
- border-left:var(--landing-rail-rule);
- border-top:var(--landing-rail-rule-top);
-}
-.figure{
- margin:var(--zero);
- font-family:var(--font-mono);
- font-size:var(--landing-rail-figure);
- font-weight:var(--weight-medium);
- line-height:var(--landing-rail-figure-leading);
- font-variant-numeric:tabular-nums;
- letter-spacing:var(--landing-tracking-mono);
- color:var(--stone-100);
- text-wrap:balance;
-}
-/* DESIGN.md 3.1 asks for --steel here, but measured against the composited rail the
- * qualifier lands at 3.5:1 and DESIGN.md 5 requires 4.5:1 for body-sized text. The
- * accessibility contract wins; --stone-300 measures 8:1+ and still reads as secondary. */
-.qualifier{
- margin:var(--landing-rail-qualifier-gap) var(--zero) var(--zero);
- font-size:var(--font-size-small);
- line-height:var(--line-height-body);
- color:var(--stone-300);
-}
-
-/* The pyramid mechanic, sized to hold the right column rather than float in it. It is
- * the one decorative diagram on the page: inert, aria-hidden and static. */
-.tierGlyph{
- grid-column:var(--landing-hero-glyph-span);
- grid-row:var(--landing-hero-glyph-row);
- align-self:end;
- justify-self:var(--landing-hero-items);
- width:var(--landing-glyph-width);
-}
-.glyph{display:block;width:var(--landing-glyph-width);height:var(--landing-glyph-height);overflow:visible;}
-.tier1{fill:var(--tier-1);}
-.tier2{fill:var(--tier-2);}
-.tier3{fill:var(--tier-3);}
-.tier4{fill:var(--tier-4);}
-.route{
- fill:none;
- stroke:var(--safety-orange);
- stroke-width:var(--landing-glyph-stroke);
- stroke-linecap:round;
- stroke-linejoin:round;
+.heroScreen{
+ grid-column:var(--landing-hero-screen-v3);
+ grid-row:var(--landing-hero-screen-row);
+ align-self:center;
+ min-width:var(--zero);
 }

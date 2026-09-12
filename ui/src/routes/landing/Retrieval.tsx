@@ -1,83 +1,106 @@
-import {Reveal} from './Reveal';
-import {IntroFigure} from './IntroFigure';
+import {Reveal,RevealGroup} from './Reveal';
+import {DeviceFrame} from './DeviceFrame';
 import {InstructionReader} from './InstructionReader';
+import {ValuePanel} from './ValuePanel';
 import css from './retrieval.module.css';
 
 /**
- * The Meridian fixture's own skill count for `examples/monorepo/`, not an invented figure:
- * `find examples/monorepo -iname SKILL.md | wc -l` on 2026-09-11. Labelled as the fixture's
- * count in the instrument itself, never presented as the marketing 30k-skill scale.
+ * Chapter 3, SPEC v3 screen 5. One instrument that reads like a story: what the developer
+ * typed on the left, what the service did on the right, and the four cards it handed back
+ * underneath. No "Query"/"Candidates" labels, no replay control, no mechanism clip — the
+ * owner's note on the previous version was that you could not see what was asked or what
+ * happened, so the panel now says both in plain words.
+ *
+ * Every mono detail below is real output of the shipped CLI against `examples/monorepo`,
+ * recorded in DESIGN.md with the exact commands. The four named cards are the Meridian
+ * fixture's own rules at the four levels of that repository's hierarchy, and each line
+ * beneath a name is the opening clause of that SKILL.md's own `description`.
  */
-const FIXTURE_SKILL_COUNT = 27;
-
-/**
- * The four delivered cards, general first: the real ancestor chain in `examples/monorepo/`
- * for the query scope below (`_root` -> `atlas` -> `atlas.identity` -> `atlas.identity.turnstile`),
- * read from each SKILL.md's own `description` and `metadata.scope`. `postgres-auth` is the
- * "local rule that sharpens" the general ones, and it is the same fixture skill `InstructionReader`
- * shows in full beneath the instrument.
- */
-const DELIVERED_CARDS=[
- {name:'security-baseline',scope:'_root',note:'Org-wide baseline: registries, image signing, secrets, TLS.'},
- {name:'atlas-api-conventions',scope:'atlas',note:'HTTP API rules for every atlas service.'},
- {name:'rbac-policies',scope:'atlas.identity',note:'Role model and OPA policy authoring for atlas.'},
- {name:'postgres-auth',scope:'atlas.identity.turnstile',note:'Turnstile auth: bearer tokens, principal lookup, RBAC.'},
+const STEPS=[
+ {name:'Found the scope',
+  says:'This folder belongs to atlas › identity › turnstile.',
+  detail:'scope: atlas.identity.turnstile'},
+ {name:'Searched the rules in reach',
+  says:'27 rules apply somewhere on that path; Guidefold scored them for this task.',
+  detail:'SEARCH · 27 candidates · 4 selected'},
+ {name:'Checked the proof',
+  says:'Each chosen rule still matches the file it came from, at the revision it came from.',
+  detail:'USE · source hash and revision verified · LOAD'},
+ {name:'Handed the agent four cards',
+  says:'General first, local last. Full text loads only when the agent asks.',
+  detail:null},
 ] as const;
 
-/**
- * Retrieval, DESIGN.md 3.3 as amended by conflict-table row 1: no proof figures here, only
- * the microcopy line naming the 30k design target and the Q6 validation plan. The instrument
- * is one glass panel, one `Reveal pattern="p3"` entrance for the whole thing, read left to
- * right in three zones. `IntroFigure` and `InstructionReader` re-home here unchanged, as the
- * "full text only when the agent asks for it" step.
- */
+const CARDS=[
+ {level:'Organisation',name:'security-baseline',
+  says:'The org-wide security baseline every component must satisfy.'},
+ {level:'Platform',name:'atlas-api-conventions',
+  says:'HTTP API design rules for every atlas service.'},
+ {level:'Team',name:'rbac-policies',
+  says:'Authoring and testing the atlas RBAC policy bundle in OPA Rego.'},
+ {level:'Service',name:'postgres-auth',
+  says:'Add or change authorization checks in the turnstile service.'},
+] as const;
+
 export function Retrieval(){
  return <section id="how-it-works" className={css.section} aria-labelledby="retrieval-title">
-  <Reveal pattern="p1" as="p" className={css.eyebrow}>{'What the agent gets'}</Reveal>
-  <Reveal pattern="p1" as="h2" index={1} id="retrieval-title" className={css.heading}>{'Thirty thousand rules. Four reach the agent.'}</Reveal>
-  <Reveal pattern="p1" as="p" index={2} className={css.subline}>
-   {'Ranked by the task and by the place in the repository, in real time, every prompt.'}
-  </Reveal>
-  <Reveal pattern="p1" as="p" index={3} className={css.body}>
-   {'General cards first, then the local rule that sharpens them, and full text only when the agent asks for it. Your context window carries four cards instead of a filing cabinet.'}
-  </Reveal>
-
-  <Reveal pattern="p3" as="div" className={css.instrument}>
-   <div className={css.zone}>
-    <p className={css.zoneLabel}>Query</p>
-    <p className={css.queryTask}>{'task: rotate the service token'}</p>
-    <p className={css.queryPath}>{'platforms/atlas/identity/turnstile/'}</p>
-   </div>
-   <div className={css.zone}>
-    <p className={css.zoneLabel}>Candidates</p>
-    <p className={css.candidateCount}>{FIXTURE_SKILL_COUNT}</p>
-    <p className={css.candidateNote}>{'skills, Meridian fixture'}</p>
-   </div>
-   <div className={css.zone}>
-    <p className={css.zoneLabel}>Delivered, general first</p>
-    <ul className={css.cards}>
-     {DELIVERED_CARDS.map(card=>
-      <li key={card.name} className={css.card} data-delivered-card="" data-proof="complete">
-       <p className={css.cardName}>{card.name}</p>
-       <p className={css.cardScope}>{card.scope}</p>
-       <p className={css.cardNote}>{card.note}</p>
-       <p className={css.cardProof}><span className={css.proofDot} aria-hidden="true"/>{'Proof complete'}</p>
-      </li>)}
-    </ul>
-   </div>
-  </Reveal>
-
-  <p className={css.microcopy}>
-   {'Designed for a 30k-skill corpus. Latency at that size is in the Q6 validation plan and is not claimed here.'}
-  </p>
-
-  <div className={css.fullText}>
-   <IntroFigure/>
-   <InstructionReader/>
+  <div className={css.copy}>
+   <Reveal pattern="p1" as="p" className={css.eyebrow}>{'3 · Fetch what fits'}</Reveal>
+   <Reveal pattern="p1" as="h2" index={1} id="retrieval-title" className={css.heading}>
+    {'Thirty thousand rules. Four reach the agent.'}
+   </Reveal>
+   <Reveal pattern="p1" as="p" index={2} className={css.lede}>
+    {'At the start of a task, Guidefold walks your hierarchy and hands the agent the four rules that fit that folder and that job.'}
+   </Reveal>
   </div>
 
-  <a className={css.textLink} href="https://github.com/wiatrM/guidefold#quickstart" target="_blank" rel="noreferrer">
-   {'Try the open-source version'}
-  </a>
+  <div className={css.instrument}>
+   <div className={css.asked}>
+    <p className={css.zoneLabel}>{'What the developer typed'}</p>
+    <p className={css.prompt}><span className={css.dollar} aria-hidden="true">{'$ '}</span>{'rotate the service token'}</p>
+    <p className={css.promptWhere}>{'in platforms/atlas/identity/turnstile/'}</p>
+   </div>
+
+   <div className={css.did}>
+    <p className={css.zoneLabel}>{'What Guidefold did'}</p>
+    <RevealGroup pattern="p1" as="ol" className={css.steps}>
+     {STEPS.map(step=>
+      <li key={step.name} className={css.step}>
+       <p className={css.stepName}>{step.name}</p>
+       <p className={css.stepSays}>{step.says}</p>
+       {step.detail&&<p className={css.stepDetail}>{step.detail}</p>}
+      </li>)}
+    </RevealGroup>
+   </div>
+
+   <ul className={css.cards}>
+    {CARDS.map(card=>
+     <li key={card.name} className={css.card} data-delivered-card="" data-proof="complete">
+      <p className={css.cardHead}>
+       <span className={css.cardLevel}>{card.level}</span>
+       <span className={css.cardDot} aria-hidden="true">{' · '}</span>
+       <span className={css.cardName}>{card.name}</span>
+      </p>
+      <p className={css.cardSays}>{card.says}</p>
+      <p className={css.cardProof}><span className={css.proofDot} aria-hidden="true"/>{'Proof complete'}</p>
+     </li>)}
+   </ul>
+  </div>
+  <p className={css.instrumentCaption}>{'Sample data, the example repository in this project.'}</p>
+
+  <div className={css.copy}>
+   <ValuePanel>{"What you get: every task starts with the right conventions already in the agent's context, so fewer wrong pull requests and no hunting for the rule."}</ValuePanel>
+  </div>
+
+  <div className={css.screen}>
+   <DeviceFrame src="/assets/landing/app/usage.webp"
+    alt="The Guidefold usage view: a review queue and five delivery scorecards showing how often each rule was exposed, loaded and applied."
+    caption="Afterwards, the portal shows which rule helped, sample data"/>
+  </div>
+
+  <details className={css.reader}>
+   <summary className={css.readerSummary}>{'Read the full rule the agent loaded'}</summary>
+   <div className={css.readerBody}><InstructionReader/></div>
+  </details>
  </section>;
 }

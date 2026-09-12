@@ -11,7 +11,7 @@ import css from './landing.module.css';
  * carries `aria-hidden` and `Reveal` does not forward arbitrary attributes.
  */
 export function LandingFooter({emailAction}:{emailAction:boolean}){
- return <footer className={css.footer}>
+ return <footer id="footer" className={css.footer}>
   <RevealGroup pattern="p1" as="div" className={css.footerTop}>
    <div className={css.footerIdentity}>
     <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-web.webp" width="44" height="44" alt=""/>Guidefold</a>

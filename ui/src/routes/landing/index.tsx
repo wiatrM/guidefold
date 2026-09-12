@@ -9,17 +9,19 @@ import {github} from './instruction';
 import css from './landing.module.css';
 
 /**
- * The eight sections after the hero, fetched as their own chunk so the hero copy — which
- * is the LCP element, and which nothing can paint before React runs — does not wait on
- * `motion`, @base-ui and the Spectrum bento. See BelowHero.tsx for what moved and why.
+ * The eight screens after the hero, fetched as their own chunk so the hero — which holds
+ * the LCP element, and which nothing can paint before React runs — does not wait on
+ * `motion`, @base-ui and the number ticker. See BelowHero.tsx for what moved and why.
  */
 const BelowHero=lazy(()=>import('./BelowHero'));
 
 /**
- * The landing route: the page shell, the header and the nine sections in reading order,
- * which is also DOM order, tab order and visual order at every breakpoint.
+ * The landing route: the page shell, the header and the nine sections of SPEC v3 in
+ * reading order, which is also DOM order, tab order and visual order at every breakpoint:
+ * hero, why, extraction, portal, how-it-works, under-the-hood, proof, waitlist, questions,
+ * then the footer outside `<main>`.
  *
- * `?confirm=` / `?unsubscribe=` renders `EmailAction` instead of all nine sections, drops
+ * `?confirm=` / `?unsubscribe=` renders `EmailAction` instead of those sections, drops
  * the token from the URL, and never mounts the film (DESIGN.md 3.8) — hence the gate on
  * `FilmBackdrop`, which otherwise sits outside `<main>` and would mount on that branch.
  * It also never requests the sections below the hero.
@@ -39,7 +41,7 @@ export default function Landing(){
   <main id="main" tabIndex={-1}>{emailAction?<EmailAction {...emailAction}/>:<>
 
    <Hero/>
-   {/* No fallback box: a placeholder sized for eight sections would be a layout shift
+   {/* No fallback box: a placeholder sized for eight screens would be a layout shift
      * waiting to happen, and the boundary is below the fold at every measured width. */}
    <Suspense fallback={null}><BelowHero/></Suspense>
 
