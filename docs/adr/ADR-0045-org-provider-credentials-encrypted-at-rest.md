@@ -1,6 +1,6 @@
-# ADR-0043: Organisation-supplied model credentials, encrypted at rest
+# ADR-0045: Organisation-supplied model credentials, encrypted at rest
 
-**Status:** Proposed · 2026-09-12 · owner instruction the same day: the live agent runs "z kluczami
+**Status:** Proposed · 2026-09-12 · numbered 0045 after 0043 and 0044 were taken the same day by the ADR reconciliation and the shadcn console · owner instruction the same day: the live agent runs "z kluczami
 podanymi przez organizację", and, asked where the key should live, the owner chose encrypted
 storage over a key that is never persisted.
 **Governs:** `gfm.org_credentials`, `{org_base}/credentials/*`, the secret-box port used by the API
@@ -8,7 +8,7 @@ and the worker, and every future feature that needs a provider credential belong
 rather than to the deployment.
 **Depends on:** [ADR-0038](ADR-0038-subscription-byok-and-metered-ai.md) §2 (BYOK is the default
 commercial route), [ADR-0033](ADR-0033-api-contract-first-and-mvp-storage.md) (contract before code).
-**Used by:** [ADR-0044](ADR-0044-live-agent-on-demand-across-connected-repositories.md).
+**Used by:** [ADR-0046](ADR-0046-live-agent-on-demand-across-connected-repositories.md).
 
 ## Context
 
@@ -35,11 +35,18 @@ Do decyzji właściciela: none for this scope.
 
 ## Decision
 
-1. **One table, ciphertext only.** `gfm.org_credentials` holds `org_id`, `provider` (closed
-   domain, `openrouter` at first), `credential_id`, `key_id`, `nonce`, `ciphertext`, `last4`,
-   `name`, `created_by`, `created_at`, `revoked_at`. The primary key is `(org_id, provider)`: one
-   live credential per provider per organisation, replaced in place. No column ever holds the
+1. **One table, ciphertext only, one row per provider.** `gfm.org_credentials` holds `org_id`,
+   `provider`, `credential_id`, `key_id`, `nonce`, `ciphertext`, `last4`, `name`, `created_by`
+   and `created_at`. The primary key is `(org_id, provider)`: one live credential per provider
+   per organisation, replaced in place, several providers side by side. No column ever holds the
    plaintext, and no index is built over anything derived from it.
+
+   The domain is `openrouter`, `anthropic` and `openai` (owner instruction, 2026-09-12: keys are
+   per provider and the product supports several models). OpenRouter reaches many models through
+   one account; the two direct routes exist because an organisation that already has an account
+   with Anthropic or OpenAI should not have to open a third one to use its own models. Adding a
+   provider means changing the table's CHECK, the Go list and the OpenAPI enum together — a
+   provider accepted by the API but rejected by the column would be a 500 in place of a 400.
 
 2. **AES-256-GCM with a deployment master key, and the organisation bound into the ciphertext.**
    The key material comes from `GUIDEFOLD_SECRET_KEY_FILE`, a JSON object of `key_id → 32 random
@@ -75,7 +82,7 @@ Do decyzji właściciela: none for this scope.
    charge and therefore does not need the budget reservation, concurrency-safe spend limit and
    reconciliation that ADR-0038 §5 requires before *paid managed* execution. §5 is not waived; it
    does not apply to this route. What does apply is a per-run cost ceiling, so a runaway loop
-   cannot spend the customer's money without bound — that ceiling lives in ADR-0044.
+   cannot spend the customer's money without bound — that ceiling lives in ADR-0046.
 
 ## Consequences
 

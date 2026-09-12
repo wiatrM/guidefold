@@ -26,6 +26,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/schema"
+	"github.com/wiatrM/guidefold/services/search/internal/secrets"
 	"github.com/wiatrM/guidefold/services/search/internal/usage"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
@@ -955,6 +956,19 @@ func mountManagement(app *App, pool *pgxpool.Pool) error {
 	}
 	knowledge.New(pool, blobs, sink, env("GUIDEFOLD_ENVIRONMENT", "pilot")).Register(router)
 	usage.New(pool).Register(router)
+	// The organisation's own model key (ADR-0045). A deployment without a master
+	// key still mounts the routes: they answer `secret_encryption_unavailable`,
+	// which is a state an owner can act on, rather than 404 on a route the
+	// contract says exists.
+	keyring, e := secrets.LoadKeyring(os.Getenv)
+	if e != nil {
+		return e
+	}
+	if keyring == nil {
+		slog.Warn("secret_keyring_absent",
+			"detail", "GUIDEFOLD_SECRET_KEY_FILE is unset, so organisations cannot store a model key and the Live Agent cannot run")
+	}
+	secrets.New(pool, keyring, secrets.NewHTTPVerifier()).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		return e

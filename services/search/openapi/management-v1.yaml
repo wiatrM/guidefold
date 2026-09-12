@@ -1562,8 +1562,7 @@ paths:
   /api/v1/orgs/{org}/credentials:
     get:
       tags: [credentials]
-      summary: Model credentials this organisation has stored (ADR-0043). Metadata only.
-      x-status: planned
+      summary: Model credentials this organisation has stored (ADR-0045). Metadata only.
       parameters: [{ $ref: "#/components/parameters/Org" }]
       responses:
         "200":
@@ -1575,15 +1574,14 @@ paths:
   /api/v1/orgs/{org}/credentials/{provider}:
     put:
       tags: [credentials]
-      summary: Store or replace this organisation's model key (ADR-0043). Owners only.
+      summary: Store or replace this organisation's model key (ADR-0045). Owners only.
       description: >-
         The key is verified against the provider before it is sealed, so a key that
         cannot work is refused here rather than failing later inside a background job
         nobody is watching. It is stored encrypted and never returned.
-      x-status: planned
       parameters:
         - { $ref: "#/components/parameters/Org" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter, anthropic, openai] } }
       requestBody:
         required: true
         content:
@@ -1602,10 +1600,9 @@ paths:
     delete:
       tags: [credentials]
       summary: Forget this organisation's model key. Owners only.
-      x-status: planned
       parameters:
         - { $ref: "#/components/parameters/Org" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [openrouter, anthropic, openai] } }
       responses:
         "204": { description: Removed. }
         "404":
@@ -1613,10 +1610,10 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs:
+    x-status: planned
     get:
       tags: [live]
-      summary: Live Agent runs, newest first (ADR-0044).
-      x-status: planned
+      summary: Live Agent runs, newest first (ADR-0046).
       parameters:
         - { $ref: "#/components/parameters/Org" }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
@@ -1631,7 +1628,6 @@ paths:
       description: >-
         One run at a time per organisation: starting a second while one is active is
         `409 live_run_already_active` with the active run's id in `details.run_id`.
-      x-status: planned
       x-idempotent: true
       parameters: [{ $ref: "#/components/parameters/Org" }]
       requestBody:
@@ -1651,10 +1647,10 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}:
+    x-status: planned
     get:
       tags: [live]
       summary: One run with the per-repository targets it covers.
-      x-status: planned
       parameters:
         - { $ref: "#/components/parameters/Org" }
         - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1667,13 +1663,13 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}/events:
+    x-status: planned
     get:
       tags: [live]
       summary: The run's append-only event log, from a position cursor.
       description: >-
         Not a streaming transport: an ordinary envelope polled with `after`. Stop
         polling on `done`, never on an empty page — a running agent is often quiet.
-      x-status: planned
       parameters:
         - { $ref: "#/components/parameters/Org" }
         - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1688,10 +1684,10 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}/cancel:
+    x-status: planned
     post:
       tags: [live]
       summary: Stop a running Live Agent run. Owners only.
-      x-status: planned
       parameters:
         - { $ref: "#/components/parameters/Org" }
         - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1783,7 +1779,7 @@ components:
       additionalProperties: false
       required: [provider, name, last4]
       properties:
-        provider: { type: string, enum: [openrouter] }
+        provider: { type: string, enum: [openrouter, anthropic, openai] }
         name: { type: string }
         last4: { type: string, description: The last four characters of the key. The only part that ever leaves the server. }
         created_at: { type: string, format: date-time }
@@ -1807,6 +1803,7 @@ components:
       required: [prompt]
       properties:
         prompt: { type: string, minLength: 1, maxLength: 4000 }
+        provider: { type: string, enum: [openrouter, anthropic, openai] }
         model: { type: string }
         repos:
           type: array
@@ -1815,11 +1812,12 @@ components:
     LiveRun:
       type: object
       additionalProperties: false
-      required: [run_id, state, prompt, model, created_at, counts, cost]
+      required: [run_id, state, prompt, provider, model, created_at, counts, cost]
       properties:
         run_id: { type: string, format: uuid }
         state: { type: string, enum: [queued, running, succeeded, partial, failed, cancelled] }
         prompt: { type: string }
+        provider: { type: string, enum: [openrouter, anthropic, openai] }
         model: { type: string }
         created_by: { type: string, format: uuid, nullable: true }
         created_at: { type: string, format: date-time }

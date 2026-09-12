@@ -1,11 +1,11 @@
-# ADR-0044: Live Agent — an on-demand run across every connected repository, watched as it happens
+# ADR-0046: Live Agent — an on-demand run across every connected repository, watched as it happens
 
 **Status:** Proposed · 2026-09-12 · owner instruction the same day: a mode in the UI that runs a
 "Live Agent" over ALL connected GitHub repositories, with live output from a real model agent
 using keys the organisation supplied — "taki live refetch, nie w CI".
 **Governs:** `gfm.live_runs`, `gfm.live_run_targets`, `gfm.live_run_events`, job kinds `live.plan`
 and `live.repo`, `{org_base}/live/*`, and the console's Live Agent view.
-**Depends on:** [ADR-0043](ADR-0043-org-provider-credentials-encrypted-at-rest.md) (the key),
+**Depends on:** [ADR-0045](ADR-0045-org-provider-credentials-encrypted-at-rest.md) (the key),
 [ADR-0036](ADR-0036-github-app-ascent-without-customer-ci.md) (installations and the least-privilege
 GitHub adapter), [ADR-0032](ADR-0032-engineering-principles-and-hexagonal-architecture.md).
 **Does not change:** [ADR-0035](ADR-0035-knowledge-ascent-in-ci.md) and ADR-0036. Ascent in CI and
@@ -62,7 +62,7 @@ yet; its contract entries (§4.7) do.
    The worker batches model deltas — one event per ~500 ms or ~2 KB of text — so a chatty model
    cannot turn one run into a hundred thousand rows.
 
-5. **The organisation's key, and a ceiling.** The credential comes from ADR-0043, opened in the
+5. **The organisation's key, and a ceiling.** The credential comes from ADR-0045, opened in the
    worker for the duration of one job. Every run carries a hard ceiling: maximum repositories,
    maximum input tokens per repository, and a maximum spend in USD. Spend is counted from the
    usage the provider reports on each response, and from a token estimate only for a response that
@@ -113,4 +113,4 @@ yet; its contract entries (§4.7) do.
 - [API-CONTRACT](../API-CONTRACT.md) §3 (envelope, pagination, idempotency), §4.7 (GitHub App),
   §7 (`gfm`), §8 (API–worker contract) — the entries for this decision land there before the code.
 - [PRODUCT-PIVOT](../PRODUCT-PIVOT.md) U4, U6.
-- [ADR-0043](ADR-0043-org-provider-credentials-encrypted-at-rest.md), [ADR-0036](ADR-0036-github-app-ascent-without-customer-ci.md), [ADR-0038](ADR-0038-subscription-byok-and-metered-ai.md) §2, §5.
+- [ADR-0045](ADR-0045-org-provider-credentials-encrypted-at-rest.md), [ADR-0036](ADR-0036-github-app-ascent-without-customer-ci.md), [ADR-0038](ADR-0038-subscription-byok-and-metered-ai.md) §2, §5.

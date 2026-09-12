@@ -186,6 +186,75 @@ CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
  received_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS github_deliveries_received ON gfm.github_deliveries(received_at);
+-- The first reversible secret in the product (ADR-0045). Every other credential
+-- here is a sha256 the server can check but never reproduce; this one has to be
+-- usable by a background job with nobody present, so it is sealed rather than
+-- hashed. The organisation is authenticated into the ciphertext, so a row moved
+-- between organisations fails to open instead of decrypting into someone else's
+-- run, and key_id lets a retired master key stay readable until its rows are
+-- re-sealed.
+CREATE TABLE IF NOT EXISTS gfm.org_credentials (
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ provider text NOT NULL CHECK(provider IN ('openrouter','anthropic','openai')),
+ credential_id uuid NOT NULL UNIQUE,
+ key_id text NOT NULL,
+ nonce bytea NOT NULL,
+ ciphertext bytea NOT NULL,
+ last4 text NOT NULL,
+ name text NOT NULL DEFAULT '',
+ created_by uuid REFERENCES gfm.users(user_id),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(org_id,provider)
+);
+CREATE TABLE IF NOT EXISTS gfm.live_runs (
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ run_id uuid NOT NULL,
+ state text NOT NULL DEFAULT 'queued'
+   CHECK(state IN ('queued','running','succeeded','partial','failed','cancelled')),
+ prompt text NOT NULL,
+ provider text NOT NULL CHECK(provider IN ('openrouter','anthropic','openai')),
+ model text NOT NULL,
+ limits jsonb NOT NULL DEFAULT '{}',
+ cost jsonb NOT NULL DEFAULT '{}',
+ error text,
+ created_by uuid REFERENCES gfm.users(user_id),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ started_at timestamptz,
+ finished_at timestamptz,
+ PRIMARY KEY(org_id,run_id)
+);
+-- One active run per organisation (ADR-0046 §6), enforced here rather than by a
+-- check in the handler: two concurrent sweeps of the same repositories would
+-- double the spend for the same answer.
+CREATE UNIQUE INDEX IF NOT EXISTS live_runs_one_active ON gfm.live_runs(org_id)
+ WHERE state IN ('queued','running');
+CREATE INDEX IF NOT EXISTS live_runs_recent ON gfm.live_runs(org_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS gfm.live_run_targets (
+ org_id uuid NOT NULL,
+ run_id uuid NOT NULL,
+ repo_id text NOT NULL,
+ state text NOT NULL DEFAULT 'queued'
+   CHECK(state IN ('queued','running','done','failed','skipped')),
+ job_id uuid,
+ findings integer NOT NULL DEFAULT 0,
+ error text,
+ started_at timestamptz,
+ finished_at timestamptz,
+ PRIMARY KEY(org_id,run_id,repo_id),
+ FOREIGN KEY(org_id,run_id) REFERENCES gfm.live_runs(org_id,run_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS live_run_targets_state ON gfm.live_run_targets(org_id,run_id,state);
+CREATE TABLE IF NOT EXISTS gfm.live_run_events (
+ org_id uuid NOT NULL,
+ run_id uuid NOT NULL,
+ seq bigint NOT NULL,
+ at timestamptz NOT NULL DEFAULT now(),
+ repo_id text,
+ type text NOT NULL CHECK(type IN ('run.started','repo.started','model.delta','finding','repo.finished','run.finished','error')),
+ payload jsonb NOT NULL DEFAULT '{}',
+ PRIMARY KEY(org_id,run_id,seq),
+ FOREIGN KEY(org_id,run_id) REFERENCES gfm.live_runs(org_id,run_id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS gfm.repos (
  org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
  repo_id text NOT NULL,
