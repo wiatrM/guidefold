@@ -15,9 +15,9 @@
   "processing": "Lossy WebP encoding at quality 86, original framing and resolution preserved; original PNGs retained in Codex generated_images.",
   "consoleCaptures": {
     "note": "The three files below are NOT generated art; they are real screenshots of the hosted console (ui/), captured against the seeded dev API so DeviceFrame.tsx on the landing page shows the current product rather than a mockup. Recorded here per DESIGN.md §7a rule 4 so a stale screen can be told from a current one.",
-    "capturedAt": "2026-09-12",
-    "consoleCommit": "4f74bf9dca158aef06fe287bdd16682ec00760fd",
-    "known_stale_risk": "A concurrent change to ui/src/components/ui/sidebar.tsx (nav underline/active-item restyle) was in flight in this same worktree when these were captured; the sidebar in these three images may not reflect that change. Re-run after it lands with: cd ui && node qa/tmp-capture-landing-screens.mjs <proposalId> && python3 qa/tmp-encode-landing-screens.py",
+    "capturedAt": "2026-09-12 (recaptured after the sidebar restyle landed)",
+    "consoleCommit": "81d5a920d0399d2fe72c9ae0ff93fc2da4f58ef7",
+    "known_stale_risk": "None outstanding: this recapture is on top of 81d5a920 (\"fix(ui): make the console sidebar read as chrome, not as body links\" -- no underlined nav links, sentence-case group labels, active-item rail accent), which superseded the sidebar work that was still in flight during the first capture at 4f74bf9. Re-run after any future console shell change with: cd ui && node qa/tmp-capture-landing-screens.mjs <proposalId> && python3 qa/tmp-encode-landing-screens.py",
     "stack": "tools/dev/stack.py, name=e2eauth, api-port=8766, generator=deterministic; seeded org=acme, repo=meridian, owner=owner@example.test via tools/dev/stack.py seed",
     "additionalSeeding": "proposals: POST .../imports/{import_id}/proposals:generate (deterministic generator) to produce real draft proposals. usage: a real installation token posted genuine gf.events (schema 1.0) to POST /v1/events:batch -- card_injected/skill_load_completed/skill_feedback for several published skills plus 8 exposures with no load for one skill, so /usage renders real ledger totals and a real zero_loads \"Needs review\" queue row instead of the all-empty state. No row or number was typed into the UI or the image; every value shown was computed by the real service from these real event posts.",
     "assets": [
