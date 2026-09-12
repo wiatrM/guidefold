@@ -10,7 +10,7 @@ import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
 const list: ProposalList = {
-  items: [{ proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null }],
+  items: [{ proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null }],
   next_cursor: null,
 };
 const detail = (over: Partial<ProposalDetail> = {}): ProposalDetail => ({
@@ -87,6 +87,27 @@ describe('Proposals route, hosted API, six states', () => {
     renderApi(ApiProposalsRoute, fakeSource({ getProposal: async () => { throw new ApiError({ status: 403, code: 'forbidden', message: 'no' }); } }), 'proposal=p-1');
     expect(await screen.findByText('Not available to your account')).toBeInTheDocument();
     expect(screen.queryByText('Use the old role.')).not.toBeInTheDocument();
+  });
+});
+
+describe('Proposals route, decided-by column (1.3.0)', () => {
+  test('an undecided proposal reads "Undecided"; a decided one names the actor or "Unknown"', async () => {
+    const listProposals = async () => ({
+      items: [
+        { proposal_id: 'p-1', kind: 'extraction' as const, state: 'draft' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null },
+        { proposal_id: 'p-2', kind: 'extraction' as const, state: 'approved_for_export' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:b', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'approve' as const, actor: 'u1', at: '2026-09-06T10:00:00Z' } },
+        { proposal_id: 'p-3', kind: 'extraction' as const, state: 'rejected' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:c', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'reject' as const, actor: null, at: '2026-09-06T10:00:00Z' } },
+      ],
+      next_cursor: null,
+    });
+    renderApi(ApiProposalsRoute, fakeSource({ listProposals }));
+    const table = await screen.findByRole('region', { name: 'Proposals in this repository' });
+    const rowUndecided = within(table).getByRole('row', { name: /p-1/ });
+    expect(rowUndecided).toHaveTextContent('Undecided');
+    const rowDecided = within(table).getByRole('row', { name: /p-2/ });
+    expect(rowDecided).toHaveTextContent('u1');
+    const rowNoActor = within(table).getByRole('row', { name: /p-3/ });
+    expect(rowNoActor).toHaveTextContent('Unknown');
   });
 });
 

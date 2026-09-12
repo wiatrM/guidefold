@@ -788,10 +788,12 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const invitations = useAsync(() => source.listInvitations(org ?? ''), 'invitations:' + org, owner && Boolean(org) && tab === 'members');
   const installations = useAsync(() => source.listInstallations(org ?? ''), 'installations:' + org, Boolean(org) && tab === 'integrations');
   const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, owner && Boolean(org) && tab === 'integrations');
+  // 1.3.0: `{org_base}/audit` is readable by any member (server-scoped to their own rows, §4.1),
+  // not just an owner.
   const audit = useAsync(
     () => source.getAudit(org ?? '', auditCursor ?? undefined),
     'audit:' + org + ':' + (auditCursor ?? ''),
-    owner && Boolean(org) && tab === 'audit',
+    Boolean(org) && tab === 'audit',
   );
   const telemetry = useAsync(
     () => source.getUsage({ org: org ?? '', repo: ctx.repo ?? '' }, { window: ctx.params.get('window') || undefined }),
@@ -1131,8 +1133,11 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
           <p className={styles.help}>These cards help an owner decide whether the integration is producing usable evidence. They do not certify that a model followed a skill or that a successful task was caused by retrieval.</p>
         </Panel>
       </>}
-    </> : tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
-      {owner && <>
+    </> : tab === 'audit' ? <Panel title="Audit log" eyebrow={owner ? 'Owner' : 'Your own actions'} icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
+      {/* 1.3.0: `{org_base}/audit` is readable by any member, not just an owner — the server
+          scopes a member to the rows whose actor is their own principal (contract §4.1); an
+          owner still reads every row. The eyebrow above says which scope this reader gets. */}
+      <>
         {audit.phase === 'loading' && <RouteState state="loading" title="Reading audit entries" description="Waiting for the audit log of this organization." />}
         {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}
         {audit.phase === 'ready' && (audit.value?.items.length
@@ -1150,7 +1155,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
             {audit.value?.next_cursor && <div className={styles.actions}><ActionButton onClick={() => ctx.go('organization', { tab: 'audit', cursor: audit.value?.next_cursor })}>Next page</ActionButton></div>}
           </>
           : <RouteState state="empty" title="No audit entries yet" description="No action has been recorded for this organization yet." />)}
-      </>}
+      </>
     </Panel> : tab === 'members' ? <>
       <Panel title="Your profile" eyebrow="Account" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
         <form className={styles.memberForm} onSubmit={saveProfile}>

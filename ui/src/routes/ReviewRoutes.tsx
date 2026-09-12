@@ -171,7 +171,7 @@ function ProposalQueue({ctx}: ApiProps) {
       {list.phase === 'error' && list.error && !value && <ApiFailure error={list.error} onRetry={list.reload} retryLabel="Retry the queue" />}
       {value && (value.items.length ? <>
         {selected.length > 0 && <div className={styles.notice} role="status"><StateBadge tone="system">{selected.length} selected</StateBadge><span>Select candidates to compare their scope, source and generated body together.</span><ActionButton onClick={() => setSelected([])}>Clear selection</ActionButton></div>}
-        <DataTable caption="Proposals in this repository" headings={['Select', 'Proposal', 'Kind', 'State', 'Scope', 'Target file']}>
+        <DataTable caption="Proposals in this repository" headings={['Select', 'Proposal', 'Kind', 'State', 'Scope', 'Target file', 'Decided by']}>
           {value.items.map(item => <tr key={item.proposal_id}>
             <td><input type="checkbox" aria-label={'Select proposal ' + item.proposal_id} checked={selected.includes(item.proposal_id)} onChange={() => toggle(item.proposal_id)} /></td>
             <th scope="row" className={styles.pathCell}><Link to={ctx.href('proposals', {proposal: item.proposal_id})}>{item.proposal_id}</Link></th>
@@ -179,6 +179,8 @@ function ProposalQueue({ctx}: ApiProps) {
             <td><StateBadge tone={item.state === 'published' ? 'system' : item.state === 'rejected' ? 'warning' : item.state === 'draft' ? 'human' : 'neutral'}>{item.state}</StateBadge></td>
             <td>{item.scope ?? 'Unknown'}</td>
             <td className={styles.pathCell}><code>{item.path ?? 'Unknown'}</code></td>
+            {/* 1.3.0: `ProposalSummary.decision.actor` — the principal who recorded the latest decision. */}
+            <td>{item.decision ? unknown(item.decision.actor) : 'Undecided'}</td>
           </tr>)}
         </DataTable>
         {value.next_cursor && <div className={styles.actions}><ActionButton onClick={() => ctx.go('proposals', {cursor: value.next_cursor})}>Next page</ActionButton></div>}
@@ -631,7 +633,8 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
       ? Object.entries(item.evidence).map(([key, value]) => key + '=' + String(value)).join(' ')
       : 'Unknown'}</td>
     <td>{item.decision
-      ? <><StateBadge>{queueActionLabels[item.decision.action]}</StateBadge><span className={styles.muted}>{unknown(item.decision.reason)}</span></>
+      // 1.3.0: `decision.actor` is null for a worker-written row (drift decided before any owner looked).
+      ? <><StateBadge>{queueActionLabels[item.decision.action]}</StateBadge><span className={styles.muted}>{unknown(item.decision.reason)} · Decided by {unknown(item.decision.actor)}</span></>
       : <div className={styles.stack}>
         <Field id={'queue-action-' + item.item_id} label="Owner decision">
           <select id={'queue-action-' + item.item_id} className={selectClass} value={action} onChange={event => setAction(event.target.value as QueueAction)} disabled={blocked}>

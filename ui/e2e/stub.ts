@@ -126,6 +126,9 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false },
   totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, feedback: null },
+  // No previous window for an empty report either: both trend states (a real delta, and none at
+  // all) are exercised across the scenarios rather than only ever showing one of them.
+  previous: null,
   skills: [], queue: [], health: null,
 } : {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
@@ -141,24 +144,48 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
       latency_ms: 2400, latency_samples: 8, tasks_observed: true, cost_observed: true,
     },
   },
+  // 1.3.0: the equal-length window immediately before, lower on every count so the Overview KPI
+  // trend badges have a real "+N%" to show rather than always folding to "No previous window".
+  previous: {
+    window: { from: '2026-08-24T00:00:00Z', to: '2026-08-31T00:00:00Z' },
+    totals: {
+      exposures: 32, loads_verified: 14, context_loaded: 12, context_unknown: 2,
+      use_reported: 4, use_observed: 2, use_episodes: 3,
+      feedback: { helped: 8, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 13 },
+      metrics: {
+        tasks_started: 6, tasks_finished: 6, tasks_succeeded: 4, tasks_failed: 1, tasks_unknown: 1,
+        harness_errors: 0, search_requests: 10, search_results: 30, search_errors: 0,
+        use_requests: 7, ask_count: 1, input_tokens: 900, output_tokens: 350, tool_calls: 12,
+        latency_ms: 1800, latency_samples: 6, tasks_observed: true, cost_observed: true,
+      },
+    },
+  },
   skills: [
     { skill_id: chosen.id, revision: chosen.revision, exposures: 12, loads_verified: 6, context_loaded: 6, use_reported: 2, use_observed: 1, feedback: null, helped_ratio: { numerator: 2, denominator: 4, small_sample: true }, zero_loads: false },
     { skill_id: skills[1].id, revision: skills[1].revision, exposures: 8, loads_verified: 0, context_loaded: 0, use_reported: 0, use_observed: 0, feedback: null, helped_ratio: null, zero_loads: true },
   ],
+  // 1.3.0: `decision.actor` names the owner who recorded the decision.
   queue: state.queueDecided
-    ? [{ item_id: 'q-1', skill_id: skills[1].id, revision: skills[1].revision, reason: 'zero_loads', since: '2026-09-01T00:00:00Z', evidence: { exposures: 8 }, decision: { action: 'reviewed', reason: 'Checked in Git.', at: '2026-09-06T10:00:00Z' } }]
+    ? [{ item_id: 'q-1', skill_id: skills[1].id, revision: skills[1].revision, reason: 'zero_loads', since: '2026-09-01T00:00:00Z', evidence: { exposures: 8 }, decision: { action: 'reviewed', reason: 'Checked in Git.', at: '2026-09-06T10:00:00Z', actor: 'u-1' } }]
     : [{ item_id: 'q-1', skill_id: skills[1].id, revision: skills[1].revision, reason: 'zero_loads', since: '2026-09-01T00:00:00Z', evidence: { exposures: 8 }, decision: null }],
   health: { adapters: [{ harness: 'claude', adapter_version: '0.4.1', capabilities: ['search', 'use'], last_seen_at: '2026-09-06T09:00:00Z', lag_s: 4, dropped: 0 }] },
 };
 
-export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise<StubState> {
+/**
+ * `role` is an axis independent of `scenario`: every one of the six non-ready states still
+ * exists for a member session (the state matrix in `states.spec.ts` stays owner-only, since that
+ * is what it already covers), but a spec that wants to prove the server-side audit scoping
+ * (contract §4.1) can ask for `role: 'member'` on top of any scenario.
+ */
+export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'owner' | 'member' = 'owner'): Promise<StubState> {
   const state: StubState = {
     proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0, signedOut: false,
-    credentials: scenario === 'empty' ? {} : { openrouter: { name: 'default', last4: '9f2a', created_at: '2026-09-01T00:00:00Z', created_by: 'u-1' } },
+    credentials: scenario === 'empty' ? {} : { openrouter: { name: 'default', last4: '9f2a', model: 'openai/gpt-4o-mini', preferred: true, created_at: '2026-09-01T00:00:00Z', created_by: 'u-1' } },
     liveRuns: scenario === 'empty' ? [] : [{
-      run_id: 'lr-1', state: 'succeeded', prompt: 'Check auth skills for drift', provider: 'openrouter', model: 'gpt-x',
+      run_id: 'lr-1', state: 'succeeded', provider: 'openrouter', model: 'openai/gpt-4o-mini',
       created_by: 'u-1', created_at: '2026-09-06T09:00:00Z', started_at: '2026-09-06T09:00:01Z', finished_at: '2026-09-06T09:00:20Z',
-      counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, cost: { tokens_in: 800, tokens_out: 220, usd: 0.006, usd_estimated: false }, error: null,
+      counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, summary: { skills_indexed: 12, proposals_created: 3 },
+      cost: { tokens_in: 800, tokens_out: 220, usd: 0.006, usd_estimated: false }, error: null,
     }],
   };
   const listed = scenario === 'empty' ? [] : skills;
@@ -174,7 +201,11 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
       ...(scenario === 'partial' ? [{ field: 'steps', origin: 'inferred', source_ref: null, needs_confirmation: true }] : []),
     ],
     relations: [{ type: 'derived_from', to: chosen.id }],
-    decision: null, expected_revision: chosen.revision, created_at: null,
+    // 1.3.0: `ProposalDetail.decision` carries `actor_user_id` on the wire (contract §5.4), not
+    // the shorter `actor` the `/proposals` list uses for the same principal — this exercises the
+    // dual-key decoder path end to end, not just in a unit test.
+    decision: state.proposalState === 'draft' ? null : { decision_id: 'd-1', decision: 'approve', reason: 'Matches the source.', actor_user_id: 'u-1', expected_revision: chosen.revision, result_revision_id: 'rev-human', at: '2026-09-06T10:00:00Z' },
+    expected_revision: chosen.revision, created_at: null,
     cost: { calls: 1, tokens_in: 800, tokens_out: 200, usd_certain: 0.004, usd_uncertain: 0 },
   });
 
@@ -202,7 +233,7 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
         identities: [{ provider: 'github', created_at: null }],
         orgs: scenario === 'restricted'
           ? [{ org_id: 'o-9', slug: 'apex', name: 'Apex Holdings', role: 'member' }]
-          : [{ org_id: org.org_id, slug: org.slug, name: org.name, role: 'owner' }],
+          : [{ org_id: org.org_id, slug: org.slug, name: org.name, role }],
         csrf_token: 'csrf-1', access: { checked_at: null, valid_for_s: 45 },
         link_suggestions: state.linkSuggested ? [{ provider: 'google' }] : [],
       });
@@ -233,13 +264,22 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
     if (at === '/orgs/' + org.slug + '/installations') return json({ items: [], next_cursor: null });
     if (at === '/orgs/' + org.slug + '/audit') {
       if (scenario === 'empty') return json({ items: [], next_cursor: null });
+      if (role === 'member') {
+        // 1.3.0 (contract §4.1): the server, not this stub's client, scopes a member to rows
+        // whose actor is their own principal — req-2 below belongs to a different principal and
+        // never reaches this reader, proving the filter rather than assuming it.
+        return json({
+          items: [{ at: '2026-09-05T12:00:00Z', actor: 'principal:u-1', action: 'member.invite', entity: 'urn:member:bob', revision: null, request_id: 'req-1' }],
+          next_cursor: null,
+        });
+      }
       const cursor = url.searchParams.get('cursor');
       if (!cursor) return json({
         items: [{ at: '2026-09-05T12:00:00Z', actor: 'principal:u-1', action: 'member.invite', entity: 'urn:member:bob', revision: null, request_id: 'req-1' }],
         next_cursor: 'page-2',
       });
       return json({
-        items: [{ at: '2026-09-06T08:00:00Z', actor: 'principal:u-1', action: 'repo.create', entity: repoId, revision: null, request_id: 'req-2' }],
+        items: [{ at: '2026-09-06T08:00:00Z', actor: 'principal:u-2', action: 'repo.create', entity: repoId, revision: null, request_id: 'req-2' }],
         next_cursor: null,
       });
     }
@@ -352,7 +392,8 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
       if (!item || revisionMatch[2] !== item.revision) return failure(404, 'revision_not_found', 'No such revision.');
       return revisionMatch[3] ? text(raw(item), 'text/markdown') : json(revisionOf(item, scenario));
     }
-    if (/\/skills\/.+\/revisions\/[^/]+\/feedback$/.test(at) && method === 'POST') return json({ judgment_id: 'j-9', skill_id: chosen.id, revision: chosen.revision, verdict: 'helped', reason: 'ok', source: 'ui', task_id: null, occurred_at: null });
+    // 1.3.0: `actor` names the signed-in principal who judged through the UI (`source: 'ui'`).
+    if (/\/skills\/.+\/revisions\/[^/]+\/feedback$/.test(at) && method === 'POST') return json({ judgment_id: 'j-9', skill_id: chosen.id, revision: chosen.revision, verdict: 'helped', reason: 'ok', source: 'ui', task_id: null, occurred_at: null, actor: 'u-1' });
     if (at.startsWith(repoBase + '/skills/')) {
       const id = at.slice((repoBase + '/skills/').length);
       const item = skills.find(entry => entry.id === id);
@@ -398,7 +439,12 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready'): Promise
     }
 
     if (at === repoBase + '/proposals') return json({
-      items: scenario === 'empty' ? [] : [{ proposal_id: 'p-1', kind: 'enrichment', state: state.proposalState, scope: chosen.scope, owner: chosen.owner, target_skill_id: chosen.id, path: chosen.path, created_at: null }],
+      // 1.3.0: `decision` on the summary uses the shorter `actor` key (contract §5.4), unlike the
+      // detail route below, which sends `actor_user_id` for the same principal.
+      items: scenario === 'empty' ? [] : [{
+        proposal_id: 'p-1', kind: 'enrichment', state: state.proposalState, scope: chosen.scope, owner: chosen.owner, target_skill_id: chosen.id, path: chosen.path, created_at: null,
+        decision: state.proposalState === 'draft' ? null : { decision: 'approve', actor: 'u-1', at: '2026-09-06T10:00:00Z' },
+      }],
       next_cursor: null,
     });
     if (at === repoBase + '/proposals/p-1/decision' && method === 'POST') {

@@ -158,10 +158,19 @@ function ApiApp({source}:{source:DataSource}){
  // Signing in again really does start again: the session is ended, the held identity and the
  // denial go with it, and the login page is opened with no return target, because the address
  // that was refused is the one place this must not send the operator back to.
+ // The address is left FIRST, before the network round trip: `source.logout` is awaited, and
+ // while it is in flight the access heartbeat is free to run again (forget() already cleared the
+ // denial that was gating it). If that heartbeat's `/me` comes back refused before this function
+ // resumes, the shell's own unauthenticated redirect would otherwise fire first and compute
+ // `loginHref` from the still-current `/library?...` address — reintroducing the exact
+ // refused-address return target this flow exists to avoid. Capturing `id` first (rather than
+ // reading `me.user.id` after the navigate) keeps the logout call scoped to the identity that was
+ // actually signed in, since `forget()` drops `me` before the request goes out.
  const signInAgain=async()=>{
-  try{if(me)await source.logout('logout:'+me.user.id);}catch{/* The local session is dropped either way. */}
+  const id=me?.user.id;
   controller?.forget();
   navigate('/login',{replace:true});
+  try{if(id)await source.logout('logout:'+id);}catch{/* The local session is dropped either way. */}
  };
  return <Shell view={view} href={href}
   railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></div>}

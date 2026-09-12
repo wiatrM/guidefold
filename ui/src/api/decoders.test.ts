@@ -234,6 +234,28 @@ describe('decoders accept the contract payloads', () => {
     expect(value.skills[0].context_unknown).toBe(1);
     expect(value.skills[0].use_episodes).toBe(1);
     expect(value.skills[1].harness).toBeNull();
+    // §5.5: `previous` is absent from this payload, not merely omitted from the assertions.
+    expect(value.previous).toBeNull();
+  });
+
+  test('Usage.previous (1.3.0) carries the same totals shape over the prior window', () => {
+    const withPrevious = decode({
+      window: { from: '2026-08-01', to: '2026-09-01', watermark: null },
+      coverage: null,
+      totals: { exposures: 20, loads_verified: 8, context_loaded: 6, context_unknown: 2, use_reported: 2, use_observed: 1, use_episodes: 2, feedback: null },
+      previous: {
+        window: { from: '2026-07-01', to: '2026-08-01' },
+        totals: { exposures: 10, loads_verified: 4, context_loaded: 2, context_unknown: 2, use_reported: 1, use_observed: 0, use_episodes: 1, feedback: { helped: 2, hindered: 1, mixed: 0, not_applicable: 0, unknown: 0, n: 3 } },
+      },
+      skills: [], queue: [], health: null,
+    }, d.usage);
+    expect(withPrevious.previous?.window).toEqual({ from: '2026-07-01', to: '2026-08-01' });
+    expect(withPrevious.previous?.totals.exposures).toBe(10);
+    expect(withPrevious.previous?.totals.feedback?.helped).toBe(2);
+    // The carried metrics default keeps the same empty shape as the current window's.
+    expect(withPrevious.previous?.totals.metrics.tasks_started).toBe(0);
+    const withoutPrevious = decode({ window: {}, coverage: null, totals: {}, skills: [], queue: [], health: null }, d.usage);
+    expect(withoutPrevious.previous).toBeNull();
   });
 });
 
@@ -253,6 +275,17 @@ describe('decoders reject malformed payloads', () => {
     expect(() => decode({ import_id: 'im1', state: 'invented' }, d.importStatus)).toThrowError(/state: expected one of/);
     expect(decode({ import_id: 'im1' }, d.importStatus).state).toBe('queued');
     expect(() => decode({ field: 'scope', values: [{ value: 1, count: 1 }], next_cursor: null }, d.facets)).toThrowError(/values\[0\]\.value/);
+  });
+  test('Usage.previous.totals is required once `previous` is present: missing or malformed fails, never Unknown-as-zero', () => {
+    const base = { window: {}, coverage: null, totals: {}, skills: [], queue: [], health: null };
+    // `previous` present but `totals` entirely absent.
+    expect(() => decode({ ...base, previous: { window: { from: '2026-07-01', to: '2026-08-01' } } }, d.usage))
+      .toThrowError(/previous\.totals: expected object/);
+    // `previous.totals` present but not an object.
+    expect(() => decode({ ...base, previous: { window: { from: '2026-07-01', to: '2026-08-01' }, totals: 'none' } }, d.usage))
+      .toThrowError(/previous\.totals: expected object/);
+    // No `previous` at all still decodes to null, not a decode error.
+    expect(decode(base, d.usage).previous).toBeNull();
   });
 });
 
@@ -293,10 +326,14 @@ describe('decoders match the closed domains of API-CONTRACT §5', () => {
     expect(() => decode({ skill_id: 'urn:a', name: 'a', description: '', scope: 's', owner: null, source_layer: null, knowledge_layer: null, source_status: null, publication_status: 'draft', path: 'p', content_sha256: null, revision_id: null, package_digest: null, commit: null, updated_at: null, revisions: [{ revision_id: 'r1', content_sha256: null, commit: null, import_id: null, created_at: null, source: 'guess' }] }, d.skillDetail)).toThrowError(/source: expected one of/);
   });
 
-  test('an owner queue item keeps its own reason and action', () => {
-    const usage = { window: {}, coverage: null, totals: {}, skills: [], health: null, queue: [{ item_id: 'q1', skill_id: 's1', revision: null, reason: 'source_removed', since: null, evidence: null, decision: { action: 'fixed_in_git', reason: 'r', at: null } }] };
+  test('an owner queue item keeps its own reason, action and 1.3.0 actor', () => {
+    const usage = { window: {}, coverage: null, totals: {}, skills: [], health: null, queue: [{ item_id: 'q1', skill_id: 's1', revision: null, reason: 'source_removed', since: null, evidence: null, decision: { action: 'fixed_in_git', reason: 'r', at: null, actor: 'u1' } }] };
     expect(decode(usage, d.usage).queue[0].reason).toBe('source_removed');
     expect(decode(usage, d.usage).queue[0].decision?.action).toBe('fixed_in_git');
+    expect(decode(usage, d.usage).queue[0].decision?.actor).toBe('u1');
+    // A worker-written decision carries no actor: absent stays null, not an empty string.
+    const workerUsage = { ...usage, queue: [{ ...usage.queue[0], decision: { action: 'fixed_in_git', reason: 'r', at: null, actor: null } }] };
+    expect(decode(workerUsage, d.usage).queue[0].decision?.actor).toBeNull();
     expect(() => decode({ ...usage, queue: [{ item_id: 'q1', skill_id: 's1', reason: 'looked_odd' }] }, d.usage)).toThrowError(/reason: expected one of/);
   });
 
@@ -312,6 +349,51 @@ describe('decoders match the closed domains of API-CONTRACT §5', () => {
     expect(decode(detail, d.proposalDetail).kind).toBe('consolidation');
     expect(decode(detail, d.proposalDetail).decision?.decision).toBe('edit');
     expect(() => decode({ ...detail, decision: { decision: 'maybe', reason: null, at: null, actor: null } }, d.proposalDetail)).toThrowError(/decision: expected one of/);
+  });
+
+  test('ProposalDetail.decision reads actor_user_id, the wire key §5.4 actually sends', () => {
+    const detail = {
+      proposal_id: 'p1', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, target_revision_id: null,
+      sources: [], recipe: null, candidate: { path: 'a', body: '', sha256: null, frontmatter: null }, source_body: null,
+      provenance: [], relations: [],
+      decision: { decision_id: 'd1', decision: 'approve', reason: 'ok', actor_user_id: 'u1', expected_revision: 'rev-1', result_revision_id: 'rev-2', at: '2026-09-06T10:00:00Z' },
+      expected_revision: 'rev-1', created_at: null, cost: null,
+    };
+    const value = decode(detail, d.proposalDetail);
+    expect(value.decision?.actor).toBe('u1');
+    expect(value.decision?.reason).toBe('ok');
+    // A payload that already sends the short key (matching ProposalSummary) still decodes.
+    const shortKey = { ...detail, decision: { ...detail.decision, actor_user_id: undefined, actor: 'u2' } };
+    expect(decode(shortKey, d.proposalDetail).decision?.actor).toBe('u2');
+    // Neither key present is Unknown (null), never an empty string.
+    const noActor = { ...detail, decision: { ...detail.decision, actor_user_id: undefined } };
+    expect(decode(noActor, d.proposalDetail).decision?.actor).toBeNull();
+    // `actor ?? actor_user_id`: an explicit `actor: null` still falls through to actor_user_id,
+    // not just an absent `actor` key — a known actor must never read as Unknown.
+    const explicitNullActor = { ...detail, decision: { ...detail.decision, actor: null, actor_user_id: 'u1' } };
+    expect(decode(explicitNullActor, d.proposalDetail).decision?.actor).toBe('u1');
+  });
+
+  test('ProposalSummary.decision (1.3.0) is null until decided, then carries decision/actor/at', () => {
+    const undecided = decode({ items: [{ proposal_id: 'p1', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, path: null, created_at: null }], next_cursor: null }, d.proposalList);
+    expect(undecided.items[0].decision).toBeNull();
+    const decided = decode({ items: [{ proposal_id: 'p1', kind: 'extraction', state: 'approved_for_export', scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: { decision: 'approve', actor: 'u1', at: '2026-09-06T10:00:00Z' } }], next_cursor: null }, d.proposalList);
+    expect(decided.items[0].decision).toEqual({ decision: 'approve', actor: 'u1', at: '2026-09-06T10:00:00Z' });
+  });
+
+  test('FeedbackEntry.actor (1.3.0) names the UI principal; null for an adapter-sourced judgment', () => {
+    const revision = {
+      revision_id: 'r1', content_sha256: null, body: null, frontmatter: null, source: null,
+      references: [], requires: [], refines: [], relations: [], publication_status: 'draft',
+      feedback: [
+        { judgment_id: 'j1', verdict: 'helped', reason: null, source: 'ui', task_id: null, occurred_at: null, actor: 'u1' },
+        { judgment_id: 'j2', verdict: 'helped', reason: null, source: 'adapter', task_id: null, occurred_at: null, actor: null },
+      ],
+      provenance: null,
+    };
+    const value = decode(revision, d.revision);
+    expect(value.feedback[0].actor).toBe('u1');
+    expect(value.feedback[1].actor).toBeNull();
   });
 
   test('an auth provider id is google or github (§5.1)', () => {

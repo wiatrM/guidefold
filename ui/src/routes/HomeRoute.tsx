@@ -19,7 +19,7 @@ import {ActionButton, IconTile, Panel, RouteState, StateBadge} from '../Shared';
 import {ApiFailure, DegradedNotice, PartialNotice, formatNumber, readOnly, shortId, useAsync, type ApiProps} from './apiState';
 import type {AuditEntry, ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
 import type {Facets, MapLayers} from '../api/decoders';
-import {adapterRows, coverageOf, funnelSteps, hasObservations, helpedShare, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topScopes, topSkills, type ActionKind, type NextAction} from '../domain/overview';
+import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topScopes, topSkills, yourDecisions, type ActionKind, type Delta, type NextAction, type YourDecisions} from '../domain/overview';
 import type {GateState, Recommendation} from '../domain/skillHealth';
 import {StatisticsMain, StatisticsSecondary, type MainMetric, type StatTrend} from '../components/ui/shadcn-space/blocks/statistics-01/statistics';
 import {SkillsTable, GateBadge, type SkillRow} from '../components/ui/shadcn-space/blocks/table-01/table';
@@ -64,6 +64,16 @@ function actionHref(ctx: ApiProps['ctx'], kind: ActionKind): string {
 
 function ChartFallback() { return <div className={styles.chartFallback} aria-busy="true"><span className="sr-only">Loading chart</span></div>; }
 
+/** `domain/overview.delta`/`helpedShareDelta` stay UI-agnostic; this is the one place that turns
+ * a verdict into the `Badge` tone the trend widget understands. `known: false` (no previous
+ * window, or — for helped share — nothing comparable on either side) is the only case that
+ * renders no trend at all, falling through to `TrendBadge`'s own "No previous window" default; a
+ * known `0` previous ("new", "no change") still renders a badge. */
+function toTrend(value: Delta): StatTrend | null {
+  if (!value.known) return null;
+  return {label: value.label, tone: value.direction === 'down' ? 'warning' : value.direction === 'up' ? 'system' : 'neutral'};
+}
+
 function NextActions({ctx, actions}: ApiProps & {actions: NextAction[]}) {
   return <Panel title="Your next actions" eyebrow={ctx.role === 'owner' ? 'As an owner of this organization' : 'As a member of this organization'} icon={<ListChecksIcon aria-hidden="true" />}>
     {actions.length ? <ol className={styles.actions} aria-label="Next actions">{actions.map((action, index) => {
@@ -82,17 +92,30 @@ function Kpis({ctx, usage, skills, windowLabel}: ApiProps & {usage: Usage | null
   const library = skills ? libraryBreakdown(skills.items, skills.next_cursor) : null;
   const share = helpedShare(usage);
   const open = openQueueCount(usage);
+  // 1.3.0: a trend badge compares this window's count with `usage.previous.totals`, when the API
+  // reports one; `delta`/`helpedShareDelta` themselves decide when there is nothing to compare.
+  const exposuresTrend = usage ? delta(usage.totals.exposures, usage.previous?.totals.exposures ?? null) : null;
+  const loadsTrend = usage ? delta(usage.totals.loads_verified, usage.previous?.totals.loads_verified ?? null) : null;
+  // Percentage points, never a relative percent of a percent (75% → 82% is "+7 pp", not "+9%").
+  const helpedTrend = helpedShareDelta(usage);
   const mainMetrics: [MainMetric, MainMetric] = [
     {label: 'Published skills', value: library ? formatNumber(library.published) + (library.truncated ? '+' : '') : 'Unknown', caption: library ? formatNumber(library.draft) + ' draft · ' + formatNumber(library.needsReview) + ' needs review' : 'The catalogue could not be read.', trend: null},
-    {label: 'Exposures, ' + windowLabel, value: usage ? formatNumber(usage.totals.exposures) : 'Unknown', caption: usage ? formatNumber(usage.totals.loads_verified) + ' verified loads' : 'No report for this window.', trend: null},
+    {
+      label: 'Exposures, ' + windowLabel,
+      value: usage ? formatNumber(usage.totals.exposures) : 'Unknown',
+      caption: usage ? formatNumber(usage.totals.loads_verified) + ' verified loads' + (loadsTrend && loadsTrend.known ? ' (' + loadsTrend.label + ' from the equal-length window before)' : '') : 'No report for this window.',
+      trend: exposuresTrend ? toTrend(exposuresTrend) : null,
+    },
   ];
+  // The queue is a live count of open decisions, not a windowed total: the contract carries no
+  // previous value for it, so its trend badge always reads "No previous window".
   const openTrend: StatTrend | null = null;
   const links = [ctx.href('library', {status: 'published'}), ctx.href('usage', {window: windowLabel}), ctx.href('usage', {window: windowLabel}), ctx.href('usage', {}) + '#needs-review'];
   const cardLabels = [mainMetrics[0].label, mainMetrics[1].label, 'Helped share', 'Needs review'];
   return <section aria-label="Key numbers" className={styles.kpis}>
     <div className={styles.kpiGrid}>
       <div className={styles.kpiMain}><StatisticsMain title={ctx.org && ctx.repo ? ctx.org + ' / ' + ctx.repo : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></div>
-      <StatisticsSecondary title="Helped share" value={share ? share.label : 'Unknown'} caption={share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'} icon={LucideThumbsUpIcon} tone="system" trend={openTrend} />
+      <StatisticsSecondary title="Helped share" value={share ? share.label : 'Unknown'} caption={share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'} icon={LucideThumbsUpIcon} tone="system" trend={toTrend(helpedTrend)} />
       <StatisticsSecondary title="Needs review" value={open === null ? 'Unknown' : formatNumber(open)} caption={open === null ? 'The queue could not be read.' : open === 0 ? 'No open owner decision' : (open === 1 ? 'Open owner decision' : 'Open owner decisions')} icon={LucideListChecksIcon} tone={open ? 'warning' : 'neutral'} trend={openTrend} />
     </div>
     <ul className={styles.kpiLinks} aria-label="Open the source of each number">{cardLabels.map((label, index) => <li key={label}><Link to={links[index]}>{label}<ArrowRightIcon aria-hidden="true" /></Link></li>)}</ul>
@@ -216,9 +239,37 @@ function Pipeline({ctx, imports, proposals, installations, usage, now}: ApiProps
   </Card>;
 }
 
-function Activity({ctx, entries}: ApiProps & {entries: AuditEntry[]}) {
+/** 1.3.0: proposals and owner-queue items whose latest decision is this reader's own
+ * (`domain/overview.yourDecisions`). Folded entirely when the count is zero — an empty "Your
+ * decisions" card would say nothing an owner or member does not already know. */
+function YourDecisionsPanel({ctx, decisions}: ApiProps & {decisions: YourDecisions}) {
   return <Card className="rounded-xl border py-6 shadow-xs">
-    <CardHeader className="px-6"><CardTitle className="text-lg font-medium"><ClockCounterClockwiseIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Recent activity</CardTitle><CardDescription>Last entries of the organization audit log</CardDescription><CardAction><ActionButton size="sm" href={ctx.href('organization', {tab: 'audit'})}>Open audit</ActionButton></CardAction></CardHeader>
+    <CardHeader className="px-6">
+      <CardTitle className="text-lg font-medium"><ListChecksIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Your decisions</CardTitle>
+      <CardDescription>{formatNumber(decisions.count) + ' decision' + (decisions.count === 1 ? '' : 's') + ' you recorded' + (decisions.count > decisions.items.length ? ', ' + formatNumber(decisions.items.length) + ' most recent shown' : '')}</CardDescription>
+    </CardHeader>
+    <CardContent className="px-0">
+      <ul className={styles.states} aria-label="Your most recent decisions">
+        {decisions.items.map(item => <li key={item.kind + ':' + item.id}>
+          <Link to={item.kind === 'proposal' ? ctx.href('proposals', {proposal: item.id}) : ctx.href('usage', {}) + '#needs-review'} className={styles.stateLink}>
+            <span className={styles.stateRow}><span>{item.kind === 'proposal' ? 'Proposal for ' : 'Queue item for '}{skillName(item.skillId ?? item.label)}</span><StateBadge>{item.detail}</StateBadge></span>
+          </Link>
+        </li>)}
+      </ul>
+    </CardContent>
+  </Card>;
+}
+
+function Activity({ctx, entries, owner}: ApiProps & {entries: AuditEntry[]; owner: boolean}) {
+  return <Card className="rounded-xl border py-6 shadow-xs">
+    <CardHeader className="px-6">
+      <p className="m-0 text-xs font-medium text-muted-foreground">{owner ? 'Organization audit' : 'Your actions'}</p>
+      <CardTitle className="text-lg font-medium"><ClockCounterClockwiseIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Recent activity</CardTitle>
+      {/* 1.3.0: the server, not this component, decides which rows a member's read returns
+          (contract §4.1) — the description just says whose activity this reader is looking at. */}
+      <CardDescription>{owner ? 'Last entries of the organization audit log' : 'Last entries of your own actions in this organization'}</CardDescription>
+      <CardAction><ActionButton size="sm" href={ctx.href('organization', {tab: 'audit'})}>Open audit</ActionButton></CardAction>
+    </CardHeader>
     <CardContent className="px-0">
       {entries.length ? <div role="region" aria-label="Recent audit entries" className="overflow-x-auto"><Table><TableHeadRow><TableRow><TableHead className="ps-6">At</TableHead><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead className="pe-6">Entity</TableHead></TableRow></TableHeadRow>
         <TableBody>{entries.slice(0, 8).map((entry, index) => <TableRow key={entry.request_id ?? entry.at + index}><TableCell className="ps-6">{entry.at}</TableCell><TableCell>{entry.actor ?? 'Unknown'}</TableCell><TableCell><code>{entry.action}</code></TableCell><TableCell className="pe-6">{entry.entity ? <code>{shortId(entry.entity)}</code> : 'Unknown'}</TableCell></TableRow>)}</TableBody>
@@ -242,7 +293,9 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const proposals = useAsync(() => source.listProposals(target!, {}), 'home:proposals:' + org + '/' + repo, Boolean(target));
   const imports = useAsync(() => source.listImports(target!), 'home:imports:' + org + '/' + repo, Boolean(target));
   const installations = useAsync(() => source.listInstallations(org!), 'home:installations:' + org, Boolean(org));
-  const audit = useAsync(() => source.getAudit(org!), 'home:audit:' + org, Boolean(org) && owner);
+  // 1.3.0: `{org_base}/audit` is readable by a member too, scoped server-side to their own rows
+  // (contract §4.1) — the client reads it for every signed-in role, not just an owner.
+  const audit = useAsync(() => source.getAudit(org!), 'home:audit:' + org, Boolean(org));
 
   if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization and a repository. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
   if (!repo) return <EmptyStateBlock icon={<FolderOpenIcon aria-hidden="true" />} title="Choose a repository" description={'No repository is selected for ' + org + '. Pick one, or upload a checkout with the CLI, and the overview fills itself.'} action={{label: 'Choose a repository', href: ctx.href('import', {step: 'preview'}), tone: 'human'}} />;
@@ -265,6 +318,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const observed = hasObservations(usageValue);
   const actions = nextActions({role, me, usage: usageValue, proposals: proposalsValue, imports: importsValue, installations: installationsValue, skillsTotal: skillsValue?.items.length ?? null, now});
   const blocking = actions.find(action => action.kind === 'adapter' || action.kind === 'publish' || action.kind === 'import');
+  const decisions = yourDecisions(proposalsValue ?? [], usageValue?.queue ?? [], me);
   const windowText = usageValue ? 'Last ' + windowLabel + ' · ' + day(usageValue.window.from) + ' to ' + day(usageValue.window.to) : 'Last ' + windowLabel;
 
   return <div className={styles.route} aria-busy={pending.length > 0 || undefined}>
@@ -287,6 +341,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
 
     <Kpis ctx={ctx} usage={usageValue} skills={skillsValue} windowLabel={windowLabel} />
     <NextActions ctx={ctx} actions={actions} />
+    {decisions.count > 0 && <YourDecisionsPanel ctx={ctx} decisions={decisions} />}
 
     {usageValue && observed ? <div className={styles.twoUp}><Funnel usage={usageValue} /><Feedback usage={usageValue} /></div>
     : <div className="px-1"><EmptyStateBlock icon={<BookOpenIcon aria-hidden="true" />} title={'No telemetry in the last ' + windowLabel} description="No adapter event and no assessment reached the ledger. Usefulness is Unknown, not zero." action={{label: 'Set up an adapter', href: ctx.href('organization', {tab: 'integrations'}), tone: 'system'}} /></div>}
@@ -294,7 +349,9 @@ export function ApiHomeRoute({ctx}: ApiProps) {
 
     <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} scopes={scopes.value ?? null} />
     <Pipeline ctx={ctx} imports={importsValue} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
-    {owner && audit.value && <Activity ctx={ctx} entries={audit.value.items} />}
-    <p className={styles.muted}><LinkSimpleIcon aria-hidden="true" className={styles.inlineIcon} />Every number above is a count the API returned for this window. There is no previous window to compare against, so no trend is shown.</p>
+    {/* 1.3.0: the audit route now scopes a member to their own rows server-side (contract §4.1),
+        so "Recent activity" is no longer owner-only; the eyebrow says which scope this reader gets. */}
+    {audit.value && <Activity ctx={ctx} entries={audit.value.items} owner={owner} />}
+    <p className={styles.muted}><LinkSimpleIcon aria-hidden="true" className={styles.inlineIcon} />Every number above is a count the API returned for this window.{usageValue?.previous ? ' A trend badge compares it with the equal-length window immediately before.' : ' No previous window was reported for this one, so no trend is shown.'}</p>
   </div>;
 }

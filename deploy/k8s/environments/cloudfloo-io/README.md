@@ -1,6 +1,29 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## Pinned-reveal landing, image built and pushed locally — 2026-09-10 (current)
+## shadcn console and contract 1.3.0 — 2026-09-12 (current)
+
+Built by `publish-images.yml` from `main` at `b49777d` (PR #141 console on
+shadcn/shadcnspace, Overview view, contract 1.3.0; PR #142 sign-in race fix and
+gallery baseline). Deployed by patching the four image digests in the live
+`Application/guidefold` inline Helm values on the ArgoCD host (the Application
+tracks `main` at `deploy/k8s/chart`, automated sync).
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:9d2ab3c9d449eef4f00f1d46fad382f6bd14f4ed977b402257636798ee0977bd` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:5e0916b95b57051ed170a00e57483e7dcb2dc600a02393afe36e1eca22209591` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:8dcc5e288414b4e616eb4335313acb9f1438464508dba4aa84325c98f4cb2424` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:f5c02cee363a3dbe0a3ea4e1ba90ddd3cf02da39f52b3de4af1805f9c12e4729` |
+
+Sync operation Succeeded 2026-09-12T16:59:20Z; all four deployments ready on the
+new images (`guidefold` 2/2, `guidefold-ui` 2/2, worker 1/1, portal 1/1).
+Public checks: `/` 200, `/health/ready` 200, `/api/v1/me` 401 (anonymous).
+Rollback: the previous digests were `search c6ff8fc2…`, `worker 7dc658e4…`,
+`ui ee7bdcbc…`, `portal efdd0b1e…` (recorded from the live Application before
+the patch). No Helm CLI upgrade was run; the pinned `argocd-application.yaml`
+in this directory is not what the cluster runs.
+
+## Pinned-reveal landing, image built and pushed locally — 2026-09-10 (previous)
 
 UI image `ghcr.io/wiatrm/guidefold-ui@sha256:4b4c345b924fd93328b41497eadb9c07d113b73b6112de89eab44ecba4b0b628`,
 built locally with Docker (now available in this environment) from

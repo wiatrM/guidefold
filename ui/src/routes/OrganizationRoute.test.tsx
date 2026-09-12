@@ -206,11 +206,15 @@ describe('Organization route, audit', () => {
     expect(go).toHaveBeenCalledWith('organization', { tab: 'audit', cursor: 'cur-2' });
   });
 
-  test('a member sees the owner note and the audit log is never read', async () => {
-    const getAudit = vi.fn();
+  test('a member still sees the owner note, but the audit log (1.3.0) is read and scoped as "Your own actions"', async () => {
+    const getAudit = vi.fn(async () => auditPage());
     renderRoute(fakeSource({ getAudit }), 'tab=audit', { role: 'member' });
     expect(await screen.findByText('Member access is read only here. Import and organization changes require an owner.')).toBeInTheDocument();
-    expect(getAudit).not.toHaveBeenCalled();
+    // The server, not the client, scopes a member to their own rows (contract §4.1); the client
+    // just reads whatever it is handed and labels the eyebrow accordingly.
+    expect(await screen.findByText('member.invite')).toBeInTheDocument();
+    expect(getAudit).toHaveBeenCalledWith('meridian', undefined);
+    expect(screen.getByText('Your own actions')).toBeInTheDocument();
   });
 });
 
@@ -269,6 +273,7 @@ describe('Organization route, presentation', () => {
           tasks_observed: true, cost_observed: true,
         },
       },
+      previous: null,
       skills: [], queue: [], health: null,
     }));
     renderRoute(fakeSource({ getUsage }), 'tab=telemetry');

@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { afterAll, afterEach, describe, expect, test, vi } from 'vitest';
+import { configure, getConfig, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import App from './app';
@@ -18,6 +18,15 @@ const me: Me = {
   identities: [], orgs: [{ org_id: 'o1', slug: 'meridian', name: 'Meridian Data', role: 'owner' }],
   csrf_token: 'csrf-1', access: { checked_at: null, valid_for_s: 45 }, link_suggestions: [],
 };
+
+// This file waits out real timers (AccessController's 1 s heartbeat), lazy-loaded route chunks
+// and several sequential API reads per screen, so Testing Library's default 1 s findBy/waitFor
+// window is routinely too tight on a loaded or otherwise slow runner even when nothing is wrong.
+// Raised suite-wide instead of patched call by call; restored after the file so it cannot leak
+// into other test files that share this worker.
+const previousAsyncUtilTimeout = getConfig().asyncUtilTimeout;
+configure({ asyncUtilTimeout: 5000 });
+afterAll(() => { configure({ asyncUtilTimeout: previousAsyncUtilTimeout }); });
 
 afterEach(() => { sessionStorage.clear(); });
 
@@ -170,8 +179,13 @@ describe('shell composition', () => {
     // The tree is read from the first page again: a cursor issued for the previous organisation
     // is not a position in this one, and the rows it produced are gone.
     expect(asked.filter(at => at.includes('/orgs/apex/')).some(at => at.includes('cursor='))).toBe(false);
-    expect(screen.queryByText('meridian-first')).not.toBeInTheDocument();
-    expect(screen.queryByText('meridian-second')).not.toBeInTheDocument();
+    // Waited the same way as the library org-switch test above: confirm the new organisation's
+    // content first (already done above), then let the old rows' removal settle before asserting
+    // they are gone, rather than reading the DOM the instant the new content appeared.
+    await waitFor(() => {
+      expect(screen.queryByText('meridian-first')).not.toBeInTheDocument();
+      expect(screen.queryByText('meridian-second')).not.toBeInTheDocument();
+    });
   });
 
   test('an organisation the account does not belong to is masked, not explained', async () => {
@@ -227,7 +241,11 @@ describe('shell composition', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
     // Sign-in is no longer a step of the wizard: the stale address falls through to the first
     // real step this account is at (an organisation from /me, no repository in the URL yet).
-    expect(await screen.findByText('Repositories')).toBeInTheDocument();
+    // The h1 above comes from the shell's own PageHeader and is not gated on the route content;
+    // "Repositories" only exists once the lazy-loaded ApiImportRoute chunk has actually mounted
+    // past its Suspense fallback, which under CPU load can take longer than findBy's default
+    // 1 s window even though the module is already cached from an earlier test in this file.
+    expect(await screen.findByText('Repositories', {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
   });
@@ -301,9 +319,13 @@ describe('shell composition', () => {
     </MemoryRouter>);
     controller.reportDenied('forbidden');
     await userEvent.click(await screen.findByRole('button', { name: 'Sign in again' }));
+    // signInAgain awaits source.logout() before it calls navigate(), so the click event's own
+    // dispatch can settle before that continuation runs; assert once it actually lands on
+    // /login instead of the instant after the click, which under load can still read the
+    // pre-navigation address.
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/login'));
     expect(logout).toHaveBeenCalledTimes(1);
     // No return target: the refused address is the one place this must not come back to.
-    expect(screen.getByTestId('where')).toHaveTextContent('/login');
     expect(screen.getByTestId('where')).not.toHaveTextContent('return=');
     expect(await screen.findByRole('button', { name: /Continue with GitHub/ }, { timeout: 4000 })).toBeInTheDocument();
   });
