@@ -55,4 +55,24 @@ and evidence-mirror change), via `pnpm build`.
 Chunk: `dist/assets/landing-P09dfzH_.js` — 76,889 bytes raw, 25,216 bytes gzipped
 (`gzip -c dist/assets/landing-P09dfzH_.js | wc -c`).
 
-Budget: +34 KB gzipped (DESIGN.md v2 §5). After-figure recorded by the landing v2 QA gate task.
+Budget: +34 KB gzipped (DESIGN.md v2 §5).
+
+After (2026-09-12, landing v2 QA gate, task 13). Production build at HEAD plus this task's
+`index.html` and radius fixes; the baseline above was not recreated with `git stash`.
+
+| Artefact | Before (2026-09-11) | After (2026-09-12) | Delta |
+|---|---|---|---|
+| Landing route chunk, raw | 76,889 B | 109,935 B | +33,046 B |
+| Landing route chunk, gzip | 25,216 B | 36,242 B | **+11,026 B (+10.77 KB)** |
+| Landing route CSS, gzip | not captured at task 1 | 7,678 B | no baseline |
+
+`gzip -c dist/assets/landing-<hash>.js | wc -c`, run on `dist/` from `pnpm build`.
+Verdict: **inside the +34 KB budget**, 32% of the allowance used. The allowance covers the
+bento grid and bento card, the number ticker with `lib/ease.ts`, the anchor map and the
+entrance layer.
+
+The lazily imported `bar-chart` chunk (358,590 B raw, 103,400 B gzip, Recharts) is **not**
+part of this delta: `ResearchEvidence.tsx` already imported it with `lazy()` at the task 1
+baseline, so it sits outside the route chunk before and after. It is the only long task
+measured during a full scroll pass; see the task 13 gate record.
+
