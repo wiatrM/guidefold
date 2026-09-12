@@ -263,7 +263,7 @@
     },
     {
       "file": "src/components/ui/shadcn-space/blocks/statistics-01/statistics.tsx",
-      "sha256": "e2e6754d0220e23a2abf90c7456d0d4e869cad0c1bd15308c14b33264fcea763",
+      "sha256": "83a333dbe2cf4cdec051609daddd59ee0c411e4288990c8b6bd466848969a7d8",
       "source": "https://shadcnspace.com/r/statistics-01.json",
       "allowInlineGeometry": false
     },

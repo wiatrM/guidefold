@@ -1,10 +1,11 @@
 /** Overview (Home): pure aggregation over the contract's own answers, no new API.
  *
- * Every number here is a count the API already returns or a sum of such counts. Nothing is a
- * score, a delta against a previous window (the contract has none) or a rate below the sample
- * floor. Absent data stays absent: a `null` in this module is "Unknown", never zero.
+ * Every number here is a count the API already returns or a sum of such counts, or (1.3.0) a
+ * comparison of two such counts against `usage.previous`, when the API reports one. Nothing is a
+ * score or a rate below the sample floor. Absent data stays absent: a `null` in this module is
+ * "Unknown", never zero.
  */
-import type {AdapterHealth, ImportStatus, Installation, Me, ProposalState, ProposalSummary, Role, SkillSummary, Usage} from '../api/decoders';
+import type {AdapterHealth, ImportStatus, Installation, Me, ProposalState, ProposalSummary, QueueItem, Role, SkillSummary, Usage, UsageTotals} from '../api/decoders';
 import {assessSkills, countRecommendations, type Recommendation, type SkillHealth} from './skillHealth';
 
 /** The contract's `small_sample` floor: below this many helped-or-hindered assessments, counts only. */
@@ -37,14 +38,75 @@ export function coverageOf(usage: Usage | null): Coverage {
 
 /** helped / (helped + hindered), only from the floor up; below it the counts, never a percent. */
 export interface HelpedShare { helped: number; hindered: number; denominator: number; percent: number | null; label: string; caption: string }
-export function helpedShare(usage: Usage | null): HelpedShare | null {
-  const feedback = usage?.totals.feedback;
+function helpedShareOf(feedback: UsageTotals['feedback'] | undefined): HelpedShare | null {
   if (!feedback) return null;
   const helped = feedback.helped, hindered = feedback.hindered, denominator = helped + hindered;
   if (denominator === 0) return null;
   if (denominator < RATE_FLOOR) return {helped, hindered, denominator, percent: null, label: helped + ' of ' + denominator, caption: 'Helped over helped plus hindered; below ' + RATE_FLOOR + ' assessments, counts only.'};
   const percent = Math.round((helped / denominator) * 100);
   return {helped, hindered, denominator, percent, label: percent + '%', caption: helped + ' helped of ' + denominator + ' helped-or-hindered assessments.'};
+}
+export function helpedShare(usage: Usage | null): HelpedShare | null {
+  return helpedShareOf(usage?.totals.feedback);
+}
+/** The same helped share, computed over `usage.previous.totals`; `null` when there is no previous window. */
+export function previousHelpedShare(usage: Usage | null): HelpedShare | null {
+  return helpedShareOf(usage?.previous?.totals.feedback);
+}
+
+/**
+ * A change from `previous` to `current` (1.3.0, `usage.previous`). `known: false` is the only
+ * "nothing to compare" case — an absent previous window, or (for `helpedShareDelta`) a current or
+ * previous share this reader cannot see as a number at all (no feedback, or below the small-sample
+ * floor). A previous of exactly `0` is not Unknown: it is a known value, and comparing against it
+ * is a fact about this window, not a guess, so it gets its own two labels instead of folding into
+ * "No previous window" — `current > 0` is growth from nothing ("new"), `current === 0` too is no
+ * activity in either window ("no change"). `direction` and `label` are for a trend badge;
+ * `percent` is the signed number underneath it (`null` for "new", where no ratio is defined).
+ */
+export interface Delta { percent: number | null; direction: 'up' | 'down' | 'flat'; label: string; known: boolean }
+
+const UNKNOWN_DELTA: Delta = {percent: null, direction: 'flat', label: 'No previous window', known: false};
+
+/** Shared zero-vs-Unknown rule for both `delta` (relative %, counts) and `helpedShareDelta`
+ * (percentage points): only `previous === null` suppresses the trend; `previous === 0` is
+ * evaluated instead of skipped. `unit` supplies the arithmetic and label for every other case. */
+function deltaWithZeroRule(current: number, previous: number | null, unit: (current: number, previous: number) => {value: number; label: string}): Delta {
+  if (previous === null || previous === undefined) return UNKNOWN_DELTA;
+  if (previous === 0) {
+    if (current === 0) return {percent: 0, direction: 'flat', label: 'no change', known: true};
+    return {percent: null, direction: 'up', label: 'new', known: true};
+  }
+  const {value, label} = unit(current, previous);
+  const direction: Delta['direction'] = value > 0 ? 'up' : value < 0 ? 'down' : 'flat';
+  return {percent: value, direction, label, known: true};
+}
+
+/** Relative percent change, for plain counts (exposures, loads). */
+export function delta(current: number, previous: number | null): Delta {
+  return deltaWithZeroRule(current, previous, (c, p) => {
+    const percent = Math.round(((c - p) / p) * 100);
+    return {value: percent, label: (percent > 0 ? '+' : '') + percent + '%'};
+  });
+}
+
+/** Percentage-point change (never a relative percent of a percent): a share that moved from 75%
+ * to 82% is "+7 pp", not "+9%" (which a reader would misread as nine points, not seven). */
+function pointsDelta(current: number, previous: number | null): Delta {
+  return deltaWithZeroRule(current, previous, (c, p) => {
+    const points = Math.round(c - p);
+    return {value: points, label: (points > 0 ? '+' : '') + points + ' pp'};
+  });
+}
+
+/** The helped-share trend: `null`/small-sample on either side is Unknown (there is no percent to
+ * take a point difference of); otherwise a percentage-point difference via `pointsDelta`, which
+ * still applies the same zero rule (a share that was legitimately 0% is a known value). */
+export function helpedShareDelta(usage: Usage | null): Delta {
+  const current = helpedShare(usage);
+  const previous = previousHelpedShare(usage);
+  if (!current || current.percent === null || !previous || previous.percent === null) return UNKNOWN_DELTA;
+  return pointsDelta(current.percent, previous.percent);
 }
 
 export interface FunnelStep { key: string; label: string; value: number; note?: string }
@@ -132,6 +194,37 @@ export function adapterRows(installations: Installation[], health: AdapterHealth
 export function latestImport(imports: ImportStatus[]): ImportStatus | null {
   if (!imports.length) return null;
   return [...imports].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0];
+}
+
+// ---------------------------------------------------------------------------
+// Your decisions (1.3.0)
+// ---------------------------------------------------------------------------
+
+export const YOUR_DECISIONS_LIMIT = 5;
+export type YourDecisionKind = 'proposal' | 'queue';
+export interface YourDecisionEntry { kind: YourDecisionKind; id: string; skillId: string | null; label: string; detail: string; at: string | null }
+export interface YourDecisions { count: number; items: YourDecisionEntry[] }
+
+/**
+ * Proposals and owner-queue items whose latest recorded decision is this reader's own (contract
+ * §5.4/§5.5, `decision.actor`), newest first, capped at `YOUR_DECISIONS_LIMIT` for the card;
+ * `count` is the true total, not the capped length. With no signed-in user there is nothing to
+ * compare `actor` against, so the result is empty rather than matching every undecided row.
+ */
+export function yourDecisions(proposals: ProposalSummary[], queue: QueueItem[], me: Me | null): YourDecisions {
+  const userId = me?.user.id;
+  if (!userId) return {count: 0, items: []};
+  const fromProposals: YourDecisionEntry[] = proposals
+    .filter(item => item.decision?.actor === userId)
+    .map(item => ({kind: 'proposal' as const, id: item.proposal_id, skillId: item.target_skill_id, label: item.target_skill_id ?? item.path ?? item.proposal_id, detail: item.decision!.decision, at: item.decision!.at}));
+  const fromQueue: YourDecisionEntry[] = queue
+    .filter(item => item.decision?.actor === userId)
+    .map(item => ({kind: 'queue' as const, id: item.item_id, skillId: item.skill_id, label: item.skill_id, detail: item.decision!.action, at: item.decision!.at}));
+  // Nullable `at` pushed last: as an empty string it sorts before every real ISO timestamp, and
+  // comparing (b, a) instead of (a, b) turns that ascending order into newest-first.
+  const at = (value: string | null) => value ?? '';
+  const all = [...fromProposals, ...fromQueue].sort((a, b) => at(b.at).localeCompare(at(a.at)));
+  return {count: all.length, items: all.slice(0, YOUR_DECISIONS_LIMIT)};
 }
 
 // ---------------------------------------------------------------------------

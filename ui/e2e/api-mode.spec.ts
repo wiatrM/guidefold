@@ -116,6 +116,29 @@ test('the audit tab pages through entries with a cursor and shows every column',
   await expect(page.getByRole('cell', { name: 'req-2' })).toBeVisible();
 });
 
+test('a member reads only their own scoped audit rows (1.3.0, §4.1), on the Organization Audit tab and Overview "Your actions", with no owner-only control in sight', async ({ page }) => {
+  await stubApi(page, 'ready', 'member');
+
+  await open(page, 'organization', '&tab=audit');
+  await expect(page.getByText('Member access is read only here. Import and organization changes require an owner.')).toBeVisible();
+  await expect(page.getByText('Your own actions')).toBeVisible();
+  await expect(page.getByText('Owner', { exact: true })).not.toBeVisible();
+  await expect(page.getByRole('cell', { name: 'member.invite' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'req-1' })).toBeVisible();
+  // req-2 belongs to a different principal (`principal:u-2`); the server never sends it to this
+  // member, so it is not merely hidden by the client — it was never in the response to page through.
+  await expect(page.getByRole('cell', { name: 'repo.create' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Next page' })).toHaveCount(0);
+
+  await open(page, 'home');
+  await expect(page.getByText('Recent activity')).toBeVisible();
+  await expect(page.getByText('Your actions', { exact: true })).toBeVisible();
+  await expect(page.getByText('Last entries of your own actions in this organization')).toBeVisible();
+  await expect(page.getByText('Organization audit')).not.toBeVisible();
+  await expect(page.getByRole('cell', { name: 'member.invite' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'repo.create' })).toHaveCount(0);
+});
+
 test('a link suggestion is never auto-linked: the operator action redirects to the real confirmation URL', async ({ page }) => {
   const state = await stubApi(page);
   state.linkSuggested = true;

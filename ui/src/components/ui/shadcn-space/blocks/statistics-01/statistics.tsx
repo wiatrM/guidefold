@@ -14,7 +14,11 @@ import {Separator} from '@/components/ui/separator';
 import type {LucideIcon} from 'lucide-react';
 import {cn} from '@/lib/utils';
 
-export interface StatTrend { label: string; positive: boolean }
+// `tone` (not a binary "positive") because a flat 0% delta is neither an improvement nor a
+// regression: painting "no change" the same green as "up" would be a small dishonesty the rest
+// of this file's states already avoid. `trendToneClass` reuses `toneClass`'s token vocabulary
+// rather than adding a literal emerald/red pair.
+export interface StatTrend { label: string; tone: 'system' | 'warning' | 'neutral' }
 export interface MainMetric { label: string; value: string; caption?: string; trend: StatTrend | null }
 export interface StatItem { title: string; value: string; caption?: string; icon: LucideIcon; tone: 'system' | 'human' | 'warning' | 'neutral'; trend: StatTrend | null }
 
@@ -24,10 +28,15 @@ const toneClass: Record<StatItem['tone'], string> = {
   warning: 'bg-chart-5/15 text-chart-5',
   neutral: 'bg-muted text-muted-foreground',
 };
+const trendToneClass: Record<StatTrend['tone'], string> = {
+  system: 'bg-chart-2/15 text-chart-2',
+  warning: 'bg-chart-5/15 text-chart-5',
+  neutral: 'bg-muted text-muted-foreground',
+};
 
 function TrendBadge({trend}: {trend: StatTrend | null}) {
   if (!trend) return <Badge variant="outline" className="font-normal text-muted-foreground">No previous window</Badge>;
-  return <Badge className={cn('font-normal', trend.positive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500')}>{trend.label}</Badge>;
+  return <Badge className={cn('font-normal', trendToneClass[trend.tone])}>{trend.label}</Badge>;
 }
 
 function Metric({label, value, caption}: {label: string; value: string; caption?: string}) {
