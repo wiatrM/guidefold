@@ -462,11 +462,13 @@ export const skillReference = object<SkillReference>({
 
 export const feedbackVerdicts = ['helped', 'hindered', 'mixed', 'not_applicable', 'unknown'] as const;
 export type FeedbackVerdict = typeof feedbackVerdicts[number];
-export interface FeedbackEntry { judgment_id: string; verdict: FeedbackVerdict; reason: string | null; source: string | null; task_id: string | null; occurred_at: string | null }
+export interface FeedbackEntry { judgment_id: string; verdict: FeedbackVerdict; reason: string | null; source: string | null; task_id: string | null; occurred_at: string | null; actor: string | null }
 export const feedbackEntry = object<FeedbackEntry>({
   // An absent verdict is the contract's own "no rating" category, not a helped/hindered vote.
   judgment_id: str, verdict: fallback(oneOf(feedbackVerdicts), 'unknown'), reason: nullable(str),
   source: nullable(str), task_id: nullable(str), occurred_at: nullable(str),
+  // 1.3.0: the principal who judged through the UI; null for an adapter-sourced assessment.
+  actor: nullable(str),
 });
 
 /** No default: coercing an unrecognised edge would invent a `requires` the source never declared. */
@@ -554,15 +556,25 @@ export type ProposalState = typeof proposalStates[number];
 export const decisionKinds = ['approve', 'edit', 'reject'] as const;
 export type DecisionKind = typeof decisionKinds[number];
 
+/** The latest `gfm.decisions` row for a proposal (1.3.0); `null` while undecided. `actor` is the
+ * same principal identifier `ProposalDetail.decision.actor_user_id` carries for the same decision
+ * — same person, different wire key per route, so the two decoders cannot share one object shape. */
+export interface ProposalDecision { decision: DecisionKind; actor: string | null; at: string | null }
+export const proposalDecision = object<ProposalDecision>({
+  decision: oneOf(decisionKinds), actor: nullable(str), at: nullable(str),
+});
+
 export interface ProposalSummary {
   proposal_id: string; kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
   target_skill_id: string | null; path: string | null; created_at: string | null;
+  decision: ProposalDecision | null;
 }
 export const proposalSummary = object<ProposalSummary>({
   proposal_id: str, kind: fallback(oneOf(proposalKinds), 'extraction'),
   state: fallback(oneOf(proposalStates), 'draft'),
   scope: nullable(str), owner: nullable(str), target_skill_id: nullable(str),
   path: nullable(str), created_at: nullable(str),
+  decision: nullable(proposalDecision),
 });
 export interface ProposalList { items: ProposalSummary[]; next_cursor: string | null }
 export const proposalList = object<ProposalList>({ items: listOf(proposalSummary), next_cursor: nullable(str) });
@@ -579,6 +591,27 @@ export interface ProposalDetail {
   decision: { decision: DecisionKind; reason: string | null; at: string | null; actor: string | null } | null;
   expected_revision: string | null; created_at: string | null; cost: JobCost | null;
 }
+/**
+ * `ProposalDetail.decision` is its own, fuller shape (contract §5.4: `decision_id, decision,
+ * reason, actor_user_id, expected_revision, result_revision_id, at`), not the concise
+ * `ProposalSummary.decision` one (1.3.0, key `actor`) — the wire key for the same principal is
+ * `actor_user_id` here, `actor` there, so `object()` (a plain key-by-key mapper) cannot decode
+ * both with one shape. `actor ?? actor_user_id` keeps this decoder correct even if the server
+ * ever sends the shorter key on this route too.
+ */
+const proposalDetailDecision: Decoder<{ decision: DecisionKind; reason: string | null; at: string | null; actor: string | null }> = (value, path = '') => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return fail(path, 'object', value);
+  const source = value as Record<string, unknown>;
+  // `actor ?? actor_user_id`: an explicit `null` falls through to the longer key too, not just
+  // an absent one, so a partial payload can never make a known actor read as Unknown.
+  const actorField = source.actor !== undefined && source.actor !== null ? 'actor' : 'actor_user_id';
+  return {
+    decision: oneOf(decisionKinds)(source.decision, path ? path + '.decision' : 'decision'),
+    reason: nullable(str)(source.reason, path ? path + '.reason' : 'reason'),
+    at: nullable(str)(source.at, path ? path + '.at' : 'at'),
+    actor: nullable(str)(source[actorField], path ? path + '.' + actorField : actorField),
+  };
+};
 export const proposalDetail = object<ProposalDetail>({
   proposal_id: str, kind: fallback(oneOf(proposalKinds), 'extraction'),
   state: fallback(oneOf(proposalStates), 'draft'),
@@ -590,7 +623,7 @@ export const proposalDetail = object<ProposalDetail>({
   source_body: nullable(str),
   provenance: listOf(object({ field: str, origin: fallback(oneOf(provenanceOrigins), 'inferred'), source_ref: nullable(dictionary(anyValue)), needs_confirmation: fallback(bool, false) })),
   relations: listOf(object({ type: oneOf(relationTypes), to: str })),
-  decision: nullable(object({ decision: oneOf(decisionKinds), reason: nullable(str), at: nullable(str), actor: nullable(str) })),
+  decision: nullable(proposalDetailDecision),
   expected_revision: nullable(str), created_at: nullable(str), cost: nullable(jobCost),
 });
 
@@ -701,14 +734,16 @@ export const queueActions = ['reviewed', 'fixed_in_git', 'no_change'] as const;
 export type QueueAction = typeof queueActions[number];
 export interface QueueItem {
   item_id: string; skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
-  evidence: Record<string, unknown> | null; decision: { action: QueueAction; reason: string | null; at: string | null } | null;
+  evidence: Record<string, unknown> | null;
+  decision: { action: QueueAction; reason: string | null; at: string | null; actor: string | null } | null;
 }
 export const queueItem = object<QueueItem>({
   // The reason drives the owner decision, so an absent or unknown one is a contract break, not a default.
   item_id: str, skill_id: str, revision: nullable(str),
   reason: oneOf(queueReasons), since: nullable(str),
   evidence: nullable(dictionary(anyValue)),
-  decision: nullable(object({ action: oneOf(queueActions), reason: nullable(str), at: nullable(str) })),
+  // `actor` (1.3.0) is the owner who recorded the decision; null when a worker wrote the row.
+  decision: nullable(object({ action: oneOf(queueActions), reason: nullable(str), at: nullable(str), actor: nullable(str) })),
 });
 
 export interface AdapterHealth { harness: string; adapter_version: string | null; capabilities: string[] | null; last_seen_at: string | null; lag_s: number | null; dropped: number | null }
@@ -716,18 +751,6 @@ export const adapterHealth = object<AdapterHealth>({
   harness: str, adapter_version: nullable(str), capabilities: nullable(arrayOf(str)),
   last_seen_at: nullable(str), lag_s: nullable(num), dropped: nullable(num),
 });
-
-export interface Usage {
-  window: { from: string | null; to: string | null; watermark: string | null };
-  coverage: { events_received: number; dropped_reported: number; oldest_lag_s: number | null; task_ids_present: boolean } | null;
-  totals: {
-    exposures: number; loads_verified: number; context_loaded: number; context_unknown: number;
-    use_reported: number; use_observed: number; use_episodes: number;
-    exposures_expanded: number; loads_unlinked: number; feedback: FeedbackTotals | null;
-    metrics: ExecutionMetrics;
-  };
-  skills: UsageSkill[]; queue: QueueItem[]; health: { adapters: AdapterHealth[] } | null;
-}
 
 export interface ExecutionMetrics {
   tasks_started: number; tasks_finished: number; tasks_succeeded: number;
@@ -758,23 +781,52 @@ export const executionMetrics = object<ExecutionMetrics>({
   tasks_observed: fallback(bool, false), cost_observed: fallback(bool, false),
   ask_reasons: fallback(dictionary(num), {}),
 });
+
+/** The aggregate shape both `Usage.totals` and `Usage.previous.totals` (1.3.0) carry — the same
+ * counters over two equal-length windows, so a caller can read one delta formula against both. */
+export interface UsageTotals {
+  exposures: number; loads_verified: number; context_loaded: number; context_unknown: number;
+  use_reported: number; use_observed: number; use_episodes: number;
+  exposures_expanded: number; loads_unlinked: number; feedback: FeedbackTotals | null;
+  metrics: ExecutionMetrics;
+}
+export const emptyUsageTotals: UsageTotals = {
+  exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
+  use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
+  metrics: emptyExecutionMetrics,
+};
+export const usageTotals = object<UsageTotals>({
+  exposures: fallback(num, 0), loads_verified: fallback(num, 0), context_loaded: fallback(num, 0),
+  context_unknown: fallback(num, 0), use_reported: fallback(num, 0), use_observed: fallback(num, 0),
+  use_episodes: fallback(num, 0), exposures_expanded: fallback(num, 0), loads_unlinked: fallback(num, 0),
+  feedback: nullable(feedbackTotals),
+  metrics: fallback(executionMetrics, emptyExecutionMetrics),
+});
+
+export interface Usage {
+  window: { from: string | null; to: string | null; watermark: string | null };
+  coverage: { events_received: number; dropped_reported: number; oldest_lag_s: number | null; task_ids_present: boolean } | null;
+  totals: UsageTotals;
+  /** The equal-length window immediately before `window` (1.3.0), anchored on the same watermark;
+   * `null` only when the report itself carries no totals (contract §5.5), never merely omitted. */
+  previous: { window: { from: string; to: string }; totals: UsageTotals } | null;
+  skills: UsageSkill[]; queue: QueueItem[]; health: { adapters: AdapterHealth[] } | null;
+}
 export const usage = object<Usage>({
   window: fallback(object({ from: nullable(str), to: nullable(str), watermark: nullable(str) }), { from: null, to: null, watermark: null }),
   coverage: nullable(object({
     events_received: fallback(num, 0), dropped_reported: fallback(num, 0),
     oldest_lag_s: nullable(num), task_ids_present: fallback(bool, false),
   })),
-  totals: fallback(object({
-    exposures: fallback(num, 0), loads_verified: fallback(num, 0), context_loaded: fallback(num, 0),
-    context_unknown: fallback(num, 0), use_reported: fallback(num, 0), use_observed: fallback(num, 0),
-    use_episodes: fallback(num, 0), exposures_expanded: fallback(num, 0), loads_unlinked: fallback(num, 0),
-    feedback: nullable(feedbackTotals),
-    metrics: fallback(executionMetrics, emptyExecutionMetrics),
-  }), {
-    exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
-    use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
-    metrics: emptyExecutionMetrics,
-  }),
+  totals: fallback(usageTotals, emptyUsageTotals),
+  // `previous` itself is nullable (absent ⇒ no previous window, §5.5), but once the server sends
+  // a `previous` object its `totals` is a required field of that object: a `previous` with a
+  // missing or malformed `totals` is a contract break, not Unknown-as-zero, so this does not
+  // fall back to `emptyUsageTotals` the way the top-level `totals` does.
+  previous: nullable(object({
+    window: object({ from: str, to: str }),
+    totals: usageTotals,
+  })),
   skills: listOf(usageSkill), queue: listOf(queueItem),
   health: nullable(object({ adapters: listOf(adapterHealth) })),
 });

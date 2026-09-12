@@ -25,7 +25,7 @@ const revision = (over: Partial<Revision> = {}): Revision => ({
   references: [{ path: 'schema.sql', sha256: 'sha-ref', size: 120, type: 'resource', required: true, available: true }],
   requires: ['urn:skill:meridian:atlas.identity:secrets'], refines: [],
   relations: [{ from: null, to: 'urn:skill:meridian:atlas.identity:secrets', type: 'requires', provenance: 'source', revision: null }],
-  feedback: [{ judgment_id: 'j-1', verdict: 'helped', reason: 'Saved a lookup', source: 'adapter', task_id: 't-1', occurred_at: '2026-09-02T10:00:00Z' }],
+  feedback: [{ judgment_id: 'j-1', verdict: 'helped', reason: 'Saved a lookup', source: 'adapter', task_id: 't-1', occurred_at: '2026-09-02T10:00:00Z', actor: null }],
   provenance: { origin: 'source', import_id: 'im-1', proposal_id: null },
   publication_status: 'published',
   ...over,

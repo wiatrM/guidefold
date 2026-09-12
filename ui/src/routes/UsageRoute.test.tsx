@@ -17,6 +17,7 @@ const empty: Usage = {
   window: { from: '2026-08-31T00:00:00Z', to: '2026-09-06T00:00:00Z', watermark: '2026-09-06T00:00:00Z' },
   coverage: { events_received: 0, dropped_reported: 0, oldest_lag_s: null, task_ids_present: false },
   totals: { exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, metrics: noMetrics },
+  previous: null,
   skills: [], queue: [], health: null,
 };
 const report = (over: Partial<Usage> = {}): Usage => ({
@@ -356,7 +357,7 @@ const healthReport = (over: Partial<Usage> = {}) => report({
   queue: [
     { item_id: 'q-drift', skill_id: 'urn:review-queue', revision: 'rev', reason: 'source_changed', since: null, evidence: null, decision: null },
     // A decided item no longer asks anything: it must not pull urn:promote into review.
-    { item_id: 'q-done', skill_id: 'urn:promote', revision: 'rev', reason: 'zero_loads', since: null, evidence: null, decision: { action: 'reviewed', reason: 'Checked', at: null } },
+    { item_id: 'q-done', skill_id: 'urn:promote', revision: 'rev', reason: 'zero_loads', since: null, evidence: null, decision: { action: 'reviewed', reason: 'Checked', at: null, actor: null } },
   ],
   ...over,
 });
