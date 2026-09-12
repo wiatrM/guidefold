@@ -68,7 +68,9 @@ export function LoginRoute({ source, returnTo }: { source: DataSource; returnTo:
               <p className={styles.help}>Sign in with an account you already use. No repository scopes are requested.</p>
               {/* One primary per screen: the first configured provider carries it, the rest take
                   the system tone. All of them keep the full width and the 44 px target. */}
-              <div className={styles.providers}>{providers.value.providers.map((provider) => <ActionButton key={provider.id} className={styles.provider} tone="neutral" onClick={() => { void signIn(provider.id); }}>
+              {/* One primary per screen (review, important 4): the first configured provider
+                  carries it, the rest take the system tone. All keep the full width and 44 px. */}
+              <div className={styles.providers}>{providers.value.providers.map((provider, index) => <ActionButton key={provider.id} className={styles.provider} tone={index === 0 ? 'human' : 'system'} onClick={() => { void signIn(provider.id); }}>
                 {providerIcon(provider.id)}Continue with {provider.label}
               </ActionButton>)}</div>
             </>
