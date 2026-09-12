@@ -2,12 +2,11 @@
  * than replaced, because the ids, the hash deep link and the consent link's behaviour
  * are contractual. Rules moved with the markup from landing.module.css.
  *
- * The band paints the full row; `--landing-question-width` is a reading measure for the
- * content inside it, not the band's own width, so it lives on `.content`, not `.section`
- * (a band whose own box stops at 900px reads as a left-hugging rectangle with a hard
- * edge against the film, not a band). */
+ * The band paints the full viewport row; its content is the page container, the same box
+ * every other section uses. SPEC v3 page grid: the rows end at the container's right edge,
+ * not at a 900 px reading measure that made the FAQ stop 500 px short of the form above it. */
 .section{padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
-.content{max-width:var(--landing-question-width);}
+.content{composes:shell from './landing.module.css';}
 .section h2.heading{
  margin:var(--zero);
  font-family:var(--font-display);

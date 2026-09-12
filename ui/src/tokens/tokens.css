@@ -49,8 +49,13 @@
  --amp-topo:16px; --amp-grid:40px; --amp-plane:20px; --amp-hero-media:12px;
  --plane-opacity-why:.42; --plane-opacity-how:.38; --plane-opacity-value:.34;
 
- --landing-width:1400px;
- --landing-gutter:clamp(20px,4vw,64px);
+ /* One container for the whole page (SPEC v3, "Page grid"). Every section's content box is
+  * this box: the nav card, the hero copy and screen, every headline, value panel, device
+  * frame, the waitlist copy and form, the FAQ rows and the footer. Backgrounds, scrims and
+  * the film bleed the full viewport behind it, so no strip of film shows at the edge. */
+ --landing-container:1280px;
+ --landing-gutter:72px;
+ --landing-column-gap:12px;
  --landing-body:17px;
  --landing-brand:24px;
  --landing-mark-size:38px;
@@ -82,7 +87,7 @@
  --landing-nav-font:14px;
  --landing-nav-ground:rgba(7,9,12,.92);
 
- --landing-section-padding:clamp(36px,2.3vw,44px);
+ --landing-section-padding:clamp(28px,1.9vw,36px);
  --landing-title:clamp(38px,4.5vw,64px);
  --landing-title-leading:1.08;
  --landing-heading:clamp(26px,2.5vw,36px);
@@ -104,7 +109,7 @@
  --landing-field-inset:-48px;
  --landing-media-inset:-24px;
 
- --landing-media-band:62vh;
+ --landing-media-band:52vh;
  --landing-hero-min:520px;
  --landing-hero-object:62% 50%;
  --landing-hero-copy-width:55%;
@@ -139,9 +144,8 @@
  --landing-band-padding:48px;
  --landing-band-ground:rgba(12,16,20,.72);
  --landing-keyline-display:block;
- --landing-waitlist-columns:minmax(0,.8fr) minmax(0,1.2fr);
- --landing-waitlist-rule:var(--border-width) solid var(--line-strong);
- --landing-waitlist-inset:var(--space-4);
+ --landing-waitlist-copy:1/6;
+ --landing-waitlist-form:7/13;
  --landing-waitlist-padding:48px;
  --landing-form-columns:minmax(0,1fr) max-content;
  --landing-question-width:900px;
@@ -245,17 +249,17 @@
  --landing-hero-screen-v3:7/13;
  --landing-hero-screen-row:1;
  --landing-block-copy:1/-1;
- --landing-block-screen:3/11;
- --landing-screen-margin:var(--space-4);
+ --landing-block-screen:1/-1;
+ --landing-screen-margin:var(--space-3);
  /* Real UI captures are 1.6:1; at full column width that is 900 px of page each and four
   * of them would own half the document. They are cropped to a letterbox from the top
   * instead, which is the part of a product screen that carries the argument. */
- --landing-screen-ratio:2.6;
+ --landing-screen-ratio:2.9;
  --landing-hero-screen-ratio:1.6;
  --landing-screen-position:top center;
  --landing-device-shadow:var(--shadow-raised);
  --landing-caption-align:left;
- --landing-value-margin:var(--space-4);
+ --landing-value-margin:var(--space-3);
  /* The value panel. The rule is inset by the panel's own border so the two do not sit on
   * the same pixel; the glow is a teal wash that the entrance animates out of. */
  --landing-value-inset:calc(var(--landing-panel-pad) + var(--space-3));
@@ -362,6 +366,7 @@
 }
 [data-film="on"]{--glass-backdrop:none;--glass-ground:var(--glass-panel-strong);}
 @media(max-width:1080px){:root{
+ --landing-gutter:48px;
  --landing-media-band:62vh;
  --landing-hero-copy-width:100%;
  --landing-hero-copy-align:flex-end;
@@ -374,9 +379,8 @@
  --landing-how-figure-row:auto;
  --landing-how-detail-row:auto;
  --landing-value-columns:repeat(2,minmax(0,1fr));
- --landing-waitlist-columns:minmax(0,1fr);
- --landing-waitlist-rule:none;
- --landing-waitlist-inset:var(--zero-length);
+ --landing-waitlist-copy:1/-1;
+ --landing-waitlist-form:1/-1;
  --landing-hero-padding:32px;
  --landing-nav-gap:16px;
  --landing-stage-height:auto;
@@ -403,6 +407,7 @@
  --landing-instrument-rule-top:var(--border-width) solid var(--line);
 }}
 @media(max-width:720px){:root{
+ --landing-gutter:24px;
  --landing-film-opacity:.7;
  --landing-film-scrim:linear-gradient(180deg,rgba(7,9,12,.72) 0%,rgba(7,9,12,.82) 55%,rgba(7,9,12,.92) 100%);
  --landing-proofgate-copy-span:1/-1;
@@ -518,6 +523,11 @@
  --landing-loader-mark:48px;
 }}
 
+@media(max-width:480px){:root{
+ /* SPEC v3 page grid: 20 px at 390, the narrowest gutter that still reads as a margin. */
+ --landing-gutter:20px;
+}}
+
 /* ---------------------------------------------------------------------------
  * Reduced motion, last in the file so source order carries it.
  * A media query adds no specificity, so these overrides only win if every landing
@@ -533,3 +543,42 @@
  --landing-stage-scroll:auto;
  --landing-value-glow-duration:0ms;
 }}
+
+/* ---------------------------------------------------------------------------
+ * shadcn semantic tokens (owner instruction 2026-09-12: management UI on shadcn).
+ * Every value is a reference into the Industrial Surveyor palette above; registry.css
+ * maps these into Tailwind's theme so `bg-card`, `text-muted-foreground`, `ring-ring`
+ * resolve to the same graphite, stone, teal and orange the CSS modules use.
+ * ------------------------------------------------------------------------- */
+:root{
+ --background:var(--graphite-950); --foreground:var(--stone-100);
+ --card:var(--graphite-900); --card-foreground:var(--stone-100);
+ --popover:var(--graphite-850); --popover-foreground:var(--stone-100);
+ --primary:var(--safety-orange); --primary-foreground:var(--graphite-950);
+ --secondary:var(--graphite-800); --secondary-foreground:var(--stone-100);
+ --muted:var(--graphite-850); --muted-foreground:var(--stone-300);
+ --accent:var(--survey-teal-dim); --accent-foreground:var(--system-ink);
+ --destructive:var(--signal-red); --destructive-foreground:var(--stone-100);
+ --border:var(--line-strong); --input:var(--control-border); --ring:var(--safety-orange);
+ --chart-1:var(--series-1); --chart-2:var(--series-2); --chart-3:var(--series-3); --chart-4:var(--series-4); --chart-5:var(--series-highlight);
+ --radius-panel:8px; --radius-tile:14px;
+
+ /* Icon tiles: the one memorable device of the console (docs/ui/UI.md §4, IconTile).
+  * A faint survey grid on graphite behind one large glyph; the wash and the ring say
+  * which side acts (system teal, human orange, neutral stone). */
+ --tile-size-sm:40px; --tile-size-md:56px; --tile-size-lg:72px; --tile-size-xl:96px;
+ --tile-icon-sm:20px; --tile-icon-md:28px; --tile-icon-lg:36px; --tile-icon-xl:48px;
+ --tile-grid:8px;
+ --tile-pattern:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+ --tile-glow-system:radial-gradient(circle at 50% 120%,rgba(63,184,177,.28),transparent 62%);
+ --tile-glow-human:radial-gradient(circle at 50% 120%,rgba(255,122,61,.26),transparent 62%);
+ --tile-glow-neutral:radial-gradient(circle at 50% 120%,rgba(163,173,182,.16),transparent 62%);
+ --tile-ring-system:rgba(63,184,177,.35); --tile-ring-human:rgba(255,122,61,.35); --tile-ring-neutral:var(--line-strong);
+ --tile-enter-scale:.92; --tile-lift:-2px;
+ --duration-enter:240ms; --duration-stagger:60ms;
+ --quickstart-columns:repeat(3,minmax(0,1fr));
+ --page-header-columns:auto minmax(0,1fr) auto;
+}
+@media(max-width:1080px){:root{--quickstart-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:720px){:root{--quickstart-columns:minmax(0,1fr);--page-header-columns:auto minmax(0,1fr);--tile-size-lg:56px;--tile-icon-lg:28px;}}
+@media(prefers-reduced-motion:reduce){:root{--tile-enter-scale:1;--tile-lift:0px;--duration-enter:0ms;--duration-stagger:0ms;}}

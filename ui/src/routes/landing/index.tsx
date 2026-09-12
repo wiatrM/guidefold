@@ -33,11 +33,11 @@ export default function Landing(){
  return <div className={css.page}>
   {!emailAction&&<FilmBackdrop/>}
   <a className={css.skip} href="#main">Skip to content</a>
-  <header className={css.nav}>
+  <div className={css.shell}><header className={css.nav}>
    <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-web.webp" width="38" height="38" alt=""/>Guidefold</a>
    <nav aria-label="Main navigation"><a href="#extraction">How it works</a><a href="/docs/">Docs</a><a href={github}>GitHub <ArrowUpRight aria-hidden="true"/></a></nav>
    <a data-slot="button" className={buttonVariants({variant:'outline',className:css.navAction})} href={emailAction?'/':'#waitlist'}>Join the waitlist</a>
-  </header>
+  </header></div>
   <main id="main" tabIndex={-1}>{emailAction?<EmailAction {...emailAction}/>:<>
 
    <Hero/>

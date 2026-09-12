@@ -1,10 +1,7 @@
 /* Chapter 2, SPEC v3 screen 4. Copy in the narrow column, one real screen underneath at
  * full width. Every value is a token; the responsive change is the span swap in tokens.css. */
-.section{
- display:grid;
- grid-template-columns:var(--landing-grid);
- padding-block:var(--landing-section-padding);
-}
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
 .copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
 .section p.eyebrow{
  display:flex;

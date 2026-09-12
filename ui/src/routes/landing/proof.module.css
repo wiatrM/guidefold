@@ -5,6 +5,7 @@
  padding-block:var(--landing-section-padding);
  background:var(--film-scrim-band),var(--graphite-900);
 }
+.shell{composes:shell from './landing.module.css';}
 .figures{
  display:grid;
  grid-template-columns:var(--landing-proof-columns);

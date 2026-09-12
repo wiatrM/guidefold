@@ -1,11 +1,8 @@
 /* Chapter 3, SPEC v3 screen 5. One instrument that reads like a story: what was typed on
  * the left, what the service did on the right, the four cards it returned underneath.
  * Every value is a token and every responsive change is a token swap in tokens.css. */
-.section{
- display:grid;
- grid-template-columns:var(--landing-grid);
- padding-block:var(--landing-section-padding);
-}
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
 .copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
 .section p.eyebrow{
  display:flex;

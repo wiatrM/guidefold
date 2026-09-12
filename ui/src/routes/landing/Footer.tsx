@@ -12,6 +12,7 @@ import css from './landing.module.css';
  */
 export function LandingFooter({emailAction}:{emailAction:boolean}){
  return <footer id="footer" className={css.footer}>
+  <div className={css.footerShell}>
   <RevealGroup pattern="p1" as="div" className={css.footerTop}>
    <div className={css.footerIdentity}>
     <a className={css.brand} href="/" aria-label="Guidefold home"><img src="/assets/guidefold-mark-web.webp" width="44" height="44" alt=""/>Guidefold</a>
@@ -24,5 +25,6 @@ export function LandingFooter({emailAction}:{emailAction:boolean}){
   </RevealGroup>
   <div className={css.wordmark} aria-hidden="true">Guidefold<span>.</span></div>
   <div className={css.footerBottom}><span>Open-source tools. Hosted service planned.</span><span>Built by Cloudfloo</span></div>
+  </div>
  </footer>;
 }

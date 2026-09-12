@@ -3,7 +3,13 @@
  * Two radii only, one motion vocabulary. See ui/design/landing/v2/DESIGN.md. */
 
 /* ---------------------------------------------------------------- page shell */
-.page{position:relative;isolation:isolate;max-width:var(--landing-width);margin:var(--zero) auto;padding:var(--zero) var(--landing-gutter);font-size:var(--landing-body);}
+/* The page is full-bleed; the container is `.shell`, and every section composes it. That
+ * split is what lets a band's background and the film run to the viewport edge while its
+ * content keeps the page's margins (SPEC v3, "Page grid"). */
+.page{position:relative;isolation:isolate;font-size:var(--landing-body);}
+.shell{max-width:var(--landing-container);margin-inline:auto;padding-inline:var(--landing-gutter);}
+/* The 12-column grid every block places on, inside the container. */
+.grid{composes:shell;display:grid;grid-template-columns:var(--landing-grid);column-gap:var(--landing-column-gap);}
 /* :where() keeps the same match set at zero specificity, so a section module styles its
  * own heading with a plain class and never needs a compound selector to win. */
 :where(.page h1,.page h2){margin:var(--zero);font-family:var(--font-display);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-title);color:var(--landing-ivory);text-wrap:balance;}
@@ -97,15 +103,18 @@
 /* Solid band, DESIGN.md 3.8: headline and subline in the narrower column, the form in
  * the wider one, one hairline between at ≥1080; the rule token collapses to `none` when
  * the grid stacks so the divider never floats alone above the full-width form. */
-.waitlist{display:grid;grid-template-columns:var(--landing-waitlist-columns);gap:var(--landing-band-gap);padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
-.waitlistCopy{padding-right:var(--landing-waitlist-inset);border-right:var(--landing-waitlist-rule);}
+.waitlist{padding-block:var(--landing-section-padding);background:var(--film-scrim-band),var(--graphite-900);}
+.waitlistGrid{composes:grid;align-items:start;}
+.waitlistCopy{grid-column:var(--landing-waitlist-copy);min-width:var(--zero);}
+.form{grid-column:var(--landing-waitlist-form);}
+
 .waitlistCopy p{margin:var(--space-3) var(--zero) var(--zero);}
 /* The two protected availability statements, moved into this band from the former
  * availability section. Two facts, so two statements and no third for symmetry. */
 .availabilityStatements{margin-top:var(--space-5);}
 .page .availabilityStatements p{margin:var(--space-2) var(--zero) var(--zero);color:var(--stone-300);}
 .availabilityStatements strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
-.form{min-width:var(--zero);padding-left:var(--landing-waitlist-inset);scroll-margin-top:var(--space-7);}
+.form{min-width:var(--zero);scroll-margin-top:var(--space-7);}
 .page .signupNote{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-small);}
 .signupNote strong{color:var(--stone-100);font-weight:var(--weight-semibold);}
 .form>label{display:block;margin-bottom:var(--space-2);color:var(--stone-100);font-size:var(--font-size-body);}
@@ -137,7 +146,8 @@
  * frame so the folded map and the wordmark share the last screen" — an opaque band
  * would hide exactly that frame. Contrast is measured against the rendered terminal
  * frame in the report, not assumed. */
-.footer{position:relative;padding:var(--landing-section-padding) var(--zero) var(--space-5);border-top:var(--border-width) solid var(--line);background:var(--film-scrim-band);}
+.footer{position:relative;padding-block:var(--landing-section-padding) var(--space-5);border-top:var(--border-width) solid var(--line);background:var(--film-scrim-band);}
+.footerShell{composes:shell;}
 .footerTop{display:grid;grid-template-columns:var(--landing-footer-columns);gap:var(--space-5);}
 .footerIdentity p{margin:var(--space-3) var(--zero);max-width:var(--landing-copy-width);}
 .footer nav{display:flex;flex-direction:column;align-items:flex-start;}
@@ -149,7 +159,7 @@
 @media(hover:hover) and (pointer:fine){.footer nav a:hover{color:var(--stone-100);}}
 
 /* --------------------------------------------------------------- email flow */
-.emailAction{display:grid;gap:var(--space-4);max-width:var(--landing-measure);padding:var(--landing-section-padding) var(--zero);}
+.emailAction{composes:shell;display:grid;gap:var(--space-4);padding-block:var(--landing-section-padding);}
 .emailAction h1{font-size:var(--landing-heading);line-height:var(--landing-heading-leading);}
 
 /* ------------------------------------------------------------ reduced motion

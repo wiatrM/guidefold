@@ -15,6 +15,7 @@
  * beats. Extraction.tsx sets the flag only when it has actually installed a sampler. */
 
 .section{padding-block:var(--landing-section-padding);}
+.shell{composes:shell from './landing.module.css';}
 /* The chapter's value line, after the pinned track and aligned to the page column. */
 .tail{min-width:var(--zero);}
 

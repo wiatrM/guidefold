@@ -168,25 +168,29 @@ export function Extraction(){
    * whole pinned subtree every frame. It now writes onto the elements that actually read
    * a value: `--o` on the three beats and the three ticks (the crossfade, evaluated here
    * with the same exported `beatOpacity` the stylesheet used to spell in `clamp()`), and
-   * `--p` on the three panels, which are the common wrapper of the chapter parallax and,
-   * for the third one, of the tier route's draw. Nine leaf writes instead of one write
-   * with a subtree behind it.
+   * `--p` on the three beats, which are the common wrapper of the chapter parallax and,
+   * for the third one, of the tier route's draw — the panel and the route inherit it. Six
+   * writes over three small subtrees instead of one write over the whole pinned stage.
+   *
+   * The beats and the ticks are the right elements to hold on to for another reason: the
+   * panel is inside `Instrument`, which swaps its element type when the pin engages, so a
+   * reference to it captured here would be detached by the time the sampler runs.
    */
   const lit=(selector:string)=>[...stage.querySelectorAll<HTMLElement>(selector)];
-  const beats=lit('[data-beat]'),ticks=lit('[data-tick]'),panels=lit('[data-panel]');
+  const beats=lit('[data-beat]'),ticks=lit('[data-tick]');
   const clear=()=>{
    for(const node of [...beats,...ticks])node.style.removeProperty('--o');
-   for(const node of panels)node.style.removeProperty('--p');
+   for(const node of beats)node.style.removeProperty('--p');
   };
   const sync=()=>{
    const want=samplerAllowed()&&stageIsPinned();
    if(want&&!stop){
     stop=scroll((progress:number)=>{
      const p=progress.toFixed(4);
-     for(const node of panels)node.style.setProperty('--p',p);
      for(let i=0;i<3;i++){
       const o=beatOpacity((i+1) as 1|2|3,progress).toFixed(3);
       beats[i]?.style.setProperty('--o',o);
+      beats[i]?.style.setProperty('--p',p);
       ticks[i]?.style.setProperty('--o',o);
      }
      const next=activeBeat(progress);
@@ -217,7 +221,8 @@ export function Extraction(){
  },[]);
 
  return <section id="extraction" className={css.section} aria-labelledby="extraction-title">
-  <div className={css.track} ref={trackRef} data-p-ready={pinned?'true':undefined}>
+  <div className={css.shell}>
+   <div className={css.track} ref={trackRef} data-p-ready={pinned?'true':undefined}>
    <div className={css.stage} ref={stageRef}>
 
     <div className={css.masthead}>
@@ -244,7 +249,7 @@ export function Extraction(){
        <p className={css.beatLede}>{'Guidefold finds the reusable part of a service rule,'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel} data-panel="">
+       <div className={css.panel}>
         <p className={css.panelLabel}>{'Sample data'}</p>
         <ol className={css.crumbs}>
          {FIXTURE_PATH.map(part=><li key={part}>{part}</li>)}
@@ -264,7 +269,7 @@ export function Extraction(){
        <p className={css.beatBody}>{'Service, then team, then organisation.'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel} data-panel="">
+       <div className={css.panel}>
         <p className={css.panelLabel}>{'postgres-auth'}</p>
         <div className={css.diff}>
          <div className={css.diffColumn}>
@@ -297,7 +302,7 @@ export function Extraction(){
        <p className={css.beatBody}>{'Promotion is a proposal. An owner approves it in Git, and Guidefold never edits a rule on its own.'}</p>
       </div>
       <Instrument pinned={pinned}>
-       <div className={css.panel} data-panel="">
+       <div className={css.panel}>
         <p className={css.panelLabel}>{'Where the rules sit today'}</p>
         {/* Bar length and the number beside it encode different things and disagree on
           * purpose: team owns 13 rules on a narrower bar than service's 3, because the
@@ -338,11 +343,15 @@ export function Extraction(){
    </div>
   </div>
 
+  </div>
+
   {/* The chapter's own answer to "what do I get", after the last beat and outside the
     * pinned track, so it is read once the three beats have finished rather than fading
     * with them. */}
-  <div className={css.tail}>
-   <ValuePanel>{"What you get: a fix written once by one team reaches every team that needs it, with an owner's approval, never by copy-paste."}</ValuePanel>
+  <div className={css.shell}>
+   <div className={css.tail}>
+    <ValuePanel>{"What you get: a fix written once by one team reaches every team that needs it, with an owner's approval, never by copy-paste."}</ValuePanel>
+   </div>
   </div>
  </section>;
 }

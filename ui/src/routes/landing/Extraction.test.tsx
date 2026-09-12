@@ -189,22 +189,37 @@ describe('extraction beat windows',()=>{
  });
 
  /**
-  * The stylesheet evaluates the same expression in `clamp()`/`min()`, and CSS cannot import
-  * the constants. This is the drift guard: change `BEAT_EDGES` or `BEAT_FADE` without
-  * changing the module and the test fails here rather than in a screenshot review.
+  * R2 moved the window arithmetic out of the stylesheet: the CSS now reads `--o` and the
+  * writer evaluates `beatOpacity`. So the drift guard moves with it — the stylesheet must
+  * no longer spell any window number, and the sampler callback must really put this curve
+  * on the three beats and the three ticks.
   */
- it('spells the same windows in extraction.module.css',()=>{
+ it('leaves no beat window spelled in extraction.module.css',()=>{
   // Vitest runs from ui/, and the module sits beside this file.
   const css=readFileSync(resolve('src/routes/landing/extraction.module.css'),'utf8');
-  const [first,second]=BEAT_EDGES,half=BEAT_FADE/2,fade=BEAT_FADE.toFixed(2);
-  const expected=[
-   '('+(first+half).toFixed(2)+' - var(--p)) / '+fade,
-   '(var(--p) - '+(first-half).toFixed(2)+') / '+fade,
-   '('+(second+half).toFixed(2)+' - var(--p)) / '+fade,
-   '(var(--p) - '+(second-half).toFixed(2)+') / '+fade,
-  ];
-  for(const fragment of expected)expect(css,fragment).toContain(fragment);
+  const [first,second]=BEAT_EDGES,half=BEAT_FADE/2;
+  for(const edge of [first+half,first-half,second+half,second-half])
+   expect(css,String(edge)).not.toContain(edge.toFixed(2));
+  expect(css).toContain('opacity:var(--o)');
  });
+
+ it('writes the beat curve onto the beats and the ticks, and the progress onto the beats',()=>{
+  reduceMotion(false);
+  stageTokens('100dvh');
+  const {container}=render(<Extraction/>);
+  const [callback]=sampler.mock.calls[0] as [(progress:number)=>void];
+  act(()=>{callback(0.5);});
+  const read=(selector:string)=>[...container.querySelectorAll<HTMLElement>(selector)]
+   .map(node=>node.style.getPropertyValue('--o'));
+  const expected=[1,2,3].map(beat=>beatOpacity(beat as 1|2|3,0.5).toFixed(3));
+  expect(read('[data-beat]')).toEqual(expected);
+  expect(read('[data-tick]')).toEqual(expected);
+  for(const beat of container.querySelectorAll<HTMLElement>('[data-beat]'))
+   expect(beat.style.getPropertyValue('--p')).toBe('0.5000');
+  // The stage itself is no longer written to: that write invalidated the whole subtree.
+  expect((container.querySelector('[data-p-ready="true"] > div') as HTMLElement).style.getPropertyValue('--p')).toBe('');
+ });
+
 });
 
 describe('extraction sampler predicate',()=>{

@@ -44,63 +44,65 @@ const CARDS=[
 
 export function Retrieval(){
  return <section id="how-it-works" className={css.section} aria-labelledby="retrieval-title">
-  <div className={css.copy}>
-   <Reveal pattern="p1" as="p" className={css.eyebrow}>{'3 · Fetch what fits'}</Reveal>
-   <Reveal pattern="p1" as="h2" index={1} id="retrieval-title" className={css.heading}>
-    {'Thirty thousand rules. Four reach the agent.'}
-   </Reveal>
-   <Reveal pattern="p1" as="p" index={2} className={css.lede}>
-    {'At the start of a task, Guidefold walks your hierarchy and hands the agent the four rules that fit that folder and that job.'}
-   </Reveal>
-  </div>
-
-  <div className={css.instrument}>
-   <div className={css.asked}>
-    <p className={css.zoneLabel}>{'What the developer typed'}</p>
-    <p className={css.prompt}><span className={css.dollar} aria-hidden="true">{'$ '}</span>{'rotate the service token'}</p>
-    <p className={css.promptWhere}>{'in platforms/atlas/identity/turnstile/'}</p>
+  <div className={css.grid}>
+   <div className={css.copy}>
+    <Reveal pattern="p1" as="p" className={css.eyebrow}>{'3 · Fetch what fits'}</Reveal>
+    <Reveal pattern="p1" as="h2" index={1} id="retrieval-title" className={css.heading}>
+     {'Thirty thousand rules. Four reach the agent.'}
+    </Reveal>
+    <Reveal pattern="p1" as="p" index={2} className={css.lede}>
+     {'At the start of a task, Guidefold walks your hierarchy and hands the agent the four rules that fit that folder and that job.'}
+    </Reveal>
    </div>
 
-   <div className={css.did}>
-    <p className={css.zoneLabel}>{'What Guidefold did'}</p>
-    <RevealGroup pattern="p1" as="ol" className={css.steps}>
-     {STEPS.map(step=>
-      <li key={step.name} className={css.step}>
-       <p className={css.stepName}>{step.name}</p>
-       <p className={css.stepSays}>{step.says}</p>
-       {step.detail&&<p className={css.stepDetail}>{step.detail}</p>}
+   <div className={css.instrument}>
+    <div className={css.asked}>
+     <p className={css.zoneLabel}>{'What the developer typed'}</p>
+     <p className={css.prompt}><span className={css.dollar} aria-hidden="true">{'$ '}</span>{'rotate the service token'}</p>
+     <p className={css.promptWhere}>{'in platforms/atlas/identity/turnstile/'}</p>
+    </div>
+
+    <div className={css.did}>
+     <p className={css.zoneLabel}>{'What Guidefold did'}</p>
+     <RevealGroup pattern="p1" as="ol" className={css.steps}>
+      {STEPS.map(step=>
+       <li key={step.name} className={css.step}>
+        <p className={css.stepName}>{step.name}</p>
+        <p className={css.stepSays}>{step.says}</p>
+        {step.detail&&<p className={css.stepDetail}>{step.detail}</p>}
+       </li>)}
+     </RevealGroup>
+    </div>
+
+    <ul className={css.cards}>
+     {CARDS.map(card=>
+      <li key={card.name} className={css.card} data-delivered-card="" data-proof="complete">
+       <p className={css.cardHead}>
+        <span className={css.cardLevel}>{card.level}</span>
+        <span className={css.cardDot} aria-hidden="true">{' · '}</span>
+        <span className={css.cardName}>{card.name}</span>
+       </p>
+       <p className={css.cardSays}>{card.says}</p>
+       <p className={css.cardProof}><span className={css.proofDot} aria-hidden="true"/>{'Proof complete'}</p>
       </li>)}
-    </RevealGroup>
+    </ul>
+   </div>
+   <p className={css.instrumentCaption}>{'Sample data, the example repository in this project.'}</p>
+
+   <div className={css.copy}>
+    <ValuePanel>{"What you get: every task starts with the right conventions already in the agent's context, so fewer wrong pull requests and no hunting for the rule."}</ValuePanel>
    </div>
 
-   <ul className={css.cards}>
-    {CARDS.map(card=>
-     <li key={card.name} className={css.card} data-delivered-card="" data-proof="complete">
-      <p className={css.cardHead}>
-       <span className={css.cardLevel}>{card.level}</span>
-       <span className={css.cardDot} aria-hidden="true">{' · '}</span>
-       <span className={css.cardName}>{card.name}</span>
-      </p>
-      <p className={css.cardSays}>{card.says}</p>
-      <p className={css.cardProof}><span className={css.proofDot} aria-hidden="true"/>{'Proof complete'}</p>
-     </li>)}
-   </ul>
-  </div>
-  <p className={css.instrumentCaption}>{'Sample data, the example repository in this project.'}</p>
+   <div className={css.screen}>
+    <DeviceFrame src="/assets/landing/app/usage.webp"
+     alt="The Guidefold usage view: a review queue and five delivery scorecards showing how often each rule was exposed, loaded and applied."
+     caption="Afterwards, the portal shows which rule helped, sample data"/>
+   </div>
 
-  <div className={css.copy}>
-   <ValuePanel>{"What you get: every task starts with the right conventions already in the agent's context, so fewer wrong pull requests and no hunting for the rule."}</ValuePanel>
-  </div>
-
-  <div className={css.screen}>
-   <DeviceFrame src="/assets/landing/app/usage.webp"
-    alt="The Guidefold usage view: a review queue and five delivery scorecards showing how often each rule was exposed, loaded and applied."
-    caption="Afterwards, the portal shows which rule helped, sample data"/>
-  </div>
-
-  <details className={css.reader}>
-   <summary className={css.readerSummary}>{'Read the full rule the agent loaded'}</summary>
-   <div className={css.readerBody}><InstructionReader/></div>
-  </details>
+   <details className={css.reader}>
+    <summary className={css.readerSummary}>{'Read the full rule the agent loaded'}</summary>
+    <div className={css.readerBody}><InstructionReader/></div>
+   </details>
+ </div>
  </section>;
 }

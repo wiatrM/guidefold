@@ -1,10 +1,7 @@
 /* Under the hood, SPEC v3 screen 6. Three panels, one verb each, on the same 12-column
  * grid as every other block. Every value is a token. */
-.section{
- display:grid;
- grid-template-columns:var(--landing-grid);
- padding-block:var(--landing-section-padding);
-}
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
 .copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
 .section p.eyebrow{
  display:flex;

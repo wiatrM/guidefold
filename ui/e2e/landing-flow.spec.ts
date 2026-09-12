@@ -19,6 +19,10 @@ import {axeViolations,noHorizontalScroll} from './stub';
  * degrades to roughly the old fixed delay instead of failing the test for the wrong reason.
  */
 async function settled(page:Page){
+ // The loader overlay in index.html covers the viewport until the fonts are ready and the
+ // hero has committed. axe reads colour against what is actually painted, so anything it
+ // scans while the overlay is still up is measured against the overlay, not the page.
+ await page.waitForFunction(()=>!document.getElementById('loader'),null,{timeout:10000}).catch(()=>undefined);
  await page.evaluate(async()=>{
   const step=window.innerHeight*0.8;
   for(let y=0;y<document.body.scrollHeight;y+=step){
@@ -47,49 +51,22 @@ async function settled(page:Page){
 
 const viewports=[{width:1440,height:900},{width:390,height:844}];
 
-for(const size of viewports)test('research evidence preserves context and negative results at '+size.width,async({page})=>{
- await page.setViewportSize(size);
- await page.emulateMedia({reducedMotion:'reduce'});
- await page.goto('/');
- const evidence=page.getByRole('region',{name:'Plus 8.53 points of recall over flat.'});
- await page.getByRole('link',{name:'Read the numbers and how we got them'}).click();
- await expect(evidence.getByText(/5,400 queries across 26,262 skills/)).toBeVisible();
- await expect(evidence.getByRole('cell',{name:'65.22%',exact:true})).toBeVisible();
- await expect(evidence.getByRole('cell',{name:'47.19%',exact:true})).toBeVisible();
- await expect(evidence.locator('svg.recharts-surface')).toBeVisible();
- const details=evidence.locator('summary');
- await details.focus();
- await page.keyboard.press('Enter');
- await expect(evidence.getByRole('row',{name:/CHAMP 223 -8.67 -5.83/})).toBeVisible();
- await expect(evidence.getByRole('row',{name:/TheoremQA 747 -6.29 -12.18/})).toBeVisible();
- await expect(evidence.getByText(/Neither selected skill matched/)).toBeVisible();
- await expect(evidence.getByText(/not a test of spontaneous tool adoption/)).toBeVisible();
- const response=await page.request.get('/evidence/research-2026-09-10.json');
- expect(response.ok()).toBe(true);
- const record=await response.json();
- expect(record.skills).toBe(26262);
- expect(record.pi.gold_overlap).toBe(0);
- expect(record.verification.retained_ranking_metrics_recomputed).toBe(37800);
- expect(await noHorizontalScroll(page)).toBe(true);
- expect(await axeViolations(page)).toEqual([]);
- await evidence.screenshot({path:`qa/research-update-${size.width}.png`});
-});
-
-for(const size of viewports)test('opens on the outcome, then extraction, retrieval and the safety boundary in order at '+size.width,async({page})=>{
+for(const size of viewports)test('opens on the outcome, then the nine v3 screens in order at '+size.width,async({page})=>{
  await page.setViewportSize(size);
  await page.goto('/');
- // The headline is set as two `Reveal` line-mask blocks (DESIGN.md 4.1 decision 4): each is
- // its own block box, so the accessible name (backed by the h1's `aria-label`) carries the
- // word-space between them while the raw DOM text of two adjoining block children does not.
- // `toHaveAccessibleName` reads the same string a screen reader would, which is what this
- // assertion is protecting.
- await expect(page.getByRole('heading',{level:1})).toHaveAccessibleName('Your repos are already writing the handbook.');
+ // The headline is three `Reveal` line-mask blocks (DESIGN.md 4.1 decision 4): each is its
+ // own block box, so the accessible name (backed by the h1's `aria-label`) carries the
+ // word-spaces between them while the raw DOM text of adjoining block children does not.
+ // `toHaveAccessibleName` reads the same string a screen reader would.
+ await expect(page.getByRole('heading',{level:1})).toHaveAccessibleName("Your coding agent doesn't know your team's rules. Now it does.");
  const headings=page.getByRole('heading',{level:2});
- await expect(headings.nth(0)).toHaveText("One team's fix becomes everyone's rule.");
- await expect(headings.nth(1)).toHaveText('Thirty thousand rules. Four reach the agent.');
- await expect(headings.nth(2)).toHaveText('Seventy-six harmful rules. Seventy-six refusals.');
- await expect(page.locator('#how-it-works')).toHaveCount(1);
- await expect(page.locator('#waitlist')).toHaveCount(1);
+ await expect(headings.nth(0)).toHaveText('One place for every rule, wired into every agent.');
+ await expect(headings.nth(1)).toHaveText("One team's fix becomes everyone's rule.");
+ await expect(headings.nth(2)).toHaveText("Your organisation's brain, reviewed by owners.");
+ await expect(headings.nth(3)).toHaveText('Thirty thousand rules. Four reach the agent.');
+ await expect(headings.nth(4)).toHaveText('A search server for your rules, next to your Git.');
+ const ids=await page.evaluate(()=>[...document.querySelectorAll('main section[id]')].map(node=>node.id));
+ expect(ids).toEqual(['hero','why','extraction','portal','how-it-works','under-the-hood','proof','waitlist','questions']);
  await expect(page.locator('#demo')).toHaveCount(1);
  await expect(page.getByText('Open source today.',{exact:true})).toBeVisible();
  await expect(page.getByText('Paid hosting is planned.').first()).toBeVisible();
@@ -99,7 +76,56 @@ for(const size of viewports)test('opens on the outcome, then extraction, retriev
  // tokens (stone-300, warning-ink, system-ink) that measure 7.98-12.84:1 at rest.
  await settled(page);
  expect(await axeViolations(page)).toEqual([]);
- await page.screenshot({path:`qa/landing-v2-${size.width}.png`,fullPage:true});
+ await page.screenshot({path:`qa/landing-v3/page-${size.width}.png`,fullPage:true});
+});
+
+/**
+ * The owner's budget for v3, measured on the built page rather than asserted in a document:
+ * the whole page under 8.5 viewports at 1440, and no sideways scroll at any of the four
+ * widths the spec names.
+ */
+test('stays under 8.5 viewports at 1440 and never scrolls sideways',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ await settled(page);
+ const viewportsTall=await page.evaluate(()=>document.documentElement.scrollHeight/window.innerHeight);
+ expect(viewportsTall).toBeLessThan(8.5);
+ for(const width of [1440,1080,720,390]){
+  await page.setViewportSize({width,height:900});
+  await page.waitForTimeout(200);
+  expect(await noHorizontalScroll(page),`no horizontal overflow at ${width}`).toBe(true);
+ }
+});
+
+/**
+ * The value panel is the owner's answer to "barely visible, looks vibe-coded": one shared
+ * component on every block, spanning the block's own column rather than a narrow measure.
+ */
+test('gives every block one value panel at the block column width',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ await settled(page);
+ const panels=page.locator('[data-value-panel]');
+ await expect(panels).toHaveCount(6);
+ const edges=await page.evaluate(()=>[...document.querySelectorAll('main section[id]')]
+  .map(section=>{
+   // The section is full-bleed; the container inside it is the page's one content box,
+   // and that is what every block's copy, panel and screen must share edges with.
+   const container=section.querySelector(':scope > div');
+   const panel=section.querySelector('[data-value-panel]');
+   const heading=section.querySelector('h2');
+   return panel&&heading&&container
+    ?{id:section.id,
+      panel:Math.round(panel.getBoundingClientRect().right),
+      heading:Math.round(heading.getBoundingClientRect().right),
+      container:Math.round(container.getBoundingClientRect().right)}
+    :null;
+  }).filter(Boolean));
+ for(const edge of edges as {id:string;panel:number;heading:number;container:number}[]){
+  expect(edge.panel,`${edge.id} value panel ends at the heading's edge`).toBe(edge.heading);
+  // The container's own padding box is wider than its content box by the page gutter.
+  expect(edge.container-edge.panel,`${edge.id} value panel sits inside the page gutter`).toBe(72);
+ }
 });
 
 test('the demo dialog mounts the player only on request and restores focus',async({page})=>{
@@ -133,9 +159,12 @@ test('every answer ships closed, and the privacy deep link opens its panel',asyn
  await expect(page.getByText(/Unconfirmed signups are scheduled for deletion after 30 days/)).toBeVisible();
 });
 
-test('the instruction reader shows the fixture excerpt and its source',async({page})=>{
+test('the instruction reader opens from its details and shows the excerpt and its source',async({page})=>{
  await page.goto('/');
+ const summary=page.getByText('Read the full rule the agent loaded');
  const reader=page.locator('[data-slot="instruction-reader"]');
+ await expect(reader).toBeHidden();
+ await summary.click();
  await expect(reader.getByText(/Not a live run/)).toBeVisible();
  await expect(reader.getByText(/Tokens are verified with the key set/)).toBeVisible();
  await expect(reader.getByRole('link',{name:/Open the original file/})).toHaveAttribute('href',/postgres-auth\/SKILL\.md$/);
@@ -176,7 +205,7 @@ test('scrolling to the footer and back returns the film and parallax layers to t
  // digit between two reads of the same resting value (0.985003 vs 0.985), which is not a
  // reversibility regression. Rounding keeps the assertion meaningful (same transform, not
  // byte-identical serialization) without loosening what "returns to its exact transform" checks.
- const read=()=>page.evaluate(()=>[...document.querySelectorAll('[class*="film"],[data-beat],[class*="proofRail"]')].map(node=>{
+ const read=()=>page.evaluate(()=>[...document.querySelectorAll('[class*="film"],[data-beat],[class*="deviceFrame"]')].map(node=>{
   const t=getComputedStyle(node).transform;
   return t==='none'?t:t.replace(/-?\d+\.?\d*/g,n=>Number(n).toFixed(3));
  }));

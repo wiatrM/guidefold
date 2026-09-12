@@ -30,7 +30,7 @@ export function ValuePanel({children}:{children:string}){
  useEffect(()=>{setArmed(true);},[]);
  const body=children.startsWith(PREFIX)?children.slice(PREFIX.length):children;
 
- return <div ref={ref} className={css.panel}
+ return <div ref={ref} className={css.panel} data-value-panel=""
   data-value-ready={armed?'true':undefined}
   data-value-entered={entered?'true':undefined}>
   <span className={css.rule} aria-hidden="true"/>

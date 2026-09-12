@@ -26,8 +26,8 @@ async function fill(){
  return user;
 }
 
-/** The eight sections under the hero are their own chunk (index.tsx defers BelowHero so
- * the hero copy, which is the LCP element, is not behind `motion` and @base-ui), so they
+/** The eight screens under the hero are their own chunk (index.tsx defers BelowHero so
+ * the hero, which holds the LCP element, is not behind `motion` and @base-ui), so they
  * arrive one module load after render. Every assertion about them waits for it. */
 beforeAll(async()=>{await import('./landing/BelowHero');});
 async function renderLanding(ui=<Landing/>){
@@ -46,55 +46,78 @@ describe('public landing',()=>{
  // pays one module load on top of the scan; the default 5 s is no longer enough headroom.
  },15000);
 
- it('opens on the outcome and orders the nine sections',async()=>{
+ it('opens on the outcome and orders the nine v3 sections',async()=>{
   const {container}=await renderLanding();
   expect(screen.getAllByRole('heading',{level:1})).toHaveLength(1);
-  expect(screen.getByRole('heading',{level:1,name:'Your repos are already writing the handbook.'})).toBeInTheDocument();
+  expect(screen.getByRole('heading',{level:1,name:"Your coding agent doesn't know your team's rules. Now it does."})).toBeInTheDocument();
   const ids=[...container.querySelectorAll('main section[id]')].map(n=>n.id);
-  expect(ids).toEqual(['hero','extraction','how-it-works','proof-gate','telemetry','research-results','availability','waitlist','questions']);
+  expect(ids).toEqual(['hero','why','extraction','portal','how-it-works','under-the-hood','proof','waitlist','questions']);
   expect(container.querySelector('a[href="#extraction"]')).toBeInTheDocument();
  });
 
- it('renders both hero proof cells with their qualifiers in full',async()=>{
-  await renderLanding();
-  expect(screen.getByText('76 of 76 harmful rules refused.')).toBeVisible();
-  expect(screen.getAllByText('Delivery boundary, deterministic, source-backed; not a task-success claim. 2026-09-11.').length).toBeGreaterThan(0);
-  expect(screen.getByText('+8.53 pp Recall@10 on SRA-Bench.')).toBeVisible();
-  expect(screen.getByText('Measured, exploratory offline retrieval. 10 September 2026.')).toBeVisible();
+ it('gives the hero one sentence, two actions and one real screen, and nothing else',async()=>{
+  const {container}=await renderLanding();
+  const hero=container.querySelector('section#hero')!;
+  expect(hero.textContent).toContain('Your agents stop guessing your conventions.');
+  expect(hero.textContent).toContain('Open source today. The hosted service is planned.');
+  expect(within(hero as HTMLElement).getByRole('img')).toHaveAttribute('src','/assets/landing/app/proposals.webp');
+  expect(within(hero as HTMLElement).getByText('The organisation portal, sample data')).toBeVisible();
+  // The proof rail, the tier glyph and the scroll-cue sentence are gone; the only hero
+  // figures a reader meets are in the proof band near the end.
+  expect(hero.textContent).not.toContain('harmful');
+  expect(hero.textContent).not.toContain('How rules move up');
+  expect(hero.querySelector('svg[role="presentation"]')).toBeNull();
  });
 
- // Final review I1: the hero figure used to be typed into the markup, so a refreshed
- // mirror would have left it announcing a superseded count. The expectation is built from
- // the same JSON the component reads, so only the coupling can keep this green.
- it('derives the hero refusal figure from the evidence mirror',async()=>{
-  await renderLanding();
+ /**
+  * The owner's instruction for v3: every block answers what the reader gets, in one shape.
+  * Six blocks carry one, and the label is inside the sentence rather than a badge above it.
+  */
+ it('ends every block on one value panel in the same shape',async()=>{
+  const {container}=await renderLanding();
+  const lines=[...container.querySelectorAll('main p')]
+   .map(n=>n.textContent??'').filter(text=>text.startsWith('What you get: '));
+  expect(lines).toHaveLength(6);
+  for(const line of lines)expect(line).toMatch(/^What you get: \S.*\.$/);
+ });
+
+ it('says what SEARCH, USE and ASK are in plain words',async()=>{
+  const {container}=await renderLanding();
+  const hood=container.querySelector('section#under-the-hood')!;
+  for(const verb of ['SEARCH','USE','ASK'])expect(hood.textContent).toContain(verb);
+  expect(hood.textContent).toContain('Guidefold is a separate service with a database of every rule in your organisation.');
+  expect(within(hood as HTMLElement).getByText('The rule database with your hierarchy, sample data')).toBeVisible();
+ });
+
+ it('names why each role installs it, once each',async()=>{
+  const {container}=await renderLanding();
+  const why=container.querySelector('section#why')!;
+  for(const role of ['Platform teams','Tech leads and rule owners','Developers'])
+   expect(within(why as HTMLElement).getByText(role)).toBeVisible();
+  expect(why.querySelectorAll('dt')).toHaveLength(3);
+ });
+
+ it('publishes both proof figures from the evidence mirror, readable without JavaScript',async()=>{
+  const {container}=await renderLanding();
+  const proof=container.querySelector('section#proof')!;
   const m=evidence.proof_gate.matrix;
-  expect(screen.getByText(`${m.harmful_mutations} of ${m.harmful_asked} harmful rules refused.`)).toBeVisible();
- });
-
- // Follow-up wave, 2026-09-12: the second rail cell was the last citable figure still
- // typed into the markup. The expectation is formatted here from the same row the
- // research headline and the results table read, with the table's two-decimal signed
- // form spelled out rather than imported, so the rendered hero fails this if it ever
- // stops deriving the number.
- it('derives the hero recall figure from the evidence mirror',async()=>{
-  await renderLanding();
   const d=evidence.vs_flat.recall10.delta_pp;
-  const expected=(d>0?'+':'')+d.toFixed(2);
-  expect(screen.getByText(`${expected} pp Recall@10 on SRA-Bench.`)).toBeVisible();
+  expect(proof.textContent).toContain(`${m.harmful_mutations} of ${m.harmful_asked} poisoned rules refused.`);
+  expect(proof.textContent).toContain(`${(d>0?'+':'')+d.toFixed(2)} pp recall over flat search.`);
+  expect(proof.textContent).toContain('Sample repository, September 2026.');
+  expect(proof.textContent).toContain('SRA-Bench, September 2026.');
  });
 
- it('gives the scroll cue one agreeing label, name and destination',async()=>{
+ it('gives the scroll cue one destination and an accessible name that says it',async()=>{
   await renderLanding();
   const cue=screen.getByRole('link',{name:'Scroll to the extraction section'});
   expect(cue).toHaveAttribute('href','#extraction');
-  expect(cue).toHaveTextContent('How rules move up');
  });
 
  it('keeps every protected destination and the availability statements',async()=>{
   const {container}=await renderLanding();
   const href=(selector:string)=>container.querySelector(selector);
-  expect(href('a[href="#extraction"]')).toBeInTheDocument();      // nav, copy.md 5
+  expect(href('a[href="#extraction"]')).toBeInTheDocument();      // nav and the hero cue
   expect(container.querySelector('section#how-it-works')).toBeInTheDocument(); // v1 inbound anchor still resolves
   expect(href('a[href="#waitlist"]')).toBeInTheDocument();
   expect(href('a[href="#demo"]')).toBeInTheDocument();
@@ -193,11 +216,13 @@ describe('public landing',()=>{
   expect(await screen.findByRole('status')).toBeInTheDocument();
  });
 
- it('creates no video element under reduced motion and keeps the film poster',async()=>{
+ /** v3 removed the poster still: the film layer opens on the graphite field it paints
+   * itself, so under reduced motion there is nothing to decode and nothing to load. */
+ it('creates no video and loads no film still under reduced motion',async()=>{
   reduceMotion(true);
   const {container}=await renderLanding();
   expect(container.querySelector('video')).toBeNull();
-  expect(container.querySelector('img[src="/assets/landing/hero-poster.webp"]')).toBeInTheDocument();
+  expect(container.querySelector('img[src*="hero-poster"]')).toBeNull();
  });
 
  it('puts the skip link first and keeps DOM order equal to reading order',async()=>{
@@ -210,14 +235,29 @@ describe('public landing',()=>{
  it('publishes only the citable figures',async()=>{
   const {container}=await renderLanding();
   const text=container.textContent??'';
-  expect(text).toContain('76 of 76 harmful rules refused.');
-  expect(text).toContain('4.81%');
-  expect(text).toContain('+8.53 pp Recall@10 on SRA-Bench.');
+  expect(text).toContain('76 of 76 poisoned rules refused.');
+  expect(text).toContain('+8.53 pp recall over flat search.');
+  // The research vocabulary the owner struck out: no Wilson bound, no delivery-boundary
+  // qualifier, no `reason=`, no millisecond claim anywhere on the page.
+  expect(text).not.toContain('Wilson');
+  expect(text).not.toContain('reason=');
+  expect(text).not.toContain('Delivery boundary');
+  expect(text).not.toContain('Measured, exploratory');
   expect(text).not.toMatch(/17\s*\/\s*20/);
   expect(text).not.toMatch(/16\s*\/\s*20/);
   expect(text).not.toMatch(/25\s*\/\s*25/);
   expect(text).not.toMatch(/\b\d+(\.\d+)?\s?(ms|milliseconds)\b/);
   expect(text.toLowerCase()).not.toContain('zero risk');
+ });
+
+ /** Owner instruction, 2026-09-12: nobody outside the project knows "Meridian". The only
+   * survivor is the protected instruction-reader label, which the preservation contract
+   * keeps byte-identical. */
+ it('names example content "sample data" everywhere but the protected reader label',async()=>{
+  const {container}=await renderLanding();
+  const mentions=(container.textContent??'').match(/Meridian|fixture/g)??[];
+  expect(mentions).toEqual(['Meridian']);
+  expect(container.textContent).toContain('from the Meridian example repository in this project. Not a live run.');
  });
 
  // The mechanism clip (IntroFigure) and the Meridian reader (InstructionReader) are re-homed

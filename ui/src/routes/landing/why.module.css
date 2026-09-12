@@ -1,11 +1,8 @@
 /* Why teams install it, SPEC v3 screen 2. One 12-column grid like every other block; the
  * rows are a two-column definition list at 1440 and one column at 390, and the only
  * decoration is the hairline between them. Every value is a token. */
-.section{
- display:grid;
- grid-template-columns:var(--landing-grid);
- padding-block:var(--landing-section-padding);
-}
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
 .copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
 .section p.eyebrow{
  display:flex;

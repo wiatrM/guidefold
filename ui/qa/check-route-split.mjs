@@ -9,7 +9,7 @@ try{
  // No production session is needed or exercised by this bundle boundary check.
  await page.route('**/api/**',route=>route.fulfill({status:503,contentType:'application/json',body:'{}'}));
  await page.goto(origin,{waitUntil:'networkidle'});
- await page.getByRole('heading',{name:'Team rules. Right where agents work.'}).waitFor();
+ await page.getByRole('heading',{name:"Your coding agent doesn't know your team's rules. Now it does."}).waitFor();
  assert(!requests.some(path=>/^\/assets\/app-.*\.js$/.test(path)),'public route loaded the management app');
  assert(!requests.some(path=>path.startsWith('/api/')),'public route requested a management session');
  const publicAssets=requests.filter(path=>path.endsWith('.js'));

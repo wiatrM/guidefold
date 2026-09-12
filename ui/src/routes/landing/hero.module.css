@@ -7,19 +7,19 @@
 .hero{
  position:relative;
  isolation:isolate;
- display:grid;
- grid-template-columns:var(--landing-grid);
- align-content:center;
- gap:var(--landing-band-gap) var(--landing-bento-gap);
- min-height:var(--landing-media-band);
  padding-block:var(--landing-hero-pad-top) var(--space-5);
 }
+.heroGrid{
+ composes:grid from './landing.module.css';
+ align-content:center;
+ row-gap:var(--landing-band-gap);
+ min-height:var(--landing-media-band);
+}
 
-/* The scrim spans the page container's padding box, which is the whole viewport at any
- * width up to --landing-width. It deliberately does NOT bleed with `50% - 50vw`: `vw`
- * counts the classic scrollbar, so that bleed made the document 8px wider than its own
- * client area and the page scrolled sideways. Beyond 1400px the film layer's own scrim
- * covers the margin, so nothing is left unshaded. */
+/* The scrim is full-bleed because the hero section is: it spans the section's own padding
+ * box, which is the whole viewport width. It deliberately does NOT bleed with `50% - 50vw`:
+ * `vw` counts the classic scrollbar, so that bleed made the document 8 px wider than its
+ * own client area and the page scrolled sideways. */
 .heroScrim{
  position:absolute;
  z-index:-1;

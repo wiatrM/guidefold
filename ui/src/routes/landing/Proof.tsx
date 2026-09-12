@@ -36,27 +36,29 @@ export function Proof(){
  // and nothing else — so it carries no heading, and the landmark takes its name from the
  // label rather than from copy invented to fill the slot.
  return <section id="proof" className={css.section} aria-label="Proof">
-  <div ref={figuresRef} className={css.figures}>
-   <Reveal pattern="p1" as="div" className={css.figure}>
-    <p className={css.figureLine}>
-     {revealed&&canTick
-      ?<NumberTicker value={gate.harmful_mutations} startOnView={false} className={css.count}/>
-      :<span className={css.count}>{gate.harmful_mutations}</span>}
-     {` of ${gate.harmful_asked} poisoned rules refused.`}
-    </p>
-    <p className={css.small}>{'Sample repository, September 2026.'}</p>
-   </Reveal>
-   <Reveal pattern="p1" as="div" index={1} className={css.figure}>
-    <p className={css.figureLine}>
-     {revealed&&canTick
-      ?<NumberTicker value={centipp(delta)} format={formatPp} prefix="+" startOnView={false} className={css.count}/>
-      :<span className={css.count}>{formatDelta(delta)}</span>}
-     {' pp recall over flat search.'}
-    </p>
-    <p className={css.small}>{'SRA-Bench, September 2026.'}</p>
-   </Reveal>
-  </div>
-  <ValuePanel>{'What you get: numbers you can check, not promises.'}</ValuePanel>
-  <a className={css.textLink} href="/docs/">{'Read the numbers and how we got them'}</a>
+  <div className={css.shell}>
+   <div ref={figuresRef} className={css.figures}>
+    <Reveal pattern="p1" as="div" className={css.figure}>
+     <p className={css.figureLine}>
+      {revealed&&canTick
+       ?<NumberTicker value={gate.harmful_mutations} startOnView={false} className={css.count}/>
+       :<span className={css.count}>{gate.harmful_mutations}</span>}
+      {` of ${gate.harmful_asked} poisoned rules refused.`}
+     </p>
+     <p className={css.small}>{'Sample repository, September 2026.'}</p>
+    </Reveal>
+    <Reveal pattern="p1" as="div" index={1} className={css.figure}>
+     <p className={css.figureLine}>
+      {revealed&&canTick
+       ?<NumberTicker value={centipp(delta)} format={formatPp} prefix="+" startOnView={false} className={css.count}/>
+       :<span className={css.count}>{formatDelta(delta)}</span>}
+      {' pp recall over flat search.'}
+     </p>
+     <p className={css.small}>{'SRA-Bench, September 2026.'}</p>
+    </Reveal>
+   </div>
+   <ValuePanel>{'What you get: numbers you can check, not promises.'}</ValuePanel>
+   <a className={css.textLink} href="/docs/">{'Read the numbers and how we got them'}</a>
+ </div>
  </section>;
 }

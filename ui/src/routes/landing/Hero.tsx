@@ -58,27 +58,29 @@ export function Hero(){
  return <section id="hero" className={css.hero} aria-labelledby="hero-title">
   <div className={css.heroScrim} aria-hidden="true"/>
 
-  <div className={css.heroCopy}>
-   <RevealLines as="h1" id="hero-title" className={css.title}
-    lines={["Your coding agent doesn't","know your team's rules.","Now it does."]}
-    label="Your coding agent doesn't know your team's rules. Now it does."/>
-   <Reveal pattern="p1" as="p" index={1} className={css.subline}>
-    {"Your agents stop guessing your conventions. Rules live next to the code, CI lifts the good ones into your organisation's brain, and every agent gets exactly what fits the task."}
-   </Reveal>
-   <div id="demo" className={css.heroActions}>
-    <a data-slot="button" className={buttonVariants({className:shared.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
-    <DemoAction/>
+  <div className={css.heroGrid}>
+   <div className={css.heroCopy}>
+    <RevealLines as="h1" id="hero-title" className={css.title}
+     lines={["Your coding agent doesn't","know your team's rules.","Now it does."]}
+     label="Your coding agent doesn't know your team's rules. Now it does."/>
+    <Reveal pattern="p1" as="p" index={1} className={css.subline}>
+     {"Your agents stop guessing your conventions. Rules live next to the code, CI lifts the good ones into your organisation's brain, and every agent gets exactly what fits the task."}
+    </Reveal>
+    <div id="demo" className={css.heroActions}>
+     <a data-slot="button" className={buttonVariants({className:shared.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
+     <DemoAction/>
+    </div>
+    <p className={css.trust}>Open source today. The hosted service is planned.</p>
+    <a className={css.scrollCue} href="#extraction" aria-label="Scroll to the extraction section">
+     <ArrowDown weight="bold" aria-hidden="true"/>
+    </a>
    </div>
-   <p className={css.trust}>Open source today. The hosted service is planned.</p>
-   <a className={css.scrollCue} href="#extraction" aria-label="Scroll to the extraction section">
-    <ArrowDown weight="bold" aria-hidden="true"/>
-   </a>
-  </div>
 
-  <div className={css.heroScreen}>
-   <DeviceFrame eager whole src="/assets/landing/app/proposals.webp"
-    alt="The Guidefold organisation portal: a rule proposed by CI beside the source it came from, waiting for an owner's approval."
-    caption="The organisation portal, sample data"/>
+   <div className={css.heroScreen}>
+    <DeviceFrame eager whole src="/assets/landing/app/proposals.webp"
+     alt="The Guidefold organisation portal: a rule proposed by CI beside the source it came from, waiting for an owner's approval."
+     caption="The organisation portal, sample data"/>
+   </div>
   </div>
  </section>;
 }

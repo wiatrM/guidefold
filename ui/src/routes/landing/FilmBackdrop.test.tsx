@@ -2,12 +2,18 @@ import {describe,it,expect} from 'vitest';
 import {FILM_ANCHORS,normaliseAnchors,playheadAt} from './FilmBackdrop';
 
 describe('film anchor map',()=>{
- it('names the nine sections in DOM order with their playhead seconds',()=>{
-  expect(FILM_ANCHORS.map(a=>a.id)).toEqual(['hero','extraction','how-it-works','proof-gate','telemetry','research-results','availability','waitlist','questions']);
-  // Shipped anchors, not DESIGN.md's targets: `how-it-works` and `proof-gate` sit on the
-  // film's measured cuts so each section opens on its own shot (DESIGN.md 3.0, "Implemented
-  // anchors"). Controller ruling, 2026-09-11: the film's cuts are the truth.
-  expect(FILM_ANCHORS.map(a=>a.second)).toEqual([0,1.4,4.4,5.85,6.8,7.8,8.6,9.1,9.7]);
+ it('names the ten v3 sections in DOM order with their playhead seconds',()=>{
+  expect(FILM_ANCHORS.map(a=>a.id)).toEqual(['hero','why','extraction','portal','how-it-works','under-the-hood','proof','waitlist','questions','footer']);
+  // Shipped anchors, not a design target: `how-it-works` sits on the film's measured cut
+  // so the chapter about four cards opens on the four-card shot. The seconds the removed
+  // v2 sections held are redistributed over the sections that replaced them, so the film
+  // still spans the whole page (DESIGN.md 3.0).
+  expect(FILM_ANCHORS.map(a=>a.second)).toEqual([0,0.7,1.4,3.1,4.4,5.85,7,8.4,9.1,9.7]);
+ });
+
+ it('rises with no repeated second, so every section opens on its own shot',()=>{
+  const seconds=FILM_ANCHORS.map(a=>a.second);
+  for(let i=1;i<seconds.length;i++)expect(seconds[i]).toBeGreaterThan(seconds[i-1]);
  });
 
  it('interpolates piecewise linearly between measured anchors',()=>{

@@ -19,23 +19,25 @@ const ROLES=[
 
 export function Why(){
  return <section id="why" className={css.section} aria-labelledby="why-title">
-  <div className={css.copy}>
-   <Reveal pattern="p1" as="p" className={css.eyebrow}>{'Why install it'}</Reveal>
-   <Reveal pattern="p1" as="h2" index={1} id="why-title" className={css.heading}>
-    {'One place for every rule, wired into every agent.'}
-   </Reveal>
-  </div>
+  <div className={css.grid}>
+   <div className={css.copy}>
+    <Reveal pattern="p1" as="p" className={css.eyebrow}>{'Why install it'}</Reveal>
+    <Reveal pattern="p1" as="h2" index={1} id="why-title" className={css.heading}>
+     {'One place for every rule, wired into every agent.'}
+    </Reveal>
+   </div>
 
-  <RevealGroup pattern="p1" as="dl" className={css.roles}>
-   {ROLES.map(item=>
-    <div key={item.role} className={css.role}>
-     <dt className={css.roleName}>{item.role}</dt>
-     <dd className={css.roleGets}>{item.gets}</dd>
-    </div>)}
-  </RevealGroup>
+   <RevealGroup pattern="p1" as="dl" className={css.roles}>
+    {ROLES.map(item=>
+     <div key={item.role} className={css.role}>
+      <dt className={css.roleName}>{item.role}</dt>
+      <dd className={css.roleGets}>{item.gets}</dd>
+     </div>)}
+   </RevealGroup>
 
-  <div className={css.value}>
-   <ValuePanel>{'What you get: one source of rules for people and agents, and no more copy-pasted conventions drifting between repos.'}</ValuePanel>
-  </div>
+   <div className={css.value}>
+    <ValuePanel>{'What you get: one source of rules for people and agents, and no more copy-pasted conventions drifting between repos.'}</ValuePanel>
+   </div>
+ </div>
  </section>;
 }

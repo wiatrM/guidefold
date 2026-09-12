@@ -37,7 +37,8 @@ export default function BelowHero(){
   <Proof/>
 
   <section id="waitlist" className={css.waitlist} aria-labelledby="waitlist-title">
-   <div className={css.waitlistCopy}>
+   <div className={css.waitlistGrid}>
+    <div className={css.waitlistCopy}>
     <Reveal pattern="p1" as="h2" id="waitlist-title" className={css.waitlistHeading}>{'Be first on hosted Guidefold.'}</Reveal>
     <p>{'One email when it is ready. Nothing else.'}</p>
     {/* Both statements are protected copy, moved here verbatim from the former
@@ -51,8 +52,9 @@ export default function BelowHero(){
      <a className={css.textLink} href={github+'#quickstart'}>Try the open-source version</a>
      <a className={css.textLink} href="/docs/">Read the docs</a>
     </div>
+    </div>
+    <WaitlistForm/>
    </div>
-   <WaitlistForm/>
   </section>
 
   <Questions/>
