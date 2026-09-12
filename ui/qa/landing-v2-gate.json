@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-12T02:20:00Z",
+  "capturedAt": "2026-09-12T09:40:00Z",
   "spec": "ui/design/landing/v2/",
   "evidenceLevel": "R",
   "environment": {
-    "build": "pnpm build at 944f6ef (169aff3 plus the 2026-09-12 final-review fix wave); the doc and gate update rides in the follow-up commit",
-    "served": "vite preview, http://127.0.0.1:4382, production dist",
+    "build": "pnpm build at b8ae54d plus this follow-up wave (critical-path split for LCP, hero recall figure derived from the evidence mirror); the doc and gate update rides in the same commit",
+    "served": "vite preview, http://127.0.0.1:4396, production dist",
     "browser": "Chromium 1.63.0 via Playwright, deviceScaleFactor 1",
     "widths": [
       "1440x900",
@@ -16,19 +16,19 @@
     {
       "id": "typecheck",
       "status": "pass",
-      "evidence": "pnpm typecheck (tsc --noEmit), 0 errors, 1.1 s",
+      "evidence": "pnpm typecheck (tsc --noEmit), 0 errors",
       "remediation": null
     },
     {
       "id": "build",
       "status": "pass",
-      "evidence": "pnpm build, exit 0, vite build 0.9 s, 2.2 s total",
+      "evidence": "pnpm build, exit 0",
       "remediation": null
     },
     {
       "id": "unit",
       "status": "pass",
-      "evidence": "pnpm test, 42 files, 375 passed / 375, 17.6 s (two assertions added: the hero refusal figure and the evidence headline figure each compared against research-evidence.json)",
+      "evidence": "pnpm test, 42 files, 376 passed / 376, 23.0 s. Three assertions now build their expectation from research-evidence.json: the hero refusal figure, the hero recall figure and the evidence headline. Two test files render the landing page through an awaited helper because the sections under the hero are a deferred chunk",
       "remediation": null
     },
     {
@@ -40,19 +40,19 @@
     {
       "id": "e2e-landing",
       "status": "pass",
-      "evidence": "playwright landing-flow.spec.ts, 13 passed / 13, three consecutive runs; the third (45.3 s) on the fix-wave tree, with the reduced-motion assertion rewritten and the target check widened. The three fixed 1000 ms sleeps are replaced by a settle that sweeps the scroll so every IntersectionObserver fires, waits for every [data-reveal-ready] element to carry data-reveal-entered, then drains the finite CSS animations after a two-frame style flush",
+      "evidence": "playwright landing-flow.spec.ts, 13 passed / 13 on this wave's tree, through a temporary config on port 4397; 1.2 min. Includes the demo-dialog case, which now exercises a deferred dialog: focus the Play demo button, Enter, the module loads, the popup opens with Close focused, Escape restores focus to the trigger.",
       "remediation": null
     },
     {
       "id": "e2e-suite",
       "status": "pass",
-      "evidence": "pnpm test:e2e, 38 passed / 38, 2.3 min. The orphaned spectrum-migration case that targeted the removed v1 scope mini demo is deleted, with a comment recording what it used to guard",
+      "evidence": "pnpm test:e2e equivalent (default config's testIgnore, temporary port 4397), 38 passed / 38, 3.2 min. This is the suite that covers the management routes, which is where the BrowserRouter move in main.tsx could have shown up",
       "remediation": null
     },
     {
       "id": "js-budget",
       "status": "pass",
-      "evidence": "landing route chunk 25,216 -> 36,242 B gzip, delta +11,026 B (+10.77 KB), budget +34 KB. Raw 76,889 -> 109,935 B. Landing CSS 7,678 B gzip, no task 1 baseline. Recorded in docs/reports/readme/build-notes.md",
+      "evidence": "Landing route code is now two chunks and the budget is read against their sum: landing 32,438 B raw / 11,051 B gzip plus BelowHero 70,566 B / 24,080 B = 103,004 B / 35,131 B, against the task 1 baseline of 76,889 B / 25,216 B. Delta +9,915 B (+9.68 KB), budget +34 KB; down from the +11,026 B recorded at task 13. Route CSS 6,150 B gzip (1,612 + 4,538), was 7,678 B. Entry chunk 84,756 -> 60,620 B gzip. First-paint payload at / 224.61 -> 108.61 KB gzip. Recorded in docs/reports/readme/build-notes.md",
       "remediation": null
     },
     {
@@ -63,14 +63,14 @@
     },
     {
       "id": "lcp",
-      "status": "fail",
-      "evidence": "Emulated 4G (150 ms RTT, 1.6 Mbps down) on the local preview: 1440 LCP 2,152 ms on the hero body paragraph; 390 with 4x CPU LCP 832 ms on the pre-mount fallback paragraph. Unthrottled: 1440 472 ms, 390 444 ms, both the hero copy. The LCP element is the hero copy, not hero-poster.webp. Measured cause: an earlier revision of this task's index.html preloaded hero-poster.webp at fetchpriority=high; removing that line moved 1440 LCP from 2,696 ms to 2,152 ms (-544 ms) with CLS still 0, so 126 KB of high-priority image was sitting ahead of the render-critical bundle. The poster still paints: FilmBackdrop.tsx:272 renders it with fetchPriority=\"high\" and the request is made once (200, naturalWidth 1920)",
-      "remediation": "Still 0.15 s over the 2.0 s budget at 1440 on this emulated profile. The remainder is bundle-bound: the LCP element is text behind index (82.8 KB gzip) plus landing (36.2 KB gzip) plus two stylesheets, so it will not improve without shrinking or deferring that bundle. The poster premise in DESIGN.md v2 section 5 was superseded by the task 5 ruling of 2026-09-11 (record the hero copy, do not restructure the hero for the poster). Re-measure on a real network profile before treating 2.15 s as the field number."
+      "status": "pass",
+      "evidence": "Emulated 4G on the local production preview (CDP Network.emulateNetworkConditions latency 150 ms, download 1.6 Mbps, upload 750 kbps; 4x CPU at 390 only), cold cache, five runs per width, medians. After: 1440 LCP 1,712 ms on the h1 line [1688 1708 1712 1724 1732]; 390 LCP 868 ms [852 860 868 880 1804]. Before, same harness and same machine minutes earlier on a build with the eleven changed source files reverted: 1440 2,268 ms [2208 2256 2268 2268 2472]; 390 3,000 ms [2728 2972 3000 3076 3104], both on the hero body paragraph. The 390 LCP element flips: with the hero painting sooner, the pre-mount shell paragraph in index.html is the largest text in four runs of five and nothing larger paints after it, so LCP lands at 868 ms. The conservative reading is the hero copy's own paint, measured with a MutationObserver on #hero-title plus a two-frame settle: 1,657 ms at 1440 and 1,844 ms at 390 after, against 2,206 ms and 2,983 ms before. Both readings are inside the 2.0 s budget at both widths. Cause and fix, measured one at a time from the 2,152 ms recorded at task 13: the bundle, not the poster. (a) vite.config.ts now emits modulepreload links for the landing chunk and its static imports, read out of the bundle, plus preload as=style for the route stylesheet, which merges the two serial transfer waves; (b) main.tsx no longer mounts BrowserRouter or statically imports createApiRuntime, both of which moved to src/management.tsx behind the management route's dynamic import, taking the entry chunk from 82.77 to 61.35 KB gzip; (c) BelowHero.tsx holds the eight sections under the hero as their own chunk, and DemoDialog is deferred to its click, which takes motion and @base-ui (47.58 KB gzip co-chunked) off the hero's path. First-paint payload 224.61 -> 108.61 KB gzip.",
+      "remediation": "Dropping the four font preloads was measured and rejected: it bought 116 ms at 1440 and took CLS from 0.0000 to 0.0528, because the proof-rail figures are set in JetBrains Mono above the fold. No pre-rendered HTML shell was added; (a)-(c) reached the budget without one. Re-measure on a real network profile before treating these as field numbers, and re-read the 390 row as the hero-copy paint rather than the browser's LCP, which now reports an element the page painted before React ran."
     },
     {
       "id": "cls",
       "status": "pass",
-      "evidence": "0.0000 at 1440 and 390 on a cold production load (PerformanceObserver layout-shift, buffered, no hadRecentInput), and 0 again under emulated 4G, both before and after the poster-preload removal. Before this task: 0.0478 at 1440 and 0.0509 at 390",
+      "evidence": "0.0000 at 1440 and 390 on a cold production load (PerformanceObserver layout-shift, buffered, no hadRecentInput), and 0.0000 in all ten emulated-4G runs of the LCP measurement above, before and after the critical-path split. Deferring the sections under the hero shifts nothing on screen: the boundary is below the fold at both widths. Before this task: 0.0478 at 1440 and 0.0509 at 390",
       "remediation": null
     },
     {
@@ -142,8 +142,8 @@
     {
       "id": "film-anchors",
       "status": "pass",
-      "evidence": "Shipped anchors how-it-works 4.40 and proof-gate 5.85 (was 4.30 and 5.75). Settled playhead with each section parked at its own top (scrollIntoView block:start, which leaves 80 px of scroll-margin): how-it-works 4.317 s against the 4.2083 cut, proof-gate 5.770 s against the ~5.67 cut, both stable from 1.5 s onward. Re-measured the same way at 390 x 844, where the header is static and the scroll margin is 56 px: how-it-works 4.2635 s and proof-gate 5.7806 s, both past their own cut as well (the how-it-works margin is 0.055 s there, wider than the 0.042 s one-frame deadband but thinner than at 1440). Each section now opens on its own shot; qa/landing-v2/retrieval-1440.png was re-taken and shows the four-card fan behind 'Thirty thousand rules. Four reach the agent.'",
-      "remediation": "The margin is carried by the anchor second, not by a navigation-offset subtraction: the header computes position: static at 720 and below, so subtracting a sticky offset would over-correct at 390. Scope: measured on the anchor-navigation path at 1440 and 390, not free scrolling."
+      "evidence": "Shipped anchors how-it-works 4.40 and proof-gate 5.85. Re-measured in this wave on the deferred-chunk build, because BelowHero.tsx changes when the anchored sections enter the DOM: settled playhead with each section parked at its own top (scrollIntoView block:start), read at 1.5 s and again at 3.0 s, identical both times. 1440: how-it-works 4.267 s against the 4.2083 cut (margin 0.059 s, wider than the 0.042 s one-frame deadband), proof-gate 5.769 s against the ~5.67 cut. 390 x 844: how-it-works 4.262 s, proof-gate 5.780 s. Film duration 10.0417 s at both widths. Task 13 read 4.317 / 5.770 at 1440 and 4.264 / 5.781 at 390; the 1440 how-it-works settle moved 0.050 s earlier and every anchor still opens past its own cut. qa/landing-v2/retrieval-1440.png still shows the four-card fan behind 'Thirty thousand rules. Four reach the agent.'",
+      "remediation": "The margin is carried by the anchor second, not by a navigation-offset subtraction: the header computes position: static at 720 and below, so subtracting a sticky offset would over-correct at 390. Scope: measured on the anchor-navigation path at 1440 and 390, not free scrolling. The 1440 how-it-works margin is 0.059 s; a further shift of that size would put it inside the one-frame deadband, so re-measure this row whenever the page's DOM or height changes."
     },
     {
       "id": "radius",
@@ -160,7 +160,7 @@
     {
       "id": "citable-evidence",
       "status": "pass",
-      "evidence": "Page carries 76 of 76 harmful rules refused (dated 2026-09-11, labelled a delivery boundary and not a task-success claim) and +8.53 pp Recall@10 on SRA-Bench (dated 10 September 2026, labelled exploratory offline retrieval). No 17/20, no 25/25, no 30k latency figure, no zero-risk phrasing; the retrieval section states latency at 30k is in the Q6 validation plan and is not claimed. Both figures are now derived at render time from ui/src/data/research-evidence.json (proof_gate.matrix.harmful_mutations / harmful_asked and vs_flat.recall10.delta_pp through the table's own formatter), each covered by a unit assertion that builds its expectation from the same JSON",
+      "evidence": "Page carries 76 of 76 harmful rules refused (dated 2026-09-11, labelled a delivery boundary and not a task-success claim) and +8.53 pp Recall@10 on SRA-Bench (dated 10 September 2026, labelled exploratory offline retrieval). No 17/20, no 25/25, no 30k latency figure, no zero-risk phrasing; the retrieval section states latency at 30k is in the Q6 validation plan and is not claimed. Correction to the task 13 record, which claimed both hero figures were already derived: the hero recall figure was still the literal string '+8.53 pp Recall@10 on SRA-Bench.' in Hero.tsx. It now reads vs_flat.recall10.delta_pp through format.ts, the module the research headline and the results table also use, and the rendered string is byte-identical to design/landing/v2/copy.md line 104. A grep of src for 8.53, 76 of 76, 4.81 and 4 of 4 outside tests and copy docs returns nothing. Three unit assertions build their expectation from the same JSON.",
       "remediation": null
     },
     {
@@ -190,7 +190,7 @@
     {
       "id": "literal-values-in-modules",
       "status": "pass",
-      "evidence": "node qa/check-contracts.mjs reports 0 diagnostics; no literal colour or dimension in any CSS module, tokens.css is the only declaration site",
+      "evidence": "node qa/check-contracts.mjs reports 0 diagnostics; no literal colour or dimension in any CSS module, tokens.css is the only declaration site. Re-run after the CSS module split between landing.module.css consumers",
       "remediation": null
     },
     {
@@ -220,13 +220,17 @@
   ],
   "limits": [
     "Source and browser checks at R level on one WSL2 machine against a local vite preview; not a pilot measurement and not a field measurement.",
-    "The 4G profile is Chrome DevTools network emulation (150 ms RTT, 1.6 Mbps), not a measured mobile network; the 2,152 ms LCP at 1440 is that emulation's number.",
+    "The 4G profile is Chrome DevTools network emulation (150 ms RTT, 1.6 Mbps down, 750 kbps up), not a measured mobile network; the LCP figures are that emulation's numbers. The 390 profile adds Chrome's 4x CPU throttle.",
+    "The LCP before/after pair was measured back to back in one session: the before build was produced by reverting the eleven changed source files, rebuilding, measuring, then restoring them. A browser outside this sandbox was using 70-80% of a core throughout, which is why the before numbers (2,268 / 3,000 ms) read higher than the 2,152 ms recorded at task 13 on a quieter machine. The delta, not the absolute, is what the pair supports.",
+    "At 390 the browser's LCP element is now the pre-mount shell paragraph in index.html, painted before React runs. That is a real reading, not a trick, but it is not evidence that the hero arrives in 868 ms; the hero-copy paint is reported alongside it for that.",
     "The 30k scale envelope is designed for, not measured; no latency figure is published on the page.",
     "Contrast is measured on the composited page at each section's own scroll position and at the hero anchor, not on every frame of the film.",
-    "Frame budget is measured with Chrome's 4x CPU throttle on a quiet machine; frame interval is rAF cadence, which is floored at the 16.7 ms vsync and therefore bounds, rather than reports, main-thread work per frame.",
+    "Frame budget is measured with Chrome's 4x CPU throttle on a quiet machine; frame interval is rAF cadence, which is floored at the 16.7 ms vsync and therefore bounds, rather than reports, main-thread work per frame. It was not re-measured in this wave; the deferred sections change when the chart and the bento arrive, not what they do.",
     "The anti-slop screenshot test was read by the gate agent, not by an engineer outside the project; a human reading counts for more.",
-    "pnpm test:e2e was run against the default config on port 4331; the landing suite was run through a temporary, uncommitted config on port 4394 because port 4332 is held by a process outside this sandbox.",
-    "Re-measured on the fix-wave tree (944f6ef): typecheck, build, unit, contracts, e2e-landing, e2e-suite, backdrop-filter-over-film, targets-390, film-anchors, horizontal-overflow, and the 390 hero fold. Carried forward unchanged from the 169aff3 capture, because nothing in this wave touches what they measure: js-budget, lcp, cls, frame-budget, contrast-over-film, keyboard, axe, reduced-motion, film-failure, film-scrub, radius, preservation, and the anti-slop rows.",
-    "The hero at 390 was re-laid out in this wave: the body paragraph is visible again and the scroll cue alone is dropped. Measured fold at 390x844: proof rail 684-888, cell 1 complete at 693-781, cell 2 figure complete at 792-837, cell 2 qualifier 841-879, i.e. 35 px below the fold. Both cells complete is not reachable with spacing levers alone."
+    "qa/check-route-split.mjs could not run as committed: it waits for a heading 'Team rules. Right where agents work.', which the v2 page does not have (the string survives only as the og:title and in the pre-mount shell paragraph). It is stale from before landing v2, independent of this wave. Its two assertions were re-run by hand against the v2 h1 and both hold, with a third added for the new management chunk.",
+    "e2e was run through temporary, uncommitted configs on port 4397 (both the landing suite and the rest) because port 4332 is held by a process outside this sandbox and port 4331 is the owner's dev server. Both temporary configs were deleted after the runs.",
+    "The hero at 390 was re-laid out in the previous wave: the body paragraph is visible again and the scroll cue alone is dropped. Measured fold at 390x844: proof rail 684-888, cell 1 complete at 693-781, cell 2 figure complete at 792-837, cell 2 qualifier 841-879, i.e. 35 px below the fold. Both cells complete is not reachable with spacing levers alone.",
+    "Re-measured in this wave: typecheck, build, unit, contracts, e2e-landing, e2e-suite, lcp, cls, js-budget, citable-evidence, literal-values-in-modules, film-anchors, and the route split. Carried forward unchanged from the 944f6ef capture, because nothing in this wave touches what they measure: frame-budget, frame-budget-first-scroll, one-sampler, backdrop-filter-over-film, contrast-over-film, targets-390, keyboard, axe, reduced-motion, film-failure, film-scrub, radius, preservation, horizontal-overflow, console-network, and the anti-slop rows.",
+    "The byte-identity check for the hero recall string is against ui/design/landing/v2/copy.md at b8ae54d, line 104. That file is being rewritten in the working tree under a separate 2026-09-12 owner verdict and is not part of this commit; in that draft the string survives only in the preservation table. If the rewrite lands, re-check the hero string against whatever it says then."
   ]
 }

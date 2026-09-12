@@ -1,12 +1,45 @@
-import {ArrowDown,ArrowRight} from '@phosphor-icons/react';
+import {lazy,Suspense,useState} from 'react';
+import {ArrowDown,ArrowRight,Play} from '@phosphor-icons/react';
 import {buttonVariants} from '../../components/ui/button';
-import {DemoDialog} from './DemoDialog';
 import {Reveal,RevealLines} from './Reveal';
 import evidence from '../../data/research-evidence.json';
+import {formatDelta} from './format';
 import shared from './landing.module.css';
 import css from './hero.module.css';
 
 function noop(){}
+
+/**
+ * The dialog itself is the whole `@base-ui/react/dialog` surface, and it used to be a
+ * static import of the hero, which put it in the first wave of a page whose LCP element
+ * is hero copy React has not painted yet: 62.34 kB gzip of shared chunk before the
+ * headline, 45.30 kB of it this dialog. Deferring it to the click moves those bytes off
+ * the critical path (DESIGN.md 5, LCP).
+ *
+ * The placeholder is the same button with the same accessible name and the same classes,
+ * and it is also the Suspense fallback, so "Play demo" is a real control in the DOM from
+ * first paint to open dialog with nothing removed in between. Pointer and keyboard both
+ * start the fetch before the click lands, so the usual path never sees the fallback.
+ */
+const DemoDialog=lazy(()=>import('./DemoDialog').then(module=>({default:module.DemoDialog})));
+function warmDemoDialog(){void import('./DemoDialog');}
+
+function PlayDemoButton({onClick}:{onClick?:()=>void}){
+ return <button type="button" className={buttonVariants({variant:'outline',className:shared.actionQuiet})}
+  onPointerEnter={warmDemoDialog} onFocus={warmDemoDialog} onClick={onClick}>
+  <Play weight="fill" aria-hidden="true"/>Play demo
+ </button>;
+}
+
+function DemoAction(){
+ const [armed,setArmed]=useState(false);
+ // DemoDialog's onOpenChange has no consumer anywhere on this page; the callback is
+ // required by its signature, so it is satisfied here and flagged for the task that
+ // owns DemoDialog to make optional.
+ return armed
+  ?<Suspense fallback={<PlayDemoButton/>}><DemoDialog defaultOpen onOpenChange={noop}/></Suspense>
+  :<PlayDemoButton onClick={()=>setArmed(true)}/>;
+}
 
 /**
  * The hero, DESIGN.md 3.1. The film poster behind it stays the LCP element: nothing
@@ -36,10 +69,7 @@ export function Hero(){
    </Reveal>
    <div id="demo" className={css.heroActions}>
     <a data-slot="button" className={buttonVariants({className:shared.action})} href="#waitlist">Join the waitlist <ArrowRight aria-hidden="true"/></a>
-    {/* DemoDialog's onOpenChange has no consumer anywhere on this page; the callback is
-      * required by its signature, so it is satisfied here and flagged for the task that
-      * owns DemoDialog to make optional. */}
-    <DemoDialog onOpenChange={noop}/>
+    <DemoAction/>
    </div>
    <p className={css.trust}>Open source today. The hosted service is planned.</p>
    <a className={css.textLink} href="#research-results">Read the numbers and how we got them</a>
@@ -57,7 +87,9 @@ export function Hero(){
     <p className={css.qualifier}>{evidence.proof_gate.microcopy}</p>
    </div>}
    <div className={css.cell}>
-    <p className={css.figure}>{'+8.53 pp Recall@10 on SRA-Bench.'}</p>
+    {/* Same source and same formatter as the research headline and the results table, so
+      * a refreshed mirror moves the hero with them (copy.md 6). */}
+    <p className={css.figure}>{`${formatDelta(evidence.vs_flat.recall10.delta_pp)} pp Recall@10 on SRA-Bench.`}</p>
     <p className={css.qualifier}>{'Measured, exploratory offline retrieval. 10 September 2026.'}</p>
    </div>
   </Reveal>

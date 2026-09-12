@@ -211,6 +211,47 @@ no component renders. Repointing that hint at `hero-poster.webp` measured 2,696 
 the hero copy. The poster still paints: `FilmBackdrop.tsx` renders it with
 `fetchPriority="high"` and it is requested exactly once.
 
+### The critical path, 2026-09-12
+
+Removing the poster preload left 2,152 ms at 1440, and the rest was bundle-bound: the LCP
+element is hero copy that only React can paint, so every byte the route imports statically
+sits in front of the headline. Three changes, measured one at a time:
+
+1. **The route's chunks are declared in the head.** `vite.config.ts` carries a build plugin
+   that reads the landing chunk and its static imports out of the bundle and emits
+   `<link rel="modulepreload">` for each, plus `rel="preload" as="style"` for the route's
+   stylesheet. Without it the browser cannot see any of them until the entry chunk has
+   downloaded *and* executed, which is a second serial transfer wave. The list comes from
+   the bundle, so a re-chunk cannot leave a stale hash behind. The stylesheet is preloaded
+   rather than linked because Vite's own preload helper appends the `<link rel="stylesheet">`
+   when the chunk runs, and a cold fetch there gates the module's execution.
+2. **The router and the API runtime left the entry chunk.** `main.tsx` used to mount
+   `BrowserRouter` and statically import `createApiRuntime`; `src/management.tsx` now holds
+   both behind the management route's own dynamic import. The landing page uses neither.
+   Entry chunk 82.77 → 61.35 kB gzip.
+3. **Everything under the hero is its own chunk.** `BelowHero.tsx` holds the eight sections
+   after the hero; `index.tsx` renders it inside a `Suspense` with a null fallback. Those
+   sections carry `motion` and @base-ui, which rollup co-chunks into 47.58 kB gzip the hero
+   never executes. The demo dialog is deferred the same way, to its click, with the same
+   button as placeholder and as Suspense fallback.
+
+First-paint payload at `/` fell from 224.61 to 108.61 kB gzip. Two things this deliberately
+did **not** do: touch the four font preloads, and pre-render an HTML shell. Dropping the font
+preloads was measured — it bought 116 ms at 1440 and took CLS from 0.0000 to 0.0528, because
+the proof-rail figures are set in JetBrains Mono above the fold. Font preloads stay.
+
+The boundary is below the fold at both measured widths, so the arriving sections extend the
+page downward rather than displace anything on screen: CLS stays 0.0000 at 1440 and 390.
+
+### Citable figures are derived, not typed
+
+Every published figure on this page is read from `ui/src/data/research-evidence.json` at
+render time and formatted by `format.ts`, which both the hero proof rail and the research
+section import — `76 of 76` and `4.81%` from `proof_gate.matrix`, `+8.53 pp` and
+`Plus 8.53 points` from `vs_flat.recall10.delta_pp` through one `toFixed(2)`. Two unit
+assertions build their expectation from the same JSON, so a refreshed mirror that the markup
+did not follow fails the suite instead of shipping a superseded number.
+
 ## Spectrum decisions
 
 Installed with provenance in `qa/spectrum-registry.json`, hash-pinned, never edited in place;
@@ -292,25 +333,27 @@ table and limits in `ui/qa/landing-v2-gate.json`.
 
 | Item | Measured | Contract | Verdict |
 |---|---|---|---|
-| Unit suite | 375 / 375, 42 files | — | pass |
+| Unit suite | 376 / 376, 42 files | — | pass |
 | Contracts | passed, 398 tokens, 0 diagnostics | 0 diagnostics | pass |
 | Landing e2e | 13 / 13, three consecutive runs (the third after the 2026-09-12 fix wave) | — | pass |
-| JS budget | landing chunk 25,216 → 36,242 B gzip, **+10.77 KB** | ≤ +34 KB | pass |
-| CLS, cold | **0.0000** at 1440 and 390, and under emulated 4G | 0 | pass |
-| LCP | hero copy at 472 ms (1440) and 440 ms (390) local; 2,152 ms (1440) and 832 ms (390) on emulated 4G | ≤ 2.0 s | over at 1440 on that profile |
-| LCP element | the hero copy, not the poster | — | recorded per the 2026-09-11 ruling |
+| JS budget | landing route code 25,216 → 35,131 B gzip (`landing` 11,051 + `BelowHero` 24,080), **+9.68 KB** | ≤ +34 KB | pass |
+| CLS, cold | **0.0000** at 1440 and 390, and under emulated 4G, before and after the critical-path split | 0 | pass |
+| LCP, emulated 4G | **1,712 ms** at 1440 and **868 ms** at 390 with 4× CPU, medians of five; hero copy painted at **1,657 / 1,844 ms**. Same run on the pre-split build: 2,268 / 3,000 ms LCP, 2,206 / 2,983 ms hero copy | ≤ 2.0 s | pass at both widths, on both readings |
+| LCP element | hero copy, never the poster: the `h1` line at 1440; at 390 the pre-mount shell paragraph now outlives it in four runs of five, so the hero-copy paint is reported beside it | — | recorded per the 2026-09-11 ruling |
 | Frame budget, pinned chapter | 0 long tasks, frame median 16.7 / 16.8 ms at 4× CPU | 0 long tasks | pass |
 | Frame budget, whole page | 1 long task (192 / 201 ms), attributed to the lazy chart by blocking it | 0 long tasks | fail, attributed |
 | First-scroll long task | 0 at 1× CPU; at 4× two tasks that both land before the scroll | — | not the sampler |
 | Contrast over film | worst case per section 4.66 – 12.18:1; hero display 10.92:1 at the sunrise anchor | body 4.5, large 3, display 7 | pass |
 | Film scrub | 302 forward samples, 0 backward steps; fast reverse settles to 0.002 s | — | pass |
-| Film anchors | at 1440 `#how-it-works` settles at 4.317 s (cut 4.2083) and `#proof-gate` at 5.770 s (cut ≈5.67); at 390 the same navigation gives 4.264 s and 5.781 s | past its own cut | pass |
+| Film anchors | re-measured on the deferred-chunk build: at 1440 `#how-it-works` settles at 4.267 s (cut 4.2083, margin 0.059 s against a 0.042 s one-frame deadband) and `#proof-gate` at 5.769 s (cut ≈5.67); at 390 the same navigation gives 4.262 s and 5.780 s. Task 13 read 4.317 / 5.770 and 4.264 / 5.781 | past its own cut | pass |
 | Observers and listeners | 2 scroll, 5 resize, 6 IntersectionObserver, 5 ResizeObserver | the page's own code opens one scroll sampler and the two-observer entrance pool; the remainder belong to the two recorded exceptions, motion's `scroll()` and the Spectrum bento's `whileInView`, neither of which the wiring layer can collapse without editing a hash-pinned file | pass, as built |
 | `content-visibility: auto` | 0 | 0 | pass |
 | `backdrop-filter` with `data-film="on"` | **0 live surfaces** (`--glass-backdrop: none`; swept with `getComputedStyle` over every element) | none | pass |
 | Targets at 390 | every visible link and button ≥ 44 × 44 across the whole document, header included; the consent checkbox's target is its 44 px `label`; inline links inside a sentence are excluded by name | 44 × 44 px | pass |
 | axe | clean at 1440 and 390, FAQ closed and open, dialog open, reduced motion | clean | pass |
 | Console and network | 0 errors across the capture pass | 0 | pass |
+| First-paint payload at `/` | 224.61 → **108.61 kB gzip** (entry, route chunk, their shared chunks and both stylesheets) | — | recorded |
+| Route split | `/` requests no `app-*.js` and no `management-*.js`; `/import` still loads `app-*.js` | management code off the public route | pass |
 
 **What these prove and do not.** They prove the page builds, types, passes its own suites and
 behaves as described on this machine in Chromium. They do not prove field performance: the 4G

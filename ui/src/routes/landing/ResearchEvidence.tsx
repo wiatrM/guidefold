@@ -2,13 +2,12 @@ import {lazy,Suspense,useRef} from 'react';
 import {useReducedMotion} from 'motion/react';
 import evidence from '../../data/research-evidence.json';
 import {Reveal,useRevealed} from './Reveal';
+import {formatFigure as number,formatDelta as delta} from './format';
 import {BentoCard} from '../../components/spectrumui/bento-card';
 import {NumberTicker} from '../../components/spectrumui/number-ticker';
 import css from './evidence.module.css';
 
 const BarChart=lazy(()=>import('../../components/spectrumui/charts/bar-chart').then(m=>({default:m.BarChart})));
-const number=(value:number)=>value.toFixed(2);
-const delta=(value:number)=>(value>0?'+':'')+number(value);
 /** NumberTicker rounds `value` to an integer before formatting, so a two-decimal figure
  * is carried as hundredths and unscaled by `format` (DESIGN.md 4.1 P4). */
 const centipp=(value:number)=>Math.round(value*100);
