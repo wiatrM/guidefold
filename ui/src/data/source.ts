@@ -10,6 +10,7 @@ import type {
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Profile, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
   Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
+  OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
 
@@ -81,6 +82,32 @@ export interface DataSource {
   deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void>;
   /** `GET {org_base}/audit`, owner only (contract §4.1). */
   getAudit(org: string, cursor?: string): Promise<AuditPage>;
+
+  // Model keys (contract §4.8, §5.5a, ADR-0045) ------------------------------
+  /** Member-readable; a provider absent from the result has no stored key. */
+  listCredentials(org: string): Promise<OrgCredential[]>;
+  /** Owner + CSRF. The server checks the key with the provider before saving it. Storing or
+   * replacing the key itself always goes through this route; `model`/`preferred` may ride
+   * along on the same call, but changing either one on its own goes through `patchCredential`
+   * instead, which never asks for the key. */
+  setCredential(org: string, provider: OrgCredentialProvider, input: { api_key: string; name?: string | null; model?: string | null; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential>;
+  /** Owner + CSRF. Changes `model` and/or `preferred` without the key (contract §4.8): the key
+   * cannot be shown back, so asking for it again to flip one field would confirm nothing.
+   * Never accepts `api_key`; replacing the key itself is `setCredential` (`PUT`). The server
+   * refuses `preferred: false` on the organization's only preferred credential (an organization
+   * with any credential always has exactly one preferred) — the UI never sends that value. */
+  patchCredential(org: string, provider: OrgCredentialProvider, input: { model?: string; preferred?: boolean }, idempotencyKey: string): Promise<OrgCredential>;
+  deleteCredential(org: string, provider: OrgCredentialProvider, idempotencyKey: string): Promise<void>;
+
+  // Live Agent (contract §4.9, §5.5a, ADR-0046) ------------------------------
+  listLiveRuns(org: string, cursor?: string): Promise<LiveRunPage>;
+  getLiveRun(org: string, runId: string): Promise<LiveRunDetail>;
+  /** `after` is the positional `seq` cursor (contract §4.9), not an opaque page token. */
+  getLiveRunEvents(org: string, runId: string, after?: number): Promise<LiveRunEventPage>;
+  /** No request fields (ADR-0046 1.6.0): the run always covers every connected repository and
+   * always does the same thing, so there is nothing left for the caller to supply. */
+  startLiveRun(org: string, idempotencyKey: string): Promise<LiveRun>;
+  cancelLiveRun(org: string, runId: string, idempotencyKey: string): Promise<LiveRun>;
 
   // Repositories and import -------------------------------------------------
   listRepos(org: string): Promise<Repo[]>;

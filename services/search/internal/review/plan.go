@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/wiatrM/guidefold/services/search/internal/jobs"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review/generator"
@@ -151,7 +153,7 @@ func (s *Service) handlePlan(c *mgmt.Context) error {
 		return e
 	}
 	limits := withProfile(DefaultLimits(), profile)
-	groups, skipped, err := s.plan(c.Ctx(), rc, importID, kinds, limits)
+	groups, skipped, err := s.plan(c.Ctx(), rc.Org.ID, rc.RepoID, importID, kinds, limits)
 	if err != nil {
 		return err
 	}
@@ -239,18 +241,24 @@ func requestedKinds(raw string) ([]string, error) {
 // Grouping by scope is what makes the run reviewable: the owner of a scope sees
 // the candidates built from that scope's own material, and the number of groups
 // is bounded by MaxGroups rather than by the repository's size.
-func (s *Service) plan(ctx context.Context, rc *repoContext, importID string,
+//
+// It takes orgID and repoID directly rather than a *repoContext, so this
+// method — and GenerateProposals, the exported seam built on it — is
+// reachable from a caller with no *mgmt.Context to hold one, the same reason
+// internal/importer's lockImport takes plain identifiers (see that
+// function's own doc comment).
+func (s *Service) plan(ctx context.Context, orgID, repoID, importID string,
 	kinds []string, limits Limits) ([]Group, map[string]int, error) {
 	var exists bool
 	if e := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gfm.imports
  WHERE org_id=$1::uuid AND repo_id=$2 AND import_id=$3::uuid)`,
-		rc.Org.ID, rc.RepoID, importID).Scan(&exists); e != nil {
+		orgID, repoID, importID).Scan(&exists); e != nil {
 		return nil, nil, mgmt.Internal(e)
 	}
 	if !exists {
 		return nil, nil, notFound("import_not_found", "No such import in this repository.")
 	}
-	owners, e := s.scopeOwners(ctx, rc)
+	owners, e := s.scopeOwners(ctx, orgID, repoID)
 	if e != nil {
 		return nil, nil, mgmt.Internal(e)
 	}
@@ -260,9 +268,9 @@ func (s *Service) plan(ctx context.Context, rc *repoContext, importID string,
 		var byScope map[string][]Input
 		var err error
 		if kind == generator.KindExtraction {
-			byScope, err = s.documentsByScope(ctx, rc, importID, limits)
+			byScope, err = s.documentsByScope(ctx, orgID, repoID, importID, limits)
 		} else {
-			byScope, err = s.skillsByScope(ctx, rc, limits)
+			byScope, err = s.skillsByScope(ctx, orgID, repoID, limits)
 		}
 		if err != nil {
 			return nil, nil, mgmt.Internal(err)
@@ -316,9 +324,9 @@ func groupID(kind, scope string) string {
 	return kind + ":" + scope
 }
 
-func (s *Service) scopeOwners(ctx context.Context, rc *repoContext) (map[string]string, error) {
+func (s *Service) scopeOwners(ctx context.Context, orgID, repoID string) (map[string]string, error) {
 	rows, e := s.pool.Query(ctx, `SELECT scope,COALESCE(owner,'') FROM gfm.scopes
- WHERE org_id=$1::uuid AND repo_id=$2`, rc.Org.ID, rc.RepoID)
+ WHERE org_id=$1::uuid AND repo_id=$2`, orgID, repoID)
 	if e != nil {
 		return nil, e
 	}
@@ -334,11 +342,11 @@ func (s *Service) scopeOwners(ctx context.Context, rc *repoContext) (map[string]
 	return out, rows.Err()
 }
 
-func (s *Service) documentsByScope(ctx context.Context, rc *repoContext, importID string,
+func (s *Service) documentsByScope(ctx context.Context, orgID, repoID, importID string,
 	limits Limits) (map[string][]Input, error) {
 	rows, e := s.pool.Query(ctx, `SELECT path,sha256,size_bytes,COALESCE(scope,'_root')
  FROM gfm.documents WHERE org_id=$1::uuid AND repo_id=$2 AND import_id=$3::uuid
- ORDER BY scope,path`, rc.Org.ID, rc.RepoID, importID)
+ ORDER BY scope,path`, orgID, repoID, importID)
 	if e != nil {
 		return nil, e
 	}
@@ -360,13 +368,13 @@ func (s *Service) documentsByScope(ctx context.Context, rc *repoContext, importI
 	return out, rows.Err()
 }
 
-func (s *Service) skillsByScope(ctx context.Context, rc *repoContext, limits Limits) (map[string][]Input, error) {
+func (s *Service) skillsByScope(ctx context.Context, orgID, repoID string, limits Limits) (map[string][]Input, error) {
 	rows, e := s.pool.Query(ctx, `SELECT s.skill_id,s.path,s.scope,COALESCE(s.owner,''),
  r.content_sha256,r.revision_id
  FROM gfm.skills s JOIN gfm.skill_revisions r
    ON r.org_id=s.org_id AND r.revision_id=s.current_revision_id
  WHERE s.org_id=$1::uuid AND s.repo_id=$2 AND s.source_status='active'
- ORDER BY s.scope,s.skill_id`, rc.Org.ID, rc.RepoID)
+ ORDER BY s.scope,s.skill_id`, orgID, repoID)
 	if e != nil {
 		return nil, e
 	}
@@ -414,8 +422,110 @@ type generatePayload struct {
 	Groups        []Group `json:"groups"`
 }
 
-// handleGenerate enqueues the planned work. Every job of the run is written in
-// one transaction: a partially enqueued run would spend money on half a plan.
+// GenerateOptions carries what only the caller can supply: caller-requested
+// limits (before this deployment's own ceiling clamps them), the profile,
+// and the audit identity for the proposals.generate entry this call writes —
+// an HTTP caller supplies the signed-in principal, a worker its own job
+// identity, exactly as CreateImportOptions/FinalizeOptions do in
+// internal/importer.
+type GenerateOptions struct {
+	Limits    *Limits
+	Profile   string
+	Actor     string
+	RequestID string
+}
+
+// GenerateResult is what a caller needs after a generate call: the enqueued
+// job ids (one per requested kind that had work — a kind with nothing to
+// group enqueues nothing, not an error), the groups the plan computed, the
+// scopes it skipped past max_groups, the limits actually applied and the
+// profile name they were applied under.
+type GenerateResult struct {
+	JobIDs  []string
+	Groups  []Group
+	Skipped map[string]int
+	Limits  Limits
+	Profile string
+}
+
+// GenerateProposals is the state machine's own entry point for
+// POST …/proposals:generate — plan the groups, enqueue one proposal.generate
+// job per kind that produced any, write the audit row — in the same shape as
+// internal/importer's CreateImport/FinalizeImport seam: an exported method
+// over ctx, a transaction and plain identifiers, so a worker holding neither
+// a *mgmt.Context nor an HTTP request (the Live Agent's own reason for
+// existing — internal/README.md, "agentrun") can drive the same
+// plan-then-enqueue path handleGenerate uses over HTTP, without duplicating
+// the grouping rule (API-CONTRACT §8, ADR-0046 point 9).
+//
+// The caller owns tx and commits it, exactly as CreateImport does; every job
+// of one call is enqueued in that same transaction, so a partially enqueued
+// call is never observable.
+func (s *Service) GenerateProposals(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string,
+	kinds []string, opts GenerateOptions) (GenerateResult, error) {
+	profile, e := parseProfile(opts.Profile)
+	if e != nil {
+		return GenerateResult{}, e
+	}
+	// The profile raises the ceiling; the caller may still ask for less. The
+	// order matters: clamping first would let a one-shot request quietly
+	// restore a limit the caller had lowered on purpose.
+	limits := withProfile(DefaultLimits(), profile)
+	if opts.Limits != nil {
+		limits = opts.Limits.clampTo(limits)
+	}
+	groups, skipped, err := s.plan(ctx, orgID, repoID, importID, kinds, limits)
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	limits = fitGroups(limits, groups, profile)
+	if len(groups) > limits.MaxGroups*len(kinds) {
+		return GenerateResult{}, mgmt.Unprocessable("limit_exceeded", "The plan exceeds max_groups for this run.")
+	}
+
+	encodedLimits := mustJSON(limits)
+	jobIDs := []string{}
+	for _, kind := range kinds {
+		mine := []Group{}
+		for _, g := range groups {
+			if g.Kind == kind {
+				mine = append(mine, g)
+			}
+		}
+		if len(mine) == 0 {
+			continue
+		}
+		payload, _ := json.Marshal(generatePayload{SchemaVersion: GeneratePayloadVersion,
+			OrgID: orgID, RepoID: repoID, ImportID: importID, Kind: kind, Groups: mine})
+		job, e := s.queue.Enqueue(ctx, tx, jobs.Job{
+			OrgID: orgID, RepoID: repoID, ImportID: importID, Kind: KindGenerate,
+			Payload: payload, Limits: encodedLimits, RecipeVersion: s.recipe.Version,
+			InputDigest: groupDigest(mine),
+			// One job per (import, kind): asking twice — or a resumed
+			// live.repo calling this seam again — resumes the same run
+			// rather than paying for a second one (Enqueue returns the
+			// existing job on this key, jobs.go).
+			IdempotencyKey: KindGenerate + ":" + importID + ":" + kind,
+		})
+		if e != nil {
+			return GenerateResult{}, e
+		}
+		jobIDs = append(jobIDs, job.JobID)
+	}
+	actor := opts.Actor
+	if actor == "" {
+		actor = "system"
+	}
+	if e := mgmt.Audit(ctx, tx, orgID, actor, "proposals.generate", "import:"+importID,
+		s.recipe.Version, opts.RequestID); e != nil {
+		return GenerateResult{}, e
+	}
+	return GenerateResult{JobIDs: jobIDs, Groups: groups, Skipped: skipped,
+		Limits: limits, Profile: profileName(profile)}, nil
+}
+
+// handleGenerate is the HTTP route over GenerateProposals: authorisation,
+// request decoding, the transaction boundary and response shaping stay here.
 func (s *Service) handleGenerate(c *mgmt.Context) error {
 	rc, e := s.authorize(c, mgmt.RoleOwner)
 	if e != nil {
@@ -438,70 +548,25 @@ func (s *Service) handleGenerate(c *mgmt.Context) error {
 			return e
 		}
 	}
-	profile, e := parseProfile(req.Profile)
-	if e != nil {
-		return e
-	}
-	// The profile raises the ceiling; the caller may still ask for less. The
-	// order matters: clamping first would let a one-shot request quietly restore
-	// a limit the caller had lowered on purpose.
-	limits := withProfile(DefaultLimits(), profile)
-	if req.Limits != nil {
-		limits = req.Limits.clampTo(limits)
-	}
-	groups, skipped, err := s.plan(c.Ctx(), rc, importID, kinds, limits)
-	if err != nil {
-		return err
-	}
-	limits = fitGroups(limits, groups, profile)
-	if len(groups) > limits.MaxGroups*len(kinds) {
-		return mgmt.Unprocessable("limit_exceeded", "The plan exceeds max_groups for this run.")
-	}
 
 	tx, txErr := s.tx(c.Ctx())
 	if txErr != nil {
 		return mgmt.Internal(txErr)
 	}
 	defer tx.Rollback(c.Ctx())
-	encodedLimits := mustJSON(limits)
-	jobIDs := []string{}
-	for _, kind := range kinds {
-		mine := []Group{}
-		for _, g := range groups {
-			if g.Kind == kind {
-				mine = append(mine, g)
-			}
-		}
-		if len(mine) == 0 {
-			continue
-		}
-		payload, _ := json.Marshal(generatePayload{SchemaVersion: GeneratePayloadVersion,
-			OrgID: rc.Org.ID, RepoID: rc.RepoID, ImportID: importID, Kind: kind, Groups: mine})
-		job, e := s.queue.Enqueue(c.Ctx(), tx, jobs.Job{
-			OrgID: rc.Org.ID, RepoID: rc.RepoID, ImportID: importID, Kind: KindGenerate,
-			Payload: payload, Limits: encodedLimits, RecipeVersion: s.recipe.Version,
-			InputDigest: groupDigest(mine),
-			// One job per (import, kind): asking twice resumes the same run
-			// rather than paying for a second one.
-			IdempotencyKey: KindGenerate + ":" + importID + ":" + kind,
-		})
-		if e != nil {
-			return mgmt.Internal(e)
-		}
-		jobIDs = append(jobIDs, job.JobID)
-	}
-	if e := c.Audit(c.Ctx(), tx, rc.Org.ID, "proposals.generate", "import:"+importID,
-		s.recipe.Version); e != nil {
-		return mgmt.Internal(e)
+	result, err := s.GenerateProposals(c.Ctx(), tx, rc.Org.ID, rc.RepoID, importID, kinds,
+		GenerateOptions{Limits: req.Limits, Profile: req.Profile, Actor: auditActor(c), RequestID: c.RequestID})
+	if err != nil {
+		return err
 	}
 	if e := tx.Commit(c.Ctx()); e != nil {
 		return mgmt.Internal(e)
 	}
-	body := s.planBody(rc, importID, groups, skipped, limits)
-	body["profile"] = profileName(profile)
-	body["job_ids"] = jobIDs
-	body["plan"] = map[string]any{"groups": groupViews(groups), "limits": limits,
-		"groups_skipped": skipped, "profile": profileName(profile)}
+	body := s.planBody(rc, importID, result.Groups, result.Skipped, result.Limits)
+	body["profile"] = result.Profile
+	body["job_ids"] = result.JobIDs
+	body["plan"] = map[string]any{"groups": groupViews(result.Groups), "limits": result.Limits,
+		"groups_skipped": result.Skipped, "profile": result.Profile}
 	return c.JSON(http.StatusOK, body)
 }
 

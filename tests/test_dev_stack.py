@@ -129,12 +129,25 @@ def test_ensure_secret_file_is_idempotent_never_overwrites(tmp_path):
     assert path.read_text() == first
 
 
-def test_ensure_secrets_creates_all_three(tmp_path):
+def test_ensure_secrets_creates_every_secret(tmp_path):
     result = stack.ensure_secrets(tmp_path / "secrets")
-    assert set(result) == {"app_password", "api_token", "postgres_password"}
+    assert set(result) == {"app_password", "api_token", "postgres_password", "secret_keyring"}
     for name, path in result.items():
         assert path.exists()
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_secret_keyring_is_a_usable_aes_key(tmp_path):
+    # ADR-0045: a keyring with a key of any other length makes every credential route answer
+    # secret_encryption_unavailable, which would look like a bug in the stack rather than a
+    # malformed key file.
+    import base64
+    import json
+    result = stack.ensure_secrets(tmp_path / "secrets")
+    ring = json.loads(result["secret_keyring"].read_text())
+    assert ring["active"] in ring["keys"]
+    for encoded in ring["keys"].values():
+        assert len(base64.b64decode(encoded)) == 32
 
 
 def test_generate_secret_is_long_enough_for_gos_secret_check():

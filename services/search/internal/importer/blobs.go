@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -9,6 +10,20 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/importer/domain"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 )
+
+// PutBlob stores content-addressed bytes for an organisation and reports
+// whether they were new, exactly as the HTTP route's own call to the blob
+// store does. It carries none of that route's per-import gating (the import
+// must be created/uploading, the digest must be in that import's manifest):
+// those checks bound what an arbitrary HTTP body may write to storage and
+// stay in handlePutBlob (U1.3), whereas a caller that already built the
+// manifest and read the bytes it is passing here — a worker with a
+// repository's files in memory — has no separate, less-trusted upload phase
+// to bound. Two callers may still store the same bytes any number of times
+// (U1.4): blobs are content addressed, so the second call is not an error.
+func (s *Service) PutBlob(ctx context.Context, orgID, sha256 string, content []byte) (created bool, err error) {
+	return s.blobs.Put(ctx, orgID, sha256, content)
+}
 
 // handlePutBlob accepts one file of a manifest.
 //
@@ -43,7 +58,7 @@ func (s *Service) handlePutBlob(c *mgmt.Context) error {
 		return mgmt.Internal(txErr)
 	}
 	defer tx.Rollback(c.Ctx())
-	rec, e := s.lockImport(c.Ctx(), tx, rc, importID)
+	rec, e := s.lockImport(c.Ctx(), tx, rc.Org.ID, rc.RepoID, importID)
 	if e != nil {
 		return e
 	}
@@ -71,7 +86,7 @@ func (s *Service) handlePutBlob(c *mgmt.Context) error {
 	// Stored before the commit, so the audit row and the state transition are
 	// never durable ahead of the bytes they describe. Blobs are content
 	// addressed, so a failed commit leaves nothing but a re-uploadable object.
-	created, err := s.blobs.Put(c.Ctx(), rc.Org.ID, sha, data)
+	created, err := s.PutBlob(c.Ctx(), rc.Org.ID, sha, data)
 	if err != nil {
 		return mgmt.Internal(err)
 	}

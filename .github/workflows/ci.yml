@@ -28,6 +28,47 @@ jobs:
       - name: Run tests
         run: pytest
 
+  # A consumer's setup job is retried often, and the retry is what has to reconcile whatever the
+  # failed attempt left behind. tests/test_init.py checks this in-process; this job checks it end
+  # to end through the real CLI, including the exit codes a CI step actually branches on.
+  init-retry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: init reconciles a partial install on the second run
+        run: |
+          set -euo pipefail
+          CLI="$PWD/skills/guidefold/scripts/guidefold"
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          python3 "$CLI" init
+          test -f guidefold.yaml
+          # Simulate an attempt that died after guidefold.yaml landed: a missing bootstrap file
+          # and a hook entry from an older template that no longer matches the shipped one.
+          rm .agents/skills/guidefold/SKILL.md
+          python3 -c 'import json,pathlib; p=pathlib.Path(".claude/settings.json"); s=json.loads(p.read_text()); s["hooks"]["SessionStart"].append({"hooks":[{"type":"command","command":".agents/skills/guidefold/scripts/guidefold hook","timeout":5}]}); p.write_text(json.dumps(s,indent=2))'
+          python3 "$CLI" init
+          test -f .agents/skills/guidefold/SKILL.md
+          python3 -c 'import json,pathlib,sys; s=json.loads(pathlib.Path(".claude/settings.json").read_text()); m=".agents/skills/guidefold/scripts/guidefold"; [sys.exit(f"{e}: expected one guidefold entry, found {n}") for e,n in ((e,sum(1 for x in b if m in json.dumps(x))) for e,b in s["hooks"].items()) if n != 1]'
+
+      - name: init exits non-zero on a hook file it cannot reconcile
+        run: |
+          set -euo pipefail
+          CLI="$PWD/skills/guidefold/scripts/guidefold"
+          mkdir -p /tmp/broken/.claude && cd /tmp/broken
+          printf '{\n  "hooks": {\n    "SessionStart": [\n      { "hoo' > .claude/settings.json
+          if python3 "$CLI" init --harness claude; then
+            echo "init exited 0 over an unparseable hook file" && exit 1
+          fi
+          grep -q '"hoo' .claude/settings.json
+
   fixture-validate:
     runs-on: ubuntu-latest
     steps:

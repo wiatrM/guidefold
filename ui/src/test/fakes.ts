@@ -53,6 +53,8 @@ export const portMethods = [
   'getAuthProviders', 'startLogin', 'getMe', 'logout', 'startDeviceAuthorization', 'decideDevice', 'startIdentityLink', 'updateProfile',
   'listOrgs', 'getOrg', 'createOrg', 'listMembers', 'listTeams', 'createTeam', 'addTeamMember', 'removeTeamMember', 'inviteMember', 'listInvitations', 'revokeInvitation', 'acceptInvitation', 'changeMemberRole', 'removeMember',
   'listInstallations', 'createInstallation', 'revokeInstallation', 'listGitHubInstallations', 'deleteGitHubInstallation', 'getAudit',
+  'listCredentials', 'setCredential', 'patchCredential', 'deleteCredential',
+  'listLiveRuns', 'getLiveRun', 'getLiveRunEvents', 'startLiveRun', 'cancelLiveRun',
   'listRepos', 'createRepo', 'listRepoAccess', 'setRepoAccess', 'removeRepoAccess', 'listReviewers', 'assignReviewer', 'removeReviewer', 'listImports', 'createImport', 'uploadImportBlob', 'finalizeImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
   'listSkills', 'getFacets', 'lookupFacet', 'getSkill', 'getRevision', 'getRevisionRaw', 'sendFeedback',
   'getMapRepository', 'getMapScopes', 'getMapLayers', 'getRelations', 'getModule',

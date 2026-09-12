@@ -87,6 +87,12 @@ worker:
     limits: {cpu: "1", memory: 1Gi, ephemeral-storage: 512Mi}
   nodeSelector: {}
   tolerations: []
+  # Peers the worker may open TLS to: api.github.com for reading a repository and
+  # the organisation's model provider (ADR-0046). A NetworkPolicy matches peers,
+  # never hostnames, so the operator names them. Empty is a supported state: the
+  # worker then reaches only DNS and the database, and live.repo / ascend.run end
+  # `skipped` with a named reason rather than hanging.
+  externalEgress: []
 job:
   timeoutSeconds: 1800
   ttlSecondsAfterFinished: 86400

@@ -200,6 +200,108 @@ export const githubInstallation = object<GitHubInstallation>({
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
+// ---------------------------------------------------------------------------
+// Organization model keys (contract §4.8, §5.5a, ADR-0045). The key itself never returns from
+// the API; `OrgCredential` carries metadata only. A provider absent from `items` means the
+// organization has no key for it — there is no "present but unknown" state.
+// ---------------------------------------------------------------------------
+
+export const orgCredentialProviders = ['openrouter', 'anthropic', 'openai'] as const;
+export type OrgCredentialProvider = typeof orgCredentialProviders[number];
+/**
+ * `model` and `preferred` (contract §4.8/§5.5a, ADR-0046 1.6.0): provider and model are an
+ * organization setting, not a run field, so they live and are edited here. Exactly one
+ * credential is `preferred` while the organization has any; that is the one background work
+ * (Live Agent today) reads. Both are required and undecorated (no `fallback`): a response
+ * missing either is a server that has not shipped the 1.6.0 shape, and rendering a false
+ * default (`model: ''`, `preferred: false`) would silently hide that instead of failing loudly.
+ */
+export interface OrgCredential { provider: OrgCredentialProvider; name: string; last4: string; model: string; preferred: boolean; created_at: string | null; created_by: string | null }
+export const orgCredential = object<OrgCredential>({
+  provider: oneOf(orgCredentialProviders), name: str, last4: str, model: str, preferred: bool,
+  created_at: nullable(str), created_by: nullable(str),
+});
+export const orgCredentialList: Decoder<OrgCredential[]> = value => field('items', arrayOf(orgCredential))(value);
+
+// ---------------------------------------------------------------------------
+// Live Agent (contract §4.9, §5.5a, ADR-0046, changelog 1.6.0 "one button, then the library and
+// proposals"). `POST {org_base}/live/runs` takes no fields; `LiveRun` correspondingly has no
+// `prompt` any more (§4.9's own field list and the 1.6.0 changelog entry are authoritative here —
+// the `LiveRun` row inside §5.5a's DTO table still lists a leftover `prompt:str!` and omits
+// `summary`, which contradicts both; treated as a stale row that missed the 1.6.0 edit, not
+// followed). Every event now carries `payload.text:str!`, a ready-to-print sentence the UI
+// renders verbatim instead of switching on `type`; the rest of `payload` (`files`, `skills`,
+// `import_id`, `proposals`, `counts`, `summary`, `reason`) is documented per event type but kept
+// permissive here since only `error`'s `reason` (the `live_run_log_truncated` safety valve) is
+// read outside the transcript line.
+// ---------------------------------------------------------------------------
+
+export const liveRunStates = ['queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled'] as const;
+export type LiveRunState = typeof liveRunStates[number];
+export interface LiveRunCounts { targets: number; done: number; failed: number; skipped: number }
+export interface LiveRunCost { tokens_in: number; tokens_out: number; usd: number; usd_estimated: boolean }
+/** "What is left" (§4.9): how many `SKILL.md` files reached the catalog and how many
+ * consolidation proposals are waiting in review. Required and undecorated so a run whose
+ * response omits it fails loudly instead of rendering a false "0 and 0". */
+export interface LiveRunSummary { skills_indexed: number; proposals_created: number }
+export interface LiveRun {
+  run_id: string; state: LiveRunState; provider: OrgCredentialProvider; model: string;
+  created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null;
+  counts: LiveRunCounts; summary: LiveRunSummary; cost: LiveRunCost; error: string | null;
+}
+const liveRunCounts = object<LiveRunCounts>({
+  targets: fallback(num, 0), done: fallback(num, 0), failed: fallback(num, 0), skipped: fallback(num, 0),
+});
+const liveRunCost = object<LiveRunCost>({
+  tokens_in: fallback(num, 0), tokens_out: fallback(num, 0), usd: fallback(num, 0), usd_estimated: fallback(bool, false),
+});
+const liveRunSummary = object<LiveRunSummary>({ skills_indexed: num, proposals_created: num });
+export const liveRun = object<LiveRun>({
+  run_id: str, state: fallback(oneOf(liveRunStates), 'queued'),
+  provider: oneOf(orgCredentialProviders), model: str,
+  created_by: nullable(str), created_at: str, started_at: nullable(str), finished_at: nullable(str),
+  counts: fallback(liveRunCounts, { targets: 0, done: 0, failed: 0, skipped: 0 }),
+  summary: liveRunSummary,
+  cost: fallback(liveRunCost, { tokens_in: 0, tokens_out: 0, usd: 0, usd_estimated: false }),
+  error: nullable(str),
+});
+export interface LiveRunPage { items: LiveRun[]; next_cursor: string | null }
+export const liveRunPage = object<LiveRunPage>({ items: listOf(liveRun), next_cursor: nullable(str) });
+
+/** Distinct from `liveRunStates`: a target reaches `done`, a run reaches `succeeded`. */
+export const liveRunTargetStates = ['queued', 'running', 'done', 'failed', 'skipped'] as const;
+export type LiveRunTargetState = typeof liveRunTargetStates[number];
+/** The three steps this run performs per repository, in order; `done` once all three finished. */
+export const liveRunTargetPhases = ['fetch', 'parse', 'propose', 'done'] as const;
+export type LiveRunTargetPhase = typeof liveRunTargetPhases[number];
+export interface LiveRunTarget {
+  repo_id: string; state: LiveRunTargetState; job_id: string | null; phase: LiveRunTargetPhase;
+  skills: number; proposals: number; error: string | null; started_at: string | null; finished_at: string | null;
+}
+export const liveRunTarget = object<LiveRunTarget>({
+  repo_id: str, state: fallback(oneOf(liveRunTargetStates), 'queued'), job_id: nullable(str),
+  phase: oneOf(liveRunTargetPhases), skills: num, proposals: num,
+  error: nullable(str), started_at: nullable(str), finished_at: nullable(str),
+});
+export interface LiveRunDetail { run: LiveRun; targets: LiveRunTarget[] }
+export const liveRunDetail = object<LiveRunDetail>({ run: liveRun, targets: listOf(liveRunTarget) });
+
+export const liveRunEventTypes = ['run.started', 'repo.started', 'repo.fetched', 'repo.parsed', 'repo.proposed', 'repo.finished', 'run.finished', 'error'] as const;
+export type LiveRunEventType = typeof liveRunEventTypes[number];
+/** Permissive beyond `text`: extra keys differ per `type` (contract §5.5a) and are read by name, never enumerated here. */
+export interface LiveRunEventPayload extends Record<string, unknown> { text: string }
+const liveRunEventPayload: Decoder<LiveRunEventPayload> = (value, path = '') => {
+  const body = dictionary(anyValue)(value, path) as LiveRunEventPayload;
+  if (typeof body.text !== 'string') return fail(path ? path + '.text' : 'text', 'string', body.text);
+  return body;
+};
+export interface LiveRunEvent { seq: number; at: string; repo_id: string | null; type: LiveRunEventType; payload: LiveRunEventPayload }
+export const liveRunEvent = object<LiveRunEvent>({
+  seq: num, at: str, repo_id: nullable(str), type: oneOf(liveRunEventTypes), payload: liveRunEventPayload,
+});
+export interface LiveRunEventPage { items: LiveRunEvent[]; next_after: number; done: boolean }
+export const liveRunEventPage = object<LiveRunEventPage>({ items: listOf(liveRunEvent), next_after: fallback(num, 0), done: fallback(bool, false) });
+
 export interface AuditEntry { at: string; actor: string | null; action: string; entity: string | null; revision: string | null; request_id: string | null }
 export const auditEntry = object<AuditEntry>({
   at: str, actor: nullable(str), action: str, entity: nullable(str),

@@ -288,7 +288,7 @@ func (h *Harness) JobOf(t *testing.T, importID, kind string) *jobs.Job {
 // which is how the "no generator configured" path is exercised.
 func (h *Harness) RunGenerate(t *testing.T, engine generator.Generator, recipe generator.Recipe) int {
 	t.Helper()
-	w, e := review.NewGenerateWorker(h.Pool, h.Blobs)
+	w, e := review.NewGenerateWorker(h.Pool, h.Blobs, h.Keyring)
 	if e != nil {
 		t.Fatal(e)
 	}

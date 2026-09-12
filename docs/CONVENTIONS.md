@@ -641,3 +641,25 @@ sha256, the harnesses installed, and `package_sha256`, the sha256 of the install
   hash still matches; a modified file is kept with a reason. Foreign keys in
   `.claude/settings.json` and foreign text in `.github/copilot-instructions.md` survive. The
   package itself is removed only when the last harness is uninstalled.
+
+### Reconciling a partial or drifted bootstrap (`init`)
+
+`init` lands `guidefold.yaml`, the bootstrap package, one hook file per harness, the CI workflow
+and a `.gitignore` entry. A run that fails partway therefore leaves a partial install, and the
+retry is what has to repair it — setup jobs are retried, so this is the normal path, not the rare
+one. `init` plans against the same `INSTALL-MANIFEST.json` as `install` and prints the plan before
+writing anything.
+
+- Every write is atomic: temp file in the same directory, `fsync`, `os.replace`. The destination
+  is either the previous file or the whole new one, never a truncated middle.
+- A package file that is missing is restored; one whose hash still matches the manifest is
+  updated; one the consumer edited is reported `modified locally` and kept.
+- A hook entry is identified as guidefold's by the command pointing at
+  `.agents/skills/guidefold/scripts/guidefold`, not by JSON equality. A rerun replaces the entry
+  an older template wrote instead of appending a second one beside it, so the hook never fires
+  twice. Entries and top-level keys the consumer owns keep their place and order.
+- `guidefold.yaml` and `.github/workflows/skills.yml` are created once and never rewritten.
+- A hook file that is not valid JSON is the one state `init` cannot reconcile: it exits non-zero
+  naming the file and the fix, and writes nothing. Reporting it as a warning and exiting `0` is
+  how a broken install used to survive every retry unnoticed.
+- A second run over a current repo reports "nothing to do" and changes no byte.

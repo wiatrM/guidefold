@@ -237,7 +237,7 @@ func (s *Service) validateApproval(ctx context.Context, tx pgxTx, rc *repoContex
 	if e != nil {
 		return mgmt.Internal(e)
 	}
-	owners, e := s.scopeOwners(ctx, rc)
+	owners, e := s.scopeOwners(ctx, rc.Org.ID, rc.RepoID)
 	if e != nil {
 		return mgmt.Internal(e)
 	}

@@ -68,6 +68,14 @@ var ErrNotConfigured = errors.New("llm_not_configured")
 // rather than guessed (U2.3).
 var ErrUncertainCost = errors.New("generator_timeout_cost_uncertain")
 
+// ErrCredentialMissing is what a remote generator returns when a request
+// carries no organisation key and the deployment configured no fallback file
+// either. The job ends `skipped` with `model_credential_missing` (ADR-0045):
+// running the deployment's own key on the organisation's behalf is exactly
+// the cross-tenant charge BYOK exists to prevent, so this is a stop, not a
+// fallback.
+var ErrCredentialMissing = errors.New("model_credential_missing")
+
 // Document is one repository document offered to extraction.
 type Document struct {
 	Path   string
@@ -122,6 +130,18 @@ type Request struct {
 	// is not guaranteed (2026-09-08 ACT-01 finding: `atlas.graph` sits at
 	// `platforms/atlas/graph/**` in the Meridian fixture, not `atlas/graph/`).
 	ScopeDirs map[string]string
+	// APIKey travels on the request for exactly one call and is never assigned
+	// to a field that outlives it -- a job payload, a checkpoint, a result, a
+	// log line or an error string (ADR-0045). It names the organisation's own
+	// stored credential, opened by internal/secrets.OpenFor just before this
+	// request is built; empty means the caller found none, and a remote
+	// generator falls back to its own deployment key file. The provider and
+	// model stay out of Request: both are already fixed per deployment
+	// (GUIDEFOLD_GENERATOR, GUIDEFOLD_GENERATOR_MODEL) and are part of Recipe,
+	// which is itself part of the proposal cache key -- letting a request pick
+	// its own model would let two requests with the same key generate under
+	// different recipes, exactly the drift the cache key exists to prevent.
+	APIKey string
 }
 
 // SourceRef points at the exact bytes a field came from.
@@ -235,12 +255,16 @@ type Recipe struct {
 	Model     string `json:"model,omitempty"`
 }
 
-// Names of the configured generators.
+// Names of the configured generators. NameOpenRouter matches
+// internal/secrets.ProviderOpenRouter -- the two lists must name providers
+// identically, since ForOrganisation dispatches on exactly the string
+// OpenPreferred reads back out of gfm.org_credentials.
 const (
 	NameNone          = "none"
 	NameDeterministic = "deterministic"
 	NameOpenAI        = "openai"
 	NameAnthropic     = "anthropic"
+	NameOpenRouter    = "openrouter"
 )
 
 // Select builds the configured generator. `GUIDEFOLD_GENERATOR` is operator
@@ -260,7 +284,7 @@ func Select(env func(string) string) (Generator, Recipe, error) {
 	case NameDeterministic:
 		g := &Deterministic{}
 		return g, g.Recipe(), nil
-	case NameOpenAI, NameAnthropic:
+	case NameOpenAI, NameAnthropic, NameOpenRouter:
 		g, e := newRemote(name, env)
 		if e != nil {
 			return nil, Recipe{}, e

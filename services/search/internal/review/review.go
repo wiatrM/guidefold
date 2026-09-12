@@ -156,6 +156,18 @@ func (s *Service) tx(ctx context.Context) (pgx.Tx, error) {
 	return s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
 }
 
+// auditActor mirrors mgmt.Context.Audit's own rule, so a caller of an
+// exported seam that has no *mgmt.Context (a worker) can supply the same
+// actor string an HTTP request would have produced. The same duplication
+// internal/importer's own auditActor already carries — one package, one
+// small rule, not worth a shared dependency between the two.
+func auditActor(c *mgmt.Context) string {
+	if c.Principal == nil {
+		return "system"
+	}
+	return c.Principal.ID()
+}
+
 // reasonRequired enforces the one field every decision in this module carries.
 // A rollback, a rejection and an approval are all owner decisions, and a
 // decision without a stated reason is an audit row nobody can act on
