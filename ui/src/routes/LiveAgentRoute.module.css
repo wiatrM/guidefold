@@ -1,0 +1,28 @@
+.route, .stack, .form { display: grid; gap: var(--space-3); min-width: var(--zero); }
+.route { gap: var(--space-4); }
+.twoColumns { display: grid; grid-template-columns: var(--two-columns); gap: var(--space-4); min-width: var(--zero); align-items: start; }
+
+.notice { display: flex; gap: var(--space-2); align-items: flex-start; flex-wrap: wrap; padding: var(--space-3); border: var(--border-width) solid var(--warning); border-radius: var(--radius); color: var(--stone-100); background: var(--graphite-900); margin: var(--zero); }
+.notice p { margin: var(--zero); flex: 1 1 auto; min-width: var(--zero); }
+.notice a { color: var(--system-ink); }
+
+.providers { display: grid; gap: var(--space-2); border: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
+.providers legend { padding: var(--zero); margin-bottom: var(--space-2); font-weight: var(--weight-medium); }
+.provider { display: flex; align-items: center; gap: var(--space-3); min-height: var(--touch-height); padding: var(--space-2) var(--space-3); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius); background: var(--graphite-950); }
+.provider:has([data-checked]) { border-color: var(--survey-teal); background: var(--system-wash); }
+.provider span { font-weight: var(--weight-medium); font-family: var(--font-mono); font-size: var(--font-size-small); }
+
+.feedback { display: flex; gap: var(--space-2); align-items: flex-start; color: var(--stone-300); font-size: var(--font-size-small); margin: var(--zero); overflow-wrap: anywhere; }
+.feedback:empty { display: none; }
+.feedback[role=alert] { color: var(--error-ink); }
+.help { color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); margin: var(--zero); }
+
+/* Transcript: a growing, scrollable log. One <code> per event line so seq stays a stable key
+   without inventing paragraph markup the contract never promised for a payload's shape. */
+.transcript { margin: var(--zero); max-height: var(--raw-max-height); overflow: auto; padding: var(--space-3); border: var(--border-width) solid var(--line); border-radius: var(--radius); background: var(--graphite-950); font-family: var(--font-mono); font-size: var(--font-size-small); line-height: var(--line-height-body); }
+.transcriptLine { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.transcriptLine + .transcriptLine { margin-top: var(--space-1); }
+
+.findings { display: grid; gap: var(--space-2); list-style: none; margin: var(--zero); padding: var(--zero); max-height: var(--raw-max-height); overflow: auto; }
+.finding { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2); border: var(--border-width) solid var(--line); border-radius: var(--radius); background: var(--graphite-950); }
+.finding span { overflow-wrap: anywhere; }

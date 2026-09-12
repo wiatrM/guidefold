@@ -207,7 +207,7 @@ Lista jest zamknięta: handler nie zwraca kodu spoza tej tabeli. „1.1" oznacza
 | `overloaded` | 429 | Brak wolnych slotów SEARCH/USE; `Retry-After: 1` | retrieval |
 | `telemetry_overloaded` | 429 | Brak wolnych slotów telemetrii | telemetry |
 | `internal_error` | 500 | Nieoczekiwany błąd; przyczyna tylko w logu | mgmt |
-| `provider_unavailable` | 502 | Dostawca tożsamości niedostępny lub odpowiedział błędem | identity |
+| `provider_unavailable` | 502 | Dostawca tożsamości niedostępny lub odpowiedział błędem; również dostawca modelu, do którego nie udało się dotrzeć przy sprawdzaniu klucza (par. 4.8) - brak odpowiedzi nigdy nie jest raportowany jako `credential_invalid` | identity, secrets |
 | `backend_unavailable` | 503 | 1.1: backend retrieval niedostępny | retrieval |
 | `database_unavailable` | 503 | Baza niedostępna dla management API | mgmt |
 | `secret_encryption_unavailable` | 503 | Serwer nie ma klucza głównego sekretów; klucza organizacji nie da się zapisać ani otworzyć (ADR-0045 §6) | secrets |
@@ -419,7 +419,7 @@ Webhook nie czyta ciała skilli i nie wywołuje modelu: weryfikuje podpis, dopas
 | Metoda | Ścieżka | Rola / zakres | Wejście | Wyjście | Błędy | Idem. | P / AC |
 |---|---|---|---|---|---|---|---|
 | GET | `{org_base}/credentials` | member | — | `{items: [OrgCredential]}` | — | nie | ADR-0045 |
-| PUT | `{org_base}/credentials/{provider}` | owner + CSRF | `{api_key:str!, name:str?}` | `OrgCredential` | `invalid_provider`, `invalid_body`, `credential_invalid`, `secret_encryption_unavailable` | nie (nadpisanie jest z natury idempotentne) | ADR-0045 |
+| PUT | `{org_base}/credentials/{provider}` | owner + CSRF | `{api_key:str!, name:str?}` | `OrgCredential` | `invalid_provider`, `invalid_body`, `credential_invalid`, `provider_unavailable`, `secret_encryption_unavailable` | nie (nadpisanie jest z natury idempotentne) | ADR-0045 |
 | DELETE | `{org_base}/credentials/{provider}` | owner + CSRF | — | `204` | `credential_not_found` | nie | ADR-0045 |
 
 Klucz nigdy nie wraca z API. `GET` i odpowiedź `PUT` niosą wyłącznie `provider`, `name`, `last4`, `created_at` i `created_by`. `PUT` przed zapisem sprawdza klucz u dostawcy jednym tanim wywołaniem i odrzuca taki, którego dostawca nie akceptuje — przyjęcie klucza, który nie działa, przeniosłoby awarię do joba w tle, którego właściciel nie ogląda. Zapis, nadpisanie, usunięcie i **użycie** klucza zapisują wiersz `gfm.audit` (`credential.set`, `credential.delete`, `credential.used`), zawsze z `last4`, nigdy z czymś więcej.

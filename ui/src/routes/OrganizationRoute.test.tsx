@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ApiOrganizationRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
-import type { AuditPage, Installation, InvitationLifecycle, Member, Usage } from '../api/decoders';
+import type { AuditPage, Installation, InvitationLifecycle, Member, OrgCredential, Usage } from '../api/decoders';
 import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
@@ -249,7 +249,7 @@ describe('Organization route, presentation', () => {
   test('the four sections are tab links and the address chooses the current one', async () => {
     renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations');
     const nav = screen.getByRole('navigation', { name: 'Organization sections' });
-    expect(within(nav).getAllByRole('link').map(link => link.textContent)).toEqual(['Members', 'Integrations', 'Telemetry', 'Audit']);
+    expect(within(nav).getAllByRole('link').map(link => link.textContent)).toEqual(['Members', 'Integrations', 'Telemetry', 'Audit', 'Model keys']);
     expect(within(nav).getByRole('link', { name: 'Integrations' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Members' })).not.toHaveAttribute('aria-current');
     expect(await screen.findByText('No installation yet')).toBeInTheDocument();
@@ -304,6 +304,75 @@ describe('Organization route, presentation', () => {
     expect(await screen.findByRole('button', { name: 'Revoke' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Create installation' })).toBeDisabled();
     expect(screen.getByLabelText('Harness')).toBeDisabled();
+    expect(screen.getByText(/Member access is read only here/)).toBeInTheDocument();
+  });
+});
+
+const credential = (over: Partial<OrgCredential> = {}): OrgCredential => ({
+  provider: 'openrouter', name: 'default', last4: '9f2a', created_at: '2026-09-01T00:00:00Z', created_by: 'u1',
+  ...over,
+});
+
+describe('Organization route, model keys', () => {
+  test('every provider gets a row, including one with no stored key', async () => {
+    renderRoute(fakeSource({ listCredentials: async () => [credential()] }), 'tab=keys');
+    const table = await screen.findByRole('table', { name: 'Model provider keys' });
+    const openrouter = within(table).getByRole('row', { name: /openrouter/ });
+    expect(openrouter).toHaveTextContent('default');
+    expect(openrouter).toHaveTextContent('9f2a');
+    const anthropic = within(table).getByRole('row', { name: /anthropic/ });
+    expect(anthropic).toHaveTextContent('No key stored');
+    const openai = within(table).getByRole('row', { name: /openai/ });
+    expect(openai).toHaveTextContent('No key stored');
+  });
+
+  test('an owner can store a key and the value is never kept after the request', async () => {
+    const setCredential = vi.fn(async (org: string, provider: string, input: { api_key: string; name?: string | null }) => credential({ provider: provider as OrgCredential['provider'], name: input.name ?? '' }));
+    renderRoute(fakeSource({ listCredentials: async () => [], setCredential }), 'tab=keys');
+    await userEvent.type(await screen.findByLabelText('API key'), 'sk-test-value');
+    await userEvent.click(screen.getByRole('button', { name: 'Store key' }));
+    expect(setCredential).toHaveBeenCalledWith('meridian', 'openrouter', { api_key: 'sk-test-value', name: undefined }, 'credential:meridian:openrouter');
+    expect(await screen.findByText('Key saved for openrouter.')).toBeInTheDocument();
+    expect((screen.getByLabelText('API key') as HTMLInputElement).value).toBe('');
+  });
+
+  test('credential_invalid, secret_encryption_unavailable and an unlisted code each read as themselves', async () => {
+    let failWith = 'credential_invalid';
+    const setCredential = vi.fn(async () => { throw new ApiError({ status: 400, code: failWith, message: 'no' }); });
+    renderRoute(fakeSource({ listCredentials: async () => [], setCredential }), 'tab=keys');
+    const input = await screen.findByLabelText('API key');
+
+    await userEvent.type(input, 'sk-bad');
+    await userEvent.click(screen.getByRole('button', { name: 'Store key' }));
+    expect(await screen.findByText('The provider rejected this key. Nothing was saved.')).toBeInTheDocument();
+    expect((screen.getByLabelText('API key') as HTMLInputElement).value).toBe('');
+
+    failWith = 'secret_encryption_unavailable';
+    await userEvent.type(input, 'sk-bad');
+    await userEvent.click(screen.getByRole('button', { name: 'Store key' }));
+    expect(await screen.findByText('This deployment cannot store model keys right now: no secret-encryption key is configured. Nothing was saved.')).toBeInTheDocument();
+
+    failWith = 'invalid_provider';
+    await userEvent.type(input, 'sk-bad');
+    await userEvent.click(screen.getByRole('button', { name: 'Store key' }));
+    expect(await screen.findByText('The key was not saved (invalid_provider).')).toBeInTheDocument();
+  });
+
+  test('deleting a key reports the outcome and re-reads the list', async () => {
+    const deleteCredential = vi.fn(async () => {});
+    const listCredentials = vi.fn(async () => [credential()]);
+    renderRoute(fakeSource({ listCredentials, deleteCredential }), 'tab=keys');
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    expect(deleteCredential).toHaveBeenCalledWith('meridian', 'openrouter', 'credential-remove:meridian:openrouter');
+    await waitFor(() => expect(listCredentials.mock.calls.length).toBeGreaterThan(1));
+    expect(await screen.findByText('Key removed for openrouter.')).toBeInTheDocument();
+  });
+
+  test('a member sees the rows read only: no form, no delete action', async () => {
+    renderRoute(fakeSource({ listCredentials: async () => [credential()] }), 'tab=keys', { role: 'member' });
+    await screen.findByRole('table', { name: 'Model provider keys' });
+    expect(screen.queryByLabelText('API key')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
     expect(screen.getByText(/Member access is read only here/)).toBeInTheDocument();
   });
 });

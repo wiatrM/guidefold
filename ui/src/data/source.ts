@@ -10,6 +10,7 @@ import type {
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Profile, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
   Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
+  OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
 
@@ -81,6 +82,21 @@ export interface DataSource {
   deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void>;
   /** `GET {org_base}/audit`, owner only (contract §4.1). */
   getAudit(org: string, cursor?: string): Promise<AuditPage>;
+
+  // Model keys (contract §4.8, §5.5a, ADR-0045) ------------------------------
+  /** Member-readable; a provider absent from the result has no stored key. */
+  listCredentials(org: string): Promise<OrgCredential[]>;
+  /** Owner + CSRF. The server checks the key with the provider before saving it. */
+  setCredential(org: string, provider: OrgCredentialProvider, input: { api_key: string; name?: string | null }, idempotencyKey: string): Promise<OrgCredential>;
+  deleteCredential(org: string, provider: OrgCredentialProvider, idempotencyKey: string): Promise<void>;
+
+  // Live Agent (contract §4.9, §5.5a, ADR-0046) ------------------------------
+  listLiveRuns(org: string, cursor?: string): Promise<LiveRunPage>;
+  getLiveRun(org: string, runId: string): Promise<LiveRunDetail>;
+  /** `after` is the positional `seq` cursor (contract §4.9), not an opaque page token. */
+  getLiveRunEvents(org: string, runId: string, after?: number): Promise<LiveRunEventPage>;
+  startLiveRun(org: string, input: { prompt: string; provider?: OrgCredentialProvider; model?: string; repos?: string[] }, idempotencyKey: string): Promise<LiveRun>;
+  cancelLiveRun(org: string, runId: string, idempotencyKey: string): Promise<LiveRun>;
 
   // Repositories and import -------------------------------------------------
   listRepos(org: string): Promise<Repo[]>;

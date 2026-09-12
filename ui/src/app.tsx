@@ -1,7 +1,7 @@
 import {Component,useEffect,useLayoutEffect,lazy,Suspense,type ReactNode} from 'react';
 import {Link,Navigate,useLocation,useNavigate} from 'react-router-dom';
 import {motion,useReducedMotion} from 'motion/react';
-import {ArrowSquareInIcon,BooksIcon,SquaresFourIcon,TreeStructureIcon,FileTextIcon,GitPullRequestIcon,ChartBarIcon,BuildingsIcon,CaretRightIcon} from '@phosphor-icons/react';
+import {ArrowSquareInIcon,BooksIcon,SquaresFourIcon,TreeStructureIcon,FileTextIcon,GitPullRequestIcon,ChartBarIcon,BuildingsIcon,CaretRightIcon,LightningIcon} from '@phosphor-icons/react';
 import {ActionButton,BrandMark,RouteState,IconTile} from './Shared';
 import {SidebarProvider} from '@/components/ui/sidebar';
 import {AppSidebar} from './components/ui/shadcn-space/blocks/dashboard-shell-01/app-sidebar';
@@ -23,6 +23,7 @@ const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
 const ApiProposalsRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiProposalsRoute})));
 const ApiUsageRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiUsageRoute})));
+const ApiLiveAgentRoute=lazy(()=>import('./routes/LiveAgentRoute').then(m=>({default:m.ApiLiveAgentRoute})));
 const LoginRoute=lazy(()=>import('./routes/LoginRoute').then(m=>({default:m.LoginRoute})));
 const ToastHost=lazy(()=>import('./ToastHost'));
 import css from './App.module.css';
@@ -36,18 +37,19 @@ const viewInfo:Record<View,{label:string;title:string;description:string;icon:ty
  skill:{label:'Skill',title:'Skill revision',description:'Read the instruction and the evidence that defines its scope.',icon:FileTextIcon},
  proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequestIcon},
  usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBarIcon},
- organization:{label:'Organization',title:'Organization',description:'Inspect membership and the connection between a repository and its harness.',icon:BuildingsIcon}
+ organization:{label:'Organization',title:'Organization',description:'Inspect membership and the connection between a repository and its harness.',icon:BuildingsIcon},
+ live:{label:'Live Agent',title:'Live Agent',description:'Run a prompt against connected repositories and watch its transcript and per-repository result.',icon:LightningIcon}
 };
 const views=Object.keys(viewInfo) as View[];
 const navGroups:{label:string;items:View[]}[]=[
- {label:'Workspace',items:['home','import']},
+ {label:'Workspace',items:['home','import','live']},
  {label:'Knowledge',items:['library','map']},
  {label:'Review',items:['proposals','usage']},
  {label:'Manage',items:['organization']}
 ];
 const groupFor=(view:View)=>navGroups.find(group=>group.items.includes(view))?.label??'Knowledge';
 /** Every U4 view reads the hosted API (F11–F18). */
-const apiRoute:Record<View,(props:{ctx:ApiRouteContext})=>ReactNode>={home:ApiHomeRoute,import:ApiImportRoute,library:ApiLibraryRoute,map:ApiMapRoute,skill:ApiSkillRoute,proposals:ApiProposalsRoute,usage:ApiUsageRoute,organization:ApiOrganizationRoute};
+const apiRoute:Record<View,(props:{ctx:ApiRouteContext})=>ReactNode>={home:ApiHomeRoute,import:ApiImportRoute,library:ApiLibraryRoute,map:ApiMapRoute,skill:ApiSkillRoute,proposals:ApiProposalsRoute,usage:ApiUsageRoute,organization:ApiOrganizationRoute,live:ApiLiveAgentRoute};
 /** Route-local failure UI. Unsent drafts live in RAM, so a reload drops them; the copy says so. */
 class RouteErrorBoundary extends Component<{children:ReactNode},{failed:boolean}> {
  state={failed:false};

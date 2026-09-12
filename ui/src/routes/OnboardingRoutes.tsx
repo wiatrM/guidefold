@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, formatNumber, shortId, unknown, useAsync, type ApiProps } from './apiState';
 import { formatDay, ScorecardPanel } from './ReviewRoutes';
-import { proposalKinds } from '../api/decoders';
-import type { AuditEntry, Job, ImportStatus, Installation, InvitationLifecycle, Member, Org, ProposalKind, ProposalLimits, Repo, RepoAccessLevel, Team, GitHubInstallation } from '../api/decoders';
+import { proposalKinds, orgCredentialProviders } from '../api/decoders';
+import type { AuditEntry, Job, ImportStatus, Installation, InvitationLifecycle, Member, Org, OrgCredential, OrgCredentialProvider, ProposalKind, ProposalLimits, Repo, RepoAccessLevel, Team, GitHubInstallation } from '../api/decoders';
 import type { AccessState } from '../api/access';
 import type { DataSource } from '../data/source';
 import type { Me } from '../api/decoders';
@@ -749,7 +749,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const { source, org, role, me } = ctx;
   const owner = role === 'owner';
   const tabParam = ctx.params.get('tab');
-  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : tabParam === 'telemetry' ? 'telemetry' : 'members';
+  const tab = tabParam === 'integrations' ? 'integrations' : tabParam === 'audit' ? 'audit' : tabParam === 'telemetry' ? 'telemetry' : tabParam === 'keys' ? 'keys' : 'members';
   const deviceCode = ctx.params.get('device');
   const auditCursor = ctx.params.get('cursor');
   const members = useAsync(() => source.listMembers(org ?? ''), 'members:' + org, Boolean(org) && tab === 'members');
@@ -767,6 +767,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     'organization-telemetry:' + org + '/' + (ctx.repo ?? '') + ':' + (ctx.params.get('window') ?? ''),
     Boolean(org && ctx.repo && tab === 'telemetry'),
   );
+  const credentials = useAsync(() => source.listCredentials(org ?? ''), 'credentials:' + org, Boolean(org) && tab === 'keys');
   const [linkStatus, setLinkStatus] = useState('');
   const [profileName, setProfileName] = useState(me?.user.name ?? '');
   const [profileStatus, setProfileStatus] = useState('');
@@ -785,6 +786,12 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const [integrationStatus, setIntegrationStatus] = useState('');
   const [deviceStatus, setDeviceStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [keyProvider, setKeyProvider] = useState<OrgCredentialProvider>(orgCredentialProviders[0]);
+  const [keyName, setKeyName] = useState('');
+  // Never rendered back and cleared once the request settles, success or failure alike (§4.8).
+  const [keyValue, setKeyValue] = useState('');
+  const [keyFormError, setKeyFormError] = useState('');
+  const [keyStatus, setKeyStatus] = useState('');
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -924,6 +931,47 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     } catch (error) { setIntegrationStatus('The GitHub installation was not removed (' + asApiError(error).code + ').'); }
     finally { setBusy(false); }
   }
+  async function saveCredential(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!org || busy) return;
+    const provider = keyProvider;
+    const value = keyValue.trim();
+    const name = keyName.trim();
+    if (!value) { setKeyFormError('Enter the key value.'); return; }
+    setBusy(true);
+    setKeyFormError('');
+    try {
+      await source.setCredential(org, provider, { api_key: value, name: name || undefined }, 'credential:' + org + ':' + provider);
+      setKeyName('');
+      setKeyStatus('Key saved for ' + provider + '.');
+      credentials.reload();
+    } catch (error) {
+      const failure = asApiError(error);
+      // §4.8's closed error list for this endpoint has exactly these two named failures plus
+      // `invalid_provider`/`invalid_body` (already refused client-side above); anything else is
+      // shown by its own code, never folded into one generic word.
+      setKeyFormError(
+        failure.code === 'credential_invalid' ? 'The provider rejected this key. Nothing was saved.'
+          : failure.code === 'secret_encryption_unavailable' ? 'This deployment cannot store model keys right now: no secret-encryption key is configured. Nothing was saved.'
+            : 'The key was not saved (' + failure.code + ').',
+      );
+    } finally {
+      // Cleared here, not only on success: the typed value never outlives the request.
+      setKeyValue('');
+      setBusy(false);
+    }
+  }
+  async function removeCredential(provider: OrgCredentialProvider) {
+    if (!org || busy) return;
+    setBusy(true);
+    try {
+      await source.deleteCredential(org, provider, 'credential-remove:' + org + ':' + provider);
+      setKeyStatus('Key removed for ' + provider + '.');
+      credentials.reload();
+    } catch (error) {
+      setKeyStatus('The key was not removed (' + asApiError(error).code + ').');
+    } finally { setBusy(false); }
+  }
   async function decideDevice(approve: boolean) {
     if (!deviceCode) return;
     try {
@@ -949,10 +997,46 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       { id: 'integrations', label: 'Integrations', href: ctx.href('organization', { tab: 'integrations', cursor: null }) },
       { id: 'telemetry', label: 'Telemetry', href: ctx.href('organization', { tab: 'telemetry', cursor: null }) },
       { id: 'audit', label: 'Audit', href: ctx.href('organization', { tab: 'audit', cursor: null }) },
+      { id: 'keys', label: 'Model keys', href: ctx.href('organization', { tab: 'keys', cursor: null }) },
     ]} />
     <OwnerNote role={role} />
 
-    {tab === 'telemetry' ? <>
+    {tab === 'keys' ? <Panel title="Model keys" eyebrow="ADR-0045" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
+      <p>The organization's own key for each model provider. Guidefold checks a key with the provider before storing it and never returns it once saved &mdash; only the last four characters are kept visible.</p>
+      {credentials.phase === 'loading' && <RouteState state="loading" title="Reading model keys" description="Waiting for the stored key metadata for this organization." />}
+      {credentials.phase === 'error' && credentials.error && <ApiFailure error={credentials.error} onRetry={credentials.reload} retryLabel="Retry model keys" />}
+      {credentials.phase === 'ready' && <DataTable flush caption="Model provider keys" headings={['Provider', 'Name', 'Last 4', 'Stored', 'Action']}>
+        {orgCredentialProviders.map(provider => {
+          const entry: OrgCredential | undefined = credentials.value?.find(item => item.provider === provider);
+          return <tr key={provider}>
+            <th scope="row">{provider}</th>
+            <td>{entry ? entry.name : <span className={styles.linkHint}>No key stored</span>}</td>
+            <td>{entry ? <code>&hellip;{entry.last4}</code> : unknown(null)}</td>
+            <td>{entry ? unknown(entry.created_at) : unknown(null)}</td>
+            <td>{owner && entry
+              ? <ActionButton size="sm" disabled={busy} onClick={() => { void removeCredential(provider); }}>Delete</ActionButton>
+              : null}</td>
+          </tr>;
+        })}
+      </DataTable>}
+      {owner ? <form className={styles.memberForm} onSubmit={saveCredential}>
+        <Field id="key-provider" label="Provider" hint="Storing a key for a provider that already has one replaces it.">
+          <select id="key-provider" className={selectClass} value={keyProvider} onChange={event => { setKeyProvider(event.target.value as OrgCredentialProvider); setKeyFormError(''); }}>
+            {orgCredentialProviders.map(provider => <option key={provider} value={provider}>{provider}</option>)}
+          </select>
+        </Field>
+        <Field id="key-name" label="Name" hint="A label for this key, for example which account it belongs to.">
+          <Input id="key-name" value={keyName} onChange={event => setKeyName(event.target.value)} maxLength={80} className={inputClass} />
+        </Field>
+        <Field id="key-value" label="API key" hint="Checked with the provider before it is saved; not shown again after this request." error={keyFormError || undefined}>
+          <Input id="key-value" type="password" autoComplete="off" value={keyValue} onChange={event => { setKeyValue(event.target.value); setKeyFormError(''); }} required aria-invalid={Boolean(keyFormError)} className={inputClass} />
+        </Field>
+        <ActionButton type="submit" tone="human" disabled={busy}>
+          {credentials.value?.some(item => item.provider === keyProvider) ? 'Replace key' : 'Store key'}
+        </ActionButton>
+      </form> : null}
+      <p className={styles.feedback} role="status">{keyStatus}</p>
+    </Panel> : tab === 'telemetry' ? <>
       {!ctx.repo && <RouteState state="empty" title="No repository selected" description="Choose a repository before reading task and harness telemetry." action={<ActionButton href={ctx.href('import', { step: 'organization' })} tone="system">Choose a repository</ActionButton>} />}
       {ctx.repo && telemetry.phase === 'loading' && <RouteState state="loading" title="Reading telemetry" description="Waiting for the execution metrics for this repository." />}
       {ctx.repo && telemetry.phase === 'error' && telemetry.error && <ApiFailure error={telemetry.error} onRetry={telemetry.reload} retryLabel="Retry telemetry" />}

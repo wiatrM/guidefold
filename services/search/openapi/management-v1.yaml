@@ -1594,6 +1594,9 @@ paths:
         "400":
           description: "`invalid_provider`, `invalid_body`, `credential_invalid`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "502":
+          description: "`provider_unavailable`. The provider could not be reached to check the key, which is not the same answer as a key it rejected."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "503":
           description: "`secret_encryption_unavailable`. No master key, so no credential is stored in the clear."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

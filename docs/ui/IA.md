@@ -22,11 +22,12 @@ Persona nie nadaje uprawnień. Owner/member pochodzą z polityki organizacji; CO
 | Skill | Tożsamość rewizji, zastosowanie, treść, źródła, wymagania i feedback. |
 | Proposals | Kolejka i kandydat ze źródłem/diffem; przygotowanie decyzji, eksport i stan Git. |
 | Usage & quality | Powody przeglądu, obserwacje, pokrycie i brak danych. |
-| Organization | Members, Integrations oraz Telemetry: instalacja adaptera, diagnostyka, członkowie, tokeny i szybki obraz jakości wykonania. |
-Login jest stanem wejścia i od 2026-09-12 ma własną trasę `/login` poza ośmioma widokami (siedem U4 i Overview): każda trasa panelu jest prywatna, więc żądanie bez sesji trafia tam z celem powrotu w `?return=` i wraca pod pierwotny adres po zalogowaniu (odmowa 403 przy żywej sesji nie przekierowuje, tylko maskuje widok). Szczegół propozycji pozostaje częścią Proposals. Galeria komponentów jest narzędziem developerskim poza nawigacją produktu.
+| Organization | Members, Integrations, Telemetry oraz Model keys: instalacja adaptera, diagnostyka, członkowie, tokeny, szybki obraz jakości wykonania i klucze dostawców modelu (ADR-0045) — jeden wiersz na dostawcę (openrouter, anthropic, openai), `last4` i data zapisu albo jawne „No key stored"; zapis/zamiana/usunięcie tylko dla ownera, member czyta bez edycji. |
+| Live Agent (`/live`) | Composer (prompt, provider, model, zakres repozytoriów) i, po starcie, transkrypt obok listy stanu per repozytorium; sondowanie `GET …/live/runs/{id}/events` kursorem `after` mniej więcej raz na sekundę, zatrzymane wyłącznie przez `done` w odpowiedzi. Stany przebiegu (`queued/running/succeeded/partial/failed/cancelled`) czytane wprost; `partial` podaje liczbę repozytoriów, które zawiodły albo zostały pominięte. Start tylko dla ownera i tylko gdy organizacja ma zapisany klucz wybranego dostawcy — inaczej link do Model keys zamiast przycisku, który i tak by zawiódł; anulowanie również tylko dla ownera. |
+Login jest stanem wejścia i od 2026-09-12 ma własną trasę `/login` poza dziewięcioma widokami (siedem U4, Overview i Live Agent): każda trasa panelu jest prywatna, więc żądanie bez sesji trafia tam z celem powrotu w `?return=` i wraca pod pierwotny adres po zalogowaniu (odmowa 403 przy żywej sesji nie przekierowuje, tylko maskuje widok). Szczegół propozycji pozostaje częścią Proposals. Galeria komponentów jest narzędziem developerskim poza nawigacją produktu.
 ## 4. Nawigacja i kontekst
 Kontekst org/repo jest widoczny przed importem i decyzją. Odmowa autoryzacji usuwa dane poprzedniego kontekstu.
-Stały rail grupuje cele, a nie typy danych: Workspace (Overview, Import), Knowledge (Library, Map), Review (Proposals, Usage & quality) oraz Manage (Organization). Skill jest kontekstowym szczegółem otwieranym z Library, Map, Usage lub linku bezpośredniego, więc nie konkuruje z celami pierwszego poziomu.
+Stały rail grupuje cele, a nie typy danych: Workspace (Overview, Import, Live Agent), Knowledge (Library, Map), Review (Proposals, Usage & quality) oraz Manage (Organization). Skill jest kontekstowym szczegółem otwieranym z Library, Map, Usage lub linku bezpośredniego, więc nie konkuruje z celami pierwszego poziomu.
 Rail składa się do paska ikon; etykiety znikają krótką animacją bez przesuwania treści strony. Na małym ekranie ten sam porządek otwiera modalny sheet. Profil i rola są w stopce raila; menu konta prowadzi do członkostwa organizacji i wywołuje istniejący logout. Historia edycji pozostaje historią rewizji w Skill/Proposals, bez ósmej trasy. Ulubione są działaniem na wierszu i w menu kontekstowym, nie nowym silosem nawigacji. Lista jest trwała w tej przeglądarce i izolowana kluczem użytkownik/organizacja/repozytorium; nie udaje preferencji zsynchronizowanej przez API.
 URL koduje widok, filtry, zaznaczony obiekt i zakładkę; zamknięcie szczegółu lub powrót odtwarza listę/mapę. Kontrakty bieżących makiet: [etap4](pipeline/04-wireframes.md); docelowych tras: etap7.
 Repo tree odpowiada na położenie źródła, scope na zastosowanie i odpowiedzialność, Pyramid na relacje wiedzy. Głębokość folderu nie nadaje warstwy atomic/task/abstract.
@@ -41,7 +42,8 @@ Nie renderujemy całych10tys.węzłów. Graf przedstawia sąsiedztwo; tekstowa l
 | Skill | Rewizja | Treść i źródło | Otwórz źródło. |
 | Proposals | Kandydat | Źródło obok diffu i zakres skutków | Zapisz decyzję; potem eksportuj. |
 | Usage & quality | Obserwacja | Zdarzenie, rewizja, pokrycie | Otwórz instrukcję do przeglądu. |
-| Organization | Org lub instalacja | Membership lub diagnostyka | Wykonaj konkretną operację wybranej zakładki. |
+| Organization | Org, instalacja lub klucz dostawcy | Membership, diagnostyka lub `last4`/data zapisu klucza | Wykonaj konkretną operację wybranej zakładki. |
+| Live Agent | Przebieg (`LiveRun`) | Transkrypt i stan per repozytorium | Uruchom przebieg po sprawdzeniu klucza; obserwuj do zakończenia. |
 ## 6. Stany
 Każdy widok ma empty, loading, partial, error, degraded i restricted; szczegółowa macierz to [etap4 §5](pipeline/04-wireframes.md).
 Partial oznacza znany brak danych; loading oczekiwanie; error niepowodzenie; degraded ograniczone możliwości. Żaden z nich nie udaje sukcesu.

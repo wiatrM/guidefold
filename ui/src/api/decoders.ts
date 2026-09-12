@@ -200,6 +200,77 @@ export const githubInstallation = object<GitHubInstallation>({
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
+// ---------------------------------------------------------------------------
+// Organization model keys (contract §4.8, §5.5a, ADR-0045). The key itself never returns from
+// the API; `OrgCredential` carries metadata only. A provider absent from `items` means the
+// organization has no key for it — there is no "present but unknown" state.
+// ---------------------------------------------------------------------------
+
+export const orgCredentialProviders = ['openrouter', 'anthropic', 'openai'] as const;
+export type OrgCredentialProvider = typeof orgCredentialProviders[number];
+export interface OrgCredential { provider: OrgCredentialProvider; name: string; last4: string; created_at: string | null; created_by: string | null }
+export const orgCredential = object<OrgCredential>({
+  provider: oneOf(orgCredentialProviders), name: str, last4: str,
+  created_at: nullable(str), created_by: nullable(str),
+});
+export const orgCredentialList: Decoder<OrgCredential[]> = value => field('items', arrayOf(orgCredential))(value);
+
+// ---------------------------------------------------------------------------
+// Live Agent (contract §4.9, §5.5a, ADR-0046). `LiveRunEvent.payload` is documented only for
+// `model.delta` (`{text}`) and `finding` (`{scope?, path?, summary, severity}`); every other
+// type's payload shape, including which key on an `error` event carries `live_run_log_truncated`,
+// is not specified, so `payload` decodes as a permissive object and routes read fields by name.
+// ---------------------------------------------------------------------------
+
+export const liveRunStates = ['queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled'] as const;
+export type LiveRunState = typeof liveRunStates[number];
+export interface LiveRunCounts { targets: number; done: number; failed: number; skipped: number }
+export interface LiveRunCost { tokens_in: number; tokens_out: number; usd: number; usd_estimated: boolean }
+export interface LiveRun {
+  run_id: string; state: LiveRunState; prompt: string; provider: OrgCredentialProvider; model: string;
+  created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null;
+  counts: LiveRunCounts; cost: LiveRunCost; error: string | null;
+}
+const liveRunCounts = object<LiveRunCounts>({
+  targets: fallback(num, 0), done: fallback(num, 0), failed: fallback(num, 0), skipped: fallback(num, 0),
+});
+const liveRunCost = object<LiveRunCost>({
+  tokens_in: fallback(num, 0), tokens_out: fallback(num, 0), usd: fallback(num, 0), usd_estimated: fallback(bool, false),
+});
+export const liveRun = object<LiveRun>({
+  run_id: str, state: fallback(oneOf(liveRunStates), 'queued'), prompt: str,
+  provider: oneOf(orgCredentialProviders), model: str,
+  created_by: nullable(str), created_at: str, started_at: nullable(str), finished_at: nullable(str),
+  counts: fallback(liveRunCounts, { targets: 0, done: 0, failed: 0, skipped: 0 }),
+  cost: fallback(liveRunCost, { tokens_in: 0, tokens_out: 0, usd: 0, usd_estimated: false }),
+  error: nullable(str),
+});
+export interface LiveRunPage { items: LiveRun[]; next_cursor: string | null }
+export const liveRunPage = object<LiveRunPage>({ items: listOf(liveRun), next_cursor: nullable(str) });
+
+/** Distinct from `liveRunStates`: a target reaches `done`, a run reaches `succeeded`. */
+export const liveRunTargetStates = ['queued', 'running', 'done', 'failed', 'skipped'] as const;
+export type LiveRunTargetState = typeof liveRunTargetStates[number];
+export interface LiveRunTarget {
+  repo_id: string; state: LiveRunTargetState; job_id: string | null; findings: number;
+  error: string | null; started_at: string | null; finished_at: string | null;
+}
+export const liveRunTarget = object<LiveRunTarget>({
+  repo_id: str, state: fallback(oneOf(liveRunTargetStates), 'queued'), job_id: nullable(str),
+  findings: fallback(num, 0), error: nullable(str), started_at: nullable(str), finished_at: nullable(str),
+});
+export interface LiveRunDetail { run: LiveRun; targets: LiveRunTarget[] }
+export const liveRunDetail = object<LiveRunDetail>({ run: liveRun, targets: listOf(liveRunTarget) });
+
+export const liveRunEventTypes = ['run.started', 'repo.started', 'model.delta', 'finding', 'repo.finished', 'run.finished', 'error'] as const;
+export type LiveRunEventType = typeof liveRunEventTypes[number];
+export interface LiveRunEvent { seq: number; at: string; repo_id: string | null; type: LiveRunEventType; payload: Record<string, unknown> }
+export const liveRunEvent = object<LiveRunEvent>({
+  seq: num, at: str, repo_id: nullable(str), type: oneOf(liveRunEventTypes), payload: fallback(dictionary(anyValue), {}),
+});
+export interface LiveRunEventPage { items: LiveRunEvent[]; next_after: number; done: boolean }
+export const liveRunEventPage = object<LiveRunEventPage>({ items: listOf(liveRunEvent), next_after: fallback(num, 0), done: fallback(bool, false) });
+
 export interface AuditEntry { at: string; actor: string | null; action: string; entity: string | null; revision: string | null; request_id: string | null }
 export const auditEntry = object<AuditEntry>({
   at: str, actor: nullable(str), action: str, entity: nullable(str),
