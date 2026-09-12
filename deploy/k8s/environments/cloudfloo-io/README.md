@@ -1,6 +1,25 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## shadcn console and contract 1.3.0 — 2026-09-12 (current)
+## Contract 1.3.0 wired into the console — 2026-09-12 (current)
+
+Built by `publish-images.yml` from `main` at `31524dd` (PR #144: Overview
+trends against the previous usage window, "Your decisions", "Decided by",
+member-scoped audit). Deployed the same way as the release below: the four
+image digests patched into the live `Application/guidefold` inline Helm values.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:1c8f7a0a4da0eb12a7809bd0c01ed0890e0c05a31e114598756ec865c74fd627` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:aab053971c5435f99aa47bf0c1e74bf7f085b088d2149587cc08db985511c722` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:724b2f278f33197078287c1b66d198d2c7d4f138744c2f8905a65db6f7481741` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:69ebb4072bd918e8a3bd254c8b10caf8f67543ec38ab8e4a0f319bfd8318af0e` |
+
+Sync operation Succeeded 2026-09-12T18:28:55Z; all four deployments ready on
+the new images (`guidefold` 2/2, `guidefold-ui` 2/2, worker 1/1, portal 1/1).
+Public checks: `/` 200, `/health/ready` 200, `/api/v1/me` 401 (anonymous).
+Rollback: the digests of the previous release below.
+
+## shadcn console and contract 1.3.0 — 2026-09-12 (previous)
 
 Built by `publish-images.yml` from `main` at `b49777d` (PR #141 console on
 shadcn/shadcnspace, Overview view, contract 1.3.0; PR #142 sign-in race fix and
