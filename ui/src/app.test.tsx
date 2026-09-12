@@ -239,7 +239,8 @@ describe('shell composition', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/library?org=meridian&repo=monorepo');
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open your organization' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign in again' })).toBeInTheDocument();
+    // An action, not a link: it has to end the session and forget the identity first.
+    expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument();
   });
 
   test('the way out of a forbidden address is the account own organisation, not the login page', async () => {
@@ -258,6 +259,33 @@ describe('shell composition', () => {
     // may confirm membership again instead of leaving every view masked.
     expect(screen.getByTestId('where')).toHaveTextContent('/import?org=meridian&step=preview');
     expect(screen.getByTestId('where')).not.toHaveTextContent('/login');
+  });
+
+  test('Sign in again from a forbidden view really reaches the sign-in form', async () => {
+    // The trap this covers: a forbidden denial keeps the identity, `derive()` stays 'denied' once
+    // denied, and /login shows the neutral shell while an identity is held — so a plain link to
+    // /login left the operator on "Checking your session" for ever: no form, no redirect.
+    let session = true;
+    const controller = new AccessController({
+      fetchMe: async () => { if (!session) throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); return me; },
+      onDenied: vi.fn(),
+    });
+    await controller.check(true);
+    const logout = vi.fn(async () => { session = false; });
+    const source = fakeSource({
+      logout,
+      getAuthProviders: async () => ({ mode: 'workos' as const, providers: [{ id: 'github' as const, label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }),
+    });
+    render(<MemoryRouter initialEntries={['/library?org=meridian&repo=monorepo']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    controller.reportDenied('forbidden');
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign in again' }));
+    expect(logout).toHaveBeenCalledTimes(1);
+    // No return target: the refused address is the one place this must not come back to.
+    expect(screen.getByTestId('where')).toHaveTextContent('/login');
+    expect(screen.getByTestId('where')).not.toHaveTextContent('return=');
+    expect(await screen.findByRole('button', { name: /Continue with GitHub/ }, { timeout: 4000 })).toBeInTheDocument();
   });
 
   test('opening the login page with a live session never flashes the sign-in form', async () => {

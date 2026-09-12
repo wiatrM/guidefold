@@ -114,7 +114,7 @@ test('a 403 from the repository masks every view, with the session and the way b
     await expect(page).toHaveURL(new RegExp(view));
     await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toHaveCount(0);
     await expect(main.getByRole('button', { name: 'Open your organization' })).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Sign in again' })).toBeVisible();
+    await expect(main.getByRole('button', { name: 'Sign in again' })).toBeVisible();
     expect(await main.innerText(), view).not.toMatch(content);
     await expect(main.locator('input, textarea, select')).toHaveCount(0);
     await clean(page, view + '/403');

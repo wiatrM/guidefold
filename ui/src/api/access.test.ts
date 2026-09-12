@@ -116,6 +116,17 @@ describe('access confirmation', () => {
     expect(forbidden.onDenied).toHaveBeenCalledTimes(1);
   });
 
+  test('forget drops the identity with the denial, so the login page is not left waiting', async () => {
+    const { controller } = setup(async () => identity);
+    await controller.check(true);
+    controller.reportDenied('forbidden');
+    expect(controller.getSnapshot().me).toBe(identity);
+    controller.forget();
+    expect(controller.getSnapshot().me).toBeNull();
+    expect(controller.getSnapshot().denial).toBeNull();
+    expect(controller.getSnapshot().status).not.toBe('denied');
+  });
+
   test('reset clears the denial and its kind so the heartbeat may confirm again', async () => {
     const { controller } = setup(async () => identity);
     await controller.check(true);

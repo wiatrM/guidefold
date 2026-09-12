@@ -173,6 +173,17 @@ export class AccessController {
     this.publish();
   }
 
+  /**
+   * Drops the held identity together with the denial. Signing in again has to start from nothing:
+   * under a forbidden denial the identity is still held (by design — it is what offers the way
+   * back to the operator's own organisation), and carrying it to the login page would leave that
+   * page waiting for a session it already has instead of offering a form.
+   */
+  forget(): void {
+    this.me = null;
+    this.reset();
+  }
+
   reset(): void {
     this.denied = false;
     this.denial = null;

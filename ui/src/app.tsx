@@ -145,13 +145,21 @@ function ApiApp({source}:{source:DataSource}){
  // refused organisation and repository dropped from the address so the next read is a different
  // one. `reset()` clears the denial so the heartbeat may confirm membership again.
  const ownHref='/import'+(me?.orgs[0]?'?org='+encodeURIComponent(me.orgs[0].slug)+'&step=preview':'?step=organization');
+ // Signing in again really does start again: the session is ended, the held identity and the
+ // denial go with it, and the login page is opened with no return target, because the address
+ // that was refused is the one place this must not send the operator back to.
+ const signInAgain=async()=>{
+  try{if(me)await source.logout('logout:'+me.user.id);}catch{/* The local session is dropped either way. */}
+  controller?.forget();
+  navigate('/login',{replace:true});
+ };
  return <Shell view={view} href={href}
   railContext={<><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></>}
   topbar={<><span>{masked?'Workspace unavailable':membership?.name??'No organization'}</span>{!masked&&repo&&<Badge variant="outline" className="h-auto border-line-strong bg-graphite-900 px-2 py-0.5 font-mono text-[length:var(--font-size-code)] text-stone-100"><code>{repo}</code></Badge>}</>}
   account={me?<AccountMenu name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">
- {access.status==='denied'?<RouteState state="restricted" title="Not available to your account" description="This organization or repository refused the request while you are signed in. Nothing about its content is shown, and cached data and drafts for it were dropped. Your account itself is unchanged." action={<><ActionButton onClick={()=>{controller?.reset();navigate(ownHref,{replace:true});}}>{me?.orgs.length?'Open your organization':'Choose an organization'}</ActionButton><ActionButton href="/login" tone="system">Sign in again</ActionButton></>}/>
- :foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<><ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton><ActionButton href="/login" tone="system">Sign in again</ActionButton></>}/>
+ {access.status==='denied'?<RouteState state="restricted" title="Not available to your account" description="This organization or repository refused the request while you are signed in. Nothing about its content is shown, and cached data and drafts for it were dropped. Your account itself is unchanged." action={<><ActionButton onClick={()=>{controller?.reset();navigate(ownHref,{replace:true});}}>{me?.orgs.length?'Open your organization':'Choose an organization'}</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
+ :foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<><ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
  :access.status==='checking'?<RouteState state="loading" title="Confirming access" description="Checking membership before anything is shown."/>
  :access.status!=='confirmed'?<RouteState state="restricted" title="Access not reconfirmed" description="Membership was last confirmed more than 45 seconds ago, so organization data stays hidden. This is not a statement about your permissions." action={<ActionButton onClick={()=>{void controller?.check(true);}}>Check access now</ActionButton>}/>
  // Keyed by organisation and repository: a switch remounts the view, so no row, tree branch or
