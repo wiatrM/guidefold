@@ -21,14 +21,14 @@ describe('the return target is a path, never a second origin', () => {
     expect(safeReturn('/import?step=preview&org=meridian')).toBe('/import?step=preview&org=meridian');
   });
 
-  test.each([
+  test.each<[string | null, string]>([
     ['//evil.example', 'a protocol-relative address'],
     ['https://evil.example/import', 'an absolute URL'],
     ['/\\evil.example', 'a backslash variant'],
     ['import', 'a relative path'],
     ['/import\nHost: evil', 'an address carrying a control character'],
     [null, 'no target at all'],
-  ])('%s falls back to Import (%s)', raw => {
+  ])('%s falls back to Import (%s)', (raw: string | null) => {
     expect(safeReturn(raw)).toBe(DEFAULT_RETURN);
   });
 
