@@ -1,5 +1,43 @@
 import {test,expect} from '@playwright/test';
+import type {Page} from '@playwright/test';
 import {axeViolations,noHorizontalScroll} from './stub';
+
+/**
+ * Brings the entrance layer to rest instead of sleeping for a fixed 1000 ms before axe.
+ * `Reveal` writes `data-reveal-ready="true"` when it installs an element and
+ * `data-reveal-entered="true"` when that element's entrance fires (Reveal.tsx); under reduced
+ * motion neither attribute is written, so the wait is then vacuously satisfied.
+ *
+ * axe scans the whole document, not the viewport, so waiting only on what is currently on
+ * screen is not enough: a section further down is still at its pre-entrance opacity and axe
+ * reports it as a colour-contrast violation on tokens that measure 7.98-12.84:1 at rest. The
+ * sweep to the bottom and back therefore fires every `IntersectionObserver` first; entrance
+ * flags are never removed once set, so the page is at rest by the time it returns to the top.
+ *
+ * The last step drains the CSS transitions those flags start. Infinite animations are excluded
+ * (they never settle) and both the wait and the drain are capped, so a stalled animation
+ * degrades to roughly the old fixed delay instead of failing the test for the wrong reason.
+ */
+async function settled(page:Page){
+ await page.evaluate(async()=>{
+  const step=window.innerHeight*0.8;
+  for(let y=0;y<document.body.scrollHeight;y+=step){
+   window.scrollTo(0,y);
+   await new Promise(resolve=>{window.setTimeout(resolve,120);});
+  }
+  window.scrollTo(0,0);
+ });
+ await page.waitForFunction(
+  ()=>!document.querySelector('[data-reveal-ready="true"]:not([data-reveal-entered="true"])'),
+  null,{timeout:15000},
+ ).catch(()=>undefined);
+ await page.evaluate(()=>Promise.race([
+  Promise.all(document.getAnimations()
+   .filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity)
+   .map(animation=>animation.finished.catch(()=>undefined))),
+  new Promise(resolve=>{window.setTimeout(resolve,2000);}),
+ ]));
+}
 
 const viewports=[{width:1440,height:900},{width:390,height:844}];
 
@@ -50,11 +88,10 @@ for(const size of viewports)test('opens on the outcome, then extraction, retriev
  await expect(page.getByText('Open source today.',{exact:true})).toBeVisible();
  await expect(page.getByText('Paid hosting is planned.').first()).toBeVisible();
  expect(await noHorizontalScroll(page)).toBe(true);
- // Past the longest P1/P3 entrance (stagger cap 240ms + duration-entrance 420ms = 660ms), same
- // reasoning as the FAQ/dialog axe test below: without it, axe also catches headings, sublines
+ // Wait for the entrance layer to rest before axe: without it, axe catches headings, sublines
  // and bodies still mid-fade (opacity < 1), which reads as a false color-contrast positive on
  // tokens (stone-300, warning-ink, system-ink) that measure 7.98-12.84:1 at rest.
- await page.waitForTimeout(1000);
+ await settled(page);
  expect(await axeViolations(page)).toEqual([]);
  await page.screenshot({path:`qa/landing-v2-${size.width}.png`,fullPage:true});
 });
@@ -62,6 +99,9 @@ for(const size of viewports)test('opens on the outcome, then extraction, retriev
 test('the demo dialog mounts the player only on request and restores focus',async({page})=>{
  await page.route('https://www.youtube-nocookie.com/embed/**',route=>route.fulfill({contentType:'text/html',body:'<title>Stubbed player</title><p>Player boundary test</p>'}));
  await page.goto('/');
+ // Settle before the dialog opens: the page behind it is what axe scans, and sweeping the
+ // scroll with a modal open would be both meaningless and hostile to the focus trap.
+ await settled(page);
  await expect(page.locator('iframe')).toHaveCount(0);
  const play=page.getByRole('button',{name:'Play demo',exact:true});
  await play.focus();
@@ -71,10 +111,6 @@ test('the demo dialog mounts the player only on request and restores focus',asyn
  await expect(dialog.getByTitle('Guidefold product demo')).toBeVisible();
  await expect(dialog.getByRole('button',{name:'Stop video'})).toBeFocused();
  await expect(dialog.getByRole('link',{name:/Watch on YouTube/})).toHaveAttribute('href','https://www.youtube.com/watch?v=e350wBr1W8c');
- // Same reasoning as the FAQ/dialog and outcome-order axe checks: past the longest P1/P3
- // entrance (660ms) so axe reads resting opacity, not a section still fading in behind the
- // dialog.
- await page.waitForTimeout(1000);
  expect(await axeViolations(page)).toEqual([]);
  await page.keyboard.press('Escape');
  await expect(dialog).toHaveCount(0);
@@ -165,9 +201,9 @@ for(const size of viewports)test('axe is clean with the FAQ open and the dialog 
  await page.route('https://www.youtube-nocookie.com/embed/**',route=>route.fulfill({contentType:'text/html',body:'<title>Stubbed player</title><p>Player boundary test</p>'}));
  await page.setViewportSize(size);
  await page.goto('/');
- // Past the longest P1/P3 entrance (stagger cap + duration), so axe reads resting colour and
- // opacity rather than a still-fading element, which would report a transient false positive.
- await page.waitForTimeout(1000);
+ // Axe must read resting colour and opacity rather than a still-fading element, which would
+ // report a transient false positive.
+ await settled(page);
  expect(await axeViolations(page)).toEqual([]);
  await page.getByRole('button',{name:'How is my email used?'}).click();
  expect(await axeViolations(page)).toEqual([]);
