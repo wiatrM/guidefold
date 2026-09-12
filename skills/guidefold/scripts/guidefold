@@ -5644,61 +5644,70 @@ def _render_guidefold_yaml(publisher: str, owner: str) -> str:
     )
 
 
-def _write_guidefold_yaml(dry: bool, root: Path, publisher: str, owner: str):
+def _plan_guidefold_yaml(plan, root: Path, publisher: str, owner: str):
     dest = root / "guidefold.yaml"
     if dest.is_file():
-        print(f"guidefold.yaml already exists at {rel(root, dest)} — leaving it untouched.")
+        plan.add("kept", "guidefold.yaml", "already exists — never rewritten")
         return
-    if dry:
-        print(f"[dry-run] would create guidefold.yaml (publisher={publisher}, _root owner={owner})")
-        return
-    dest.write_text(_render_guidefold_yaml(publisher, owner))
-    print(f"created guidefold.yaml (publisher={publisher}, _root owner={owner})")
+    plan.add("create", "guidefold.yaml", f"publisher={publisher}, _root owner={owner}")
+    plan.writes.append((dest, _render_guidefold_yaml(publisher, owner).encode("utf-8"), False))
 
 
-def _stamp_bootstrap_skill(dest: Path, publisher: str, owner: str):
+def _stamped_skill_md(text: str, publisher: str, owner: str) -> str:
     """skills/guidefold/SKILL.md ships as a template (see its own header comment): its
     description embeds a literal `<publisher>` placeholder and its metadata.owner is hardcoded
     to "platform-engineering" — both would otherwise fail `guidefold validate` in every
     consumer repo whose publisher/root-owner differ. `init` stamps in the real values so a
-    freshly-bootstrapped repo validates clean without a manual edit."""
-    skill_md = dest / "SKILL.md"
-    if not skill_md.is_file():
-        return
-    text = skill_md.read_text()
-    text = text.replace("<publisher>", publisher)
-    text = text.replace("owner: platform-engineering", f"owner: {owner}")
-    skill_md.write_text(text)
+    freshly-bootstrapped repo validates clean without a manual edit. Stamping happens before
+    the digest is taken, so the manifest records what actually lands on disk."""
+    return text.replace("<publisher>", publisher).replace("owner: platform-engineering", f"owner: {owner}")
 
 
-def _copy_skill_dir(dry: bool, root: Path, publisher: str, owner: str):
-    import shutil
-    dest = root / ".agents" / "skills" / "guidefold"
-    if dest.resolve() == TOOL_SKILL_SRC.resolve():
-        print("skipping .agents/skills/guidefold — this is the guidefold tool checkout itself.")
-        return
-    if dest.exists():
-        print(f"{rel(root, dest)} already exists — leaving it untouched.")
-        return
+def _plan_skill_dir(plan, root: Path, publisher: str, owner: str, recorded: dict) -> dict:
+    """Plan .agents/skills/guidefold file by file against the recorded digests, the same way
+    `install` does. The previous all-or-nothing copy skipped the whole directory once it
+    existed, so a copy interrupted partway through was never repaired by a rerun."""
+    files = {}
+    dest_dir = root / ADAPTER_DEST_REL
+    if dest_dir.resolve() == TOOL_SKILL_SRC.resolve():
+        plan.add("kept", ADAPTER_DEST_REL, "this is the guidefold tool checkout itself")
+        return files
     if not TOOL_SKILL_SRC.is_dir():
-        print(f"warning: cannot find {TOOL_SKILL_SRC} — skipping the .agents/skills/guidefold install "
-              f"(run `init` from a full guidefold tool checkout, not a copied CLI)")
-        return
-    if dry:
-        print(f"[dry-run] would copy skills/guidefold/ -> .agents/skills/guidefold/ "
-              f"(stamping publisher={publisher}, owner={owner} into SKILL.md)")
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(TOOL_SKILL_SRC, dest)
-    _stamp_bootstrap_skill(dest, publisher, owner)
-    print("copied skills/guidefold/ -> .agents/skills/guidefold/")
+        plan.add("kept", ADAPTER_DEST_REL,
+                 f"cannot find {TOOL_SKILL_SRC} — run `init` from a full guidefold checkout")
+        return files
+    for rel_path in _package_files(TOOL_SKILL_SRC):
+        src = TOOL_SKILL_SRC / rel_path
+        content = src.read_bytes()
+        if rel_path == "SKILL.md":
+            content = _stamped_skill_md(content.decode("utf-8"), publisher, owner).encode("utf-8")
+        target = f"{ADAPTER_DEST_REL}/{rel_path}"
+        executable = bool(src.stat().st_mode & 0o111)
+        files[target] = _plan_file(plan, root, target, content, recorded.get(target), executable)
+    return files
+
+
+# Every shipped hook template invokes the CLI at its installed path. That string, and not JSON
+# equality, is what identifies an entry as ours: an entry whose command points at our script was
+# written by some version of guidefold, so a rerun replaces it. Dedupe by equality cannot do that
+# — when the template changes between versions the old entry is no longer equal to the new one,
+# so both end up in the file and the hook fires twice.
+HOOK_ENTRY_MARKER = ".agents/skills/guidefold/scripts/guidefold"
+
+
+def _is_guidefold_hook_entry(entry) -> bool:
+    try:
+        return HOOK_ENTRY_MARKER in json.dumps(entry)
+    except (TypeError, ValueError):
+        return False
 
 
 def _merge_hook_config(existing: dict, template: dict):
-    """Additively merge `template` into `existing`: top-level scalar keys are added only if
-    absent; the "hooks" dict is merged per event, appending template entries the existing list
-    doesn't already have (by JSON equality). Re-merging the same template is a no-op — this is
-    what makes `init` idempotent for hook files. Returns (merged, changed)."""
+    """Reconcile `template` into `existing`: top-level scalar keys are added only if absent; per
+    event, entries that belong to guidefold are replaced by the template's, and every entry the
+    consumer owns is kept in its original order. Re-merging the same template is a no-op, which
+    is what makes `init` idempotent; re-merging a *changed* template replaces the stale entry
+    instead of adding a second one. Returns (merged, changed)."""
     merged = json.loads(json.dumps(existing)) if existing else {}
     changed = False
     for k, v in template.items():
@@ -5706,99 +5715,144 @@ def _merge_hook_config(existing: dict, template: dict):
             merged.setdefault("hooks", {})
             for event, entries in (v or {}).items():
                 bucket = merged["hooks"].setdefault(event, [])
-                for entry in entries:
-                    if entry not in bucket:
-                        bucket.append(entry)
-                        changed = True
+                before = json.dumps(bucket)
+                at = next((i for i, e in enumerate(bucket) if _is_guidefold_hook_entry(e)), len(bucket))
+                kept = [e for e in bucket if not _is_guidefold_hook_entry(e)]
+                bucket[:] = kept[:at] + list(entries) + kept[at:]
+                if json.dumps(bucket) != before:
+                    changed = True
         elif k not in merged:
             merged[k] = v
             changed = True
     return merged, changed
 
 
-def _install_hook(dry: bool, root: Path, harness: str):
+def _plan_hook(plan, root: Path, harness: str, hooks: dict, blockers: list):
     tmpl_name, dest_rel = HARNESS_HOOK_FILES[harness]
     tmpl_path = TOOL_SKILL_SRC / "hooks" / tmpl_name
     if not tmpl_path.is_file():
-        print(f"warning: hook template missing: {tmpl_path} — skipping {harness}")
+        plan.add("kept", dest_rel, f"no {tmpl_name} template shipped — skipped")
         return
-    template = json.loads(tmpl_path.read_text())
+    template = json.loads(tmpl_path.read_text(encoding="utf-8"))
     dest = root / dest_rel
     existing = {}
     if dest.is_file():
         try:
-            existing = json.loads(dest.read_text())
-        except json.JSONDecodeError:
-            print(f"warning: {dest_rel} is not valid JSON — leaving it untouched, not merging the {harness} hook")
+            existing = json.loads(dest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            # A half-written file from an interrupted run reads as invalid JSON. Merging into it
+            # is impossible and overwriting it would discard whatever the consumer had, so this
+            # is the one state `init` cannot reconcile: say so and fail, rather than warn and
+            # exit 0 while the install stays broken across every CI retry.
+            blockers.append(f"{dest_rel} is not valid JSON ({e}); "
+                            f"restore it from git or delete it, then re-run `guidefold init`")
+            plan.add("kept", dest_rel, "unparseable JSON — cannot reconcile")
             return
     merged, changed = _merge_hook_config(existing, template)
+    hooks[dest_rel] = tmpl_name
     if not changed:
-        print(f"{dest_rel} already has the {harness} guidefold hook — nothing to do.")
+        plan.add("unchanged", dest_rel, f"{harness} hook")
         return
-    if dry:
-        verb = "update" if dest.is_file() else "create"
-        print(f"[dry-run] would {verb} {dest_rel} (merge {harness} hook)")
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    existed = dest.is_file()
-    dest.write_text(json.dumps(merged, indent=2) + "\n")
-    print(("updated " if existed else "created ") + dest_rel)
+    plan.add("update" if dest.is_file() else "create", dest_rel, f"{harness} hook")
+    plan.writes.append((dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"), False))
 
 
-def _install_github_action(dry: bool, root: Path):
+def _plan_github_action(plan, root: Path):
     src = TOOL_TEMPLATES_DIR / "github-workflows-skills.yml"
-    dest = root / ".github" / "workflows" / "skills.yml"
-    if dest.is_file():
-        print(f"{rel(root, dest)} already exists — leaving it untouched.")
+    dest_rel = ".github/workflows/skills.yml"
+    if (root / dest_rel).is_file():
+        plan.add("kept", dest_rel, "already exists — never rewritten")
         return
     if not src.is_file():
-        print(f"warning: cannot find {src} — skipping the CI workflow install "
-              f"(run `init` from a full guidefold tool checkout, not a copied CLI)")
+        plan.add("kept", dest_rel,
+                 "no workflow template here — run `init` from a full guidefold checkout")
         return
-    if dry:
-        print("[dry-run] would create .github/workflows/skills.yml")
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(src.read_text())
-    print("created .github/workflows/skills.yml")
+    plan.add("create", dest_rel)
+    plan.writes.append((root / dest_rel, src.read_bytes(), False))
 
 
-def _ensure_gitignore(dry: bool, root: Path):
+def _plan_gitignore(plan, root: Path):
     dest = root / ".gitignore"
     marker = ".guidefold/"
-    existing = dest.read_text() if dest.is_file() else ""
+    existing = dest.read_text(encoding="utf-8") if dest.is_file() else ""
     if any(line.strip() == marker for line in existing.splitlines()):
-        print(".gitignore already ignores .guidefold/ — nothing to do.")
-        return
-    if dry:
-        verb = "append to" if dest.is_file() else "create"
-        print(f"[dry-run] would {verb} .gitignore (add {marker})")
+        plan.add("unchanged", ".gitignore", f"already ignores {marker}")
         return
     addition = ("" if not existing or existing.endswith("\n") else "\n")
     addition += "\n# generated guidefold artifacts (ADR-0012): cards, index, cache\n" + marker + "\n"
-    with dest.open("a") as f:
-        f.write(addition)
-    print(("appended to " if existing else "created ") + ".gitignore")
+    plan.add("update" if existing else "create", ".gitignore", f"add {marker}")
+    plan.writes.append((dest, (existing + addition).encode("utf-8"), False))
 
 
 def cmd_init(a):
+    """Bootstrap a consumer monorepo, reconciling whatever a previous run left behind.
+
+    `init` lands several files and merges harness hook config, so a run that fails partway
+    leaves a partial install. Every rerun therefore plans against the recorded digests in
+    .agents/skills/guidefold/INSTALL-MANIFEST.json: a file we wrote and is now missing or stale
+    is restored, a file the consumer edited is kept, a hook entry pointing at our CLI is
+    replaced rather than duplicated, and a state that cannot be reconciled exits non-zero."""
     root = _target_root()
     dry = a.dry_run
     publisher = _infer_publisher(root, a.publisher)
     owner = _infer_owner_from_codeowners(root)
     harnesses = ("claude", "copilot", "codex") if a.harness == "all" else (a.harness,)
     print(f"guidefold init — target repo: {root}")
-    _write_guidefold_yaml(dry, root, publisher, owner)
-    _copy_skill_dir(dry, root, publisher, owner)
+
+    manifest = _read_install_manifest(root)
+    recorded = manifest.get("files") if isinstance(manifest.get("files"), dict) else {}
+    hooks = manifest.get("hooks") if isinstance(manifest.get("hooks"), dict) else {}
+    plan = _InstallPlan()
+    blockers = []
+
+    _plan_guidefold_yaml(plan, root, publisher, owner)
+    files = _plan_skill_dir(plan, root, publisher, owner, recorded)
     for h in harnesses:
-        _install_hook(dry, root, h)
-    _install_github_action(dry, root)
-    _ensure_gitignore(dry, root)
-    print()
+        _plan_hook(plan, root, h, hooks, blockers)
+    _plan_github_action(plan, root)
+    _plan_gitignore(plan, root)
+
+    new_manifest = {
+        "format": INSTALL_MANIFEST_FORMAT,
+        "cli_version": CLI_VERSION,
+        "harnesses": sorted(set(manifest.get("harnesses") or []) | set(harnesses)),
+        "files": files or recorded,
+        "hooks": hooks,
+    }
+    manifest_bytes = _canonical_json(new_manifest) + b"\n"
+    manifest_path = _install_manifest_path(root)
+    manifest_rel = f"{ADAPTER_DEST_REL}/{INSTALL_MANIFEST_NAME}"
+    manifest_changed = not manifest_path.is_file() or manifest_path.read_bytes() != manifest_bytes
+    if files:
+        if manifest_changed:
+            plan.add("update" if manifest_path.is_file() else "create", manifest_rel)
+        else:
+            plan.add("unchanged", manifest_rel)
+
+    plan.render("  ")
+    if blockers:
+        print()
+        for b in blockers:
+            print(f"  error: {b}")
+        print("  nothing was written.")
+        sys.exit(1)
+
     if dry:
-        print("[dry-run] nothing was written.")
-    else:
-        print("Next: run `guidefold doctor` to verify the setup.")
+        print()
+        print("  [dry-run] nothing was written.")
+        return
+    if not plan.changed and not manifest_changed:
+        print()
+        print("  nothing to do — this repo is already bootstrapped and current.")
+        print("  Next: run `guidefold doctor` to verify the setup.")
+        return
+
+    for dest, content, executable in plan.writes:
+        _atomic_write_bytes(dest, content, executable)
+    if files:
+        _atomic_write_bytes(manifest_path, manifest_bytes, False)
+    print()
+    print("  Next: run `guidefold doctor` to verify the setup.")
 
 
 # ---------------------------------------------------------------------- doctor
@@ -6333,6 +6387,39 @@ def _canonical_json(value) -> bytes:
 def _sha256_bytes(data: bytes) -> str:
     import hashlib
     return hashlib.sha256(data).hexdigest()
+
+
+def _atomic_write_bytes(path: Path, content, executable: bool = False):
+    """Write `content` so the destination is either the old file or the whole new one, never a
+    truncated middle. `init` and `install` land several files in a row; a failure partway through
+    used to leave unparseable JSON that the next run reported as a warning and skipped, so a
+    retried CI setup kept a broken install. Temp file in the same directory, fsync, os.replace."""
+    if isinstance(content, str):
+        content = content.encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.parent / (path.name + ".guidefold-tmp")
+    try:
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+        finally:
+            # os.open created the temp at 0o600; restore the destination's own mode when it
+            # already exists, so replacing a file never quietly narrows who can read it.
+            try:
+                mode = path.stat().st_mode & 0o777 if path.exists() else (0o755 if executable else 0o644)
+                os.chmod(str(tmp), mode | (0o111 if executable else 0))
+            except OSError:
+                pass
+        os.replace(str(tmp), str(path))
+    except BaseException:
+        try:
+            os.unlink(str(tmp))
+        except OSError:
+            pass
+        raise
 
 
 def _sha256_file(path: Path) -> str:
@@ -8231,7 +8318,8 @@ def _remove_marked_block(text: str) -> str:
 
 def _unmerge_hook_config(existing: dict, template: dict):
     """Exact inverse of _merge_hook_config for the entries this template contributed: removes
-    only byte-identical hook entries, leaves every foreign hook and every foreign top-level key.
+    the entries that point at our installed CLI -- including one an older version of the template
+    wrote -- and leaves every foreign hook and every foreign top-level key.
 
     Returns (pruned, changed, only_ours). `only_ours` is True when what is left is nothing but
     the template's own non-hook scalars (e.g. copilot's `"version": 1`), i.e. the file exists
@@ -8245,7 +8333,7 @@ def _unmerge_hook_config(existing: dict, template: dict):
         if not isinstance(hooks, dict) or event not in hooks:
             continue
         bucket = hooks[event]
-        kept = [e for e in bucket if e not in entries]
+        kept = [e for e in bucket if e not in entries and not _is_guidefold_hook_entry(e)]
         if len(kept) != len(bucket):
             changed = True
         if kept:
@@ -8417,18 +8505,10 @@ def cmd_install(a):
         sys.exit(0)
 
     for dest, content, executable in plan.writes:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(content)
-        if executable:
-            try:
-                os.chmod(dest, dest.stat().st_mode | 0o111)
-            except OSError:
-                pass
+        _atomic_write_bytes(dest, content, executable)
     for dest, text in hook_writes:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(text, encoding="utf-8")
-    _install_manifest_path(root).parent.mkdir(parents=True, exist_ok=True)
-    _install_manifest_path(root).write_bytes(manifest_bytes)
+        _atomic_write_bytes(dest, text)
+    _atomic_write_bytes(_install_manifest_path(root), manifest_bytes)
     print(f"  package sha256: {package_sha}")
     # One-shot delivery (ADR-0035 §8): the hook needs the index for this commit, and every
     # harness that reads files instead of running a hook (Gemini, Codex, Copilot's applyTo)
