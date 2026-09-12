@@ -70,6 +70,19 @@ trusted builder (`importer.PythonBuilder`) all exist and are the shape to reuse.
    and opens a PR to `base_ref` with the summary as body. Reviewers are the CODEOWNERS of the
    directories written into; nothing is pushed to the customer's PR branch. Checkpoint is the last
    completed scope level; `result` carries `pr_url`, `written[]`, `levels[]`, `calls`.
+2a. **The commit is built through the git data API, not a clone.** Implemented 2026-09-12, and a
+   deliberate departure from point 2's "clones `head_sha` into `/work`". The adapter resolves the
+   base commit and its tree, creates one blob per written file, creates a tree with `base_tree` set
+   to the base commit's tree so untouched files survive, creates the commit, and creates or
+   fast-forwards `refs/heads/<branch>`. Consequences, all of them improvements over the clone:
+   the worker image needs no `git`, the job needs no working directory, and there is no point at
+   which anything from the customer's repository exists on a filesystem, so it cannot be executed
+   even by accident. The permitted write paths (`AGENTS.md`, anything under `.agents/skills`) are
+   enforced inside the adapter before a request leaves it, rather than trusted to each caller.
+   Point 2's clone and the `git` line in point 5 are superseded by this; the rest of point 2 —
+   installation token in memory only, nothing pushed to the customer's branch, CODEOWNERS as
+   reviewers — stands.
+
 3. **Never executes the customer's code.** The clone is data. The only executable is the CLI file
    baked into the image (already true for `import.parse`). `guidefold ascend` itself runs `git diff`
    and `validate`, both over files, never hooks or scripts from the repository.
