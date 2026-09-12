@@ -22,6 +22,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/identity"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
+	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/secrets"
@@ -71,6 +72,7 @@ func newHarnessWith(t *testing.T, cfg identity.Config) *harness {
 	knowledge.New(pool, blobs, nil, "dev").Register(router)
 	usage.New(pool).Register(router)
 	secrets.New(pool, nil, nil).Register(router)
+	live.New(pool).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		t.Fatal(e)

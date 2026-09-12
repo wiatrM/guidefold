@@ -1610,7 +1610,6 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs:
-    x-status: planned
     get:
       tags: [live]
       summary: Live Agent runs, newest first (ADR-0046).
@@ -1640,14 +1639,13 @@ paths:
           description: Accepted; the run is queued and its targets are being planned.
           content: { application/json: { schema: { $ref: "#/components/schemas/LiveRun" } } }
         "400":
-          description: "`invalid_prompt`, `invalid_model`."
+          description: "`invalid_prompt`, `invalid_provider`, `invalid_model`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "409":
           description: "`live_run_already_active`, `model_credential_missing`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}:
-    x-status: planned
     get:
       tags: [live]
       summary: One run with the per-repository targets it covers.
@@ -1663,7 +1661,6 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}/events:
-    x-status: planned
     get:
       tags: [live]
       summary: The run's append-only event log, from a position cursor.
@@ -1684,7 +1681,6 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/live/runs/{run_id}/cancel:
-    x-status: planned
     post:
       tags: [live]
       summary: Stop a running Live Agent run. Owners only.

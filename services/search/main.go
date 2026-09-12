@@ -23,6 +23,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/identity"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
+	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/schema"
@@ -969,6 +970,10 @@ func mountManagement(app *App, pool *pgxpool.Pool) error {
 			"detail", "GUIDEFOLD_SECRET_KEY_FILE is unset, so organisations cannot store a model key and the Live Agent cannot run")
 	}
 	secrets.New(pool, keyring, secrets.NewHTTPVerifier()).Register(router)
+	// The Live Agent reads only gfm.org_credentials to decide whether a run
+	// can start; it never opens a key, so it needs no keyring of its own
+	// (ADR-0046 §5).
+	live.New(pool).Register(router)
 	reviewer, e := review.New(pool, blobs)
 	if e != nil {
 		return e

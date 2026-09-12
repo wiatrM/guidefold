@@ -27,6 +27,7 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/identity"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/knowledge"
+	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/secrets"
@@ -54,6 +55,10 @@ type Harness struct {
 	// without a master key file and without reaching a provider.
 	Secrets *secrets.Service
 	Keyring *secrets.Keyring
+	// Live is mounted over the same pool as everything else, so a test can
+	// drive live.Append directly to exercise the worker's own path without
+	// standing up a worker.
+	Live *live.Service
 }
 
 // TestVerifier rejects any key containing "-bad" and accepts everything else,
@@ -144,11 +149,13 @@ func New(t *testing.T) *Harness {
 	}
 	credentials := secrets.New(pool, keyring, TestVerifier{})
 	credentials.Register(router)
+	liveAgent := live.New(pool)
+	liveAgent.Register(router)
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	return &Harness{Pool: pool, Router: router, Server: server, Identity: svc,
 		Importer: imports, Blobs: blobs, Events: log, Review: reviewer,
-		Secrets: credentials, Keyring: keyring}
+		Secrets: credentials, Keyring: keyring, Live: liveAgent}
 }
 
 // Root is the repository root, found by walking up to the directory that holds
