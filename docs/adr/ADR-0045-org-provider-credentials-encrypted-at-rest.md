@@ -104,4 +104,8 @@ Do decyzji właściciela: none for this scope.
   this decision land there in the same change as the code.
 - [ADR-0038](ADR-0038-subscription-byok-and-metered-ai.md) §2, §5.
 - [OpenRouter key introspection](https://openrouter.ai/docs/api-reference/limits), used for the
-  validation call in point 5; verify the endpoint before relying on it.
+  validation call in point 5. Verified against the live service on 2026-09-12 from the local dev
+  stack: `GET /api/v1/key` with an invented key answered 401, which the verifier reports as
+  `credential_invalid`, and the console showed "The provider rejected this key. Nothing was
+  saved." A wrong path would have answered 404 and surfaced as `provider_unavailable`, so the
+  401 is evidence the endpoint exists rather than evidence the key was checked properly.

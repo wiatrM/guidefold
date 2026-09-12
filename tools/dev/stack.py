@@ -87,6 +87,7 @@ DEFAULT_REPO_ID = "meridian"
 DEFAULT_SEED_EMAIL = "owner@example.test"
 
 SECRET_NAMES = ("app_password", "api_token", "postgres_password")
+SECRET_KEYRING_NAME = "secret_keyring.json"
 SECRET_DIR_MODE = 0o700
 SECRET_FILE_MODE = 0o600
 MIN_SECRET_LEN = 32  # services/search/contract.go's secret() rejects anything shorter
@@ -196,6 +197,17 @@ def ensure_secret_file(path: Path, value_factory=generate_secret) -> None:
     os.chmod(path, SECRET_FILE_MODE)
 
 
+def generate_keyring() -> str:
+    """One AES-256 master key, in the JSON shape services/search/internal/secrets expects.
+    Without it the credential routes answer `secret_encryption_unavailable` and the Live
+    Agent cannot run at all, so a local stack that wants to exercise either needs one. It is
+    generated per stack and never leaves .guidefold/dev/secrets/."""
+    import base64
+    import json as _json
+    return _json.dumps({"active": "dev-1",
+                        "keys": {"dev-1": base64.b64encode(secrets.token_bytes(32)).decode("ascii")}})
+
+
 def ensure_secrets(secrets_dir: Path) -> dict:
     """Ensures app_password/api_token/postgres_password exist; returns their paths (not
     values). ``postgres_password`` is an unchecked placeholder: tools/dev/pg.py initialises
@@ -206,6 +218,9 @@ def ensure_secrets(secrets_dir: Path) -> dict:
         p = secrets_dir / n
         ensure_secret_file(p)
         result[n] = p
+    keyring = secrets_dir / SECRET_KEYRING_NAME
+    ensure_secret_file(keyring, generate_keyring)
+    result["secret_keyring"] = keyring
     return result
 
 
@@ -252,6 +267,10 @@ def serve_env(*, pg_port: int, api_port: int, secret_paths: dict, contract: Path
         "GUIDEFOLD_TENANT": "local",
         "GUIDEFOLD_REPO": "meridian",
         "GUIDEFOLD_TOKEN_FILE": str(secret_paths["api_token"]),
+        # ADR-0045: without this the credential routes answer secret_encryption_unavailable
+        # and nothing can store an organisation's model key, so a local stack that cannot
+        # exercise the Live Agent would look like a bug rather than a missing key.
+        "GUIDEFOLD_SECRET_KEY_FILE": str(secret_paths["secret_keyring"]),
         "GUIDEFOLD_CONTRACT": str(contract),
         "GUIDEFOLD_POLICY_SOURCE": str(policy_source),
         "GUIDEFOLD_LEXICAL_ENGINE": "router",

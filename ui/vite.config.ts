@@ -2,8 +2,13 @@ import {defineConfig,type Plugin,type HtmlTagDescriptor} from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import {fileURLToPath, URL} from 'node:url';
-/** Dev proxy: the management API and the retrieval contract run on 127.0.0.1:8765. */
-const api={target:'http://127.0.0.1:8765',changeOrigin:false,secure:false};
+/** Dev proxy: the management API and the retrieval contract run on 127.0.0.1:8765.
+ * Both the target and the dev port are overridable, because tools/dev/stack.py already takes
+ * --api-port and this file could not follow it: a second stack on the same machine proxied its
+ * UI to the first stack's API and showed somebody else's data under your own branch. */
+const devApi=process.env.GUIDEFOLD_DEV_API??'http://127.0.0.1:8765';
+const devPort=Number(process.env.GUIDEFOLD_DEV_UI_PORT??4331);
+const api={target:devApi,changeOrigin:false,secure:false};
 
 /**
  * The landing route is `/` and is code-split (main.tsx lazy-imports it), so the browser
@@ -59,4 +64,4 @@ function preloadLandingRoute():Plugin{
  };
 }
 
-export default defineConfig({plugins:[react(),tailwindcss(),preloadLandingRoute()],resolve:{alias:{'@':fileURLToPath(new URL('./src',import.meta.url))}},server:{host:'127.0.0.1',port:4331,strictPort:true,proxy:{'/api':api,'/v1':api}},preview:{host:'127.0.0.1',port:4331,strictPort:true}});
+export default defineConfig({plugins:[react(),tailwindcss(),preloadLandingRoute()],resolve:{alias:{'@':fileURLToPath(new URL('./src',import.meta.url))}},server:{host:'127.0.0.1',port:devPort,strictPort:true,proxy:{'/api':api,'/v1':api}},preview:{host:'127.0.0.1',port:devPort,strictPort:true}});
