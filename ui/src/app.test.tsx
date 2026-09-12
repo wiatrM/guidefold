@@ -227,7 +227,11 @@ describe('shell composition', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Import repository skills' })).toBeInTheDocument();
     // Sign-in is no longer a step of the wizard: the stale address falls through to the first
     // real step this account is at (an organisation from /me, no repository in the URL yet).
-    expect(await screen.findByText('Repositories')).toBeInTheDocument();
+    // The h1 above comes from the shell's own PageHeader and is not gated on the route content;
+    // "Repositories" only exists once the lazy-loaded ApiImportRoute chunk has actually mounted
+    // past its Suspense fallback, which under CPU load can take longer than findBy's default
+    // 1 s window even though the module is already cached from an earlier test in this file.
+    expect(await screen.findByText('Repositories', {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
   });
@@ -301,9 +305,13 @@ describe('shell composition', () => {
     </MemoryRouter>);
     controller.reportDenied('forbidden');
     await userEvent.click(await screen.findByRole('button', { name: 'Sign in again' }));
+    // signInAgain awaits source.logout() before it calls navigate(), so the click event's own
+    // dispatch can settle before that continuation runs; assert once it actually lands on
+    // /login instead of the instant after the click, which under load can still read the
+    // pre-navigation address.
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/login'));
     expect(logout).toHaveBeenCalledTimes(1);
     // No return target: the refused address is the one place this must not come back to.
-    expect(screen.getByTestId('where')).toHaveTextContent('/login');
     expect(screen.getByTestId('where')).not.toHaveTextContent('return=');
     expect(await screen.findByRole('button', { name: /Continue with GitHub/ }, { timeout: 4000 })).toBeInTheDocument();
   });
