@@ -319,7 +319,10 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
 /** API composition: the data source plus the access confirmation loop wired to it. */
 export function createApiRuntime(options: ApiDataSourceOptions = {}): { source: ApiDataSource; access: AccessController } {
   let controller: AccessController | null = null;
-  const source = createApiDataSource({ ...options, onDenied: error => { options.onDenied?.(error); controller?.reportDenied(); } });
+  // A 403 on a resource is not a session problem: the identity stays, only that organisation's or
+  // repository's data is dropped. Reporting it as "no session" used to send the operator to sign
+  // in, which returns to the same forbidden address and denies again (review, critical 1).
+  const source = createApiDataSource({ ...options, onDenied: error => { options.onDenied?.(error); controller?.reportDenied(error.status === 403 ? 'forbidden' : 'unauthenticated'); } });
   controller = new AccessController({
     fetchMe: timeoutMs => source.getMe(timeoutMs),
     onDenied: () => source.revoke('access_denied'),

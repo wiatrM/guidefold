@@ -136,6 +136,18 @@ const apiViews: [string, string, string?][] = [
   ['organization', ''],
   ['organization', '&tab=audit', 'organization, audit tab'],
 ];
+test('axe finds no violation on the login page, at 390 as well as 1280', async ({ page }) => {
+  const state = await stubApi(page);
+  state.signedOut = true;
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Continue with/ }).first().waitFor();
+    expect(await axeViolations(page), 'login/' + width).toEqual([]);
+    expect(await noHorizontalScroll(page), 'login/' + width).toBe(true);
+  }
+});
+
 for (const [view, extra, label] of apiViews) {
   test('axe finds no violation on ' + (label ?? view), async ({ page }) => {
     await stubApi(page);

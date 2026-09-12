@@ -16,6 +16,9 @@ export const DEFAULT_RETURN = '/import';
 export function safeReturn(raw: string | null | undefined): string {
   if (!raw || raw[0] !== '/' || raw[1] === '/' || raw[1] === '\\') return DEFAULT_RETURN;
   if (/[^ -~]|\\/.test(raw)) return DEFAULT_RETURN;
+  // The login page is not somewhere to come back to: a session that just started would be sent
+  // to sign in again, and a crafted `?return=/login?return=...` would nest indefinitely.
+  if (/^\/login(?:[/?#]|$)/i.test(raw)) return DEFAULT_RETURN;
   return raw;
 }
 

@@ -27,6 +27,9 @@ describe('the return target is a path, never a second origin', () => {
     ['/\\evil.example', 'a backslash variant'],
     ['import', 'a relative path'],
     ['/import\nHost: evil', 'an address carrying a control character'],
+    ['/login', 'the login page itself'],
+    ['/LOGIN?return=%2Flogin', 'the login page in any case, nested'],
+    ['/login/anything', 'a path below the login page'],
     [null, 'no target at all'],
   ])('%s falls back to Import (%s)', (raw: string | null) => {
     expect(safeReturn(raw)).toBe(DEFAULT_RETURN);

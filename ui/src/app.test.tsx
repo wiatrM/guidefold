@@ -222,6 +222,60 @@ describe('shell composition', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/import?step=preview');
   });
 
+  test('a 403 on a resource with a live session is a panel, never a redirect back into it', async () => {
+    // The loop this prevents: 403 -> /login -> the provider round trip -> the same address -> 403.
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const client = new ApiClient({ baseUrl: 'https://api.test', delay: async () => {}, fetchImpl: async url =>
+      String(url).endsWith('/api/v1/me')
+        ? fakeResponse(me)
+        : fakeResponse({ error: 'forbidden', message: 'No.', request_id: 'r-1' }, { status: 403 }) });
+    const source = createApiDataSource({ client, onDenied: error => controller.reportDenied(error.status === 403 ? 'forbidden' : 'unauthenticated') });
+    render(<MemoryRouter initialEntries={['/library?org=meridian&repo=monorepo']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByText('Not available to your account', {}, { timeout: 4000 })).toBeInTheDocument();
+    // Still inside the shell, still signed in, and not on the login page.
+    expect(screen.getByTestId('where')).toHaveTextContent('/library?org=meridian&repo=monorepo');
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open your organization' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in again' })).toBeInTheDocument();
+  });
+
+  test('the way out of a forbidden address is the account own organisation, not the login page', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const client = new ApiClient({ baseUrl: 'https://api.test', delay: async () => {}, fetchImpl: async url =>
+      String(url).endsWith('/api/v1/me')
+        ? fakeResponse(me)
+        : fakeResponse({ error: 'forbidden', message: 'No.', request_id: 'r-1' }, { status: 403 }) });
+    const source = createApiDataSource({ client, onDenied: error => controller.reportDenied(error.status === 403 ? 'forbidden' : 'unauthenticated') });
+    render(<MemoryRouter initialEntries={['/library?org=meridian&repo=monorepo']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    await userEvent.click(await screen.findByRole('button', { name: 'Open your organization' }, { timeout: 4000 }));
+    // The refused repository is gone from the address, and the denial is cleared so the heartbeat
+    // may confirm membership again instead of leaving every view masked.
+    expect(screen.getByTestId('where')).toHaveTextContent('/import?org=meridian&step=preview');
+    expect(screen.getByTestId('where')).not.toHaveTextContent('/login');
+  });
+
+  test('opening the login page with a live session never flashes the sign-in form', async () => {
+    let answer: (value: Me) => void = () => {};
+    const controller = new AccessController({ fetchMe: () => new Promise<Me>(resolve => { answer = resolve; }), onDenied: vi.fn() });
+    const getAuthProviders = vi.fn(async () => ({ mode: 'workos' as const, providers: [{ id: 'github' as const, label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }));
+    render(<MemoryRouter initialEntries={['/login?return=' + encodeURIComponent('/usage')]}>
+      <AccessProvider controller={controller}><App source={fakeSource({ getAuthProviders })} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByText('Checking your session')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
+    // Nothing was asked of the API while the session was still unknown.
+    expect(getAuthProviders).not.toHaveBeenCalled();
+    answer(me);
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/usage'));
+    expect(getAuthProviders).not.toHaveBeenCalled();
+  });
+
   test('the component gallery stays reachable while the session is refused', async () => {
     const controller = new AccessController({ fetchMe: async () => { throw new ApiError({ status: 401, code: 'unauthenticated', message: 'no session' }); }, onDenied: vi.fn() });
     await controller.check(true);

@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Buildings, CheckCircle, Copy, FileCode, GithubLogo, Key, LinkSimple, ShieldCheck, Sparkle, Terminal, Users } from '@phosphor-icons/react';
-import { ActionButton, DataTable, Field, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
+import { motion, useReducedMotion } from 'motion/react';
+import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
+import { ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { BeamCard } from '../components/spectrumui/beam-card';
+import { cn } from '@/lib/utils';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, unknown, useAsync, type ApiProps } from './apiState';
 import { proposalKinds } from '../api/decoders';
@@ -9,6 +15,9 @@ import type { AuditEntry, Job, ImportStatus, Installation, Member, Org, Proposal
 import styles from './OnboardingRoutes.module.css';
 
 type ImportStep = 'organization' | 'preview' | 'result';
+/** shadcn Input on the product's control height; the native select is styled to match (tests use selectOptions). */
+const inputClass = 'min-h-(--control-height) rounded-md border-input bg-graphite-950 px-2.5 text-[length:var(--font-size-body)] shadow-(--shadow-control) focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-(--focus-offset) focus-visible:outline-human focus-visible:border-input';
+const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-[length:var(--font-size-body)] shadow-(--shadow-control)';
 
 function CommandBlock({ commands }: { commands: string }) {
   const [status, setStatus] = useState('');
@@ -43,7 +52,7 @@ function CommandBlock({ commands }: { commands: string }) {
   }
   return <div className={styles.stack}>
     <pre className={styles.command}><code ref={codeRef}>{commands}</code></pre>
-    <ActionButton onClick={copyCommands}><Copy weight="regular" aria-hidden="true" />Copy proposed commands</ActionButton>
+    <ActionButton size="sm" onClick={copyCommands}><CopyIcon weight="regular" aria-hidden="true" />Copy proposed commands</ActionButton>
     <p className={styles.feedback} role="status">{status}</p>
   </div>;
 }
@@ -58,23 +67,69 @@ const terminalJobStates = ['done', 'failed', 'skipped', 'cancelled'];
 /* Sign-in is no longer a step of this wizard: every management route is private, so an
    unauthenticated request never reaches it — the shell redirects it to /login (app.tsx).
    A stale `?step=login` bookmark therefore falls through to the first real step below. */
-const apiSteps: { id: ImportStep; label: string; detail: string }[] = [
-  { id: 'organization', label: 'Organization', detail: 'Choose or create one' },
-  { id: 'preview', label: 'Repository', detail: 'Pick what the CLI uploads' },
-  { id: 'result', label: 'Import status', detail: 'Files, jobs and publication' },
+const apiSteps: { id: ImportStep; label: string; detail: string; icon: typeof BuildingsIcon }[] = [
+  { id: 'organization', label: 'Organization', detail: 'Choose or create one', icon: BuildingsIcon },
+  { id: 'preview', label: 'Repository', detail: 'Pick what the CLI uploads', icon: GitBranchIcon },
+  { id: 'result', label: 'Import status', detail: 'Files, jobs and publication', icon: ListChecksIcon },
 ];
+type StepState = 'done' | 'current' | 'next';
+const stepStatusLabel: Record<StepState, string> = { done: 'Done', current: 'Current step', next: 'Next' };
+
+/**
+ * The quickstart: three large step cards, numbered because the flow is a sequence. "Done" is
+ * derived from what the URL already carries (an organization, a repository, an import), not
+ * from anything the server confirmed. The current card is the only one that moves.
+ */
+function ImportSteps({ current, done, href }: { current: number; done: (index: number) => boolean; href: (step: ImportStep) => string }) {
+  const reduce = useReducedMotion();
+  return <ol className={styles.quickstart} aria-label="Import progress">
+    {apiSteps.map((item, index) => {
+      const state: StepState = index === current ? 'current' : done(index) ? 'done' : 'next';
+      const Icon = item.icon;
+      const body = <>
+        <IconTile icon={<Icon weight="duotone" />} size="xl" tone={state === 'current' ? 'system' : 'neutral'} animate={false} />
+        <div className={styles.stepText}>
+          <span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          <strong>{item.label}</strong>
+          <span className={styles.stepDetail}>{item.detail}</span>
+        </div>
+        <span className={styles.stepStatus} data-state={state}>{state === 'done' && <CheckIcon weight="bold" aria-hidden="true" />}{stepStatusLabel[state]}</span>
+      </>;
+      const link = <Link className={styles.stepLink} to={href(item.id)} aria-label={item.label + ': ' + item.detail + ' (' + stepStatusLabel[state].toLowerCase() + ')'}>{body}</Link>;
+      return <motion.li key={item.id} data-state={state} aria-current={state === 'current' ? 'step' : undefined}
+        initial={reduce ? false : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }}
+        transition={{ duration: reduce ? 0 : 0.32, delay: reduce ? 0 : 0.05 * index, ease: [0.16, 1, 0.3, 1] }}>
+        {state === 'current'
+          ? <BeamCard active theme="dark" colorVariant="mono" size="md" className={styles.stepCard} contentClassName="p-0">{link}</BeamCard>
+          : link}
+      </motion.li>;
+    })}
+  </ol>;
+}
+
+/** A named disclosure on shadcn Collapsible. The panel stays mounted so its rows are reachable to search and assistive tech; only its height animates. */
+function Disclosure({ summary, children }: { summary: string; children: ReactNode }) {
+  return <Collapsible className={styles.disclosure}>
+    <CollapsibleTrigger className={styles.disclosureTrigger}><CaretRightIcon weight="bold" aria-hidden="true" />{summary}</CollapsibleTrigger>
+    <CollapsibleContent keepMounted className={styles.disclosurePanel}><div className={styles.disclosureBody}>{children}</div></CollapsibleContent>
+  </Collapsible>;
+}
+
 /** Values the API returns once and never again. Kept in component state, never persisted. */
 function ShownOnce({ title, label, value, note }: { title: string; label: string; value: string; note: string }) {
   const [status, setStatus] = useState('');
-  return <Panel title={title} eyebrow="Shown once" icon={<Key weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Not stored</StateBadge>}>
-    <p>{note}</p>
-    <div className={styles.stack}>
-      <pre className={styles.command}><code aria-label={label}>{value}</code></pre>
-      <ActionButton onClick={async () => {
-        try { await navigator.clipboard.writeText(value); setStatus('Copied. This value is not shown again after you leave this view.'); }
-        catch { setStatus('Clipboard is unavailable. Select the text above and use your browser Copy action.'); }
-      }}><Copy weight="regular" aria-hidden="true" />Copy value</ActionButton>
-      <p className={styles.feedback} role="status">{status}</p>
+  return <Panel title={title} eyebrow="Shown once" icon={<KeyIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Not stored</StateBadge>}>
+    <div className={styles.shownOnce}>
+      <IconTile icon={<KeyIcon weight="duotone" />} size="lg" tone="human" />
+      <div className={styles.shownOnceBody}>
+        <p>{note}</p>
+        <pre className={styles.secret}><code aria-label={label}>{value}</code></pre>
+        <div><ActionButton size="sm" onClick={async () => {
+          try { await navigator.clipboard.writeText(value); setStatus('Copied. This value is not shown again after you leave this view.'); }
+          catch { setStatus('Clipboard is unavailable. Select the text above and use your browser Copy action.'); }
+        }}><CopyIcon weight="regular" aria-hidden="true" />Copy value</ActionButton></div>
+        <p className={styles.feedback} role="status">{status}</p>
+      </div>
     </div>
   </Panel>;
 }
@@ -124,26 +179,25 @@ function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
       { label: 'Omitted', value: String(counts?.omitted ?? group('omitted').length), detail: 'Excluded by scan rules' },
       { label: 'Failed', value: String(counts?.failed ?? group('failed').length), detail: 'Parse errors, listed with a reason' },
     ]} />
-    <Panel title="Import result" eyebrow="Files" icon={<FileCode weight="regular" aria-hidden="true" />} action={<StateBadge tone={status.state === 'failed' ? 'error' : status.state === 'partial' ? 'warning' : 'system'}>{status.state}</StateBadge>}>
+    <Panel title="Import result" eyebrow="Files" icon={<FileCodeIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={status.state === 'failed' ? 'error' : status.state === 'partial' ? 'warning' : 'system'}>{status.state}</StateBadge>}>
       <ProvenanceTrail entries={[
         { label: 'Import', value: <Urn value={status.import_id} /> },
         { label: 'Manifest digest', value: unknown(status.manifest_digest), code: true },
         { label: 'Commit', value: unknown(status.commit), code: true },
         { label: 'Manifest completeness', value: status.complete ? 'Complete scan' : 'Partial scan', detail: 'A partial scan never produces deletions.' },
       ]} />
-      {(['accepted', 'omitted', 'failed'] as const).map(state => <details key={state} className={styles.disclosure}>
-        <summary>{state[0].toUpperCase() + state.slice(1)} files ({group(state).length})</summary>
+      {(['accepted', 'omitted', 'failed'] as const).map(state => <Disclosure key={state} summary={state[0].toUpperCase() + state.slice(1) + ' files (' + group(state).length + ')'}>
         {group(state).length === 0 ? <p className={styles.help}>No files in this group.</p> : <DataTable caption={'Files with status ' + state} headings={['Source path', 'Kind', 'Reason']}>
           {group(state).map(file => <tr key={file.path}><td className={styles.pathCell}><code>{file.path}</code></td><td>{unknown(file.kind)}</td><td>{unknown(file.reason)}</td></tr>)}
         </DataTable>}
-      </details>)}
+      </Disclosure>)}
     </Panel>
-    <Panel title="Jobs" eyebrow="Worker" icon={<Terminal weight="regular" aria-hidden="true" />}>
+    <Panel title="Jobs" eyebrow="Worker" icon={<TerminalIcon weight="regular" aria-hidden="true" />}>
       {status.jobs.length === 0 ? <p className={styles.help}>No jobs are recorded for this import.</p> : <DataTable caption="Jobs for this import" headings={['Job', 'Kind', 'State', 'Attempts', 'Error']}>
         {status.jobs.map(item => <tr key={item.job_id}><th scope="row" className={styles.pathCell}><code>{item.job_id}</code></th><td>{item.kind}</td><td><StateBadge tone={item.state === 'failed' ? 'error' : item.state === 'done' ? 'system' : 'neutral'}>{item.state}</StateBadge></td><td>{item.attempts}</td><td>{unknown(item.error)}</td></tr>)}
       </DataTable>}
     </Panel>
-    <Panel title="Publication" eyebrow="Separate from import" icon={<CheckCircle weight="regular" aria-hidden="true" />} action={<StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>}>
+    <Panel title="Publication" eyebrow="Separate from import" icon={<CheckCircleIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>}>
       <ProvenanceTrail entries={[
         { label: 'Publication state', value: publication?.state ?? 'none', detail: 'Import stores files; publication activates a snapshot.' },
         { label: 'Snapshot', value: unknown(publication?.snapshot_id), code: true },
@@ -238,11 +292,11 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
     finally { setBusy(false); }
   }
 
-  if (!owner) return <Panel title="Generate proposals" eyebrow="Owner" icon={<Sparkle weight="regular" aria-hidden="true" />}>
+  if (!owner) return <Panel title="Generate proposals" eyebrow="Owner" icon={<SparkleIcon weight="regular" aria-hidden="true" />}>
     <OwnerNote role={role} />
   </Panel>;
 
-  return <Panel title="Generate proposals" eyebrow="Optional" icon={<Sparkle weight="regular" aria-hidden="true" />} action={jobIds ? <StateBadge tone="system">Started</StateBadge> : undefined}>
+  return <Panel title="Generate proposals" eyebrow="Optional" icon={<SparkleIcon weight="regular" aria-hidden="true" />} action={jobIds ? <StateBadge tone="system">Started</StateBadge> : undefined}>
     <p>Read the estimate before starting. Generation runs as a background job; nothing in Proposals changes until it finishes.</p>
     {plan.phase === 'loading' && <RouteState state="loading" title="Reading the plan" description="Estimating groups, inputs and cost before any generation starts." />}
     {plan.phase === 'error' && plan.error && <ApiFailure error={plan.error} onRetry={plan.reload} retryLabel="Retry the plan" />}
@@ -255,16 +309,15 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
       {!plan.value.generator.configured && <div className={styles.notice} role="status"><StateBadge tone="warning">No generator configured</StateBadge><p>This API has no LLM generator configured. Generation jobs finish as skipped, not failed; this is expected until an operator configures one.</p></div>}
       {/* `max_groups` cuts scopes out of the plan; the list below is then not every scope. */}
       {skippedGroups(plan.value.groups_skipped) > 0 && <PartialNotice>{'The plan limit of ' + plan.value.limits.max_groups + ' groups left out ' + skippedGroups(plan.value.groups_skipped) + ' scope(s): ' + describeSkipped(plan.value.groups_skipped) + '. The list below is not every scope of this import, and a run now covers only what it shows.'}</PartialNotice>}
-      <details className={styles.disclosure}>
-        <summary>Groups and inputs ({plan.value.groups.length})</summary>
+      <Disclosure summary={'Groups and inputs (' + plan.value.groups.length + ')'}>
         {plan.value.groups.length === 0 ? <p className={styles.help}>No groups are available for the selected kinds.</p> : <DataTable caption="Plan groups" headings={['Group', 'Kind', 'Inputs', 'Estimated tokens']}>
           {plan.value.groups.map(group => <tr key={group.group_id}><th scope="row"><code>{group.group_id}</code></th><td>{group.kind}</td><td className={styles.pathCell}>{formatList(group.inputs)}</td><td>{group.estimated_tokens ?? 'Unknown'}</td></tr>)}
         </DataTable>}
-      </details>
+      </Disclosure>
       <fieldset className={styles.providers} disabled={busy || Boolean(jobIds)}>
         <legend>Proposal kinds</legend>
         {proposalKinds.map(kind => <label key={kind} className={styles.provider}>
-          <input type="checkbox" checked={kinds.includes(kind)} onChange={() => toggleKind(kind)} />
+          <Checkbox checked={kinds.includes(kind)} disabled={busy || Boolean(jobIds)} onCheckedChange={() => toggleKind(kind)} className="size-5 border-line-strong bg-graphite-900 data-checked:border-system data-checked:bg-system data-checked:text-graphite-950" />
           <span>{kind}</span>
         </label>)}
       </fieldset>
@@ -272,13 +325,13 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
       <p className={styles.help}>Fixed by the API: at most {plan.value.limits.max_groups} groups, {plan.value.limits.max_proposals_per_group} proposals per group, {plan.value.limits.max_neighbours} neighbours.</p>
       <div className={styles.twoColumns}>
         <Field id="limit-max-tokens" label="Max tokens" hint={plan.value.limits.max_tokens != null ? 'Plan allows up to ' + plan.value.limits.max_tokens + '.' : 'No ceiling from the plan.'}>
-          <input id="limit-max-tokens" inputMode="numeric" value={limitInputs.max_tokens} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_tokens', event.target.value)} />
+          <Input id="limit-max-tokens" inputMode="numeric" value={limitInputs.max_tokens} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_tokens', event.target.value)} className={inputClass} />
         </Field>
         <Field id="limit-max-calls" label="Max model calls" hint={plan.value.limits.max_calls != null ? 'Plan allows up to ' + plan.value.limits.max_calls + '.' : 'No ceiling from the plan.'}>
-          <input id="limit-max-calls" inputMode="numeric" value={limitInputs.max_calls} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_calls', event.target.value)} />
+          <Input id="limit-max-calls" inputMode="numeric" value={limitInputs.max_calls} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_calls', event.target.value)} className={inputClass} />
         </Field>
         <Field id="limit-max-usd" label="Max spend (USD)" hint={plan.value.limits.max_usd != null ? 'Plan allows up to ' + plan.value.limits.max_usd + '.' : 'No ceiling from the plan.'}>
-          <input id="limit-max-usd" inputMode="decimal" value={limitInputs.max_usd} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_usd', event.target.value)} />
+          <Input id="limit-max-usd" inputMode="decimal" value={limitInputs.max_usd} disabled={busy || Boolean(jobIds)} onChange={event => updateLimit('max_usd', event.target.value)} className={inputClass} />
         </Field>
       </div>
       {limitError && <p className={styles.feedback} role="alert">{limitError}</p>}
@@ -310,6 +363,15 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const requested = ctx.params.get('step');
   const fallbackStep: ImportStep = !org ? 'organization' : !repo ? 'preview' : 'result';
   const step = apiSteps.some(item => item.id === requested) ? requested as ImportStep : fallbackStep;
+  // A signed-in visit to a step this wizard no longer has (`?step=login` from a bookmark) renders
+  // the first real step, so the address is corrected to match it instead of lingering as the name
+  // of a screen that does not exist. Replaced, never pushed: it is not a navigation.
+  useEffect(() => {
+    if (requested === null || apiSteps.some(item => item.id === requested)) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('step', step);
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }, [requested, step]);
   const current = apiSteps.findIndex(item => item.id === step);
   const orgs = useAsync(() => source.listOrgs(), 'orgs:' + (me?.user.id ?? ''), signedIn && step === 'organization');
   const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'result'));
@@ -360,18 +422,14 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     finally { setBusy(false); }
   }
 
+  const stepDone = (index: number) => index === 0 ? Boolean(org) : index === 1 ? Boolean(org && repo) : Boolean(org && repo && importId);
   return <div className={styles.route}>
-    <ol className={styles.steps} aria-label="Import progress">
-      {apiSteps.map((item, index) => <li key={item.id} className={index === current ? styles.currentStep : undefined} aria-current={index === current ? 'step' : undefined}>
-        <span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-        <div><strong>{item.label}</strong><span>{item.detail}</span></div>
-      </li>)}
-    </ol>
+    <ImportSteps current={current} done={stepDone} href={target => ctx.href('import', { step: target })} />
     {signedIn && <OwnerNote role={role} />}
     {formError && <p className={styles.feedback} role="alert">{formError}</p>}
 
     {step === 'organization' && <div className={styles.asideColumns}>
-      <Panel title="Your organizations" eyebrow="Organization" icon={<Buildings weight="regular" aria-hidden="true" />}>
+      <Panel title="Your organizations" eyebrow="Organization" icon={<BuildingsIcon weight="regular" aria-hidden="true" />}>
         {orgs.phase === 'loading' && <RouteState state="loading" title="Reading organizations" description="Waiting for the membership list." />}
         {orgs.phase === 'error' && orgs.error && <ApiFailure error={orgs.error} onRetry={orgs.reload} retryLabel="Retry the organization list" />}
         {orgs.phase === 'ready' && (orgs.value?.length
@@ -380,31 +438,31 @@ export function ApiImportRoute({ ctx }: ApiProps) {
           </DataTable>
           : <RouteState state="empty" title="No organization yet" description="Create one to hold a repository, its skills and its members." />)}
       </Panel>
-      <Panel title="Create an organization" eyebrow="Owner" icon={<Buildings weight="regular" aria-hidden="true" />}>
+      <Panel title="Create an organization" eyebrow="Owner" icon={<BuildingsIcon weight="regular" aria-hidden="true" />}>
         <form className={styles.form} onSubmit={createOrg}>
-          <Field id="new-org-name" label="Organization name" hint="Shown in the header and in member invitations."><input id="new-org-name" name="name" value={orgName} onChange={event => setOrgName(event.target.value)} maxLength={80} /></Field>
-          <Field id="new-org-slug" label="Slug" hint="2 to 40 characters: a-z, 0-9 and hyphen."><input id="new-org-slug" name="slug" value={orgSlug} onChange={event => { setOrgSlug(event.target.value); setFormError(''); }} required maxLength={40} /></Field>
-          <ActionButton type="submit" tone="human" disabled={busy}>Create organization<ArrowRight weight="regular" aria-hidden="true" /></ActionButton>
+          <Field id="new-org-name" label="Organization name" hint="Shown in the header and in member invitations."><Input id="new-org-name" name="name" value={orgName} onChange={event => setOrgName(event.target.value)} maxLength={80} className={inputClass} /></Field>
+          <Field id="new-org-slug" label="Slug" hint="2 to 40 characters: a-z, 0-9 and hyphen."><Input id="new-org-slug" name="slug" value={orgSlug} onChange={event => { setOrgSlug(event.target.value); setFormError(''); }} required maxLength={40} className={inputClass} /></Field>
+          <ActionButton type="submit" tone="human" disabled={busy}>Create organization<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton>
         </form>
       </Panel>
     </div>}
 
     {step === 'preview' && <div className={styles.asideColumns}>
-      <Panel title="Repositories" eyebrow="Repository" icon={<FileCode weight="regular" aria-hidden="true" />}>
+      <Panel title="Repositories" eyebrow="Repository" icon={<GitBranchIcon weight="regular" aria-hidden="true" />}>
         {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
         {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
         {repos.phase === 'ready' && (repos.value?.length
           ? <DataTable caption="Repositories in this organization" headings={['Repository', 'Git host', 'Action']}>
             {repos.value.map(entry => <tr key={entry.repo_id}><th scope="row"><code>{entry.repo_id}</code></th><td className={styles.pathCell}>{unknown(entry.git_host_url)}</td><td><Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link></td></tr>)}
           </DataTable>
-          : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={<ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogo weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>} />)}
-        {owner && <div className={styles.notice} role="note">
+          : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={<ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>} />)}
+        {owner && <div className={cn(styles.notice, styles.noticeSystem)} role="note">
           <StateBadge tone="system">Automatic import</StateBadge>
           <p>Repository registration is handled by GitHub. Select a repository and revision after connecting; no repository id or local CLI upload is required.</p>
-          <ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogo weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
+          <ActionButton size="sm" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
         </div>}
       </Panel>
-      <Panel title="Upload from your checkout" eyebrow="CLI" icon={<Terminal weight="regular" aria-hidden="true" />}>
+      <Panel title="Upload from your checkout" eyebrow="CLI" icon={<TerminalIcon weight="regular" aria-hidden="true" />}>
         <p>The browser never reads your repository. The CLI builds the manifest and uploads it for <strong>{org ?? 'your organization'}</strong>.</p>
         <CommandBlock commands={commands} />
       </Panel>
@@ -416,7 +474,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
         {imports.phase === 'loading' && <RouteState state="loading" title="Reading imports" description="Waiting for the import list of this repository." />}
         {imports.phase === 'error' && imports.error && <ApiFailure error={imports.error} onRetry={imports.reload} retryLabel="Retry the import list" />}
         {imports.phase === 'ready' && (imports.value?.length
-          ? <Panel title="Imports" eyebrow="Newest first" icon={<FileCode weight="regular" aria-hidden="true" />}>
+          ? <Panel title="Imports" eyebrow="Newest first" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
             <DataTable caption="Imports for this repository" headings={['Import', 'State', 'Commit', 'Action']}>
               {imports.value.map(entry => <tr key={entry.import_id}><th scope="row"><code>{entry.import_id}</code></th><td><StateBadge tone={entry.state === 'failed' ? 'error' : entry.state === 'partial' ? 'warning' : 'neutral'}>{entry.state}</StateBadge></td><td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td><td><Link to={ctx.href('import', { step: 'result', import_id: entry.import_id })}>Read this import</Link></td></tr>)}
             </DataTable>
@@ -556,13 +614,13 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     ]} />
     <OwnerNote role={role} />
 
-    {tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+    {tab === 'audit' ? <Panel title="Audit log" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
       {owner && <>
         {audit.phase === 'loading' && <RouteState state="loading" title="Reading audit entries" description="Waiting for the audit log of this organization." />}
         {audit.phase === 'error' && audit.error && <ApiFailure error={audit.error} onRetry={audit.reload} retryLabel="Retry the audit log" />}
         {audit.phase === 'ready' && (audit.value?.items.length
           ? <>
-            <DataTable caption="Audit entries for this organization" headings={['At', 'Actor', 'Action', 'Entity', 'Revision', 'Request']}>
+            <DataTable dense caption="Audit entries for this organization" headings={['At', 'Actor', 'Action', 'Entity', 'Revision', 'Request']}>
               {audit.value.items.map((entry: AuditEntry, index: number) => <tr key={entry.request_id ?? index}>
                 <td>{unknown(entry.at)}</td>
                 <td>{unknown(entry.actor)}</td>
@@ -577,39 +635,42 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
           : <RouteState state="empty" title="No audit entries yet" description="No action has been recorded for this organization yet." />)}
       </>}
     </Panel> : tab === 'members' ? <div className={styles.asideColumns}>
-      <Panel title="Members" eyebrow="Organization access" icon={<Users weight="regular" aria-hidden="true" />}>
+      <Panel title="Members" eyebrow="Organization access" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
         {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the membership list." />}
         {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
         {members.phase === 'ready' && members.value && <DataTable caption="Members of this organization" headings={['Member', 'Role', 'Joined', 'Action']}>
           {members.value.map(entry => <tr key={entry.user_id}>
             <th scope="row" className={styles.pathCell}>{entry.email}<span className={styles.linkHint}>{unknown(entry.name)}</span></th>
             <td>{owner
-              ? <select aria-label={'Role of ' + entry.email} value={entry.role} onChange={event => { void changeRole(entry, event.target.value === 'owner' ? 'owner' : 'member'); }}><option value="owner">owner</option><option value="member">member</option></select>
+              ? <select aria-label={'Role of ' + entry.email} className={selectClass} value={entry.role} onChange={event => { void changeRole(entry, event.target.value === 'owner' ? 'owner' : 'member'); }}><option value="owner">owner</option><option value="member">member</option></select>
               : <StateBadge tone={entry.role === 'owner' ? 'human' : 'neutral'}>{entry.role}</StateBadge>}</td>
             <td>{unknown(entry.joined_at)}</td>
-            <td><ActionButton disabled={!owner} onClick={() => { void remove(entry); }}>Remove</ActionButton>
+            <td><ActionButton size="sm" disabled={!owner} onClick={() => { void remove(entry); }}>Remove</ActionButton>
               {rowError?.userId === entry.user_id && <span className={styles.feedback} role="alert">{rowError.message}</span>}</td>
           </tr>)}
         </DataTable>}
         <p className={styles.feedback} role="status">{memberStatus}</p>
         {me?.link_suggestions.map(suggestion => <div key={suggestion.provider} className={styles.notice} role="status">
-          <LinkSimple weight="regular" aria-hidden="true" />
+          <LinkSimpleIcon weight="regular" aria-hidden="true" />
           <span>Another sign-in method uses this e-mail.</span>
-          <ActionButton onClick={() => { void startLink(suggestion.provider); }}>Link {suggestion.provider}</ActionButton>
+          <ActionButton size="sm" onClick={() => { void startLink(suggestion.provider); }}>Link {suggestion.provider}</ActionButton>
         </div>)}
         {linkStatus && <p className={styles.feedback} role="alert">{linkStatus}</p>}
       </Panel>
-      <Panel title="Invite a member" eyebrow="Owner" icon={<ShieldCheck weight="regular" aria-hidden="true" />}>
+      <Panel title="Invite a member" eyebrow="Owner" icon={<ShieldCheckIcon weight="regular" aria-hidden="true" />}>
         <form className={styles.memberForm} onSubmit={invite}>
-          <Field id="invite-email" label="E-mail address" hint="The invitation link is returned once and is not stored here." error={inviteError || undefined}><input id="invite-email" name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setInviteError(''); }} required maxLength={200} disabled={!owner} aria-invalid={Boolean(inviteError)} /></Field>
-          <Field id="invite-role" label="Role"><select id="invite-role" value={inviteRole} onChange={event => setInviteRole(event.target.value === 'owner' ? 'owner' : 'member')} disabled={!owner}><option value="member">member</option><option value="owner">owner</option></select></Field>
+          <Field id="invite-email" label="E-mail address" hint="The invitation link is returned once and is not stored here." error={inviteError || undefined}><Input id="invite-email" name="email" type="email" value={email} onChange={event => { setEmail(event.target.value); setInviteError(''); }} required maxLength={200} disabled={!owner} aria-invalid={Boolean(inviteError)} className={inputClass} /></Field>
+          <Field id="invite-role" label="Role"><select id="invite-role" className={selectClass} value={inviteRole} onChange={event => setInviteRole(event.target.value === 'owner' ? 'owner' : 'member')} disabled={!owner}><option value="member">member</option><option value="owner">owner</option></select></Field>
           <ActionButton type="submit" tone="human" disabled={!owner || busy}>Create invitation</ActionButton>
         </form>
         {acceptUrl && <ShownOnce title="Invitation link" label="Invitation accept URL" value={acceptUrl} note="Send this link to the invited person. It is not shown again and is not stored in this browser." />}
       </Panel>
     </div> : <>
-      {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<Key weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Pending</StateBadge>}>
-        <p>A CLI on another machine asked for code <code>{deviceCode}</code>. Approve it only if you started that sign-in.</p>
+      {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<KeyIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Pending</StateBadge>}>
+        <div className={styles.shownOnce}>
+          <IconTile icon={<KeyIcon weight="duotone" />} size="lg" tone="human" />
+          <p>A CLI on another machine asked for code <code>{deviceCode}</code>. Approve it only if you started that sign-in.</p>
+        </div>
         <div className={styles.actions}>
           <ActionButton tone="human" disabled={!owner} onClick={() => { void decideDevice(true); }}>Approve this device</ActionButton>
           <ActionButton disabled={!owner} onClick={() => { void decideDevice(false); }}>Deny</ActionButton>
@@ -617,7 +678,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         <p className={styles.feedback} role="status">{deviceStatus}</p>
       </Panel>}
       <div className={styles.asideColumns}>
-        <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimple weight="regular" aria-hidden="true" />}>
+        <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimpleIcon weight="regular" aria-hidden="true" />}>
           {installations.phase === 'loading' && <RouteState state="loading" title="Reading installations" description="Waiting for the installation list." />}
           {installations.phase === 'error' && installations.error && <ApiFailure error={installations.error} onRetry={installations.reload} retryLabel="Retry the installation list" />}
           {installations.phase === 'ready' && (installations.value?.length
@@ -628,16 +689,16 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
                 <td>{unknown(entry.last_seen_at)}</td>
                 <td>{unknown(entry.adapter_version)}</td>
                 <td>{formatList(entry.capabilities)}</td>
-                <td><ActionButton disabled={!owner} onClick={() => { void revoke(entry.installation_id); }}>Revoke</ActionButton></td>
+                <td><ActionButton size="sm" disabled={!owner} onClick={() => { void revoke(entry.installation_id); }}>Revoke</ActionButton></td>
               </tr>)}
             </DataTable>
             : <RouteState state="empty" title="No installation yet" description="Create one to let an adapter read this organization. Absent health values stay Unknown." />)}
           <p className={styles.feedback} role="status">{integrationStatus}</p>
         </Panel>
-        <Panel title="Create an installation" eyebrow="Owner" icon={<Key weight="regular" aria-hidden="true" />}>
+        <Panel title="Create an installation" eyebrow="Owner" icon={<KeyIcon weight="regular" aria-hidden="true" />}>
           <form className={styles.form} onSubmit={createInstallation}>
-            <Field id="installation-name" label="Installation name" hint="Names the machine or harness this token belongs to."><input id="installation-name" name="name" value={installationName} onChange={event => setInstallationName(event.target.value)} required maxLength={80} disabled={!owner} /></Field>
-            <Field id="installation-harness" label="Harness"><select id="installation-harness" value={harness} onChange={event => setHarness(event.target.value)} disabled={!owner}><option value="claude">Claude Code</option><option value="copilot">Copilot CLI</option></select></Field>
+            <Field id="installation-name" label="Installation name" hint="Names the machine or harness this token belongs to."><Input id="installation-name" name="name" value={installationName} onChange={event => setInstallationName(event.target.value)} required maxLength={80} disabled={!owner} className={inputClass} /></Field>
+            <Field id="installation-harness" label="Harness"><select id="installation-harness" className={selectClass} value={harness} onChange={event => setHarness(event.target.value)} disabled={!owner}><option value="claude">Claude Code</option><option value="copilot">Copilot CLI</option></select></Field>
             <ActionButton type="submit" tone="human" disabled={!owner || busy}>Create installation</ActionButton>
           </form>
           {secret && <ShownOnce title="Installation token" label="Installation token value" value={secret} note="Store this token in your credentials file. It is shown once and is not kept in this browser." />}

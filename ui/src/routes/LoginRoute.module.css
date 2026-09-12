@@ -2,12 +2,16 @@
  * Flat graphite field, 1 px keylines, no hero device; the form sits at the form measure
  * (--form-width) so the provider list stays readable at 1440 and fills 390. */
 .page { display: grid; align-content: center; justify-items: center; min-height: var(--viewport); width: var(--full); padding: var(--page-padding); background: var(--graphite-950); }
-.column { display: grid; gap: var(--space-3); width: var(--full); max-width: var(--form-width); min-width: var(--zero); }
-.title { margin: var(--space-2) var(--zero) var(--zero); font-size: var(--font-size-title); letter-spacing: var(--tracking-title); }
-.lede { margin: var(--zero) var(--zero) var(--space-2); color: var(--stone-300); max-width: var(--reading-width); }
-.help { margin: var(--zero) var(--zero) var(--space-3); color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
+.column { display: grid; gap: var(--space-4); width: var(--full); max-width: var(--form-width); min-width: var(--zero); }
+.intro { display: grid; grid-template-columns: var(--page-header-columns); align-items: start; gap: var(--space-4); min-width: var(--zero); }
+.title { margin: var(--space-1) var(--zero) var(--zero); font-size: var(--font-size-title); letter-spacing: var(--tracking-title); }
+.lede { margin: var(--space-2) var(--zero) var(--zero); color: var(--stone-300); max-width: var(--reading-width); }
+.cardTitle { margin: var(--zero); font-family: var(--font-display); font-size: var(--font-size-section); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-title); line-height: var(--line-height-heading); }
+.help { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); line-height: var(--line-height-body); }
 .providers { display: grid; gap: var(--space-2); min-width: var(--zero); }
-/* 44 px at every width, not only below 720: this page is the first thing a phone user touches. */
-.provider { min-height: var(--touch-height); width: var(--full); }
-.error { display: flex; gap: var(--space-2); align-items: flex-start; margin: var(--space-3) var(--zero) var(--zero); padding: var(--space-3); border: var(--border-width) solid var(--signal-red); color: var(--stone-100); background: var(--graphite-900); font-size: var(--font-size-small); overflow-wrap: anywhere; }
+/* Two classes, not one: ActionButton's own `.button { min-height: var(--control-height) }` is a
+ * single class too, so a one-class rule here would win only by which module the bundler emits
+ * last. `.providers .provider` outranks it at every width and in every build order.
+ * 44 px at every width, not only below 720: this page is the first thing a phone user touches. */
+.providers .provider { min-height: var(--touch-height); width: var(--full); }
 .note { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }

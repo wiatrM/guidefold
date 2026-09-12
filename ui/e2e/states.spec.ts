@@ -95,7 +95,7 @@ test('seven views: degraded, membership past its confirmation window with /me fa
   }
 });
 
-test('a 403 from the repository revokes the session view-wide and reveals nothing', async ({ page }) => {
+test('a 403 from the repository masks every view, with the session and the way back intact', async ({ page }) => {
   await stubApi(page);
   await page.route('**/api/v1/orgs/meridian/repos/monorepo/**', route => route.fulfill({
     status: 403, contentType: 'application/json', headers: { 'Cache-Control': 'no-store' },
@@ -104,15 +104,22 @@ test('a 403 from the repository revokes the session view-wide and reveals nothin
   for (const [view, extra] of [['library', ''], ['skill', skillView], ['usage', '']]) {
     const at = '/' + view + query(extra);
     await page.goto(at);
-    // A denial observed by any request is reported to the access controller, and every management
-    // route is private: the request leaves the shell for the login page carrying where it was
-    // going. The route's own restricted state is never reached, and neither is the shell's.
-    await page.waitForURL('**/login?return=' + encodeURIComponent(at));
+    await settle(page, 'restricted');
     const main = page.locator('main');
-    await expect(main.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0);
+    // A denial observed by any request is reported to the access controller, which masks every
+    // view; the route's own restricted state is never reached. The session is untouched, so this
+    // is NOT the login page: sending the operator to sign in would only return them to the same
+    // forbidden address and deny again.
+    await expect(main.getByText('Not available to your account').first()).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(view));
+    await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toHaveCount(0);
+    await expect(main.getByRole('button', { name: 'Open your organization' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Sign in again' })).toBeVisible();
     expect(await main.innerText(), view).not.toMatch(content);
     await expect(main.locator('input, textarea, select')).toHaveCount(0);
     await clean(page, view + '/403');
   }
+  // And the way back actually leaves: the refused repository is dropped from the address.
+  await page.getByRole('button', { name: 'Open your organization' }).click();
+  await page.waitForURL(/\/import\?org=meridian&step=preview/);
 });
