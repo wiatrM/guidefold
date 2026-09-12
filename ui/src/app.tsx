@@ -1,15 +1,19 @@
-import {Component,useEffect,lazy,Suspense,useState,type ReactNode} from 'react';
+import {Component,useEffect,useLayoutEffect,lazy,Suspense,type ReactNode} from 'react';
 import {Link,Navigate,useLocation,useNavigate} from 'react-router-dom';
-import {Menu} from '@base-ui/react/menu';
-import {Dialog} from '@base-ui/react/dialog';
-import {Avatar} from '@base-ui/react/avatar';
-import {AnimatePresence,motion,useReducedMotion} from 'motion/react';
-import clsx from 'clsx';
-import {ArrowSquareIn,Books,TreeStructure,FileText,GitPullRequest,ChartBar,Buildings,SidebarSimple,List,X,SignOut,CaretRight} from '@phosphor-icons/react';
-import {BrandMark,ActionButton,RouteState} from './Shared';
+import {motion,useReducedMotion} from 'motion/react';
+import {ArrowSquareInIcon,BooksIcon,SquaresFourIcon,TreeStructureIcon,FileTextIcon,GitPullRequestIcon,ChartBarIcon,BuildingsIcon,CaretRightIcon} from '@phosphor-icons/react';
+import {ActionButton,BrandMark,RouteState,IconTile} from './Shared';
+import {SidebarProvider} from '@/components/ui/sidebar';
+import {AppSidebar} from './components/ui/shadcn-space/blocks/dashboard-shell-01/app-sidebar';
+import {SiteHeader} from './components/ui/shadcn-space/blocks/dashboard-shell-01/site-header';
+import {UserDropdown} from './components/ui/shadcn-space/blocks/dashboard-shell-01/user-dropdown';
+import type {NavGroup} from './components/ui/shadcn-space/blocks/dashboard-shell-01/nav-main';
+import {Breadcrumb,BreadcrumbList,BreadcrumbItem,BreadcrumbPage,BreadcrumbSeparator} from '@/components/ui/breadcrumb';
 import {useAccess,useAccessController} from './api/access';
+import {loginHref,safeReturn} from './routes/loginTarget';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
+const ApiHomeRoute=lazy(()=>import('./routes/HomeRoute').then(m=>({default:m.ApiHomeRoute})));
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
 const ApiInvitationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiInvitationRoute})));
 const ApiOrganizationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiOrganizationRoute})));
@@ -19,30 +23,31 @@ const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
 const ApiProposalsRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiProposalsRoute})));
 const ApiUsageRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiUsageRoute})));
+const LoginRoute=lazy(()=>import('./routes/LoginRoute').then(m=>({default:m.LoginRoute})));
 const ToastHost=lazy(()=>import('./ToastHost'));
 import css from './App.module.css';
-import {TreeNav} from './components/spectrumui/tree-nav';
 
 const ComponentGallery=lazy(()=>import('./Gallery').then(m=>({default:m.ComponentGallery})));
-const viewInfo:Record<View,{label:string;title:string;description:string;icon:typeof Books}>={
- import:{label:'Import',title:'Import repository skills',description:'Inspect source files before adding them to your library.',icon:ArrowSquareIn},
- library:{label:'Library',title:'Skill library',description:'Find an instruction and check its source, scope and revision.',icon:Books},
- map:{label:'Map',title:'Repository knowledge map',description:'Trace source paths, ownership scopes and declared skill relationships.',icon:TreeStructure},
- skill:{label:'Skill',title:'Skill revision',description:'Read the instruction and the evidence that defines its scope.',icon:FileText},
- proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequest},
- usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBar},
- organization:{label:'Organization',title:'Organization',description:'Inspect membership and the connection between a repository and its harness.',icon:Buildings}
+const viewInfo:Record<View,{label:string;title:string;description:string;icon:typeof BooksIcon}>={
+ home:{label:'Overview',title:'Overview',description:'What waits for you, how the library is doing and what the last window of telemetry says.',icon:SquaresFourIcon},
+ import:{label:'Import',title:'Import repository skills',description:'Inspect source files before adding them to your library.',icon:ArrowSquareInIcon},
+ library:{label:'Library',title:'Skill library',description:'Find an instruction and check its source, scope and revision.',icon:BooksIcon},
+ map:{label:'Map',title:'Repository knowledge map',description:'Trace source paths, ownership scopes and declared skill relationships.',icon:TreeStructureIcon},
+ skill:{label:'Skill',title:'Skill revision',description:'Read the instruction and the evidence that defines its scope.',icon:FileTextIcon},
+ proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequestIcon},
+ usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBarIcon},
+ organization:{label:'Organization',title:'Organization',description:'Inspect membership and the connection between a repository and its harness.',icon:BuildingsIcon}
 };
 const views=Object.keys(viewInfo) as View[];
 const navGroups:{label:string;items:View[]}[]=[
- {label:'Workspace',items:['import']},
+ {label:'Workspace',items:['home','import']},
  {label:'Knowledge',items:['library','map']},
  {label:'Review',items:['proposals','usage']},
  {label:'Manage',items:['organization']}
 ];
 const groupFor=(view:View)=>navGroups.find(group=>group.items.includes(view))?.label??'Knowledge';
 /** Every U4 view reads the hosted API (F11–F18). */
-const apiRoute:Record<View,(props:{ctx:ApiRouteContext})=>ReactNode>={import:ApiImportRoute,library:ApiLibraryRoute,map:ApiMapRoute,skill:ApiSkillRoute,proposals:ApiProposalsRoute,usage:ApiUsageRoute,organization:ApiOrganizationRoute};
+const apiRoute:Record<View,(props:{ctx:ApiRouteContext})=>ReactNode>={home:ApiHomeRoute,import:ApiImportRoute,library:ApiLibraryRoute,map:ApiMapRoute,skill:ApiSkillRoute,proposals:ApiProposalsRoute,usage:ApiUsageRoute,organization:ApiOrganizationRoute};
 /** Route-local failure UI. Unsent drafts live in RAM, so a reload drops them; the copy says so. */
 class RouteErrorBoundary extends Component<{children:ReactNode},{failed:boolean}> {
  state={failed:false};
@@ -53,48 +58,54 @@ class RouteErrorBoundary extends Component<{children:ReactNode},{failed:boolean}
    : this.props.children;
  }
 }
-function NavLabel({children,collapsed}:{children:string;collapsed:boolean}){
+/** One orchestrated entrance per route: the tile settles first, then title and lede follow (frontend-design: a single reveal, never per-card fades). */
+function PageHeader({view,group,actions}:{view:View;group:string;actions?:ReactNode}){
  const reduce=useReducedMotion();
- return <AnimatePresence initial={false}>{!collapsed&&<motion.span className={css.navLabel} initial={{opacity:0,transform:reduce?'none':'translateX(-4px)'}} animate={{opacity:1,transform:'translateX(0)'}} exit={{opacity:0,transform:reduce?'none':'translateX(-4px)'}} transition={{duration:0.16,ease:[0.23,1,0.32,1]}}>{children}</motion.span>}</AnimatePresence>;
+ const Icon=viewInfo[view].icon;
+ const rise=(delay:number)=>({initial:reduce?false:{opacity:0,transform:'translateY(6px)'},animate:{opacity:1,transform:'translateY(0)'},transition:{duration:reduce?0:0.28,delay:reduce?0:delay,ease:[0.16,1,0.3,1] as const}});
+ return <header key={view} className={css.pageHeading} data-slot="page-header">
+  <IconTile icon={<Icon weight="duotone"/>} size="lg" className={css.pageTile}/>
+  <div className={css.pageText}>
+   <Breadcrumb className={css.breadcrumb}><BreadcrumbList className="m-0 list-none gap-1 p-0 text-[length:var(--font-size-small)] text-stone-300"><BreadcrumbItem>{group}</BreadcrumbItem><BreadcrumbSeparator><CaretRightIcon aria-hidden="true"/></BreadcrumbSeparator><BreadcrumbItem><BreadcrumbPage className="font-medium text-stone-100">{viewInfo[view].label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+   <motion.h1 data-slot="animated-text" {...rise(0.04)}>{viewInfo[view].title}</motion.h1>
+   <motion.p {...rise(0.1)}>{viewInfo[view].description}</motion.p>
+  </div>
+  {actions&&<div className={css.pageActions}>{actions}</div>}
+ </header>;
 }
-function AnimatedTitle({children}:{children:string}){
+/** Shared chrome; every value that differs by view is supplied by the caller. `.console`
+ * carries the shadcn dark-neutral theme tokens (tokens.css); the landing route never gets
+ * this class, so it keeps the orange-branded `:root` values (docs/reports/ui/console-shadcn-20260912.md §9). */
+function Shell({view,href,railContext,workspace,repo,masked,account,pageFoot,children}:{view:View;href:(target:View,changes?:Params)=>string;railContext:ReactNode;workspace:string;repo:string|null;masked:boolean;account:ReactNode;pageFoot:string;children:ReactNode}){
  const reduce=useReducedMotion();
- return <motion.h1 data-slot="animated-text" initial={{opacity:0,transform:reduce?'none':'translateY(4px)'}} animate={{opacity:1,transform:'translateY(0)'}} transition={{duration:reduce?0.08:0.18,ease:[0.23,1,0.32,1]}}>{children}</motion.h1>;
-}
-function UserAvatar({initials}:{initials:string}){
- return <Avatar.Root className={css.avatar} data-slot="avatar"><Avatar.Fallback>{initials}</Avatar.Fallback></Avatar.Root>;
-}
-function RouterAnchor({href,...props}:React.AnchorHTMLAttributes<HTMLAnchorElement>&{href:string}){return <Link to={href} {...props}/>;}
-function NavLinks({view,href,collapsed=false,onNavigate}:{view:View;href:(target:View,changes?:Params)=>string;collapsed?:boolean;onNavigate?:()=>void}){
- return <nav className={css.navigation} aria-label="Main navigation">{navGroups.map(group=>{
-  const items=group.items.map(v=>{const Icon=viewInfo[v].icon;return {label:viewInfo[v].label,href:href(v,{tab:null,step:null,from:null,return_tab:null}),icon:<Icon weight="regular" aria-hidden="true"/>};});
-  return <div className={css.navGroup} key={group.label}>{!collapsed&&<p className={css.navGroupLabel}>{group.label}</p>}<TreeNav items={items} compact={collapsed} activeHref={group.items.includes(view)?href(view,{tab:null,step:null,from:null,return_tab:null}):undefined} linkComponent={RouterAnchor} onSelect={()=>onNavigate?.()}/></div>;
- })}</nav>;
-}
-function AccountMenu({name,email,role,profileHref,onLogout}:{name:string;email:string;role:string;profileHref:string;onLogout:()=>Promise<void>}){
- const [signingOut,setSigningOut]=useState(false);
- const [logoutError,setLogoutError]=useState('');
- const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()).join('')||email.slice(0,1).toUpperCase();
- const signOut=async()=>{if(signingOut)return;setSigningOut(true);setLogoutError('');try{await onLogout();}catch{setLogoutError('Sign out failed. Try again.');void import('sonner').then(({toast})=>toast.error('Sign out failed'));setSigningOut(false);}};
- return <Menu.Root><Menu.Trigger className={css.accountTrigger} aria-label="Open profile menu"><UserAvatar initials={initials}/><span className={css.accountText}><strong>{name}</strong><small>{role}</small></span><CaretRight className={css.accountCaret} aria-hidden="true"/></Menu.Trigger><Menu.Portal><Menu.Positioner className={css.menuPositioner} sideOffset={8}><Menu.Popup className={css.accountMenu}><div className={css.accountSummary}><UserAvatar initials={initials}/><span><strong>{name}</strong><small>{email}</small></span></div><Menu.Separator className={css.menuSeparator}/><Menu.Item className={css.menuItem} render={<Link to={profileHref}/>}>Profile and organization</Menu.Item><Menu.Item className={clsx(css.menuItem,css.signOutItem)} disabled={signingOut} onClick={()=>{void signOut();}}><SignOut aria-hidden="true"/>{signingOut?'Signing out':'Sign out'}</Menu.Item>{logoutError&&<p className={css.menuError} role="status">{logoutError}</p>}</Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root>;
-}
-/** Shared chrome; every value that differs by view is supplied by the caller. */
-function Shell({view,href,railContext,topbar,account,pageFoot,children}:{view:View;href:(target:View,changes?:Params)=>string;railContext:ReactNode;topbar:ReactNode;account:ReactNode;pageFoot:string;children:ReactNode}){
- const [collapsed,setCollapsed]=useState(false);
- const [mobileOpen,setMobileOpen]=useState(false);
- return <div className={css.shell} data-collapsed={collapsed}><a className={css.skip} href="#main">Skip to content</a><aside className={css.rail}><div className={css.brandRow}><Link to={href('library')} className={css.brandLink} aria-label="Guidefold library"><BrandMark/></Link><button className={css.collapseButton} type="button" aria-label={collapsed?'Expand sidebar':'Collapse sidebar'} aria-expanded={!collapsed} onClick={()=>setCollapsed(value=>!value)}><SidebarSimple aria-hidden="true"/></button></div><div className={css.railContext}>{railContext}</div><div className={css.desktopNavigation}><NavLinks view={view} href={href} collapsed={collapsed}/></div><div className={css.accountSlot}>{account}</div></aside><header className={css.mobileHeader}><Link to={href('library')} className={css.mobileBrand} aria-label="Guidefold library"><BrandMark/></Link><Dialog.Root open={mobileOpen} onOpenChange={setMobileOpen}><Dialog.Trigger className={css.mobileMenuButton}><List aria-hidden="true"/>Menu</Dialog.Trigger><Dialog.Portal><Dialog.Backdrop className={css.sheetBackdrop}/><Dialog.Popup className={css.sheet}><div className={css.sheetHeader}><Dialog.Title>Navigate Guidefold</Dialog.Title><Dialog.Close className={css.sheetClose} aria-label="Close navigation"><X aria-hidden="true"/></Dialog.Close></div><div className={css.sheetContext}>{railContext}</div><NavLinks view={view} href={href} onNavigate={()=>setMobileOpen(false)}/><div className={css.sheetAccount}>{account}</div></Dialog.Popup></Dialog.Portal></Dialog.Root></header><div className={css.workspace}><header className={css.topbar}>{topbar}</header><main id="main" className={css.main} tabIndex={-1}><header key={view} className={css.pageHeading}><div><div className={css.breadcrumb}><span>{groupFor(view)}</span><CaretRight aria-hidden="true"/><strong>{viewInfo[view].label}</strong></div><AnimatedTitle>{viewInfo[view].title}</AnimatedTitle><p>{viewInfo[view].description}</p></div></header>
- {children}
- <footer className={css.pageFoot}>{pageFoot}</footer></main></div></div>;
+ const groups:NavGroup[]=navGroups.map(group=>({label:group.label,items:group.items.map(v=>({label:viewInfo[v].label,href:href(v,{tab:null,step:null,from:null,return_tab:null}),icon:viewInfo[v].icon,active:v===view}))}));
+ // Base UI portals (menu, sheet, tooltip popups) mount at document.body, outside this
+ // subtree, so the `.console` class on the wrapper alone would not reach them; body also
+ // gets it while the shell is mounted so a popup keeps the dark-neutral pairing instead of
+ // falling back to the landing's orange `:root` tokens (docs/reports/ui/console-shadcn-20260912.md §9).
+ // useLayoutEffect, not useEffect: it must land before the browser's first paint, or a popup
+ // opened in the same tick as mount (e2e clicked through fast) can briefly portal into an
+ // unthemed body and fail axe color-contrast on the mismatched pairing.
+ useLayoutEffect(()=>{document.body.classList.add('console');return()=>{document.body.classList.remove('console');};},[]);
+ return <SidebarProvider className={css.shell+' console'}>
+  <a className={css.skip} href="#main">Skip to content</a>
+  <AppSidebar brand={<Link to={href('library')} className={css.brandLink} aria-label="Guidefold library"><BrandMark/></Link>} groups={groups} railContext={railContext} account={account}/>
+  <div className={css.workspace}>
+   <header className={css.topbar}><SiteHeader workspace={workspace} repo={repo} masked={masked}/></header>
+   <main id="main" className={css.main} tabIndex={-1}><PageHeader view={view} group={groupFor(view)}/>
+    <motion.div key={view} className={css.pageBody} initial={reduce?false:{opacity:0,transform:'translateY(8px)'}} animate={{opacity:1,transform:'translateY(0)'}} transition={{duration:reduce?0:0.32,delay:reduce?0:0.14,ease:[0.16,1,0.3,1]}}>{children}</motion.div>
+    <footer className={css.pageFoot}>{pageFoot}</footer></main>
+  </div>
+ </SidebarProvider>;
 }
 
 /** Hosted composition. Organisation and repository come from /me and the URL. */
 function ApiApp({source}:{source:DataSource}){
  const location=useLocation(),navigate=useNavigate();
- if(location.pathname.replace(/^\//,'').replace(/\/$/,'')==='demo')return <Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>;
  const access=useAccess(),controller=useAccessController();
  const params=new URLSearchParams(location.search);
  const name=location.pathname.replace(/^\//,'').replace(/\/$/,'');
- const view=views.includes(name as View)?name as View:'import';
+ const view=views.includes(name as View)?name as View:'home';
  const requestedOrg=params.get('org'),repo=params.get('repo');
  const me=access.me;
  const invitationToken=location.pathname.match(/^\/invitations\/([^/]+)\/accept\/?$/)?.[1] ?? null;
@@ -109,28 +120,58 @@ function ApiApp({source}:{source:DataSource}){
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
- if(!views.includes(name as View) && !invitationToken)return <Navigate to="/import" replace/>;
+ // An invitation link must render for a visitor who has no session yet, so it is checked before
+ // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
  if(invitationToken)return <Shell view="import" href={href}
-  railContext="Invitation" topbar={<span>Guidefold</span>}
-  account={me?<AccountMenu name={me.user.name||me.user.email} email={me.user.email} role="Member" profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/import?step=login',{replace:true});}}/>:<Link className={css.signInLink} to={href('import',{step:'login'})}>Sign in</Link>}
+  railContext="Invitation"
+  workspace="Invitation" repo={null} masked={false}
+  account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role="Member" profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/import?step=login',{replace:true});}}/>:<Link className={css.signInLink} to={href('import',{step:'login'})}>Sign in</Link>}
   pageFoot="Invitation links are one-time capabilities. Membership changes are confirmed by the API.">
   <RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading invitation" description="Preparing the invitation screen."/>}><ApiInvitationRoute
    source={source} access={access} me={me} token={decodeURIComponent(invitationToken)} onRecheck={() => controller?.check(true) ?? Promise.resolve()}
    onAccepted={orgID => navigate('/import?step=organization&org=' + encodeURIComponent(orgID))}/></Suspense></RouteErrorBoundary>
  </Shell>;
+ // A session that does not exist is not a view state: every management route is private, so the
+ // request leaves the shell for the full-width login page carrying where it was going (IA 3,
+ // "Login jest stanem wejscia"). Import used to keep its own inline sign-in step; it does not.
+ // A 403 on a resource is the opposite case and must NOT redirect: the session is live, so the
+ // login page would send the operator straight back to the forbidden address and round again.
+ // `denied` (an actual 401/403 on /me) is the only settled "no session" result access.ts ever
+ // reports; access.ts's own contract keeps the session on a bare network failure ("A network
+ // failure without a denial keeps the session but never reveals unconfirmed data"), and `offline`
+ // is exactly that ambiguous case — a lapsed reconfirmation and a request that never had a
+ // session look identical to this controller (fresh mount, `me` null either way) until /me
+ // actually answers. So only `denied` may leave the shell for /login; `offline` falls through to
+ // the masked "Access not reconfirmed" state below like any other unconfirmed status, on every
+ // view including Import (IA §6; e2e/states.spec.ts "degraded" exercises exactly this).
+ if(access.status==='denied'&&access.denial!=='forbidden')return <Navigate to={loginHref(location.pathname+location.search)} replace/>;
+ if(!views.includes(name as View))return <Navigate to="/home" replace/>;
  const masked=foreign||access.status!=='confirmed';
  const ctx:ApiRouteContext={source,access,me,org,repo,role:membership?.role??null,params,view,href,go:(target,changes)=>navigate(href(target,changes)),recheckAccess:controller?(()=>controller.check(true)):undefined};
  const Content=apiRoute[view];
+ // Where a forbidden address sends the operator back to: their own first organisation, with the
+ // refused organisation and repository dropped from the address so the next read is a different
+ // one. `reset()` clears the denial so the heartbeat may confirm membership again.
+ const ownHref='/import'+(me?.orgs[0]?'?org='+encodeURIComponent(me.orgs[0].slug)+'&step=preview':'?step=organization');
+ // Signing in again really does start again: the session is ended, the held identity and the
+ // denial go with it, and the login page is opened with no return target, because the address
+ // that was refused is the one place this must not send the operator back to.
+ const signInAgain=async()=>{
+  try{if(me)await source.logout('logout:'+me.user.id);}catch{/* The local session is dropped either way. */}
+  controller?.forget();
+  navigate('/login',{replace:true});
+ };
  return <Shell view={view} href={href}
-  railContext={<><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></>}
-  topbar={<><span>{masked?'Workspace unavailable':membership?.name??'No organization'}</span>{!masked&&repo&&<code>{repo}</code>}</>}
-  account={me?<AccountMenu name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/import?step=login',{replace:true});}}/>:<Link className={css.signInLink} to={href('import',{step:'login'})}>Sign in</Link>}
+  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></div>}
+  workspace={masked?'Workspace unavailable':membership?.name??'No organization'} repo={repo} masked={masked}
+  account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">
- {foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton>}/>
- // Import stays reachable after a denial: it is where signing in again happens.
- :access.status==='denied'?(view==='import'?<RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading view" description="Preparing the requested view."/>}><ApiImportRoute ctx={ctx}/></Suspense></RouteErrorBoundary>:<RouteState state="restricted" title="Access unavailable" description="The session was refused or revoked. Cached data, drafts and in-flight requests were dropped. Sign in again to continue." action={<ActionButton href={href('import',{step:'login'})}>Sign in again</ActionButton>}/>)
+ {access.status==='denied'?<RouteState state="restricted" title="Not available to your account" description="This organization or repository refused the request while you are signed in. Nothing about its content is shown, and cached data and drafts for it were dropped. Your account itself is unchanged." action={<><ActionButton onClick={()=>{controller?.reset();navigate(ownHref,{replace:true});}}>{me?.orgs.length?'Open your organization':'Choose an organization'}</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
+ :foreign?<RouteState state="restricted" title="Organization unavailable" description="Your account is not a member of the organization named in this address. An organization in the URL is not authorization." action={<><ActionButton href={href('import',{org:null,repo:null,step:'organization'})}>Choose an organization</ActionButton><ActionButton tone="system" onClick={()=>{void signInAgain();}}>Sign in again</ActionButton></>}/>
  :access.status==='checking'?<RouteState state="loading" title="Confirming access" description="Checking membership before anything is shown."/>
- :access.status==='offline'&&!access.me&&view==='import'?<RouteErrorBoundary key={location.pathname}><Suspense fallback={<RouteState state="loading" title="Loading view" description="Preparing the requested view."/>}><ApiImportRoute ctx={ctx}/></Suspense></RouteErrorBoundary>
+ // `offline` lands here too, whether it is a lapsed reconfirmation or a first check that failed
+ // before ever confirming anything: the manual re-check offered here is the only way forward
+ // either way, never a redirect (see the `denied` branch above).
  :access.status!=='confirmed'?<RouteState state="restricted" title="Access not reconfirmed" description="Membership was last confirmed more than 45 seconds ago, so organization data stays hidden. This is not a statement about your permissions." action={<ActionButton onClick={()=>{void controller?.check(true);}}>Check access now</ActionButton>}/>
  // Keyed by organisation and repository: a switch remounts the view, so no row, tree branch or
  // filter prepared for the previous organisation survives into the next one.
@@ -138,9 +179,31 @@ function ApiApp({source}:{source:DataSource}){
  </Shell>;
 }
 
+/** `/login`. Outside the shell and outside `View`: login is an entry state, not a destination
+ * in the rail (IA 3). A caller who already has a confirmed session is sent on to the target it
+ * carries, which is what the browser Back button produces after a successful sign-in. */
+function LoginEntry({source}:{source:DataSource}){
+ const location=useLocation();
+ const access=useAccess();
+ const target=safeReturn(new URLSearchParams(location.search).get('return'));
+ if(access.status==='confirmed')return <Navigate to={target} replace/>;
+ // A sign-in form is only honest once the session is known to be absent. While the first /me is
+ // in flight, or whenever an identity is already held, this is the neutral loading shell: opening
+ // /login from a bookmark or the Back button with a live session used to flash the providers and
+ // fire their request before the redirect (review, important 2).
+ if(access.status==='checking'||access.me)return <main id="main" tabIndex={-1}><RouteState state="loading" title="Checking your session" description="Reading the current session before anything is offered."/></main>;
+ return <Suspense fallback={<main id="main" tabIndex={-1}><RouteState state="loading" title="Loading sign-in" description="Preparing the sign-in page."/></main>}><LoginRoute source={source} returnTo={target}/></Suspense>;
+}
+
 export default function App({source}:{source:DataSource}){
  const location=useLocation();
  const toaster=<Suspense fallback={null}><ToastHost/></Suspense>;
- if(location.pathname.replace(/^\//,'').replace(/\/$/,'')==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
+ const path=location.pathname.replace(/^\//,'').replace(/\/$/,'');
+ if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
+ if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
+ // Its own top-level branch, not a check inside ApiApp: ApiApp calls useAccess/useAccessController
+ // and other hooks unconditionally, and an early return above those would change the Hook order
+ // between /demo and every other address for what React treats as the same component instance.
+ if(path==='demo')return <><Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }

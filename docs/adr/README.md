@@ -47,6 +47,10 @@ index was built from; the two must not drift.
 | [0036](ADR-0036-github-app-ascent-without-customer-ci.md) | Knowledge ascent for a customer who installed the GitHub App, without editing their CI (webhook → `ascend.run` job → PR) | Proposed | 2026-09-08 | amends ADR-0035, ADR-0034; contract 1.2.0 precedes code |
 | [0037](ADR-0037-nearest-wins-for-same-name-skills.md) | Nearest wins: when the same skill name is visible at two depths, the policy filter keeps the copy closest to the requesting node | Accepted | 2026-09-08 | amends ADR-0022; local CLI only, service pending |
 | [0038](ADR-0038-subscription-byok-and-metered-ai.md) | Subscription with BYOK and a 10% gross margin on managed AI usage | Accepted | 2026-09-08 | governs PRODUCT-PIVOT §12a; no technical ADR superseded |
+| [0039](ADR-0039-proof-gated-source-grounded-delivery.md) | Proof-gated, source-grounded skill delivery with provenance and `ASK` | Proposed | 2026-09-09 | proposes amendments to ADR-0022/0025 |
+| [0040](ADR-0040-edgewise-source-grounded-ascent.md) | Edgewise, source-grounded ascent for abstract skill maps | Proposed | 2026-09-09 | proposes amendment to ADR-0035; uses ADR-0039 proof state |
+| [0041](ADR-0041-training-signal-storage-and-dataset-boundaries.md) | Training-signal storage and dataset boundaries | Accepted | 2026-09-09 | amends ADR-0033 for telemetry dataset projection |
+| [0042](ADR-0042-multi-repo-organisation-and-ci-configurator.md) | Multi-repository organisations, a CI configurator, and per-organisation generator settings | Proposed | 2026-09-12 | relies on ADR-0036, ADR-0035, ADR-0038 |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

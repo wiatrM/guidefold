@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { ACCESS_REFRESH_MS, ACCESS_TIMEOUT_MS, ACCESS_TTL_MS, AccessController, revealsData } from './access';
-import { ApiError } from './client';
+import { ApiError, StaleResponseError } from './client';
 import type { Me } from './decoders';
 
 const identity: Me = {
@@ -56,6 +56,16 @@ describe('access confirmation', () => {
     expect(controller.getSnapshot().status).toBe('confirmed');
   });
 
+  test('a /me answer voided by a context change is asked again at once, never reported as offline', async () => {
+    let calls = 0;
+    const { controller } = setup(async () => { calls += 1; if (calls === 1) throw new StaleResponseError('superseded by a context change'); return identity; });
+    await controller.check(true);
+    // The first attempt returned stale; the re-check it scheduled runs on the next microtask.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toBe(2);
+    expect(controller.getSnapshot().status).toBe('confirmed');
+  });
+
   test('a network failure keeps the session but stops revealing data once it is stale', async () => {
     let fail = false;
     const { controller, advance, onDenied } = setup(async () => { if (fail) throw new ApiError({ status: 0, code: 'timeout', message: 'no answer' }); return identity; });
@@ -87,13 +97,53 @@ describe('access confirmation', () => {
     expect(controller.getSnapshot()).toMatchObject({ status: 'denied', me: null, checkedAt: null });
   });
 
-  test('403 observed elsewhere denies once, not once per report', async () => {
+  test('a denial observed elsewhere denies once, not once per report', async () => {
     const { controller, onDenied } = setup(async () => identity);
     await controller.check(true);
     controller.reportDenied();
     controller.reportDenied();
     expect(onDenied).toHaveBeenCalledTimes(1);
     expect(controller.getSnapshot().status).toBe('denied');
+  });
+
+  test('401 elsewhere drops the identity; 403 masks the data but keeps the session', async () => {
+    const unauthenticated = setup(async () => identity);
+    await unauthenticated.controller.check(true);
+    unauthenticated.controller.reportDenied('unauthenticated');
+    expect(unauthenticated.controller.getSnapshot()).toMatchObject({ status: 'denied', me: null, denial: 'unauthenticated' });
+
+    // A 403 on one organisation or repository says nothing about who the caller is. Dropping the
+    // identity here is what made the shell send a signed-in operator to the login page, which
+    // returns to the same forbidden address: a loop with no exit (review, critical 1).
+    const forbidden = setup(async () => identity);
+    await forbidden.controller.check(true);
+    forbidden.controller.reportDenied('forbidden');
+    const state = forbidden.controller.getSnapshot();
+    expect(state.status).toBe('denied');
+    expect(state.denial).toBe('forbidden');
+    expect(state.me).toBe(identity);
+    // The organisation's cached data and drafts are still dropped.
+    expect(forbidden.onDenied).toHaveBeenCalledTimes(1);
+  });
+
+  test('forget drops the identity with the denial, so the login page is not left waiting', async () => {
+    const { controller } = setup(async () => identity);
+    await controller.check(true);
+    controller.reportDenied('forbidden');
+    expect(controller.getSnapshot().me).toBe(identity);
+    controller.forget();
+    expect(controller.getSnapshot().me).toBeNull();
+    expect(controller.getSnapshot().denial).toBeNull();
+    expect(controller.getSnapshot().status).not.toBe('denied');
+  });
+
+  test('reset clears the denial and its kind so the heartbeat may confirm again', async () => {
+    const { controller } = setup(async () => identity);
+    await controller.check(true);
+    controller.reportDenied('forbidden');
+    controller.reset();
+    expect(controller.getSnapshot().denial).toBeNull();
+    expect(controller.getSnapshot().status).not.toBe('denied');
   });
 
   test('subscribers are notified when the derived status changes', async () => {

@@ -1,7 +1,13 @@
-import {useEffect, useState, type FormEvent} from 'react';
+import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowDown, ArrowSquareOut, Check, DownloadSimple, FileText, Funnel, GitBranch, ListChecks, ListNumbers, PencilSimple, Pulse, UsersThree, X} from '@phosphor-icons/react';
-import {ActionButton, DataTable, Field, MetricRow, Panel, ProvenanceTrail, RouteState, SkillContent, SkillDiff, StateBadge, Urn} from '../Shared';
+import {ArrowDownIcon, CaretDownIcon, CheckIcon, DownloadSimpleIcon, FileTextIcon, FunnelIcon, GitBranchIcon, GitPullRequestIcon, ListChecksIcon, ListNumbersIcon, PencilSimpleIcon, PulseIcon, UsersThreeIcon, XIcon} from '@phosphor-icons/react';
+import {ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, SkillContent, SkillDiff, StateBadge} from '../Shared';
+import {Input} from '@/components/ui/input';
+import {Textarea} from '@/components/ui/textarea';
+import {Button} from '@/components/ui/button';
+import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
+import {cn} from '@/lib/utils';
 import {SpectrumTelemetryChart, SpectrumTelemetryStackedBar} from '../components/MetricRow/SpectrumTelemetryChart';
 import {assessSkills, countRecommendations, queueReasonLabels, sortKeys, type Gate, type GateState, type Recommendation, type SkillHealth, type SortKey} from '../domain/skillHealth';
 import {isStale} from '../api/client';
@@ -13,6 +19,24 @@ import {
 import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
 import type {Params, View} from '../domain';
 import styles from './ReviewRoutes.module.css';
+
+/** Native selects stay (keyboard-simplest, tests use selectOptions); the classes match shadcn Input. */
+const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-stone-100 shadow-(--shadow-control) focus-visible:border-ring';
+const inputClass = 'min-h-(--control-height) rounded-md bg-graphite-950 text-[length:var(--font-size-body)] shadow-(--shadow-control) dark:bg-graphite-950';
+const textareaClass = 'rounded-md bg-graphite-950 text-[length:var(--font-size-body)] leading-(--line-height-body) shadow-(--shadow-control) dark:bg-graphite-950';
+
+/** A disclosure for data that is long but not secret: shadcn Collapsible with a ghost trigger and a caret that turns. */
+function Disclosure({label, children, contentClassName}: {label: string; children: ReactNode; contentClassName?: string}) {
+  // keepMounted: the panel stays in the DOM while closed so its box (max-height, scroll) is auditable.
+  return <Collapsible className={styles.disclosure}>
+    <CollapsibleTrigger render={<Button variant="ghost" type="button" />} className="group/disclosure min-h-(--control-height) w-full justify-start gap-2 px-2 text-[length:var(--font-size-body)] font-medium text-stone-100">
+      <CaretDownIcon aria-hidden="true" className="transition-transform duration-200 group-data-panel-open/disclosure:rotate-180 motion-reduce:transition-none" />{label}
+    </CollapsibleTrigger>
+    <CollapsibleContent keepMounted className={cn('h-(--collapsible-panel-height) transition-[height] duration-200 ease-out data-starting-style:h-0 data-ending-style:h-0 motion-reduce:transition-none', contentClassName ?? 'overflow-hidden')}>
+      {children}
+    </CollapsibleContent>
+  </Collapsible>;
+}
 
 // ---------------------------------------------------------------------------
 // Usage · Skill health: gates, recommendation, ranking and a per-skill funnel.
@@ -42,7 +66,7 @@ function SkillHealthPanel({skills, queue, sort, eyebrow, href, go, skillHref}: H
   const rows = assessSkills(skills, queue, key);
   const counts = countRecommendations(rows);
   const unknownValue = rows.filter(row => row.value.state === 'unknown').length;
-  return <Panel title="Skill health" eyebrow={eyebrow} icon={<Pulse aria-hidden="true" />}>
+  return <Panel title="Skill health" eyebrow={eyebrow} icon={<PulseIcon aria-hidden="true" />}>
     <ul className={styles.healthSummary} aria-label="Recommendations in this window">
       {(['promote_up', 'keep', 'review', 'archive_candidate'] as const).map(item => <li key={item}>
         <StateBadge tone={recommendationTone[item]}>{recommendationLabels[item].replace('Recommended: ', '')}</StateBadge>
@@ -52,13 +76,13 @@ function SkillHealthPanel({skills, queue, sort, eyebrow, href, go, skillHref}: H
     </ul>
     <div className={styles.healthOrder}>
       <Field id="health-sort" label="Order by" hint="A small sample never ranks above a row with 20 assessments on its percentage.">
-        <select id="health-sort" value={key} onChange={event => go('usage', {sort: event.target.value === 'value' ? null : event.target.value})}>
+        <select id="health-sort" className={selectClass} value={key} onChange={event => go('usage', {sort: event.target.value === 'value' ? null : event.target.value})}>
           {sortKeys.map(option => <option key={option} value={option}>{sortLabels[option]}{option === 'value' ? ' (default)' : ''}</option>)}
         </select>
       </Field>
     </div>
     {sort && !known && <p className={styles.notice} role="status"><StateBadge tone="warning">Unknown order</StateBadge>{'"' + sort + '" is not one of value, pull or reach; rows are in the default order.'}</p>}
-    <DataTable caption="Skill health per skill" headings={['Skill', 'Recommendation and why', 'Reach', 'Pull', 'Value', 'Health', 'Exposed → expanded → loaded → judged']}>
+    <DataTable flush caption="Skill health per skill" headings={['Skill', 'Recommendation and why', 'Reach', 'Pull', 'Value', 'Health', 'Exposed → expanded → loaded → judged']}>
       {rows.map(row => <HealthRow key={row.skill.skill_id + ':' + (row.skill.revision ?? '')} row={row} href={href} skillHref={skillHref} />)}
     </DataTable>
     <p className={styles.panelNote}>A recommendation is computed in this browser from the counts in the row; it changes nothing. Promoting, keeping or archiving a skill goes through Needs review or a proposal, and load counts alone never promote a skill. Pull marked "at least" is a lower bound because some loads carry no search_id.</p>
@@ -103,9 +127,9 @@ function HealthRow({row, href, skillHref}: {row: SkillHealth; href: HealthPanelP
 
 const proposalKeys = ['state', 'kind', 'scope'];
 const decisionChoices = [
-  {value: 'approve' as const, label: 'Approve for export', detail: 'Keep the candidate as generated and prepare the Git handoff.', icon: Check},
-  {value: 'edit' as const, label: 'Approve an edited candidate', detail: 'Save your own body as the human revision.', icon: PencilSimple},
-  {value: 'reject' as const, label: 'Reject', detail: 'Close this proposal; the same input is not generated again.', icon: X},
+  {value: 'approve' as const, label: 'Approve for export', detail: 'Keep the candidate as generated and prepare the Git handoff.', icon: CheckIcon},
+  {value: 'edit' as const, label: 'Approve an edited candidate', detail: 'Save your own body as the human revision.', icon: PencilSimpleIcon},
+  {value: 'reject' as const, label: 'Reject', detail: 'Close this proposal; the same input is not generated again.', icon: XIcon},
 ];
 const terminalPublicationStates = ['published', 'superseded'];
 
@@ -125,21 +149,24 @@ function ProposalQueue({ctx}: ApiProps) {
     ctx.go('proposals', {...Object.fromEntries(proposalKeys.map(key => [key, String(form.get(key) ?? '').trim() || null])), cursor: null});
   }
   const value = list.value;
+  const activeCount = proposalKeys.filter(key => Boolean(at(key))).length;
   const [selected, setSelected] = useState<string[]>([]);
   const selectedOnPage = value?.items.filter(item => selected.includes(item.proposal_id)) ?? [];
   const toggle = (proposalId: string) => setSelected(current => current.includes(proposalId) ? current.filter(id => id !== proposalId) : [...current, proposalId]);
   return <>
-    <Panel title="Review queue" eyebrow="Candidates" icon={<ListChecks aria-hidden="true" />}>
+    <Panel title="Filters" eyebrow={activeCount ? activeCount + ' active' : 'None active'} icon={<FunnelIcon aria-hidden="true" />} collapsible defaultOpen={activeCount > 0} tone="quiet">
       <form id="proposal-filters" className={styles.filters} onSubmit={applyFilters} key={ctx.params.toString()}>
-        <Field id="proposal-state" label="State"><select id="proposal-state" name="state" defaultValue={at('state')}>
+        <Field id="proposal-state" label="State"><select id="proposal-state" name="state" className={selectClass} defaultValue={at('state')}>
           <option value="">All states</option>{proposalStates.map(state => <option key={state} value={state}>{state}</option>)}
         </select></Field>
-        <Field id="proposal-kind" label="Kind"><select id="proposal-kind" name="kind" defaultValue={at('kind')}>
+        <Field id="proposal-kind" label="Kind"><select id="proposal-kind" name="kind" className={selectClass} defaultValue={at('kind')}>
           <option value="">All kinds</option>{proposalKinds.map(kind => <option key={kind} value={kind}>{kind}</option>)}
         </select></Field>
-        <Field id="proposal-scope" label="Scope" hint="Exact scope path, for example forge.pipelines"><input id="proposal-scope" name="scope" defaultValue={at('scope')} /></Field>
-        <div className={styles.filterAction}><ActionButton type="submit">Apply filters</ActionButton></div>
+        <Field id="proposal-scope" label="Scope" hint="Exact scope path, for example forge.pipelines"><Input id="proposal-scope" name="scope" className={inputClass} defaultValue={at('scope')} /></Field>
+        <div className={styles.filterAction}><ActionButton type="submit" tone="system">Apply filters</ActionButton></div>
       </form>
+    </Panel>
+    <Panel title="Review queue" eyebrow="Candidates" icon={<ListChecksIcon aria-hidden="true" />}>
       {list.phase === 'loading' && !value && <RouteState state="loading" title="Reading proposals" description="Waiting for the candidate list of this repository." />}
       {list.phase === 'error' && list.error && !value && <ApiFailure error={list.error} onRetry={list.reload} retryLabel="Retry the queue" />}
       {value && (value.items.length ? <>
@@ -148,8 +175,8 @@ function ProposalQueue({ctx}: ApiProps) {
           {value.items.map(item => <tr key={item.proposal_id}>
             <td><input type="checkbox" aria-label={'Select proposal ' + item.proposal_id} checked={selected.includes(item.proposal_id)} onChange={() => toggle(item.proposal_id)} /></td>
             <th scope="row" className={styles.pathCell}><Link to={ctx.href('proposals', {proposal: item.proposal_id})}>{item.proposal_id}</Link></th>
-            <td>{item.kind}</td>
-            <td><StateBadge tone={item.state === 'published' ? 'system' : item.state === 'rejected' ? 'warning' : 'neutral'}>{item.state}</StateBadge></td>
+            <td><StateBadge>{item.kind}</StateBadge></td>
+            <td><StateBadge tone={item.state === 'published' ? 'system' : item.state === 'rejected' ? 'warning' : item.state === 'draft' ? 'human' : 'neutral'}>{item.state}</StateBadge></td>
             <td>{item.scope ?? 'Unknown'}</td>
             <td className={styles.pathCell}><code>{item.path ?? 'Unknown'}</code></td>
           </tr>)}
@@ -170,7 +197,7 @@ function BatchReviewPanel({ctx, proposalIds, onClear}: ApiProps & {proposalIds: 
     'batch-proposals:' + org + '/' + repo + ':' + proposalIds.join(','),
     Boolean(org && repo && proposalIds.length),
   );
-  return <Panel title="Compare selected proposals" eyebrow="Batch review" icon={<ListNumbers aria-hidden="true" />} action={<ActionButton onClick={onClear}>Close comparison</ActionButton>}>
+  return <Panel title="Compare selected proposals" eyebrow="Batch review" icon={<ListNumbersIcon aria-hidden="true" />} action={<ActionButton onClick={onClear}>Close comparison</ActionButton>}>
     <p>Differences remain visible per candidate. Open each row to record its own decision and reason; this comparison never approves or rejects automatically.</p>
     {details.phase === 'loading' && <RouteState state="loading" title="Reading selected proposals" description="Fetching the candidates and their source context." />}
     {details.phase === 'error' && details.error && <ApiFailure error={details.error} onRetry={details.reload} retryLabel="Retry comparison" />}
@@ -209,11 +236,15 @@ function ExportPanel({ctx, proposalId, state, onExported}: ApiProps & {proposalI
     } finally {setBusy(false);}
   }
 
-  return <Panel title="Export" eyebrow="Files for your repository" icon={<DownloadSimple aria-hidden="true" />}>
+  // Open when there is something to do or read here (an approved proposal, a created export); folded
+  // while the decision is still the task. The key remounts only the fold when that changes, so a
+  // decision saved on this page opens the export without dropping the export result.
+  const exportOpen = state === 'approved_for_export' || Boolean(result);
+  return <Panel key={exportOpen ? 'export-open' : 'export-folded'} title="Export" eyebrow="Files for your repository" icon={<DownloadSimpleIcon aria-hidden="true" />} collapsible defaultOpen={exportOpen}>
     <div className={styles.stageContent}>
       <p>Export writes nothing to Git. It returns the exact files and a patch for you to apply and review in your own repository.</p>
       {state === 'approved_for_export' && <div className={styles.actions}>
-        <ActionButton id="export-patch" tone="human" disabled={blocked} onClick={runExport}><DownloadSimple aria-hidden="true" />{busy ? 'Preparing export…' : 'Create export'}</ActionButton>
+        <ActionButton id="export-patch" tone="human" disabled={blocked} onClick={runExport}><DownloadSimpleIcon aria-hidden="true" />{busy ? 'Preparing export…' : 'Create export'}</ActionButton>
       </div>}
       {error && <p className={styles.error} role="alert">{error}</p>}
       {result && <>
@@ -223,7 +254,7 @@ function ExportPanel({ctx, proposalId, state, onExported}: ApiProps & {proposalI
           {label: 'Files', value: String(result.files.length)},
           {label: 'Publication', value: 'Awaiting Git', detail: 'Export is not publication; a sync must observe the file in a complete import.'},
         ]} />
-        <DataTable caption="Files in this export" headings={['Path', 'SHA-256', 'Bytes']}>
+        <DataTable flush caption="Files in this export" headings={['Path', 'SHA-256', 'Bytes']}>
           {result.files.map(file => <tr key={file.path}>
             <th scope="row" className={styles.pathCell}><code>{file.path}</code></th>
             <td className={styles.pathCell}><code>{unknown(file.sha256)}</code></td>
@@ -267,7 +298,10 @@ function PublicationPanel({ctx, proposalId, active}: ApiProps & {proposalId: str
   }, [source, org, repo, proposalId, active]);
 
   if (!active) return null;
-  return <Panel title="Publication" eyebrow="Observed after Git" icon={<GitBranch aria-hidden="true" />}
+  // The fold is decided once the first state is known (open while Git is still awaited or on an
+  // error, folded when already published); a later transition does not fold it under the reader.
+  const terminal = Boolean(publication && terminalPublicationStates.includes(publication.state));
+  return <Panel key={publication ? 'publication-known' : 'publication-unknown'} title="Publication" eyebrow="Observed after Git" icon={<GitBranchIcon aria-hidden="true" />} collapsible defaultOpen={!terminal || Boolean(error)}
     action={<StateBadge tone={publication?.state === 'published' ? 'system' : 'warning'}>{publication?.state ?? 'awaiting_git'}</StateBadge>}>
     <div className={styles.stageContent}>
       <p>{publication?.state === 'published'
@@ -333,12 +367,13 @@ function SnapshotsPanel({ctx}: ApiProps) {
     } finally {setBusy(false);}
   }
 
-  return <Panel title="Snapshots" eyebrow="Owner" icon={<GitBranch aria-hidden="true" />}>
+  // Rollback and re-publication are rare, deliberate acts: folded until the owner opens them.
+  return <Panel title="Snapshots" eyebrow="Owner" icon={<GitBranchIcon aria-hidden="true" />} collapsible defaultOpen={false}>
     <div className={styles.stageContent}>
       <p className={styles.muted}>A snapshot is what SEARCH and USE serve. Activating an older one is a rollback; publishing an import builds a new one.</p>
       {snapshots.phase === 'loading' && !snapshots.value && <RouteState state="loading" title="Reading snapshots" description="Waiting for the snapshot list." />}
       {snapshots.phase === 'error' && snapshots.error && !snapshots.value && <ApiFailure error={snapshots.error} onRetry={snapshots.reload} retryLabel="Retry the snapshot list" />}
-      {snapshots.value && (snapshots.value.length ? <DataTable caption="Snapshots of this repository" headings={['Snapshot', 'Commit', 'Skills', 'Validation', 'State', 'Action']}>
+      {snapshots.value && (snapshots.value.length ? <DataTable flush caption="Snapshots of this repository" headings={['Snapshot', 'Commit', 'Skills', 'Validation', 'State', 'Action']}>
         {/* Keyed on the publication row: a build that did not finish has no snapshot id yet. */}
         {snapshots.value.map(item => <tr key={item.publication_id}>
           <th scope="row" className={styles.pathCell}>{item.snapshot_id
@@ -356,13 +391,13 @@ function SnapshotsPanel({ctx}: ApiProps) {
                 ? <ActionButton tone="human" disabled={blocked} onClick={() => {void activate(item.snapshot_id as string);}}>Confirm rollback</ActionButton>
                 : <ActionButton disabled={blocked} onClick={() => {setConfirming(item.snapshot_id); setError('');}}>Roll back to this</ActionButton>}</td>
         </tr>)}
-      </DataTable> : <RouteState state="empty" title="No snapshot yet" description="Publish a complete import to build the first snapshot." />)}
+      </DataTable> : <RouteState compact state="empty" title="No snapshot yet" description="Publish a complete import to build the first snapshot." />)}
       {confirming && <Field id="rollback-reason" label="Reason for this rollback" hint="Kept in this browser; the API records the activation, its actor and its request id in the audit log.">
-        <textarea id="rollback-reason" value={reason} onChange={event => {setReason(event.target.value); setError('');}} className={styles.reason} required />
+        <Textarea id="rollback-reason" value={reason} onChange={event => {setReason(event.target.value); setError('');}} className={cn(textareaClass, styles.reason)} required />
       </Field>}
       <form className={styles.filters} onSubmit={publishImport}>
         <Field id="publish-import" label="Publish an import" hint="The import id whose files should become the next snapshot.">
-          <input id="publish-import" name="import_id" value={importId} onChange={event => setImportId(event.target.value)} maxLength={64} disabled={blocked} />
+          <Input id="publish-import" name="import_id" className={inputClass} value={importId} onChange={event => setImportId(event.target.value)} maxLength={64} disabled={blocked} />
         </Field>
         <div className={styles.filterAction}><ActionButton type="submit" disabled={blocked}>Queue publication</ActionButton></div>
       </form>
@@ -434,20 +469,21 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
     {degraded && <DegradedNotice>Membership could not be reconfirmed. The source and candidate stay readable; decisions and export are unavailable.</DegradedNotice>}
     {missingSource && <PartialNotice>The source body is not part of this proposal, so the diff below compares against an empty file. Export stays available, but read the source in Git before deciding.</PartialNotice>}
     <OwnerNote role={ctx.role} />
-    <section className={styles.summary} aria-label="Proposal status and evidence">
+    <section className={cn(styles.summary, 'rounded-xl border border-line-strong bg-graphite-900 shadow-(--shadow-card)')} aria-label="Proposal status and evidence">
       <div className={styles.summaryHeading}>
-        <div><span className={styles.eyebrow}>{value.kind} · {value.scope ?? 'Unknown scope'}</span><h2 className={styles.name}>{value.candidate.path}</h2></div>
+        <IconTile icon={<GitPullRequestIcon weight="duotone" />} size="lg" tone={value.state === 'published' ? 'system' : 'human'} />
+        <div className={styles.summaryText}><span className={styles.eyebrow}>{value.kind} · {value.scope ?? 'Unknown scope'}</span><h2 className={styles.name}><code>{value.candidate.path}</code></h2></div>
         <StateBadge tone={value.state === 'published' ? 'system' : value.state === 'rejected' ? 'warning' : 'human'}>{value.state}</StateBadge>
       </div>
       <div className={styles.actions}>
-        <a className={styles.jumpLink} href="#decision"><ArrowDown aria-hidden="true" />Jump to the decision</a>
+        <a className={styles.jumpLink} href="#decision"><ArrowDownIcon aria-hidden="true" />Jump to the decision</a>
         <Link to={ctx.href('proposals', {proposal: null})}>Back to the queue</Link>
         {value.target_skill_id && <Link to={ctx.href('skill', {skill: value.target_skill_id, revision: value.target_revision_id, tab: 'content', from: 'proposals'})}>Open the target skill</Link>}
       </div>
     </section>
 
     <div className={styles.comparison}>
-      <Panel title="Source" eyebrow="What the candidate was built from" icon={<FileText aria-hidden="true" />}>
+      <Panel title="Source" eyebrow="What the candidate was built from" icon={<FileTextIcon aria-hidden="true" />}>
         <ProvenanceTrail entries={[
           {label: 'Scope', value: value.scope ?? 'Unknown', code: true},
           {label: 'Owner from source', value: unknown(value.owner)},
@@ -455,37 +491,37 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
           {label: 'Expected revision', value: unknown(value.expected_revision), code: true, detail: 'A decision is refused if the source moved past this.'},
           {label: 'Recipe', value: value.recipe ? value.recipe.generator + ' · ' + value.recipe.version : 'Unknown', detail: value.recipe?.model ?? 'No model recorded'},
         ]} />
-        {value.sources.length > 0 && <DataTable caption="Source fragments used by this candidate" headings={['Path', 'Commit', 'Lines']}>
+        {value.sources.length > 0 && <DataTable flush caption="Source fragments used by this candidate" headings={['Path', 'Commit', 'Lines']}>
           {value.sources.map(entry => <tr key={entry.path + ':' + (entry.sha256 ?? '')}>
             <th scope="row" className={styles.pathCell}><code>{entry.path}</code></th>
             <td className={styles.pathCell}><code>{unknown(entry.commit)}</code></td>
             <td>{entry.lines && entry.lines.length ? entry.lines.join('–') : 'Unknown'}</td>
           </tr>)}
         </DataTable>}
-        <details className={styles.disclosure}><summary>Read the source body</summary>
+        <Disclosure label="Read the source body">
           <pre className={styles.raw} tabIndex={0} aria-label="Source body">{sourceBody || 'The source body is not part of this proposal.'}</pre>
-        </details>
+        </Disclosure>
       </Panel>
-      <Panel title="Candidate" eyebrow="Proposed file" icon={<GitBranch aria-hidden="true" />}>
+      <Panel title="Candidate" eyebrow="Proposed file" icon={<GitBranchIcon aria-hidden="true" />}>
         <ProvenanceTrail entries={[
           {label: 'Candidate path', value: value.candidate.path, code: true},
           {label: 'Candidate SHA-256', value: unknown(value.candidate.sha256), code: true},
           {label: 'Cost', value: value.cost ? value.cost.calls + ' calls · $' + value.cost.usd_certain.toFixed(4) : 'Unknown', detail: value.cost && value.cost.usd_uncertain > 0 ? 'Plus $' + value.cost.usd_uncertain.toFixed(4) + ' charged after a timeout and not counted as certain.' : undefined},
         ]} />
-        <details className={styles.disclosure}><summary>Read the candidate body</summary>
-          <div className={styles.bodyPreview}><SkillContent content={body} /></div>
-        </details>
+        <Disclosure label="Read the candidate body" contentClassName={styles.bodyPreview}>
+          <SkillContent content={body} />
+        </Disclosure>
       </Panel>
     </div>
 
-    <Panel title="Source to candidate" eyebrow="Line diff" icon={<ListChecks aria-hidden="true" />}>
+    <Panel title="Source to candidate" eyebrow="Line diff" icon={<ListChecksIcon aria-hidden="true" />}>
       <SkillDiff source={sourceBody} candidate={body} />
     </Panel>
 
-    <Panel title="Field provenance" eyebrow="Where each field came from" icon={<FileText aria-hidden="true" />}>
+    <Panel title="Field provenance" eyebrow="Where each field came from" icon={<FileTextIcon aria-hidden="true" />} collapsible defaultOpen={unconfirmed.length > 0}>
       {value.provenance.length ? <>
         {unconfirmed.length > 0 && <PartialNotice>{unconfirmed.length + ' fields have no exact source fragment behind them and are marked as needing confirmation.'}</PartialNotice>}
-        <DataTable caption="Provenance of each candidate field" headings={['Field', 'Origin', 'Source reference', 'Confirmation']}>
+        <DataTable flush caption="Provenance of each candidate field" headings={['Field', 'Origin', 'Source reference', 'Confirmation']}>
           {value.provenance.map(entry => <tr key={entry.field}>
             <th scope="row">{entry.field}</th>
             <td>{entry.origin}</td>
@@ -497,32 +533,34 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
     </Panel>
 
     <div id="decision" tabIndex={-1} className={styles.decisionAnchor}>
-      <Panel title="Decision" eyebrow="Owner" icon={<GitBranch aria-hidden="true" />}>
+      <Panel title="Decision" eyebrow="Owner" icon={<GitBranchIcon aria-hidden="true" />}>
         <div className={styles.decisionContent}>
           <ol className={styles.lifecycle} aria-label="Publication lifecycle">
             {(['draft', 'approved_for_export', 'awaiting_git', 'published'] as const).map(stage =>
               <li key={stage} aria-current={value.state === stage ? 'step' : undefined}><StateBadge tone={value.state === stage ? 'human' : 'neutral'}>{stage}</StateBadge></li>)}
           </ol>
-          {conflict && <div className={styles.notice} role="alert">
-            <StateBadge tone="warning">Stale revision</StateBadge>
-            <p>{'The source is now at revision ' + conflict + '. Read it again before saving; your text below is untouched.'}</p>
-            <ActionButton onClick={() => {detail.reload(); setMustReread(false); setError('');}}>Re-read the source</ActionButton>
-          </div>}
+          {conflict && <Alert variant="destructive" className="gap-2 border-(--signal-red) bg-graphite-900 px-3 py-3 text-stone-100 *:data-[slot=alert-description]:text-stone-100">
+            <AlertTitle className="flex flex-wrap items-center gap-2"><StateBadge tone="warning">Stale revision</StateBadge></AlertTitle>
+            <AlertDescription className="grid gap-3 text-[length:var(--font-size-body)]">
+              <p>{'The source is now at revision ' + conflict + '. Read it again before saving; your text below is untouched.'}</p>
+              <div><ActionButton onClick={() => {detail.reload(); setMustReread(false); setError('');}}>Re-read the source</ActionButton></div>
+            </AlertDescription>
+          </Alert>}
           {value.decision && <p className={styles.reasonRecord}><strong>Recorded decision</strong>{value.decision.decision} · {unknown(value.decision.reason)} · {unknown(value.decision.at)}</p>}
           {value.state === 'draft' ? <form id="decision-form" className={styles.form} onSubmit={record}>
             <fieldset disabled={blocked} className={styles.choices}>
               <legend>Review decision</legend>
               {decisionChoices.map(({value: id, label, detail: hint, icon: Icon}) => <label key={id} className={styles.choice}>
                 <input type="radio" name="decision" value={id} checked={decision === id} onChange={() => setDecision(id)} />
-                <Icon aria-hidden="true" />
+                <IconTile icon={<Icon weight="duotone" />} size="sm" tone={id === 'reject' ? 'neutral' : 'human'} animate={false} />
                 <span><strong>{label}</strong><span>{hint}</span></span>
               </label>)}
             </fieldset>
             {decision === 'edit' && <Field id="candidate-text" label="Candidate body" hint="Saved as a human revision. The frontmatter and scope of the candidate stay as generated.">
-              <textarea id="candidate-text" name="candidate" className={styles.bodyEditor} spellCheck={false} value={body} onChange={event => setCandidate(event.target.value)} disabled={blocked} required />
+              <Textarea id="candidate-text" name="candidate" className={cn(textareaClass, styles.bodyEditor)} spellCheck={false} value={body} onChange={event => setCandidate(event.target.value)} disabled={blocked} required />
             </Field>}
             <Field id="decision-reason" label="Reason for this decision" hint="Stored with the decision and shown in the audit log." error={error || undefined}>
-              <textarea id="decision-reason" name="reason" className={styles.reason} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} required aria-invalid={Boolean(error)} />
+              <Textarea id="decision-reason" name="reason" className={cn(textareaClass, styles.reason)} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} required aria-invalid={Boolean(error)} />
             </Field>
             <div className={styles.actions}><ActionButton tone="human" type="submit" disabled={blocked}>{busy ? 'Saving decision…' : 'Save decision'}</ActionButton></div>
           </form> : <p className={styles.muted}>This proposal is no longer a draft, so no new decision can be recorded on it.</p>}
@@ -596,14 +634,14 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
       ? <><StateBadge>{queueActionLabels[item.decision.action]}</StateBadge><span className={styles.muted}>{unknown(item.decision.reason)}</span></>
       : <div className={styles.stack}>
         <Field id={'queue-action-' + item.item_id} label="Owner decision">
-          <select id={'queue-action-' + item.item_id} value={action} onChange={event => setAction(event.target.value as QueueAction)} disabled={blocked}>
+          <select id={'queue-action-' + item.item_id} className={selectClass} value={action} onChange={event => setAction(event.target.value as QueueAction)} disabled={blocked}>
             {queueActions.map(value => <option key={value} value={value}>{queueActionLabels[value]}</option>)}
           </select>
         </Field>
         <Field id={'queue-reason-' + item.item_id} label="Reason" error={error || undefined}>
-          <input id={'queue-reason-' + item.item_id} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} maxLength={200} aria-invalid={Boolean(error)} />
+          <Input id={'queue-reason-' + item.item_id} className={inputClass} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} maxLength={200} aria-invalid={Boolean(error)} />
         </Field>
-        <ActionButton disabled={blocked} onClick={() => {void decide();}}>{busy ? 'Saving…' : 'Record decision'}</ActionButton>
+        <div><ActionButton size="sm" tone="human" disabled={blocked} onClick={() => {void decide();}}>{busy ? 'Saving…' : 'Record decision'}</ActionButton></div>
       </div>}</td>
   </tr>;
 }
@@ -633,7 +671,7 @@ function NotificationPanel({queue, role}: {queue: QueueItem[]; role: ApiProps['c
     setSettings(next);
     try { window.localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
   }
-  return <Panel title="Notifications" eyebrow="Opt-in owner alerts" icon={<Pulse aria-hidden="true" />}>
+  return <Panel title="Notifications" eyebrow="Opt-in owner alerts" icon={<PulseIcon aria-hidden="true" />}>
     <label className={styles.notificationToggle}>
       <input type="checkbox" checked={settings.enabled} onChange={event => save({...settings, enabled: event.target.checked})} />
       <span>Show in-app alerts for new owner queue items</span>
@@ -790,9 +828,9 @@ function skillHref(ctx: ApiProps['ctx'], item: UsageSkill) {
 function TopSkillsPanel({ctx, skills, window}: ApiProps & {skills: UsageSkill[]; window: string}) {
   const {ranked, unranked} = rankSkills(skills);
   const withoutFeedback = skills.length - ranked.length - unranked.length;
-  return <Panel title="Top skills" eyebrow={'Helped share on 20 or more assessments · last ' + window} icon={<ListNumbers aria-hidden="true" />}
+  return <Panel title="Top skills" eyebrow={'Helped share on 20 or more assessments · last ' + window} icon={<ListNumbersIcon aria-hidden="true" />}
     action={<StateBadge tone={ranked.length ? 'system' : 'neutral'}>{ranked.length} ranked</StateBadge>}>
-    {ranked.length ? <DataTable caption="Skills ranked by helped share" headings={['Rank', 'Skill', 'Team', 'Owner', 'Helped', 'Applied episodes', 'Context confirmed']}>
+    {ranked.length ? <DataTable flush caption="Skills ranked by helped share" headings={['Rank', 'Skill', 'Team', 'Owner', 'Helped', 'Applied episodes', 'Context confirmed']}>
       {ranked.map((item, index) => <tr key={item.skill_id + ':' + (item.revision ?? '')}>
         <td>{index + 1}</td>
         <th scope="row" className={styles.pathCell}><Link to={skillHref(ctx, item)}>{item.skill_id}</Link></th>
@@ -802,10 +840,7 @@ function TopSkillsPanel({ctx, skills, window}: ApiProps & {skills: UsageSkill[];
         <td>{formatNumber(item.use_episodes)}</td>
         <td>{formatNumber(item.context_loaded)} of {formatNumber(item.loads_verified)}</td>
       </tr>)}
-    </DataTable> : <div className={styles.queueEmpty}>
-      <StateBadge>No rank yet</StateBadge>
-      <p>No skill has 20 helped-or-hindered assessments in this window, so no rank is earned. Counts per skill are in the table below; a small sample is not a low score.</p>
-    </div>}
+    </DataTable> : <RouteState compact state="empty" title="No rank yet" description="No skill has 20 helped-or-hindered assessments in this window, so no rank is earned. Counts per skill are in the table below; a small sample is not a low score." />}
     <p className={styles.panelNote}>
       {formatNumber(unranked.length)} {unranked.length === 1 ? 'skill has' : 'skills have'} assessments below the 20 floor and no rank. {formatNumber(withoutFeedback)} {withoutFeedback === 1 ? 'has' : 'have'} no assessment at all. A rank compares assessed episodes, not people (no per-person breakdown exists).
     </p>
@@ -815,9 +850,9 @@ function TopSkillsPanel({ctx, skills, window}: ApiProps & {skills: UsageSkill[];
 /** What each team sees first: its own scope, in one row, with the two things that need attention. */
 function ByTeamPanel({skills}: {skills: UsageSkill[]}) {
   const rows = groupByScope(skills);
-  return <Panel title="By team" eyebrow="One row per scope; a scope has one owner" icon={<UsersThree aria-hidden="true" />}>
-    <DataTable caption="Delivery and feedback per scope" headings={['Team (scope)', 'Owner', 'Skills', 'Exposed', 'Loaded', 'Context confirmed', 'Applied episodes', 'Helped', 'Needs attention']}>
-      {rows.map(row => <tr key={row.scope ?? 'unknown'}>
+  return <Panel title="By team" eyebrow="One row per scope; a scope has one owner" icon={<UsersThreeIcon aria-hidden="true" />}>
+    <DataTable flush caption="Delivery and feedback per scope" headings={['Team (scope)', 'Owner', 'Skills', 'Exposed', 'Loaded', 'Context confirmed', 'Applied episodes', 'Helped', 'Needs attention']}>
+      {rows.map(row => <tr key={row.scope ?? ' '}>
         <th scope="row" className={styles.pathCell}>{row.scope ?? <span className={styles.muted}>No scope in catalog</span>}</th>
         <td>{row.owners.length ? row.owners.join(', ') : 'Unknown'}</td>
         <td>{formatNumber(row.skills)}</td>
@@ -865,7 +900,7 @@ export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
     ? 'Reasons: ' + askReasons.slice(0, 3).map(([reason, count]) => askReasonLabel(reason) + ' ' + formatNumber(count)).join(' · ')
     : 'Reason breakdown unavailable';
 
-  return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<Pulse aria-hidden="true" />}>
+  return <Panel id="decision-scorecards" title="Decision scorecards" eyebrow="Quick signals for task quality and delivery safety" icon={<PulseIcon aria-hidden="true" />}>
     <MetricRow items={[
       {
         label: 'Task success',
@@ -962,27 +997,29 @@ export function ApiUsageRoute({ctx}: ApiProps) {
   if (at('revision')) activeFilters.push({label: 'Revision', value: at('revision')});
   if (at('harness')) activeFilters.push({label: 'Harness', value: at('harness')});
 
+  const windowText = 'Last ' + windowLabel + ' · ' + formatDay(value.window.from) + ' to ' + formatDay(value.window.to);
+  // Any key in the address, the window included, means the reader chose it: keep the fold open.
+  const filtersOpen = usageKeys.some(key => Boolean(at(key)));
+  const hasSkillRows = value.skills.length > 0;
+  const hasHealthRows = Boolean(value.health && value.health.adapters.length);
+
   return <div className={styles.route}>
     {degraded && <DegradedNotice>Membership could not be reconfirmed. This is the last report read in this session and no owner decision can be recorded.</DegradedNotice>}
     {value.coverage && value.coverage.dropped_reported > 0 && <PartialNotice>{'Adapters reported ' + value.coverage.dropped_reported + ' dropped events in this window. Every count below is a lower bound.'}</PartialNotice>}
+    {/* One page, one main state: with nothing in the ledger the reader sees why and where the data comes from, once. Every other empty section below folds or shrinks to a line. */}
+    {noObservations && <RouteState state="empty" title="No telemetry for this window" description="No adapter event and no assessment reached the ledger for this window and these filters. Usefulness is Unknown, not zero." action={<ActionButton href={ctx.href('organization', {tab: 'integrations'})} tone="system">Set up an adapter</ActionButton>} />}
     <ScorecardPanel metrics={metrics} />
-    <Panel id="needs-review" title="Needs review" icon={<ListChecks aria-hidden="true" />} action={<StateBadge tone={open.length ? 'warning' : 'neutral'}>{open.length} open</StateBadge>}>
-      {value.queue.length ? <DataTable caption="Skills that need an owner decision" headings={['Skill and revision', 'Reason', 'Since', 'Evidence', 'Owner decision']}>
+    {value.queue.length ? <Panel id="needs-review" title="Needs review" icon={<ListChecksIcon aria-hidden="true" />} action={<StateBadge tone={open.length ? 'warning' : 'neutral'}>{open.length} open</StateBadge>}>
+      <DataTable flush caption="Skills that need an owner decision" headings={['Skill and revision', 'Reason', 'Since', 'Evidence', 'Owner decision']}>
         {value.queue.map(item => <QueueRow key={item.item_id} ctx={ctx} item={item} onDecided={report.reload} />)}
-      </DataTable> : <div className={styles.queueEmpty}>
-        <StateBadge>No observations</StateBadge>
-        <p>No drift, feedback or dependency problem is recorded for this repository. Missing telemetry does not prove a skill is unused or correct.</p>
-      </div>}
+      </DataTable>
       <OwnerNote role={ctx.role} />
-    </Panel>
+    </Panel> : <div id="needs-review"><RouteState compact state="empty" title="No observations" description="Nothing needs an owner decision: no drift, feedback or dependency problem is recorded for this repository." /></div>}
 
     <NotificationPanel queue={value.queue} role={ctx.role} />
 
-    <Panel title="From delivery to value" eyebrow={'Last ' + windowLabel + ' · ' + formatDay(value.window.from) + ' to ' + formatDay(value.window.to)} icon={<Funnel aria-hidden="true" />}>
-      {noObservations ? <div className={styles.queueEmpty}>
-        <StateBadge>No observations</StateBadge>
-        <p>No adapter event and no assessment reached the ledger for this window and these filters. Every step below is Unknown, not zero.</p>
-      </div> : <MetricRow layout="funnel" items={[
+    {!noObservations && <Panel title="From delivery to value" eyebrow={windowText} icon={<FunnelIcon aria-hidden="true" />}>
+      <MetricRow layout="funnel" items={[
           {label: 'Exposed', value: formatNumber(totals.exposures), detail: 'Cards an adapter placed into harness context. A SEARCH response alone is not an exposure.'},
           {label: 'Loaded', value: formatNumber(totals.loads_verified), detail: totals.exposures > 0 ? shareText(totals.loads_verified, totals.exposures, false) + ' of exposed cards had a verified body load' : 'Verified body loads; nothing was exposed in this window'},
           {label: 'Context confirmed', value: formatNumber(totals.context_loaded), detail: formatNumber(totals.context_unknown) + ' verified loads have an unknown context outcome; unknown is not a failure'},
@@ -992,33 +1029,33 @@ export function ApiUsageRoute({ctx}: ApiProps) {
               ? formatNumber(feedback.n) + ' assessed of ' + formatNumber(totals.use_episodes) + ' applied episodes; helped over helped plus hindered'
               : formatNumber(feedback.n) + ' assessments; feedback coverage needs task identifiers')
             : 'No assessment recorded; not 0%'},
-        ]} />}
-    </Panel>
+        ]} />
+    </Panel>}
 
     {!noObservations && <TopSkillsPanel ctx={ctx} skills={value.skills} window={windowLabel} />}
     {!noObservations && value.skills.length > 0 && <SkillHealthPanel skills={value.skills} queue={value.queue} sort={at('sort')} href={ctx.href} go={ctx.go} skillHref={item => skillHref(ctx, item)} eyebrow={'Last ' + windowLabel + ' · four gates and a recommendation per skill'} />}
     {!noObservations && value.skills.length > 0 && <ByTeamPanel skills={value.skills} />}
 
-    {!noObservations && <Panel title="Delivery and feedback" eyebrow="Exposures, verified loads and verdicts" icon={<ListChecks aria-hidden="true" />}>
+    {!noObservations && <Panel title="Delivery and feedback" eyebrow="Exposures, verified loads and verdicts" icon={<ListChecksIcon aria-hidden="true" />}>
       <ContextChart skills={value.skills} />
       <DeliveryChart skills={value.skills} />
       {feedback && <FeedbackChart feedback={feedback} />}
       {!feedback && <p className={styles.muted}>No feedback assessment is recorded for this window.</p>}
     </Panel>}
 
-    <Panel title="Observation context" eyebrow="Window, scope, skill, revision and harness" icon={<FileText aria-hidden="true" />}>
+    <Panel title="Window and filters" eyebrow={windowText} icon={<FileTextIcon aria-hidden="true" />} collapsible defaultOpen={filtersOpen} tone="quiet">
       <form key={ctx.params.toString()} id="usage-filters" className={styles.filters} onSubmit={applyFilters}>
         <Field id="usage-window" label="Window" hint="Counted back from the newest event the ledger received">
-          <select id="usage-window" name="window" defaultValue={usageWindows.includes(at('window') as typeof usageWindows[number]) ? at('window') : ''}>
+          <select id="usage-window" name="window" className={selectClass} defaultValue={usageWindows.includes(at('window') as typeof usageWindows[number]) ? at('window') : ''}>
             <option value="">30d (default)</option>
             {usageWindows.map(option => <option key={option} value={option}>{option}</option>)}
           </select>
         </Field>
-        <Field id="usage-scope" label="Scope"><input id="usage-scope" name="scope" defaultValue={at('scope')} /></Field>
-        <Field id="usage-skill" label="Skill" hint="Skill URN"><input id="usage-skill" name="skill" defaultValue={at('skill')} /></Field>
-        <Field id="usage-revision" label="Revision" hint="Catalog or card revision"><input id="usage-revision" name="revision" defaultValue={at('revision')} spellCheck={false} /></Field>
-        <Field id="usage-harness" label="Harness"><input id="usage-harness" name="harness" defaultValue={at('harness')} /></Field>
-        <div className={styles.filterAction}><ActionButton type="submit">Apply filters</ActionButton></div>
+        <Field id="usage-scope" label="Scope"><Input id="usage-scope" name="scope" className={inputClass} defaultValue={at('scope')} /></Field>
+        <Field id="usage-skill" label="Skill" hint="Skill URN"><Input id="usage-skill" name="skill" className={inputClass} defaultValue={at('skill')} /></Field>
+        <Field id="usage-revision" label="Revision" hint="Catalog or card revision"><Input id="usage-revision" name="revision" className={inputClass} defaultValue={at('revision')} spellCheck={false} /></Field>
+        <Field id="usage-harness" label="Harness"><Input id="usage-harness" name="harness" className={inputClass} defaultValue={at('harness')} /></Field>
+        <div className={styles.filterAction}><ActionButton type="submit" tone="system">Apply filters</ActionButton></div>
       </form>
       {activeFilters.length > 0 && <div className={styles.contextSummary}>
         <p role="status">Filtered to {activeFilters.map(entry => `${entry.label} ${entry.value}`).join(', ')}.</p>
@@ -1037,8 +1074,8 @@ export function ApiUsageRoute({ctx}: ApiProps) {
       <p className={styles.status} role="status">{exportStatus}</p>
     </Panel>
 
-    <Panel title="Per skill" eyebrow="Every count, one row per skill and revision" icon={<ListChecks aria-hidden="true" />}>
-      {value.skills.length ? <DataTable caption="Delivery and outcome per skill" headings={['Skill', 'Team (scope)', 'Owner', 'Revision', 'Exposed', 'Loaded', 'Context confirmed', 'Applied reported / observed', 'Helped']}>
+    <Panel title="Per skill" eyebrow="Every count, one row per skill and revision" icon={<ListChecksIcon aria-hidden="true" />} collapsible defaultOpen={hasSkillRows}>
+      {hasSkillRows ? <DataTable flush dense caption="Delivery and outcome per skill" headings={['Skill', 'Team (scope)', 'Owner', 'Revision', 'Exposed', 'Loaded', 'Context confirmed', 'Applied reported / observed', 'Helped']}>
         {value.skills.map(item => <tr key={item.skill_id + ':' + (item.revision ?? '')}>
           <th scope="row" className={styles.pathCell}>
             <Link to={skillHref(ctx, item)}>{item.skill_id}</Link>
@@ -1053,14 +1090,11 @@ export function ApiUsageRoute({ctx}: ApiProps) {
           <td>{formatNumber(item.use_reported)} / {formatNumber(item.use_observed)}</td>
           <td><HelpedCell ratio={item.helped_ratio} /></td>
         </tr>)}
-      </DataTable> : <div className={styles.queueEmpty}>
-        <StateBadge>No observations</StateBadge>
-        <p>No adapter event arrived for this window and these filters. Usefulness is Unknown, not zero.</p>
-      </div>}
+      </DataTable> : <RouteState compact state="empty" title="No observations" description="No adapter event arrived for this window and these filters." />}
     </Panel>
 
-    <Panel title="Adapter health" eyebrow="Reported by installations" icon={<GitBranch aria-hidden="true" />}>
-      {value.health && value.health.adapters.length ? <DataTable caption="Adapter health per harness" headings={['Harness', 'Adapter version', 'Capabilities', 'Last seen', 'Lag', 'Dropped']}>
+    <Panel title="Adapter health" eyebrow="Reported by installations" icon={<GitBranchIcon aria-hidden="true" />} collapsible defaultOpen={hasHealthRows}>
+      {value.health && hasHealthRows ? <DataTable flush dense caption="Adapter health per harness" headings={['Harness', 'Adapter version', 'Capabilities', 'Last seen', 'Lag', 'Dropped']}>
         {value.health.adapters.map(adapter => <tr key={adapter.harness}>
           <th scope="row">{adapter.harness}</th>
           <td>{unknown(adapter.adapter_version)}</td>
@@ -1069,7 +1103,7 @@ export function ApiUsageRoute({ctx}: ApiProps) {
           <td>{adapter.lag_s != null ? adapter.lag_s + ' s' : 'Unknown'}</td>
           <td>{adapter.dropped != null ? formatNumber(adapter.dropped) : 'Unknown'}</td>
         </tr>)}
-      </DataTable> : <p className={styles.muted}>No adapter reported health for this repository. An absent row is Unknown, not healthy.</p>}
+      </DataTable> : <RouteState compact state="empty" title="No adapter health reported" description="No adapter reported health for this repository. An absent row is Unknown, not healthy." />}
     </Panel>
   </div>;
 }

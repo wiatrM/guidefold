@@ -1,6 +1,6 @@
 # ADR-0025: One versioned harness-service context contract
 
-**Status:** Accepted · 2026-09-05 · the product owner approved adding the context contract, service changes and conformance tests before the service PR.
+**Status:** Accepted · 2026-09-05 · the product owner approved adding the context contract, service changes and conformance tests before the service PR; [ADR-0039](ADR-0039-proof-gated-source-grounded-delivery.md) (Proposed) adds an opt-in proof-gated delivery policy.
 **T1 implementation amended by:** [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (Go/ParadeDB/Compose); retrieval and production admission remain separate.
 **Amends:** ADR-0023 and ADR-0024, only for the harness-to-service request boundary and compatibility rules. Their production architecture and admission decisions remain Proposed.
 **Contract:** [HARNESS-SERVICE-CONTRACT](../HARNESS-SERVICE-CONTRACT.md), [JSON Schema 1.1](../../tools/serve_spike/contracts/harness-service-v1.1.schema.json).

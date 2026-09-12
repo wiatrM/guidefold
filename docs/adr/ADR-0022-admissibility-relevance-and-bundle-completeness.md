@@ -1,6 +1,6 @@
 # ADR-0022: Separate admissibility, relevance, and bundle completeness
 
-**Status:** Proposed · 2026-09-05 · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: the composition stage may be a model
+**Status:** Proposed · 2026-09-05 · [ADR-0024](ADR-0024-target-architecture-tiers-flywheel-composer.md) (Proposed) proposes an amendment: the composition stage may be a model; [ADR-0039](ADR-0039-proof-gated-source-grounded-delivery.md) (Proposed) proposes a source-proof delivery boundary
 **Proposed by:** the E1.3 peer reviewer; written up and the first three repairs landed by the TL
 **Amends:** [ADR-0020](ADR-0020-two-tier-dense-retrieval.md) (fixed-point contract, `w_dense` semantics),
 [ADR-0021](ADR-0021-index-sharding-and-a-global-word-table.md) (word-table identity, §Consequences)

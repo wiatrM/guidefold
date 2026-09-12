@@ -568,6 +568,76 @@ func TestFeedbackBecomesALedgerEventOnTheRevision(t *testing.T) {
 	}
 }
 
+// FeedbackEntry.actor (API-CONTRACT 1.3.0 §5.3): a judgment recorded through the
+// UI carries the acting principal's id; a judgment an adapter reports straight
+// to the ledger has no session behind it, so it reads back with actor: null
+// rather than borrowing the UI's identity.
+func TestFeedbackEntryActorNamesTheUIPrincipalAndIsNullForAnAdapter(t *testing.T) {
+	c := newCatalog(t)
+	summary, _ := c.firstSkill(t)
+	skillID, revisionID := summary["skill_id"].(string), summary["revision_id"].(string)
+	path := c.skillPath(skillID) + "/revisions/" + revisionID + "/feedback"
+
+	status, body, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodPost, Path: c.base + path,
+		Body: map[string]any{"idempotency_key": "actor-1", "verdict": "helped"}, Key: "actor-1"})
+	if status != http.StatusOK || body["judgment_id"] == nil {
+		t.Fatalf("feedback: %d %v", status, body)
+	}
+	judgment := body["judgment_id"].(string)
+	wantActor := "user:" + c.owner.User["id"].(string)
+
+	// An adapter reports its own judgment straight to the ledger: no session, no
+	// principal, so no "actor" key at all — the shape the harness adapters have
+	// always sent.
+	adapterEvent := map[string]any{
+		"schema_version":  "1.0",
+		"event_id":        "adapter-evt-1",
+		"event_type":      "skill_feedback",
+		"occurred_at":     "2026-09-12T00:00:00Z",
+		"sequence":        1,
+		"producer":        "harness-adapter",
+		"adapter_version": "1.0",
+		"environment":     "production",
+		"judgment_id":     "adapter-judgment-1",
+		"skill_id":        skillID,
+		"revision":        revisionID,
+		"verdict":         "helped",
+		"reason_category": "unspecified",
+		"source":          "cli_adapter",
+	}
+	if _, e := c.h.Events.Ingest(context.Background(), c.org, []any{adapterEvent}); e != nil {
+		t.Fatalf("adapter ingest: %v", e)
+	}
+
+	revision := c.mustGet(t, c.skillPath(skillID)+"/revisions/"+revisionID)
+	entries := revision["feedback"].([]any)
+	if len(entries) != 2 {
+		t.Fatalf("the revision shows %d judgments, want 2: %v", len(entries), entries)
+	}
+	byJudgment := map[string]map[string]any{}
+	for _, raw := range entries {
+		entry := raw.(map[string]any)
+		byJudgment[entry["judgment_id"].(string)] = entry
+	}
+	uiEntry, ok := byJudgment[judgment]
+	if !ok {
+		t.Fatalf("the UI judgment %s is missing from %v", judgment, entries)
+	}
+	if uiEntry["actor"] != wantActor {
+		t.Fatalf("UI feedback actor = %v, want %v", uiEntry["actor"], wantActor)
+	}
+	adapterEntry, ok := byJudgment["adapter-judgment-1"]
+	if !ok {
+		t.Fatalf("the adapter judgment is missing from %v", entries)
+	}
+	// actor:str? means the key is present and explicitly null, not omitted —
+	// distinguish that from a key that was never encoded.
+	raw, present := adapterEntry["actor"]
+	if !present || raw != nil {
+		t.Fatalf("adapter feedback actor = %v (present=%v), want an explicit null", raw, present)
+	}
+}
+
 // U3.3 — organisation B cannot read organisation A's catalog, and gets the same
 // answer it would get for an organisation that does not exist.
 func TestAnotherOrganisationCannotReadTheCatalog(t *testing.T) {

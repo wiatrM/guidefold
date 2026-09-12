@@ -37,6 +37,7 @@ type feedbackEntry struct {
 	Source     *string `json:"source"`
 	TaskID     *string `json:"task_id"`
 	OccurredAt *string `json:"occurred_at"`
+	Actor      *string `json:"actor"`
 }
 
 // handleRevision answers one immutable revision in full: the exact body, the
@@ -214,6 +215,7 @@ func (s *Service) feedback(ctx context.Context, orgID, skillID, revisionID, card
 			ReasonCategory string `json:"reason_category"`
 			Source         string `json:"source"`
 			TaskID         string `json:"task_id"`
+			Actor          string `json:"actor"`
 		}
 		if json.Unmarshal([]byte(payload), &event) != nil {
 			continue
@@ -227,7 +229,7 @@ func (s *Service) feedback(ctx context.Context, orgID, skillID, revisionID, card
 		at := occurred
 		out = append(out, feedbackEntry{JudgmentID: event.JudgmentID, Verdict: event.Verdict,
 			Reason: optional(event.ReasonCategory), Source: optional(event.Source),
-			TaskID: optional(event.TaskID), OccurredAt: optional(at)})
+			TaskID: optional(event.TaskID), OccurredAt: optional(at), Actor: optional(event.Actor)})
 	}
 	return out, rows.Err()
 }
@@ -306,6 +308,7 @@ func (s *Service) handleFeedback(c *mgmt.Context) error {
 		"verdict":         req.Verdict,
 		"reason_category": reason,
 		"source":          "ui",
+		"actor":           c.Principal.ID(),
 	}
 	// The delivery path names this revision by its card identifier, so the event
 	// carries both. `revision` stays the catalog revision the caller addressed:

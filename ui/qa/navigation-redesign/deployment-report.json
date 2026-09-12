@@ -1,0 +1,36 @@
+{
+  "date": "2026-09-09",
+  "result": "frontend_deployed_api_authentication_blocked",
+  "namespace": "guidefold",
+  "helmRelease": "guidefold",
+  "revision": 6,
+  "uiImage": "ghcr.io/wiatrm/guidefold-ui@sha256:497166b2c0afcba4cfea2d298391fc312e40e31ad0ceb8606d4f489eb9029abe",
+  "imageTag": "redesign-20260909-fold-film-06",
+  "sourceWorktree": "/home/mike/projects/gf-waitlist-20260908",
+  "sourceCommitted": false,
+  "changeScope": "Preflight equality check: exactly UI Deployment container image changed; other rendered Helm resources unchanged.",
+  "readiness": "guidefold-ui 2/2; rollout successful",
+  "http": {
+    "/": 200,
+    "/import": 200,
+    "/assets/index-C1H_1Gpz.js": 200,
+    "/assets/Landing-DCAs3KGq.js": 200,
+    "/assets/guidefold-paper-fold-film.webp": 200,
+    "/licenses/shadcn-space.txt": 200,
+    "/api/v1/auth/providers": 503
+  },
+  "browser": "Production landing screenshot confirms fold-film hero. Local Playwright 11/11: Dialog and Sheet focus/escape, missing cover fallback, motion, mobile/desktop, axe, flow and FAQ. Recorded YouTube content stubbed in automated tests. 299 unit tests passed with two workers.",
+  "remaining": "Pre-existing API crash: workos_requires_api_key_and_client_id. Authentication, import and waitlist delivery are not production-verified. No auth bypass, backend/database change or sender configuration.",
+  "rollbackRevision": 5,
+  "lighthouse": {
+    "environment": "Local final production nginx container, mobile simulation, Lighthouse 12.8.2; not production field data",
+    "performance": 65,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 92,
+    "lcpSeconds": 4.5,
+    "tbtMs": 730,
+    "cls": 0,
+    "limitation": "Mobile LCP and main-thread budget remain open; no all-green performance claim."
+  }
+}

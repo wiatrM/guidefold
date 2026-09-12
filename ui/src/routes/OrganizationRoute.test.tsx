@@ -150,6 +150,30 @@ describe('Organization route, integrations', () => {
     await screen.findByText('No installation yet');
     expect(screen.queryByText('Device authorization')).not.toBeInTheDocument();
   });
+
+  test('the adapter setup guide shows all five commands and, for an owner, a link to Create an installation', async () => {
+    renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations');
+    await screen.findByText('Set up an adapter');
+    expect(screen.getByText('guidefold install --harness claude')).toBeInTheDocument();
+    expect(screen.getByText('guidefold login')).toBeInTheDocument();
+    expect(screen.getByText(
+      'printf \'%s\' "<paste the installation token>" > ~/.config/guidefold/search-token '
+      + '&& chmod 600 ~/.config/guidefold/search-token '
+      + '&& export GUIDEFOLD_SEARCH_TOKEN_FILE=~/.config/guidefold/search-token',
+    )).toBeInTheDocument();
+    expect(screen.getByText('guidefold doctor')).toBeInTheDocument();
+    expect(screen.getByText('guidefold telemetry flush --url <api>')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Open Create an installation' });
+    expect(link).toHaveAttribute('href', '/#create-installation');
+  });
+
+  test('a member sees the same adapter guide but no link to create a token', async () => {
+    renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations', { role: 'member' });
+    await screen.findByText('Set up an adapter');
+    expect(screen.getByText('guidefold install --harness claude')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open Create an installation' })).not.toBeInTheDocument();
+    expect(screen.getByText('Only an owner can create an installation token here; ask one to run this step.')).toBeInTheDocument();
+  });
 });
 
 const auditPage = (over: Partial<AuditPage> = {}): AuditPage => ({

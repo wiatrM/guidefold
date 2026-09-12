@@ -46,6 +46,58 @@ def test_build_is_deterministic_across_repeated_calls(gf, fixture_root):
     assert idx1.graph == idx2.graph
 
 
+def test_source_proof_is_carried_into_the_snapshot_without_becoming_a_rank_signal(
+    gf, fixture_copy
+):
+    """A structured proof is frontmatter data, not scalar registry metadata.
+
+    The service gate reads it after retrieval.  This test makes sure the build
+    path and the lazy on-disk artifact preserve it while the ordinary BM25
+    fields stay unchanged.
+    """
+    skill = next(fixture_copy.rglob("SKILL.md"))
+    original = skill.read_text(encoding="utf-8")
+    baseline = gf.Index.build(fixture_copy, gf.load_map(fixture_copy))
+    proof = """source_proof:
+  schema: source-proof-v1
+  verified: false
+  claims:
+    - id: operation
+      status: partial
+"""
+    marker = "\n---\n"
+    assert marker in original
+    skill.write_text(original.replace(marker, "\n" + proof + "---\n", 1), encoding="utf-8")
+
+    idx = gf.Index.build(fixture_copy, gf.load_map(fixture_copy))
+    urn = next(u for u, card in idx.cards.items() if card["name"] == skill.parent.name)
+    assert idx.cards[urn]["proof"]["schema"] == "source-proof-v1"
+    assert idx.cards[urn]["proof"]["verified"] is False
+    assert idx.idf == baseline.idf
+    assert idx.postings == baseline.postings
+
+    dest = fixture_copy / ".guidefold-test-index"
+    gf.write_index_artifact(fixture_copy, gf.load_map(fixture_copy), dest, "proof-test-sha")
+    loaded = gf.load_index_artifact(dest)
+    try:
+        assert loaded.cards[urn]["proof"] == idx.cards[urn]["proof"]
+    finally:
+        for attr in (
+            "_cards_mm", "_graph_mm", "_terms_mm", "_postings_mm",
+            "_postings_idx_mm", "_words_mm", "_vectors_mm",
+        ):
+            handle = getattr(loaded, attr, None)
+            if handle is not None:
+                handle.close()
+        for attr in (
+            "_cards_fh", "_graph_fh", "_terms_fh", "_postings_fh",
+            "_postings_idx_fh", "_words_fh", "_vectors_fh",
+        ):
+            handle = getattr(loaded, attr, None)
+            if handle is not None:
+                handle.close()
+
+
 def test_from_cards_bm25_ranks_the_relevant_card_first(gf):
     cards = {
         "urn:skill:acme:_root:turnstile-guide": make_card(

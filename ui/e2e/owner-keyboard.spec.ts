@@ -9,8 +9,12 @@ import { chosen, commit, enter, org, raw, repoId, sourceUrl, stubApi, tabTo } fr
 
 test('owner completes sign-in, import, library, review and export with keyboard only', async ({ page }) => {
   test.setTimeout(120000);
-  await stubApi(page);
-  await page.goto('/import?step=login');
+  const state = await stubApi(page);
+  // Sign-in is the /login page now, not a step of the wizard: with no session the gate sends the
+  // request there with where it was going, and the API's 302 to return_to lands the owner on it.
+  state.signedOut = true;
+  await page.goto('/import?step=organization');
+  await page.waitForURL(/\/login\?return=/);
   await enter(page, page.getByRole('button', { name: 'Continue with GitHub', exact: true }));
   await page.waitForURL(/\/import\?.*step=organization/);
   await enter(page, page.getByRole('link', { name: 'Use this organization', exact: true }));

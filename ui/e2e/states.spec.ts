@@ -10,6 +10,7 @@ const skillView = '&skill=' + encodeURIComponent(chosen.id) + '&revision=' + cho
 /** The address each view is opened at per scenario: an empty organisation has no skill or
  * proposal to name, and a failing one must not echo an identifier from the address as content. */
 const viewsFor = (state: Scenario): [string, string][] => [
+  ['home', ''],
   ['import', '&step=result'],
   ['library', state === 'partial' ? '&scope=not-a-scope' : ''],
   ['map', state === 'partial' ? '&tab=repository&skill=' + encodeURIComponent(chosen.id) : '&tab=repository'],
@@ -38,7 +39,7 @@ for (const state of ['empty', 'loading', 'partial', 'error'] as const) test('sev
     const main = page.locator('main');
     if (state === 'empty') {
       // An absence is named as one; nothing reads as a count of zero observations.
-      await expect(main.getByText(/No (skills yet|import yet|proposals to review|observations|installation yet|skill selected)|This directory holds no imported object/).first()).toBeVisible();
+      await expect(main.getByText(/No (skills yet|import yet|proposals to review|observations|installation yet|skill selected|telemetry in the last)|This directory holds no imported object/).first()).toBeVisible();
       expect(await main.innerText(), view).not.toMatch(content);
     }
     if (state === 'loading') {
@@ -95,22 +96,31 @@ test('seven views: degraded, membership past its confirmation window with /me fa
   }
 });
 
-test('a 403 from the repository revokes the session view-wide and reveals nothing', async ({ page }) => {
+test('a 403 from the repository masks every view, with the session and the way back intact', async ({ page }) => {
   await stubApi(page);
   await page.route('**/api/v1/orgs/meridian/repos/monorepo/**', route => route.fulfill({
     status: 403, contentType: 'application/json', headers: { 'Cache-Control': 'no-store' },
     body: JSON.stringify({ error: 'forbidden', message: 'No.', request_id: 'stub-403' }),
   }));
   for (const [view, extra] of [['library', ''], ['skill', skillView], ['usage', '']]) {
-    await page.goto('/' + view + query(extra));
+    const at = '/' + view + query(extra);
+    await page.goto(at);
     await settle(page, 'restricted');
     const main = page.locator('main');
     // A denial observed by any request is reported to the access controller, which masks every
-    // view until the operator signs in again; the route's own restricted state is never reached.
-    await expect(main.getByText('Access unavailable').first()).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Sign in again' })).toBeVisible();
+    // view; the route's own restricted state is never reached. The session is untouched, so this
+    // is NOT the login page: sending the operator to sign in would only return them to the same
+    // forbidden address and deny again.
+    await expect(main.getByText('Not available to your account').first()).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(view));
+    await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toHaveCount(0);
+    await expect(main.getByRole('button', { name: 'Open your organization' })).toBeVisible();
+    await expect(main.getByRole('button', { name: 'Sign in again' })).toBeVisible();
     expect(await main.innerText(), view).not.toMatch(content);
     await expect(main.locator('input, textarea, select')).toHaveCount(0);
     await clean(page, view + '/403');
   }
+  // And the way back actually leaves: the refused repository is dropped from the address.
+  await page.getByRole('button', { name: 'Open your organization' }).click();
+  await page.waitForURL(/\/import\?org=meridian&step=preview/);
 });

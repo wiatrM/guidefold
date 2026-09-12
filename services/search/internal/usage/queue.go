@@ -33,6 +33,10 @@ type decisionDTO struct {
 	Action string  `json:"action"`
 	Reason *string `json:"reason"`
 	At     *string `json:"at"`
+	// Actor is the deciding user's principal id (`gfm.owner_queue.decided_by`),
+	// or nil for a decision that carries no recorded user (contract 1.3.0,
+	// API-CONTRACT §5.5).
+	Actor *string `json:"actor"`
 }
 
 // The two reasons the report derives from telemetry. The other three
@@ -80,16 +84,17 @@ func derivedUUID(id string) string {
 
 // queueRow is one gfm.owner_queue row as read.
 type queueRow struct {
-	itemID   string
-	skillID  string
-	revision string
-	reason   string
-	since    time.Time
-	evidence []byte
-	state    string
-	decision *string
-	reasonTx *string
-	decided  *time.Time
+	itemID    string
+	skillID   string
+	revision  string
+	reason    string
+	since     time.Time
+	evidence  []byte
+	state     string
+	decision  *string
+	reasonTx  *string
+	decidedBy *string
+	decided   *time.Time
 }
 
 // queue merges what the import worker wrote with what this report derived.
@@ -101,7 +106,7 @@ type queueRow struct {
 func (s *Service) queue(ctx context.Context, orgID, repoID string, report domain.Report,
 	meta map[string]domain.SkillMeta) ([]queueItem, error) {
 	rows, e := s.pool.Query(ctx, `SELECT item_id::text,skill_id,revision_id,reason,since,
- evidence,state,decision,decision_reason,decided_at
+ evidence,state,decision,decision_reason,decided_by::text,decided_at
  FROM gfm.owner_queue
  WHERE org_id=$1::uuid AND repo_id=$2
    AND (state='open' OR reason IN ('negative_feedback','zero_loads'))
@@ -116,7 +121,7 @@ func (s *Service) queue(ctx context.Context, orgID, repoID string, report domain
 		var r queueRow
 		var revision *string
 		if e := rows.Scan(&r.itemID, &r.skillID, &revision, &r.reason, &r.since, &r.evidence,
-			&r.state, &r.decision, &r.reasonTx, &r.decided); e != nil {
+			&r.state, &r.decision, &r.reasonTx, &r.decidedBy, &r.decided); e != nil {
 			return nil, mgmt.Internal(e)
 		}
 		r.revision = text(revision)
@@ -160,7 +165,8 @@ func persistedItem(r queueRow) queueItem {
 		if r.decided != nil {
 			at = r.decided.UTC().Format(time.RFC3339)
 		}
-		item.Decision = &decisionDTO{Action: *r.decision, Reason: r.reasonTx, At: optional(at)}
+		item.Decision = &decisionDTO{Action: *r.decision, Reason: r.reasonTx, At: optional(at),
+			Actor: r.decidedBy}
 	}
 	return item
 }
@@ -252,10 +258,10 @@ func (s *Service) decidePersisted(c *mgmt.Context, tx pgx.Tx, orgID, repoID, ite
  SET state='resolved',decision=$4,decision_reason=$5,decided_by=$6::uuid,decided_at=now()
  WHERE org_id=$1::uuid AND repo_id=$2 AND item_id=$3::uuid AND state='open'
  RETURNING item_id::text,skill_id,revision_id,reason,since,evidence,state,
-  decision,decision_reason,decided_at`,
+  decision,decision_reason,decided_by::text,decided_at`,
 		orgID, repoID, itemID, action, reason, nullable(actor)).
 		Scan(&r.itemID, &r.skillID, &revision, &r.reason, &r.since, &r.evidence, &r.state,
-			&r.decision, &r.reasonTx, &r.decided)
+			&r.decision, &r.reasonTx, &r.decidedBy, &r.decided)
 	if isNoRows(e) {
 		return queueItem{}, mgmt.NotFound("not_found", "No open review item with that id.")
 	}
@@ -343,5 +349,6 @@ func (s *Service) decideComputed(c *mgmt.Context, tx pgx.Tx, orgID, repoID, item
 	return queueItem{ItemID: itemID, SkillID: skillID, Revision: optional(revision),
 		Reason: reasonName, Source: "computed",
 		Evidence: map[string]any{"computed_item_id": itemID},
-		Decision: &decisionDTO{Action: action, Reason: &reasonCopy, At: &at}}, nil
+		Decision: &decisionDTO{Action: action, Reason: &reasonCopy, At: &at,
+			Actor: optional(actor)}}, nil
 }

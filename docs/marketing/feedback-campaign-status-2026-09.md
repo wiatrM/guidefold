@@ -1,4 +1,169 @@
-# Status kampanii feedbackowej — 2026-09-08
+# Status kampanii feedbackowej — 2026-09-09
+
+## Dwunaste miejsce — r/coolgithubprojects
+
+2026-09-09 opublikowano [prezentację repozytorium](https://www.reddit.com/r/coolgithubprojects/comments/1wbhjzq/guidefold_find_codingagent_instructions_by/).
+Chrome potwierdził wpis w feedzie społeczności, autora mwiatruZ, link do repozytorium, demo YouTube
+i GitHub #127. Prośba dotyczy pierwszego niejasnego kroku README i wyboru instrukcji dla katalogu.
+Wpis ujawnia autorstwo i pomoc AI; rozróżnia dostępny OSS oraz planowany płatny hosting.
+Licencję Apache-2.0 sprawdzono w LICENSE. Nie proszono o gwiazdki ani prywatne repozytoria.
+
+Przed publikacją odczytano stronę społeczności i formularz wymagający linku/obrazu/AMA;
+wyszukiwanie Guidefolda nie zwróciło wcześniejszego wpisu. Pierwszy odczyt: 0 komentarzy,
+1 głos z zaznaczonym własnym upvote. To publikacja, nie dowód zainteresowania.
+Stan: 14 publikacji w 12 różnych kanałach. Nowy permalink obejmuje tracker używany przez monitoring.
+
+10 minut po publikacji użytkownik Specific_Cream2815 zapytał: „how does it match instructions to a task,
+nearest directory up the tree or keyword matching”. To pierwszy konkretny sygnał produktowy z tego miejsca:
+nie jest jeszcze deklaracją testu, użycia ani potrzeby płatnego SaaS, ale wskazuje, że opis mechanizmu
+wyboru instrukcji wymaga doprecyzowania. Zapisano permalink komentarza w wierszu 34. Nie odpowiadano automatycznie.
+
+2026-09-09 odpowiedziano ręcznie pod komentarzem: [p8q1x3l](https://www.reddit.com/r/coolgithubprojects/comments/1wbhjzq/comment/p8q1x3l/).
+Wyjaśniono kolejność: zakres node + ancestors, następnie nearest/deepest wins dla tej samej nazwy,
+a dopiero potem BM25F wewnątrz dozwolonego zakresu. Podano diagnostykę 24/24 i 23/24 oraz linki do
+RESEARCH i ADR-0037; wyraźnie oznaczono ograniczenia i brak tej reguły w hosted Go service.
+
+Sprawdzono też [bieżący wątek r/ChatGPTCoding](https://www.reddit.com/r/ChatGPTCoding/comments/1w9lsay/weekly_self_promotion_thread/).
+Promocja należy do tego wątku, ale rozwinięta reguła 7 zakazuje surowego tekstu AI i pozwala AI
+na gramatykę/klarowność. Nie publikowano wygenerowanej treści; potrzebny własny tekst autora.
+
+## Kontrola zainteresowania — 2026-09-09
+
+### Rasa Agent Engineering — zweryfikowany kanał, dostęp nieuzyskany
+
+2026-09-09 odczytano w Chrome [stronę społeczności](https://info.rasa.com/community)
+i pełne [zasady](https://info.rasa.com/community-guidelines), oznaczone aktualizacją November 2025.
+Prośby o feedback, badania użytkowników i prezentacje produktu należą do `#shameless-promotion`;
+limit to 2 posty tygodniowo na kanał. Zakazane są duplikaty między kanałami i niezamówiona promocja w DM.
+`#showcase` dotyczy projektów voice AI; nie należy tam kierować Guidefolda tylko ze względu na nazwę kanału.
+Treść musi dotyczyć AI lub powiązanych tematów i ujawniać afiliację autora. Proponowane dopasowanie:
+instrukcje dla coding-agentów utrzymujących repozytorium aplikacji agentowej, nie deklaracja integracji z Rasa.
+
+Dostęp do Discorda prowadzi przez formularz: wymagane work email, country i akceptacja Community Guidelines.
+Formularz informuje także o aktualizacjach i wiadomościach firmy. Nie przesłano danych, nie zaakceptowano
+warunków i niczego nie opublikowano. Potrzebne dołączenie przez właściciela, potem kontrola rzeczywistego
+kanału i jego historii przed pojedynczą publikacją. Wiersz 33 nie zwiększa licznika 11 miejsc.
+
+Odczyt w zalogowanym Chrome: [r/git](https://www.reddit.com/r/git/comments/1wbd58o/i_built_guidefold_to_track_which_agent/p8p1vfd/)
+pokazuje 943 wyświetlenia i odpowiedź waterkip: „This isnt a git problem. Kthnxbye”. To sygnał
+niedopasowania kanału, nie ocena działania Guidefolda ani deklaracja testu. Wpis istniał przed kontrolą;
+nie publikowano go w tym przebiegu. Dodano brakujący kanał do trackera. Nie ponawiać promocji na r/git.
+
+Pozostałe odczyty dotyczą permalinków w trackerze:
+- r/SideProject: 172 wyświetlenia; licznik 2 komentarzy, ale treść niewidoczna. Ich znaczenie pozostaje unknown.
+- r/AIAgentEngineering: 71 wyświetleń; r/alphaandbetausers: 45; oba pokazują brak odpowiedzi.
+- Product Hunt, wiersze 1 i 26: odpowiednio 4 i 3 wyświetlenia, oba bez odpowiedzi.
+- GitHub #127: 0 komentarzy, jedynym uczestnikiem jest autor.
+- Pod komentarzami Guidefolda w r/ClaudeCode, r/devops, r/github i r/betatests nie znaleziono odpowiedzi.
+- CNCF: główny wpis bez widocznych reakcji/odpowiedzi; wątek Nicolasa nadal pokazuje 2 odpowiedzi.
+
+[Strona launchu Product Hunt](https://www.producthunt.com/products/guidefold?launch=guidefold-2)
+pokazuje termin 2026-09-22 00:01 PDT, wyłączone głosowanie i 1 obserwującego. Nie ustalono,
+czy obserwujący jest osobą spoza zespołu. W sprawdzonych odpowiedziach brak deklaracji testu lub zakupu;
+nie jest to pomiar zapisów do waitlisty ani użycia OSS. Nie wysyłano odpowiedzi ani nowych postów.
+
+Tracker po uzupełnieniu obejmuje 13 istniejących publikacji w 11 różnych kanałach, w tym r/git
+z negatywnym sygnałem dopasowania. Cel 20 miejsc pozostaje niewykonany; rejestracja, kandydat
+i strona produktu bez dyskusji nie są publikacją feedbackową.
+
+## LinuxCommunity — ograniczenie sposobu publikacji
+
+Lobsters również zweryfikowano 2026-09-08: [About / Guidelines](https://lobste.rs/about) ogranicza
+autopromocję do mniejszości aktywności i wyklucza treści promujące usługę komercyjną lub pozbawione
+znaczącego autorstwa człowieka. Nowe konta wymagają zaproszenia i mają ograniczenia. Pozycja 15
+nie jest już niezweryfikowanym discovered: wymaga osobistego udziału autora, nie automatycznej kampanii.
+Nie proszono obcych osób o zaproszenia ani nie opublikowano wpisu.
+
+2026-09-08: main agent zweryfikował [Showcase guidelines](https://linuxcommunity.io/t/showcase-category-guidelines-what-to-include-when-sharing-your-project/7628)
+oraz [FAQ, reguły 5 i 9](https://linuxcommunity.io/faq). Showcase wymaga opisu, demonstracji, sposobu
+wypróbowania i licencji. AI może pomagać w redakcji własnych myśli; tekst będący głównie wynikiem AI
+może zostać ukryty lub usunięty. Reklama nakierowana na przychód wymaga zgody staff.
+Wniosek: osobisty techniczny pokaz autora po spełnieniu reguł, nie automatyczny wpis z copy kitu.
+Nie publikowano ani nie rejestrowano konta. Ten kandydat nie zwiększa licznika promocji.
+Chrome ponownie odpowiada; zachowana karta DeepLearning.AI nadal jest ekranem Sign In.
+
+## Kolejne społeczności poza Redditem — kontrola 2026-09-08
+
+DeepLearning.AI: main agent odczytał oficjalne [zasady promocji](https://community.deeplearning.ai/t/self-promotion-and-solicitation-policies/894879)
+i [zasady AI slop](https://community.deeplearning.ai/t/prohibited-ai-slop/888269).
+Istotna merytorycznie prezentacja biznesu jest dozwolona raz w miesiącu w AI Discussions;
+aktualizacje mają pozostać w jednym wątku. Nieedytowane generowane teksty i ogólne szablony są wykluczone.
+Chrome otworzył AI Discussions, potem ekran Sign in (Google/LinkedIn/Apple lub email/hasło).
+Brak zalogowanej sesji; nic nie wysłano. Następny krok: właściciel loguje się na swoje konto.
+Temat do rozwinięcia: testowanie poprawności wyboru instrukcji po zadaniu i katalogu na jawnej fixture.
+
+Research pomocniczy wskazał pięć dalszych kandydatów, jeszcze bez weryfikacji dostępu przez main agenta:
+
+- [LinuxCommunity Showcase](https://linuxcommunity.io/c/showcase/21): techniczny pokaz OSS; reklama hostingu wymaga dodatkowego sprawdzenia.
+- [Claude Code Community Australia](https://claudecommunity.com.au/community): trzeba ustalić dostęp dla osoby spoza Australii.
+- [Rasa Agent Engineering](https://info.rasa.com/community): rejestracja i zasady konkretnego kanału #shameless-promotion do sprawdzenia.
+- [DevOpsChat](https://www.devopschat.co/community/register): automatyczne publikowanie zabronione; wymaga osobistego udziału autora, nie automatycznego copy kitu.
+- [Agentics NZ showcase](https://github.com/agenticsnz/showcase): kuratorowany PR, nie natychmiastowa rozmowa; uprawnienie uczestnictwa spoza NZ nieustalone.
+
+Nie są publikacjami i nie zwiększają licznika. Indie Hackers nadal pokazuje Posts 0; kliknięcie na stronie
+produktu otworzyło pusty szkic. Nie wpisano treści; zaakceptowano usunięcie wyłącznie tego własnego pustego szkicu,
+ale błąd połączenia Chrome uniemożliwił potwierdzenie końcowego stanu. Nie stwierdzono odblokowania publicznych postów.
+
+## Kontrola CNCF i uzupełnienie brakującego wpisu
+
+2026-09-08, kolejny odczyt Chrome: wątek Nicolasa nadal ma dwie odpowiedzi, z których ostatnia jest
+naszym komentarzem o 20:26. Wcześniejsza odpowiedź Oliviera nie jest feedbackiem na Guidefold.
+Zidentyfikowano także [istniejący główny wpis Guidefold z 20:39](https://cloud-native.slack.com/archives/C093U0DN49H/p1788892751088229),
+z demo i opisem CLI/Go/SEARCH/USE. W tym przebiegu go nie publikowano ani nie edytowano.
+Dodano brakujący permalink do monitora; to ten sam kanał CNCF, nie nowe miejsce.
+
+W historii kanału odczytano komunikat z 22 stycznia o przenoszeniu rozmów AI do
+[#cncf-artificial-intelligence-technical-community-group](https://cloud-native.slack.com/archives/C08Q78J65A7).
+Podgląd docelowego kanału jest dostępny, opis wskazuje oficjalny CNCF TOC AI Initiatives;
+historia obejmuje prezentację K8sGPT/Codex MCP. Nie dołączono ani nie opublikowano cross-postu.
+Sam historyczny komunikat o planowanym read-only nie dowodzi, że stary kanał jest dziś zablokowany.
+Przed następną prezentacją należy ustalić właściwe miejsce i zasady udziału, nie mnożyć kopii.
+
+## Dziesiąte miejsce: r/betatests
+
+2026-09-08: opublikowano [odpowiedź na publiczne zaproszenie developera do testowania](https://www.reddit.com/r/betatests/comments/1vc3ed8/comment/p8m7q9o/).
+Autor wątku deklaruje testowanie projektów w przeglądarce i prosi o opis oraz konkretne pytania.
+Odczytano reguły: brak spamu/low-effort oraz wymagania wieku konta i karmy. Nie obchodzono ograniczeń.
+Prośba Guidefold obejmuje obejrzenie demo i przeczytanie quickstartu bez uruchamiania komend;
+wynik to pierwszy niezrozumiały krok lub timestamp. Nie obiecuje natywnej aplikacji macOS/iOS.
+Zawiera demo, repo, GitHub #127, ujawnienie autorstwa i pomocy AI oraz rozróżnienie OSS/planowany hosted.
+Chrome potwierdził autora mwiatruZ, pełną treść i permalink. Brak odpowiedzi w pierwszym odczycie;
+wcześniejsza ogólna oferta testowania nie jest jeszcze zgodą na test Guidefold ani sygnałem popytu.
+
+Tracker ma 10 odrębnych miejsc published (w tym własny GitHub). Cel 20 miejsc pozostaje otwarty.
+Odczyt konfiguracji potwierdził aktywny monitor feedback-kampanii-guidefold co 6 godzin, czytający tracker.
+Daily blog X pozostaje PAUSED do wskazania docelowego profilu; nie utworzono duplikatu automatyzacji.
+
+## Dziewiąte miejsce: megawątek r/github
+
+2026-09-08: opublikowano [komentarz Guidefold w przypiętym Self-Promotion Megathread](https://www.reddit.com/r/github/comments/1jy8rea/comment/p8m7f86/).
+Reguła 4 odczytana w Chrome dopuszcza promocję wyłącznie w tym dedykowanym wątku; treść główna prosi
+o opis projektu i link do repo. Wyszukiwanie komentarzy dla Guidefold przed publikacją nie zwróciło wyników.
+Po publikacji potwierdzono autora mwiatruZ, pełną treść, permalink, demo oraz GitHub Discussions #127.
+Pytanie dotyczy quickstartu i ustalania instrukcji właściwych dla katalogu. OSS dostępny, hosted planowany;
+pomoc AI ujawniona, fictional fixture opisany wprost. Brak odpowiedzi w pierwszym odczycie.
+
+To dziewiąte odrębne miejsce z publikacją, wliczając własne GitHub Discussions; nie zamyka celu 20 miejsc.
+Domyślny własny głos nie jest zainteresowaniem odbiorcy. Nowy rekord published trafia do trackera dla monitora.
+
+## Kolejna dyskusja i bramka wdrożenia landing page
+
+2026-09-08, wieczorna kontrola w Chrome:
+
+- Opublikowano [nowy wątek Product Hunt o agencie CI, BYOK i kontroli kosztów](https://www.producthunt.com/p/guidefold/would-your-team-run-an-instruction-editing-agent-in-its-own-ci).
+  Potwierdzono autora Michał Wiatr, pełną treść, osadzone demo i link do głównej dyskusji GitHub #127.
+  Hosted i agent CI są jawnie planowane. Przy odczycie brak odpowiedzi; to kolejny wątek w istniejącym kanale, nie dziewiąte miejsce.
+- Zaktualizowano istniejący [post r/SideProject](https://www.reddit.com/r/SideProject/comments/1waugep/i_built_guidefold_to_track_which_agent/):
+  dodano link do GitHub #127 i ujawnienie pomocy AI, zachowując demo i dotychczasowe pytania.
+  Zapisany link zweryfikowano w publicznej treści. 141 wyświetleń i 0 komentarzy w tym odczycie; brak dowodu popytu.
+- GitHub #127 nadal pokazywał 0 komentarzy. Nie dodano własnych komentarzy podbijających widoczność.
+- Właściciel zlecił deploy landing page. Diagnostyka: publiczny host HTTPS zwraca 200 ze starym UI,
+  API zwraca 503. Brak dostępu do opisanego produkcyjnego klastra: standardowy WSL kubeconfig zawiera
+  wyłącznie niedostępny docker-desktop. Potrzebny produkcyjny kubeconfig. Nie wykonano deployu,
+  migracji, odczytu sekretów ani prawdziwej wysyłki Resend. Nie promować formularza jako działającego.
+
+Tekst pytania ograniczono zgodnie z positioning-and-copy do rzeczywistego stanu produktu.
+Kampania kieruje obecnie do sprawdzonego wątku feedbackowego; masowe duplikaty i obchodzenie ograniczeń są wykluczone.
 
 ## GitHub Discussions — własne miejsce na feedback
 

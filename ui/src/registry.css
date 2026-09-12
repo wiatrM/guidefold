@@ -1,6 +1,78 @@
-/* Spectrum registry utilities only: intentionally no Tailwind Preflight reset. */
+/* Tailwind for the shadcn/Spectrum registry code and the product surfaces composed from it.
+   Intentionally no Tailwind Preflight: global.css keeps the product reset. Every colour,
+   radius and font below is a reference into src/tokens/tokens.css; this file adds no value
+   of its own (qa/check-contracts.mjs allows only var() references inside @theme here). */
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" source(none);
-@source "./components/spectrumui";
-@source "./components/ui";
+@import "tw-animate-css";
+@source "./components";
+@source "./routes";
+@source "./app.tsx";
+@source "./Gallery.tsx";
 @custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+ --color-background:var(--background);
+ --color-foreground:var(--foreground);
+ --color-card:var(--card);
+ --color-card-foreground:var(--card-foreground);
+ --color-popover:var(--popover);
+ --color-popover-foreground:var(--popover-foreground);
+ --color-primary:var(--primary);
+ --color-primary-foreground:var(--primary-foreground);
+ --color-secondary:var(--secondary);
+ --color-secondary-foreground:var(--secondary-foreground);
+ --color-muted:var(--muted);
+ --color-muted-foreground:var(--muted-foreground);
+ --color-accent:var(--accent);
+ --color-accent-foreground:var(--accent-foreground);
+ --color-destructive:var(--destructive);
+ --color-destructive-foreground:var(--destructive-foreground);
+ --color-border:var(--border);
+ --color-input:var(--input);
+ --color-ring:var(--ring);
+ --color-chart-1:var(--chart-1);
+ --color-chart-2:var(--chart-2);
+ --color-chart-3:var(--chart-3);
+ --color-chart-4:var(--chart-4);
+ --color-chart-5:var(--chart-5);
+ --color-system:var(--survey-teal);
+ --color-system-ink:var(--system-ink);
+ --color-system-wash:var(--system-wash);
+ --color-human:var(--safety-orange);
+ --color-human-ink:var(--human-ink);
+ --color-human-wash:var(--human-wash);
+ --color-warning:var(--warning);
+ --color-warning-ink:var(--warning-ink);
+ --color-warning-wash:var(--warning-wash);
+ --color-error-ink:var(--error-ink);
+ --color-error-wash:var(--error-wash);
+ --color-line:var(--line);
+ --color-line-strong:var(--line-strong);
+ --color-graphite-950:var(--graphite-950);
+ --color-graphite-900:var(--graphite-900);
+ --color-graphite-850:var(--graphite-850);
+ --color-graphite-800:var(--graphite-800);
+ --color-graphite-700:var(--graphite-700);
+ --color-stone-100:var(--stone-100);
+ --color-stone-300:var(--stone-300);
+ --color-steel:var(--steel);
+ --font-sans:var(--font-body);
+ --font-display:var(--font-display);
+ --font-mono:var(--font-mono);
+ --radius-sm:var(--radius-small);
+ --radius-md:var(--radius);
+ --radius-lg:var(--radius-panel);
+ --radius-xl:var(--flow-radius);
+ --radius-2xl:var(--radius-tile);
+ --ease-out-expo:var(--ease-out);
+ --ease-drawer:var(--ease-drawer);
+ --color-sidebar:var(--sidebar);
+ --color-sidebar-foreground:var(--sidebar-foreground);
+ --color-sidebar-primary:var(--sidebar-primary);
+ --color-sidebar-primary-foreground:var(--sidebar-primary-foreground);
+ --color-sidebar-accent:var(--sidebar-accent);
+ --color-sidebar-accent-foreground:var(--sidebar-accent-foreground);
+ --color-sidebar-border:var(--sidebar-border);
+ --color-sidebar-ring:var(--sidebar-ring);
+}

@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-09-09",
+  "mode": "built-in image_gen",
+  "intent": "Original project assets inspired by the owner-supplied Guidefold film reference, not replacement logos.",
+  "assets": [
+    {
+      "file": "public/assets/guidefold-stone-hero-v1.webp",
+      "prompt": "Use case: stylized-concept. Asset type: ultra-wide website hero background for Guidefold, a developer tool with a folded map logo. Generate an original cinematic, photorealistic 3D material scene matching a premium product film: tactile charcoal basalt desk with fine engraved topographic contours, sculptural folded ivory limestone sheets, a single thin luminous burnt-orange route with small connection points traveling across the stone, restrained teal reflection. Wide 3:2 image designed to crop into a 21:9 hero. The lower third and far lateral edges hold the folded stone structures; the central upper two-thirds must be very dark quiet negative space for large live cream website typography, with no bright objects behind that copy. Warm raking sunset light at the right edge, deep graphite shadows, intricate physical texture, architectural editorial quality. The image is a background, not a web mockup. NO text, NO letters, NO logo, NO UI, NO fake dashboard, NO people, NO neon rainbow, NO floating glass spheres. Palette graphite #0c1014, warm ivory #efe3d0, safety orange #ff7a3d, tiny teal #3fb8b1. Strong genuine material detail, not a flat vector or stock gradient."
+    },
+    {
+      "file": "public/assets/guidefold-stone-close-v1.webp",
+      "prompt": "Use case: stylized-concept. Asset type: cinematic footer / closing call-to-action background for the Guidefold website. Create a premium photorealistic still life in wide 3:2 format with the key subject in the right half and deep empty graphite negative space on the left for live website copy. A single thick ivory limestone sheet folded into three architectural accordion planes rests on dark basalt engraved with precise topographic contours. A thin molten orange route is inlaid into the folded surface, bending around one edge, then continuing onto the desk toward the lower-left. Warm grazing amber light, tactile limestone imperfections, tiny restrained teal bounce light in the deepest shadows, sophisticated macro architectural photography, no mountain vista necessary. Palette charcoal #0c1014, cream #efe3d0, orange #ff7a3d, minimal teal #3fb8b1. The top and bottom edges dissolve naturally into nearly black photographic shadows. No text, no letters, no logos, no interface, no circles or floating spheres, no extra desk clutter. This should feel like a frame from an expensive cinematic developer-product film, not generic SaaS abstract shapes."
+    }
+  ],
+  "processing": "Lossy WebP encoding at quality 86, original framing and resolution preserved; original PNGs retained in Codex generated_images."
+}

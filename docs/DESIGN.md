@@ -208,6 +208,14 @@ sides whenever both finish in time and emits `telemetry_health.parity_mismatch` 
 disagreement — the first per-query signal, outside offline eval, that T0's Python BM25F and T1's
 Go/ParadeDB retrieval backend picked different skills for the same query.
 
+**Proof-gated delivery (P09/U5.5, opt-in):** `load <urn>@<revision> --delivery-policy proof_gated`
+sends USE 1.2 with `delivery_policy: proof_gated`. The service returns a body only
+when the card's source proof matches the active snapshot, revision, body digest and resolved
+scopes, has no conflict, and its dependency closure and claims are complete. Every other case is
+`ASK` with bounded provenance and missing requirements. The CLI records the abstention as a denied
+load and never caches the returned body. No flag means the existing 1.1 behavior, so adopting the
+gate is an explicit product decision rather than a silent change to all clients.
+
 ### 6a. Hosted service path (product pivot, P03/P10)
 
 **Status: the CLI half is implemented in this repo; every command but `scan` needs a running
@@ -432,7 +440,7 @@ All cache paths live under one `cache_root`: `$GUIDEFOLD_CACHE` if set, else `~/
 |-------|-----|-------|--------------------|----------|
 | C1 index artifact | index sha | `<cache_root>/index/<sha>/` | LRU eviction (cap `cache.max_index_shas`, default 20); path/eviction helpers shipped in E1.7, the writer/reader (`write_index_artifact`/`load_index_artifact`, `guidefold index [--check]` / `guidefold hook`) shipped in E1.4 — one flat artifact per sha, no sharding yet (§7). `find`/`materialize`/`validate` still rebuild an in-memory `Index` from the tree every invocation; only `hook` reads the cached artifact | load ≤ 150 ms once populated |
 | C2 query | sha256(normalized prompt) + index sha | *(not implemented — Router 0.1 has no model-dependent stage to cache; deferred until 1b/6 below land)* | LRU 2,000, TTL 7 d | embedding + rerank skipped |
-| C3 bodies | urn + revision | `<cache_root>/skills/<urn>/<rev>/` (urn percent-encoded: `%`→`%25` then `:`→`%3A`, so it round-trips and stays filesystem-safe) | LRU eviction (cap `cache.max_skill_revisions`, default 500) | `load` offline |
+| C3 bodies | urn + revision | `<cache_root>/skills/<urn>/<rev>/` (urn percent-encoded: `%`→`%25` then `:`→`%3A`, so it round-trips and stays filesystem-safe) | LRU eviction (cap `cache.max_skill_revisions`, default 500); proof-gated `ASK` responses never write a body | `load` offline or service; optional `--delivery-policy proof_gated` |
 | C4 registry (fallback leg) | query + location | in C2 | TTL 1 h | only when embeddings unavailable |
 
 Hook budget: warm p50 ≤ 300 ms (index load + BM25 + local dense + PPR); cold ≤ 2 s (one embedding call); a hard SIGALRM watchdog (E1.5, default 3 s, `$GUIDEFOLD_HOOK_TIMEOUT_S` overrides) prints **nothing** and exits 0 on expiry — injecting late or from stale state is worse than injecting nothing — and appends one `hook_timeout` record to `.guidefold/telemetry/hook.jsonl` so timeouts are visible without ever reaching stdout; timed-out runs are excluded from the determinism claim in §4. Registry calls never sit on the hook path except as the C4 fallback; `gcloud` subprocess (≈ 3 s per call) is replaced by REST with a cached access token for `load` and `publish`.

@@ -10,8 +10,8 @@ import css from './landing.module.css';
  * while the dialog is open and unmounted on close, so no YouTube request happens on
  * arrival, and the plain link is the fallback for anyone who cannot use the dialog.
  */
-export function DemoDialog({onOpenChange}:{onOpenChange:(open:boolean)=>void}){
- const [open,setOpen]=useState(false);
+export function DemoDialog({onOpenChange,defaultOpen=false}:{onOpenChange:(open:boolean)=>void;defaultOpen?:boolean}){
+ const [open,setOpen]=useState(defaultOpen);
  const trigger=useRef<HTMLButtonElement>(null);
  const close=useRef<HTMLButtonElement>(null);
  return <Dialog.Root open={open} onOpenChange={value=>{setOpen(value);onOpenChange(value);}}>

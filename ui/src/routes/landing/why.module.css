@@ -1,0 +1,62 @@
+/* Why teams install it, SPEC v3 screen 2. One 12-column grid like every other block; the
+ * rows are a two-column definition list at 1440 and one column at 390, and the only
+ * decoration is the hairline between them. Every value is a token. */
+.section{padding-block:var(--landing-section-padding);}
+.grid{composes:grid from './landing.module.css';}
+.copy{grid-column:var(--landing-block-copy);min-width:var(--zero);}
+.section p.eyebrow{
+ display:flex;
+ align-items:center;
+ gap:var(--space-2);
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.section p.eyebrow::before{
+ content:"";
+ display:block;
+ flex:none;
+ inline-size:var(--landing-eyebrow-rule);
+ block-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.section h2.heading{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+
+.roles{
+ grid-column:1/-1;
+ margin:var(--space-5) var(--zero) var(--zero);
+ min-width:var(--zero);
+}
+.role{
+ display:grid;
+ grid-template-columns:var(--landing-role-columns);
+ gap:var(--landing-role-gap);
+ padding-block:var(--landing-role-pad);
+ border-top:var(--border-width) solid var(--line);
+}
+.role:last-child{border-bottom:var(--border-width) solid var(--line);}
+.section dt.roleName{
+ margin:var(--zero);
+ color:var(--stone-100);
+ font-size:var(--landing-lede);
+ font-weight:var(--weight-semibold);
+ text-wrap:balance;
+}
+.section dd.roleGets{
+ margin:var(--zero);
+ color:var(--stone-300);
+ line-height:var(--line-height-body);
+}
+
+.value{grid-column:var(--landing-block-copy);min-width:var(--zero);}

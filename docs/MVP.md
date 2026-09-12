@@ -256,6 +256,7 @@ Deferred: full automated promotion workflow and probation, induction/consolidati
 | [0026 native Go/ParadeDB](adr/ADR-0026-native-search-paradedb-compose.md) | Accepted Go/Postgres/Compose hosting only; default ranking must retain CLI BM25F parity; experimental Tantivy fails HSR admission |
 | [0027 GPU retrieval](adr/ADR-0027-gpu-retrieval-profile.md) | Proposed explicit TEI/pgvector profile; preserves default BM25F parity and separate quality admission |
 | [0025 harness-service context](adr/ADR-0025-harness-service-context-contract.md) | Accepted request contract 1.1: versioning, repository-relative context, explicit feature semantics and schema/runtime/HTTP conformance; narrows the request boundary of 0023/0024 without admitting their production architecture |
+| [0039 proof-gated delivery](adr/ADR-0039-proof-gated-source-grounded-delivery.md) | Proposed opt-in USE 1.2 source-proof boundary: valid provenance may `LOAD`; missing, stale or conflicting proof returns redacted `ASK`; acceptance waits for E2 and two-rater URCT-2 |
 
 Older DESIGN/KNOWLEDGE-DESIGN remain historical target descriptions and current CLI notes where marked. Their local-only hot path, delayed telemetry, load-based probation and old phase schedules must not be read as acceptance criteria for this proposed MVP. No runtime behavior changed in this documentation revision.
 

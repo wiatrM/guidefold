@@ -29,3 +29,21 @@ describe('SkillContent',()=>{
   expect(link).toHaveAttribute('rel','noopener noreferrer');
  });
 });
+
+describe('SkillContent frontmatter',()=>{
+ it('keeps YAML frontmatter as folded exact text instead of a heading',async()=>{
+  const {default:userEvent}=await import('@testing-library/user-event');
+  render(<SkillContent content={'---\nname: adr-process\ndescription: "How Meridian records decisions"\n---\n\n# ADR process\n\nWrite an ADR when a change crosses a platform.'}/>);
+  expect(screen.getByRole('heading',{level:3,name:'ADR process'})).toBeInTheDocument();
+  expect(screen.queryByRole('heading',{name:/name: adr-process/})).not.toBeInTheDocument();
+  const trigger=screen.getByRole('button',{name:/Frontmatter/});
+  expect(trigger).toHaveTextContent('2 lines');
+  await userEvent.click(trigger);
+  expect(screen.getByLabelText('Frontmatter')).toHaveTextContent('name: adr-process');
+ });
+ it('renders content without frontmatter unchanged',()=>{
+  render(<SkillContent content={'Plain body'}/>);
+  expect(screen.getByText('Plain body')).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:/Frontmatter/})).not.toBeInTheDocument();
+ });
+});

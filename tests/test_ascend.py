@@ -16,6 +16,7 @@ IDENTITY_DIR = "platforms/atlas/identity/.agents/skills"
 ATLAS_DIR = "platforms/atlas/.agents/skills"
 SRC_TURNSTILE = "urn:skill:meridian:atlas.identity.turnstile:postgres-auth"
 SRC_RBAC = "urn:skill:meridian:atlas.identity:rbac-policies"
+SRC_LEGACY = "urn:skill:meridian:atlas.identity:legacy-session-auth"
 
 
 class _Stub:
@@ -114,6 +115,20 @@ def test_ascend_creates_the_parent_map_skill_from_a_leaf_change(run_cli, fixture
     assert "  scope: atlas.identity\n" in text and "  owner: identity-platform\n" in text
     assert "  knowledge_layer: abstract\n" in text and "  generated_by: guidefold-ascend\n" in text
     assert SRC_TURNSTILE in text and SRC_RBAC in text          # derived_from cites both sources
+    # An LLM-generated digest carries a provisional proof record.  It is deliberately not
+    # publishable as proof-gated LOAD until a trusted reviewer fills exact source references.
+    assert "source_proof:\n" in text and "  verified: false\n" in text
+    assert "  status: pending_review\n" in text and "      source_refs: [{" in text
+    assert '"line_from": 1' in text and '"line_to":' in text
+    import hashlib
+    import yaml
+    proof = yaml.safe_load(text.split("\n---\n", 1)[0])["source_proof"]
+    for claim in proof["claims"]:
+        for ref in claim["source_refs"]:
+            source = Path(fixture_copy) / ref["path"]
+            assert hashlib.sha256(source.read_bytes()).hexdigest() == ref["sha256"]
+            assert ref["line_from"] == 1
+            assert ref["line_to"] == len(source.read_text(encoding="utf-8").splitlines())
     assert text.count("\n") <= 80
     # the model saw the field: target node, its owner, the sibling child scopes and their cards
     prompt = s.requests[0]["body"]["messages"][1]["content"]
@@ -123,6 +138,45 @@ def test_ascend_creates_the_parent_map_skill_from_a_leaf_change(run_cli, fixture
     # `validate` accepts the tree with the new file
     v = run_cli(["validate"], cwd=fixture_copy)
     assert v.returncode == 0, v.stdout + v.stderr
+
+
+def test_ascend_emits_recursive_claim_ref_for_verified_child(run_cli, fixture_copy, stub):
+    """A verified lower card is carried as a content-addressed proof edge."""
+    import hashlib
+
+    child_path = Path(fixture_copy) / "platforms/atlas/identity/.agents/skills/rbac-policies/SKILL.md"
+    child = child_path.read_text(encoding="utf-8")
+    body = child.split("\n---\n", 1)[1]
+    child_sha = hashlib.sha256(child.encode("utf-8")).hexdigest()
+    body_sha = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    proof = (
+        "source_proof:\n"
+        "  schema: source-proof-v1\n"
+        "  verified: true\n"
+        "  snapshot: snapshot-under-test\n"
+        f"  skill_id: {SRC_RBAC}\n"
+        "  revision: child-revision\n"
+        f"  body_sha256: {body_sha}\n"
+        "  scopes: [atlas.identity]\n"
+        "  claims:\n"
+        "    - id: operation\n"
+        "      status: supported\n"
+        "      source_refs:\n"
+        f"        - path: platforms/atlas/identity/.agents/skills/rbac-policies/SKILL.md\n          sha256: {child_sha}\n          line_from: 1\n          line_to: {len(child.splitlines())}\n"
+    )
+    child_path.write_text(child.replace("---\n", "---\n" + proof, 1), encoding="utf-8")
+    response = _map_identity()
+    response["results"][0]["skill"]["claims"][1]["child_claims"] = [
+        {"source": SRC_RBAC, "claim_id": "operation"}
+    ]
+    s = stub([response])
+    r = _ascend(run_cli, fixture_copy, _env(s.base_url))
+    assert r.returncode == 0, r.stderr
+    written = Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map" / "SKILL.md"
+    text = written.read_text(encoding="utf-8")
+    assert '"claim_id": "operation"' in text
+    assert '"skill_id": "' + SRC_RBAC + '"' in text
+    assert '"claim_digest": "' in text and '"commitment": "' in text
 
 
 def test_ascend_climbs_until_a_level_has_nothing_generic(run_cli, fixture_copy, stub):
@@ -149,6 +203,43 @@ def test_ascend_rejects_a_claim_that_cites_a_skill_outside_the_context(run_cli, 
     item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
     assert any("not in context" in reason for reason in item["rejected"])
     assert not (Path(fixture_copy) / IDENTITY_DIR / "atlas-identity-map").exists()
+
+
+def test_ascend_rejects_claim_mixing_a_deprecated_source(run_cli, fixture_copy, stub):
+    bad = _map_identity(sources=(SRC_LEGACY, SRC_RBAC))
+    s = stub([bad])
+    r = _ascend(run_cli, fixture_copy, _env(s.base_url))
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
+    assert any("deprecated source" in reason for reason in item["rejected"])
+    assert out["written"] == []
+
+
+def test_ascend_rejects_unbounded_claim_provenance(run_cli, fixture_copy, stub):
+    skill = _map_identity()
+    skill["results"][0]["skill"]["claims"] = [
+        {"text": f"claim {i}", "sources": [SRC_TURNSTILE]} for i in range(13)
+    ]
+    s = stub([skill])
+    r = _ascend(run_cli, fixture_copy, _env(s.base_url))
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
+    assert any("bounded provenance" in reason for reason in item["rejected"])
+    assert out["written"] == []
+
+
+def test_ascend_rejects_malformed_claim_container_without_crashing(run_cli, fixture_copy, stub):
+    skill = _map_identity()
+    skill["results"][0]["skill"]["claims"] = {"text": "not an array"}
+    s = stub([skill])
+    r = _ascend(run_cli, fixture_copy, _env(s.base_url))
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    item = next(x for x in out["levels"][0]["results"] if x["kind"] == "map")
+    assert any("claims must be an array" in reason for reason in item["rejected"])
+    assert out["written"] == []
 
 
 def test_ascend_rejects_a_procedure_dressed_as_a_digest(run_cli, fixture_copy, stub):

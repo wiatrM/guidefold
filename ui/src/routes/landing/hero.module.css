@@ -1,0 +1,94 @@
+/* Hero, SPEC v3 screen 1. Copy on the film over a bounded local scrim, one real screen of
+ * the product beside it. No glass in this section at all: the proof rail, the tier glyph
+ * and the demo stage are gone, so what is left is type, two controls and a framed
+ * screenshot. Every value is a token and every breakpoint change is a token swap in the
+ * 1080/720 blocks of tokens.css. */
+
+.hero{
+ position:relative;
+ isolation:isolate;
+ padding-block:var(--landing-hero-pad-top) var(--space-5);
+}
+.heroGrid{
+ composes:grid from './landing.module.css';
+ align-content:center;
+ row-gap:var(--landing-band-gap);
+ min-height:var(--landing-media-band);
+}
+
+/* The scrim is full-bleed because the hero section is: it spans the section's own padding
+ * box, which is the whole viewport width. It deliberately does NOT bleed with `50% - 50vw`:
+ * `vw` counts the classic scrollbar, so that bleed made the document 8 px wider than its
+ * own client area and the page scrolled sideways. */
+.heroScrim{
+ position:absolute;
+ z-index:-1;
+ inset:var(--zero);
+ background:var(--film-scrim-hero);
+}
+
+.heroCopy{
+ grid-column:var(--landing-hero-copy-v3);
+ grid-row:var(--landing-hero-screen-row);
+ display:flex;
+ flex-direction:column;
+ align-items:var(--landing-hero-items);
+ min-width:var(--zero);
+}
+
+.title{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-display);
+ font-weight:var(--weight-semibold);
+ line-height:var(--landing-display-leading);
+ letter-spacing:var(--landing-display-tracking);
+ color:var(--landing-ivory);
+}
+
+.subline{
+ margin:var(--landing-hero-lede-margin) var(--zero) var(--zero);
+ font-size:var(--landing-kicker);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+
+.heroActions{
+ display:grid;
+ grid-template-columns:var(--landing-action-columns);
+ gap:var(--space-3);
+ margin-top:var(--landing-hero-actions-margin);
+ scroll-margin-top:var(--space-7);
+}
+
+.trust{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ color:var(--stone-300);
+}
+
+/* The cue is an arrow and nothing else: SPEC v3 allows a bare icon link and no sentence.
+ * Its accessible name carries the destination, so it reads as a control rather than as
+ * decoration, and it only moves when the pointer is on it. */
+.scrollCue{
+ display:var(--landing-hero-cue-display);
+ align-items:center;
+ justify-content:center;
+ min-height:var(--touch-height);
+ min-width:var(--touch-width);
+ margin-top:var(--space-4);
+ color:var(--survey-teal);
+ text-decoration:none;
+ transition:transform var(--duration) var(--ease-out);
+}
+.scrollCue svg{width:var(--icon-size);height:var(--icon-size);}
+@media(hover:hover) and (pointer:fine){
+ .scrollCue:hover{transform:translateY(var(--space-1));}
+}
+
+.heroScreen{
+ grid-column:var(--landing-hero-screen-v3);
+ grid-row:var(--landing-hero-screen-row);
+ align-self:center;
+ min-width:var(--zero);
+}

@@ -619,7 +619,9 @@ paths:
   /api/v1/orgs/{org}/audit:
     get:
       tags: [organizations]
-      summary: Audit entries, newest first. Owners only.
+      summary: >-
+        Audit entries, newest first. Owners see every row; members see only
+        rows whose actor is their own principal.
       parameters:
         - $ref: "#/components/parameters/Org"
         - { name: cursor, in: query, required: false, schema: { type: string } }
@@ -1872,11 +1874,16 @@ components:
         decision:
           oneOf:
             - type: object
-              required: [action, reason, at]
+              required: [action, reason, at, actor]
               properties:
                 action: { $ref: "#/components/schemas/QueueAction" }
                 reason: { type: [string, "null"] }
                 at: { type: [string, "null"], format: date-time }
+                actor:
+                  type: [string, "null"]
+                  description: >-
+                    The user id recorded on the owner decision (gfm.owner_queue);
+                    null for a worker-written decision (contract 1.3.0).
             - { type: "null" }
         source:
           type: string
@@ -1900,7 +1907,7 @@ components:
 
     Usage:
       type: object
-      required: [schema_version, window, coverage, totals, skills, queue, health]
+      required: [schema_version, window, coverage, totals, previous, skills, queue, health]
       properties:
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         window: { $ref: "#/components/schemas/UsageWindow" }
@@ -1909,6 +1916,24 @@ components:
             - { $ref: "#/components/schemas/UsageCoverage" }
             - { type: "null" }
         totals: { $ref: "#/components/schemas/UsageTotals" }
+        previous:
+          oneOf:
+            - type: object
+              required: [window, totals]
+              properties:
+                window:
+                  type: object
+                  required: [from, to]
+                  properties:
+                    from: { type: string, format: date-time }
+                    to: { type: string, format: date-time }
+                totals: { $ref: "#/components/schemas/UsageTotals" }
+            - { type: "null" }
+          description: >-
+            The window of the same length that ends at window.from, anchored
+            on the same watermark, counted with the same filters as totals.
+            Null only when the report has no totals. A zero count is real,
+            not unknown (contract 1.3.0).
         skills:
           type: array
           items: { $ref: "#/components/schemas/UsageSkill" }
@@ -2835,6 +2860,18 @@ components:
         target_skill_id: { type: [string, "null"] }
         path: { type: [string, "null"] }
         created_at: { type: [string, "null"], format: date-time }
+        decision:
+          oneOf:
+            - type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, edit, reject] }
+                actor: { type: [string, "null"] }
+                at: { type: [string, "null"], format: date-time }
+            - { type: "null" }
+          description: >-
+            The latest row of gfm.decisions for this proposal; null when
+            undecided (contract 1.3.0). actor matches ProposalDetail.decision.actor.
 
     ProposalList:
       type: object
@@ -3230,6 +3267,12 @@ components:
         source: { type: [string, "null"] }
         task_id: { type: [string, "null"] }
         occurred_at: { type: [string, "null"] }
+        actor:
+          type: [string, "null"]
+          description: >-
+            The principal id of the person who rated through the UI
+            (source: "ui"); null for an adapter-originated judgment
+            (contract 1.3.0).
 
     Revision:
       type: object

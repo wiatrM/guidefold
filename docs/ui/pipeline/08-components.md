@@ -1,11 +1,11 @@
 # 8. Biblioteka komponentów
-Status: etap zamknięty po dwóch rundach, 2026-09-06; testy komponentów/build, axe, 42 stany i 42 porównania obrazu zaliczone. 2026-09-08: właściciel usunął tryb fixture z ui/ (sekcja „Usunięcie trybu fixture” poniżej); tabela dowodów odbioru pozostaje zapisem z 2026-09-06.
+Status: biblioteka zmigrowana na receptury shadcnspace 2026-09-08; historyczne dowody 2026-09-06 pozostają opisane niżej.
 Cel: wydzielenie React do ui/ bez zmiany zatwierdzonego wyglądu. Wejścia: [UI §4](../UI.md), [06](06-ux-ui.md), [07](07-frontend.md), [reguły](../../DOCUMENTATION-RULES.md).
 Zakres zastępowania: ui/ jest bieżącą implementacją (od 2026-09-08 wyłącznie na hostowanym API); pipeline-hifi pozostaje zamrożonym odniesieniem, nie drugim miejscem edycji.
 
 ## Układ i kontrakty
-[ui/src/components](../../../ui/src/components/) zawiera dokładnie 14 eksportów. Każdy katalog ma index.tsx, nazwany CSS Module, .test.tsx oraz standardowy plik CSF .stories.tsx.
-[Shared.tsx](../../../ui/src/Shared.tsx) tylko reeksportuje. [Galeria /__components](http://127.0.0.1:4331/__components) renderowała wszystkie 14 na tych samych props i Meridian fixture co zamrożona galeria hi-fi; od 2026-09-08 props galerii i stories pochodzą z `ui/src/sample.ts` (wycinki plików examples/monorepo trzymane inline).
+[ui/src/components](../../../ui/src/components/) zawiera dokładnie 16 eksportów (od 2026-09-12; katalogi `ui` i `spectrumui` to kod registry, nie API). Każdy katalog ma index.tsx, nazwany CSS Module, .test.tsx oraz standardowy plik CSF .stories.tsx.
+[Shared.tsx](../../../ui/src/Shared.tsx) tylko reeksportuje. [Galeria /__components](http://127.0.0.1:4331/__components) renderuje wszystkie 16; props galerii i stories pochodzą z `ui/src/sample.ts`.
 Stories opisują scenariusze komponentu; galeria porównawcza ma stały zestaw props i nie wymaga osobnego runtime Storybook. Nie jest ósmą stroną produktu.
 Kontrolki dostają stan od trasy; komponent nie pobiera danych, nie autoryzuje ani nie udaje opublikowania rewizji. Nie tworzymy sześciu pustych wariantów każdego komponentu.
 
@@ -27,7 +27,24 @@ Kontrolki dostają stan od trasy; komponent nie pobiera danych, nie autoryzuje a
 | Field → Import, Library, Skill, Proposals, Usage, Organization | id, label, hint?, error?, pojedyncza kontrolka children | Łączy label/id, hint/error i istniejące aria-describedby; błąd ustawia aria-invalid i alert. |
 
 Trzy tony ActionButton mają uzasadnienie: neutralna czynność, przejście systemowe, decyzja człowieka. Usunięto niewykorzystane warning/error z API przycisku; pozostają na StateBadge, bo stan ostrzeżenia i błąd są różnymi komunikatami.
-RouteState obsługuje sześć kontraktów tras z 07; nie dodaje rozmiarów, motywów ani przełącznika gęstości. Piętnasty komponent albo kolejny wariant wymaga zadania U4 i pisemnego powodu.
+RouteState obsługuje sześć kontraktów tras z 07; nie dodaje rozmiarów, motywów ani przełącznika gęstości. Szesnasty komponent albo kolejny wariant wymaga zadania U4 i pisemnego powodu.
+
+## Migracja receptur shadcnspace 2026-09-08
+
+Kontynuacja 2026-09-09: `PyramidChart` używa lazy-loaded React Flow i adaptacji MIT Database Schema Node (nagłówek, tabela pól, uchwyty). Graph/List zachowuje pełną alternatywę tekstową. Kierunek `refines` jest child→parent; zoom, dopasowanie i sterowanie animacją są rzeczywistymi kontrolkami. Graf aplikacji startuje bez animacji, a reduced motion wyłącza ruch. Na małych ekranach i w dużych grafach kadr skupia wybrany węzeł. Build, 284 testy jednostkowe, 35 testów Playwright i kontrakty CSS przechodzą; to dowody lokalne na stubie, nie akceptacja produkcji. [Raport i zrzuty](../../../ui/qa/navigation-redesign/build-notes.md).
+
+Publiczne API domenowe pozostaje stabilne, a `data-slot` zapisuje kompozycję: ActionButton→Button, BrandMark→Brand, Panel→Card, StateBadge→Badge, RouteState→Alert/Skeleton, Tabs→Tabs, ProvenanceTrail→Item/Separator, ScopeTree→Collapsible, DataTable→Table, SkillDiff→Code Block, MetricRow→Statistics, Urn→Input Group, SkillContent→Typography/Code Block, Field→Field oraz PyramidChart→Chart z Button nodes. Base UI 1.8 dostarcza zachowanie Button, Avatar, Dropdown Menu, Context Menu, Collapsible i Dialog/Sheet. Motion 13.2 animuje składanie etykiet i jednolite wejście tytułu bez staggeru znaków. Sonner 2.0 daje krótkie potwierdzenia ulubionych, ocen i błędu wylogowania, obok komunikatów inline. Pozostałe elementy są lokalnymi recepturami copy-style, aby zachować CSS Modules, kontrakt tokenów i semantykę tras.
+
+Ulubione używają interaktywnego Badge z `aria-pressed`, widocznego w Library i Skill oraz powtórzonego w Context Menu. Są zapisane w `localStorage` pod kluczem użytkownik/organizacja/repozytorium. To świadomie preferencja urządzenia, nie nowe pole `SkillSummary` ani pozorna synchronizacja serwerowa. Rating nie wprowadza pięciu gwiazdek: cztery dostępne wybory wizualizują istniejący, zamknięty kontrakt werdyktów `helped|mixed|hindered|not_applicable`.
+
+Wzorce wizualne pochodzą z shadcnspace Sidebar 01, Dashboard UI, Card, Accordion i Shine Border. Shine Border jest jawnym wyjątkiem na zlecenie właściciela: pojedynczy przebieg 1 px w nagłówku trasy, bez pętli i wyłączony dla reduced motion. Cienie są krótkie i występują tylko na kontrolach, kartach, tabeli oraz portalach. Pełny brief i wynik zapytania UI UX Pro Max: [qa/navigation-redesign](../../../ui/qa/navigation-redesign/design-brief.json).
+
+## Refaktor konsoli na shadcn/ui (2026-09-12, polecenie właściciela)
+Prymitywy shadcn w stylu base-nova (Base UI) leżą w `ui/src/components/ui/`; `ui/src/registry.css` mapuje tokeny shadcn na tokens.css i włącza Tailwind dla `components`, `routes` i `app.tsx` bez Preflight. Publiczne komponenty zachowały props i `data-slot`: Panel→Card (z `render` na `<section>`), DataTable→Table (bez zagnieżdżonego kontenera przewijania), Field→Label, StateBadge→Badge, RouteState→Empty+Skeleton+IconTile, Tabs→linki z markerem, ActionButton→Button.
+Szesnasty komponent `IconTile` (size sm/md/lg/xl, tone system/human/neutral) niesie duże ikony nagłówków tras, kroków Import i stanów; powód i dowody: [raport](../../reports/ui/console-shadcn-20260912.md). `check-contracts` liczy teraz `expected.length` komponentów i dopuszcza w `registry.css` tylko wpisy `@theme` będące `var(--token)`.
+Ósmy widok Overview (`/home`, 2026-09-12) składa się wyłącznie z istniejących komponentów i itemów Spectrum (StatCards, BarChart, PieChart); domena `src/domain/overview.ts`; zapis w raporcie §8.
+Drugi pass tego samego dnia (spokój ekranów): `Panel` ma `collapsible`/`defaultOpen`/`tone="quiet"`, `DataTable` ma `flush`, `RouteState` ma `compact`; powody i użycie per widok w raporcie §7.
+Ograniczenie: Base UI Menu/Tooltip/Popover zawieszają jsdom po otwarciu, więc menu konta i inne elementy pływające są sprawdzane w przeglądarce (e2e/zrzuty), nie w Vitest. Baseline galerii z 2026-09-08 pozostaje do akceptacji właściciela.
 
 ## Kandydaci do osobnego pakietu
 ActionButton, Panel, StateBadge, RouteState, Tabs, Field, DataTable i MetricRow mogą być kandydatami do wspólnego pakietu UI, gdy drugi rzeczywisty konsument potwierdzi zgodne kontrakty. Dziś pozostają w ui/; sam ponowny import nie uzasadnia publikacji pakietu.

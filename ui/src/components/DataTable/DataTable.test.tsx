@@ -27,4 +27,10 @@ describe('DataTable',()=>{
   await user.tab();
   expect(screen.getByRole('link',{name:'Inspect source'})).toHaveFocus();
  });
+
+ it('keeps the caption as the region name when flush hides it visually',()=>{
+  render(<DataTable flush caption="Members of this organization" headings={['Member']}><tr><td>owner@example.test</td></tr></DataTable>);
+  expect(screen.getByRole('region',{name:'Members of this organization'})).toBeInTheDocument();
+  expect(screen.getByText('Members of this organization')).toHaveClass('sr-only');
+ });
 });

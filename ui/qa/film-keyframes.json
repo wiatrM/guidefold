@@ -1,0 +1,126 @@
+{
+  "task": "Task 3: Re-encode the film with denser keyframes",
+  "date": "2026-09-11",
+  "deviation_from_brief": "Controller ruling 1: use -g 6 (keyframe every 0.25s at 24fps) instead of the brief's -g 12, because the existing film already has a 12-frame GOP. Size cap: if a re-encoded container exceeds 1.6x its original byte size at -g 6, fall back to -g 12 for that container. Controller ruling 2 (follow-up, after measuring the webm fallback outcome): the mp4 is FilmBackdrop's primary source (webm is a fallback source), so a 42% heavier webm carrying the SAME keyframe density as before is net-negative; restore hero-flight.webm to its original, un-re-encoded bytes instead of shipping the -g 12 fallback. The mp4 -g 6 result stands unchanged.",
+  "commands": {
+    "measure": [
+      "/usr/bin/ffprobe -v error -select_streams v -show_entries frame=pict_type,pts_time -of csv=p=0 <file> | awk -F, '$2==\"I\"{n++;if(p!=\"\"){g=$1-p;if(g>m)m=g}p=$1}END{print \"I-frames:\",n,\"max gap:\",m}'",
+      "/usr/bin/ffprobe -v error -show_entries format=duration,bit_rate,size -show_entries stream=codec_name,width,height,r_frame_rate -of default=nw=1 <file>"
+    ],
+    "reencode_mp4_g6": "/usr/bin/ffmpeg -y -i hero-flight.mp4.bak -an -c:v libx264 -g 6 -keyint_min 6 -sc_threshold 0 -b:v 1840k -maxrate 2200k -bufsize 3680k -pix_fmt yuv420p -movflags +faststart -f mp4 hero-flight.mp4.new",
+    "reencode_webm_g6_attempt": "/usr/bin/ffmpeg -y -i hero-flight.webm.bak -an -c:v libvpx-vp9 -g 6 -keyint_min 6 -b:v 1700k -deadline good -cpu-used 2 -pix_fmt yuv420p -f webm hero-flight.webm.new",
+    "reencode_webm_g12_fallback": "/usr/bin/ffmpeg -y -i hero-flight.webm.bak -an -c:v libvpx-vp9 -g 12 -keyint_min 12 -b:v 1700k -deadline good -cpu-used 2 -pix_fmt yuv420p -f webm hero-flight.webm.g12.new",
+    "decode_verify": "/usr/bin/ffmpeg -v error -i <file> -f null -"
+  },
+  "before": {
+    "mp4": {
+      "codec_name": "h264",
+      "width": 1280,
+      "height": 720,
+      "r_frame_rate": "24/1",
+      "duration": 10.041667,
+      "bit_rate": 1838914,
+      "size_bytes": 2308221,
+      "i_frames": 21,
+      "max_inter_keyframe_gap_s": 0.5,
+      "frame_count": 241
+    },
+    "webm": {
+      "codec_name": "vp9",
+      "width": 1280,
+      "height": 720,
+      "r_frame_rate": "24/1",
+      "duration": 10.042,
+      "bit_rate": 1783827,
+      "size_bytes": 2239149,
+      "i_frames": 21,
+      "max_inter_keyframe_gap_s": 0.5,
+      "frame_count": 241
+    }
+  },
+  "reencode_attempts": {
+    "mp4_g6": {
+      "gop": 6,
+      "size_bytes": 2532973,
+      "ratio_to_original": 1.0974,
+      "cap_bytes": 3693153.6,
+      "cap_exceeded": false,
+      "decision": "used -g 6 result (within 1.6x cap)"
+    },
+    "webm_g6": {
+      "gop": 6,
+      "size_bytes": 4610897,
+      "ratio_to_original": 2.0592,
+      "cap_bytes": 3582638.4,
+      "cap_exceeded": true,
+      "i_frames_measured": 41,
+      "max_inter_keyframe_gap_s_measured": 0.25,
+      "note": "GOP-6 keyframe placement worked correctly (41 I-frames, 0.25s gap, matching the mp4 result) but the container size exceeded the 1.6x cap because VP9 keyframes at this density and target bitrate roughly double output size on this footage. Discarded per the size-cap rule, not because -g 6 failed to take effect.",
+      "decision": "discarded; fell back to -g 12 for the webm container"
+    },
+    "webm_g12_fallback": {
+      "gop": 12,
+      "size_bytes": 3188930,
+      "ratio_to_original": 1.4242,
+      "cap_bytes": 3582638.4,
+      "cap_exceeded": false,
+      "decision": "SUPERSEDED by controller ruling 2: passed the 1.6x size cap (1.42x) but delivered identical keyframe density to the pre-existing film (21 I-frames, 0.5s gap, unchanged) for +42% size (2,239,149 -> 3,188,930 bytes) and bitrate 2,540,474 b/s against a 1,700,000 b/s target. Net-negative given mp4 is the primary FilmBackdrop source and webm is only a fallback. Not shipped; hero-flight.webm was restored to its original bytes instead."
+    }
+  },
+  "webm_restore": {
+    "action": "Restored ui/public/assets/landing/hero-flight.webm to its pre-task bytes via `git show 2cf2ba8:ui/public/assets/landing/hero-flight.webm > ui/public/assets/landing/hero-flight.webm`",
+    "reason": "Controller ruling 2: neither the -g 6 attempt (over the 1.6x size cap) nor the -g 12 fallback (within cap but zero keyframe-density improvement, +42% size) was worth shipping for the fallback-source container.",
+    "sha256_original_2cf2ba8": "41a56579dc72ba13e1c8e35f9519c935eb48e8f0034575f855955596963e7e0c",
+    "sha256_restored_file": "41a56579dc72ba13e1c8e35f9519c935eb48e8f0034575f855955596963e7e0c",
+    "sha256_match": true,
+    "sha256_local_backup": "41a56579dc72ba13e1c8e35f9519c935eb48e8f0034575f855955596963e7e0c"
+  },
+  "fallback_applied": {
+    "mp4": false,
+    "webm": "not applicable — webm restored to original bytes per controller ruling 2, no re-encode shipped"
+  },
+  "after": {
+    "mp4": {
+      "codec_name": "h264",
+      "width": 1280,
+      "height": 720,
+      "r_frame_rate": "24/1",
+      "duration": 10.041667,
+      "bit_rate": 2017970,
+      "size_bytes": 2532973,
+      "i_frames": 41,
+      "max_inter_keyframe_gap_s": 0.25,
+      "frame_count": 241,
+      "gop_used": 6
+    },
+    "webm": {
+      "codec_name": "vp9",
+      "width": 1280,
+      "height": 720,
+      "r_frame_rate": "24/1",
+      "duration": 10.042,
+      "bit_rate": 1783827,
+      "size_bytes": 2239149,
+      "i_frames": 21,
+      "max_inter_keyframe_gap_s": 0.5,
+      "frame_count": 241,
+      "gop_used": "unchanged (original, not re-encoded)",
+      "note": "UNCHANGED from before, byte-for-byte. Controller ruling 2: since the mp4 is FilmBackdrop's primary source and webm only a fallback, a 42%-heavier webm delivering the SAME keyframe density (21 I-frames, 0.5s gap) as the original was judged net-negative rather than recorded as an acceptable fallback outcome. hero-flight.webm was restored from git ref 2cf2ba8 (sha256 41a56579dc72ba13e1c8e35f9519c935eb48e8f0034575f855955596963e7e0c, verified identical to the pre-task file). Max inter-keyframe gap for webm is therefore unchanged at 0.5s; this is an intentional revert, not a re-encode outcome."
+    }
+  },
+  "invariant_checks": {
+    "resolution_1280x720": { "mp4": true, "webm": true },
+    "r_frame_rate_24_1": { "mp4": true, "webm": true },
+    "duration_within_0.05s_of_10.041667": { "mp4": true, "webm": true },
+    "mp4_bit_rate_within_25pct_of_1838914": { "value": 2017970, "ratio": 1.0974, "pass": true },
+    "decode_check_ffmpeg_null_muxer": { "mp4": "exit 0, no errors", "webm": "exit 0, no errors (original file, previously verified playable)" },
+    "frame_count_within_2_of_241": { "mp4": 241, "webm": 241, "pass": true },
+    "webm_byte_identical_to_pre_task_original": { "pass": true, "sha256": "41a56579dc72ba13e1c8e35f9519c935eb48e8f0034575f855955596963e7e0c" }
+  },
+  "files_changed": [
+    "ui/public/assets/landing/hero-flight.mp4",
+    "ui/public/assets/landing/hero-flight.webm",
+    "ui/qa/film-keyframes.json"
+  ],
+  "posters_touched": false
+}

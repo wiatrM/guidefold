@@ -16,6 +16,12 @@ Status Proposed nie jest dowodem implementacji; bieżące zlecenie użytkownika 
 Stan wykonania wobec P01–P15: [PIVOT-IMPLEMENTATION](docs/PIVOT-IMPLEMENTATION.md); obowiązujący
 kontrakt API/DB: [API-CONTRACT](docs/API-CONTRACT.md).
 
+## Dostęp do wdrożenia produkcyjnego
+
+Ścieżka wskazana przez właściciela 2026-09-09: `/home/mike/projects/hsk-monorepo/deployment/helm/webkd-prod/kubeconfig.yaml` (WSL). Używaj jej jawnie przez `kubectl --kubeconfig=...`; nie zakładaj, że domyślny kontekst jest produkcją Guidefold. Kontekst: `cloudfloo-context`, namespace: `guidefold`. Runbook: [cloudfloo-io](deploy/k8s/environments/cloudfloo-io/README.md).
+
+Zapisana jest wyłącznie ścieżka, nie sekret. Nie wypisuj ani nie kopiuj zawartości kubeconfig do repozytorium lub rozmowy. Przed wdrożeniem zweryfikuj kontekst i stan zasobów; nie zmieniaj innych aplikacji w tym klastrze. Ten wpis nie stanowi samodzielnej zgody na przyszłe wdrożenia.
+
 ## Pozycjonowanie: co sprzedajemy
 
 Decyzja właściciela, 2026-09-09. Obowiązuje w każdym tekście marketingowym, na
@@ -39,6 +45,14 @@ jest drugorzędna. Landing prowadzi jedną kolumną, hero najpierw; układ
 dwukolumnowy został odrzucony przez właściciela.
 
 ## Skille projektu
+
+### Obowiązkowe komponenty Spectrum UI
+
+Decyzja właściciela, 2026-09-09: przy tworzeniu, redesignie i migracji UI **obowiązkowo korzystaj z komponentów Spectrum UI** i [Spectrum MCP](https://ui.spectrumhq.in/docs/mcp). Przed implementacją przeczytaj [spectrum-ui-workflow](.agents/skills/spectrum-ui-workflow/SKILL.md): wyszukaj rzeczywisty item, sprawdź jego kod i zależności, zainstaluj odpowiednik i zweryfikuj działanie. Ręczny zamiennik wymaga udokumentowanego braku odpowiednika lub problemu zgodności. Dostęp do całego rejestru nie oznacza instalacji wszystkich komponentów. Ta decyzja zastępuje wcześniejszy zakaz shadcn/Tailwind dla integracji Spectrum; nie zmienia kontraktów API, bezpieczeństwa ani zgód na deploy.
+
+### Obowiązkowa migracja telemetrii i wykresów
+
+Decyzja właściciela, 2026-09-09: **wszystkie istniejące i nowe wizualizacje telemetrii oraz wykresy mają korzystać ze Spectrum Charts**, nie tylko nowo edytowane komponenty. Przeczytaj [spectrum-charts-migration](.agents/skills/spectrum-charts-migration/SKILL.md); kanoniczne wymagania i kryteria odbioru: [UI §7](docs/ui/UI.md#7-obowiązkowa-migracja-spectrum-charts). Obowiązek obejmuje pie/donut, trendy, rozkłady, miniwykresy i karty metryk, z doborem typu do danych. Nie oznacza przepisywania backendu telemetrii. Zapis wymagań nie jest dowodem zakończenia migracji.
 
 Workflowy:
 - [guidefold-product-changes](.agents/skills/guidefold-product-changes/SKILL.md): zmiany wymagań, architektury, backlogu, kontraktów i dokumentacji pivotu.

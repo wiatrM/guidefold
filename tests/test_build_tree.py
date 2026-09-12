@@ -84,6 +84,40 @@ def test_the_snapshot_loads_back_through_the_serving_path(committed_tree, cli_pa
     assert len(index.cards) == len(bundle["snapshot"]["cards"])
 
 
+def test_source_proof_flows_from_import_tree_into_the_serving_snapshot(committed_tree, cli_pair):
+    """The worker path must preserve the structured source proof that USE 1.2 gates on.
+
+    This is propagation coverage only: the proof below is deliberately unverified, so it must be
+    present in the immutable card and inventory without becoming a ranking or publication claim.
+    """
+    cli, cli_sha = cli_pair
+    skill = next(
+        md for md in build_tree._skill_files(committed_tree)
+        if str((cli.frontmatter(md).get("metadata") or {}).get("generated", "")).lower() != "true"
+    )
+    original = skill.read_text(encoding="utf-8")
+    marker = "\n---\n"
+    assert marker in original
+    proof = """source_proof:
+  schema: source-proof-v1
+  verified: false
+  snapshot: pending
+  claims:
+    - id: operation
+      status: partial
+"""
+    skill.write_text(original.replace(marker, "\n" + proof + "---\n", 1), encoding="utf-8")
+
+    bundle, _cfg = build_tree.build(committed_tree, "meridian", "0" * 40, cli, cli_sha)
+    card = next(card for card in bundle["snapshot"]["cards"].values()
+                if card["name"] == skill.parent.name)
+    assert card["proof"]["schema"] == "source-proof-v1"
+    assert card["proof"]["verified"] is False
+    rows = build_tree.inventory(cli, committed_tree, cli.load_map(committed_tree), "meridian", "0" * 40)
+    row = next(row for row in rows["skills"] if row["path"] == skill.relative_to(committed_tree).as_posix())
+    assert row["frontmatter"]["source_proof"]["verified"] is False
+
+
 def test_cli_writes_a_snapshot_and_an_inventory(committed_tree, tmp_path):
     commit = _git(committed_tree, "rev-parse", "HEAD").stdout.strip()
     out = tmp_path / "out" / "snapshot.json"

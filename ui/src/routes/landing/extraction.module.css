@@ -1,0 +1,380 @@
+/* Extraction, DESIGN.md 3.2 and 4.2: the pinned chapter and its three beats.
+ *
+ * Every value is a token and every breakpoint change is a token swap in tokens.css; the
+ * bare numbers that remain are the beat windows of DESIGN.md 4.2 (0.0-0.33, 0.33-0.66,
+ * 0.66-1.0 with a 0.06 overlap) and the rendered dash run of the tier route. Those are
+ * positions in `--p`, not design values, so they stay next to the mapping that reads them,
+ * and Extraction.test.tsx asserts the window numbers here still match `beatOpacity`.
+ *
+ * **The rules below the `[data-p-ready="true"]` line are the only pinned ones.** Everything
+ * above it is the pre-enhancement composition and the fallback at the same time: three
+ * beats in flow, caption above instrument at one column, all at full opacity, no sticky
+ * stage, no reserved track, the tier route drawn complete. That is what renders with
+ * JavaScript off, after a thrown error, at 1080 and below, under reduced motion and under
+ * Save-Data, and there is no arrangement in which a frozen track sits above unreachable
+ * beats. Extraction.tsx sets the flag only when it has actually installed a sampler. */
+
+.section{padding-block:var(--landing-section-padding);}
+.shell{composes:shell from './landing.module.css';}
+/* The chapter's value line, after the pinned track and aligned to the page column. */
+.tail{min-width:var(--zero);}
+
+.track{position:relative;}
+.stage{
+ display:flex;
+ flex-direction:column;
+ gap:var(--landing-band-gap);
+}
+
+/* ------------------------------------------------------------------- masthead */
+/* Fixed at the top of the stage; it does not move between beats. */
+.masthead{min-width:var(--zero);}
+.stage p.eyebrow{
+ display:flex;
+ align-items:center;
+ gap:var(--space-2);
+ margin:var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.stage p.eyebrow::before{
+ content:"";
+ display:block;
+ flex:none;
+ inline-size:var(--landing-eyebrow-rule);
+ block-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.stage h2.heading{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-heading);
+ line-height:var(--landing-heading-leading);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+ text-wrap:balance;
+}
+
+/* ---------------------------------------------------------------------- beats */
+/* In flow the three beats are three blocks. Pinned, they occupy the same cell and
+ * crossfade. `align-items:start` rather than `center` so a caption does not jump upward
+ * as the taller beat takes over the row height during a handover. */
+.beats{display:grid;gap:var(--landing-band-gap);}
+.beat{
+ display:grid;
+ grid-template-columns:var(--landing-mechanism-columns);
+ gap:var(--space-4) var(--landing-measure-gutter);
+ align-items:start;
+ min-width:var(--zero);
+}
+.caption{min-width:var(--zero);}
+.instrument{min-width:var(--zero);}
+
+.beat h3.beatTitle{
+ margin:var(--zero);
+ font-family:var(--font-display);
+ font-size:var(--landing-h3);
+ line-height:var(--line-height-compact);
+ font-weight:var(--weight-semibold);
+ letter-spacing:var(--tracking-title);
+ color:var(--landing-ivory);
+}
+.beat p.beatLede{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-kicker-measure);
+ font-size:var(--landing-kicker);
+ line-height:var(--line-height-heading);
+ color:var(--stone-100);
+}
+.beat p.beatBody{
+ margin:var(--space-3) var(--zero) var(--zero);
+ max-width:var(--landing-copy-width);
+ font-size:var(--landing-body);
+ line-height:var(--line-height-body);
+ color:var(--stone-300);
+}
+
+/* ----------------------------------------------------------------- beat rail */
+/* One hairline with three ticks, sitting in the middle of the gap between the caption
+ * and the instrument columns. It marks a position in a sequence, so it exists only while
+ * there is a position to mark. */
+.rail{
+ display:none;
+ grid-template-columns:var(--landing-mechanism-columns);
+ gap:var(--space-4) var(--landing-measure-gutter);
+ pointer-events:none;
+}
+.railLine{
+ grid-column:1;
+ justify-self:end;
+ align-self:stretch;
+ margin-inline-end:calc(var(--landing-measure-gutter) / -2);
+ display:flex;
+ flex-direction:column;
+ justify-content:space-between;
+ align-items:center;
+ inline-size:var(--landing-pixel);
+ background:var(--line-strong);
+}
+.tick1,.tick2,.tick3{
+ display:block;
+ inline-size:var(--space-3);
+ block-size:var(--landing-pixel);
+ background:var(--steel);
+}
+
+/* =============================================================================
+ * The pinned behaviour. Nothing below applies until Extraction.tsx has installed a
+ * sampler, which it does only when motion is allowed, Save-Data is off and
+ * `--landing-stage-height` is not `auto`.
+ * ========================================================================== */
+.track[data-p-ready="true"]{height:var(--landing-stage-scroll);}
+.track[data-p-ready="true"] .stage{
+ position:sticky;
+ top:var(--zero-length);
+ justify-content:center;
+ min-height:var(--landing-stage-height);
+ padding-block:var(--space-4);
+}
+/* The row reserves the tallest beat so no caption moves during a handover, which is the
+ * one motion a reader is actually reading through. The caption therefore starts at the
+ * top of the row in every beat; the instrument centres inside it instead, so a short panel
+ * sits in the middle of the reserved height rather than leaving it empty underneath. */
+.track[data-p-ready="true"] .beat{grid-area:1/1;align-self:stretch;}
+.track[data-p-ready="true"] .instrument{align-self:center;}
+.track[data-p-ready="true"] .rail{grid-area:1/1;display:grid;}
+
+/* Only the beat that owns the progress window takes the pointer, so a caret dragged
+ * across the stage cannot select the two captions fading underneath it. The attribute is
+ * written once per handover, not per frame. */
+.track[data-p-ready="true"] .beat{pointer-events:none;user-select:none;}
+.track[data-p-ready="true"][data-active-beat="1"] .beat[data-beat="1"],
+.track[data-p-ready="true"][data-active-beat="2"] .beat[data-beat="2"],
+.track[data-p-ready="true"][data-active-beat="3"] .beat[data-beat="3"]{pointer-events:auto;user-select:auto;}
+
+/* Beat crossfade, DESIGN.md 4.2: windows at 0.0-0.33, 0.33-0.66 and 0.66-1.0, each
+ * handover a 0.06-wide crossfade centred on the boundary. Linear in progress, so reverse
+ * scroll lands on exactly the value the forward pass had.
+ *
+ * R2, the measured recalc remedy: the window arithmetic used to be spelled here in
+ * `clamp()` over a `--p` inherited from the stage, so one write per frame invalidated
+ * style for the whole pinned subtree (measured: -90 % style-recalc time and -94 %
+ * invalidated elements per frame once it stopped). Extraction.tsx now evaluates the same
+ * exported `beatOpacity()` and writes `--o` straight onto the three beats and the three
+ * ticks, six small writes that invalidate only themselves. `--o` rests at 1 in tokens.css,
+ * so with JavaScript off, under reduced motion and before the first frame all three beats
+ * are simply visible, which is the stacked fallback this file already renders. */
+.track[data-p-ready="true"] .beat{opacity:var(--o);}
+
+/* The ticks read the same three windows, so the rail says which beat is on screen without
+ * a number and without a second colour. Opacity, not a colour swap, keeps it one value. */
+.track[data-p-ready="true"] .tick1,
+.track[data-p-ready="true"] .tick2,
+.track[data-p-ready="true"] .tick3{background:var(--survey-teal);opacity:calc(0.3 + 0.7 * var(--o));}
+
+/* Chapter parallax on the instrument layer only, DESIGN.md 4.2. It lands on the panel
+ * rather than on the Reveal element, whose P3 entrance already owns that element's
+ * `transform`. Linear in `--p`, exact in reverse, transform only. */
+.track[data-p-ready="true"] .panel{
+ transform:translate3d(var(--zero-length),calc((var(--p) - .5) * var(--parallax-chapter)),var(--zero-length));
+}
+
+/* Containment, R2: a panel's own invalidation has no reason to escape its column. Layout
+ * and style only — `paint` would clip the glass panel's backdrop and its border radius is
+ * not the clip this chapter wants. */
+.instrument{contain:layout style;}
+
+/* --------------------------------------------------------------- glass panels */
+.panel{
+ padding:var(--landing-panel-pad);
+ border:var(--border-width) solid var(--glass-border);
+ border-radius:var(--landing-radius-panel);
+ background:var(--glass-highlight),var(--glass-ground);
+ backdrop-filter:var(--glass-backdrop);
+ min-width:var(--zero);
+}
+.panel p.panelLabel{
+ margin:var(--zero) var(--zero) var(--space-3);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+}
+.panel p.panelNote{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-size:var(--font-size-small);
+ line-height:var(--line-height-body);
+ color:var(--landing-muted-ink);
+}
+
+/* --------------------------------------------------- beat 1, path instrument */
+.crumbs{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:var(--space-1);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+}
+.crumbs li{display:inline-flex;align-items:center;gap:var(--space-1);min-width:var(--zero);}
+.crumbs li+li::before{content:"/";color:var(--landing-muted-ink);}
+.crumbs li:last-child{color:var(--stone-100);}
+.fileRow{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-top:var(--space-3);
+ padding-top:var(--space-3);
+ border-top:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ letter-spacing:var(--landing-tracking-mono);
+}
+.fileName{font-size:var(--landing-h3);font-weight:var(--weight-medium);color:var(--landing-ivory);}
+.fileScope{font-size:var(--font-size-code);color:var(--landing-muted-ink);min-width:var(--zero);overflow-wrap:anywhere;}
+
+/* --------------------------------------------------- beat 2, diff instrument */
+.diff{display:grid;grid-template-columns:var(--two-columns);gap:var(--space-4);}
+.diffColumn{min-width:var(--zero);}
+.diffColumn p.diffHead{
+ margin:var(--zero) var(--zero) var(--space-2);
+ padding-bottom:var(--space-2);
+ border-bottom:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.diffList{
+ display:flex;
+ flex-direction:column;
+ gap:var(--space-2);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+}
+.diffList li{min-width:var(--zero);overflow-wrap:anywhere;}
+/* The page's second and last orange moment, and its only `--glow-route`. Colour is never
+ * the only carrier: the row also says `promoted` in words. */
+.diffList li.promoted{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:var(--space-2);
+ padding:var(--space-2);
+ border:var(--border-width) solid var(--safety-orange);
+ border-radius:var(--landing-radius);
+ box-shadow:var(--glow-route);
+ color:var(--safety-orange);
+}
+.promotedTag{
+ padding:var(--zero) var(--space-1);
+ border:var(--border-width) solid var(--safety-orange);
+ border-radius:var(--landing-radius);
+ font-size:var(--font-size-code);
+ color:var(--safety-orange);
+}
+.diffColumn p.diffScope{
+ margin:var(--space-3) var(--zero) var(--zero);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+ overflow-wrap:anywhere;
+}
+
+/* --------------------------------------------------- beat 3, tier instrument */
+/* Bar length is scope breadth and the number is a count; they disagree, so the panel
+ * names both above the rows rather than leaving the reader to guess what the bar measures. */
+.tierHead{
+ display:flex;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-bottom:var(--space-2);
+ padding-bottom:var(--space-2);
+ border-bottom:var(--border-width) solid var(--glass-border);
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--landing-muted-ink);
+}
+.tiers{position:relative;}
+.tierRows{
+ display:flex;
+ flex-direction:column;
+ gap:var(--space-3);
+ margin:var(--zero);
+ padding:var(--zero);
+ list-style:none;
+}
+/* Name and count sit above the bar, so every bar starts at the same x and the pyramid
+ * reads as one shape. The route below is drawn against that shared left edge. */
+.tierRow{min-width:var(--zero);}
+.tierMeta{
+ display:flex;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:var(--space-2);
+ margin-bottom:var(--space-1);
+}
+.tierName{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-100);
+}
+.tierTrack{display:block;min-width:var(--zero);}
+.tierBar{display:block;block-size:var(--space-2);border-radius:var(--landing-radius);}
+.tierBar1{inline-size:var(--landing-scope-width-3);background:var(--tier-1);}
+.tierBar2{inline-size:var(--landing-scope-width-2);background:var(--tier-2);}
+.tierBar3{inline-size:var(--landing-scope-width-1);background:var(--tier-3);}
+.tierBar4{inline-size:var(--landing-scope-width-0);background:var(--tier-4);}
+.tierCount{
+ font-family:var(--font-mono);
+ font-size:var(--font-size-code);
+ font-variant-numeric:tabular-nums;
+ letter-spacing:var(--landing-tracking-mono);
+ color:var(--stone-300);
+ white-space:nowrap;
+}
+
+/* The route climbs the tiers the way the hero glyph does (DESIGN.md 3.1). Its resting
+ * value is the finished route: the markup carries `stroke-dashoffset="0"` and only the
+ * rule below, live while the sampler drives, turns it into a draw across beat 3. */
+.tierSvg{
+ position:absolute;
+ inset:var(--zero-length);
+ inline-size:var(--full);
+ block-size:var(--full);
+ pointer-events:none;
+ overflow:visible;
+}
+.tierRoute{
+ fill:none;
+ stroke:var(--safety-orange);
+ stroke-width:var(--landing-glyph-stroke);
+ /* `butt`, not `round`: a round cap on a zero-length dash paints a dot at the route's
+  * start for the whole of beats 1 and 2, before the draw has anything to show. */
+ stroke-linecap:butt;
+ stroke-linejoin:round;
+}
+/* The draw moves `stroke-dasharray`, never `stroke-dashoffset`: the offset stays at the
+ * markup's `0` at every progress, which is the value the resting route and the end-to-end
+ * contract both read. 2000 is `ROUTE_RUN` in Extraction.tsx, a dash run in rendered pixels
+ * longer than the route is ever drawn; see the comment there for why it is not a path
+ * fraction. */
+.track[data-p-ready="true"] .tierRoute{stroke-dasharray:calc(2000 * clamp(0,(var(--p) - 0.66) / 0.34,1)) 2000;}
