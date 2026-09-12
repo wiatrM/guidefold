@@ -3,13 +3,19 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/wiatrM/guidefold/services/search/internal/agentrun"
+	"github.com/wiatrM/guidefold/services/search/internal/ghapp"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
 	"github.com/wiatrM/guidefold/services/search/internal/review"
 	"github.com/wiatrM/guidefold/services/search/internal/schema"
+	"github.com/wiatrM/guidefold/services/search/internal/secrets"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
 
@@ -66,5 +72,50 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 		}
 		return worker.Skipped("github_app_connector_not_configured")
 	}
+
+	// The Live Agent (ADR-0046) and the GitHub App's pull-request coverage
+	// report (ADR-0036 points 1a, 4a). Both degrade to a named "skipped"
+	// reason rather than refusing to start the worker: GITHUB_APP_ID /
+	// GITHUB_APP_PRIVATE_KEY_FILE and GUIDEFOLD_SECRET_KEY_FILE are each
+	// optional per deployment (the same "a module whose jobs stay queued
+	// with a stated reason, not the same as a module that failed to start"
+	// distinction import.parse's own generator selection draws above), and
+	// nothing about the queue or the API depends on either being present.
+	gh, ghErr := ghapp.NewFromEnv(os.Getenv)
+	if ghErr != nil && !errors.Is(ghErr, ghapp.ErrNotConfigured) {
+		return nil, fmt.Errorf("github app configuration: %w", ghErr)
+	}
+	var ghCfg ghapp.Config
+	if gh != nil {
+		if cfg, cfgErr := ghapp.ConfigFromEnv(os.Getenv); cfgErr == nil {
+			ghCfg = cfg
+		}
+	}
+	keyring, keyringErr := secrets.LoadKeyring(os.Getenv)
+	if keyringErr != nil {
+		return nil, fmt.Errorf("secret keyring: %w", keyringErr)
+	}
+	if gh == nil {
+		slog.Warn("github_app_not_configured",
+			"detail", "GITHUB_APP_ID/GITHUB_APP_PRIVATE_KEY_FILE unset; live.repo and pr.report end skipped")
+	}
+	if keyring == nil {
+		slog.Warn("secret_keyring_absent",
+			"detail", "GUIDEFOLD_SECRET_KEY_FILE unset; live.repo and pr.report end skipped for want of a model key")
+	}
+
+	livePlan := agentrun.NewLivePlanWorker(pool)
+	for kind, h := range livePlan.Handlers() {
+		handlers[kind] = h
+	}
+	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, keyring, os.Getenv)
+	for kind, h := range liveRepo.Handlers() {
+		handlers[kind] = h
+	}
+	prReport := agentrun.NewPRReportWorker(pool, gh, ghCfg, keyring, os.Getenv)
+	for kind, h := range prReport.Handlers() {
+		handlers[kind] = h
+	}
+
 	return handlers, nil
 }
