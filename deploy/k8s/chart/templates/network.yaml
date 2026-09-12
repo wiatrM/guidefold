@@ -36,4 +36,20 @@ spec:
               app.kubernetes.io/component: tei
       ports: [{protocol: TCP, port: 8080}]
     {{- end }}
+    {{- if .Values.api.externalEgress }}
+    # ADR-0045 point 5: PUT {org_base}/credentials/{provider} makes one
+    # authenticated call to the organisation's model provider to verify a key an
+    # owner just typed before sealing it (secrets.NewHTTPVerifier, main.go). This
+    # is a much smaller need than the worker's: one short-lived call per key
+    # write, never a job that reads a repository or calls a model to do real
+    # work. A NetworkPolicy cannot match a hostname, so the operator names the
+    # peers rather than the chart guessing a CIDR that will rot. Leaving this
+    # empty is a supported state, not an oversight: the API then reaches only
+    # DNS, the database and (if enabled) the GPU shadow, and storing a
+    # credential answers `provider_unavailable` instead of hanging on a
+    # connection that will never open.
+    - to:
+        {{- toYaml .Values.api.externalEgress | nindent 8 }}
+      ports: [{protocol: TCP, port: 443}]
+    {{- end }}
 {{- end }}

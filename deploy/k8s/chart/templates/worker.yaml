@@ -49,10 +49,16 @@ spec:
             - {name: PGUSER, value: {{ .Values.database.adminUser | quote }}}
             - {name: PG_PASSWORD_FILE, value: /run/credentials/admin-password}
             - {name: GUIDEFOLD_GENERATOR, value: {{ .Values.worker.generator | quote }}}
+            {{- if .Values.secretKeyringSecretName }}
+            - {name: GUIDEFOLD_SECRET_KEY_FILE, value: /run/keyring/keyring}
+            {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           volumeMounts:
             - {name: credentials, mountPath: /run/credentials, readOnly: true}
+            {{- if .Values.secretKeyringSecretName }}
+            - {name: keyring, mountPath: /run/keyring, readOnly: true}
+            {{- end }}
             - {name: work, mountPath: /work}
             {{- include "gf.tlsMount" . | nindent 12 }}
       volumes:
@@ -62,6 +68,19 @@ spec:
             defaultMode: 0440
             items:
               - {key: admin-password, path: admin-password}
+        {{- if .Values.secretKeyringSecretName }}
+        # ADR-0045: pr.report opens the organisation's stored provider credential
+        # through this same keyring (internal/secrets.OpenFor), and live.repo's
+        # proposal.generate does the same — no master key here means those jobs
+        # answer secret_encryption_unavailable / terminate `skipped`, never a
+        # plaintext fallback. Same file shape and key name as the API's mount.
+        - name: keyring
+          secret:
+            secretName: {{ .Values.secretKeyringSecretName }}
+            defaultMode: 0440
+            items:
+              - {key: keyring, path: keyring}
+        {{- end }}
         # sizeLimit has to stay inside the container's ephemeral-storage limit,
         # or the kubelet evicts the pod before the volume quota ever applies.
         - {name: work, emptyDir: {sizeLimit: {{ index (.Values.worker.resources.limits | default dict) "ephemeral-storage" | default "512Mi" | quote }}}}
@@ -95,13 +114,21 @@ spec:
       ports: [{protocol: TCP, port: {{ .Values.database.port }}}]
     {{- end }}
     {{- if .Values.worker.externalEgress }}
-    # `live.repo` reads a repository through api.github.com and calls the
-    # organisation's model provider (ADR-0046 §2, §5); `ascend.run` needs the same
-    # two destinations. A NetworkPolicy cannot match a hostname, so the operator
-    # names the peers rather than the chart guessing a CIDR that will rot. Leaving
-    # this empty is a supported state, not an oversight: the worker then reaches
-    # only DNS and the database, and both job kinds terminate `skipped` with a
-    # named reason instead of hanging on a connection that will never open.
+    # Every worker job kind that reaches outside the cluster needs both
+    # destinations named here, not just one: `live.repo` reads a repository
+    # through api.github.com and waits on the `proposal.generate` it enqueues,
+    # which calls the organisation's model provider; `pr.report` does both
+    # itself, reading the diff and posting its PR comment through
+    # api.github.com and calling the same provider directly
+    # (internal/secrets.OpenFor); `ascend.run` also needs api.github.com (plus
+    # github.com to push its branch and open the PR) and a model endpoint of
+    # its own (API-CONTRACT §8; ADR-0045 §2, ADR-0046 §2/§9, ADR-0036). A
+    # NetworkPolicy cannot match a hostname, so the operator names the peers
+    # rather than the chart guessing a CIDR that will rot. Leaving this empty
+    # is a supported state, not an oversight: the worker then reaches only DNS
+    # and the database, and every job kind above terminates `skipped` with a
+    # named reason (`github_app_not_configured`) instead of hanging on a
+    # connection that will never open.
     - to:
         {{- toYaml .Values.worker.externalEgress | nindent 8 }}
       ports: [{protocol: TCP, port: 443}]
