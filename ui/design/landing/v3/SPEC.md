@@ -141,7 +141,11 @@ silently resolved.
 
 **Targets not met.**
 
-9. **LCP is 2 132 ms at 1440 and 2 276 ms at 390**, against "under 2.0 s". It began at
+9. **Page height is 7 591 px at 1440, 8.43 viewports, inside the 8.5 budget** — but it is
+   paid for with section padding cut from ~130 px to ~27 px and with the three wide screens
+   cropped to a 2.6 : 1 letterbox. Four uncropped screens at the container width are
+   3 600 px on their own. Recorded as a trade in DESIGN.md §10 item 0.
+10. **LCP is 2 132 ms at 1440 and 2 276 ms at 390**, against "under 2.0 s". It began at
    3 972 ms; the 177 kB loader mark, the 2880 px screenshot encodes and the missing image
    preload were fixed, and what is left is critical-path serialisation at 1.6 Mbps.
    CLS is 0.0000 at both widths, as specified.

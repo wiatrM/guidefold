@@ -231,7 +231,7 @@ running UI and cannot be edited here (§10).
 Production build, `pnpm build`, served by `vite preview` on 127.0.0.1:4432. Chromium 1.63.0
 via Playwright, `deviceScaleFactor 1`, dark. 2026-09-12.
 
-**Page height and overflow.** 7 511 px at 1440×900 — **8.35 viewports**, against the 8.5
+**Page height and overflow.** 7 591 px at 1440×900 — **8.43 viewports**, against the 8.5
 budget. `documentElement.scrollWidth === clientWidth` at 1440, 1080, 720 and 390.
 
 **Content edges**, every section's content box, at 1440: **152 .. 1288**, inside a container
@@ -261,10 +261,9 @@ p95 gap of 67 ms before R1, and predicted the visible cadence would be "unchange
 better" — it is at the top of that range. The 41–44 % main-thread saving is the
 investigation's own measurement and was not re-measured here.
 
-**Suites.** `pnpm test` 393 passed; the three failures in the same run are
-`LibraryRoute.test.tsx` and come from an uncommitted `ui/src/data/apiSource.ts` change made
-outside this task (verified: they pass with that file stashed). `pnpm typecheck` 0 errors.
-`pnpm build` exit 0. `node qa/check-contracts.mjs` passed, 0 diagnostics.
+**Suites.** `pnpm test` 405 passed / 405. `pnpm test:e2e` 40 passed / 40. `pnpm typecheck` 0 errors.
+`pnpm build` exit 0. `node qa/check-contracts.mjs` passed, 0 diagnostics (403 tokens: the 89 that belonged to
+the removed sections and the removed hero furniture were deleted with them).
 `node qa/check-route-split.mjs` passed. Landing e2e **13 passed / 13**.
 
 **Screenshots.** `ui/qa/landing-v3/<section>-{1440,390}.png`, every screen at both widths,
@@ -272,6 +271,15 @@ plus the two full-page captures the e2e suite writes.
 
 ## 10. Where implementation chose, and what is still open
 
+0. **The height budget was paid out of whitespace, and that was a deliberate trade.**
+   `--landing-section-padding` fell from `clamp(104px,9vw,168px)` to `clamp(28px,1.9vw,36px)`
+   — about 130 px to 27 px between chapters at 1440 — because four real screens at the
+   container width, a 150vh pin track and nine sections do not fit 8.5 viewports otherwise.
+   The screens are cropped to a 2.6 : 1 letterbox for the same reason. What was bought back
+   with the last 80 px of headroom is the space around the value panels and the device
+   frames, which is where the crowding actually showed. If the owner reads the rhythm as
+   tight, the next 250 px come from cropping the three wide screens to about 3.6 : 1, and
+   that is the trade to put to him rather than one to make quietly.
 1. **The hero screen's parallax was not built.** The spec allows it "at most 12 px" and the
    motion section says "no other scroll-linked motion". The second rule wins: a scroll
    registration for 12 px is exactly the cost R1 was written to remove. Recorded as a

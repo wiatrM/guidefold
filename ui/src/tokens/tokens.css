@@ -75,21 +75,14 @@
  --landing-scope-width-1:82%;
  --landing-scope-width-2:64%;
  --landing-scope-width-3:46%;
- --landing-scope-indent:20px;
- --landing-scope-bar:3px;
- --landing-scope-bar-fill:linear-gradient(90deg,var(--survey-teal),rgba(63,184,177,.14));
- --landing-scope-bar-opacity:.7;
  --landing-nav-display:flex;
  --landing-nav-wrap:nowrap;
  --landing-nav-basis:auto;
- --landing-nav-pad:0px;
  --landing-nav-gap:24px;
  --landing-nav-font:14px;
  --landing-nav-ground:rgba(7,9,12,.92);
 
  --landing-section-padding:clamp(28px,1.9vw,36px);
- --landing-title:clamp(38px,4.5vw,64px);
- --landing-title-leading:1.08;
  --landing-heading:clamp(26px,2.5vw,36px);
  --landing-heading-leading:1.15;
  --landing-lede:18px;
@@ -102,60 +95,24 @@
   * directly - --steel itself stays unchanged for charts and the management UI. */
  --landing-muted-ink:var(--stone-300);
 
- --landing-topo-opacity:.32;
- --landing-topo-saturate:.85;
- --landing-grid-opacity:.1;
- --landing-grid-tile:512px;
- --landing-field-inset:-48px;
- --landing-media-inset:-24px;
 
  --landing-media-band:52vh;
- --landing-hero-min:520px;
  --landing-hero-object:62% 50%;
- --landing-hero-copy-width:55%;
- --landing-hero-copy-align:center;
  --landing-hero-items:flex-start;
  --landing-action-columns:repeat(2,max-content);
- --landing-how-copy-column:1;
- --landing-how-figure-column:2;
- --landing-how-rows:min-content 1fr;
- --landing-how-intro-row:1;
- --landing-how-figure-row:1/span 2;
- --landing-how-detail-row:2;
- --landing-hero-padding:48px;
- --landing-hero-scrim:linear-gradient(90deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.78) 30%,rgba(7,9,12,.06) 68%,rgba(7,9,12,.06) 100%);
  --landing-control:48px;
- --landing-control-inset:16px;
- --landing-control-top:auto;
- --landing-control-bottom:16px;
 
  --landing-mechanism-columns:minmax(0,.8fr) minmax(0,1.2fr);
- --landing-proofgate-copy-span:1/6;
- --landing-proofgate-figures-span:7/13;
- --landing-telemetry-panel-span:2/12;
- --landing-telemetry-columns:minmax(0,.9fr) repeat(5,minmax(0,1fr));
- --landing-value-columns:repeat(3,minmax(0,1fr));
  /* Availability, DESIGN.md 3.7: headline columns 1-4 against the two statements'
   * columns 6-12, a narrower split than the generic .8/1.2 idiom used elsewhere. */
- --landing-availability-layout:minmax(0,4fr) minmax(0,7fr);
- --landing-availability-columns:repeat(2,minmax(0,1fr));
- --landing-availability-rule:var(--border-width) solid var(--line-strong);
- --landing-availability-rule-top:none;
- --landing-band-padding:48px;
- --landing-band-ground:rgba(12,16,20,.72);
- --landing-keyline-display:block;
  --landing-waitlist-copy:1/6;
  --landing-waitlist-form:7/13;
- --landing-waitlist-padding:48px;
  --landing-form-columns:minmax(0,1fr) max-content;
- --landing-question-width:900px;
 
  --landing-reader-height:340px;
  --landing-tab-indicator:2px;
 
- --landing-rule-length:560;
  --landing-rule-width:2px;
- --landing-rule-height:64px;
 
  --landing-dialog-width:min(1100px,calc(100vw - 32px));
  --landing-dialog-height:calc(100dvh - 64px);
@@ -165,12 +122,6 @@
  --landing-footer-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));
  --landing-footer-wordmark:clamp(60px,8vw,96px);
 
- --landing-enter-rise:2px;
- --landing-enter-duration:200ms;
- --landing-enter-delay-1:0ms;
- --landing-enter-delay-2:40ms;
- --landing-enter-delay-3:80ms;
- --landing-enter-delay-4:120ms;
 
  --landing-display:clamp(32px,3.3vw,48px);
  --landing-display-leading:1.02;
@@ -178,23 +129,16 @@
  --landing-kicker:clamp(19px,1.5vw,23px);
  --landing-kicker-measure:34ch;
  --landing-h3:20px;
- --landing-metric:clamp(34px,3.4vw,52px);
- --landing-metric-leading:1;
- --landing-metric-unit:16px;
  --landing-tracking-mono:.04em;
  --landing-eyebrow-rule:12px;
 
  /* Hero placement. One 12-column grid; sections differ by which columns they use,
   * never by a new container, and every responsive change below is a span swap. */
  --landing-grid:repeat(12,minmax(0,1fr));
- --landing-hero-body-display:block;
  --landing-hero-cue-display:inline-flex;
  /* The hero body has its own size/leading/margin because it is the one paragraph that has
   * to fit above the fold with the proof rail; `--landing-body` is shared by six other
   * sections and must not shrink with it. */
- --landing-hero-body-size:var(--landing-body);
- --landing-hero-body-leading:var(--line-height-body);
- --landing-hero-body-margin:var(--space-3);
  /* The lede and the action row carry their own hero spacing tokens for the same reason:
   * they are the two largest gaps between the headline and the proof rail, and 390 buys the
   * fold back from them rather than from the copy itself. */
@@ -203,40 +147,16 @@
  --landing-brand-min-height:auto;
  --landing-hero-lede-margin:var(--space-3);
  --landing-hero-actions-margin:var(--space-4);
- --landing-rail-pad:var(--landing-panel-pad);
- --landing-rail-gap:var(--landing-panel-pad);
- --landing-rail-qualifier-gap:var(--space-2);
- --landing-hero-row-gap:var(--space-3);
  --landing-hero-pad-top:var(--space-3);
  --landing-nav-position:sticky;
- --landing-hero-copy-span:1/10;
- --landing-hero-copy-row:1;
- --landing-hero-glyph-span:10/13;
- --landing-hero-glyph-row:1;
- --landing-hero-rail-span:1/10;
- --landing-hero-rail-row:2;
- --landing-rail-columns:repeat(2,minmax(0,1fr));
- --landing-rail-rule:var(--border-width) solid var(--glass-border);
- --landing-rail-rule-top:none;
- --landing-rail-stack-pad:0px;
- --landing-rail-indent:var(--landing-panel-pad);
  --landing-glyph-stroke:2px;
- --landing-glyph-width:100%;
- --landing-glyph-height:auto;
  /* The hero proof figures are sentences, not bare numbers: --landing-metric (up to
   * 52px) wraps them to three lines and outranks the h1. Same role, own size. */
- --landing-rail-figure:clamp(20px,1.7vw,26px);
- --landing-rail-figure-leading:1.25;
 
  /* Retrieval instrument, DESIGN.md 3.3 (T8). Three zones read left to right at 1440 and
   * stack at 1080/720; the divider is a 1 px `--line` hairline, flipped from a left border
   * to a top border the same way the hero rail already flips (T5), so the instrument still
   * reads as one instrument when it stacks. */
- --landing-retrieval-span:2/12;
- --landing-retrieval-zones:minmax(0,1.1fr) minmax(0,.7fr) minmax(0,3.2fr);
- --landing-retrieval-cards:repeat(4,minmax(0,1fr));
- --landing-retrieval-rule:var(--border-width) solid var(--line);
- --landing-retrieval-rule-top:none;
 
  /* --------------------------------------------------------------- Landing v3
   * The rebuilt page (ui/design/landing/v3/SPEC.md). One 12-column grid as before;
@@ -250,7 +170,7 @@
  --landing-hero-screen-row:1;
  --landing-block-copy:1/-1;
  --landing-block-screen:1/-1;
- --landing-screen-margin:var(--space-3);
+ --landing-screen-margin:var(--space-4);
  /* Real UI captures are 1.6:1; at full column width that is 900 px of page each and four
   * of them would own half the document. They are cropped to a letterbox from the top
   * instead, which is the part of a product screen that carries the argument. */
@@ -259,7 +179,7 @@
  --landing-screen-position:top center;
  --landing-device-shadow:var(--shadow-raised);
  --landing-caption-align:left;
- --landing-value-margin:var(--space-3);
+ --landing-value-margin:var(--space-4);
  /* The value panel. The rule is inset by the panel's own border so the two do not sit on
   * the same pixel; the glow is a teal wash that the entrance animates out of. */
  --landing-value-inset:calc(var(--landing-panel-pad) + var(--space-3));
@@ -270,7 +190,6 @@
  --landing-value-glow-duration:900ms;
  --landing-value-glow:0 0 18px 1px rgba(63,184,177,.7);
  --landing-value-glow-rest:0 0 0 0 rgba(63,184,177,0);
- --landing-why-columns:minmax(0,4fr) minmax(0,8fr);
  --landing-role-columns:minmax(0,1fr) minmax(0,2.2fr);
  --landing-role-gap:var(--space-4);
  --landing-role-pad:var(--space-4);
@@ -317,24 +236,16 @@
 
  --landing-band-gap:clamp(32px,3.2vw,56px);
  --landing-panel-pad:clamp(20px,2vw,32px);
- --landing-bento-gap:12px;
  --landing-stage-height:100dvh;
  --landing-stage-scroll:150vh;
  --landing-measure-gutter:clamp(24px,6vw,120px);
  --landing-radius-panel:16px;
- --landing-chart-min-height:280px;
  --landing-tier-glyph-height:96px;
  /* Evidence bento, DESIGN.md 3.6: a 12-column span so a tall chart tile (1-5, two
   * rows) and a wide ticker tile (6-12) sit unevenly beside two single-cell tiles.
   * Placement is a token per tile, not a literal in evidence.module.css, so the 390
   * collapse to one column is the token swap in the 720 block below, not a media
   * query in the component's own CSS module. */
- --landing-evidence-columns:repeat(12,minmax(0,1fr));
- --landing-evidence-chart-col:1/6;
- --landing-evidence-chart-row:1/3;
- --landing-evidence-ticker-col:6/13;
- --landing-evidence-open-col:6/10;
- --landing-evidence-scale-col:10/13;
 
  --duration-entrance:420ms;
  --duration-draw:520ms;
@@ -368,40 +279,20 @@
 @media(max-width:1080px){:root{
  --landing-gutter:48px;
  --landing-media-band:62vh;
- --landing-hero-copy-width:100%;
- --landing-hero-copy-align:flex-end;
- --landing-hero-scrim:linear-gradient(0deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.84) 26%,rgba(7,9,12,.12) 56%,rgba(7,9,12,.06) 100%);
  --landing-mechanism-columns:minmax(0,1fr);
- --landing-how-copy-column:1;
- --landing-how-figure-column:1;
- --landing-how-rows:none;
- --landing-how-intro-row:auto;
- --landing-how-figure-row:auto;
- --landing-how-detail-row:auto;
- --landing-value-columns:repeat(2,minmax(0,1fr));
  --landing-waitlist-copy:1/-1;
  --landing-waitlist-form:1/-1;
- --landing-hero-padding:32px;
  --landing-nav-gap:16px;
  --landing-stage-height:auto;
  /* The pin is off here, so the chapter's scroll track must collapse with it; a 260vh
   * track under three stacked beats is 260vh of nothing. */
  --landing-stage-scroll:auto;
- --landing-hero-copy-span:1/9;
- --landing-hero-glyph-span:9/13;
- --landing-hero-rail-span:1/-1;
- --landing-retrieval-span:1/-1;
- --landing-retrieval-zones:minmax(0,1fr);
- --landing-retrieval-cards:minmax(0,1fr);
- --landing-retrieval-rule:none;
- --landing-retrieval-rule-top:var(--border-width) solid var(--line);
  /* v3: the hero screen drops under the copy, and every two-column block becomes one. */
  --landing-hero-copy-v3:1/-1;
  --landing-hero-screen-v3:1/-1;
  --landing-hero-screen-row:auto;
  --landing-block-copy:1/-1;
  --landing-block-screen:1/-1;
- --landing-why-columns:minmax(0,1fr);
  --landing-instrument-columns:minmax(0,1fr);
  --landing-instrument-rule:none;
  --landing-instrument-rule-top:var(--border-width) solid var(--line);
@@ -410,26 +301,18 @@
  --landing-gutter:24px;
  --landing-film-opacity:.7;
  --landing-film-scrim:linear-gradient(180deg,rgba(7,9,12,.72) 0%,rgba(7,9,12,.82) 55%,rgba(7,9,12,.92) 100%);
- --landing-proofgate-copy-span:1/-1;
- --landing-proofgate-figures-span:1/-1;
- --landing-telemetry-panel-span:1/-1;
- --landing-telemetry-columns:minmax(0,1fr);
  /* The scope ladder is NOT flattened at 720. It was, and the extraction tier instrument
   * then read as four identical full-width rows with no hierarchy in it at 390, while the
   * tier route was drawn for the stepped widths. One ladder at every width also keeps the
   * route's x-stops (SCOPE_LADDER in Extraction.tsx) landing on the bars at both. */
- --landing-scope-indent:8px;
  --amp-topo:8px; --amp-grid:20px; --amp-plane:12px; --amp-hero-media:6px;
  --plane-opacity-why:.28; --plane-opacity-how:.28; --plane-opacity-value:.28;
  --landing-media-band:68vh;
- --landing-hero-min:420px;
  --landing-hero-object:74% 50%;
- --landing-hero-padding:24px;
  --landing-hero-items:stretch;
  --landing-action-columns:minmax(0,1fr);
  --landing-nav-wrap:wrap;
  --landing-nav-basis:100%;
- --landing-nav-pad:8px;
  --landing-nav-height:56px;
  --landing-nav-font:12px;
  --landing-nav-gap:8px;
@@ -440,46 +323,17 @@
  --landing-display:clamp(30px,7.6vw,38px);
  --landing-band-gap:24px;
  --landing-panel-pad:16px;
- --landing-bento-gap:10px;
  --landing-measure-gutter:0px;
  /* Evidence bento collapses to one column, chart tile first, in DOM order. */
- --landing-evidence-columns:1fr;
- --landing-evidence-chart-col:1/-1;
- --landing-evidence-chart-row:auto;
- --landing-evidence-ticker-col:1/-1;
- --landing-evidence-open-col:1/-1;
- --landing-evidence-scale-col:1/-1;
  --landing-stage-height:auto;
  --parallax-panel:6px;
  --parallax-chapter:16px;
  --landing-tier-glyph-height:96px;
- --landing-value-columns:minmax(0,1fr);
- --landing-availability-layout:minmax(0,1fr);
- --landing-availability-columns:minmax(0,1fr);
- --landing-availability-rule:none;
- --landing-availability-rule-top:var(--border-width) solid var(--line-strong);
- --landing-band-padding:32px;
- --landing-keyline-display:none;
- --landing-waitlist-padding:24px;
  --landing-form-columns:minmax(0,1fr);
  --landing-reader-height:280px;
- --landing-control-top:16px;
- --landing-control-bottom:auto;
  --landing-footer-columns:repeat(2,minmax(0,1fr));
  /* The 390 defect this fixes: a sticky header covering the first line of the h1. */
  --landing-nav-position:static;
- --landing-hero-copy-span:1/-1;
- --landing-hero-copy-row:auto;
- --landing-hero-glyph-span:1/-1;
- --landing-hero-glyph-row:auto;
- --landing-hero-rail-span:1/-1;
- --landing-hero-rail-row:auto;
- --landing-rail-columns:minmax(0,1fr);
- --landing-rail-rule:none;
- --landing-rail-rule-top:var(--border-width) solid var(--glass-border);
- --landing-rail-figure:18px;
- --landing-rail-stack-pad:var(--landing-panel-pad);
- --landing-rail-indent:0px;
  /* DESIGN.md 3.1: the hero scrim rotates to vertical at 390, because the copy runs the
   * full height of the frame and the 74% framing puts a lit ridge behind the headline. */
  --film-scrim-hero:linear-gradient(180deg,rgba(7,9,12,.94) 0%,rgba(7,9,12,.86) 38%,rgba(7,9,12,.66) 74%,rgba(7,9,12,.44) 100%);
@@ -487,20 +341,10 @@
   * visible at every width; only the scroll cue is dropped at 390, and it is dropped whole.
   * The fold is recovered with hero spacing and the body's own type tokens instead. */
  --landing-hero-cue-display:none;
- --landing-hero-body-size:14px;
- --landing-hero-body-leading:1.4;
- --landing-hero-body-margin:var(--space-2);
  --landing-brand-min-height:var(--touch-height);
  --landing-hero-lede-margin:12px;
  --landing-hero-actions-margin:12px;
- --landing-rail-pad:8px;
- --landing-rail-gap:4px;
- --landing-rail-stack-pad:6px;
- --landing-rail-qualifier-gap:var(--space-1);
- --landing-hero-row-gap:var(--space-2);
  --landing-hero-pad-top:var(--space-2);
- --landing-glyph-width:auto;
- --landing-glyph-height:var(--landing-tier-glyph-height);
  /* v3 at 390: every row, card, panel and figure pair becomes one column. */
  --landing-role-columns:minmax(0,1fr);
  --landing-role-gap:var(--space-2);
@@ -582,3 +426,6 @@
 @media(max-width:1080px){:root{--quickstart-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:720px){:root{--quickstart-columns:minmax(0,1fr);--page-header-columns:auto minmax(0,1fr);--tile-size-lg:56px;--tile-icon-lg:28px;}}
 @media(prefers-reduced-motion:reduce){:root{--tile-enter-scale:1;--tile-lift:0px;--duration-enter:0ms;--duration-stagger:0ms;}}
+
+/* OnboardingRoutes (2026-09-12): a one-time secret or device code beside its human-tone tile. */
+:root{ --lead-columns:auto minmax(0,1fr); }
