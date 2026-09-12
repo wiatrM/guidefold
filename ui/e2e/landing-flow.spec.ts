@@ -31,12 +31,18 @@ async function settled(page:Page){
   ()=>!document.querySelector('[data-reveal-ready="true"]:not([data-reveal-entered="true"])'),
   null,{timeout:15000},
  ).catch(()=>undefined);
- await page.evaluate(()=>Promise.race([
-  Promise.all(document.getAnimations()
-   .filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity)
-   .map(animation=>animation.finished.catch(()=>undefined))),
-  new Promise(resolve=>{window.setTimeout(resolve,2000);}),
- ]));
+ await page.evaluate(async()=>{
+  // The entered flag is written from a callback; the transition it starts does not exist as
+  // an Animation until the next style recalculation, so collecting getAnimations() in the
+  // same turn can return an empty list and let axe read a still-fading element.
+  await new Promise(resolve=>{requestAnimationFrame(()=>requestAnimationFrame(resolve));});
+  await Promise.race([
+   Promise.all(document.getAnimations()
+    .filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity)
+    .map(animation=>animation.finished.catch(()=>undefined))),
+   new Promise(resolve=>{window.setTimeout(resolve,2000);}),
+  ]);
+ });
 }
 
 const viewports=[{width:1440,height:900},{width:390,height:844}];

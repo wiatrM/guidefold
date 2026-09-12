@@ -200,9 +200,14 @@ task's scope and the cost is a second passive scroll listener.
 Instrument Sans 600, JetBrains Mono 400 — and Vite rewrites those `node_modules` paths to the
 hashed build assets. `#root` carries `display:flow-root`, which stops the
 pre-mount fallback heading's margin collapsing through to `body`; that collapse, plus two
-un-preloaded above-the-fold faces swapping in, was the whole of the 0.047 cold CLS. The dead
-`guidefold-stone-hero-v1.webp` preload, which no component rendered, was replaced by the hero
-poster.
+un-preloaded above-the-fold faces swapping in, was the whole of the 0.047 cold CLS.
+
+`index.html` preloads **no image**. It used to preload `guidefold-stone-hero-v1.webp`, which
+no component renders. Repointing that hint at `hero-poster.webp` measured 2,696 ms LCP at
+1440 on an emulated 4G profile; removing it measured 2,152 ms, because 126 KB of
+`fetchpriority="high"` image sat ahead of the render-critical bundle while the LCP element is
+the hero copy. The poster still paints: `FilmBackdrop.tsx` renders it with
+`fetchPriority="high"` and it is requested exactly once.
 
 ## Spectrum decisions
 
