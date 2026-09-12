@@ -267,14 +267,14 @@
  gap:var(--space-2);
  padding:var(--space-2);
  border:var(--border-width) solid var(--safety-orange);
- border-radius:var(--radius-small);
+ border-radius:var(--landing-radius);
  box-shadow:var(--glow-route);
  color:var(--safety-orange);
 }
 .promotedTag{
  padding:var(--zero) var(--space-1);
  border:var(--border-width) solid var(--safety-orange);
- border-radius:var(--radius-small);
+ border-radius:var(--landing-radius);
  font-size:var(--font-size-code);
  color:var(--safety-orange);
 }
@@ -329,7 +329,7 @@
  color:var(--stone-100);
 }
 .tierTrack{display:block;min-width:var(--zero);}
-.tierBar{display:block;block-size:var(--space-2);border-radius:var(--radius-small);}
+.tierBar{display:block;block-size:var(--space-2);border-radius:var(--landing-radius);}
 .tierBar1{inline-size:var(--landing-scope-width-3);background:var(--tier-1);}
 .tierBar2{inline-size:var(--landing-scope-width-2);background:var(--tier-2);}
 .tierBar3{inline-size:var(--landing-scope-width-1);background:var(--tier-3);}

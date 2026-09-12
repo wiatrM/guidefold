@@ -52,7 +52,7 @@
 .introFrame{position:relative;aspect-ratio:var(--landing-video-ratio);overflow:hidden;border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-900);}
 .introVideo{display:block;width:var(--full);height:var(--full);object-fit:cover;}
 .introCaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2);margin-top:var(--space-3);color:var(--stone-300);font-size:var(--font-size-small);}
-.replay{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);padding:var(--zero) var(--space-2);border:var(--zero);border-radius:var(--radius-small);background:var(--transparent);color:var(--system-ink);cursor:pointer;font-size:var(--font-size-small);transition:color var(--duration) var(--ease);}
+.replay{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);padding:var(--zero) var(--space-2);border:var(--zero);border-radius:var(--landing-radius);background:var(--transparent);color:var(--system-ink);cursor:pointer;font-size:var(--font-size-small);transition:color var(--duration) var(--ease);}
 @media(hover:hover) and (pointer:fine){.replay:hover{color:var(--stone-100);}}
 
 /* --------------------------------------------------------- instruction reader */
@@ -64,7 +64,7 @@
 .readerBar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2);padding-bottom:var(--space-3);border-bottom:var(--border-width) solid var(--line);}
 .readerFile{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--stone-100);font-family:var(--font-mono);font-size:var(--font-size-code);}
 .extension{color:var(--stone-300);}
-.badge{padding:var(--space-1) var(--space-2);border:var(--border-width) solid var(--line-strong);border-radius:var(--radius-small);color:var(--system-ink);font-size:var(--font-size-small);}
+.badge{padding:var(--space-1) var(--space-2);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);color:var(--system-ink);font-size:var(--font-size-small);}
 .tabs{margin-top:var(--space-3);}
 .tabList{position:relative;display:flex;gap:var(--space-3);border-bottom:var(--border-width) solid var(--line);}
 .tab{position:relative;min-height:var(--touch-height);padding:var(--zero) var(--space-1);border:var(--zero);background:var(--transparent);color:var(--stone-300);cursor:pointer;font-size:var(--font-size-body);transition:color var(--duration) var(--ease);}
@@ -107,9 +107,9 @@
 .cinema[data-starting-style],.cinema[data-ending-style]{opacity:0;transform:translate(var(--negative-half),var(--negative-half)) scale(var(--landing-dialog-scale));}
 .dialogHeader{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);}
 .dialogTitle{margin:var(--zero);color:var(--stone-100);font-family:var(--font-display);font-size:var(--font-size-section);}
-.dialogClose{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);padding:var(--zero) var(--space-3);border:var(--border-width) solid var(--line-strong);border-radius:var(--radius-small);background:var(--graphite-850);color:var(--stone-100);cursor:pointer;font-size:var(--font-size-body);}
+.dialogClose{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--touch-height);padding:var(--zero) var(--space-3);border:var(--border-width) solid var(--line-strong);border-radius:var(--landing-radius);background:var(--graphite-850);color:var(--stone-100);cursor:pointer;font-size:var(--font-size-body);}
 .dialogDescription{margin:var(--zero);color:var(--stone-300);font-size:var(--font-size-small);}
-.player{width:var(--full);aspect-ratio:var(--landing-video-ratio);border:var(--zero);border-radius:var(--radius-small);background:var(--graphite-950);}
+.player{width:var(--full);aspect-ratio:var(--landing-video-ratio);border:var(--zero);border-radius:var(--landing-radius);background:var(--graphite-950);}
 
 /* ------------------------------------------------------------------- footer */
 /* Scrim only, no opaque ground: DESIGN.md 3.9 puts the footer "on the film's terminal
