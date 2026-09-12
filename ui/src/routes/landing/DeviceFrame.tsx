@@ -10,14 +10,18 @@ import css from './landing.module.css';
  * The intrinsic size is on the element, so the frame reserves its box before the file
  * decodes: nothing on this page is allowed to shift when a screenshot lands.
  */
-export function DeviceFrame({src,alt,caption,eager}:{
+export function DeviceFrame({src,alt,caption,eager,whole}:{
  src:string;
  alt:string;
  caption:string;
  eager?:boolean;
+ /** Show the capture whole rather than cropped to the page's letterbox. The wide blocks
+   * crop, because a full screen at the full column is 900 px of document each; the hero's
+   * screen sits in six columns and fits uncropped, so it is not cut. */
+ whole?:boolean;
 }){
  return <figure className={css.deviceFigure}>
-  <Reveal pattern="p3" as="div" className={css.deviceFrame}>
+  <Reveal pattern="p3" as="div" className={[css.deviceFrame,whole?css.deviceWhole:''].filter(Boolean).join(' ')}>
    <img className={css.deviceShot} src={src} alt={alt} width="2880" height="1800"
     loading={eager?'eager':'lazy'} decoding="async"/>
   </Reveal>

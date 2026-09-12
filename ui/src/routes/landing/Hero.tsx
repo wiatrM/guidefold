@@ -76,7 +76,7 @@ export function Hero(){
   </div>
 
   <div className={css.heroScreen}>
-   <DeviceFrame eager src="/assets/landing/app/proposals.webp"
+   <DeviceFrame eager whole src="/assets/landing/app/proposals.webp"
     alt="The Guidefold organisation portal: a rule proposed by CI beside the source it came from, waiting for an owner's approval."
     caption="The organisation portal, sample data"/>
   </div>

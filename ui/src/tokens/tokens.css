@@ -251,6 +251,7 @@
   * of them would own half the document. They are cropped to a letterbox from the top
   * instead, which is the part of a product screen that carries the argument. */
  --landing-screen-ratio:2.6;
+ --landing-hero-screen-ratio:1.6;
  --landing-screen-position:top center;
  --landing-device-shadow:var(--shadow-raised);
  --landing-caption-align:left;
@@ -269,7 +270,7 @@
  --landing-role-columns:minmax(0,1fr) minmax(0,2.2fr);
  --landing-role-gap:var(--space-4);
  --landing-role-pad:var(--space-4);
- --landing-instrument-columns:minmax(0,1fr) minmax(0,1.5fr);
+ --landing-instrument-columns:minmax(0,0.8fr) minmax(0,2fr);
  --landing-instrument-rule:var(--border-width) solid var(--line);
  --landing-instrument-rule-top:none;
  --landing-step-gap:var(--space-3);
@@ -283,6 +284,7 @@
  --landing-proof-columns:repeat(2,minmax(0,1fr));
  --landing-proof-rule:var(--border-width) solid var(--line-strong);
  --landing-proof-rule-top:none;
+ --landing-proof-stack-pad:var(--zero-length);
  --landing-proof-figure:clamp(24px,2.2vw,34px);
  --landing-proof-pad:var(--space-5);
  --landing-details-gap:var(--space-4);
@@ -505,9 +507,11 @@
  --landing-proof-columns:minmax(0,1fr);
  --landing-proof-rule:none;
  --landing-proof-rule-top:var(--border-width) solid var(--line-strong);
+ --landing-proof-stack-pad:var(--landing-proof-pad);
  --landing-proof-pad:var(--space-4);
  --landing-screen-margin:var(--space-4);
  --landing-screen-ratio:16/10;
+ --landing-hero-screen-ratio:16/10;
  --landing-value-margin:var(--space-4);
  --landing-value-inset:calc(var(--landing-panel-pad) + var(--space-2));
  --landing-value-rule-inset:var(--space-3);

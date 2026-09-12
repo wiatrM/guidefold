@@ -12,7 +12,7 @@
 .figure{min-width:var(--zero);}
 .figure+.figure{
  padding-left:var(--landing-proof-pad);
- padding-top:var(--landing-proof-pad);
+ padding-top:var(--landing-proof-stack-pad);
  border-left:var(--landing-proof-rule);
  border-top:var(--landing-proof-rule-top);
 }

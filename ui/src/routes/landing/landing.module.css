@@ -61,6 +61,7 @@
  background:var(--graphite-900);
  box-shadow:var(--landing-device-shadow);
 }
+.deviceWhole{aspect-ratio:var(--landing-hero-screen-ratio);}
 .deviceShot{display:block;width:var(--full);height:var(--full);object-fit:cover;object-position:var(--landing-screen-position);}
 .deviceCaption{
  margin-top:var(--space-3);
