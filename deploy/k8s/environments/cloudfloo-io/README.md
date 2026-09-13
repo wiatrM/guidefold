@@ -1,5 +1,40 @@
 # guidefold.cloudfloo.io — deployment runbook
 
+## Releasing an image that changes the schema — read before every rollout
+
+ArgoCD syncs the Deployments in `Application/guidefold` and nothing else; it
+never runs the chart's migrate Job. Patching image digests alone therefore puts
+new code on the old database. That is exactly what took sign-in down on
+2026-09-13 (incident below). For any release whose diff touches
+`services/search/internal/schema/sql.go`, and without the owner's explicit
+approval for this release no step below runs at all:
+
+1. Export the live values:
+   `kubectl get application guidefold -n argocd -o json | python3 -c "import sys,json; print(json.load(sys.stdin)['spec']['source']['helm']['values'])" > live-values.yaml`
+   and set `image:` in that file to the new `guidefold-search` digest.
+2. Render only the Job from the chart at the release commit:
+   `helm template guidefold deploy/k8s/chart -n guidefold -f live-values.yaml --set workload=migrate`,
+   keep the single `kind: Job` document, give it a dated name, `kubectl apply` it.
+3. `kubectl wait --for=condition=complete job/<name> -n guidefold`, then confirm the
+   new columns and tables exist in `gfm` with `psql` on `guidefold-postgres-1`.
+4. Record the current digests as the rollback point, then patch the new ones.
+5. Smoke test with authentication, not only health: `/health/ready` 200,
+   `GET /api/v1/auth/login/google` 302 to WorkOS, each changed route as intended,
+   and no `ERROR` in `kubectl logs -l app.kubernetes.io/component=api` for the
+   first minutes. Roll back at the first failure.
+
+### Incident 2026-09-13: sign-in down for about 25 minutes
+
+PR #149 added `gfm.auth_states.org_id`, `gfm.github_installation_links` and
+`gfm.repos.github_installation_id`. Its digests were patched at about 10:43 UTC
+without running the migrate Job. Every `GET /api/v1/auth/login/{provider}`
+answered 500 with `column "org_id" of relation "auth_states" does not exist`,
+while `/health/ready` kept answering 200, so the post-deploy check passed. The
+migrate Job `guidefold-migrate-20260913` was run at about 11:08 UTC; sign-in
+answered 302 to WorkOS again immediately. Cause: the release procedure had no
+migration step and the smoke test did not exercise authentication. Both are now
+steps 2–5 above.
+
 ## Live Agent, organisation model keys and the init reconciliation — 2026-09-12 (current)
 
 Built by `publish-images.yml` from `main` at `6aa8ad8` (PR #143: the Live Agent
