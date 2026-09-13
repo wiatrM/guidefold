@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ApiImportRoute } from './OnboardingRoutes';
@@ -30,7 +31,7 @@ const status = (over: Partial<ImportStatus> = {}): ImportStatus => ({
   ...over,
 });
 
-function renderRoute(source: DataSource, search = '', over: Partial<ApiRouteContext> = {}) {
+function renderRoute(source: DataSource, search = '', over: Partial<ApiRouteContext> = {}, extra?: ReactNode) {
   const params = new URLSearchParams(search);
   const ctx: ApiRouteContext = {
     source, access: { status: 'confirmed', me, checkedAt: 1 }, me, org: 'meridian', repo: 'monorepo',
@@ -39,7 +40,7 @@ function renderRoute(source: DataSource, search = '', over: Partial<ApiRouteCont
     go: vi.fn(),
     ...over,
   };
-  return render(<MemoryRouter><ApiImportRoute ctx={ctx} /></MemoryRouter>);
+  return render(<MemoryRouter><ApiImportRoute ctx={ctx} />{extra}</MemoryRouter>);
 }
 
 describe('Import route, hosted API, six states', () => {
@@ -129,12 +130,12 @@ describe('Import route, sign in and context', () => {
     // route resolves the same first real step it would have picked with no step at all.
     expect(await screen.findByText('No import yet')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue with GitHub/ })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
   });
 
   test('the CLI block names the real organization, never a fixture', async () => {
-    const source = fakeSource({ listRepos: async () => [{ repo_id: 'monorepo', name: null, git_host_url: null, created_at: null, created: false }] });
-    renderRoute(source, 'step=preview');
+    const source = fakeSource({ listRepos: async () => [{ repo_id: 'monorepo', name: null, git_host_url: null, created_at: null, created: false }], listGitHubInstallations: async () => [] });
+    renderRoute(source, 'step=github');
     expect(await screen.findByText(/guidefold org use meridian/)).toBeInTheDocument();
     expect(screen.queryByText(/Local simulation/)).not.toBeInTheDocument();
   });
@@ -148,8 +149,9 @@ describe('Import route, sign in and context', () => {
     const uploadImportBlob = vi.fn(async () => {});
     const finalizeImport = vi.fn(async () => status({ import_id: 'browser-import', state: 'queued' }));
     const go = vi.fn();
-    const source = fakeSource({ listRepos: async () => [], createImport, uploadImportBlob, finalizeImport });
-    renderRoute(source, 'step=preview', { go });
+    const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], createImport, uploadImportBlob, finalizeImport });
+    renderRoute(source, 'step=github', { go });
+    await userEvent.click(await screen.findByRole('button', { name: 'No GitHub access? Use the CLI or upload files' }));
     const input = await screen.findByLabelText('Files');
     const file = new File(['# Auth\n'], 'SKILL.md', { type: 'text/markdown' });
     Object.defineProperty(file, 'arrayBuffer', { value: async () => new TextEncoder().encode('# Auth\n').buffer });
@@ -168,7 +170,8 @@ describe('Import route, sign in and context', () => {
   test('an owner can register a repository before using the browser package path', async () => {
     const createRepo = vi.fn(async () => ({ repo_id: 'local-repo', name: null, git_host_url: null, created_at: null, created: true }));
     const go = vi.fn();
-    renderRoute(fakeSource({ listRepos: async () => [], createRepo }), 'step=preview', { repo: null, go });
+    renderRoute(fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], createRepo }), 'step=github', { repo: null, go });
+    await userEvent.click(await screen.findByRole('button', { name: 'No GitHub access? Use the CLI or upload files' }));
     await userEvent.type(await screen.findByLabelText('Repository id'), 'local-repo');
     await userEvent.click(screen.getByRole('button', { name: 'Register repository' }));
     await waitFor(() => expect(createRepo).toHaveBeenCalledWith('meridian', { repo_id: 'local-repo', git_host_url: null }, 'create-repo:meridian:local-repo'));
@@ -177,7 +180,8 @@ describe('Import route, sign in and context', () => {
 
   test('the browser package path rejects obvious secret files before upload', async () => {
     const createImport = vi.fn();
-    renderRoute(fakeSource({ listRepos: async () => [], createImport }), 'step=preview');
+    renderRoute(fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], createImport }), 'step=github');
+    await userEvent.click(await screen.findByRole('button', { name: 'No GitHub access? Use the CLI or upload files' }));
     const input = await screen.findByLabelText('Files');
     const file = new File(['TOKEN=secret\n'], '.env', { type: 'text/plain' });
     Object.defineProperty(file, 'arrayBuffer', { value: async () => new TextEncoder().encode('TOKEN=secret\n').buffer });
@@ -200,9 +204,10 @@ describe('Import route, sign in and context', () => {
     const source = fakeSource({
       listRepos: async () => [{ repo_id: 'monorepo', name: null, git_host_url: null, created_at: null, created: false }],
       listMembers: async () => [{ user_id: 'u2', email: 'dev@example.com', name: 'Dev', role: 'member' as const, joined_at: null }],
-      listRepoAccess: async () => [], listReviewers: async () => [], setRepoAccess, assignReviewer,
+      listRepoAccess: async () => [], listReviewers: async () => [], listImports: async () => [], setRepoAccess, assignReviewer,
     });
-    renderRoute(source, 'step=preview');
+    renderRoute(source, 'step=result');
+    await userEvent.click(await screen.findByRole('button', { name: 'Expand Repository access' }));
     await userEvent.selectOptions(await screen.findByLabelText('Member'), 'u2');
     await userEvent.selectOptions(screen.getByLabelText('Access level'), 'write');
     await userEvent.click(screen.getByRole('button', { name: 'Save repository access' }));
@@ -243,25 +248,25 @@ const installation = (over: Partial<import('../api/decoders').GitHubInstallation
 });
 
 describe('Import route, Connect GitHub (Task 1: the real bug)', () => {
-  test('the empty-state Connect GitHub button starts the real installation flow, never a plain sign-in', async () => {
+  test('the GitHub step Connect GitHub button starts the real installation flow, never a plain sign-in', async () => {
     const startGitHubInstall = vi.fn(async () => ({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold/installations/new?state=s1' }));
     const startLogin = vi.fn();
     const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [], startGitHubInstall, startLogin });
-    renderRoute(source, 'step=preview');
-    await userEvent.click(await screen.findByRole('button', { name: /Connect GitHub/ }));
+    renderRoute(source, 'step=github');
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect GitHub' }));
     await waitFor(() => expect(startGitHubInstall).toHaveBeenCalledWith('meridian', expect.stringContaining('github-install-start:'), '/import?step=preview'));
     expect(startLogin).not.toHaveBeenCalled();
   });
 
-  test('the "Automatic import" notice button also starts the real installation flow with a return target', async () => {
+  test('with an account already connected, "Connect another GitHub account" also installs the App and returns to the repository step', async () => {
     const startGitHubInstall = vi.fn(async () => ({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold/installations/new?state=s1' }));
     const source = fakeSource({
       listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()],
       listCredentials: async () => [], startGitHubInstall,
     });
-    renderRoute(source, 'step=preview');
-    const buttons = await screen.findAllByRole('button', { name: /Connect GitHub/ });
-    await userEvent.click(buttons[buttons.length - 1]);
+    renderRoute(source, 'step=github');
+    expect(await screen.findByRole('link', { name: /Continue to repositories/ })).toHaveAttribute('href', '/import?step=preview');
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect another GitHub account' }));
     await waitFor(() => expect(startGitHubInstall).toHaveBeenCalledWith('meridian', expect.any(String), '/import?step=preview'));
   });
 
@@ -286,7 +291,8 @@ describe('Import route, repository list states (Task 2, 1.13.0)', () => {
       listCredentials: async () => [],
     });
     renderRoute(source, 'step=preview');
-    expect(await screen.findByText('Linked. Repositories still syncing.')).toBeInTheDocument();
+    expect(await screen.findByText(/1 repository registered so far\./)).toBeInTheDocument();
+    expect(screen.getByText('Syncing (1)')).toBeInTheDocument();
     // Not the "no installation at all" empty state — the owner-only reminder panel still offers
     // Connect GitHub (an already-connected owner may want a second account), but the dedicated
     // empty-state heading and its own button must not render once an installation exists.
@@ -313,9 +319,12 @@ describe('Import route, repository list states (Task 2, 1.13.0)', () => {
       listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
     });
     renderRoute(source, 'step=preview');
-    expect(await screen.findByText('Not imported yet.')).toBeInTheDocument();
-    expect(screen.getByText(/^Imported /)).toBeInTheDocument();
-    expect(screen.getByText('Not importable: no guidefold.yaml in this repository.')).toBeInTheDocument();
+    expect(await screen.findByText('Ready to import')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Repositories' })).getByText('Imported')).toBeInTheDocument();
+    expect(screen.getByText(/^Last import /)).toBeInTheDocument();
+    expect(screen.getByText('No guidefold.yaml')).toBeInTheDocument();
+    // One state per row: the detail never repeats the badge's word.
+    expect(screen.queryByText('Not imported yet.')).not.toBeInTheDocument();
   });
 
   test('importing a repository calls importGitHubRepo and never touches proposals or a model key', async () => {
@@ -352,7 +361,7 @@ describe('Import route, repository list states (Task 2, 1.13.0)', () => {
       listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
     });
     renderRoute(source, 'step=preview');
-    await screen.findByText('Not importable: no guidefold.yaml in this repository.');
+    await screen.findByText('No guidefold.yaml');
     expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
   });
 });
@@ -361,7 +370,8 @@ describe('Import route, model key status line (owner instruction, 2026-09-13)', 
   test('no stored key: proposals need one, with a link for the owner', async () => {
     const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [] });
     renderRoute(source, 'step=preview');
-    expect(await screen.findByText(/Proposals \(duplicates, contradictions\) need a model key; importing repositories does not\./)).toBeInTheDocument();
+    expect(await screen.findByText('Model key required')).toBeInTheDocument();
+    expect(screen.getByText(/A full import with proposals \(duplicates, contradictions\) needs a model key; importing repositories does not\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Add one in Organization › Model keys' })).toHaveAttribute('href', '/organization?org=meridian&tab=keys');
   });
 
@@ -500,21 +510,19 @@ describe('Import route, proposal generation panel', () => {
 describe('Import route, stepper', () => {
   const providers = fakeSource({ getAuthProviders: async () => ({ mode: 'dev' as const, providers: [{ id: 'github', label: 'GitHub', login_url: '/api/v1/auth/login/github' }] }) });
 
-  test('the three steps are numbered and named for the hosted flow; the current one carries aria-current', () => {
+  test('three stages share one StageStatus; the current step is named in text, not only by the marker', () => {
     renderRoute(fakeSource({ listImports: async () => [] }), 'step=result');
-    const list = screen.getByRole('list', { name: 'Import progress' });
-    const items = within(list).getAllByRole('listitem');
-    // Sign-in is not among them: it is the /login page the shell redirects to, not a step.
-    expect(items.map(item => within(item).getByText(/^(Organization|Repository|Import status)$/).textContent)).toEqual(['Organization', 'Repository', 'Import status']);
-    expect(items[2]).toHaveAttribute('aria-current', 'step');
-    expect(items[0]).not.toHaveAttribute('aria-current');
-    expect(within(items[0]).getByText('01')).toBeInTheDocument();
+    const progress = screen.getByRole('group', { name: 'Import progress' });
+    expect(within(progress).getByText('Organization')).toBeInTheDocument();
+    expect(within(progress).getByText('GitHub')).toBeInTheDocument();
+    expect(within(progress).getByText('Import')).toBeInTheDocument();
+    expect(within(progress).getByText('Step 3 of 3: Import')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Import status' })).toBeInTheDocument();
   });
 
   test('the wizard never starts a sign-in of its own', async () => {
     renderRoute(providers, '', { org: null, repo: null, role: null });
-    const list = screen.getByRole('list', { name: 'Import progress' });
-    expect(within(list).getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'step');
+    expect(within(screen.getByRole('group', { name: 'Import progress' })).getByText('Step 1 of 3: Organization')).toBeInTheDocument();
     expect(await screen.findByText('Your organizations')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue with GitHub/ })).not.toBeInTheDocument();
   });
@@ -522,20 +530,20 @@ describe('Import route, stepper', () => {
   test('a signed-in operator without an organisation lands on the organisation step', async () => {
     renderRoute(fakeSource({ listOrgs: async () => [] }), '', { org: null, repo: null, role: null });
     expect(await screen.findByText('No organization yet')).toBeInTheDocument();
-    expect(screen.getByRole('list', { name: 'Import progress' }).querySelectorAll('[aria-current="step"]')).toHaveLength(1);
+    expect(screen.getByText('Step 1 of 3: Organization')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Create organization/ })).toBeInTheDocument();
   });
 
-  test('the repository step lists repositories with a Git host or Unknown and the CLI commands for this organisation', async () => {
+  test('the repository step lists every repository, including one registered by the CLI, each with an import-status link', async () => {
     renderRoute(fakeSource({ listRepos: async () => [
       { repo_id: 'monorepo', name: null, git_host_url: 'https://github.example.test/meridian/monorepo', created_at: null, created: false },
       { repo_id: 'docs', name: null, git_host_url: null, created_at: null, created: false },
-    ] }), 'step=preview');
-    expect(await screen.findByText('https://github.example.test/meridian/monorepo')).toBeInTheDocument();
-    const docs = screen.getByText('docs').closest('tr')!;
-    expect(within(docs).getByText('Unknown')).toBeInTheDocument();
-    expect(screen.getByText(/guidefold org use meridian/)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Open import status' })).toHaveLength(2);
+    ], listGitHubInstallations: async () => [] }), 'step=preview');
+    const list = await screen.findByRole('list', { name: 'Repositories' });
+    expect(within(list).getByText('monorepo')).toBeInTheDocument();
+    expect(within(list).getAllByText(/Registered by the CLI/)).toHaveLength(2);
+    expect(within(list).getAllByRole('link', { name: 'Open import status' })).toHaveLength(2);
+    expect(within(list).queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
   });
 
   test('the result step lists imports newest first with a state badge and a link that keeps the import id in the address', async () => {
@@ -547,5 +555,263 @@ describe('Import route, stepper', () => {
     expect(rows[0]).toHaveTextContent('im-2');
     expect(within(rows[0]).getByText('partial')).toBeInTheDocument();
     expect(within(rows[1]).getByRole('link', { name: 'Read this import' })).toHaveAttribute('href', expect.stringContaining('import_id=im-1'));
+  });
+});
+
+describe('Organization wizard, UX §3a (2026-09-13 redesign)', () => {
+  test('one Name field: the URL name is derived and read-only until "Change URL"', async () => {
+    const createOrg = vi.fn(async () => ({ org_id: 'o9', slug: 'acme-data', name: 'Acme Data', my_role: 'owner' as const, created_at: null, counts: null }));
+    const go = vi.fn();
+    renderRoute(fakeSource({ listOrgs: async () => [], createOrg }), '', { org: null, repo: null, role: null, go });
+    await userEvent.type(await screen.findByLabelText('Name'), 'Acme Data');
+    expect(screen.getByText('acme-data')).toBeInTheDocument();
+    expect(screen.queryByLabelText('URL name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Repository id|Git host|Reviewer/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Create organization/ }));
+    await waitFor(() => expect(createOrg).toHaveBeenCalledWith({ name: 'Acme Data', slug: 'acme-data' }, 'create-org:acme-data'));
+    expect(go).toHaveBeenCalledWith('import', { org: 'acme-data', repo: null, step: 'github' });
+  });
+
+  test('a taken URL name is an error at the field, and the typed name is kept', async () => {
+    const createOrg = vi.fn(async () => { throw new ApiError({ status: 409, code: 'slug_taken', message: 'taken' }); });
+    renderRoute(fakeSource({ listOrgs: async () => [], createOrg }), '', { org: null, repo: null, role: null });
+    await userEvent.type(await screen.findByLabelText('Name'), 'Meridian');
+    await userEvent.click(screen.getByRole('button', { name: /Create organization/ }));
+    expect(await screen.findByText('This URL name is taken. Choose another; the name above is kept.')).toBeInTheDocument();
+    expect(screen.getByLabelText('URL name')).toHaveValue('meridian');
+    expect(screen.getByLabelText('Name')).toHaveValue('Meridian');
+  });
+
+  test('Change URL opens the URL name field, prefilled with the derived value', async () => {
+    renderRoute(fakeSource({ listOrgs: async () => [] }), '', { org: null, repo: null, role: null });
+    await userEvent.type(await screen.findByLabelText('Name'), 'Zażółć Team');
+    expect(screen.getByText('zazolc-team')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Change URL' }));
+    expect(screen.getByLabelText('URL name')).toHaveValue('zazolc-team');
+  });
+
+  test('github_app_not_configured on Connect GitHub is a deployment problem with no button left to retry', async () => {
+    const startGitHubInstall = vi.fn(async () => { throw new ApiError({ status: 503, code: 'github_app_not_configured', message: 'no app' }); });
+    renderRoute(fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [], startGitHubInstall }), 'step=github');
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect GitHub' }));
+    expect(await screen.findByText('No GitHub App configured on this deployment')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Connect GitHub' })).not.toBeInTheDocument();
+  });
+
+  test('the GitHub step never offers a token to paste into CI', async () => {
+    renderRoute(fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [] }), 'step=github');
+    await screen.findByRole('button', { name: 'Connect GitHub' });
+    expect(screen.queryByText(/paste|installation token|GUIDEFOLD_TOKEN/i)).not.toBeInTheDocument();
+  });
+
+  test('each row carries one state; a failed import names its reason', async () => {
+    const source = fakeSource({
+      listRepos: async () => [
+        githubRepo({ repo_id: 'ready-repo', name: 'acme/ready' }),
+        githubRepo({ repo_id: 'failed-repo', name: 'acme/failed', last_import_state: 'failed', last_import_error: 'fetch_timeout' }),
+        githubRepo({ repo_id: 'running-repo', name: 'acme/running', last_import_state: 'parsing' }),
+      ],
+      listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    const list = await screen.findByRole('list', { name: 'Repositories' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(within(rows[0]).getByText('Ready to import')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('Import failed')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('Reason: fetch_timeout.')).toBeInTheDocument();
+    expect(within(rows[2]).getByText('Importing')).toBeInTheDocument();
+    expect(within(rows[2]).queryByRole('button', { name: /Import/ })).not.toBeInTheDocument();
+  });
+
+  test('search and the Imported filter narrow the list', async () => {
+    const source = fakeSource({
+      listRepos: async () => [
+        githubRepo({ repo_id: 'widgets', name: 'acme/widgets' }),
+        githubRepo({ repo_id: 'gadgets', name: 'acme/gadgets', last_import_state: 'ready', last_import_at: '2026-09-01T00:00:00Z' }),
+      ],
+      listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    await screen.findByRole('list', { name: 'Repositories' });
+    await userEvent.click(screen.getByRole('button', { name: /^Imported/ }));
+    let list = screen.getByRole('list', { name: 'Repositories' });
+    await waitFor(() => expect(within(list).queryByText('acme/widgets')).not.toBeInTheDocument());
+    expect(within(list).getByText('acme/gadgets')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^All/ }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search repositories' }), 'widg');
+    list = screen.getByRole('list', { name: 'Repositories' });
+    await waitFor(() => expect(within(list).queryByText('acme/gadgets')).not.toBeInTheDocument());
+    expect(within(list).getByText('acme/widgets')).toBeInTheDocument();
+  });
+
+  test('the account picker appears only with more than one GitHub installation', async () => {
+    const one = fakeSource({ listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()], listCredentials: async () => [] });
+    const view = renderRoute(one, 'step=preview');
+    await screen.findByRole('list', { name: 'Repositories' });
+    expect(screen.queryByLabelText('GitHub account')).not.toBeInTheDocument();
+    view.unmount();
+    const two = fakeSource({
+      listRepos: async () => [githubRepo({ name: 'acme/widgets' }), githubRepo({ repo_id: 'blog', name: 'ada/blog', github_installation_id: 2, github_account: 'ada' })],
+      listGitHubInstallations: async () => [installation(), installation({ installation_id: 2, account: 'ada', account_type: 'user' })], listCredentials: async () => [],
+    });
+    renderRoute(two, 'step=preview');
+    await screen.findByRole('list', { name: 'Repositories' });
+    await userEvent.selectOptions(screen.getByLabelText('GitHub account'), '2');
+    const list = screen.getByRole('list', { name: 'Repositories' });
+    await waitFor(() => expect(within(list).queryByText('acme/widgets')).not.toBeInTheDocument());
+    expect(within(list).getByText('ada/blog')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Missing a repository? Change GitHub App access' })).toHaveAttribute('href', 'https://github.com/settings/installations/2');
+  });
+
+  test('"Missing a repository?" opens the organization installation settings on GitHub', async () => {
+    renderRoute(fakeSource({ listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()], listCredentials: async () => [] }), 'step=preview');
+    expect(await screen.findByRole('link', { name: 'Missing a repository? Change GitHub App access' })).toHaveAttribute('href', 'https://github.com/organizations/acme/settings/installations/1');
+  });
+
+  test('a queued import is announced as queued, never as imported', async () => {
+    const importGitHubRepo = vi.fn(async () => ({ job_id: 'job-1' }));
+    renderRoute(fakeSource({ listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()], listCredentials: async () => [], importGitHubRepo }), 'step=preview');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import' }));
+    expect(await screen.findByText(/Import queued for acme\/widgets/)).toBeInTheDocument();
+    expect(screen.queryByText(/acme\/widgets imported/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Organization wizard, import completion moment', () => {
+  test('a repository that moves from importing to imported on the next read is announced once, by name', async () => {
+    let reads = 0;
+    const listRepos = vi.fn(async () => {
+      reads += 1;
+      return [githubRepo({ name: 'acme/widgets', last_import_state: reads === 1 ? 'parsing' : 'ready', last_import_at: reads === 1 ? null : '2026-09-13T10:00:00Z' })];
+    });
+    renderRoute(fakeSource({ listRepos, listGitHubInstallations: async () => [installation()], listCredentials: async () => [] }), 'step=preview');
+    expect(await screen.findByText('Importing')).toBeInTheDocument();
+    // The list is read again while an import runs (every 4 s); the finished row then says so.
+    expect(await screen.findByText('acme/widgets imported', {}, { timeout: 7000 })).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Repositories' })).getByText('Imported')).toBeInTheDocument();
+    expect(listRepos).toHaveBeenCalledTimes(2);
+  }, 15000);
+});
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname + location.search}</output>;
+}
+
+describe('Organization wizard, list state in the URL', () => {
+  const source = () => fakeSource({
+    listRepos: async () => [
+      githubRepo({ repo_id: 'widgets', name: 'acme/widgets' }),
+      githubRepo({ repo_id: 'gadgets', name: 'acme/gadgets', last_import_state: 'ready', last_import_at: '2026-09-01T00:00:00Z' }),
+    ],
+    listGitHubInstallations: async () => [installation(), installation({ installation_id: 2, account: 'ada', account_type: 'user' })],
+    listCredentials: async () => [],
+  });
+
+  test('a shared address opens the list already filtered, searched and narrowed to one account', async () => {
+    renderRoute(source(), 'step=preview&filter=imported&q=gad&account=1');
+    const list = await screen.findByRole('list', { name: 'Repositories' });
+    expect(within(list).getByText('acme/gadgets')).toBeInTheDocument();
+    expect(within(list).queryByText('acme/widgets')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Search repositories' })).toHaveValue('gad');
+    expect(screen.getByLabelText('GitHub account')).toHaveValue('1');
+  });
+
+  test('choosing a filter, an account and typing a search write them to the address', async () => {
+    renderRoute(source(), 'step=preview', {}, <LocationProbe />);
+    await screen.findByRole('list', { name: 'Repositories' });
+    await userEvent.click(screen.getByRole('button', { name: /^Imported/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent('filter=imported');
+    await userEvent.selectOptions(screen.getByLabelText('GitHub account'), '2');
+    expect(screen.getByTestId('location')).toHaveTextContent('account=2');
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search repositories' }), 'wi');
+    expect(screen.getByTestId('location')).toHaveTextContent('q=wi');
+  });
+});
+
+describe('Organization wizard, sync line', () => {
+  test('an account still syncing with nothing registered adds no "Syncing (0)" above another account\'s repositories', async () => {
+    renderRoute(fakeSource({
+      listRepos: async () => [githubRepo({ name: 'acme/widgets' })],
+      listGitHubInstallations: async () => [installation(), installation({ installation_id: 2, account: 'ada', account_type: 'user', registered_repositories: 0, synced: false })],
+      listCredentials: async () => [],
+    }), 'step=preview');
+    await screen.findByRole('list', { name: 'Repositories' });
+    expect(screen.queryByText(/^Syncing/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 repositories registered so far/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Organization wizard, re-reading while something is pending', () => {
+  test('backs off 4 s, 8 s, 16 s, then every 30 s, and stops after five minutes with a named state and a manual refresh', async () => {
+    vi.useFakeTimers();
+    try {
+      const listRepos = vi.fn(async () => [githubRepo({ last_import_state: 'queued' })]);
+      renderRoute(fakeSource({ listRepos, listGitHubInstallations: async () => [installation()], listCredentials: async () => [] }), 'step=preview');
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(listRepos).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(2));
+      await vi.advanceTimersByTimeAsync(8000);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(3));
+      await vi.advanceTimersByTimeAsync(16000);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(4));
+      await vi.advanceTimersByTimeAsync(30000);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(5));
+      await vi.advanceTimersByTimeAsync(29999);
+      expect(listRepos).toHaveBeenCalledTimes(5);
+      // 58 s waited so far; nine more 30 s waits pass the five-minute limit (58 + 270 = 328 s).
+      for (let i = 0; i < 12 && !screen.queryByText('Still queued on the server'); i += 1) {
+        const before = listRepos.mock.calls.length;
+        await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+        await vi.waitFor(() => expect(listRepos.mock.calls.length > before || screen.queryByText('Still queued on the server') !== null).toBe(true));
+      }
+      expect(screen.getByText('Still queued on the server')).toBeInTheDocument();
+      const stoppedAt = listRepos.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(listRepos).toHaveBeenCalledTimes(stoppedAt);
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh' })); });
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(stoppedAt + 1));
+      expect(screen.queryByText('Still queued on the server')).not.toBeInTheDocument();
+    } finally { vi.useRealTimers(); }
+  });
+
+  test('stops as soon as nothing is pending', async () => {
+    vi.useFakeTimers();
+    try {
+      let reads = 0;
+      const listRepos = vi.fn(async () => { reads += 1; return [githubRepo({ last_import_state: reads === 1 ? 'queued' : 'ready' })]; });
+      renderRoute(fakeSource({ listRepos, listGitHubInstallations: async () => [installation()], listCredentials: async () => [] }), 'step=preview');
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(4000);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(2));
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(listRepos).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); }
+  });
+
+  test('pauses while the tab is hidden and resumes when it is shown again', async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden');
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    try {
+      const listRepos = vi.fn(async () => [githubRepo({ last_import_state: 'queued' })]);
+      renderRoute(fakeSource({ listRepos, listGitHubInstallations: async () => [installation()], listCredentials: async () => [] }), 'step=preview');
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(1));
+      hidden = true;
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(listRepos).toHaveBeenCalledTimes(1);
+      hidden = false;
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+      await vi.advanceTimersByTimeAsync(4000);
+      await vi.waitFor(() => expect(listRepos).toHaveBeenCalledTimes(2));
+    } finally {
+      delete (document as unknown as { hidden?: boolean }).hidden;
+      if (descriptor) Object.defineProperty(Document.prototype, 'hidden', descriptor);
+      vi.useRealTimers();
+    }
   });
 });

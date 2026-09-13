@@ -294,7 +294,7 @@ describe('shell composition', () => {
     // 1 s window even though the module is already cached from an earlier test in this file.
     expect(await screen.findByText('Repositories', {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue with/ })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Import progress' })).queryByText('Sign in')).not.toBeInTheDocument();
   });
 
   test('a confirmed session that opens /login is sent on to the address it carried', async () => {

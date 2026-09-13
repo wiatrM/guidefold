@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CheckIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, GoogleLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { ArrowLeftIcon, ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, GoogleLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, MagnifyingGlassIcon, PlugsConnectedIcon, PulseIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
 import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { StageStatus } from '../components/StageStatus';
+import { RepositoryItem } from '../components/RepositoryItem';
+import { ImportFilter, type ImportFilterValue } from '../components/ImportFilter';
+import { AnimatedList, GlowAction, GridField, ShaderField, ShimmerSkeleton, ShineBorder, SuccessBurst } from '../components/effects';
+import type { Tone } from '../domain';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { BeamCard } from '../components/spectrumui/beam-card';
-import { cn } from '@/lib/utils';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, formatNumber, shortId, unknown, useAsync, type ApiProps } from './apiState';
 import { formatDay, ScorecardPanel } from './ReviewRoutes';
@@ -18,7 +23,7 @@ import type { DataSource } from '../data/source';
 import type { Me } from '../api/decoders';
 import styles from './OnboardingRoutes.module.css';
 
-type ImportStep = 'organization' | 'preview' | 'result';
+type ImportStep = 'organization' | 'github' | 'preview' | 'result';
 /** shadcn Input on the product's control height; the native select is styled to match (tests use selectOptions). */
 const inputClass = 'min-h-(--control-height) rounded-md border-input bg-graphite-950 px-2.5 text-[length:var(--font-size-body)] shadow-(--shadow-control) focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-(--focus-offset) focus-visible:outline-human focus-visible:border-input';
 const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-[length:var(--font-size-body)] shadow-(--shadow-control)';
@@ -123,47 +128,125 @@ function CommandBlock({ commands }: { commands: string }) {
 const terminalImportStates = ['ready', 'partial', 'failed', 'cancelled'];
 /** `proposal.generate` job states that stop the generation panel's own poll (contract §6). */
 const terminalJobStates = ['done', 'failed', 'skipped', 'cancelled'];
-/* Sign-in is no longer a step of this wizard: every management route is private, so an
-   unauthenticated request never reaches it — the shell redirects it to /login (app.tsx).
-   A stale `?step=login` bookmark therefore falls through to the first real step below. */
-const apiSteps: { id: ImportStep; label: string; detail: string; icon: typeof BuildingsIcon }[] = [
-  { id: 'organization', label: 'Organization', detail: 'Choose or create one', icon: BuildingsIcon },
-  { id: 'preview', label: 'Repository', detail: 'Pick what the CLI uploads', icon: GitBranchIcon },
-  { id: 'result', label: 'Import status', detail: 'Files, jobs and publication', icon: ListChecksIcon },
+/* The wizard's three stages (docs/ui/UX.md §3a): organization, GitHub, import. Step ids stay
+   URL contract (`organization`, `preview`, `result` are linked from app.tsx and the e2e specs);
+   `github` is the explicit GitHub step, and `result` is the import status of one repository,
+   still inside the third stage. */
+const wizardStages = [
+  { id: 'organization', label: 'Organization' },
+  { id: 'github', label: 'GitHub' },
+  { id: 'import', label: 'Import' },
 ];
-type StepState = 'done' | 'current' | 'next';
-const stepStatusLabel: Record<StepState, string> = { done: 'Done', current: 'Current step', next: 'Next' };
+const stepCopy: Record<ImportStep, { stage: number; title: string; lead: string }> = {
+  organization: { stage: 0, title: 'Organization', lead: 'Name the organization that holds your repositories, skills and members, or continue with one you already belong to.' },
+  github: { stage: 1, title: 'Connect GitHub', lead: 'Install the Guidefold GitHub App on the account that owns your repositories. GitHub sends you back here when it is done.' },
+  preview: { stage: 2, title: 'Repositories', lead: 'Import the repositories the GitHub App can read. Importing a repository does not need a model key.' },
+  result: { stage: 2, title: 'Import status', lead: 'Files, jobs and publication for the selected repository.' },
+};
+const importingStates = ['queued', 'parsing', 'uploading', 'created'];
+const POLL_FIRST_MS = 4000;
+const POLL_CAP_MS = 30000;
+const POLL_LIMIT_MS = 5 * 60 * 1000;
+function parseImportFilter(value: string | null): ImportFilterValue {
+  return value === 'imported' || value === 'not_imported' ? value : 'all';
+}
+
+/** Derives the organization's URL name from its display name: lower case, ASCII letters and
+ * digits, single hyphens, at most 40 characters (contract §3 `invalid_slug`: `[a-z0-9-]{2,40}`). */
+export function slugFromName(name: string): string {
+  // Letters with no Unicode decomposition (Polish ł, Nordic ø, German ß) are folded by hand first.
+  const folded: Record<string, string> = { 'ł': 'l', 'ø': 'o', 'đ': 'd', 'ß': 'ss', 'æ': 'ae', 'œ': 'oe' };
+  return name.toLowerCase().replace(/[łøđßæœ]/g, letter => folded[letter]).normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
+}
+
+/** GitHub's own settings page for one installation (contract §5.1 `GitHubInstallation.account_type`,
+ * 1.13.0): personal accounts and organizations live at different paths. Null while GitHub has
+ * not reported the account type yet, so the caller never guesses one of the two. */
+function githubInstallationSettingsUrl(entry: GitHubInstallation): string | null {
+  if (entry.account_type === 'user') return 'https://github.com/settings/installations/' + entry.installation_id;
+  if (entry.account_type === 'organization') return 'https://github.com/organizations/' + encodeURIComponent(entry.account) + '/settings/installations/' + entry.installation_id;
+  return null;
+}
+
+/** One state per installation's repository sync: label, tone and the sentence behind it. */
+function githubSyncState(entry: GitHubInstallation): { label: string; tone: Tone } {
+  if (entry.sync_failed_at) return { label: 'Sync failed', tone: 'error' };
+  if (!entry.synced) return { label: 'Syncing', tone: 'system' };
+  return { label: 'Synced', tone: 'neutral' };
+}
+
+/** Exactly one state per repository row (UX §3a "Stan repozytorium"). */
+function repoRowState(entry: Repo): { label: string; tone: Tone; imported: boolean; importing: boolean } {
+  if (entry.import_blocked_reason) return { label: entry.import_blocked_reason === 'guidefold_yaml_missing' ? 'No guidefold.yaml' : 'Not importable', tone: 'warning', imported: false, importing: false };
+  const state = entry.last_import_state ?? null;
+  if (state && importingStates.includes(state)) return { label: 'Importing', tone: 'system', imported: false, importing: true };
+  if (state === 'ready') return { label: 'Imported', tone: 'system', imported: true, importing: false };
+  if (state === 'partial') return { label: 'Imported, files omitted', tone: 'warning', imported: true, importing: false };
+  if (state === 'failed') return { label: 'Import failed', tone: 'error', imported: false, importing: false };
+  if (state === 'cancelled') return { label: 'Cancelled', tone: 'neutral', imported: false, importing: false };
+  return { label: entry.github_installation_id != null ? 'Ready to import' : 'Not imported', tone: 'neutral', imported: false, importing: false };
+}
+
+/** What a row's badge cannot say: the date of the last import, the reason it failed or is not
+ * importable, or where the repository came from. Never a second state word (UX §3a: one state per row). */
+function repoDetail(entry: Repo): string {
+  if (entry.import_blocked_reason) {
+    return entry.import_blocked_reason === 'guidefold_yaml_missing'
+      ? 'Guidefold manages a repository once it has a guidefold.yaml at its root.'
+      : 'Reason: ' + entry.import_blocked_reason + '.';
+  }
+  const state = entry.last_import_state ?? null;
+  if ((state === 'ready' || state === 'partial') && entry.last_import_at) return 'Last import ' + formatDay(entry.last_import_at) + '.';
+  if (state === 'failed') return 'Reason: ' + (entry.last_import_error ?? 'none recorded') + '.';
+  if (entry.github_installation_id == null) return 'Registered by the CLI; import it from your checkout.';
+  return entry.github_account ? 'GitHub account ' + entry.github_account + '.' : '';
+}
+
+/** The count beside a Syncing badge, without repeating the word the badge already shows. */
+function registeredSoFar(entry: GitHubInstallation): string {
+  return entry.registered_repositories + ' repositor' + (entry.registered_repositories === 1 ? 'y' : 'ies') + ' registered so far.';
+}
 
 /**
- * The quickstart: three large step cards, numbered because the flow is a sequence. "Done" is
- * derived from what the URL already carries (an organization, a repository, an import), not
- * from anything the server confirmed. The current card is the only one that moves.
+ * The model-key status line beside the wizard (owner instruction 2026-09-13, UX §3a "Klucz
+ * modelu"): a full import with proposals needs a stored key, importing repositories does not.
+ * The state reads from the badge's label and tone, never from motion.
  */
-function ImportSteps({ current, done, href }: { current: number; done: (index: number) => boolean; href: (step: ImportStep) => string }) {
-  const reduce = useReducedMotion();
-  return <ol className={styles.quickstart} aria-label="Import progress">
-    {apiSteps.map((item, index) => {
-      const state: StepState = index === current ? 'current' : done(index) ? 'done' : 'next';
-      const Icon = item.icon;
-      const body = <>
-        <IconTile icon={<Icon weight="duotone" />} size="xl" tone={state === 'current' ? 'system' : 'neutral'} animate={false} />
-        <div className={styles.stepText}>
-          <span className={styles.stepNumber} aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-          <strong>{item.label}</strong>
-          <span className={styles.stepDetail}>{item.detail}</span>
-        </div>
-        <span className={styles.stepStatus} data-state={state}>{state === 'done' && <CheckIcon weight="bold" aria-hidden="true" />}{stepStatusLabel[state]}</span>
-      </>;
-      const link = <Link className={styles.stepLink} to={href(item.id)} aria-label={item.label + ': ' + item.detail + ' (' + stepStatusLabel[state].toLowerCase() + ')'}>{body}</Link>;
-      return <motion.li key={item.id} data-state={state} aria-current={state === 'current' ? 'step' : undefined}
-        initial={reduce ? false : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }}
-        transition={{ duration: reduce ? 0 : 0.32, delay: reduce ? 0 : 0.05 * index, ease: [0.16, 1, 0.3, 1] }}>
-        {state === 'current'
-          ? <BeamCard active theme="dark" colorVariant="mono" size="md" className={styles.stepCard} contentClassName="p-0">{link}</BeamCard>
-          : link}
-      </motion.li>;
-    })}
-  </ol>;
+function ModelKeyStatus({ ctx }: ApiProps) {
+  const { source, org, role } = ctx;
+  const credentials = useAsync(() => source.listCredentials(org ?? ''), 'credentials:' + (org ?? ''), Boolean(org));
+  if (credentials.phase !== 'ready' && !credentials.value) return null;
+  const preferred = credentials.value?.find(entry => entry.preferred) ?? credentials.value?.[0];
+  if (preferred) return <p className={styles.statusLine} role="status">
+    <StateBadge tone="system"><KeyIcon weight="regular" aria-hidden="true" />Model key set</StateBadge>
+    <span>Proposals (duplicates, contradictions) use {preferred.provider}.</span>
+  </p>;
+  return <p className={styles.statusLine} role="status">
+    <StateBadge tone="warning"><KeyIcon weight="regular" aria-hidden="true" />Model key required</StateBadge>
+    <span>A full import with proposals (duplicates, contradictions) needs a model key; importing repositories does not.
+      {role === 'owner'
+        ? <> <Link to={'/organization?org=' + encodeURIComponent(org ?? '') + '&tab=keys'}>Add one in Organization › Model keys</Link>.</>
+        : ' An owner can add one in Organization › Model keys.'}
+    </span>
+  </p>;
+}
+
+/** Wizard header: the step's name and lead, then the three-stage progress. The view's one large
+ * IconTile is the shell's page header; the step itself carries no second tile. */
+function WizardHead({ step }: { step: ImportStep }) {
+  const copy = stepCopy[step];
+  return <header className={styles.wizardHead}>
+    <div className={styles.wizardLead}>
+      <div className={styles.wizardText}>
+        <h2 className={styles.wizardTitle}>{copy.title}</h2>
+        <p className={styles.intro}>{copy.lead}</p>
+      </div>
+    </div>
+    <div className={styles.wizardProgress} role="group" aria-label="Import progress">
+      <StageStatus stages={wizardStages} activeIndex={copy.stage} detail={'Step ' + (copy.stage + 1) + ' of 3: ' + wizardStages[copy.stage].label} />
+    </div>
+  </header>;
 }
 
 /** A named disclosure on shadcn Collapsible. The panel stays mounted so its rows are reachable to search and assistive tech; only its height animates. */
@@ -299,39 +382,6 @@ function githubSelectionLabel(entry: GitHubInstallation): string {
   return entry.repository_selection === 'all' ? 'All'
     : entry.repository_selection === 'selected' ? 'Selected'
       : 'Unknown';
-}
-
-/** One status word per repository row on the import screen (contract §5.2 `Repo`, Task 2/3,
- * 1.13.0). `import_blocked_reason` (today only `guidefold_yaml_missing`) is checked first: it
- * names why the repository is not importable, distinct from a real failure, because no
- * `gfm.imports` row exists to carry that outcome. Otherwise `last_import_state` reads the
- * newest import the same way `ImportStatus.state` already does elsewhere in this file. */
-function repoImportStatusLabel(entry: Repo): string {
-  if (entry.import_blocked_reason) {
-    return entry.import_blocked_reason === 'guidefold_yaml_missing'
-      ? 'Not importable: no guidefold.yaml in this repository.'
-      : 'Not importable (' + entry.import_blocked_reason + ').';
-  }
-  switch (entry.last_import_state) {
-    case null:
-    case undefined:
-      return 'Not imported yet.';
-    case 'ready':
-      return 'Imported' + (entry.last_import_at ? ' ' + formatDay(entry.last_import_at) : '') + '.';
-    case 'partial':
-      return 'Imported with some files omitted' + (entry.last_import_at ? ' (' + formatDay(entry.last_import_at) + ')' : '') + '.';
-    case 'failed':
-      return 'Last import failed' + (entry.last_import_error ? ' (' + entry.last_import_error + ')' : '') + '.';
-    case 'cancelled':
-      return 'Last import was cancelled.';
-    case 'queued':
-    case 'parsing':
-    case 'uploading':
-    case 'created':
-      return 'Importing…';
-    default:
-      return entry.last_import_state;
-  }
 }
 
 /** Every outcome `GET /api/v1/github/installations/callback` may carry in `?github=` (contract
@@ -639,33 +689,29 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const owner = role === 'owner';
   const requested = ctx.params.get('step');
   const fallbackStep: ImportStep = !org ? 'organization' : !repo ? 'preview' : 'result';
-  const step = apiSteps.some(item => item.id === requested) ? requested as ImportStep : fallbackStep;
+  const known = (value: string | null): value is ImportStep => value !== null && value in stepCopy;
+  const step: ImportStep = known(requested) ? requested : fallbackStep;
   // A signed-in visit to a step this wizard no longer has (`?step=login` from a bookmark) renders
   // the first real step, so the address is corrected to match it instead of lingering as the name
   // of a screen that does not exist. Replaced, never pushed: it is not a navigation.
   useEffect(() => {
-    if (requested === null || apiSteps.some(item => item.id === requested)) return;
+    if (requested === null || known(requested)) return;
     const url = new URL(window.location.href);
     url.searchParams.set('step', step);
     window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-  }, [requested, step]);
-  const current = apiSteps.findIndex(item => item.id === step);
+  }, [requested, step]); // eslint-disable-line react-hooks/exhaustive-deps
   const orgs = useAsync(() => source.listOrgs(), 'orgs:' + (me?.user.id ?? ''), signedIn && step === 'organization');
-  const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'result'));
-  const members = useAsync(() => source.listMembers(org ?? ''), 'repo-members:' + (org ?? ''), owner && Boolean(org) && step === 'preview');
-  const repoAccess = useAsync(() => source.listRepoAccess({ org: org ?? '', repo: repo ?? '' }), 'repo-access:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
-  const reviewers = useAsync(() => source.listReviewers({ org: org ?? '', repo: repo ?? '' }), 'repo-reviewers:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
+  const repos = useAsync(() => source.listRepos(org ?? ''), 'repos:' + (org ?? ''), Boolean(org) && (step === 'preview' || step === 'github'));
+  const members = useAsync(() => source.listMembers(org ?? ''), 'repo-members:' + (org ?? ''), owner && Boolean(org && repo) && step === 'result');
+  const repoAccess = useAsync(() => source.listRepoAccess({ org: org ?? '', repo: repo ?? '' }), 'repo-access:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'result');
+  const reviewers = useAsync(() => source.listReviewers({ org: org ?? '', repo: repo ?? '' }), 'repo-reviewers:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'result');
   const imports = useAsync(() => source.listImports({ org: org ?? '', repo: repo ?? '' }), 'imports:' + org + '/' + repo, Boolean(org && repo) && step === 'result');
-  // Member-readable (contract §4.7 `GET {org_base}/github/installations` is `member`, not
-  // `owner`), so a member sees the same syncing/failed state an owner does; only the actions
-  // below (Connect GitHub, Import) are owner-gated.
-  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, Boolean(org) && step === 'preview');
-  // Model-key status line (owner instruction, 2026-09-13): member-readable (contract §4.8), so
-  // a member sees which provider proposals use, or that none is stored, without the link to add
-  // one.
-  const credentials = useAsync(() => source.listCredentials(org ?? ''), 'credentials:' + (org ?? ''), Boolean(org) && step === 'preview');
+  // Member-readable (contract §4.7 `GET {org_base}/github/installations` is `member`), so a
+  // member sees the same syncing/failed state an owner does; only the actions are owner-gated.
+  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, Boolean(org) && (step === 'preview' || step === 'github'));
   const [orgName, setOrgName] = useState('');
-  const [orgSlug, setOrgSlug] = useState('');
+  const [slugDraft, setSlugDraft] = useState<string | null>(null);
+  const [slugError, setSlugError] = useState('');
   const [repoId, setRepoId] = useState('');
   const [gitUrl, setGitUrl] = useState('');
   const [accessUserId, setAccessUserId] = useState('');
@@ -678,18 +724,81 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   const [githubStatus, setGithubStatus] = useState('');
-  // `?github=<code>` (contract §4.7, Task 1): the one-shot outcome of a round trip that started
-  // from this screen's own Connect GitHub button, read once like ApiOrganizationRoute's own
-  // `githubCallbackOutcome` — never tracked live, so a later `ctx.href` (which always strips
-  // `github`) does not make this reappear.
+  const [appNotConfigured, setAppNotConfigured] = useState(false);
+  // Filter, search and account are URL state (ImportFilter's contract): a filtered list is
+  // shareable and Back restores it. A filter or account change is a navigation (pushed); each
+  // search keystroke replaces the entry so Back does not step through every letter. The local
+  // copies follow the address whenever it changes (Back, a pasted link).
+  const urlFilter = parseImportFilter(ctx.params.get('filter'));
+  const urlSearch = ctx.params.get('q') ?? '';
+  const urlAccount = ctx.params.get('account') ?? 'all';
+  const [search, setSearch] = useState(urlSearch);
+  const [filter, setFilter] = useState<ImportFilterValue>(urlFilter);
+  const [account, setAccount] = useState(urlAccount);
+  useEffect(() => { setSearch(urlSearch); }, [urlSearch]);
+  useEffect(() => { setFilter(urlFilter); }, [urlFilter]);
+  useEffect(() => { setAccount(urlAccount); }, [urlAccount]);
+  const navigate = useNavigate();
+  const chooseFilter = (value: ImportFilterValue) => { setFilter(value); navigate(ctx.href('import', { filter: value === 'all' ? null : value })); };
+  const chooseAccount = (value: string) => { setAccount(value); navigate(ctx.href('import', { account: value === 'all' ? null : value })); };
+  const typeSearch = (value: string) => { setSearch(value); navigate(ctx.href('import', { q: value ? value : null }), { replace: true }); };
+  const [burst, setBurst] = useState('');
+  const [shine, setShine] = useState(0);
+  // `?github=<code>` (contract §4.7): the one-shot outcome of a round trip started from this
+  // wizard's Connect GitHub button, read once, never tracked live.
   const [githubCallbackOutcome] = useState(() => ctx.params.get('github') ?? '');
   const importId = ctx.params.get('import_id') ?? imports.value?.[0]?.import_id ?? null;
   const commands = 'guidefold login\nguidefold org use ' + (org ?? '<organization>') + '\nguidefold scan . --dry-run\nguidefold import .';
+  const slug = slugDraft ?? slugFromName(orgName);
 
-  /** Owner-only, contract §4.7 `POST {org_base}/github/installations/start` (Task 1): unlike the
-   * Integrations tab's own `connectGitHub` (below, in `ApiOrganizationRoute`), this one names its
-   * own address as `return_to`, so the callback sends the owner back to this wizard step instead
-   * of always landing on Integrations. */
+  // A repository whose import was running and has now finished is the moment the success
+  // effect marks; a queued job is never announced as imported.
+  const previousStates = useRef(new Map<string, string | null>());
+  useEffect(() => {
+    if (!repos.value) return;
+    const finished = repos.value.filter(entry => {
+      const before = previousStates.current.get(entry.repo_id);
+      return before != null && importingStates.includes(before) && (entry.last_import_state === 'ready' || entry.last_import_state === 'partial');
+    });
+    previousStates.current = new Map(repos.value.map(entry => [entry.repo_id, entry.last_import_state ?? null]));
+    if (finished.length) {
+      setBurst(finished.length === 1 ? (finished[0].name ?? finished[0].repo_id) + ' imported' : finished.length + ' repositories imported');
+      setShine(value => value + 1);
+    }
+  }, [repos.value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-read while a repository is importing or an installation is still syncing: 4 s, then 8 s,
+  // 16 s, capped at 30 s. It stops as soon as nothing is pending, pauses while the tab is hidden,
+  // and after five minutes of something still pending it stops and says so, with a manual refresh.
+  const [tabHidden, setTabHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const onVisibility = () => setTabHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+  const [stalled, setStalled] = useState(false);
+  const pollAttempt = useRef(0);
+  // Time spent waiting between reads while something stayed pending; a hidden tab adds nothing.
+  const pollWaited = useRef(0);
+  const listing = step === 'preview' || step === 'github';
+  const pending = (repos.value ?? []).some(entry => entry.last_import_state != null && importingStates.includes(entry.last_import_state))
+    || (githubInstallations.value ?? []).some(entry => !entry.synced && !entry.sync_failed_at);
+  useEffect(() => {
+    if (!pending || !listing) { pollAttempt.current = 0; pollWaited.current = 0; setStalled(false); return; }
+    if (stalled || tabHidden) return;
+    if (pollWaited.current >= POLL_LIMIT_MS) { setStalled(true); return; }
+    const delay = Math.min(POLL_FIRST_MS * 2 ** pollAttempt.current, POLL_CAP_MS);
+    const timer = setTimeout(() => { pollAttempt.current += 1; pollWaited.current += delay; repos.reload(); githubInstallations.reload(); }, delay);
+    return () => clearTimeout(timer);
+  }, [repos.value, githubInstallations.value, pending, listing, stalled, tabHidden]); // eslint-disable-line react-hooks/exhaustive-deps
+  function refreshNow() {
+    pollAttempt.current = 0; pollWaited.current = 0; setStalled(false);
+    repos.reload(); githubInstallations.reload();
+  }
+
+  /** Owner-only, contract §4.7 `POST {org_base}/github/installations/start`. Always the App
+   * installation, never a plain GitHub sign-in; `return_to` brings the owner back to this wizard's
+   * repository step (`/import` is on `sanitizeGitHubReturnTo`'s allow-list). */
   async function connectGitHubForImport() {
     if (!org || !owner || busy) return;
     setBusy(true); setGithubStatus('');
@@ -697,32 +806,35 @@ export function ApiImportRoute({ ctx }: ApiProps) {
       const start = await source.startGitHubInstall(org, 'github-install-start:' + org, ctx.href('import', { step: 'preview' }));
       window.location.assign(start.install_url);
     } catch (error) {
-      setGithubStatus('The GitHub install could not start (' + asApiError(error).code + '). Nothing was changed.');
+      const code = asApiError(error).code;
+      if (code === 'github_app_not_configured') setAppNotConfigured(true);
+      else setGithubStatus('The GitHub install could not start (' + code + '). Nothing was changed.');
       setBusy(false);
     }
   }
-  /** Owner-only, contract §4.2 `POST {repo_base}/github/import` (Task 3): fetch and import.parse
-   * only, never proposal.generate — no model key is required. */
-  async function importRepo(repoID: string) {
+  /** Owner-only, contract §4.2 `POST {repo_base}/github/import`: fetch and import.parse only,
+   * never proposal.generate, so no model key is required. */
+  async function importRepo(entry: Repo) {
     if (!org || !owner || busy) return;
     setBusy(true); setGithubStatus('');
     try {
-      await source.importGitHubRepo({ org, repo: repoID }, 'github-import:' + org + ':' + repoID + ':' + Date.now().toString(36));
-      setGithubStatus('Import queued for ' + repoID + '. Refresh in a moment to see its progress.');
+      await source.importGitHubRepo({ org, repo: entry.repo_id }, 'github-import:' + org + ':' + entry.repo_id + ':' + Date.now().toString(36));
+      setGithubStatus('Import queued for ' + (entry.name ?? entry.repo_id) + '. This list updates while it runs.');
+      previousStates.current.set(entry.repo_id, 'queued');
       repos.reload();
-    } catch (error) { setGithubStatus('The import of ' + repoID + ' could not start (' + asApiError(error).code + ').'); }
+    } catch (error) { setGithubStatus('The import of ' + entry.repo_id + ' could not start (' + asApiError(error).code + ').'); }
     finally { setBusy(false); }
   }
-  /** Owner-only, contract §4.2 `POST {org_base}/github/import` (Task 3): "Import all" is one
-   * call, never a client-side loop over repositories. */
+  /** Owner-only, contract §4.2 `POST {org_base}/github/import`: one call, never a client loop. */
   async function importAllRepos() {
     if (!org || !owner || busy) return;
     setBusy(true); setGithubStatus('');
     try {
       const result = await source.importAllGitHubRepos(org, 'github-import-all:' + org + ':' + Date.now().toString(36));
+      result.items.forEach(item => previousStates.current.set(item.repo_id, 'queued'));
       setGithubStatus(result.count === 0
         ? 'No repositories registered from GitHub yet.'
-        : 'Import queued for ' + result.count + ' repositor' + (result.count === 1 ? 'y' : 'ies') + '. Refresh in a moment to see progress.');
+        : 'Import queued for ' + result.count + ' repositor' + (result.count === 1 ? 'y' : 'ies') + '. This list updates while they run.');
       repos.reload();
     } catch (error) { setGithubStatus('Import all could not start (' + asApiError(error).code + ').'); }
     finally { setBusy(false); }
@@ -730,18 +842,23 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   async function createOrg(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    const slug = orgSlug.trim();
-    if (!/^[a-z0-9-]{2,40}$/.test(slug)) { setFormError('The slug must be 2 to 40 characters of a-z, 0-9 or hyphen.'); return; }
-    setBusy(true);
+    const name = orgName.trim();
+    if (!name) { setFormError('Enter a name for the organization.'); return; }
+    if (!/^[a-z0-9-]{2,40}$/.test(slug)) { setSlugDraft(slug); setSlugError('The URL name must be 2 to 40 characters of a-z, 0-9 or hyphen.'); return; }
+    setBusy(true); setFormError(''); setSlugError('');
     try {
-      const created: Org = await source.createOrg({ name: orgName.trim() || slug, slug }, 'create-org:' + slug);
-      setFormError('');
+      const created: Org = await source.createOrg({ name, slug }, 'create-org:' + slug);
       // Membership is derived from the access controller's cached /me, not this response;
-      // without a forced re-check the very next screen reads "Organization unavailable" for
-      // up to ~25 s (the normal cadence) even though creation just succeeded.
+      // without a forced re-check the next screen reads "Organization unavailable" for a while.
       await ctx.recheckAccess?.();
-      ctx.go('import', { org: created.slug, step: 'preview' });
-    } catch (error) { setFormError('The organization was not created (' + asApiError(error).code + '). Nothing was saved; the name and slug above are kept.'); }
+      ctx.go('import', { org: created.slug, repo: null, step: 'github' });
+    } catch (error) {
+      const code = asApiError(error).code;
+      if (code === 'slug_taken' || code === 'invalid_slug') {
+        setSlugDraft(slug);
+        setSlugError(code === 'slug_taken' ? 'This URL name is taken. Choose another; the name above is kept.' : 'The URL name must be 2 to 40 characters of a-z, 0-9 or hyphen.');
+      } else setFormError('The organization was not created (' + code + '). Nothing was saved; the name above is kept.');
+    }
     finally { setBusy(false); }
   }
   async function createRepo(event: FormEvent<HTMLFormElement>) {
@@ -808,7 +925,7 @@ export function ApiImportRoute({ ctx }: ApiProps) {
       const seenPaths = new Set<string>();
       for (const file of localPackage) {
         const path = (file.webkitRelativePath || file.name).replaceAll('\\', '/').replace(/^\/+/, '');
-        if (!path || path.split('/').some(part => part === '..' || part === '.') || path.includes('\u0000') || path.length > 1024) throw new Error('unsafe path: ' + path);
+        if (!path || path.split('/').some(part => part === '..' || part === '.') || path.includes(' ') || path.length > 1024) throw new Error('unsafe path: ' + path);
         if (seenPaths.has(path)) throw new Error('duplicate path: ' + path);
         seenPaths.add(path);
         const basename = path.split('/').pop()?.toLowerCase() ?? '';
@@ -840,141 +957,211 @@ export function ApiImportRoute({ ctx }: ApiProps) {
     } finally { setBusy(false); }
   }
 
-  const stepDone = (index: number) => index === 0 ? Boolean(org) : index === 1 ? Boolean(org && repo) : Boolean(org && repo && importId);
+  const installations = githubInstallations.value ?? [];
+  const callbackNotice = githubCallbackOutcome && <p className={styles.feedback} role={githubCallbackOutcome === 'linked' ? 'status' : 'alert'}>{GITHUB_CALLBACK_MESSAGES[githubCallbackOutcome] ?? GITHUB_CALLBACK_MESSAGES.internal_error}</p>;
+  const back = (target: ImportStep, label: string) => <div className={styles.stepNav}>
+    <ActionButton size="sm" className={styles.linkAction} href={ctx.href('import', { step: target, import_id: null })}><ArrowLeftIcon weight="regular" aria-hidden="true" />{label}</ActionButton>
+  </div>;
+  // A failed sync is always named. A running sync shows its count only once it has registered
+  // something: "Syncing (0)" above a list of another account's repositories reads as a contradiction.
+  const anySyncing = installations.some(entry => !entry.synced && !entry.sync_failed_at);
+  const syncLines = installations.filter(entry => entry.sync_failed_at || (!entry.synced && entry.registered_repositories > 0)).map(entry => {
+    const state = githubSyncState(entry);
+    return <p key={entry.installation_id} className={styles.statusLine} role={state.tone === 'error' ? 'alert' : 'status'}>
+      <StateBadge tone={state.tone}>{state.label}{!entry.sync_failed_at && ' (' + entry.registered_repositories + ')'}</StateBadge>
+      <span><strong>{entry.account}</strong>: {entry.sync_failed_at ? githubSyncFailureSentence(entry.sync_failure_reason, entry.suspended) : registeredSoFar(entry)}</span>
+    </p>;
+  });
+
+  // Repository step: search, account and All / Not imported / Imported narrow one list.
+  const allRepos = repos.value ?? [];
+  const accountRepos = account === 'all' ? allRepos : allRepos.filter(entry => String(entry.github_installation_id ?? '') === account);
+  const needle = search.trim().toLowerCase();
+  const searched = needle ? accountRepos.filter(entry => (entry.name ?? '').toLowerCase().includes(needle) || entry.repo_id.toLowerCase().includes(needle)) : accountRepos;
+  const importedCount = searched.filter(entry => repoRowState(entry).imported).length;
+  const shown = searched.filter(entry => filter === 'all' ? true : filter === 'imported' ? repoRowState(entry).imported : !repoRowState(entry).imported);
+  const importable = allRepos.filter(entry => entry.github_installation_id != null && !entry.import_blocked_reason);
+  const settingsTargets = (account === 'all' ? installations : installations.filter(entry => String(entry.installation_id) === account));
+  const settingsUrl = settingsTargets.length === 1 ? githubInstallationSettingsUrl(settingsTargets[0]) : null;
+
   return <div className={styles.route}>
-    <ImportSteps current={current} done={stepDone} href={target => ctx.href('import', { step: target })} />
+    <WizardHead step={step} />
+    {signedIn && org && step !== 'organization' && <ModelKeyStatus ctx={ctx} />}
     {signedIn && <OwnerNote role={role} />}
     {formError && <p className={styles.feedback} role="alert">{formError}</p>}
 
     {step === 'organization' && <div className={styles.asideColumns}>
-      <Panel title="Your organizations" eyebrow="Organization" icon={<BuildingsIcon weight="regular" aria-hidden="true" />}>
-        {orgs.phase === 'loading' && <RouteState state="loading" title="Reading organizations" description="Waiting for the membership list." />}
+      <Panel title="Create an organization" icon={<BuildingsIcon weight="regular" aria-hidden="true" />}>
+        <form className={styles.form} onSubmit={createOrg} noValidate>
+          <Field id="new-org-name" label="Name" hint="Shown in the header and in member invitations.">
+            <Input id="new-org-name" name="name" value={orgName} autoComplete="organization" onChange={event => { setOrgName(event.target.value); setFormError(''); }} maxLength={80} className={inputClass} />
+          </Field>
+          {slugDraft === null
+            ? <p className={styles.slugLine}>
+              <span className={styles.slugLabel}>URL name</span>
+              <code aria-live="polite">{slug || 'Type a name first'}</code>
+              <ActionButton size="sm" type="button" onClick={() => setSlugDraft(slug)}>Change URL</ActionButton>
+            </p>
+            : <Field id="new-org-slug" label="URL name" hint="2 to 40 characters: a-z, 0-9 and hyphen." error={slugError || undefined}>
+              <Input id="new-org-slug" name="slug" value={slugDraft} onChange={event => { setSlugDraft(event.target.value); setSlugError(''); }} maxLength={40} className={inputClass} />
+            </Field>}
+          <div><GlowAction><ActionButton type="submit" tone="human" disabled={busy}>Create organization<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton></GlowAction></div>
+        </form>
+      </Panel>
+      <Panel title="Your organizations" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+        {orgs.phase === 'loading' && !orgs.value && <div className={styles.stack}><p className={styles.help} role="status">Reading organizations</p><ShimmerSkeleton lines={3} /></div>}
         {orgs.phase === 'error' && orgs.error && <ApiFailure error={orgs.error} onRetry={orgs.reload} retryLabel="Retry the organization list" />}
-        {orgs.phase === 'ready' && (orgs.value?.length
+        {orgs.value && (orgs.value.length
           ? <DataTable flush caption="Organizations you belong to" headings={['Organization', 'Role', 'Action']}>
             {orgs.value.map(entry => <tr key={entry.org_id}><th scope="row">{entry.name}<span className={styles.linkHint}>{entry.slug}</span></th><td><StateBadge tone={entry.my_role === 'owner' ? 'human' : 'neutral'}>{entry.my_role ?? 'member'}</StateBadge></td><td><Link to={ctx.href('import', { org: entry.slug, repo: null, step: 'preview' })}>Use this organization</Link></td></tr>)}
           </DataTable>
-          : <RouteState state="empty" title="No organization yet" description="Create one to hold a repository, its skills and its members." />)}
-      </Panel>
-      <Panel title="Create an organization" eyebrow="Owner" icon={<BuildingsIcon weight="regular" aria-hidden="true" />}>
-        <form className={styles.form} onSubmit={createOrg}>
-          <Field id="new-org-name" label="Organization name" hint="Shown in the header and in member invitations."><Input id="new-org-name" name="name" value={orgName} onChange={event => setOrgName(event.target.value)} maxLength={80} className={inputClass} /></Field>
-          <Field id="new-org-slug" label="Slug" hint="2 to 40 characters: a-z, 0-9 and hyphen."><Input id="new-org-slug" name="slug" value={orgSlug} onChange={event => { setOrgSlug(event.target.value); setFormError(''); }} required maxLength={40} className={inputClass} /></Field>
-          <ActionButton type="submit" tone="human" disabled={busy}>Create organization<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton>
-        </form>
+          : <RouteState state="empty" compact title="No organization yet" description="The one you create on the left appears here." />)}
       </Panel>
     </div>}
 
-    {step === 'preview' && <div className={styles.asideColumns}>
-      {owner && !repo && <Panel title="Register a repository" eyebrow="Repository" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
-        <p>Give this organization a stable repository id before uploading a local package. This only registers the target; it does not read or execute anything from your checkout.</p>
-        <form className={styles.form} onSubmit={createRepo}>
-          <Field id="repository-id" label="Repository id" hint="1 to 64 letters, digits, dot, underscore or hyphen.">
-            <Input id="repository-id" name="repo_id" value={repoId} onChange={event => { setRepoId(event.target.value); setFormError(''); }} maxLength={64} required className={inputClass} />
-          </Field>
-          <Field id="git-host-url" label="Git host URL (optional)" hint="Used only as provenance for a registered source.">
-            <Input id="git-host-url" name="git_host_url" value={gitUrl} onChange={event => setGitUrl(event.target.value)} className={inputClass} />
-          </Field>
-          <ActionButton tone="human" type="submit" disabled={busy}>Register repository<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton>
-        </form>
-      </Panel>}
-      <Panel title="Repositories" eyebrow="Repository" icon={<GitBranchIcon weight="regular" aria-hidden="true" />}>
-        {githubCallbackOutcome && <p className={styles.feedback} role={githubCallbackOutcome === 'linked' ? 'status' : 'alert'}>{GITHUB_CALLBACK_MESSAGES[githubCallbackOutcome] ?? GITHUB_CALLBACK_MESSAGES.internal_error}</p>}
-        {/* Owner instruction, 2026-09-13: importing repositories and refreshing the library
-          * never needs a model key; only proposals (duplicates, contradictions) do (Task 3). */}
-        {credentials.phase === 'ready' && (credentials.value?.find(entry => entry.preferred)
-          ? <p className={styles.feedback} role="status">Proposals (duplicates, contradictions) use {credentials.value.find(entry => entry.preferred)?.provider}.</p>
-          : <p className={styles.feedback} role="status">Proposals (duplicates, contradictions) need a model key; importing repositories does not.
-            {owner
-              ? <> <Link to={'/organization?org=' + encodeURIComponent(org ?? '') + '&tab=keys'}>Add one in Organization › Model keys</Link>.</>
-              : ' An owner can add one in Organization › Model keys.'}
-          </p>)}
-        {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
-        {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
-        {repos.phase === 'ready' && (repos.value?.length
-          ? <div className={styles.stack}>
-            {owner && repos.value.some(entry => entry.github_installation_id != null) &&
-              <ActionButton size="sm" disabled={busy} onClick={() => { void importAllRepos(); }}>Import all</ActionButton>}
-            <DataTable flush caption="Repositories in this organization" headings={['Repository', 'Source', 'Status', 'Action']}>
-              {repos.value.map(entry => <tr key={entry.repo_id}>
-                <th scope="row"><code>{entry.repo_id}</code></th>
-                <td className={styles.pathCell}>{entry.github_account ? 'GitHub (' + entry.github_account + ')' : unknown(entry.git_host_url)}</td>
-                <td>{repoImportStatusLabel(entry)}</td>
-                <td>
-                  <Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link>
-                  {owner && entry.github_installation_id != null && !entry.import_blocked_reason &&
-                    <ActionButton size="sm" disabled={busy} onClick={() => { void importRepo(entry.repo_id); }}>Import</ActionButton>}
-                </td>
-              </tr>)}
-            </DataTable>
-          </div>
-          : (githubInstallations.phase === 'ready' && githubInstallations.value?.length
-            ? <RouteState state={githubInstallations.value.some(entry => entry.sync_failed_at) ? 'degraded' : 'loading'}
-              title="GitHub connected" description={githubRepositoriesLabel(githubInstallations.value[0])} />
-            : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={owner
-              ? <ActionButton tone="human" disabled={busy} onClick={() => { void connectGitHubForImport(); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
-              : <p className={styles.help}>Ask an owner of this organization to connect GitHub.</p>} />))}
-        {owner && <div className={cn(styles.notice, styles.noticeSystem)} role="note">
-          <StateBadge tone="system">Automatic import</StateBadge>
-          <p>Repository registration is handled by GitHub. Select a repository and revision after connecting; no repository id or local CLI upload is required.</p>
-          <ActionButton size="sm" disabled={busy} onClick={() => { void connectGitHubForImport(); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
-        </div>}
-        {githubStatus && <p className={styles.feedback} role="status">{githubStatus}</p>}
-      </Panel>
-      {owner && repo && <Panel title="Repository access" eyebrow="Owner controls" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
-        <p>Limit this repository to named organization members and assign who can review proposals. Owners always retain access.</p>
-        {accessStatus && <p className={styles.feedback} role="status">{accessStatus}</p>}
-        {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the organization membership list." />}
-        {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
-        {members.phase === 'ready' && <div className={styles.stack}>
-          <form className={styles.form} onSubmit={saveRepoAccess}>
-            <Field id="repo-access-user" label="Member" hint="Grant read or write access to one organization member.">
-              <select id="repo-access-user" className={selectClass} value={accessUserId} onChange={event => setAccessUserId(event.target.value)} required>
-                <option value="">Choose a member</option>
-                {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email} ({member.role})</option>)}
-              </select>
+    {step === 'github' && <div className={styles.stack}>
+      {back('organization', 'Back to organization')}
+      {callbackNotice}
+      <div className={styles.connect}>
+        <div className={styles.connectBody}>
+          {appNotConfigured
+            ? <RouteState state="error" title="No GitHub App configured on this deployment" description="This Guidefold deployment has no GitHub App configured, so the installation cannot start. Retrying will not help; ask whoever operates this deployment to configure it." />
+            : owner
+              ? <>
+                <p>On GitHub, choose <strong>All repositories</strong>. Repositories you add later are then covered without coming back here.</p>
+                <div className={styles.actionsRow}>
+                  <GlowAction><ActionButton tone="human" disabled={busy} onClick={() => { void connectGitHubForImport(); }}><GithubLogoIcon weight="regular" aria-hidden="true" />{installations.length ? 'Connect another GitHub account' : 'Connect GitHub'}</ActionButton></GlowAction>
+                  {installations.length > 0 && <ActionButton tone="system" className={styles.linkAction} href={ctx.href('import', { step: 'preview' })}>Continue to repositories<ArrowRightIcon weight="regular" aria-hidden="true" /></ActionButton>}
+                </div>
+              </>
+              : <p className={styles.help}>Ask an owner of this organization to connect GitHub.</p>}
+          {githubStatus && <p className={styles.feedback} role="status">{githubStatus}</p>}
+        </div>
+      </div>
+      {githubInstallations.phase === 'loading' && !githubInstallations.value && <ShimmerSkeleton lines={2} />}
+      {githubInstallations.phase === 'error' && githubInstallations.error && <ApiFailure error={githubInstallations.error} onRetry={githubInstallations.reload} retryLabel="Retry GitHub installations" />}
+      {installations.length > 0 && <ul className={styles.plainList} aria-label="Connected GitHub accounts">
+        {installations.map(entry => {
+          const state = githubSyncState(entry);
+          return <li key={entry.installation_id} className={styles.installRow}>
+            <strong>{entry.account}</strong>
+            <StateBadge tone={state.tone}>{state.label}</StateBadge>
+            <span className={styles.help}>{entry.sync_failed_at ? githubSyncFailureSentence(entry.sync_failure_reason, entry.suspended) : entry.synced ? githubRepositoriesLabel(entry) : registeredSoFar(entry)}</span>
+          </li>;
+        })}
+      </ul>}
+      <Disclosure summary="No GitHub access? Use the CLI or upload files">
+        <div className={styles.stack}>
+          <p>The CLI builds the manifest from your checkout and uploads it for <strong>{org ?? 'your organization'}</strong>. The browser never reads your repository.</p>
+          <CommandBlock commands={commands} />
+          {owner && !repo && <form className={styles.form} onSubmit={createRepo}>
+            <p className={styles.help}>To upload files from the browser, register the repository they belong to first.</p>
+            <Field id="repository-id" label="Repository id" hint="1 to 64 letters, digits, dot, underscore or hyphen.">
+              <Input id="repository-id" name="repo_id" value={repoId} onChange={event => { setRepoId(event.target.value); setFormError(''); }} maxLength={64} required className={inputClass} />
             </Field>
-            <Field id="repo-access-level" label="Access level"><select id="repo-access-level" className={selectClass} value={accessLevel} onChange={event => setAccessLevel(event.target.value as RepoAccessLevel)}><option value="read">Read</option><option value="write">Write</option></select></Field>
-            <ActionButton tone="human" type="submit" disabled={busy || !accessUserId}>Save repository access</ActionButton>
-          </form>
-          {repoAccess.phase === 'loading' && <RouteState state="loading" title="Reading repository access" description="Waiting for the access policy." />}
-          {repoAccess.phase === 'error' && repoAccess.error && <ApiFailure error={repoAccess.error} onRetry={repoAccess.reload} retryLabel="Retry repository access" />}
-          {repoAccess.phase === 'ready' && <DataTable flush caption="Repository access grants" headings={['Member', 'Access', 'Action']}>
-            {repoAccess.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><StateBadge tone={entry.access === 'write' ? 'human' : 'neutral'}>{entry.access}</StateBadge></td><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoAccess(entry.user_id); }}>Remove</ActionButton></td></tr>)}
-          </DataTable>}
-          <form className={styles.form} onSubmit={assignRepoReviewer}>
-            <Field id="repo-reviewer-user" label="Reviewer" hint="Reviewers can decide and export proposals for this repository.">
-              <select id="repo-reviewer-user" className={selectClass} value={reviewerUserId} onChange={event => setReviewerUserId(event.target.value)} required>
-                <option value="">Choose a reviewer</option>
-                {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email}</option>)}
-              </select>
+            <Field id="git-host-url" label="Git host URL (optional)" hint="Used only as provenance for a registered source.">
+              <Input id="git-host-url" name="git_host_url" value={gitUrl} onChange={event => setGitUrl(event.target.value)} className={inputClass} />
             </Field>
-            <ActionButton type="submit" disabled={busy || !reviewerUserId}>Assign reviewer</ActionButton>
-          </form>
-          {reviewers.phase === 'loading' && <RouteState state="loading" title="Reading reviewers" description="Waiting for reviewer assignments." />}
-          {reviewers.phase === 'error' && reviewers.error && <ApiFailure error={reviewers.error} onRetry={reviewers.reload} retryLabel="Retry reviewers" />}
-          {reviewers.phase === 'ready' && <DataTable flush caption="Assigned reviewers" headings={['Reviewer', 'Action']}>
-            {reviewers.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoReviewer(entry.user_id); }}>Remove</ActionButton></td></tr>)}
-          </DataTable>}
-        </div>}
-      </Panel>}
-      <Panel title="Upload from your checkout" eyebrow="CLI" icon={<TerminalIcon weight="regular" aria-hidden="true" />}>
-        <p>The browser never reads your repository. The CLI builds the manifest and uploads it for <strong>{org ?? 'your organization'}</strong>.</p>
-        <CommandBlock commands={commands} />
-      </Panel>
-      <Panel title="Import a local package" eyebrow="Browser fallback" icon={<FileCodeIcon weight="regular" aria-hidden="true" />}>
-        <p>Select files from a local checkout when GitHub App access and the CLI are unavailable. The browser sends file bytes only after showing the selection; it never follows symlinks or runs package code.</p>
-        <Field id="local-package" label="Files" hint="Up to 10,000 files and 100 MiB. Paths containing . or .. are rejected."><input id="local-package" type="file" multiple onChange={event => { setLocalPackage(Array.from(event.target.files ?? [])); setLocalPackageError(''); setLocalPackageStatus(''); }} /></Field>
-        {localPackage.length > 0 && <p className={styles.feedback} role="status">{localPackage.length} file(s) selected.</p>}
-        {localPackageError && <p className={styles.feedback} role="alert">{localPackageError}</p>}
-        {localPackageStatus && <p className={styles.feedback} role="status">{localPackageStatus}</p>}
-        <ActionButton tone="human" disabled={!localPackage.length || busy} onClick={() => { void importLocalPackage(); }}>Import selected files</ActionButton>
-      </Panel>
+            <div><ActionButton type="submit" disabled={busy}>Register repository</ActionButton></div>
+          </form>}
+          {owner && repo && <div className={styles.stack}>
+            <Field id="local-package" label="Files" hint={'Uploaded to ' + repo + '. Up to 10,000 files and 100 MiB; paths containing . or .. are rejected.'}><input id="local-package" type="file" multiple onChange={event => { setLocalPackage(Array.from(event.target.files ?? [])); setLocalPackageError(''); setLocalPackageStatus(''); }} /></Field>
+            {localPackage.length > 0 && <p className={styles.feedback} role="status">{localPackage.length} file(s) selected.</p>}
+            {localPackageError && <p className={styles.feedback} role="alert">{localPackageError}</p>}
+            {localPackageStatus && <p className={styles.feedback} role="status">{localPackageStatus}</p>}
+            <div><ActionButton disabled={!localPackage.length || busy} onClick={() => { void importLocalPackage(); }}>Import selected files</ActionButton></div>
+          </div>}
+        </div>
+      </Disclosure>
+    </div>}
+
+    {step === 'preview' && <div className={styles.stack}>
+      {back('github', 'Back to GitHub')}
+      {callbackNotice}
+      {syncLines}
+      {stalled && <p className={styles.statusLine} role="status">
+        <StateBadge tone="warning">Still queued on the server</StateBadge>
+        <span>Nothing moved on for five minutes, so this page stopped checking.</span>
+        <ActionButton size="sm" onClick={refreshNow}>Refresh</ActionButton>
+      </p>}
+      {(repos.phase === 'loading' && !repos.value) || (githubInstallations.phase === 'loading' && !githubInstallations.value)
+        ? <div className={styles.stack}><p className={styles.help} role="status">Reading repositories</p><ShimmerSkeleton lines={4} /></div>
+        : repos.phase === 'error' && repos.error
+          ? <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />
+          : githubInstallations.phase === 'error' && githubInstallations.error && !allRepos.length
+            ? <ApiFailure error={githubInstallations.error} onRetry={githubInstallations.reload} retryLabel="Retry GitHub installations" />
+            : !installations.length && !allRepos.length
+              ? <div className={styles.emptyField}>
+                <div className={styles.emptyArt}><ShaderField /></div>
+                <div className={styles.emptyBody}>
+                  <h3 className={styles.emptyTitle}>Connect GitHub to import a repository</h3>
+                  <p>Guidefold lists the repositories the GitHub App can read and imports them on the server.</p>
+                  {owner
+                    ? <div><ActionButton tone="human" className={styles.linkAction} href={ctx.href('import', { step: 'github' })}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton></div>
+                    : <p className={styles.help}>Ask an owner of this organization to connect GitHub.</p>}
+                </div>
+              </div>
+              : <>
+                <div className={styles.toolbar}>
+                  <InputGroup className={styles.search}>
+                    <InputGroupAddon><MagnifyingGlassIcon weight="regular" aria-hidden="true" /></InputGroupAddon>
+                    <InputGroupInput aria-label="Search repositories" placeholder="Search repositories" value={search} onChange={event => typeSearch(event.target.value)} />
+                  </InputGroup>
+                  {installations.length > 1 && <label className={styles.accountPick}>
+                    <span>GitHub account</span>
+                    <NativeSelect value={account} onChange={event => chooseAccount(event.target.value)}>
+                      <NativeSelectOption value="all">All accounts</NativeSelectOption>
+                      {installations.map(entry => <NativeSelectOption key={entry.installation_id} value={String(entry.installation_id)}>{entry.account}</NativeSelectOption>)}
+                    </NativeSelect>
+                  </label>}
+                  <ImportFilter value={filter} onChange={chooseFilter} counts={{ all: searched.length, not_imported: searched.length - importedCount, imported: importedCount }} />
+                  {owner && importable.length > 0 && <ActionButton tone="human" disabled={busy} onClick={() => { void importAllRepos(); }}>Import all</ActionButton>}
+                </div>
+                <SuccessBurst show={Boolean(burst)} label={burst} />
+                {githubStatus && <p className={styles.feedback} role="status">{githubStatus}</p>}
+                {allRepos.length === 0
+                  ? <div className={styles.emptyField}>
+                    <div className={styles.emptyArt}><GridField /></div>
+                    <div className={styles.emptyBody}>
+                      <h3 className={styles.emptyTitle}>{anySyncing ? 'Waiting for the first sync' : 'No repositories registered'}</h3>
+                      <p>{anySyncing ? 'Repositories appear here as GitHub reports them.' : 'The GitHub App has access to no repository this organization can import.'}</p>
+                    </div>
+                  </div>
+                  : shown.length === 0
+                    ? <p className={styles.help} role="status">No repository matches this search and filter.</p>
+                    : <ShineBorder trigger={shine || undefined} className={styles.listFrame}>
+                      <AnimatedList ariaLabel="Repositories" className={styles.repoList} items={shown.map(entry => {
+                        const state = repoRowState(entry);
+                        const fromGitHub = entry.github_installation_id != null;
+                        return {
+                          id: entry.repo_id,
+                          content: <RepositoryItem
+                            name={entry.name ?? entry.repo_id}
+                            state={<StateBadge tone={state.tone}>{state.label}</StateBadge>}
+                            detail={<span className={styles.rowDetail}>
+                              {repoDetail(entry) && <span>{repoDetail(entry)}</span>}
+                              <Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link>
+                            </span>}
+                            onImport={owner && fromGitHub && !entry.import_blocked_reason && !state.importing ? () => { void importRepo(entry); } : undefined}
+                            importLabel={state.imported ? 'Import again' : 'Import'}
+                            importDisabled={busy}
+                          />,
+                        };
+                      })} />
+                    </ShineBorder>}
+                {installations.length > 0 && <p className={styles.help}>
+                  {settingsUrl
+                    ? <a href={settingsUrl} target="_blank" rel="noreferrer">Missing a repository? Change GitHub App access</a>
+                    : <Link to={ctx.href('organization', { tab: 'integrations' })}>Missing a repository? Change GitHub App access</Link>}
+                  {' '}The list shows only what the App is allowed to read on GitHub.
+                </p>}
+              </>}
     </div>}
 
     {step === 'result' && (!repo
-      ? <RouteState state="empty" title="No repository selected" description="Choose a repository before reading an import status." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system">Choose a repository</ActionButton>} />
+      ? <RouteState state="empty" title="No repository selected" description="Choose a repository before reading an import status." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system" className={styles.linkAction}>Choose a repository</ActionButton>} />
       : <>
+        {back('preview', 'Back to repositories')}
         {imports.phase === 'loading' && <RouteState state="loading" title="Reading imports" description="Waiting for the import list of this repository." />}
         {imports.phase === 'error' && imports.error && <ApiFailure error={imports.error} onRetry={imports.reload} retryLabel="Retry the import list" />}
         {imports.phase === 'ready' && (imports.value?.length
@@ -983,8 +1170,45 @@ export function ApiImportRoute({ ctx }: ApiProps) {
               {imports.value.map(entry => <tr key={entry.import_id}><th scope="row"><code>{entry.import_id}</code></th><td><StateBadge tone={entry.state === 'failed' ? 'error' : entry.state === 'partial' ? 'warning' : 'neutral'}>{entry.state}</StateBadge></td><td className={styles.hashCell}><code>{unknown(entry.commit)}</code></td><td><Link to={ctx.href('import', { step: 'result', import_id: entry.import_id })}>Read this import</Link></td></tr>)}
             </DataTable>
           </Panel>
-          : <RouteState state="empty" title="No import yet" description="Run the CLI from your checkout; this view then reports accepted, omitted and failed files." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system">Show the CLI commands</ActionButton>} />)}
+          : <RouteState state="empty" title="No import yet" description="Import this repository from the repository list, or run the CLI from your checkout." action={<ActionButton href={ctx.href('import', { step: 'preview' })} tone="system" className={styles.linkAction}>Open the repository list</ActionButton>} />)}
         {importId && <ImportStatusView ctx={ctx} importId={importId} />}
+        {owner && <Panel title="Repository access" eyebrow="Repository settings" collapsible defaultOpen={false} icon={<UsersIcon weight="regular" aria-hidden="true" />}>
+          <p>Limit this repository to named organization members and assign who can review proposals. Owners always retain access.</p>
+          {accessStatus && <p className={styles.feedback} role="status">{accessStatus}</p>}
+          {members.phase === 'loading' && <RouteState state="loading" title="Reading members" description="Waiting for the organization membership list." />}
+          {members.phase === 'error' && members.error && <ApiFailure error={members.error} onRetry={members.reload} retryLabel="Retry the member list" />}
+          {members.phase === 'ready' && <div className={styles.stack}>
+            <form className={styles.form} onSubmit={saveRepoAccess}>
+              <Field id="repo-access-user" label="Member" hint="Grant read or write access to one organization member.">
+                <select id="repo-access-user" className={selectClass} value={accessUserId} onChange={event => setAccessUserId(event.target.value)} required>
+                  <option value="">Choose a member</option>
+                  {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email} ({member.role})</option>)}
+                </select>
+              </Field>
+              <Field id="repo-access-level" label="Access level"><select id="repo-access-level" className={selectClass} value={accessLevel} onChange={event => setAccessLevel(event.target.value as RepoAccessLevel)}><option value="read">Read</option><option value="write">Write</option></select></Field>
+              <div><ActionButton tone="human" type="submit" disabled={busy || !accessUserId}>Save repository access</ActionButton></div>
+            </form>
+            {repoAccess.phase === 'loading' && <RouteState state="loading" title="Reading repository access" description="Waiting for the access policy." />}
+            {repoAccess.phase === 'error' && repoAccess.error && <ApiFailure error={repoAccess.error} onRetry={repoAccess.reload} retryLabel="Retry repository access" />}
+            {repoAccess.phase === 'ready' && <DataTable flush caption="Repository access grants" headings={['Member', 'Access', 'Action']}>
+              {repoAccess.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><StateBadge tone={entry.access === 'write' ? 'human' : 'neutral'}>{entry.access}</StateBadge></td><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoAccess(entry.user_id); }}>Remove</ActionButton></td></tr>)}
+            </DataTable>}
+            <form className={styles.form} onSubmit={assignRepoReviewer}>
+              <Field id="repo-reviewer-user" label="Reviewer" hint="Reviewers can decide and export proposals for this repository.">
+                <select id="repo-reviewer-user" className={selectClass} value={reviewerUserId} onChange={event => setReviewerUserId(event.target.value)} required>
+                  <option value="">Choose a reviewer</option>
+                  {members.value?.map(member => <option key={member.user_id} value={member.user_id}>{member.name || member.email}</option>)}
+                </select>
+              </Field>
+              <div><ActionButton type="submit" disabled={busy || !reviewerUserId}>Assign reviewer</ActionButton></div>
+            </form>
+            {reviewers.phase === 'loading' && <RouteState state="loading" title="Reading reviewers" description="Waiting for reviewer assignments." />}
+            {reviewers.phase === 'error' && reviewers.error && <ApiFailure error={reviewers.error} onRetry={reviewers.reload} retryLabel="Retry reviewers" />}
+            {reviewers.phase === 'ready' && <DataTable flush caption="Assigned reviewers" headings={['Reviewer', 'Action']}>
+              {reviewers.value?.map(entry => <tr key={entry.user_id}><th scope="row">{entry.name || entry.email}<span className={styles.linkHint}>{entry.email}</span></th><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeRepoReviewer(entry.user_id); }}>Remove</ActionButton></td></tr>)}
+            </DataTable>}
+          </div>}
+        </Panel>}
       </>)}
   </div>;
 }

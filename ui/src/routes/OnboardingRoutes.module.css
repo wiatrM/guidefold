@@ -5,29 +5,9 @@
 .twoColumns { display: grid; grid-template-columns: var(--two-columns); gap: var(--space-4); min-width: var(--zero); align-items: start; }
 .asideColumns { display: grid; grid-template-columns: var(--aside-columns); gap: var(--space-4); min-width: var(--zero); align-items: start; }
 
-/* Quickstart: the three steps of the import flow as large cards. The content is a sequence,
-   so the numbers stay; the current step is the only card that moves (border beam). */
-.quickstart { display: grid; grid-template-columns: var(--quickstart-columns); gap: var(--space-3); list-style: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
-.quickstart li { min-width: var(--zero); }
-.stepLink { display: grid; gap: var(--space-3); height: var(--full); min-height: var(--touch-height); padding: var(--space-4); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius-tile); background: var(--graphite-900); color: var(--stone-100); text-decoration: none; box-shadow: var(--shadow-card); transition: border-color var(--duration) var(--ease), background var(--duration) var(--ease); }
-@media (hover: hover) { .stepLink:hover { border-color: var(--line-hover); background: var(--graphite-850); color: var(--stone-100); } }
-.quickstart li[data-state=current] .stepLink { border-color: var(--transparent); background: var(--transparent); box-shadow: none; }
-.quickstart li[data-state=done] .stepLink { border-color: var(--survey-teal-dim); }
-.stepCard { padding: var(--zero); border-radius: var(--radius-tile); border-color: var(--survey-teal); background: var(--graphite-900); }
-.stepText { display: grid; gap: var(--space-1); min-width: var(--zero); }
-.stepNumber { font-family: var(--font-mono); font-size: var(--font-size-small); color: var(--stone-300); letter-spacing: var(--tracking-label); }
-.quickstart li[data-state=current] .stepNumber { color: var(--system-ink); }
-.stepText strong { font-family: var(--font-display); font-size: var(--font-size-section); font-weight: var(--weight-semibold); line-height: var(--line-height-heading); letter-spacing: var(--tracking-title); }
-.stepDetail { color: var(--stone-300); font-size: var(--font-size-small); }
-.stepStatus { display: inline-flex; align-items: center; gap: var(--space-1); align-self: start; padding: var(--space-1) var(--space-2); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius); color: var(--stone-300); font-size: var(--font-size-small); font-weight: var(--weight-medium); }
-.stepStatus[data-state=current] { color: var(--system-ink); border-color: var(--survey-teal); background: var(--system-wash); }
-.stepStatus[data-state=done] { color: var(--system-ink); border-color: var(--survey-teal-dim); }
-.stepStatus > svg { width: var(--icon-size-small); height: var(--icon-size-small); }
-
 .notice { display: flex; gap: var(--space-2); align-items: flex-start; flex-wrap: wrap; padding: var(--space-3); border: var(--border-width) solid var(--warning); border-radius: var(--radius); color: var(--stone-100); background: var(--graphite-900); margin: var(--zero); }
 .notice > svg { width: var(--icon-size); height: var(--icon-size); color: var(--warning); flex: none; }
 .notice p { margin: var(--zero); flex: 1 1 auto; min-width: var(--zero); }
-.noticeSystem { border-color: var(--survey-teal-dim); }
 
 /* Proposal kinds: a fieldset of labelled checkboxes; the wash says which are selected. */
 .providers { display: grid; gap: var(--space-2); border: none; padding: var(--zero); margin: var(--zero); min-width: var(--zero); }
@@ -80,3 +60,36 @@
 .stat { display: grid; gap: var(--space-1); min-width: var(--zero); }
 .stat dt { color: var(--stone-300); font-size: var(--font-size-small); }
 .stat dd { margin: var(--zero); font-family: var(--font-display); font-size: var(--font-size-metric); font-weight: var(--weight-semibold); line-height: var(--line-height-solid); font-variant-numeric: tabular-nums; }
+
+/* Organisation wizard (UX §3a, 2026-09-13 redesign). The header carries the step's tile, name and
+   the three-stage StageStatus; each step below is one decision with its own Back action. */
+.wizardHead { display: grid; gap: var(--space-4); min-width: var(--zero); padding-bottom: var(--space-4); border-bottom: var(--border-width) solid var(--line); }
+.wizardLead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); min-width: var(--zero); }
+.wizardText { display: grid; gap: var(--space-1); flex: 1 1 var(--reading-width); min-width: var(--zero); max-width: var(--reading-width); }
+.wizardTitle { margin: var(--zero); font-family: var(--font-display); font-size: var(--font-size-title); font-weight: var(--weight-semibold); line-height: var(--line-height-heading); letter-spacing: var(--tracking-title); color: var(--stone-100); }
+.wizardProgress { min-width: var(--zero); }
+.stepNav { display: flex; }
+.statusLine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); overflow-wrap: anywhere; }
+.statusLine strong { color: var(--stone-100); font-weight: var(--weight-semibold); }
+.slugLine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
+.slugLine code { color: var(--stone-100); overflow-wrap: anywhere; }
+.slugLabel { font-weight: var(--weight-medium); }
+.connect { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; padding: var(--space-4); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius-panel); background: var(--graphite-900); box-shadow: var(--shadow-card); }
+.connectBody { display: grid; gap: var(--space-3); flex: 1 1 var(--reading-width); min-width: var(--zero); }
+.connectBody p { margin: var(--zero); }
+.actionsRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.plainList { display: grid; gap: var(--space-2); list-style: none; margin: var(--zero); padding: var(--zero); }
+.installRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3); border: var(--border-width) solid var(--line); border-radius: var(--radius); background: var(--graphite-900); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-width: var(--zero); }
+.search { flex: 1 1 var(--full); max-width: var(--reading-width); min-height: var(--control-height); }
+.accountPick { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--stone-300); font-size: var(--font-size-small); }
+.listFrame { border-radius: var(--radius-panel); }
+.repoList { display: grid; gap: var(--space-2); }
+.rowDetail { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); overflow-wrap: anywhere; }
+.emptyField { position: relative; overflow: hidden; border: var(--border-width) solid var(--line-strong); border-radius: var(--radius-panel); background: var(--graphite-900); }
+.emptyArt { position: absolute; inset: var(--zero); }
+.emptyBody { position: relative; display: grid; gap: var(--space-3); justify-items: start; max-width: var(--reading-width); margin: var(--space-6) var(--space-4); padding: var(--space-4); border: var(--border-width) solid var(--line); border-radius: var(--radius-panel); background: var(--graphite-950); }
+.emptyBody p { margin: var(--zero); color: var(--stone-300); }
+.emptyTitle { margin: var(--zero); font-family: var(--font-display); font-size: var(--font-size-section); font-weight: var(--weight-semibold); line-height: var(--line-height-heading); color: var(--stone-100); }
+/* ActionButton with href renders a router Link without the Button primitive's flex layout; line the icon up with the label. */
+.linkAction { display: inline-flex; align-items: center; justify-content: center; }
