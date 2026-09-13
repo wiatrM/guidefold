@@ -1,6 +1,5 @@
 "use client";
 
-import { codeToHtml } from "shiki";
 import type { BundledLanguage } from "shiki";
 import { Check, Copy, FileCode2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -106,6 +105,9 @@ async function renderCode(
   language: string,
   highlightLines?: number[]
 ): Promise<string> {
+  // Dynamic: shiki (grammars + themes) is sizeable and only ever needed once a CodeBlock
+  // actually mounts, so it must never sit in whatever chunk imports this file eagerly.
+  const {codeToHtml}=await import("shiki");
   return codeToHtml(code, {
     lang: language as BundledLanguage,
     themes: { light: "github-light", dark: "github-dark-default" },

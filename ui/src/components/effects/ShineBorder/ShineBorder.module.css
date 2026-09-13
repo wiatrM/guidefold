@@ -1,0 +1,4 @@
+.frame{position:relative;isolation:isolate;border-radius:var(--radius-panel);overflow:hidden;}
+.edge{position:absolute;top:var(--zero);left:var(--zero);right:var(--zero);height:var(--border-width);background:var(--effect-beam-ring);pointer-events:none;}
+.sweep{position:absolute;top:var(--zero);left:var(--zero);width:var(--shine-width);height:var(--border-width);background:var(--shine-gradient);pointer-events:none;}
+.content{position:relative;z-index:1;}

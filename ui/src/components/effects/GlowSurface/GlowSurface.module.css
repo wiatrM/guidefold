@@ -1,0 +1,7 @@
+.surface{position:relative;isolation:isolate;border-radius:var(--radius-panel);}
+.glow{position:absolute;inset:var(--zero);background-image:var(--effect-glow-surface);pointer-events:none;opacity:var(--zero);transition:opacity var(--duration-menu) var(--ease);}
+.surface:hover .glow,.surface:focus-within .glow{opacity:1;}
+.human .glow{background-image:var(--effect-glow-surface-human);}
+.content{position:relative;z-index:1;}
+@media(pointer:coarse){.glow{display:none;}}
+@media(prefers-reduced-motion:reduce){.glow{transition:none;}}

@@ -21,6 +21,15 @@ Rdzeń marki nadal określa [Industrial Surveyor](../../prototypes/industrial-su
 
 Końcowy audyt: 21 zrzutów gotowej treści bez overflow, naruszeń axe i błędów JS; dodatkowo 42 scenariusze stanów i brak wycieku restricted. Mobilny rail skrócono z 524 px do Navigate. Formalne przeglądy zamknięte; [dowody](pipeline/06-ux-ui.md).
 
+Decyzja właściciela 2026-09-13 ([ADR-0049](../adr/ADR-0049-premium-visual-effects-layer.md)) znosi
+zakaz wizualny w całości: „hierarchia bez efektu szkła” (wiersz 3) już nie wyklucza
+glassmorphismu (rozmyty panel `backdrop-filter`), a animowany border (`BorderBeam`,
+`ShineBorder`) i glow z `ui/src/components/effects/*` są dopuszczone na dowolnej karcie lub panelu.
+Wiążąca zostaje dostępność: stan nigdy nie jest przekazany wyłącznie efektem ani animacją. Usunięcie
+`survey-grid-pattern` z raila i mobilnego sheeta (wiersz 4) pozostaje w mocy — nawigacja wciąż jest
+spokojnym tłem; nowy `GridField` to osobny, dryfujący komponent tła dla treści widoku i pustych
+stanów, włączany przez trasę, a nie przywrócone tło nawigacji.
+
 ## 2. Tokeny
 
 Kanoniczne wartości aplikacji: [ui/src/tokens/tokens.css](../../ui/src/tokens/tokens.css). Nie kopiuj wartości do modułów CSS; dotyczy to także transparent. Hi-fi pozostaje niezależnym odniesieniem. Dwa tokeny techniczne etapu 8 uzasadnia [08-components](pipeline/08-components.md).

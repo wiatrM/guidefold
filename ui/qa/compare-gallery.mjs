@@ -1,5 +1,7 @@
 /**
  * Component gallery pixel comparison. Run: cd ui && pnpm test:visual (dev server on :4331).
+ * GUIDEFOLD_DEV_UI_PORT overrides the port, the same variable vite.config.ts already reads, for
+ * the same reason: a second worktree's dev server can already hold :4331.
  *
  * The baseline in qa/baseline/ is a capture of this gallery accepted by the owner
  * (2026-09-08, after the sample-value gallery replaced the former fixture one); the frozen
@@ -12,14 +14,18 @@ import fs from 'node:fs/promises';import path from 'node:path';import {fileURLTo
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const baseline=path.join(root,'qa/baseline'),out=path.join(root,'qa/gallery');
 const update=process.argv.includes('--update');
-const components=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart'];
+const devPort=process.env.GUIDEFOLD_DEV_UI_PORT??4331;
+const components=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart',
+ // Effects kit (ADR-0049, 2026-09-13): fourteen gallery sections added below the original fifteen;
+ // Playwright's own context sets reducedMotion:'reduce' above, so these captures are deterministic.
+ 'HeaderGlow','BorderBeam','ShineBorder','GlowSurface','GlowAction','ShaderField','GridField','NumberTicker','AnimatedList','Marquee','OrbitingCircles','AnimatedText','SuccessBurst','ShimmerSkeleton'];
 const widths=[1280,820,390];
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 await fs.mkdir(out,{recursive:true});
 const b=await chromium.launch();const captured=[];
 for(const width of widths){
  const p=await b.newPage({viewport:{width,height:720},reducedMotion:'reduce'});
- await p.goto('http://127.0.0.1:4331/__components',{waitUntil:'networkidle'});
+ await p.goto('http://127.0.0.1:'+devPort+'/__components',{waitUntil:'networkidle'});
  await p.locator('[data-component=Field]').waitFor();await p.evaluate(()=>document.fonts.ready);
  for(const name of components){
   const target=p.locator('[data-component='+name+']');await target.scrollIntoViewIfNeeded();

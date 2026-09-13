@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-13T17:09:17.792Z",
+  "capturedAt": "2026-09-13T17:43:05.202Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
     "components": 24,
-    "cssFiles": 49,
-    "tokens": 437,
+    "cssFiles": 63,
+    "tokens": 476,
     "productionFilesTraversed": 86,
     "inlineProperties": 0,
     "diagnostics": 0
@@ -653,7 +653,7 @@
     },
     {
       "file": "src/components/ui/code-block.tsx",
-      "line": 182,
+      "line": 184,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     },
     {

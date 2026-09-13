@@ -1,0 +1,5 @@
+.wrap{position:relative;display:inline-flex;isolation:isolate;}
+.halo{position:absolute;inset:var(--zero);background-image:var(--effect-header-glow);pointer-events:none;z-index:0;}
+.wrap.human .halo{background-image:var(--effect-header-glow-human);}
+.sweep{position:absolute;top:var(--zero);bottom:var(--zero);width:var(--shine-width);background:var(--shine-gradient);pointer-events:none;z-index:1;mix-blend-mode:screen;}
+.content{position:relative;z-index:2;display:inline-flex;}

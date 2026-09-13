@@ -1,0 +1,15 @@
+.field{position:relative;width:var(--effect-orbit-size);height:var(--effect-orbit-size);}
+.center{position:absolute;inset:var(--zero);display:grid;place-items:center;z-index:1;}
+.orbit{position:absolute;inset:var(--zero);}
+.orbit.spin{animation:orbit-spin var(--effect-orbit-duration) linear infinite;}
+@keyframes orbit-spin{from{transform:rotate(var(--zero-deg));}to{transform:rotate(var(--full-turn));}}
+.satellite{position:absolute;top:var(--half);left:var(--half);width:var(--effect-orbit-node);height:var(--effect-orbit-node);margin-top:calc(var(--effect-orbit-node) / -2);margin-left:calc(var(--effect-orbit-node) / -2);}
+.satellite[data-index="1"]{transform:rotate(var(--effect-orbit-angle-1)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-1) * -1));}
+.satellite[data-index="2"]{transform:rotate(var(--effect-orbit-angle-2)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-2) * -1));}
+.satellite[data-index="3"]{transform:rotate(var(--effect-orbit-angle-3)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-3) * -1));}
+.satellite[data-index="4"]{transform:rotate(var(--effect-orbit-angle-4)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-4) * -1));}
+.satellite[data-index="5"]{transform:rotate(var(--effect-orbit-angle-5)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-5) * -1));}
+.satellite[data-index="6"]{transform:rotate(var(--effect-orbit-angle-6)) translateY(calc(var(--effect-orbit-size) / -2)) rotate(calc(var(--effect-orbit-angle-6) * -1));}
+.satelliteInner{width:var(--full);height:var(--full);display:grid;place-items:center;}
+.satelliteInner.counterSpin{animation:orbit-counter var(--effect-orbit-duration) linear infinite;}
+@keyframes orbit-counter{from{transform:rotate(var(--zero-deg));}to{transform:rotate(calc(var(--full-turn) * -1));}}

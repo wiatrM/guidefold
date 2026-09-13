@@ -294,10 +294,10 @@
     },
     {
       "file": "src/components/ui/code-block.tsx",
-      "sha256": "86fd0ce99b4b27c274bc5d86a746cbea40996a3b74266642262a4233fba7dd9f",
+      "sha256": "d65eece85dbec71fa98cd20c899434f3343b6e002633d19d3594ba6da4ce2501",
       "source": "https://shadcnspace.com/r/code-block-01.json",
       "allowInlineGeometry": true,
-      "reason": "style={scrollable ? {maxHeight:`${maxHeight}px`} : undefined} carries the caller-configured pixel height of a scrollable code panel, not a design value; geometry only, no colour in the inline style. Also remapped the highlighted-line colours in the injected <style> block from literal oklch() to var(--warning)/var(--warning-wash), and CopyBtn's checkmark from text-teal-400 to text-primary."
+      "reason": "style={scrollable ? {maxHeight:`${maxHeight}px`} : undefined} carries the caller-configured pixel height of a scrollable code panel, not a design value; geometry only, no colour in the inline style. Also remapped the highlighted-line colours in the injected <style> block from literal oklch() to var(--warning)/var(--warning-wash), CopyBtn's checkmark from text-teal-400 to text-primary, and (2026-09-13 review) turned the static `import {codeToHtml} from \"shiki\"` into a dynamic import inside renderCode so shiki's grammars/themes only load once a CodeBlock actually mounts, never sitting in a chunk that merely imports this file."
     },
     {
       "file": "src/components/ui/autocomplete.tsx",
