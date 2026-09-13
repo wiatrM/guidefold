@@ -9,6 +9,10 @@ new code on the old database. That is exactly what took sign-in down on
 `services/search/internal/schema/sql.go`, and without the owner's explicit
 approval for this release no step below runs at all:
 
+0. Identify the commit the running `search` image was built from (its digest is in the live
+   values; `publish-images.yml` logs name the commit) and diff `sql.go` against that, not against
+   the previous merge or the previous entry below. If unsure, run the migrate Job anyway: the DDL
+   is idempotent and transactional.
 1. Export the live values:
    `kubectl get application guidefold -n argocd -o json | python3 -c "import sys,json; print(json.load(sys.stdin)['spec']['source']['helm']['values'])" > live-values.yaml`
    and set `image:` in that file to the new `guidefold-search` digest.
@@ -36,6 +40,30 @@ migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
 ## Organisation scope, catalog integrity and Overview publication truth — 2026-09-13 (current)
+
+> **Correction, 2026-09-13 about 14:05 UTC.** This release did change the schema. The
+> statement below that nothing changed in `services/search/internal/schema/sql.go` "since the
+> previous release (`4c6281a`)" compared against the wrong commit: `4c6281a` was never deployed.
+> The release actually running before this one was built from `2f39a22` (PR #149, search
+> `b00a29db`), and PRs #153 and #154, merged between the two, add
+> `gfm.auth_states.pending_token`, `pending_email`, `attempts`, the `email_verification` auth
+> state kind, `gfm.github_installation_links.repositories_synced_at`, `last_sync_failed_at`,
+> `last_sync_failure_reason` and `gfm.github_installations.repository_selection`. No migrate Job
+> ran, so the running code had seven missing columns and a stale CHECK constraint. Sign-in by
+> Google kept working, which is why the smoke test passed; the GitHub installation list, the
+> repository sync job and email verification would have failed on first use. No `ERROR` lines
+> had appeared because nobody had reached those paths.
+>
+> Fixed by the migrate Job `guidefold-migrate-20260913b`, rendered from the live values with the
+> running search image `a4bcc8fe`: all eight columns present afterwards, the constraint includes
+> `email_verification`, sign-in by Google and GitHub answers 302 to WorkOS, the new routes answer
+> 400/401 rather than 500, and the API and worker logs show no `ERROR` lines.
+>
+> The lesson for the procedure above: compare the release against the digests actually running
+> in `Application/guidefold`, and find the commit those images were built from, never against
+> the previous entry in this file or the previous merge on `main`. Running the migrate Job on
+> every release is harmless because the DDL is idempotent and runs in one transaction; when in
+> doubt, run it.
 
 Built by `publish-images.yml` (run 34759073012) from `main` at `b8b76ba`: PR #155 (the console reads the
 whole organisation by default and a repository is a filter, contract 1.11.0, ADR-0047), PR #158 (Overview
