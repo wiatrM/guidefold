@@ -34,6 +34,12 @@ const AUTH_CALLBACK_MESSAGES: Record<string, string> = {
   expired_state: 'This sign-in link expired before it completed. You are not signed in.',
   provider_unavailable: 'The identity provider did not complete sign-in. You are not signed in.',
   internal_error: 'Sign-in could not be completed. You are not signed in.',
+  // Three of the four pending outcomes WorkOS may answer instead of a user (contract §2):
+  // recognised, but reported here as a plain sentence rather than a built flow. The fourth,
+  // email_verification_required, has its own screen (VerifyEmailRoute) and never reaches here.
+  organization_selection_required: 'Your account belongs to more than one organization, and choosing between them during sign-in is not supported yet. You are not signed in.',
+  mfa_enrollment: 'Your account requires multi-factor enrollment, which is not supported here yet. You are not signed in.',
+  mfa_challenge: 'Your account requires a multi-factor code, which is not supported here yet. You are not signed in.',
 };
 
 export function LoginRoute({ source, returnTo, authOutcome }: { source: DataSource; returnTo: string; authOutcome?: string | null }) {

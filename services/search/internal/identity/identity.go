@@ -49,6 +49,10 @@ const (
 	AuthStateTTL = 10 * time.Minute
 	// InvitationTTL bounds an invitation.
 	InvitationTTL = 14 * 24 * time.Hour
+	// EmailVerificationMaxAttempts bounds how many wrong codes
+	// POST /api/v1/auth/verify-email accepts against one pending state row
+	// before the row is deleted and the person must sign in again.
+	EmailVerificationMaxAttempts = 5
 )
 
 // Modes.

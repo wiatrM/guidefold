@@ -50,7 +50,7 @@ type PortMethods = Omit<DataSource, 'drafts' | 'setContext' | 'revoke'>;
  * hands routes an `undefined`.
  */
 export const portMethods = [
-  'getAuthProviders', 'startLogin', 'getMe', 'logout', 'startDeviceAuthorization', 'decideDevice', 'startIdentityLink', 'updateProfile',
+  'getAuthProviders', 'startLogin', 'verifyEmailCode', 'getMe', 'logout', 'startDeviceAuthorization', 'decideDevice', 'startIdentityLink', 'updateProfile',
   'listOrgs', 'getOrg', 'createOrg', 'listMembers', 'listTeams', 'createTeam', 'addTeamMember', 'removeTeamMember', 'inviteMember', 'listInvitations', 'revokeInvitation', 'acceptInvitation', 'changeMemberRole', 'removeMember',
   'listInstallations', 'createInstallation', 'revokeInstallation', 'listGitHubInstallations', 'startGitHubInstall', 'deleteGitHubInstallation', 'getAudit',
   'listCredentials', 'setCredential', 'patchCredential', 'deleteCredential',
