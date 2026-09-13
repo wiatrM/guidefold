@@ -149,7 +149,16 @@ Retry with capped exponential backoff and jitter; process partial acknowledgemen
 Eviction/drop reasons increment health counters. A telemetry outage never blocks the
 hook; lost events reduce reported coverage and cannot be interpreted as no usage.
 
-Enable upload through explicit organization configuration with visible diagnostics.
+Upload is on by default once the adapter has a bearer credential and a configured SEARCH/USE
+endpoint — owner decision 2026-09-13, [ADR-0047](adr/ADR-0047-telemetry-upload-on-by-default.md),
+amending this paragraph's earlier "enable upload through explicit organization configuration".
+Explicit configuration now means the *opt-out*, with visible diagnostics either way:
+`guidefold telemetry disable` (persisted), `GUIDEFOLD_TELEMETRY=0` (one process/CI job), or the
+pre-existing `GUIDEFOLD_TELEMETRY_DISABLE` (stops local spooling entirely, wins over both).
+`guidefold telemetry status` always shows the current switch. A one-time notice, printed before
+the first upload, names the exact disable command. An organization that must not upload
+telemetry at all has to set one of these explicitly, on every machine and CI job that runs the
+adapter — CONVENTIONS.md §11a and HOWTO-adapter.md document this for an administrator.
 Retain event-level product telemetry for 90 days; proposed daily aggregate retention
 is 12 months. Enforce expiry and deletion in both events and derived tables, with
 backup handling documented before rollout. Security audit retention is a separate

@@ -566,7 +566,7 @@ Golden set: ≥ 60 queries on the playground, each with expected URNs and expect
 | R4 | Lift quality / owner fatigue | comment-only first; ≤ 5 units per PR; rejection memory; acceptance metric gates Phase 2 |
 | R5 | Agent Registry v1alpha changes; 100-skill quota | adapter isolated; quota increase filed; index does not depend on registry search |
 | R6 | Topic vocabulary governance | `topics.yaml` owned by platform-engineering; unknown topic fails validate |
-| R7 | Telemetry privacy | prompts stored as hashes only; opt-in upload |
+| R7 | Telemetry privacy | prompts stored as hashes only; upload is opt-out and on by default once a token and endpoint exist ([ADR-0047](adr/ADR-0047-telemetry-upload-on-by-default.md), owner decision 2026-09-13, amends this row's earlier "opt-in upload") |
 | R8 | UI scope creep | one HTML file, read-only, demo-first; no auth, localhost only |
 | Q1 | Embedding model and cost at 2k+ skills | Vertex `gemini-embedding`, changed-only; ~2k calls once, then deltas |
 | Q2 | Who owns enterprise-level content per kind at scale? | one council per family with CODEOWNERS on `/.agents/skills/<family>-*` (security council for governance, DevEx for engineering, AI enablement for ai-sdlc, …); lift proposals route to the council of the target kind |

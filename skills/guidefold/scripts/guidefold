@@ -2135,7 +2135,50 @@ def _search_config_from_env() -> dict:
         out["token_file"] = os.environ["GUIDEFOLD_SEARCH_TOKEN_FILE"].strip()
     return out
 
-def resolve_search_config(cfg: dict = None, profile: str = "interactive") -> dict:
+def _login_token(cfg: dict = None):
+    """The bearer `guidefold login` already stored in `_credentials_path()` (the device flow,
+    API-CONTRACT §4.1/§2), tried only as the LAST resort by `resolve_search_config` -- after
+    GUIDEFOLD_TOKEN and after `search.token_file`/GUIDEFOLD_SEARCH_TOKEN_FILE, so an explicit
+    override always wins (docs/CONVENTIONS.md §1a).
+
+    Pure `json` + `Path.read_text` on the same file `_load_credentials()`/`login`/`org use`
+    already read -- no PyYAML, no guidefold.yaml -- so this is safe to call from `hook`
+    (profile="hook", cfg=None) without touching E1.5's "no guidefold.yaml/PyYAML on the hook
+    path" constraint; only the *credential* now has a non-env source, not the search/backend
+    *config* itself (which stays env-only for hook -- CONVENTIONS §1a documents this explicitly).
+
+    Picks the credentials.json entry for `cfg["service"]["api"]` when that is configured
+    (`find`/`load`, which parse guidefold.yaml); otherwise, when exactly one API has ever been
+    logged into (the common single-deployment case, and `hook`'s only option since it never
+    reads guidefold.yaml), uses that lone entry. Two or more stored logins with no configured
+    `service.api` is genuinely ambiguous and returns no token, same as no login at all.
+
+    Returns (token, org) or (None, None). `org` (may be None) is the organisation `login`/`org
+    use` last recorded for that entry -- used to set `X-Guidefold-Org` for a personal-token
+    request, since (unlike an installation token) it is not bound to one org server-side."""
+    creds = _load_credentials()
+    if not creds:
+        return None, None
+    api = None
+    svc = (cfg or {}).get("service")
+    if isinstance(svc, dict) and isinstance(svc.get("api"), str) and svc["api"].strip():
+        api = svc["api"].strip().rstrip("/")
+    entry = creds.get(api) if api else None
+    if not isinstance(entry, dict):
+        if len(creds) == 1:
+            entry = next(iter(creds.values()))
+        else:
+            return None, None
+    if not isinstance(entry, dict):
+        return None, None
+    token = entry.get("token")
+    if not isinstance(token, str) or not token.strip():
+        return None, None
+    org = entry.get("org") if isinstance(entry.get("org"), str) and entry.get("org") else None
+    return token.strip(), org
+
+
+def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: Path = None) -> dict:
     """Merge guidefold.yaml's `search:` block (if any -- `cfg` is None from cmd_hook) with env
     overrides (env wins), validate, and fall back to backend=local on anything wrong. A bad
     config never crashes `find`/`hook`; it degrades silently to local with `config_error=True`,
@@ -2143,8 +2186,15 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive") -> dic
     config falls back to local with a visible degradation_reason=config").
 
     Returns {"backend": "local"|"service", "url": str|None, "deadline_ms": int,
-             "token": str|None, "config_error": bool}. The bearer token comes from
-    GUIDEFOLD_TOKEN or a token file -- never from guidefold.yaml directly, never logged."""
+             "token": str|None, "config_error": bool, "token_source": "env"|"token_file"|
+             "login"|None, "org": str|None, "repo": str|None}. The bearer token comes from
+    GUIDEFOLD_TOKEN, then a token file, then (last resort) the credentials file `guidefold
+    login` writes -- never from guidefold.yaml directly, never logged. `org`/`repo` are set
+    only for `token_source == "login"`: a personal token is not bound to one org/repo the way
+    an installation token is, so callers must send them as `X-Guidefold-Org`/`X-Guidefold-Repo`
+    (API-CONTRACT §2/§3) -- and must NEVER send them for an env/token_file credential, which is
+    typically an installation token already bound server-side (a conflicting header there is a
+    hard 403, not a no-op)."""
     search_block = (cfg or {}).get("search")
     raw = dict(search_block) if isinstance(search_block, dict) else {}
     raw.update(_search_config_from_env())
@@ -2165,19 +2215,43 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive") -> dic
     except (TypeError, ValueError):
         deadline_ms, config_error = default_deadline, True
     token = os.environ.get("GUIDEFOLD_TOKEN") or None
+    token_source = "env" if token else None
     token_file = raw.get("token_file")
     if not token and token_file:
         try:
             token = Path(token_file).expanduser().read_text(encoding="utf-8").strip() or None
+            if token:
+                token_source = "token_file"
         except Exception:
             config_error = True   # configured but unreadable: a real config problem, not silence
+    org = repo = None
+    if not token:
+        token, org = _login_token(cfg)
+        if token:
+            token_source = "login"
+            if root is not None:
+                repo = _default_repo_id(root)
     if backend == "service" and not token:
         # A service backend that can never authenticate can never succeed (contract: POST
         # requires the bearer token) -- fail fast into local rather than paying for a request
         # that is guaranteed to 401 every time.
         backend, config_error = "local", True
     return {"backend": backend, "url": url, "deadline_ms": deadline_ms,
-            "token": token, "config_error": config_error}
+            "token": token, "config_error": config_error,
+            "token_source": token_source, "org": org, "repo": repo}
+
+
+def _search_extra_headers(search_cfg: dict) -> dict:
+    """`X-Guidefold-Org`/`X-Guidefold-Repo` for a `search_cfg["token_source"] == "login"` request
+    only (see `resolve_search_config`) -- `None` for every other token source."""
+    if not isinstance(search_cfg, dict) or search_cfg.get("token_source") != "login":
+        return {}
+    headers = {}
+    if search_cfg.get("org"):
+        headers["X-Guidefold-Org"] = search_cfg["org"]
+    if search_cfg.get("repo"):
+        headers["X-Guidefold-Repo"] = search_cfg["repo"]
+    return headers
 
 
 def _parse_search_url(url: str):
@@ -2204,16 +2278,28 @@ class _RemoteSearchResult:
         self.phase = None   # "connect", "request", or "read"; used to classify timeouts
 
 
-def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
+def _remote_call(scheme, host, port, path, token, payload, timeout_s, result, extra_headers=None):
     """Runs in a daemon thread. POSTs one contract-1.1 JSON body and stores the outcome on
     `result`. `timeout_s` bounds socket connect/read. Never raises out of the thread; never
-    returns anything (the caller only ever reads `result`, and only up to its own deadline)."""
+    returns anything (the caller only ever reads `result`, and only up to its own deadline).
+
+    `extra_headers` carries `X-Guidefold-Org`/`X-Guidefold-Repo` (contract API-CONTRACT §2/§3)
+    when -- and only when -- the bearer is a `guidefold login` personal token: that principal is
+    not bound to one org/repo the way an installation token is, so the server resolves org/repo
+    from these headers instead. Never sent for an env/token_file credential (typically an
+    installation token already bound server-side; a conflicting header there is a hard 403)."""
     import http.client
     try:
         conn_cls = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
         conn = conn_cls(host, port, timeout=max(timeout_s, 0.001))
         result.conn = conn
         body = json.dumps(payload).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json", "Content-Length": str(len(body)),
+            "Authorization": "Bearer " + token,
+        }
+        if extra_headers:
+            headers.update(extra_headers)
         # Connect explicitly so a timeout while the endpoint is unreachable is reported as a
         # connection failure.  HTTPConnection.request() otherwise combines connect and write,
         # which makes a refused/unroutable endpoint indistinguishable from a slow response on
@@ -2221,10 +2307,7 @@ def _remote_call(scheme, host, port, path, token, payload, timeout_s, result):
         result.phase = "connect"
         conn.connect()
         result.phase = "request"
-        conn.request("POST", path or "/", body=body, headers={
-            "Content-Type": "application/json", "Content-Length": str(len(body)),
-            "Authorization": "Bearer " + token,
-        })
+        conn.request("POST", path or "/", body=body, headers=headers)
         result.phase = "read"
         resp = conn.getresponse()
         raw = resp.read()
@@ -2364,7 +2447,7 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
     itself (Deliverable 4) when both sides finished in time and disagree -- silent on agreement."""
     import time
     if search_cfg is None:
-        search_cfg = resolve_search_config(None, profile=profile)
+        search_cfg = resolve_search_config(None, profile=profile, root=root)
     degradation_reason = "config" if search_cfg.get("config_error") else None
     remote_thread = None
     remote_result = None
@@ -2403,7 +2486,7 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
             remote_thread = threading.Thread(
                 target=_remote_call,
                 args=(scheme, host, port, prefix + "/v1/search", search_cfg["token"], payload,
-                      transport_timeout_s, remote_result),
+                      transport_timeout_s, remote_result, _search_extra_headers(search_cfg)),
                 daemon=True)
             remote_thread.start()
         except Exception:
@@ -2462,7 +2545,7 @@ def cmd_find(a, root, cfg):
     # stands in for every card's "exact revision" in this event, exactly as LocalRegistry.
     # default_revision() already does for the real load path below -- except for cards that come
     # back from `search.backend: service`, which carry their own exact per-card revision (E2.6).
-    search_cfg = resolve_search_config(cfg, profile="interactive")
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
     forced = getattr(a, "search_backend", None)
     if forced:
         search_cfg = dict(search_cfg, backend=forced, config_error=False)
@@ -2512,6 +2595,7 @@ def cmd_find(a, root, cfg):
             # tools/telemetry/report.py's distinct_scopes rollup has something real to read.
         })
     _remember_exposures(root, search_id, exposed, _telemetry_ids_from_env().get("session_id"))
+    maybe_trigger_telemetry_auto_flush(root, search_cfg)   # see cmd_hook for the full rationale
 
 # ---------------------------------------------------------- E1.6 shadow telemetry
 # `find --experimental` never changes the printed answer (see cmd_find above): it only writes a
@@ -2567,9 +2651,13 @@ def _write_shadow_record(root: Path, query: str, node: str, scored: list, teleme
 # docs/SEARCH-USE-TELEMETRY.md is normative (Sec3 event vocabulary, Sec4 IDs/grain, Sec5 data
 # boundaries). This block emits the client-observable event vocabulary -- search_requested,
 # search_results, card_injected, skill_load_requested, skill_load_completed, telemetry_health --
-# from `find`, `hook` and `load` into a bounded local JSONL spool; `guidefold telemetry flush`
-# uploads it later, and never from the hook path itself (no network call happens anywhere in this
-# block). This is a separate, contract-shaped pipeline from the E1.6 shadow writer just above --
+# from `find`, `hook` and `load` into a bounded local JSONL spool. Nothing in this block itself
+# ever opens a socket: `guidefold telemetry flush` uploads the spool later, either run by hand/CI
+# or spawned as a fully separate, detached OS process by `maybe_trigger_telemetry_auto_flush`
+# (below, called from `find`/`hook`/`load` right after they emit into the spool) once `guidefold
+# telemetry enable` has turned that on -- the hook's OWN process still never touches the network
+# (E1.5): it only ever asks the OS to start another one, and never waits for it.
+# This is a separate, contract-shaped pipeline from the E1.6 shadow writer just above --
 # that one is for offline reranker scoring; this one is for the SEARCH/USE ledger (tools/telemetry
 # /ledger.py) and per-skill usage reports (tools/telemetry/report.py). Do not conflate them.
 #
@@ -2599,6 +2687,41 @@ TELEMETRY_CAPABILITY_FLAGS = ["observation:none", "delivery_evidence:printed_std
 
 def _telemetry_disabled() -> bool:
     return os.environ.get("GUIDEFOLD_TELEMETRY_DISABLE", "").strip() not in ("", "0")
+
+# --------------------------------------------------------- automatic upload (owner, 2026-09-13)
+# `_telemetry_disabled()` above (existing, GUIDEFOLD_TELEMETRY_DISABLE) is a harder kill switch:
+# it stops local SPOOLING entirely. What follows is a separate, softer axis -- whether queued
+# events are UPLOADED automatically -- and it is ON by default once a credential and endpoint
+# exist (ADR-0047, owner decision 2026-09-13: "klient automatycznie powinien miec opt in na
+# telemetrie" -- a client should automatically have telemetry opted in; the user switches it off
+# explicitly). This supersedes the earlier opt-in reading of docs/SEARCH-USE-TELEMETRY.md §5 and
+# docs/DESIGN.md R7 -- both amended by ADR-0047 to describe the opt-out model instead. Nothing
+# about event CONTENT changes: still hashes only, still no raw prompt by default, same spool
+# bounds, same detached/never-in-the-hook-process spawn.
+TELEMETRY_UPLOAD_ENABLED_DEFAULT = True         # opt-out; ADR-0047
+TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S = 60         # a burst of hook calls starts at most one flush
+TELEMETRY_AUTO_FLUSH_BUDGET_S = 10.0             # wall-clock cap on one background flush run
+
+def _telemetry_upload_enabled() -> bool:
+    """Effective state for AUTOMATIC upload, precedence: `GUIDEFOLD_TELEMETRY` env (CI override)
+    > the persisted CLI setting (`guidefold telemetry enable`/`disable`) > default ON
+    (ADR-0047). Also off whenever `_telemetry_disabled()` is true -- nothing is spooled to
+    upload either way, and a background flush attempt would just be wasted work. An
+    organisation that must not upload telemetry has to disable one of these three explicitly,
+    on every machine/CI job that runs the adapter -- docs/CONVENTIONS.md §11a,
+    docs/HOWTO-adapter.md step 5."""
+    if _telemetry_disabled():
+        return False
+    env = os.environ.get("GUIDEFOLD_TELEMETRY", "").strip().lower()
+    if env in ("0", "false", "off", "no"):
+        return False
+    if env in ("1", "true", "on", "yes"):
+        return True
+    settings = _load_settings()
+    telemetry = settings.get("telemetry")
+    if isinstance(telemetry, dict) and "enabled" in telemetry:
+        return bool(telemetry["enabled"])
+    return TELEMETRY_UPLOAD_ENABLED_DEFAULT
 
 def _telemetry_environment() -> str:
     env = os.environ.get("GUIDEFOLD_TELEMETRY_ENVIRONMENT", "dev")
@@ -2880,7 +3003,7 @@ def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
     timeout_s = search_cfg["deadline_ms"] / 1000.0
     t = threading.Thread(target=_remote_call,
                           args=(scheme, host, port, prefix + "/v1/use", search_cfg["token"],
-                                payload, timeout_s, result),
+                                payload, timeout_s, result, _search_extra_headers(search_cfg)),
                           daemon=True)
     t.start()
     if not result.done.wait(timeout_s + 0.5):   # small grace beyond the socket's own timeout
@@ -3026,7 +3149,7 @@ def cmd_load(a, root, cfg):
     # visible exit code/message are untouched.
     load_id = _new_id()
     t0 = time.perf_counter()
-    search_cfg = resolve_search_config(cfg, profile="interactive")
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
     delivery_policy = getattr(a, "delivery_policy", "legacy") or "legacy"
     if delivery_policy not in ("legacy", "proof_gated"):
         sys.exit(f"guidefold: unsupported delivery policy {delivery_policy!r}")
@@ -3122,6 +3245,7 @@ def cmd_load(a, root, cfg):
         evict_lru(cache_root() / "skills", depth=2,
                   cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
         print(dest / "SKILL.md")
+        maybe_trigger_telemetry_auto_flush(root, search_cfg)   # see cmd_hook for the rationale
         return
     reg = registry_for(cfg, root)
     try:
@@ -3164,6 +3288,7 @@ def cmd_load(a, root, cfg):
     })
     evict_lru(cache_root() / "skills", depth=2, cap=_cache_cap(cfg, "max_skill_revisions", DEFAULT_SKILLS_CACHE_CAP))
     print(dest / "SKILL.md")
+    maybe_trigger_telemetry_auto_flush(root, search_cfg)   # see cmd_hook for the rationale
 
 # ------------------------------------------------------------------ F5: trigger/negative-trigger
 # suggestions for `validate --suggest` (docs/MVP.md "3-6 authoring loop"). Ported from
@@ -5310,14 +5435,18 @@ def cmd_hook(a, root):
         # rare case -- consistent with Sec5 "lost events reduce reported coverage" being expected
         # and reported as missing, never fabricated as a status.
         #
-        # E2.6: search.backend config here comes ONLY from the environment (GUIDEFOLD_SEARCH_*) --
-        # never from guidefold.yaml/PyYAML (E1.5's hard constraint, unaffected by this feature).
+        # E2.6: search.backend CONFIG here comes ONLY from the environment (GUIDEFOLD_SEARCH_*) --
+        # never from guidefold.yaml/PyYAML (E1.5's hard constraint, unaffected by this feature) --
+        # `cfg=None` below keeps that. The bearer CREDENTIAL is a separate axis: when no env/
+        # token_file credential is set, resolve_search_config's last resort reads the plain-json
+        # credentials file `guidefold login` writes (`_login_token`, no PyYAML, not guidefold.yaml)
+        # so a hook picks up a stored login exactly like `find`/`load` do.
         # `seconds`/the SIGALRM watchdog above is a separate, portable crash deadline (ADR-0023
         # Sec3: "not the normal timeout or SLO"); the SEARCH deadline reported below and used for
         # the service race is search_cfg["deadline_ms"], never the watchdog value.
         import time
         search_id = _new_id()
-        search_cfg = resolve_search_config(None, profile="hook")
+        search_cfg = resolve_search_config(None, profile="hook", root=root)
         _emit_telemetry(root, "search_requested", {
             "search_id": search_id, "profile": "hook", "scope": node,
             "deadline_ms": search_cfg["deadline_ms"],
@@ -5337,6 +5466,14 @@ def cmd_hook(a, root):
                         "score": c["score"], "rank": i} for i, c in enumerate(top, start=1)],
             "timings": {"total_ms": elapsed_ms},
         }, ids={"session_id": session_id})
+        # Owner decision, 2026-09-13 (ADR-0047): automatic background upload, on by default once
+        # a credential and endpoint exist -- `guidefold telemetry disable` (or GUIDEFOLD_
+        # TELEMETRY=0/GUIDEFOLD_TELEMETRY_DISABLE) opts out. Every check inside is a local file
+        # stat/read against `search_cfg` already resolved above -- no network, no new YAML parse
+        # -- and the actual send, when it happens at all, is a
+        # detached child process this call never waits on (`_spawn_auto_flush`), so this cannot
+        # add meaningful latency to the hook's own budget (E1.5).
+        maybe_trigger_telemetry_auto_flush(root, search_cfg)
         if not top:
             return
         # ADR-0035: the nearest ascended scope map rides along ahead of the best card, in a
@@ -5387,10 +5524,40 @@ def cmd_telemetry(a, root, cfg):
         cmd_telemetry_status(a, root)
     elif a.telemetry_cmd == "flush":
         cmd_telemetry_flush(a, root, cfg)
+    elif a.telemetry_cmd == "enable":
+        cmd_telemetry_enable(a)
+    elif a.telemetry_cmd == "disable":
+        cmd_telemetry_disable(a)
     elif a.telemetry_cmd == "report":
         cmd_telemetry_report(a, root, cfg)
     else:
-        sys.exit("guidefold telemetry: choose a subcommand: status | flush | report")
+        sys.exit("guidefold telemetry: choose a subcommand: status | flush | enable | disable | report")
+
+def cmd_telemetry_enable(a):
+    """Explicitly turns automatic background upload back on after a `disable` -- upload is
+    already ON by default once a credential and endpoint exist (ADR-0047), so this command's
+    main job is undoing a prior `disable` (or an environment/org policy that starts a machine
+    with it off). Local spooling (`_telemetry_disabled`/GUIDEFOLD_TELEMETRY_DISABLE) is
+    unaffected; this only controls whether queued events get sent."""
+    settings = _load_settings()
+    telemetry = settings.get("telemetry") if isinstance(settings.get("telemetry"), dict) else {}
+    telemetry["enabled"] = True
+    settings["telemetry"] = telemetry
+    _save_settings(settings)
+    print("guidefold telemetry: automatic upload is now ON. Queued SEARCH/USE events are sent "
+          "in the background after a harness call, no manual flush needed.")
+    print("  turn off again: guidefold telemetry disable")
+    if os.environ.get("GUIDEFOLD_TELEMETRY", "").strip().lower() in ("0", "false", "off", "no"):
+        print("  note: GUIDEFOLD_TELEMETRY currently overrides this to OFF in this environment.")
+
+def cmd_telemetry_disable(a):
+    settings = _load_settings()
+    telemetry = settings.get("telemetry") if isinstance(settings.get("telemetry"), dict) else {}
+    telemetry["enabled"] = False
+    settings["telemetry"] = telemetry
+    _save_settings(settings)
+    print("guidefold telemetry: automatic upload is now OFF. Events still queue locally "
+          "(unless GUIDEFOLD_TELEMETRY_DISABLE is also set); nothing is sent.")
 
 def _telemetry_partitions(root: Path) -> list:
     """[(tenant, environment, env_dir), ...] for every partition actually present on disk."""
@@ -5404,8 +5571,9 @@ def _telemetry_partitions(root: Path) -> list:
     return out
 
 def cmd_telemetry_status(a, root):
-    """Counts, oldest queued age, and partitions -- a read-only inspection of the local spool.
-    Never writes anything (no event is emitted just for looking at spool health)."""
+    """Counts, oldest queued age, partitions, and the automatic-upload switch -- a read-only
+    inspection. Never writes anything (no event is emitted, no auto-flush triggered, just for
+    looking at spool health)."""
     rows = []
     for tenant, env, env_dir in _telemetry_partitions(root):
         health = _read_health(_health_path(env_dir))
@@ -5418,9 +5586,15 @@ def cmd_telemetry_status(a, root):
             "dropped": health.get("dropped", 0),
             "oldest_queued_age_s": _oldest_queued_age_s(env_dir),
         })
+    upload_enabled = _telemetry_upload_enabled()
+    env_override = os.environ.get("GUIDEFOLD_TELEMETRY", "").strip()
     if getattr(a, "json", False):
-        print(json.dumps({"partitions": rows}, indent=2))
+        print(json.dumps({"partitions": rows, "upload_enabled": upload_enabled,
+                          "env_override": env_override or None}, indent=2))
         return
+    print(f"guidefold telemetry status: automatic upload is "
+          f"{'ON' if upload_enabled else 'OFF'}"
+          f"{f' (GUIDEFOLD_TELEMETRY={env_override!r} overrides the stored setting)' if env_override else ''}")
     if not rows:
         print("guidefold telemetry status: spool is empty")
         return
@@ -5429,9 +5603,10 @@ def cmd_telemetry_status(a, root):
               f"acknowledged={r['acknowledged']} dropped={r['dropped']} "
               f"oldest_queued_age_s={r['oldest_queued_age_s']}")
 
-def _flush_token(a, cfg) -> str:
+def _flush_token(a, cfg, root: Path = None) -> str:
     """The bearer for `telemetry flush`, in precedence order: `--token-file`, then the same
-    `search.token_file` (or `GUIDEFOLD_SEARCH_TOKEN_FILE`) that `find`/`load` already use.
+    `search.token_file`/`GUIDEFOLD_SEARCH_TOKEN_FILE`/`guidefold login` credential that
+    `find`/`load` already use (`resolve_search_config`'s own precedence).
 
     `/v1/events:batch` authenticates exactly like `/v1/search` and `/v1/use` -- one credential
     for the whole delivery contract (docs/HARNESS-SERVICE-CONTRACT.md). Without this the flush
@@ -5443,26 +5618,61 @@ def _flush_token(a, cfg) -> str:
             return Path(path).expanduser().read_text(encoding="utf-8").strip()
         except OSError as e:
             _die(f"telemetry flush: cannot read --token-file: {e}", 2)
-    return (resolve_search_config(cfg, profile="interactive").get("token") or "").strip()
+    return (resolve_search_config(cfg, profile="interactive", root=root).get("token") or "").strip()
 
 
 def cmd_telemetry_flush(a, root, cfg=None):
-    """POST queued events to `--url`/v1/events:batch in batches of at most
-    TELEMETRY_FLUSH_BATCH_MAX, one tenant/environment partition at a time. The credential is a
-    bearer token (see `_flush_token`); the X-Guidefold-Tenant header stays for the
+    """POST queued events to `<url>/v1/events:batch` in batches of at most
+    TELEMETRY_FLUSH_BATCH_MAX, one tenant/environment partition at a time. `url` is `--url` if
+    given, else the same `search.url`/`GUIDEFOLD_SEARCH_URL` `find`/`load` already resolve
+    (`resolve_search_config`) -- so the automatic background flush (`--auto`, triggered by
+    `hook`/`find`/`load` once a credential and endpoint exist: `_telemetry_upload_enabled`,
+    ON by default since ADR-0047) never needs `--url` spelled out. The credential is
+    a bearer token (see `_flush_token`); `X-Guidefold-Org`/`X-Guidefold-Repo` ride along under
+    the same rule as SEARCH/USE (`_search_extra_headers`) when the token came from a stored
+    login, never for an explicit `--token-file`. The `X-Guidefold-Tenant` header stays for the
     unauthenticated demo ingest server (tools/telemetry/ingest_server.py) and is never what a
-    real service trusts (docs/SEARCH-USE-TELEMETRY.md Sec4/Sec5). Only events the server did NOT resolve
-    (neither accepted, duplicate, nor rejected) stay queued for a future flush; rejected
-    (bad-schema) events are logged and dropped too, since resending an invalid event never becomes
-    valid. Never invoked from `hook` -- no call to this function exists there -- and it makes a
-    network call only when a human or CI explicitly runs it."""
+    real service trusts (docs/SEARCH-USE-TELEMETRY.md Sec4/Sec5). Only events the server did NOT
+    resolve (neither accepted, duplicate, nor rejected) stay queued for a future flush; rejected
+    (bad-schema) events are logged and dropped too, since resending an invalid event never
+    becomes valid.
+
+    `--budget-s`, when given (always set by the automatic `--auto` caller,
+    TELEMETRY_AUTO_FLUSH_BUDGET_S), is a wall-clock cap checked between partitions, files and
+    batches -- once it elapses this returns with whatever is left still queued for the next
+    flush, rather than let one run grow unbounded. A manual run with no `--budget-s` has none.
+
+    This function itself makes a network call only when explicitly run: by a human, from CI, or
+    from the detached background process `_spawn_auto_flush` execs (a completely separate OS
+    process -- see there for why that keeps the hook path itself at zero sockets, E1.5)."""
+    import time as _time
     import urllib.request, urllib.error
-    token = _flush_token(a, cfg)
+    explicit_token_file = bool((getattr(a, "token_file", None) or "").strip())
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
+    token = _flush_token(a, cfg, root)
+    url = (getattr(a, "url", None) or "").strip() or search_cfg.get("url")
+    if not url:
+        _die("telemetry flush: no --url given and none configured (search.url in guidefold.yaml, "
+             "or GUIDEFOLD_SEARCH_URL) -- pass --url once, or configure search.url", 2)
+    extra_headers = {} if explicit_token_file else _search_extra_headers(search_cfg)
+    budget_s = getattr(a, "budget_s", None)
+    # `is not None`, not truthiness: budget_s=0 is a legitimate (if extreme) "expire
+    # immediately" budget, not the same thing as "no budget configured" (None).
+    deadline = (_time.monotonic() + budget_s) if budget_s is not None else None
+    def _budget_exceeded():
+        return deadline is not None and _time.monotonic() >= deadline
     totals = {"sent": 0, "accepted": 0, "duplicate": 0, "rejected": 0}
+    truncated_by_budget = False
     for tenant, env, env_dir in _telemetry_partitions(root):
+        if _budget_exceeded():
+            truncated_by_budget = True
+            break
         health_path = _health_path(env_dir)
         health = _read_health(health_path)
         for f in sorted(env_dir.glob("events-*.jsonl")):
+            if _budget_exceeded():
+                truncated_by_budget = True
+                break
             parsed = []
             for line in f.read_text(encoding="utf-8").splitlines():
                 if not line.strip():
@@ -5473,15 +5683,19 @@ def cmd_telemetry_flush(a, root, cfg=None):
                     continue   # corrupt line: can't be usefully retried, drop silently
             resolved_ids, newly_acked = set(), 0
             for i in range(0, len(parsed), TELEMETRY_FLUSH_BATCH_MAX):
+                if _budget_exceeded():
+                    truncated_by_budget = True
+                    break
                 batch = [ev for _, ev in parsed[i:i + TELEMETRY_FLUSH_BATCH_MAX]]
                 if not batch:
                     continue
                 body = json.dumps({"events": batch}).encode("utf-8")
                 headers = {"Content-Type": "application/json", "X-Guidefold-Tenant": tenant}
+                headers.update(extra_headers)
                 if token:
                     headers["Authorization"] = "Bearer " + token
                 req = urllib.request.Request(
-                    a.url.rstrip("/") + "/v1/events:batch", data=body, method="POST",
+                    url.rstrip("/") + "/v1/events:batch", data=body, method="POST",
                     headers=headers)
                 try:
                     resp = urllib.request.urlopen(req, timeout=10)
@@ -5509,7 +5723,104 @@ def cmd_telemetry_flush(a, root, cfg=None):
                 health["acknowledged"] = health.get("acknowledged", 0) + newly_acked
         _write_health(health_path, health)
     print(f"guidefold telemetry flush: sent={totals['sent']} accepted={totals['accepted']} "
-          f"duplicate={totals['duplicate']} rejected={totals['rejected']}")
+          f"duplicate={totals['duplicate']} rejected={totals['rejected']}"
+          + (" (time budget exceeded; remainder stays queued for the next flush)"
+             if truncated_by_budget else ""))
+
+
+# ------------------------------------------------------- automatic background flush (owner ask)
+# Triggered by `cmd_hook`/`cmd_find`/`cmd_load` after they emit telemetry, never awaited: this
+# whole function is check-then-maybe-spawn, and the spawn itself is a detached child process the
+# caller never waits on. Every check here is a local file stat/read -- no network, no YAML parse
+# of guidefold.yaml (the caller passes in a `search_cfg` it already resolved) -- so calling this
+# unconditionally from `hook` cannot add meaningful latency, only a Popen() syscall on the rare
+# occasions it actually fires (at most once per TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S per repo).
+
+def _auto_flush_marker_path(root: Path) -> Path:
+    return root / ".guidefold" / "telemetry" / "auto-flush-state.json"
+
+def _claim_auto_flush_attempt(root: Path) -> bool:
+    """True at most once per TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S per repo -- "a burst of hook
+    calls starts at most one flush". Best-effort, not a real lock: two processes racing inside
+    the same instant could both read a stale timestamp and both claim it, which would spawn two
+    background flushes instead of one. That is a harmless duplicate (the server's idempotent
+    accept/duplicate handling and the spool's own resolved-id bookkeeping absorb it) -- not a
+    correctness problem worth a real file lock for an optimization whose only job is "not every
+    single hook call". Failing to even WRITE the marker fails closed (returns False, no spawn):
+    never worse than skipping an opportunistic flush."""
+    marker = _auto_flush_marker_path(root)
+    now = time.time()
+    try:
+        state = json.loads(marker.read_text(encoding="utf-8"))
+        last = float(state.get("last_attempt_at", 0))
+    except Exception:
+        last = 0.0
+    if now - last < TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S:
+        return False
+    try:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"last_attempt_at": now}), encoding="utf-8")
+    except Exception:
+        return False
+    return True
+
+def _maybe_notify_telemetry_first_send():
+    """"The first time telemetry is sent, the CLI tells the user once, in one line, that it is
+    on and how to turn it off; it must not nag" (owner ask). Gated by a persisted flag so it
+    fires exactly once ever, not once per repo/session. Printed to stderr: this runs from the
+    hook path too, and stdout there is the harness's own context channel (E1.5), never a spot
+    for a human-facing aside."""
+    settings = _load_settings()
+    telemetry = settings.get("telemetry") if isinstance(settings.get("telemetry"), dict) else {}
+    if telemetry.get("notice_shown"):
+        return
+    print("[guidefold] telemetry: automatic upload is on (guidefold telemetry disable to turn it off).",
+          file=sys.stderr)
+    telemetry["notice_shown"] = True
+    settings["telemetry"] = telemetry
+    try:
+        _save_settings(settings)
+    except Exception:
+        pass   # the notice still printed; failing to persist the flag just risks repeating it
+
+def maybe_trigger_telemetry_auto_flush(root: Path, search_cfg: dict):
+    """Called after `hook`/`find`/`load` emit telemetry. Spawns a detached `guidefold telemetry
+    flush --auto` child and returns immediately -- never blocks, never raises, never touches a
+    socket itself. No-ops (in order, cheapest check first) when: upload is not enabled
+    (`_telemetry_upload_enabled`, ON by default since ADR-0047 -- `guidefold telemetry disable`
+    or GUIDEFOLD_TELEMETRY=0/GUIDEFOLD_TELEMETRY_DISABLE opts out); `search_cfg` carries no
+    token (never send before the user has a token -- also true before `guidefold login`/an
+    installation token is configured at all) or no url (nowhere configured to send to); the
+    per-repo minimum interval has not elapsed (`_claim_auto_flush_attempt`)."""
+    try:
+        if not _telemetry_upload_enabled():
+            return
+        if not search_cfg or not search_cfg.get("token") or not search_cfg.get("url"):
+            return
+        if not _claim_auto_flush_attempt(root):
+            return
+        _maybe_notify_telemetry_first_send()
+        _spawn_auto_flush(root)
+    except Exception:
+        pass   # telemetry automation must never break the command it rides along with
+
+def _spawn_auto_flush(root: Path):
+    """The detached child itself: a full `guidefold telemetry flush --auto` invocation of THIS
+    SAME script, as its own OS process. It re-resolves its own token/url the normal way (reading
+    guidefold.yaml is fine here -- this is not the hook process), so nothing secret needs to
+    cross via argv (`ps` would show every argument to any local user). `start_new_session=True`
+    (POSIX) detaches it from the caller's process group so it outlives a hook process that exits
+    immediately after; stdio goes to DEVNULL so nothing it prints can reach the harness's stdout
+    or block on a full pipe with no reader."""
+    try:
+        subprocess.Popen(
+            [sys.executable, str(SCRIPT_PATH), "telemetry", "flush", "--auto",
+             "--budget-s", str(TELEMETRY_AUTO_FLUSH_BUDGET_S)],
+            cwd=str(root), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True,
+        )
+    except Exception:
+        pass
 
 def cmd_telemetry_report(a, root, cfg):
     """Wraps tools/telemetry/report.py (stdlib-only) if this is a guidefold tool checkout, not
@@ -6211,7 +6522,7 @@ def _check_search_service(root: Path, cfg) -> dict:
     `revision`, but no build timestamp field, so an "age" number here would be invented wire data
     -- the brief's own non-negotiable forbids that. This gap is called out in the PR description
     for the service owner instead."""
-    search_cfg = resolve_search_config(cfg, profile="interactive")
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
     if not search_cfg.get("url"):
         return _doctor_check("search-service", "ok",
                               "no search.url configured -- search.backend: local, nothing to reach", None)
@@ -6241,17 +6552,20 @@ def _check_search_service(root: Path, cfg) -> dict:
                           None if version_ok else "the service's /health/ready does not list '1.1' in api_schema_versions")
 
 
-def _check_search_token(cfg) -> dict:
+def _check_search_token(cfg, root: Path = None) -> dict:
     """Token PRESENCE only -- the value itself is never read into a doctor check's `detail`/`fix`
     string (never logged, per the brief's non-negotiable)."""
-    search_cfg = resolve_search_config(cfg, profile="interactive")
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
     if not search_cfg.get("url"):
         return _doctor_check("search-token", "ok", "no search.url configured -- a token is not needed", None)
     if search_cfg.get("token"):
-        return _doctor_check("search-token", "ok", "a bearer token is configured (GUIDEFOLD_TOKEN or token_file)", None)
+        source = {"env": "GUIDEFOLD_TOKEN", "token_file": "token_file",
+                  "login": "guidefold login"}.get(search_cfg.get("token_source"), "configured")
+        return _doctor_check("search-token", "ok", f"a bearer token is configured ({source})", None)
     return _doctor_check("search-token", "fail",
                           "search.url is configured but no bearer token was found -- every request will 401",
-                          "set GUIDEFOLD_TOKEN, or search.token_file in guidefold.yaml, to a file holding the token")
+                          "run `guidefold login`, or set GUIDEFOLD_TOKEN, or search.token_file in "
+                          "guidefold.yaml, to a file holding the token")
 
 
 def _check_telemetry_spool(root: Path) -> dict:
@@ -6294,7 +6608,7 @@ def cmd_doctor(a):
     if cfg is not None:
         checks.append(_check_search_latency(root, cfg))
         checks.append(_check_search_service(root, cfg))
-        checks.append(_check_search_token(cfg))
+        checks.append(_check_search_token(cfg, root))
     checks.append(_check_telemetry_spool(root))
     # Pivot (P10/U5 AC1): hosted-service coordinates, reachability + identity, the installed
     # adapter package, and what each harness can actually be relied on to do. All of these stay
@@ -7081,24 +7395,23 @@ def _load_credentials() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def _save_credentials(creds: dict, root=None):
-    """0600, and never under the repo -- a credentials file inside a work tree is one `git add
-    .` away from being published (U5 AC2)."""
-    path = _credentials_path()
-    if _credentials_inside(root, path):
-        _die(f"refusing to write credentials inside the repository ({path}). "
-             f"Unset GUIDEFOLD_CREDENTIALS or point it outside the repo.", 2)
+def _atomic_write_json_0600(path: Path, data: dict):
+    """Write `data` as pretty JSON to `path`, 0600, surviving a crash mid-write. Shared by
+    `_save_credentials` and `_save_settings` -- both are small per-user config files next to
+    each other under `_credentials_path().parent`.
+
+    Write a new file and rename over the old one. O_TRUNC on the real path would destroy the
+    whole store before the new content landed, so a crash mid-write would lose everything
+    already there; O_CREAT alone does not reset the mode of a file that already exists, so one
+    left at 0644 would stay world-readable until a chmod afterwards. O_EXCL|O_NOFOLLOW means the
+    mode is the one asked for from the start and the target is never a symlink somebody else
+    planted."""
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(path.parent, 0o700)
     except OSError:
         pass
-    payload = json.dumps(creds, indent=2, sort_keys=True) + "\n"
-    # Write a new file and rename over the old one. O_TRUNC on the real path destroyed the
-    # whole multi-API store before the new content landed, so a crash mid-write lost every
-    # stored token; and O_CREAT does not reset the mode of a file that already exists, so one
-    # left at 0644 stayed world-readable until the chmod afterwards. O_EXCL|O_NOFOLLOW means
-    # the mode is the one asked for and the target is never a symlink somebody else planted.
+    payload = json.dumps(data, indent=2, sort_keys=True) + "\n"
     tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -7122,6 +7435,44 @@ def _save_credentials(creds: dict, root=None):
         os.chmod(path, 0o600)
     except OSError:
         pass
+
+
+def _save_credentials(creds: dict, root=None):
+    """0600, and never under the repo -- a credentials file inside a work tree is one `git add
+    .` away from being published (U5 AC2)."""
+    path = _credentials_path()
+    if _credentials_inside(root, path):
+        _die(f"refusing to write credentials inside the repository ({path}). "
+             f"Unset GUIDEFOLD_CREDENTIALS or point it outside the repo.", 2)
+    _atomic_write_json_0600(path, creds)
+
+
+# ------------------------------------------------------------------------------ CLI settings
+# Local, non-secret CLI preferences -- today just the telemetry upload switch (owner instruction,
+# 2026-09-13). Lives next to credentials.json (same directory, same isolation story: GUIDEFOLD_
+# CREDENTIALS'/XDG_CONFIG_HOME's directory), but is its own file and its own env override
+# (GUIDEFOLD_SETTINGS) because it holds no secret -- nothing here needs 0600's confidentiality
+# guarantee, only durability, and conflating it with the token store would make "read settings"
+# and "read the bearer token" the same file operation for no reason.
+
+def _settings_path() -> Path:
+    env = os.environ.get("GUIDEFOLD_SETTINGS")
+    if env:
+        return Path(env).expanduser()
+    return _credentials_path().with_name("settings.json")
+
+
+def _load_settings() -> dict:
+    path = _settings_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_settings(settings: dict):
+    _atomic_write_json_0600(_settings_path(), settings)
 
 
 def _normalise_api(url):
@@ -9655,14 +10006,20 @@ def main():
     i.add_argument("--dry-run", action="store_true", help="print what would be done; write nothing")
     doc = sub.add_parser("doctor", help="diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness")
     doc.add_argument("--json", action="store_true")
-    tel = sub.add_parser("telemetry", help="local SEARCH/USE telemetry (E6.4/E2.7): spool status, upload, per-skill report")
+    tel = sub.add_parser("telemetry", help="local SEARCH/USE telemetry (E6.4/E2.7): spool status, automatic upload switch, manual upload, per-skill report")
     telsub = tel.add_subparsers(dest="telemetry_cmd")
-    st = telsub.add_parser("status", help="counts, oldest queued age, partitions -- read-only")
+    st = telsub.add_parser("status", help="counts, oldest queued age, partitions and the automatic-upload switch -- read-only")
     st.add_argument("--json", action="store_true")
-    fl = telsub.add_parser("flush", help="POST queued events to --url /v1/events:batch (never called from hook)")
-    fl.add_argument("--url", required=True)
+    telsub.add_parser("enable", help="turn ON automatic background upload (already ON by default once a token and endpoint exist -- ADR-0047; use this to re-enable after disabling)")
+    telsub.add_parser("disable", help="turn OFF automatic background upload (it is ON by default -- ADR-0047)")
+    fl = telsub.add_parser("flush", help="POST queued events to <url>/v1/events:batch. --url defaults to the configured search.url/GUIDEFOLD_SEARCH_URL")
+    fl.add_argument("--url", help="events:batch base URL (default: search.url / GUIDEFOLD_SEARCH_URL)")
     fl.add_argument("--token-file", dest="token_file",
-                    help="bearer token file (default: the search.token_file this repo already uses)")
+                    help="bearer token file (default: the search.token_file/login token this repo already uses)")
+    fl.add_argument("--budget-s", dest="budget_s", type=float,
+                    help="wall-clock cap in seconds; once elapsed, stop and leave the rest queued (default: unbounded)")
+    fl.add_argument("--auto", action="store_true",
+                    help="mark this as the automatic background run spawned by hook/find/load (internal; a manual run does not need it)")
     rp = telsub.add_parser("report", help="per-skill usage report (wraps tools/telemetry/report.py if present)")
     rp.add_argument("--db", help="ledger sqlite path (default: .guidefold/telemetry/ledger.sqlite3)")
     rp.add_argument("--tenant")

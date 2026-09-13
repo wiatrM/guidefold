@@ -157,18 +157,66 @@ describe('Organization route, integrations', () => {
     expect(screen.queryByText('Device authorization')).not.toBeInTheDocument();
   });
 
-  test('the adapter setup guide shows all five commands and, for an owner, a link to Create an installation', async () => {
+  // API-CONTRACT §4.1: `POST /api/v1/auth/device/approve` needs only "sesja + CSRF" -- any
+  // signed-in member, not an owner. A member must be able to approve their own CLI sign-in.
+  test('a member (not just an owner) can approve a device code', async () => {
+    const decideDevice = vi.fn(async () => ({ user_code: 'ABCD-1234', state: 'approved' as const, expires_at: null }));
+    renderRoute(fakeSource({ listInstallations: async () => [], decideDevice }),
+      'tab=integrations&device=ABCD-1234', { role: 'member' });
+    const approve = await screen.findByRole('button', { name: 'Approve this device' });
+    expect(approve).not.toBeDisabled();
+    await userEvent.click(approve);
+    expect(decideDevice).toHaveBeenCalledWith('ABCD-1234', true, 'device:ABCD-1234:approve');
+    expect(await screen.findByText('Device request ABCD-1234 is now approved.')).toBeInTheDocument();
+  });
+
+  test('a member can deny a device code', async () => {
+    const decideDevice = vi.fn(async () => ({ user_code: 'ABCD-1234', state: 'denied' as const, expires_at: null }));
+    renderRoute(fakeSource({ listInstallations: async () => [], decideDevice }),
+      'tab=integrations&device=ABCD-1234', { role: 'member' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Deny' }));
+    expect(decideDevice).toHaveBeenCalledWith('ABCD-1234', false, 'device:ABCD-1234:deny');
+    expect(await screen.findByText('Device request ABCD-1234 is now denied.')).toBeInTheDocument();
+  });
+
+  test('once decided, both buttons are disabled so the single-use code is not replayed', async () => {
+    const decideDevice = vi.fn(async () => ({ user_code: 'ABCD-1234', state: 'approved' as const, expires_at: null }));
+    renderRoute(fakeSource({ listInstallations: async () => [], decideDevice }), 'tab=integrations&device=ABCD-1234');
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve this device' }));
+    await screen.findByText('Device request ABCD-1234 is now approved.');
+    expect(screen.getByRole('button', { name: 'Approve this device' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Deny' })).toBeDisabled();
+  });
+
+  // The server answers one code, `device_code_not_found` (404), for unknown, already-used AND
+  // expired (API-CONTRACT §4.1) -- the panel must show that code as-is, never invent which one.
+  test('an unknown, expired or already-used code reports the server\'s own code, not a guess', async () => {
+    const decideDevice = vi.fn(async () => { throw new ApiError({ status: 404, code: 'device_code_not_found', message: 'gone' }); });
+    renderRoute(fakeSource({ listInstallations: async () => [], decideDevice }), 'tab=integrations&device=ABCD-1234');
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve this device' }));
+    expect(await screen.findByText(
+      'The device request was not decided (device_code_not_found). It stays as it was, and no device was authorized.',
+    )).toBeInTheDocument();
+  });
+
+  test('the adapter setup guide leads with sign-in, no token step, for an owner a fallback link to Create an installation', async () => {
     renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations');
     await screen.findByText('Set up an adapter');
     expect(screen.getByText('guidefold install --harness claude')).toBeInTheDocument();
     expect(screen.getByText('guidefold login')).toBeInTheDocument();
+    expect(screen.getByText('guidefold doctor')).toBeInTheDocument();
+    expect(screen.getByText('guidefold telemetry status # or: disable · enable')).toBeInTheDocument();
+    // The manual token command lives in its own collapsed fallback panel, labelled for
+    // CI/scripted use, starting closed -- not part of the numbered sign-in flow above it.
+    const fallbackToggle = screen.getByRole('button', { name: /CI or another script without a browser/ });
+    expect(fallbackToggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(fallbackToggle);
+    expect(fallbackToggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(
       'printf \'%s\' "<paste the installation token>" > ~/.config/guidefold/search-token '
       + '&& chmod 600 ~/.config/guidefold/search-token '
       + '&& export GUIDEFOLD_SEARCH_TOKEN_FILE=~/.config/guidefold/search-token',
     )).toBeInTheDocument();
-    expect(screen.getByText('guidefold doctor')).toBeInTheDocument();
-    expect(screen.getByText('guidefold telemetry flush --url <api>')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'Open Create an installation' });
     expect(link).toHaveAttribute('href', '/#create-installation');
   });
@@ -177,6 +225,8 @@ describe('Organization route, integrations', () => {
     renderRoute(fakeSource({ listInstallations: async () => [] }), 'tab=integrations', { role: 'member' });
     await screen.findByText('Set up an adapter');
     expect(screen.getByText('guidefold install --harness claude')).toBeInTheDocument();
+    const fallbackToggle = screen.getByRole('button', { name: /CI or another script without a browser/ });
+    await userEvent.click(fallbackToggle);
     expect(screen.queryByRole('link', { name: 'Open Create an installation' })).not.toBeInTheDocument();
     expect(screen.getByText('Only an owner can create an installation token here; ask one to run this step.')).toBeInTheDocument();
   });

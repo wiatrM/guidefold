@@ -127,7 +127,8 @@ def test_default_backend_is_local_with_no_config_error(gf):
     cfg = gf.resolve_search_config(None, profile="interactive")
     assert cfg == {"backend": "local", "url": None,
                    "deadline_ms": gf.DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS,
-                   "token": None, "config_error": False}
+                   "token": None, "config_error": False,
+                   "token_source": None, "org": None, "repo": None}
 
 
 def test_hook_profile_uses_the_smaller_default_deadline(gf):
@@ -191,6 +192,162 @@ def test_token_is_never_present_in_a_resolved_config_repr_when_absent(gf, monkey
     monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
     cfg = gf.resolve_search_config(None, profile="interactive")
     assert cfg["token"] is None
+
+
+# --------------------------------------------------------------- resolve_search_config: login token
+
+def _write_credentials(monkeypatch, tmp_path, entries, filename="creds-under-test.json"):
+    """`entries`: {api_url: {"token": ..., "org": ...}} -- the same shape `guidefold login`
+    writes to `_credentials_path()`. Points the already-isolated GUIDEFOLD_CREDENTIALS
+    (conftest's `_isolate_guidefold_credentials`) at a fresh file holding them."""
+    path = tmp_path / filename
+    path.write_text(json.dumps(entries), encoding="utf-8")
+    monkeypatch.setenv("GUIDEFOLD_CREDENTIALS", str(path))
+    return path
+
+
+def test_login_token_used_as_last_resort_when_exactly_one_api_is_stored(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token-1", "org": "acme"}})
+    cfg = gf.resolve_search_config(None, profile="interactive")
+    assert cfg["token"] == "login-token-1"
+    assert cfg["token_source"] == "login"
+    assert cfg["org"] == "acme"
+
+
+def test_login_token_is_used_by_the_hook_profile_with_no_guidefold_yaml(gf, monkeypatch, tmp_path):
+    """`hook` calls `resolve_search_config(None, profile="hook", root=...)` -- cfg stays None
+    (E1.5: no guidefold.yaml/PyYAML on the hook path), so this exercises the exact call hook
+    makes, not just the interactive one."""
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token-hook", "org": "acme"}})
+    root = tmp_path / "repo"
+    root.mkdir()
+    cfg = gf.resolve_search_config(None, profile="hook", root=root)
+    assert cfg["token"] == "login-token-hook"
+    assert cfg["token_source"] == "login"
+    assert cfg["org"] == "acme"
+    assert cfg["repo"]     # `_default_repo_id(root)`, no guidefold.yaml needed
+
+
+def test_explicit_env_token_wins_over_a_stored_login_token(gf, monkeypatch, tmp_path):
+    """The explicit override must still win (GUIDEFOLD_TOKEN > token_file > login), even when a
+    login token is also on disk."""
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "env-wins-token")
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token-1", "org": "acme"}})
+    cfg = gf.resolve_search_config(None, profile="interactive")
+    assert cfg["token"] == "env-wins-token"
+    assert cfg["token_source"] == "env"
+    assert cfg["org"] is None
+
+
+def test_explicit_token_file_wins_over_a_stored_login_token(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    token_file = tmp_path / "token.txt"
+    token_file.write_text("file-token-value\n")
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token-1", "org": "acme"}})
+    cfg = gf.resolve_search_config({"search": {"token_file": str(token_file)}}, profile="interactive")
+    assert cfg["token"] == "file-token-value"
+    assert cfg["token_source"] == "token_file"
+    assert cfg["org"] is None
+
+
+def test_login_token_picks_the_entry_matching_configured_service_api(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path, {
+        "https://api.acme.example": {"token": "acme-token", "org": "acme"},
+        "https://api.other.example": {"token": "other-token", "org": "other"},
+    })
+    cfg = gf.resolve_search_config({"service": {"api": "https://api.other.example"}}, profile="interactive")
+    assert cfg["token"] == "other-token"
+    assert cfg["org"] == "other"
+
+
+def test_login_token_is_ambiguous_with_two_apis_and_no_configured_service_api(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path, {
+        "https://api.acme.example": {"token": "acme-token", "org": "acme"},
+        "https://api.other.example": {"token": "other-token", "org": "other"},
+    })
+    cfg = gf.resolve_search_config(None, profile="interactive")
+    assert cfg["token"] is None
+    assert cfg["token_source"] is None
+
+
+def test_no_stored_credentials_leaves_token_none(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    cfg = gf.resolve_search_config(None, profile="interactive")
+    assert cfg["token"] is None
+    assert cfg["token_source"] is None
+
+
+# ------------------------------------------------------------------------ _search_extra_headers
+
+def test_search_extra_headers_empty_for_env_or_token_file_source(gf):
+    assert gf._search_extra_headers({"token_source": "env", "org": "acme", "repo": "r"}) == {}
+    assert gf._search_extra_headers({"token_source": "token_file", "org": "acme", "repo": "r"}) == {}
+    assert gf._search_extra_headers({}) == {}
+
+
+def test_search_extra_headers_set_for_login_source(gf):
+    headers = gf._search_extra_headers({"token_source": "login", "org": "acme", "repo": "myrepo"})
+    assert headers == {"X-Guidefold-Org": "acme", "X-Guidefold-Repo": "myrepo"}
+
+
+def test_search_extra_headers_omits_missing_org_or_repo(gf):
+    assert gf._search_extra_headers({"token_source": "login", "org": None, "repo": "myrepo"}) \
+        == {"X-Guidefold-Repo": "myrepo"}
+    assert gf._search_extra_headers({"token_source": "login", "org": "acme", "repo": None}) \
+        == {"X-Guidefold-Org": "acme"}
+
+
+def test_login_token_sends_org_and_repo_headers_over_the_wire(gf, monkeypatch, tmp_path):
+    """End-to-end: a `search.backend: service` request authenticated with a stored login token
+    (no GUIDEFOLD_TOKEN, no token_file) carries X-Guidefold-Org/X-Guidefold-Repo (API-CONTRACT
+    §2/§3) so the server can resolve the request's org/repo -- a personal token is not bound to
+    one the way an installation token is."""
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token-1", "org": "acme"}})
+    remote_cards = [_card("urn:skill:m:n:remote-a")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: ([], []))
+    root = tmp_path / "repo"
+    root.mkdir()
+    with running_service(_search_ok(remote_cards)) as (url, ctrl):
+        search_cfg = gf.resolve_search_config({"search": {"backend": "service", "url": url}},
+                                               profile="interactive", root=root)
+        assert search_cfg["token_source"] == "login"
+        result = gf.search_with_backend(root, object(), "q", "_root", profile="interactive",
+                                         k=3, search_id="sid-login-headers", search_cfg=search_cfg)
+    assert result["backend"] == "online_sparse"
+    assert len(ctrl.requests) == 1
+    sent = ctrl.requests[0]["headers"]
+    assert sent["Authorization"] == "Bearer login-token-1"
+    assert sent["X-Guidefold-Org"] == "acme"
+    assert "X-Guidefold-Repo" in sent
+
+
+def test_installation_token_never_sends_org_or_repo_headers(gf, monkeypatch, tmp_path):
+    """An env/token_file credential (typically an installation token, already bound to one
+    org/repo server-side) must never carry these headers -- a mismatched header there is a hard
+    403, not a no-op (API-CONTRACT §2)."""
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "installation-token-1")
+    remote_cards = [_card("urn:skill:m:n:remote-a")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: ([], []))
+    with running_service(_search_ok(remote_cards)) as (url, ctrl):
+        search_cfg = gf.resolve_search_config({"search": {"backend": "service", "url": url}},
+                                               profile="interactive", root=tmp_path)
+        assert search_cfg["token_source"] == "env"
+        gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive",
+                                k=3, search_id="sid-install-headers", search_cfg=search_cfg)
+    assert len(ctrl.requests) == 1
+    sent = ctrl.requests[0]["headers"]
+    assert "X-Guidefold-Org" not in sent
+    assert "X-Guidefold-Repo" not in sent
 
 
 # --------------------------------------------------------------------------------- _parse_search_url
