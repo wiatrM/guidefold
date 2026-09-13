@@ -193,13 +193,39 @@ Before regenerating anything, `node qa/compare-gallery.mjs` (no `--update`) agai
 already committed pre-merge reported exactly **3 of 87** cases changed, all three
 `NumberTicker` (1280/820/390) — expected, because the gallery's own `NumberTicker` sample was
 edited in this same change (`suffix=" skills"` → `suffix={' skills'}`, a rendering fix: a
-plain leading space collapses in an inline `<span>`, a non-breaking space does not). **All 84
-other records — the pre-existing 15 components and the other 13 effects — matched their
-committed sha256 exactly**, including through the `origin/main` merge itself: no incidental
-Tailwind/CSS regeneration shifted anything this task did not touch.
+plain leading space collapses in an inline `<span>`, a non-breaking space does not). Of the
+remaining 84 (29 components × 3 widths, minus the 3 `NumberTicker` records): the **45 records
+for the 15 pre-existing components were unchanged by the merge** — the actual drift check the
+coordinator asked for, and the one PR #168 failed (an untouched `PyramidChart` shifted 1px through
+generated Tailwind CSS). The other **39 records, for the thirteen other effects, reproduced
+byte-identically on a second, independent run** — a determinism check, not a drift check: they
+were captured minutes earlier in this same session and did not exist before this change, so this
+proves they render the same twice, not that they survived the merge unchanged.
 `git diff -- ui/qa/baseline/manifest.json` confirms the same: only the 3 `NumberTicker` sha256
 entries and the top-level `capturedAt` timestamp changed. The baseline was then regenerated
 (`--update`) and re-verified clean: `{"cases":87,"passed":true,"differences":[]}`.
+
+**`OrgSwitcher` is not in this visual run.** `qa/check-contracts.mjs`'s `expected` list is now 18
+(main's `OrgSwitcher` plus the 17 already there); `qa/compare-gallery.mjs`'s `components` list is
+separate and only ever covered 15 (now 15 + these 14 effects) — `OrgSwitcher` has no gallery
+entry and this change does not add one. The 87-case pass above proves the 29 named components
+still render correctly; it says nothing about `OrgSwitcher`.
+
+**`ShaderField`'s WebGL path was verified, not assumed.** Whether the captured baseline is the
+live `MeshGradient` frame or the `--effect-shader-fallback` CSS gradient depends on whether the
+capture browser has WebGL — a real risk if CI's headless Chromium differs from this sandbox's.
+Checked directly against the same dev server `compare-gallery.mjs` used:
+`document.createElement('canvas').getContext('webgl2')` succeeds, and
+`document.querySelector('[data-slot=shader-field] canvas')` finds a mounted canvas — so
+`ShaderField-*.png` in the committed baseline is a real shader frame, not the fallback.
+`reducedMotion:'reduce'` drives `speed={0}` (§4 above), and the second, independent
+`compare-gallery.mjs` run reproduced that frame byte-identically, so the capture is
+frame-deterministic in this environment. The residual risk is a CI runner whose headless
+Chromium has no software WebGL (SwiftShader) at all, which would make `ShaderField` fall back to
+the CSS gradient and diff against this baseline on the very first CI run; if that happens, the
+fix is either accepting a new CI-side baseline for that one record or removing `ShaderField`
+alone from `compare-gallery.mjs`'s `components` list (the other thirteen effects do not depend on
+WebGL and already carry the visual proof).
 
 ## Proof
 
@@ -222,7 +248,8 @@ this branch:
 - `pnpm run build`: succeeds; numbers in §"Bundle cost" above.
 - `pnpm test:visual` (`qa/compare-gallery.mjs`, dev server via `GUIDEFOLD_DEV_UI_PORT`): 87/87
   cases pass against the regenerated baseline; see §"Visual baseline check" for the 3-record diff
-  this change caused and the 84-record confirmation that the merge caused none.
+  this change caused, the 45-record confirmation that the merge caused none in the pre-existing
+  components, and the WebGL/shader-determinism verification for `ShaderField`.
 - Screenshots: `ui/qa/baseline/<Effect>-{1280,820,390}.png` for all fourteen effects (42 files)
   plus the matching `ui/qa/gallery/<Effect>-*.png` actual captures; `ui/qa/pixel-diff.json` and
   `ui/qa/contracts.json` are the machine-readable reports from the same two runs.
