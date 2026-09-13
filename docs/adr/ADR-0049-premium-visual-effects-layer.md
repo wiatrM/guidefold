@@ -38,14 +38,15 @@ those bans also happened to protect.
 1. **UX §6, row 1** ("Gradienty jako powierzchnia, glassmorphism, glow, neon → Płaskie tło
    graphite i obrys 1 px") is replaced: gradients, glow and animated borders are permitted as a
    decorative layer, sourced from `ui/src/components/effects/*`, anywhere in the console.
-   Glassmorphism (`backdrop-filter` blur panels) stays out of this reversal — the owner named
-   glow, animated borders and shaders, not blurred glass — and remains banned as before.
+   Glassmorphism (`backdrop-filter` blur panels) is permitted too: the owner chose to lift the
+   visual ban in full ("Znoszę zakaz z UX §6 w całości"), not only for the effects they named.
 2. **UX §6, row 8** ("Automatyczne ruchy, confetti, pulsujące statusy → Ruch wyłącznie po zmianie
    stanu, z reduced motion") is replaced for the effects layer: continuous decorative motion
    (a rotating border, a drifting grid, an orbiting satellite) is permitted, not only motion tied
-   to a state change. **Pulsing status badges stay banned** — the owner's list names glow,
-   borders, shaders and the decorative categories, never a state indicator that pulses instead of
-   reading Unknown/Partial/Unavailable; `StateBadge` is unchanged by this ADR. Confetti is not
+   to a state change. Pulsing is permitted as decoration as well, because the owner lifted the
+   visual ban in full. What stays binding is the accessibility rule in point 5: a state is never
+   conveyed by an animation alone. A pulse may accompany a `StateBadge` whose label and tone
+   already say Unknown, Partial or Unavailable; it never replaces that label. Confetti is not
    named in the owner's list either; the kit's success moment (`SuccessBurst`) is a check mark and
    a brief glow, not a particle celebration — see Consequences for why.
 3. The same two rows in `.agents/skills/ui-anti-slop-gate/SKILL.md`'s table are amended

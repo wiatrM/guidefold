@@ -98,14 +98,13 @@ Te reguły dotyczą ekranów i dokumentów. Utrzymujemy język oraz geometrię [
 
 | Niedopuszczalne | Wymagana postać |
 |---|---|
-| Glassmorphism (rozmyte szklane panele, `backdrop-filter`) | Płaskie tło graphite i obrys 1 px. |
 | Duże zaokrąglenia, pill badges, emoji jako ikony | Promień 2 px i Phosphor regular. |
 | Hero, slogan marketingowy, wyśrodkowany wielki nagłówek w produkcie | Nazwa widoku, identyfikacja obiektu i jego działanie. |
 | Karty albo metryki dodane dla symetrii | Tylko dostępne dane potrzebne do konkretnej decyzji. |
 | Wykres bez pytania, skali lub danych | Tekstowy dowód albo jawny brak obserwacji. |
 | Przykładowe firmy/ludzie/liczby udające produkcję | Dane rzeczywiste; wartości przykładowe tylko w makietach i galerii, wyraźnie podpisane. |
 | Przełączniki motywu lub gęstości | Jeden graphite, stałe Balanced 40 px; mobile powiększa cele dotykowe. |
-| Pulsujące statusy (stan wywnioskowany z animacji zamiast z etykiety StateBadge) | Ruch wyłącznie po zmianie stanu, z reduced motion. |
+| Stan przekazany wyłącznie animacją (pulsowanie, poświata, kolor ruchu) bez etykiety | Etykieta i ton `StateBadge`; animacja może być dodatkiem do opisanego stanu, nigdy jego jedynym nośnikiem. |
 | Nowy wariant komponentu bez potrzeby | Użycie istniejącego API; drugi wariant ma pisemne uzasadnienie. |
 
 **Decyzja właściciela 2026-09-13 ([ADR-0049](../adr/ADR-0049-premium-visual-effects-layer.md)):**
@@ -113,8 +112,8 @@ gradienty jako powierzchnia, glow, neon, animowane obramowania (border beam, shi
 shadery i kategorie dekoracyjne (animowane listy, animowany tekst, liczniki, marquee, orbiting
 circles) są dopuszczone wszędzie w konsoli, z zestawu `ui/src/components/effects/*` — bez
 ograniczenia miejsca. To samo dotyczy ciągłego ruchu dekoracyjnego (obracający się border,
-dryfująca siatka), nie tylko ruchu po zmianie stanu. Glassmorphism i pulsujące statusy pozostają
-zakazane — właściciel nie wymienił żadnego z nich. Wiążące pozostaje to, co jest dostępnością, a
+dryfująca siatka), nie tylko ruchu po zmianie stanu. Dotyczy to także glassmorphismu (`backdrop-filter`)
+i pulsowania: właściciel zniósł zakaz wizualny w całości. Wiążące pozostaje to, co jest dostępnością, a
 nie estetyką: `prefers-reduced-motion` wyłącza ruch albo zatrzymuje go na jednej klatce; kontrast
 tekstu na dowolnym efekcie spełnia WCAG AA; żaden efekt nie niesie informacji sam z siebie (stan
 zawsze czyta się z etykiety i tonu `StateBadge`); focus pozostaje widoczny (glow jest dodatkiem do
