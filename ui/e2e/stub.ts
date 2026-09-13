@@ -461,12 +461,18 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
     }
     if (at === repoBase + '/map/scopes') {
       const scope = url.searchParams.get('scope');
+      const scopeView = (entry: typeof nodes[number]) => ({
+        id: entry.id, owner: entry.owner, parent: entry.id.lastIndexOf('.') > 0 ? entry.id.slice(0, entry.id.lastIndexOf('.')) : null,
+        paths: entry.paths, source: 'guidefold_yaml', count: listed.filter(item => item.scope === entry.id).length,
+      });
       const node = nodes.find(entry => entry.id === scope);
       return json({
-        scope: node ? { id: node.id, owner: node.owner, paths: node.paths, parent: null } : null,
-        children: scenario === 'empty' ? [] : nodes.map(entry => ({ id: entry.id, owner: entry.owner, skills: listed.filter(item => item.scope === entry.id).length })),
+        schema_version: '1',
+        scope: node ? scopeView(node) : null,
+        scopes: scenario === 'empty' ? [] : nodes.filter(entry => !scope || entry.id.startsWith(scope + '.')).map(scopeView),
         skills: listed.filter(item => !scope || item.scope === scope).slice(0, 5).map(item => ({ skill_id: item.id, name: item.name })),
-        unmapped: listed.filter(item => !nodes.some(entry => entry.id === item.scope)).map(item => ({ skill_id: item.id, name: item.name })),
+        unmapped: [...new Set(listed.map(item => item.scope))].filter(name => !nodes.some(entry => entry.id === name)).sort()
+          .map(name => ({ scope: name, count: listed.filter(item => item.scope === name).length })),
       });
     }
     if (at === repoBase + '/map/layers') return json({ layers: scenario === 'empty' ? [] : [{ layer: 'unclassified', count: skills.length }] });
