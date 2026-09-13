@@ -239,7 +239,7 @@ func TestGitHubInstallationDTOCarriesSelectionLinkedAtAndSyncState(t *testing.T)
 // either-order case) — and that webhook payload here carries no
 // repository_selection at all, the ordinary case for a bare "created"
 // fixture. The callback's own INSERT must still fill repository_selection
-// in from its /user/installations proof: an UPDATE gated on account=''
+// in from its /user/installations proof: an UPDATE gated on an empty account
 // would silently skip it once the webhook has already set a real account.
 func TestGitHubInstallationSelectionFillsInAfterWebhookSetsAccountFirst(t *testing.T) {
 	h := newGitHubHarness(t, []int64{888})
