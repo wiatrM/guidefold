@@ -11,7 +11,13 @@ workos:
   clientID: "" # WorkOS client id; secret stays in workos.secretName
   secretName: guidefold-workos # key: api-key
 github:
-  webhookSecretName: "" # optional GitHub App webhook secret; key: webhook-secret
+  webhookSecretName: "" # optional GitHub App webhook secret; key: webhook-secret; API only
+  # Optional GitHub App identity (ADR-0036), needed by the worker to sign an
+  # installation-token JWT for api.github.com — never by the API, which only
+  # verifies webhook deliveries above. appId and privateKeySecretName must be
+  # set together or not at all; setting exactly one fails the chart render.
+  appId: "" # numeric GitHub App id, as a string
+  privateKeySecretName: "" # secret holding the App's PEM private key; key: private-key
 # Optional deployment master keyring for organisation-supplied provider credentials
 # (ADR-0045). Empty means no keyring is mounted and GUIDEFOLD_SECRET_KEY_FILE is left
 # unset: internal/secrets.LoadKeyring then returns no keyring, credential PUT answers
