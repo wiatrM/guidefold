@@ -21,7 +21,9 @@ test('an unauthenticated management route lands on the login page outside the sh
 test('the organisation comes from the API once the session is confirmed', async ({ page }) => {
   await stubApi(page);
   await page.goto('/import');
-  await expect(page.getByText('Meridian Data')).toBeVisible();
+  // The organisation's name now appears in the rail switcher and in the site header; the
+  // switcher is where the organisation is chosen (UX §3a), so assert it there.
+  await expect(page.getByRole('button', { name: 'Switch organization' })).toContainText('Meridian Data');
   // Sign-in is not a step of the wizard any more.
   await expect(page.getByRole('button', { name: /Continue with GitHub/ })).toHaveCount(0);
 });

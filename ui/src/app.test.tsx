@@ -28,7 +28,7 @@ const previousAsyncUtilTimeout = getConfig().asyncUtilTimeout;
 configure({ asyncUtilTimeout: 5000 });
 afterAll(() => { configure({ asyncUtilTimeout: previousAsyncUtilTimeout }); });
 
-afterEach(() => { sessionStorage.clear(); });
+afterEach(() => { sessionStorage.clear(); localStorage.clear(); });
 
 const rejectingSource = () => fakeSource();
 
@@ -85,9 +85,12 @@ describe('shell composition', () => {
     </MemoryRouter>);
     expect(await screen.findAllByText('meridian')).not.toHaveLength(0);
     expect(screen.getAllByText('monorepo')).not.toHaveLength(0);
-    expect(screen.getByText('Meridian Data')).toBeInTheDocument();
+    // "Meridian Data" now appears twice: the organisation switcher trigger in the rail, and the
+    // import wizard's own organisation table (unchanged).
+    expect(screen.getAllByText('Meridian Data')).not.toHaveLength(0);
     expect(screen.getAllByText('Owner')).not.toHaveLength(0);
     expect(within(screen.getByRole('complementary')).getByRole('button', { name: 'Open profile menu' })).toBeInTheDocument();
+    expect(within(screen.getByRole('complementary')).getByRole('button', { name: 'Switch organization' })).toBeInTheDocument();
   });
 
   test('the grouped sidebar folds without turning Skill into a global destination', async () => {
@@ -186,6 +189,50 @@ describe('shell composition', () => {
       expect(screen.queryByText('meridian-first')).not.toBeInTheDocument();
       expect(screen.queryByText('meridian-second')).not.toBeInTheDocument();
     });
+  });
+
+  test('remembers the last chosen organisation and reopens it when the URL names none (docs/ui/UX.md §3a)', async () => {
+    const twoOrgs: Me = { ...me, orgs: [
+      { org_id: 'o1', slug: 'meridian', name: 'Meridian Data', role: 'owner' },
+      { org_id: 'o2', slug: 'apex', name: 'Apex Systems', role: 'owner' },
+    ] };
+    localStorage.setItem('guidefold-last-org-v1:' + twoOrgs.user.id, 'apex');
+    const controller = new AccessController({ fetchMe: async () => twoOrgs, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/home']}>
+      <AccessProvider controller={controller}><App source={fakeSource()} /></AccessProvider>
+    </MemoryRouter>);
+    // "Apex Systems" appears twice once resolved: the switcher trigger and the topbar workspace label.
+    expect(await screen.findAllByText('Apex Systems')).not.toHaveLength(0);
+    expect(screen.queryByText('Meridian Data')).not.toBeInTheDocument();
+  });
+
+  test('ignores a stale remembered organisation, falls back to the first membership and drops it', async () => {
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    const key = 'guidefold-last-org-v1:' + me.user.id;
+    localStorage.setItem(key, 'no-longer-a-member');
+    render(<MemoryRouter initialEntries={['/home']}>
+      <AccessProvider controller={controller}><App source={fakeSource()} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findAllByText('Meridian Data')).not.toHaveLength(0);
+    await waitFor(() => expect(localStorage.getItem(key)).toBeNull());
+  });
+
+  test('an explicit ?org= wins over a different remembered organisation and becomes the new remembered value', async () => {
+    const twoOrgs: Me = { ...me, orgs: [
+      { org_id: 'o1', slug: 'meridian', name: 'Meridian Data', role: 'owner' },
+      { org_id: 'o2', slug: 'apex', name: 'Apex Systems', role: 'owner' },
+    ] };
+    const key = 'guidefold-last-org-v1:' + twoOrgs.user.id;
+    localStorage.setItem(key, 'meridian');
+    const controller = new AccessController({ fetchMe: async () => twoOrgs, onDenied: vi.fn() });
+    await controller.check(true);
+    render(<MemoryRouter initialEntries={['/home?org=apex']}>
+      <AccessProvider controller={controller}><App source={fakeSource()} /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findAllByText('Apex Systems')).not.toHaveLength(0);
+    await waitFor(() => expect(localStorage.getItem(key)).toBe('apex'));
   });
 
   test('an organisation the account does not belong to is masked, not explained', async () => {

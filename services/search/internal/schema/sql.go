@@ -191,6 +191,15 @@ CREATE TABLE IF NOT EXISTS gfm.github_installations (
 -- value this column has never seen should still store rather than fail the
 -- transaction that also links the installation.
 ALTER TABLE gfm.github_installations ADD COLUMN IF NOT EXISTS repository_selection text;
+-- GitHub's own installation.account.type ("User"|"Organization"), lower-cased
+-- before storage (API-CONTRACT §5.1 GitHubInstallation.account_type, 1.13.0).
+-- The console's "missing a repository" link needs it: a personal account's
+-- own installation settings live at a different GitHub URL than an
+-- organisation's. Nullable and COALESCE-preserved exactly like
+-- repository_selection above, for the same reason — known only once either
+-- the callback's GET /user/installations proof or an "installation" webhook
+-- reports it.
+ALTER TABLE gfm.github_installations ADD COLUMN IF NOT EXISTS account_type text;
 -- Upgrades the earlier org-keyed shape, where org_id was part of the primary
 -- key and was written by the webhook itself from a login-equals-slug guess —
 -- a match that only ever worked when a Guidefold organisation's slug happened
@@ -364,6 +373,18 @@ CREATE TABLE IF NOT EXISTS gfm.repos (
 -- a repository visibility change on GitHub's side).
 ALTER TABLE gfm.repos ADD COLUMN IF NOT EXISTS github_installation_id bigint;
 CREATE INDEX IF NOT EXISTS repos_github_installation ON gfm.repos(org_id,github_installation_id) WHERE github_installation_id IS NOT NULL;
+-- import_blocked_reason names why the last github.import_repo attempt (§8,
+-- 1.13.0) never reached CreateImport — today only guidefold_yaml_missing:
+-- the repository has no guidefold.yaml, so it is not managed by Guidefold
+-- (API-CONTRACT §5.2 Repo.import_blocked_reason), the same named reason
+-- live.repo's own skipTarget already uses. There is no other durable home
+-- for this: unlike a real import, CreateImport is never called on this
+-- path, so no gfm.imports row exists to carry it (§5.2 note on why
+-- last_import_state reads gfm.imports, never this column). Written by
+-- GitHubImportWorker.Run, cleared (back to NULL) in the same attempt that
+-- finds guidefold.yaml and actually creates an import, so a repository that
+-- gains one after being skipped does not read blocked forever.
+ALTER TABLE gfm.repos ADD COLUMN IF NOT EXISTS import_blocked_reason text;
 -- Optional repository policy. An empty ACL keeps the existing organization
 -- membership behavior; once an owner adds one entry, non-owners need an
 -- explicit row for every management and delivery operation.

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-13T17:03:02.292Z",
+  "capturedAt": "2026-09-13T17:14:20.839Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
-    "components": 17,
-    "cssFiles": 56,
+    "components": 18,
+    "cssFiles": 57,
     "tokens": 476,
-    "productionFilesTraversed": 53,
+    "productionFilesTraversed": 64,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -221,6 +221,20 @@
         "Default",
         "ListMissing"
       ]
+    },
+    {
+      "name": "OrgSwitcher",
+      "files": [
+        "src/components/OrgSwitcher/index.tsx",
+        "src/components/OrgSwitcher/OrgSwitcher.module.css",
+        "src/components/OrgSwitcher/OrgSwitcher.test.tsx",
+        "src/components/OrgSwitcher/OrgSwitcher.stories.tsx"
+      ],
+      "scenarios": [
+        "Default",
+        "SingleOrganisation",
+        "NoOrganisation"
+      ]
     }
   ],
   "typeOnlyEdges": [
@@ -267,6 +281,26 @@
     {
       "file": "src/components/RepositoryFilter/index.tsx",
       "specifier": "../../api/decoders"
+    },
+    {
+      "file": "src/components/OrgSwitcher/index.tsx",
+      "specifier": "../../api/decoders"
+    },
+    {
+      "file": "src/components/OrgSwitcher/index.tsx",
+      "specifier": "../../domain/orgSwitch"
+    },
+    {
+      "file": "src/domain/orgSwitch.ts",
+      "specifier": "../api/decoders"
+    },
+    {
+      "file": "src/domain/orgSwitch.ts",
+      "specifier": "../domain"
+    },
+    {
+      "file": "src/domain/orgSwitch.test.ts",
+      "specifier": "../api/decoders"
     },
     {
       "file": "src/domain/overview.test.ts",

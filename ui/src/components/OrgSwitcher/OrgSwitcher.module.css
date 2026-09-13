@@ -1,0 +1,7 @@
+/* Layout comes entirely from the shadcn/Tailwind primitives this component composes
+ * (dropdown-menu.tsx, sidebar.tsx, avatar.tsx): the popup already tracks the trigger's width
+ * and Base UI's own Positioner keeps it inside the viewport (`isolate z-50` + collision
+ * handling), so nothing here needs a literal responsive boundary. This file exists to satisfy
+ * the one-CSS-module-per-public-component contract (qa/check-contracts.mjs); no component-
+ * specific rule was needed once the Tailwind classes were in place.
+ */

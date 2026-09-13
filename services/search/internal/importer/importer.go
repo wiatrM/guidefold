@@ -82,6 +82,13 @@ func (s *Service) Register(r *mgmt.Router) {
 		s.handleFinalize, mgmt.IdempotentLive())
 	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/cancel",
 		s.handleCancel, mgmt.IdempotentLive())
+	// Task 3, API-CONTRACT §4.2/§8 (1.13.0): importing a GitHub-registered
+	// repository's skills, one repository or every one of them, without an
+	// organisation model key.
+	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/repos/{repo}/github/import", s.handleImportGitHubRepo,
+		mgmt.IdempotentLive())
+	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/github/import", s.handleImportAllGitHubRepos,
+		mgmt.IdempotentLive())
 }
 
 // repoContext is the authorised (organisation, repository) pair of one request.
