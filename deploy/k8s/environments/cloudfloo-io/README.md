@@ -35,7 +35,47 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
-## Live Agent, organisation model keys and the init reconciliation — 2026-09-12 (current)
+## Organisation scope, catalog integrity and Overview publication truth — 2026-09-13 (current)
+
+Built by `publish-images.yml` (run 34759073012) from `main` at `b8b76ba`: PR #155 (the console reads the
+whole organisation by default and a repository is a filter, contract 1.11.0, ADR-0047), PR #158 (Overview
+reads publication and file counts from the latest import's detail instead of the list, and Organization ›
+Telemetry reads at organisation scope) and PR #157 (a repository can no longer overwrite another
+repository's skill, contract 1.11.1; Map › Scopes decodes the server shape). No change to
+`services/search/internal/schema/sql.go` since the previous release (`4c6281a`), so no migrate Job ran.
+The four digests were patched into the live `Application/guidefold` inline Helm values at
+2026-09-13T13:12:22Z after a dry run that changed exactly the four image lines.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:a4bcc8fe5dbcd2b8e573a263a1cefcc8aa8d281394b6d3a7f9ca12511d5d12bc` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:1ba75ce16a02afc737113827856d635fdfe6ce9482ef11e8e23661ae99b6befc` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:15a3cab5028131a670f07a1954868ec778ae4216ec3ad579e16d68c06c9d973f` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:b05240a84479b2e227aef45593c2ec83fc3a512b56b709726cab2d06651bfa11` |
+
+Rollback point (the release this one replaced, at `4c6281a`):
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:b00a29dbbe22a6eed0f1eeb2707d91b391fd4c6b577f574f0e8d55bf369ef052` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:6e5a4c613f0f58c669386b364dc1f452c241e3b6a8419dd5c017e1e62f0e6a47` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:618ea51d3447087d6bb98bb952f00840858fed1ef2a86e74cc6b86bce1edb64c` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:56235256d24092ac8fb18fee619313e7b3a620117e615b58dd7babf0a52e5860` |
+
+Smoke test after the rollout (all four deployments ready on the new digests, 0 restarts,
+`Application/guidefold` Synced and Healthy at `b8b76ba`):
+
+| Check | Before | After |
+|---|---|---|
+| `/` | 200 | 200 |
+| `/health/ready` | 200 | 200 |
+| `GET /api/v1/auth/login/google` | 302 to WorkOS | 302 to WorkOS |
+| `/api/v1/me` (no session) | 401 | 401 |
+| `/api/v1/orgs/acme/skills` (new organisation-scope route, no session) | 404 | 401 |
+| `/api/v1/orgs/acme/repos/x/skills` | 401 | 401 |
+| API and worker `ERROR` lines in the first minutes | 0 (10 min before) | 0 |
+
+## Live Agent, organisation model keys and the init reconciliation — 2026-09-12
 
 Built by `publish-images.yml` from `main` at `6aa8ad8` (PR #143: the Live Agent
 rebuilt as one button that refreshes the skill library and creates consolidation
