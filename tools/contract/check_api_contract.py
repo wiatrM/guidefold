@@ -126,10 +126,17 @@ ERROR_PATTERNS = [
     ),
     # RFC 8628 device-flow errors built by internal/identity.deviceError.
     re.compile(r'\b(?:deviceError|apiError|newError)\(\s*"([a-z][a-z0-9_]*)"'),
+    # Browser-redirect outcome codes (never rendered as JSON, §4.7/§3): the GitHub install
+    # callback's consoleReturn(orgID, "code") and the WorkOS login callback's
+    # loginOutcomeReturn("code").
+    re.compile(r'\bconsoleReturn\([^,)]*,\s*"([a-z][a-z0-9_]*)"'),
+    re.compile(r'\bloginOutcomeReturn\(\s*"([a-z][a-z0-9_]*)"'),
 ]
 
 # Go error literals that are not wire error codes.
-ERROR_IGNORE = {"serialization_failed"}
+# "linked" is consoleReturn's own success outcome (§4.7 GitHub install callback), sharing the
+# same "?github=<code>" channel as its failure codes but never a wire *error*.
+ERROR_IGNORE = {"serialization_failed", "linked"}
 
 # Registrations that are not endpoints. Add a path only with a comment saying why.
 ROUTE_IGNORE: set[str] = {

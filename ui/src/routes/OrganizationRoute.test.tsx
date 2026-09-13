@@ -22,7 +22,8 @@ const installation = (over: Partial<Installation> = {}): Installation => ({
 });
 const githubInstallation = (over: Partial<GitHubInstallation> = {}): GitHubInstallation => ({
   installation_id: 501, account: 'meridian-data', repositories: [{ full_name: 'meridian-data/monorepo', repo_id: null }],
-  suspended: false, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:05:00Z',
+  repository_selection: 'all', suspended: false, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:05:00Z',
+  linked_at: '2026-09-01T00:00:00Z', registered_repositories: 1, synced: true,
   ...over,
 });
 
@@ -517,18 +518,20 @@ describe('Organization route, GitHub App installations (contract §4.7, ADR-0034
     expect(screen.queryByText('No GitHub App installation')).not.toBeInTheDocument();
   });
 
-  test('a linked installation with no reconciled repositories yet reads as still syncing, never as zero', async () => {
-    const syncing = githubInstallation({ repositories: [], created_at: '2026-09-10T00:00:00Z', updated_at: '2026-09-10T00:00:00Z' });
+  // Task 3: `synced` is the real field (`gfm.github_installation_links.repositories_synced_at`),
+  // not the retired `created_at === updated_at` heuristic on the webhook mirror.
+  test('a linked installation whose reconciliation has not run yet reads as still syncing, never as zero', async () => {
+    const syncing = githubInstallation({ repositories: [], registered_repositories: 0, synced: false });
     renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [syncing] }), 'tab=integrations');
     expect(await screen.findByText('Linked. Repositories still syncing.')).toBeInTheDocument();
-    expect(screen.queryByText('GitHub reported no repositories.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No repositories registered.')).not.toBeInTheDocument();
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
-  test('a genuinely empty repository list — confirmed by a later reconciliation write — reads as zero, not syncing', async () => {
-    const confirmedEmpty = githubInstallation({ repositories: [], created_at: '2026-09-10T00:00:00Z', updated_at: '2026-09-11T00:00:00Z' });
+  test('a genuinely empty registered count — confirmed by a completed reconciliation — reads as zero, not syncing', async () => {
+    const confirmedEmpty = githubInstallation({ repositories: [], registered_repositories: 0, synced: true });
     renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [confirmedEmpty] }), 'tab=integrations');
-    expect(await screen.findByText('GitHub reported no repositories.')).toBeInTheDocument();
+    expect(await screen.findByText('No repositories registered.')).toBeInTheDocument();
     expect(screen.queryByText('Linked. Repositories still syncing.')).not.toBeInTheDocument();
   });
 
@@ -557,8 +560,33 @@ describe('Organization route, GitHub App installations (contract §4.7, ADR-0034
   });
 
   test('landing back from a successful GitHub round trip shows its own message, not a generic one', async () => {
-    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github_connected=1');
-    expect(await screen.findByText(/back from GitHub/)).toBeInTheDocument();
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=linked');
+    const banner = await screen.findByText(/back from GitHub/);
+    expect(banner).toHaveAttribute('role', 'status');
+  });
+
+  // Task 1/2: every outcome the callback may carry in `?github=` renders as its own message —
+  // a refusal must never read as success or as a generic error.
+  test.each([
+    ['installation_not_owned', /not visible to your GitHub account/],
+    ['invalid_state', /no longer matches this browser/],
+    ['expired_state', /expired before it completed/],
+    ['provider_unavailable', /GitHub did not answer/],
+    ['invalid_callback', /missing information/],
+  ] as const)('the %s outcome reads as its own refusal, never as success', async (code, expected) => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=' + code);
+    const banner = await screen.findByText(expected);
+    expect(banner).toHaveAttribute('role', 'alert');
+    expect(screen.queryByText(/back from GitHub/)).not.toBeInTheDocument();
+  });
+
+  // github_app_not_configured routes through the same deployment-problem state Task 5 already
+  // covers when `start` itself fails, never through the plain outcome banner: telling the owner
+  // "install the App" right under "this deployment cannot start an install" would contradict it.
+  test('the github_app_not_configured outcome reads as the deployment problem, not a generic refusal', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=github_app_not_configured');
+    expect(await screen.findByText('No GitHub App configured on this deployment')).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing was linked/)).not.toBeInTheDocument();
   });
 
 });

@@ -108,6 +108,14 @@ func (w *GitHubSyncWorker) Run(ctx context.Context, t *worker.Task) error {
 	if e != nil {
 		return e
 	}
+	// repositories_synced_at (API-CONTRACT §4.7, §7): the console's only
+	// honest "reconciliation has run at least once" signal, written in the
+	// same transaction as the gfm.repos attach/detach above so it can never
+	// read true without those writes having actually committed.
+	if _, e := tx.Exec(ctx, `UPDATE gfm.github_installation_links SET repositories_synced_at=now()
+ WHERE installation_id=$1 AND org_id=$2::uuid`, payload.InstallationID, payload.OrgID); e != nil {
+		return e
+	}
 	if e := tx.Commit(ctx); e != nil {
 		return e
 	}

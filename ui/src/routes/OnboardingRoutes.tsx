@@ -228,25 +228,46 @@ const generationPanelId = 'generate-proposals';
 const createInstallationPanelId = 'create-installation';
 
 /**
- * Distinguishes "reconciliation has not touched this installation yet" from "reconciliation
- * ran and found nothing" — both read as `repositories: []` on the wire (contract §5.1
- * `GitHubInstallation`), which has no field for that distinction. The mirror row
- * (`gfm.github_installations`) sets `created_at` and `updated_at` to the same transaction
- * timestamp when it is first written (`schema/sql.go`, both `DEFAULT now()`), and only a later
- * webhook write ever moves `updated_at` past `created_at` (`identity/github.go`'s upsert always
- * sets `updated_at=now()`); `github.sync_repositories` itself never touches this JSONB column
- * (`agentrun/github_sync.go` writes only `gfm.repos`). So an unmoved timestamp — or either one
- * missing — means the list is still whatever it was at creation, never confirmed empty.
+ * `registered_repositories` and `synced` (contract §5.1 `GitHubInstallation`, Task 3) are the
+ * real fields: `registered_repositories` counts `gfm.repos` this organisation actually
+ * registered from this installation, and `synced` is true only once `github.sync_repositories`
+ * has completed at least once (`gfm.github_installation_links.repositories_synced_at`). This
+ * used to be inferred from the webhook mirror's `created_at`/`updated_at` timestamps happening
+ * to differ — an inference, not an observation, and wrong whenever reconciliation had genuinely
+ * found zero repositories on time. `repositories[]` (GitHub's own mirror of what it last
+ * reported) is a different measurement and stays out of this label so the two are never
+ * conflated.
  */
 function githubRepositoriesLabel(entry: GitHubInstallation): string {
-  // `repositories` is the webhook's own mirror (`gfm.github_installations`), never written by
-  // `github.sync_repositories` (`agentrun/github_sync.go` touches only `gfm.repos`) — so this is
-  // what GitHub last reported for the installation, not a count of what got registered. Saying
-  // "registered" here would be a false zero of exactly the kind this label exists to avoid.
-  if (entry.repositories.length) return entry.repositories.length + ' repositor' + (entry.repositories.length === 1 ? 'y' : 'ies') + ' reported by GitHub: ' + entry.repositories.map(repo => repo.full_name).join(', ');
-  if (!entry.created_at || !entry.updated_at || entry.updated_at === entry.created_at) return 'Linked. Repositories still syncing.';
-  return 'GitHub reported no repositories.';
+  if (!entry.synced) return 'Linked. Repositories still syncing.';
+  if (entry.registered_repositories === 0) return 'No repositories registered.';
+  return entry.registered_repositories + ' repositor' + (entry.registered_repositories === 1 ? 'y' : 'ies') + ' registered.';
 }
+
+/** `repository_selection` (contract §5.1, Task 4): GitHub's own "all"/"selected" on the
+ * installation object. `null` until either the callback's proof or a webhook delivery has
+ * reported it (§4.7) — an honest "not known yet", never guessed as one or the other. Table-cell
+ * wording ("All"/"Selected"), deliberately shorter than the owner-only recommendation's own
+ * "All repositories" a few lines up, so the two are never the same accessible text. */
+function githubSelectionLabel(entry: GitHubInstallation): string {
+  return entry.repository_selection === 'all' ? 'All'
+    : entry.repository_selection === 'selected' ? 'Selected'
+      : 'Unknown';
+}
+
+/** Every outcome `GET /api/v1/github/installations/callback` may carry in `?github=` (contract
+ * §4.7, Task 1/2): the callback never renders JSON any more, so this is the only place an owner
+ * ever learns what happened. Each refusal is its own line — never folded into a generic
+ * "something went wrong", and never read as success. */
+const GITHUB_CALLBACK_MESSAGES: Record<string, string> = {
+  linked: 'You’re back from GitHub. The installation is linked; its repositories are registered by a background job and may take a few minutes to appear below.',
+  installation_not_owned: 'GitHub says this installation is not visible to your GitHub account. Nothing was linked.',
+  invalid_state: 'This GitHub link no longer matches this browser, or was already used. Nothing was linked.',
+  expired_state: 'This GitHub link expired before it completed. Nothing was linked.',
+  provider_unavailable: 'GitHub did not answer while completing the link. Nothing was linked.',
+  invalid_callback: 'GitHub’s redirect was missing information this needs. Nothing was linked.',
+  internal_error: 'The GitHub link could not be completed. Nothing was linked.',
+};
 
 /**
  * The Integrations tab's "Set up an adapter" guide (Task 7): the owner asked what an adapter
@@ -846,15 +867,19 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   // §4.7's only error this deployment-level, not per-click: once `start` answers
   // `github_app_not_configured` there is nothing left for the owner to retry, so the button is
   // replaced rather than re-offered disabled next to an explanation (Task 5).
-  const [githubAppNotConfigured, setGithubAppNotConfigured] = useState(false);
-  // Read once, not tracked live: this route only ever reaches this address by the app's own
-  // client-side redirect from `/orgs/:slug/settings/github` (below, and `app.tsx`), which itself
-  // only ever runs after `GET /api/v1/github/installations/callback` 302s the browser back on a
-  // *successful* link (§4.7) — a failed callback answers raw JSON and never reaches this route
-  // at all (confirmed against `identity/github_link.go`'s `mgmt.Fail`/`mgmt.Invalid` returns and
-  // `mgmt.Router.render`, which never redirects). So landing here with this flag is itself the
-  // success signal; there is no separate "connected" field on the wire to read.
-  const [justReturnedFromGitHub] = useState(() => ctx.params.get('github_connected') === '1');
+  // Initialised from the callback outcome too (below): a deployment can lose its App
+  // configuration between `start` and the browser's own round trip to GitHub and back, and
+  // that refusal reads the same way as clicking Connect GitHub today and finding it gone.
+  const [githubAppNotConfigured, setGithubAppNotConfigured] = useState(() => ctx.params.get('github') === 'github_app_not_configured');
+  // Read once, not tracked live: `?github=<code>` is this exact return trip's own one-shot
+  // signal from `GET /api/v1/github/installations/callback` (§4.7, Task 1/2) — every outcome,
+  // success and every refusal alike, always redirects here with its own code, never JSON.
+  // `github_app_not_configured` renders through the state above instead of this banner, so the
+  // two never both claim the same panel.
+  const [githubCallbackOutcome] = useState(() => {
+    const code = ctx.params.get('github');
+    return code && code !== 'github_app_not_configured' ? code : '';
+  });
   const [deviceStatus, setDeviceStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [keyProvider, setKeyProvider] = useState<OrgCredentialProvider>(orgCredentialProviders[0]);
@@ -1324,7 +1349,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       </Panel>
       <div className={styles.asideColumns}>
         <Panel title="GitHub App installations" eyebrow="Source connection" icon={<GithubLogoIcon weight="regular" aria-hidden="true" />}>
-          {justReturnedFromGitHub && <p className={styles.feedback} role="status">You&rsquo;re back from GitHub. The installation is linked; its repositories are registered by a background job and may take a few minutes to appear below.</p>}
+          {githubCallbackOutcome && <p className={styles.feedback} role={githubCallbackOutcome === 'linked' ? 'status' : 'alert'}>{GITHUB_CALLBACK_MESSAGES[githubCallbackOutcome] ?? GITHUB_CALLBACK_MESSAGES.internal_error}</p>}
           {owner && (githubAppNotConfigured
             // Task 5: a deployment problem, not a click to retry — the button is gone, not disabled.
             ? <RouteState state="error" title="No GitHub App configured on this deployment" description="This Guidefold deployment has no GitHub App client configured, so installations cannot be started here. This is not something to retry — ask whoever operates this deployment to configure it." />
@@ -1338,15 +1363,16 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
           {githubInstallations.phase === 'loading' && <RouteState state="loading" title="Reading GitHub installations" description="Waiting for the source connections for this organization." />}
           {githubInstallations.phase === 'error' && githubInstallations.error && <ApiFailure error={githubInstallations.error} onRetry={githubInstallations.reload} retryLabel="Retry GitHub installations" />}
           {githubInstallations.phase === 'ready' && (githubInstallations.value?.length
-            ? <DataTable flush caption="GitHub App installations" headings={['Account', 'Repositories', 'Status', 'First seen', 'Action']}>
+            ? <DataTable flush caption="GitHub App installations" headings={['Account', 'Selection', 'Repositories', 'Status', 'Linked', 'Action']}>
               {githubInstallations.value.map(entry => <tr key={entry.installation_id}>
                 <th scope="row">{entry.account}<span className={styles.linkHint}>Installation {entry.installation_id}</span></th>
+                <td>{githubSelectionLabel(entry)}</td>
                 <td>{githubRepositoriesLabel(entry)}</td>
                 <td><StateBadge tone={entry.suspended ? 'warning' : 'system'}>{entry.suspended ? 'suspended' : 'active'}</StateBadge></td>
-                {/* `created_at` is the mirror row's first-write timestamp (whichever of the
-                    webhook or this callback wrote it first, §4.7) — not `gfm.github_installation_links.linked_at`,
-                    which the DTO does not carry. "First seen", not "Linked". */}
-                <td>{unknown(entry.created_at)}</td>
+                {/* `linked_at` is `gfm.github_installation_links.linked_at` (contract §5.1, Task
+                    4) — when this organisation proved the link, distinct from the mirror row's
+                    own `created_at` (whichever of the webhook or a callback wrote it first). */}
+                <td>{unknown(entry.linked_at)}</td>
                 <td>{owner ? <ActionButton size="sm" disabled={busy} onClick={() => { void removeGitHubInstallation(entry); }}>Disconnect</ActionButton> : <span className={styles.help}>Owner only</span>}</td>
               </tr>)}
             </DataTable>

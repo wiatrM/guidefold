@@ -189,14 +189,23 @@ export const installation = object<Installation>({
 export const installationList: Decoder<Installation[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(installation)(value, path) : field('items', arrayOf(installation))(value, path);
 
+export type GitHubRepositorySelection = 'all' | 'selected';
 export interface GitHubInstallation {
   installation_id: number; account: string; repositories: { full_name: string; repo_id: string | null }[];
-  suspended: boolean; created_at: string | null; updated_at: string | null;
+  repository_selection: GitHubRepositorySelection | null;
+  suspended: boolean; created_at: string | null; updated_at: string | null; linked_at: string | null;
+  // registered_repositories/synced are gfm.repos and github.sync_repositories's own
+  // repositories_synced_at (contract §5.1/§7) — the count and completion flag an owner
+  // actually needs, distinct from `repositories` (the webhook's own mirror of what GitHub
+  // last reported, not what got registered).
+  registered_repositories: number; synced: boolean;
 }
 export const githubInstallation = object<GitHubInstallation>({
   installation_id: num, account: str,
   repositories: listOf(object({ full_name: str, repo_id: nullable(str) })),
-  suspended: bool, created_at: nullable(str), updated_at: nullable(str),
+  repository_selection: nullable(oneOf(['all', 'selected'] as const)),
+  suspended: bool, created_at: nullable(str), updated_at: nullable(str), linked_at: nullable(str),
+  registered_repositories: num, synced: bool,
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 

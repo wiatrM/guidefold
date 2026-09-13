@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/wiatrM/guidefold/services/search/internal/agentrun"
 	"github.com/wiatrM/guidefold/services/search/internal/jobs"
@@ -227,5 +228,41 @@ func TestGitHubSyncDerivedRepoIDsDoNotCollideAcrossOwners(t *testing.T) {
 	}
 	if !repoIDPattern.MatchString(idAcme) || !repoIDPattern.MatchString(idOther) {
 		t.Fatalf("derived ids must match repoPattern: %q %q", idAcme, idOther)
+	}
+}
+
+// syncedAt reads gfm.github_installation_links.repositories_synced_at
+// (API-CONTRACT §4.7, §7) directly.
+func syncedAt(t *testing.T, h *pivottest.Harness, installationID int64) *time.Time {
+	t.Helper()
+	var at *time.Time
+	if e := h.Pool.QueryRow(context.Background(),
+		`SELECT repositories_synced_at FROM gfm.github_installation_links WHERE installation_id=$1`, installationID).
+		Scan(&at); e != nil {
+		t.Fatal(e)
+	}
+	return at
+}
+
+// A successful run is the only thing that may claim reconciliation has
+// happened: repositories_synced_at starts NULL and is written inside the
+// same transaction as the gfm.repos attach/detach it reports on, never
+// inferred from gfm.jobs (retained only 90 days, API-CONTRACT §7) or from
+// gfm.github_installations.created_at/updated_at (the webhook mirror's own
+// timestamps, untouched by this worker).
+func TestGitHubSyncMarksReconciliationDone(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	if at := syncedAt(t, h, 1); at != nil {
+		t.Fatalf("a freshly linked installation must not read as already synced: %v", at)
+	}
+	server := installationRepositoriesServer(t, []string{"acme/one"})
+	gh, _ := newGHClient(t, server.URL)
+
+	enqueueGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, gh).Handlers())
+
+	if at := syncedAt(t, h, 1); at == nil {
+		t.Fatal("a completed sync must record repositories_synced_at")
 	}
 }

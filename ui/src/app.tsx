@@ -121,23 +121,15 @@ function ApiApp({source}:{source:DataSource}){
  useEffect(()=>{document.title=viewInfo[view].label+' | Guidefold';},[view]);
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
- // `github_connected` (below) is this client's own one-shot signal for the address the GitHub
- // callback redirect lands on, never a real navigation target: every `href` this builder produces
- // would otherwise carry it forward (it starts from the current query string) into the sidebar,
- // the tab links and anything bookmarked or shared from this page, replaying "you're back from
- // GitHub" on an address nobody returned from.
- const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);next.delete('github_connected');if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
- // `GET /api/v1/github/installations/callback` (contract §4.7, ADR-0034) 302s a successful
- // install link to exactly this literal path (`identity/github_link.go`'s `returnTo`) — one this
- // SPA never generates and does not recognise as a view name, so unhandled it fell through to the
- // unknown-view redirect below and silently dropped the owner on /home with no organisation, no
- // tab and no sign anything happened. The callback's *failures* answer raw JSON directly
- // (`mgmt.Fail`/`mgmt.Invalid`, never a redirect — `mgmt.Router.render` always writes the JSON
- // envelope, confirmed reading both) and never reach this router at all, so reaching this path is
- // itself the success signal: `github_connected=1` here is not a guess at what the server meant,
- // it is this client's own name for "the only way to arrive here at all".
- const githubInstallReturn=location.pathname.match(/^\/orgs\/([^/]+)\/settings\/github\/?$/)?.[1] ?? null;
- if(githubInstallReturn)return <Navigate to={'/organization?tab=integrations&org='+encodeURIComponent(githubInstallReturn)+'&github_connected=1'} replace/>;
+ // `github` (below) is the GitHub install callback's own outcome code (contract §4.7,
+ // ADR-0034, Task 1/2): the backend now redirects straight to this SPA's real
+ // `/organization?tab=integrations` route with `?github=<code>[&org=<org_id>]`, never to an
+ // address this router has to alias. The code is this exact return trip's own one-shot
+ // signal, never a real navigation target, so every `href` this builder produces drops it —
+ // it starts from the current query string, so the sidebar, the tab links and anything
+ // bookmarked or shared from this page would otherwise replay "you're back from GitHub" (or
+ // a refusal) on an address nobody returned from.
+ const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);next.delete('github');if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
  // An invitation link must render for a visitor who has no session yet, so it is checked before
  // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
  if(invitationToken)return <Shell view="import" href={href}
@@ -212,14 +204,19 @@ function ApiApp({source}:{source:DataSource}){
 function LoginEntry({source}:{source:DataSource}){
  const location=useLocation();
  const access=useAccess();
- const target=safeReturn(new URLSearchParams(location.search).get('return'));
+ const params=new URLSearchParams(location.search);
+ const target=safeReturn(params.get('return'));
+ // `?auth=<code>` is `GET /api/v1/auth/callback`'s own outcome code on a failed sign-in
+ // (contract §4.7, the same Task 1 fix as the GitHub install callback): that callback never
+ // renders JSON any more, so this is the only place a failed sign-in is ever explained.
+ const authOutcome=params.get('auth');
  if(access.status==='confirmed')return <Navigate to={target} replace/>;
  // A sign-in form is only honest once the session is known to be absent. While the first /me is
  // in flight, or whenever an identity is already held, this is the neutral loading shell: opening
  // /login from a bookmark or the Back button with a live session used to flash the providers and
  // fire their request before the redirect (review, important 2).
  if(access.status==='checking'||access.me)return <main id="main" tabIndex={-1}><RouteState state="loading" title="Checking your session" description="Reading the current session before anything is offered."/></main>;
- return <Suspense fallback={<main id="main" tabIndex={-1}><RouteState state="loading" title="Loading sign-in" description="Preparing the sign-in page."/></main>}><LoginRoute source={source} returnTo={target}/></Suspense>;
+ return <Suspense fallback={<main id="main" tabIndex={-1}><RouteState state="loading" title="Loading sign-in" description="Preparing the sign-in page."/></main>}><LoginRoute source={source} returnTo={target} authOutcome={authOutcome}/></Suspense>;
 }
 
 export default function App({source}:{source:DataSource}){
