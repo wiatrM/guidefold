@@ -654,18 +654,21 @@ export const mapRepository = object<MapRepository>({
   path: fallback(str, ''), children: listOf(mapChild), next_cursor: nullable(str),
 });
 
+export interface ScopeNode { id: string; repo_id: string | null; owner: string | null; parent: string | null; paths: string[]; source: string | null; count: number }
+export const scopeNode = object<ScopeNode>({
+  id: str, repo_id: nullable(str), owner: nullable(str), parent: nullable(str), paths: listOf(str), source: nullable(str), count: fallback(num, 0),
+});
 export interface MapScopes {
-  scope: { id: string; repo_id: string | null; owner: string | null; paths: string[]; parent: string | null } | null;
-  /** `repo_id` (1.11.0): scope ids are unique per repository, so an organisation-scope list names each node's repository. */
-  children: { id: string; repo_id: string | null; owner: string | null; skills: number }[];
+  scope: ScopeNode | null;
+  scopes: ScopeNode[];
   skills: { skill_id: string; name: string }[];
-  unmapped: { skill_id: string; name: string }[];
+  unmapped: { scope: string; count: number }[];
 }
 export const mapScopes = object<MapScopes>({
-  scope: nullable(object({ id: str, repo_id: nullable(str), owner: nullable(str), paths: listOf(str), parent: nullable(str) })),
-  children: listOf(object({ id: str, repo_id: nullable(str), owner: nullable(str), skills: fallback(num, 0) })),
+  scope: nullable(scopeNode),
+  scopes: listOf(scopeNode),
   skills: listOf(object({ skill_id: str, name: str })),
-  unmapped: listOf(object({ skill_id: str, name: str })),
+  unmapped: listOf(object({ scope: str, count: fallback(num, 0) })),
 });
 
 export interface MapLayers { layers: { layer: KnowledgeLayer; count: number }[] }

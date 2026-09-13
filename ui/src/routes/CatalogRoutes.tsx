@@ -12,7 +12,7 @@ import {
   readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
 import type {ApiError} from '../api/client';
-import type {FeedbackEntry, MapChild, SkillSummary} from '../api/decoders';
+import type {FeedbackEntry, MapChild, ScopeNode, SkillSummary} from '../api/decoders';
 import type {ReadScope, SkillQuery} from '../data/source';
 import type {View} from '../domain';
 import {pyramidGraphBands, pyramidGraphEdges, hasAnyClassification, type PyramidLayer} from '../domain/pyramidGraph';
@@ -386,6 +386,22 @@ function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
   </Panel>;
 }
 
+// The API lists every node (no scope) or every descendant of the selected scope. A direct
+// child is a listed node with no other listed node between it and the selection, matching the
+// dotted parent the importer stores (domain.ParentScope) and keeping a node visible when an
+// intermediate scope is not declared.
+function directScopeChildren(nodes: ScopeNode[], selected: string | null): ScopeNode[] {
+  const ids = new Set(nodes.map(node => node.id));
+  return nodes.filter(node => {
+    for (let at = node.id.lastIndexOf('.'); at > 0; at = node.id.lastIndexOf('.', at - 1)) {
+      const ancestor = node.id.slice(0, at);
+      if (ancestor === selected) return true;
+      if (ids.has(ancestor)) return false;
+    }
+    return !selected;
+  });
+}
+
 export function ApiMapRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
   const target = readScope(ctx);
@@ -407,6 +423,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
   const familyUnclassifiedCount = familyBandsAll.find(band => band.layer === 'unclassified')?.items.length ?? 0;
   const familyEdges = pyramidGraphEdges(familySkills.value?.items ?? [], familyRelations.value?.items ?? []);
   const familyChartBands = familyBands.map(band => ({key: band.layer as 'abstract' | 'task' | 'atomic', label: pyramidLayerLabels[band.layer], description: pyramidLayerDescriptions[band.layer], items: band.items}));
+  const scopeChildren = directScopeChildren(scopes.value?.scopes ?? [], selectedScope);
   const degraded = readOnly(ctx);
   if (!ready) return <RouteState state="empty" title="No organization selected" description="Sign in to an organization to read its map." action={<ActionButton href={ctx.href('import', {step: 'organization'})} tone="system">Open Import</ActionButton>} />;
   return <div className={styles.stack}>
@@ -431,13 +448,13 @@ export function ApiMapRoute({ctx}: ApiProps) {
               <div className={styles.definition}><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path} className="block">{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
               <div className={styles.definition}><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
-            {scopes.value.children.length ? <ul className={styles.relationList}>
+            {scopeChildren.length ? <ul className={styles.relationList}>
               {/* A scope id is unique only within a repository (§4.10.6), so opening one from an
                   organisation-scope list carries its repository into the address. That narrows the
                   rail's repository selector as well; it is the visible, intended effect. */}
-              {scopes.value.children.map(child => <li key={(child.repo_id ?? '') + ':' + child.id}>
+              {scopeChildren.map(child => <li key={(child.repo_id ?? '') + ':' + child.id}>
                 <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null, repo: child.repo_id ?? repo})}><TreeStructureIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{child.id}</Link>
-                <span className={styles.muted}>{repo ? '' : (child.repo_id ?? 'Unknown repository') + ', '}{child.skills} skills, owner {unknown(child.owner)}</span>
+                <span className={styles.muted}>{repo ? '' : (child.repo_id ?? 'Unknown repository') + ', '}{child.count} skills, owner {unknown(child.owner)}</span>
               </li>)}
             </ul> : <p className={styles.muted}>No child scope is declared here.</p>}
             {scopes.value.skills.length > 0 && <ul className={styles.relationList}>
@@ -447,7 +464,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
             </ul>}
             {scopes.value.unmapped.length > 0 && <div className={styles.notice} role="status">
               <StateBadge tone="warning">Unmapped scope</StateBadge>
-              <p>{scopes.value.unmapped.length} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.name).join(', ')}. They stay readable and are not assigned to a parent.</p>
+              <p>{scopes.value.unmapped.reduce((total, item) => total + item.count, 0)} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.scope + ' (' + item.count + ')').join(', ')}. They stay readable and are not assigned to a parent.</p>
             </div>}
           </div>}
         </Panel>}

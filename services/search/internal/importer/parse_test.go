@@ -306,3 +306,56 @@ func TestACancelledImportIsSkippedByTheWorker(t *testing.T) {
 		t.Fatalf("a cancelled import wrote %d skills", skills)
 	}
 }
+
+// U2.1 — gfm.skills is keyed per organisation, so a second repository whose tree
+// yields the same skill ids must fail those files instead of rewriting the
+// first repository's catalog rows in place.
+func TestASecondRepositoryCannotOverwriteAnotherRepositorysSkill(t *testing.T) {
+	p := newParsed(t, true)
+	if p.status(t)["state"] != "ready" {
+		t.Fatal("the first import did not finish")
+	}
+	p.owner.CreateRepo(t, p.org, "second", "")
+	secondID := pivottest.Push(t, p.owner, p.org, "second", p.tree,
+		pivottest.Manifest(t, p.tree, "acme", "second", true), "second")
+	if ran := p.h.RunParse(t, pivottest.Scratch(t, "second")); ran != 1 {
+		t.Fatalf("the worker ran %d parse jobs, want 1", ran)
+	}
+
+	status, view, _ := p.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: pivottest.RepoBase(p.org, "second") + "/imports/" + secondID})
+	if status != http.StatusOK {
+		t.Fatalf("second import status: %d %v", status, view)
+	}
+	if view["state"] != "partial" {
+		t.Fatalf("state %v (error %v)", view["state"], view["error"])
+	}
+	counts := view["counts"].(map[string]any)
+	if counts["failed"].(float64) != fixtureSkills {
+		t.Fatalf("counts %v, want %d failed", counts, fixtureSkills)
+	}
+	conflicts := 0
+	for _, raw := range view["files"].([]any) {
+		file := raw.(map[string]any)
+		if file["status"] != "failed" {
+			continue
+		}
+		reason, _ := file["reason"].(string)
+		if !strings.HasPrefix(reason, "repo_conflict: meridian already holds urn:skill:meridian:") {
+			t.Fatalf("unexpected failure: %v", file)
+		}
+		conflicts++
+	}
+	if conflicts != fixtureSkills {
+		t.Fatalf("%d repo_conflict files, want %d", conflicts, fixtureSkills)
+	}
+
+	if got := p.count(t, `SELECT count(*) FROM gfm.skills
+ WHERE org_id=$1::uuid AND repo_id='meridian' AND last_import_id=$2::uuid`, p.org, p.importID); got != fixtureSkills {
+		t.Fatalf("%d of meridian's %d skills still carry its own import", got, fixtureSkills)
+	}
+	if got := p.count(t, `SELECT count(*) FROM gfm.skills
+ WHERE org_id=$1::uuid AND repo_id='second'`, p.org); got != 0 {
+		t.Fatalf("the second repository holds %d skills, want 0", got)
+	}
+}
