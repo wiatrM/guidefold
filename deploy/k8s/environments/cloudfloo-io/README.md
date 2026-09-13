@@ -39,6 +39,35 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
+## Adapter device login and telemetry on by default — 2026-09-13 (current)
+
+Built by `publish-images.yml` (run 34761104916) from `main` at `23f7878`: PR #156 (adapters sign in
+with `guidefold login` and a confirmation code instead of a pasted token; telemetry upload on by default
+per ADR-0048). Deployed on top of the running release from `6a6753a` (PR #159). The running images
+were mapped to their commit through the publish run before diffing: `sql.go` has no change between
+`4c6281a` (already migrated by `guidefold-migrate-20260913b`) and `23f7878`, so no migrate Job ran.
+Digests patched at about 14:20 UTC; the dry run changed exactly the four image lines.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:45f88f1b45cb` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:09d28c5af96a` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:e7a4c6683b1b` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:106b2d9c83c9` |
+
+Rollback point (the release from `6a6753a`): search `691f0ad66c00`, worker `d566a50419cc`,
+ui `2de23bd87e6a`, portal `614ca3548518`. Full digests are in the publish run logs.
+
+Smoke test: all deployments ready on the new digests, `Application/guidefold` Synced and Healthy;
+`/health/ready` 200; `GET /api/v1/auth/login/google` and `/github` 302 to WorkOS; `/api/v1/me` 401 and
+`/api/v1/orgs/main/github/installations` 401 without a session; `POST /api/v1/auth/verify-email`
+without a state 400; zero `ERROR` lines in API and worker logs in the minutes after the rollout.
+
+Known and not caused by this release: signing in with GitHub ends at WorkOS with
+`authentication.oauth_failed` / "Error fetching GitHub profile", because the GitHub App lacks the
+"Email addresses: Read-only" account permission. Adding it is pending the owner's GitHub sudo
+confirmation.
+
 ## Skills duplicated across repositories — 2026-09-13 (superseded at 14:17 UTC)
 
 > Superseded the same day at about 14:17 UTC by the release built from `23f7878` (PR #156, adapter device login; `guidefold-search@sha256:45f88f1b…`), deployed from another session. It is recorded here so the digests and the smoke test of 13:42 stay traceable. The migrate Job `guidefold-migrate-20260913b` (13:32 UTC, see the correction in the entry below) ran before this release, so its schema check against `b8b76ba` compared against a migrated database.
