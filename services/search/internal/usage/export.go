@@ -52,7 +52,7 @@ type exportRow struct {
 	// Contract 1.1.4, appended after the two above for the same reason.
 	ExposuresExpanded int `json:"exposures_expanded"`
 	LoadsUnlinked     int `json:"loads_unlinked"`
-	// Contract 1.9.0 (§4.10): the repository the catalog places the skill in,
+	// Contract 1.11.0 (§4.10): the repository the catalog places the skill in,
 	// an empty cell for a skill the catalog does not know. Last, same rule.
 	RepoID *string `json:"repo_id"`
 }

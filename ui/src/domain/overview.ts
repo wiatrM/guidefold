@@ -208,7 +208,7 @@ export function latestImport(imports: ImportStatus[]): ImportStatus | null {
 
 export const YOUR_DECISIONS_LIMIT = 5;
 export type YourDecisionKind = 'proposal' | 'queue';
-/** `repoId` (1.9.0, §4.10.3): the repository the row belongs to, for a link that needs exactly one;
+/** `repoId` (1.11.0, §4.10.3): the repository the row belongs to, for a link that needs exactly one;
  * `null` only from a server older than the field. */
 export interface YourDecisionEntry { kind: YourDecisionKind; id: string; repoId: string | null; skillId: string | null; label: string; detail: string; at: string | null }
 export interface YourDecisions { count: number; items: YourDecisionEntry[] }

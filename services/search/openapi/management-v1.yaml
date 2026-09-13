@@ -3600,7 +3600,7 @@ components:
       required: [proposal_id, repo_id, kind, state]
       properties:
         proposal_id: { type: string, format: uuid }
-        repo_id: { type: string, description: "The repository the proposal targets (contract 1.9.0, §4.10)." }
+        repo_id: { type: string, description: "The repository the proposal targets (contract 1.11.0, §4.10)." }
         kind: { $ref: "#/components/schemas/ProposalKind" }
         state: { $ref: "#/components/schemas/ProposalState" }
         scope: { type: [string, "null"] }
@@ -3884,7 +3884,7 @@ components:
       required: [skill_id, repo_id, name, description, scope, knowledge_layer, source_status, publication_status, path]
       properties:
         skill_id: { type: string }
-        repo_id: { type: string, description: "The repository the skill belongs to (contract 1.9.0, §4.10)." }
+        repo_id: { type: string, description: "The repository the skill belongs to (contract 1.11.0, §4.10)." }
         name: { type: string }
         description: { type: string }
         scope: { type: string }
@@ -4132,7 +4132,7 @@ components:
             required: [scope, repo_id, count]
             properties:
               scope: { type: string }
-              repo_id: { type: string, description: "The repository of the unmapped scope (contract 1.9.0, §4.10.3)." }
+              repo_id: { type: string, description: "The repository of the unmapped scope (contract 1.11.0, §4.10.3)." }
               count: { type: integer }
 
     MapLayers:

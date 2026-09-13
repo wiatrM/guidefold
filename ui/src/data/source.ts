@@ -36,7 +36,7 @@ export interface UsageQuery {
 }
 export interface OrgRepo { org: string; repo: string }
 /**
- * Where a read looks (contract §4.10, 1.9.0): one repository, or — with `repo: null` — every
+ * Where a read looks (contract §4.10, 1.11.0): one repository, or — with `repo: null` — every
  * repository of the organisation the signed-in principal may read. The API decides the set; the
  * console never fans out per repository. Mutations always take an `OrgRepo`: they act on one
  * repository, named by the row they act on.

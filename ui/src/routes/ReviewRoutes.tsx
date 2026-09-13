@@ -444,7 +444,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
   const value = detail.value;
   const degraded = readOnly(ctx, detail.phase === 'error' && Boolean(value));
   // The decision and the export act on the proposal's own repository (ADR-0047): its `repo_id`, or the
-  // selected repository from a client older than 1.9.0. With neither, nothing is sent with an empty repo.
+  // selected repository from a client older than 1.11.0. With neither, nothing is sent with an empty repo.
   const actRepo = value?.repo_id ?? repo;
   const blocked = !owner || degraded || busy || mustReread || !actRepo;
 
