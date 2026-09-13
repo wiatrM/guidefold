@@ -143,7 +143,7 @@ describe('Map route, three axes', () => {
     const asked: (string | undefined)[] = [];
     const source = fakeSource({ getMapScopes: async (_target, scope) => { asked.push(scope); return scopeMap(scope); }, getModule: async () => module });
     const top = renderApi(ApiMapRoute, source, 'tab=scopes');
-    expect(await screen.findByRole('link', { name: 'atlas' })).toHaveAttribute('href', '/map?tab=scopes&scope=atlas');
+    expect(await screen.findByRole('link', { name: 'atlas' })).toHaveAttribute('href', '/map?tab=scopes&scope=atlas&repo=monorepo');
     expect(screen.getByRole('link', { name: '_root' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'atlas.identity' })).not.toBeInTheDocument();
     expect(screen.queryByText('No child scope is declared here.')).not.toBeInTheDocument();
@@ -224,7 +224,7 @@ describe('Map route, organisation scope (ADR-0047)', () => {
   });
 
   test('a scope node names its repository and opening it narrows the address to that repository', async () => {
-    const getMapScopes = vi.fn(async () => ({ ...scopes, scope: null, children: [{ id: 'forge.pipelines', repo_id: 'monorepo', owner: null, skills: 3 }, { id: 'forge.pipelines', repo_id: 'billing', owner: null, skills: 1 }] }));
+    const getMapScopes = vi.fn(async () => ({ ...scopes, scope: null, scopes: [{ ...node('forge.pipelines', 3), repo_id: 'monorepo', parent: null }, { ...node('forge.pipelines', 1), repo_id: 'billing', parent: null }] }));
     renderApi(ApiMapRoute, fakeSource({ getMapScopes }), 'tab=scopes', { repo: null });
     const links = await screen.findAllByRole('link', { name: 'forge.pipelines' });
     expect(getMapScopes).toHaveBeenCalledWith({ org: 'meridian', repo: null }, undefined);
