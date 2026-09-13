@@ -2,13 +2,12 @@
   "config": {
     "argv": [
       "/home/mike/.nvm/versions/node/v22.14.0/bin/node",
-      "/home/mike/projects/guidefold/ui/node_modules/@playwright/test/cli.js",
+      "/home/mike/projects/guidefold/.claude/worktrees/agent-afce10ca10e75f479/ui/node_modules/@playwright/test/cli.js",
       "test",
-      "--trace",
-      "off"
+      "e2e/org-switcher.spec.ts"
     ],
-    "configFile": "/home/mike/projects/guidefold/ui/playwright.config.ts",
-    "rootDir": "/home/mike/projects/guidefold/ui/e2e",
+    "configFile": "/home/mike/projects/guidefold/.claude/worktrees/agent-afce10ca10e75f479/ui/playwright.config.ts",
+    "rootDir": "/home/mike/projects/guidefold/.claude/worktrees/agent-afce10ca10e75f479/ui/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -19,20 +18,20 @@
     "grepInvert": null,
     "maxFailures": 0,
     "metadata": {
-      "actualWorkers": 8
+      "actualWorkers": 1
     },
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "/home/mike/projects/guidefold/ui/test-results",
+        "outputDir": "/home/mike/projects/guidefold/.claude/worktrees/agent-afce10ca10e75f479/ui/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
-          "actualWorkers": 8
+          "actualWorkers": 1
         },
         "id": "",
         "name": "",
-        "testDir": "/home/mike/projects/guidefold/ui/e2e",
+        "testDir": "/home/mike/projects/guidefold/.claude/worktrees/agent-afce10ca10e75f479/ui/e2e",
         "testIgnore": [
           "**/live/**",
           "**/landing-flow.spec.ts"
@@ -75,115 +74,13 @@
   },
   "suites": [
     {
-      "title": "accessibility.spec.ts",
-      "file": "accessibility.spec.ts",
+      "title": "org-switcher.spec.ts",
+      "file": "org-switcher.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [
         {
-          "title": "seven views and gallery axe at 1280",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 23765,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.514Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "ddd864604af8a6a0198f-cc57a4893ab84c6135ff",
-          "file": "accessibility.spec.ts",
-          "line": 10,
-          "column": 39
-        },
-        {
-          "title": "seven views and gallery axe at 820",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 18374,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:19.645Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "ddd864604af8a6a0198f-e881391c8f2b8347f826",
-          "file": "accessibility.spec.ts",
-          "line": 10,
-          "column": 39
-        },
-        {
-          "title": "seven views and gallery axe at 390",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 16287,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:37.888Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "ddd864604af8a6a0198f-5e8889a0d39354bce497",
-          "file": "accessibility.spec.ts",
-          "line": 10,
-          "column": 39
-        },
-        {
-          "title": "revealed proposal bodies and the mobile menu remain accessible",
+          "title": "lists every organisation with its role, marks the current one and ends with Create organization",
           "ok": true,
           "tags": [],
           "tests": [
@@ -198,12 +95,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3022,
+                  "duration": 9675,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:42:55.815Z",
+                  "startTime": "2026-09-13T16:30:20.315Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -211,55 +108,13 @@
               "status": "expected"
             }
           ],
-          "id": "ddd864604af8a6a0198f-b614b60e6017e58747ac",
-          "file": "accessibility.spec.ts",
-          "line": 27,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "api-mode.spec.ts",
-      "file": "api-mode.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "an unauthenticated management route lands on the login page outside the shell",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 4815,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.555Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-d0ba166a6efdf566a106",
-          "file": "api-mode.spec.ts",
-          "line": 11,
+          "id": "2a18f3172c1e1c9e109e-1aa1dc555490ca33962e",
+          "file": "org-switcher.spec.ts",
+          "line": 22,
           "column": 1
         },
         {
-          "title": "the organisation comes from the API once the session is confirmed",
+          "title": "choosing an organisation keeps the view, replaces org, drops repo, and Back returns to the previous one",
           "ok": true,
           "tags": [],
           "tests": [
@@ -271,15 +126,15 @@
               "projectName": "",
               "results": [
                 {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3516,
+                  "duration": 3681,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:41:59.183Z",
+                  "startTime": "2026-09-13T16:30:30.194Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -287,13 +142,13 @@
               "status": "expected"
             }
           ],
-          "id": "b749aaf8b8fa608f4187-fa6b3c507a6d68ba9ce4",
-          "file": "api-mode.spec.ts",
-          "line": 21,
+          "id": "2a18f3172c1e1c9e109e-be71038e30c29cbe7c30",
+          "file": "org-switcher.spec.ts",
+          "line": 47,
           "column": 1
         },
         {
-          "title": "library filters, cursor context and the skill link survive the URL",
+          "title": "a single organisation still opens the switcher, showing it and Create organization",
           "ok": true,
           "tags": [],
           "tests": [
@@ -305,15 +160,15 @@
               "projectName": "",
               "results": [
                 {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4120,
+                  "duration": 4237,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:42:02.723Z",
+                  "startTime": "2026-09-13T16:30:33.890Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -321,13 +176,13 @@
               "status": "expected"
             }
           ],
-          "id": "b749aaf8b8fa608f4187-660141c1aac2d23fd76f",
-          "file": "api-mode.spec.ts",
-          "line": 29,
+          "id": "2a18f3172c1e1c9e109e-a225233a36862cdb2d75",
+          "file": "org-switcher.spec.ts",
+          "line": 68,
           "column": 1
         },
         {
-          "title": "an unavailable filter value is named and never widened to All",
+          "title": "Create organization opens the wizard's first step",
           "ok": true,
           "tags": [],
           "tests": [
@@ -339,15 +194,15 @@
               "projectName": "",
               "results": [
                 {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3678,
+                  "duration": 2938,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:42:06.863Z",
+                  "startTime": "2026-09-13T16:30:38.136Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -355,13 +210,13 @@
               "status": "expected"
             }
           ],
-          "id": "b749aaf8b8fa608f4187-cf001389e508c8b6a2bc",
-          "file": "api-mode.spec.ts",
-          "line": 39,
+          "id": "2a18f3172c1e1c9e109e-01a000101303c00c0cf6",
+          "file": "org-switcher.spec.ts",
+          "line": 83,
           "column": 1
         },
         {
-          "title": "the skill view links the exact host, file and commit",
+          "title": "keyboard: the trigger is reachable, the list is arrow-navigable and Escape returns focus",
           "ok": true,
           "tags": [],
           "tests": [
@@ -373,15 +228,15 @@
               "projectName": "",
               "results": [
                 {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3038,
+                  "duration": 3406,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:42:10.563Z",
+                  "startTime": "2026-09-13T16:30:41.064Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -389,13 +244,13 @@
               "status": "expected"
             }
           ],
-          "id": "b749aaf8b8fa608f4187-733a06af0e56ec3d7f4b",
-          "file": "api-mode.spec.ts",
-          "line": 49,
+          "id": "2a18f3172c1e1c9e109e-745b9f112c13a84c76a9",
+          "file": "org-switcher.spec.ts",
+          "line": 92,
           "column": 1
         },
         {
-          "title": "a revision that does not exist is an error, never a newer body",
+          "title": "the switcher is reachable inside the mobile sidebar sheet",
           "ok": true,
           "tags": [],
           "tests": [
@@ -407,15 +262,15 @@
               "projectName": "",
               "results": [
                 {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3808,
+                  "duration": 3640,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-12T11:42:15.233Z",
+                  "startTime": "2026-09-13T16:30:44.483Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -423,1077 +278,9 @@
               "status": "expected"
             }
           ],
-          "id": "b749aaf8b8fa608f4187-7b85005a5665754a453a",
-          "file": "api-mode.spec.ts",
-          "line": 56,
-          "column": 1
-        },
-        {
-          "title": "owner reaches library, skill, decision and export with the keyboard only",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 8614,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:19.058Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-7ed408ffe8022a12a8f5",
-          "file": "api-mode.spec.ts",
-          "line": 63,
-          "column": 1
-        },
-        {
-          "title": "the usage queue records an owner decision and keeps Unknown out of zero",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 3693,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:27.691Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-26c4d4c51fe5adca9cac",
-          "file": "api-mode.spec.ts",
-          "line": 87,
-          "column": 1
-        },
-        {
-          "title": "the plan is read before generation, and a job skipped for lack of a generator reads as honest, not failed",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 2765,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:31.248Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-6297db076ac0d47dd924",
-          "file": "api-mode.spec.ts",
-          "line": 98,
-          "column": 1
-        },
-        {
-          "title": "the audit tab pages through entries with a cursor and shows every column",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 3266,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:34.027Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-68517fd7ab1b2777e4a3",
-          "file": "api-mode.spec.ts",
-          "line": 109,
-          "column": 1
-        },
-        {
-          "title": "a link suggestion is never auto-linked: the operator action redirects to the real confirmation URL",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 2738,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:37.302Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-45b28e1ff02570c70a1e",
-          "file": "api-mode.spec.ts",
-          "line": 119,
-          "column": 1
-        },
-        {
-          "title": "axe finds no violation on the login page, at 390 as well as 1280",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 5203,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:40.050Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-60015afec6951943fb48",
-          "file": "api-mode.spec.ts",
-          "line": 139,
-          "column": 1
-        },
-        {
-          "title": "axe finds no violation on import",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 2079,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:46.888Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-9fce668f52ae7ef3f350",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on library",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1746,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:48.977Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-b278ac4459e3b302a8ce",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on map",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1855,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:50.733Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-27bce9f60c3078bb6a09",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on skill",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1935,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:52.598Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-1bbfd3943953a487a1c3",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on proposals",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1905,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:54.544Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-8642afb6e85c1c313ad2",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on usage",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1865,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:56.459Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-d2ed34382dbd44480926",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on organization",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1713,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:58.333Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-a25f426c5aed293f883e",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        },
-        {
-          "title": "axe finds no violation on organization, audit tab",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 1,
-                  "status": "passed",
-                  "duration": 1739,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:43:00.793Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b749aaf8b8fa608f4187-83533b97ee15cb7097da",
-          "file": "api-mode.spec.ts",
-          "line": 152,
-          "column": 3
-        }
-      ]
-    },
-    {
-      "title": "filters.spec.ts",
-      "file": "filters.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "unknown URL filter stays visible until the user explicitly replaces or clears it",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 2,
-                  "parallelIndex": 2,
-                  "status": "passed",
-                  "duration": 19254,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.535Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "6174a577dcf149f42c01-668b1baa4a12d356db04",
-          "file": "filters.spec.ts",
-          "line": 5,
-          "column": 1
-        },
-        {
-          "title": "a facet value outside the current page stays selectable and the cursor is dropped on a new query",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 2,
-                  "parallelIndex": 2,
-                  "status": "passed",
-                  "duration": 3920,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:15.185Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "6174a577dcf149f42c01-e355b17abfdcfa51cfeb",
-          "file": "filters.spec.ts",
-          "line": 28,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "owner-keyboard.spec.ts",
-      "file": "owner-keyboard.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "owner completes sign-in, import, library, review and export with keyboard only",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 3,
-                  "parallelIndex": 3,
-                  "status": "passed",
-                  "duration": 17178,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.532Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "4dbfa2c584605e2d4d51-1e386adedf717a2fc9b4",
-          "file": "owner-keyboard.spec.ts",
-          "line": 10,
-          "column": 1
-        },
-        {
-          "title": "focus lands in main on a route change, and the skip link reaches it from the top",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 3,
-                  "parallelIndex": 3,
-                  "status": "passed",
-                  "duration": 4618,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:11.493Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "4dbfa2c584605e2d4d51-7e5eaef41e4a76eeffd9",
-          "file": "owner-keyboard.spec.ts",
-          "line": 65,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "schema-navigation.spec.ts",
-      "file": "schema-navigation.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "fold navigation, profile, context actions and Sonner favorites",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 4,
-                  "parallelIndex": 4,
-                  "status": "passed",
-                  "duration": 10522,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.517Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "db29aaa5e82e4969f342-7ec2c19b0c9cf77755dd",
-          "file": "schema-navigation.spec.ts",
-          "line": 4,
-          "column": 1
-        },
-        {
-          "title": "real schema engine draws connectors and offers a keyboard list alternative",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 4,
-                  "parallelIndex": 4,
-                  "status": "passed",
-                  "duration": 3672,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:04.814Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "db29aaa5e82e4969f342-0b7d90cb471c873d8d3b",
-          "file": "schema-navigation.spec.ts",
-          "line": 27,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "spectrum-migration.spec.ts",
-      "file": "spectrum-migration.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "Spectrum migration visual packet at 1440",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 180000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 5,
-                  "parallelIndex": 5,
-                  "status": "passed",
-                  "duration": 24855,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.513Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "cd9971a51ca402f35d04-4fc10edb9e2453dd7321",
-          "file": "spectrum-migration.spec.ts",
-          "line": 4,
-          "column": 31
-        },
-        {
-          "title": "Spectrum migration visual packet at 390",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 180000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 5,
-                  "parallelIndex": 5,
-                  "status": "passed",
-                  "duration": 19437,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:20.748Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "cd9971a51ca402f35d04-a09f126c819e6825116a",
-          "file": "spectrum-migration.spec.ts",
-          "line": 4,
-          "column": 31
-        }
-      ]
-    },
-    {
-      "title": "spectrum-pie.spec.ts",
-      "file": "spectrum-pie.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "Spectrum pie renders measured geometry and all reported verdicts",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 6,
-                  "parallelIndex": 6,
-                  "status": "passed",
-                  "duration": 6179,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.509Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "38b0575c82a915078bf7-9e88013b612ce10f30d0",
-          "file": "spectrum-pie.spec.ts",
-          "line": 3,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "states.spec.ts",
-      "file": "states.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "seven views: empty",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 30068,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:41:53.532Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-3297396563e2496c4859",
-          "file": "states.spec.ts",
-          "line": 33,
-          "column": 72
-        },
-        {
-          "title": "seven views: loading",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 22106,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:26.014Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-9d6dd7c954b9e02ec5a2",
-          "file": "states.spec.ts",
-          "line": 33,
-          "column": 72
-        },
-        {
-          "title": "seven views: partial",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 19508,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:42:49.605Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-c9b9829442d8675f5746",
-          "file": "states.spec.ts",
-          "line": 33,
-          "column": 72
-        },
-        {
-          "title": "seven views: error",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 18416,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:43:09.860Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-a0d4a23c215643bd521d",
-          "file": "states.spec.ts",
-          "line": 33,
-          "column": 72
-        },
-        {
-          "title": "seven views: restricted, an organisation the account does not belong to",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 90000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 18299,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:43:28.286Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-177227d03a0b6a3eb140",
-          "file": "states.spec.ts",
-          "line": 62,
-          "column": 1
-        },
-        {
-          "title": "seven views: degraded, membership past its confirmation window with /me failing",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 19793,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:43:48.096Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-2ba0dcb93dbd30fc8210",
-          "file": "states.spec.ts",
-          "line": 78,
-          "column": 1
-        },
-        {
-          "title": "a 403 from the repository masks every view, with the session and the way back intact",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 7,
-                  "parallelIndex": 7,
-                  "status": "passed",
-                  "duration": 7130,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-12T11:44:09.369Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "be092eae759d55e55094-def492861b86f75709d5",
-          "file": "states.spec.ts",
-          "line": 99,
+          "id": "2a18f3172c1e1c9e109e-7a157cd193912e798e47",
+          "file": "org-switcher.spec.ts",
+          "line": 115,
           "column": 1
         }
       ]
@@ -1501,9 +288,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-12T11:41:52.798Z",
-    "duration": 136381.34,
-    "expected": 40,
+    "startTime": "2026-09-13T16:30:16.787Z",
+    "duration": 31476.943,
+    "expected": 6,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0
