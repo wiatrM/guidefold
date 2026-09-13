@@ -18,6 +18,16 @@ For hosted UI, use `docs/ui/IA.md`, `UX.md`, `UI.md` and the relevant entry in
 Decisions are recorded in `docs/adr/`. `docs/ASSESSMENT.md` records dated registry API evidence;
 verify time-sensitive claims before relying on them.
 
+## Production is sacred (owner rule, 2026-09-13)
+
+Owner instruction after an agent broke sign-in on production: **production is treasure; never let this happen again.** `guidefold.cloudfloo.io`, served by the ArgoCD Application `guidefold`, has real users. Binding on every agent and every session:
+
+1. **No production change without the owner's explicit approval in the current conversation.** That covers image digests, ArgoCD Application values, Kubernetes Secrets, Jobs, NetworkPolicies and GitHub App settings. Approval for one change does not carry over to the next.
+2. **ArgoCD does not run migrations.** It syncs Deployments only; the chart's migrate Job (`workload: migrate`) runs only when someone runs it. A release that changes `services/search/internal/schema/sql.go` goes in this order: render the chart's Job from the live Application values with the new `search` image and `--set workload=migrate`, run it, wait for completion, confirm the new columns and tables exist, and only then patch the image digests. New code on an unmigrated database is an outage.
+3. **A deploy passes only on an authenticated smoke test.** `/health/ready` answering 200 proves nothing about the schema: on 2026-09-13 it stayed 200 for 25 minutes while every sign-in failed with `column "org_id" of relation "auth_states" does not exist`. After every rollout, `GET /api/v1/auth/login/google` must answer 302 to WorkOS, each changed route must answer as intended, and the API logs must show no `ERROR` lines in the first minutes.
+4. **Record the previous digests before patching, and roll back at the first regression** instead of debugging on production.
+5. **Test on the local stack** (`tools/dev/stack.py`), never on production, anything that can be tested there.
+
 ## Mandatory Spectrum UI components
 
 Owner instruction, 2026-09-09: **Spectrum UI components are mandatory for new, redesigned or migrated Guidefold UI.** Read [.agents/skills/spectrum-ui-workflow/SKILL.md](.agents/skills/spectrum-ui-workflow/SKILL.md) before implementation. Browse/search the [Spectrum MCP registry](https://ui.spectrumhq.in/docs/mcp), inspect actual source/dependencies, install the matching item and verify behavior. Do not substitute a handmade lookalike when a suitable component exists. Record a concrete exception for missing or framework-incompatible items. This overrides the older shadcn/Tailwind prohibition for this integration, not security, accessibility or deployment authority. Whole-registry access is not blanket installation or compatibility certification.

@@ -229,6 +229,20 @@ CREATE INDEX IF NOT EXISTS github_installation_links_org ON gfm.github_installat
 -- previous linkage of the same installation_id never reads as "already
 -- synced" before the fresh sync job this callback enqueues has run.
 ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS repositories_synced_at timestamptz;
+-- The other half of the same honesty rule: a run that does NOT succeed must
+-- also leave a trace, or a link whose reconciliation keeps failing reads
+-- forever as "still syncing" (never true) instead of as failed (API-CONTRACT
+-- §4.7/§5.1). Written only by agentrun.GitHubSyncWorker.Run, in the same
+-- places repositories_synced_at is written: a permanent failure (the
+-- installation gone or its permissions refused) or the last attempt of a
+-- retryable one sets both columns; any later success clears both back to
+-- NULL in the same statement that sets repositories_synced_at, so a failure
+-- never survives past the reconciliation that fixed it. Reset to NULL below
+-- whenever a link is (re)created, for the same reason repositories_synced_at
+-- is: a stale failure from a previous linkage of this installation_id must
+-- not outlive that linkage.
+ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS last_sync_failed_at timestamptz;
+ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS last_sync_failure_reason text;
 CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
  delivery_id text PRIMARY KEY,
  payload_sha256 text NOT NULL,
