@@ -48,6 +48,13 @@ spec:
     # DNS, the database and (if enabled) the GPU shadow, and storing a
     # credential answers `provider_unavailable` instead of hanging on a
     # connection that will never open.
+    #
+    # Also add github.com and api.github.com here once
+    # github.appSlug/clientID/clientSecretName are set: GET
+    # /api/v1/github/installations/callback exchanges the OAuth-during-install
+    # code on github.com and lists installations on api.github.com. The chart
+    # does not add these by default — they are not needed until install-linking
+    # is configured, and this list is the operator's, not a guessed CIDR.
     - to:
         {{- toYaml .Values.api.externalEgress | nindent 8 }}
       ports: [{protocol: TCP, port: 443}]

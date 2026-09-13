@@ -13,11 +13,25 @@ workos:
 github:
   webhookSecretName: "" # optional GitHub App webhook secret; key: webhook-secret; API only
   # Optional GitHub App identity (ADR-0036), needed by the worker to sign an
-  # installation-token JWT for api.github.com — never by the API, which only
-  # verifies webhook deliveries above. appId and privateKeySecretName must be
-  # set together or not at all; setting exactly one fails the chart render.
+  # installation-token JWT for api.github.com — never by the API for this
+  # part of the identity, which only verifies webhook deliveries above and
+  # (see appSlug/clientID/clientSecretName below) proves an install link.
+  # appId and privateKeySecretName must be set together or not at all;
+  # setting exactly one fails the chart render.
   appId: "" # numeric GitHub App id, as a string
   privateKeySecretName: "" # secret holding the App's PEM private key; key: private-key
+  # Optional GitHub App install-linking (owner-initiated install from the
+  # console, proved with GitHub's OAuth-during-installation flow), read by
+  # the API only — never the worker. appSlug and clientID are plain values;
+  # clientSecretName names a Secret holding the App's OAuth client secret
+  # (key: client-secret). All three must be set together or not at all,
+  # and — because linking an installation the worker cannot act on is
+  # pointless — only together with github.appId and
+  # github.privateKeySecretName above; any other combination fails the
+  # chart render.
+  appSlug: "" # the App's URL slug, for https://github.com/apps/<slug>/installations/new
+  clientID: "" # OAuth-during-install client id
+  clientSecretName: "" # secret holding the OAuth client secret; key: client-secret
 # Optional deployment master keyring for organisation-supplied provider credentials
 # (ADR-0045). Empty means no keyring is mounted and GUIDEFOLD_SECRET_KEY_FILE is left
 # unset: internal/secrets.LoadKeyring then returns no keyring, credential PUT answers
@@ -40,6 +54,14 @@ api:
   # reaches only DNS, the database and (if enabled) the GPU shadow, and
   # storing a credential answers `provider_unavailable` instead of hanging on
   # a connection that will never open.
+  #
+  # When github.appSlug/clientID/clientSecretName are set, the API also needs
+  # github.com and api.github.com on 443 here: GET
+  # /api/v1/github/installations/callback exchanges the OAuth-during-install
+  # "code" for a user token on github.com and lists that user's installations
+  # on api.github.com. The chart does not add this destination by default —
+  # add both hosts to this list once install-linking is configured, or the
+  # callback fails closed the same way a missing provider peer does above.
   externalEgress: []
 image: "" # registry/image@sha256:... (Go runtime)
 artifactImage: "" # same runtime with /input/snapshot.json and optional embeddings.json
