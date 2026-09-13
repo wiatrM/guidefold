@@ -1,0 +1,6 @@
+.viewport{overflow:hidden;position:relative;}
+.track{display:flex;width:max-content;}
+.track.scroll{animation:marquee-scroll var(--effect-marquee-duration) linear infinite;}
+.viewport:hover .track.scroll,.viewport:focus-within .track.scroll{animation-play-state:paused;}
+.set{display:flex;gap:var(--space-4);flex:none;}
+@keyframes marquee-scroll{from{transform:translateX(var(--zero));}to{transform:translateX(var(--negative-half));}}

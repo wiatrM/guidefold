@@ -439,6 +439,51 @@
 @media(max-width:720px){:root{--kpi-columns:minmax(0,1fr);--home-donut-columns:minmax(0,1fr);--kpi-main-span:1;}}
 
 /* ---------------------------------------------------------------------------
+ * Effects layer (ADR-0049, owner decision 2026-09-13): animated borders, glow, shader and
+ * grid backgrounds, number tickers, animated lists, marquee, orbiting circles, animated
+ * text, success moments and loading shimmer. Every effect component consumes these by
+ * var() only, so nothing under src/components/effects declares a literal dimension or
+ * colour of its own (qa/check-contracts.mjs). A property a component writes at runtime
+ * (pointer position) still gets its default declared here, the same pattern already used
+ * by --collapsible-panel-height above; JS only calls element.style.setProperty on it.
+ * ------------------------------------------------------------------------- */
+:root{
+ --zero-deg:0deg; --full-turn:360deg;
+ --effect-beam-conic:conic-gradient(from var(--zero-deg),transparent 0%,var(--survey-teal) 22%,transparent 46%,var(--safety-orange) 68%,transparent 92%);
+ --effect-beam-duration:7s;
+ --effect-beam-ring:var(--line-strong);
+ --effect-beam-spread:250%;
+ --effect-mask-solid:#000;
+ --effect-focus-glow-route:0 0 0 2px rgba(255,122,61,.55),0 0 44px 8px rgba(255,122,61,.5);
+ --effect-focus-glow-system:0 0 0 2px rgba(63,184,177,.5),0 0 44px 8px rgba(63,184,177,.45);
+ --effect-header-glow:radial-gradient(circle at 50% 120%,rgba(63,184,177,.32),transparent 62%);
+ --effect-header-glow-human:radial-gradient(circle at 50% 120%,rgba(255,122,61,.3),transparent 62%);
+ --effect-pointer-x:50%; --effect-pointer-y:38%;
+ --effect-glow-surface:radial-gradient(240px circle at var(--effect-pointer-x) var(--effect-pointer-y),rgba(63,184,177,.16),transparent 70%);
+ --effect-glow-surface-human:radial-gradient(240px circle at var(--effect-pointer-x) var(--effect-pointer-y),rgba(255,122,61,.16),transparent 70%);
+ --effect-shimmer-gradient:linear-gradient(100deg,transparent 30%,rgba(238,241,243,.12) 50%,transparent 70%);
+ --effect-shimmer-duration:1600ms;
+ --effect-grid-cell:28px;
+ --effect-grid-duration:18s;
+ --effect-grid-travel:-28px;
+ --effect-marquee-duration:24s;
+ --effect-orbit-size:220px; --effect-orbit-node:40px; --effect-orbit-duration:16s;
+ --effect-orbit-angle-1:0deg; --effect-orbit-angle-2:60deg; --effect-orbit-angle-3:120deg;
+ --effect-orbit-angle-4:180deg; --effect-orbit-angle-5:240deg; --effect-orbit-angle-6:300deg;
+ --effect-success-glow:0 0 0 1px rgba(63,184,177,.4),0 0 32px 4px rgba(63,184,177,.35);
+ --effect-success-duration:520ms;
+ --effect-text-rise:10px; --effect-text-stagger:32ms; --effect-text-duration:420ms;
+ --effect-shader-max-pixels:2073600;
+ --effect-shader-fallback:radial-gradient(120% 120% at 20% 0%,rgba(63,184,177,.22),var(--graphite-900) 60%);
+ --effect-ticker-digit-height:1.1em; --effect-ticker-digit-width:1ch;
+}
+@media(prefers-reduced-motion:reduce){:root{
+ --effect-beam-duration:0s; --effect-grid-duration:0s; --effect-marquee-duration:0s;
+ --effect-orbit-duration:0s; --effect-success-duration:0ms; --effect-text-duration:0ms;
+ --effect-text-rise:0px; --effect-text-stagger:0ms; --effect-shimmer-duration:0ms;
+}}
+
+/* ---------------------------------------------------------------------------
  * .console shadcn dark-neutral theme (owner instruction 2026-09-12: the reference is
  * https://dashboard.shadcnspace.com/, dark variant). `.console` is the management shell
  * root (app.tsx Shell); the landing route (`/`) never carries this class, so it keeps the

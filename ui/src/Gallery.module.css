@@ -4,3 +4,7 @@
 .case>h2{margin:var(--zero) var(--zero) var(--space-3);font-size:var(--font-size-section);}
 .row{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);}
 .stack{display:grid;gap:var(--space-3);}
+.demoBox{position:relative;height:var(--chart-height);border-radius:var(--radius-panel);overflow:hidden;border:var(--border-width) solid var(--line-strong);background-color:var(--graphite-850);}
+.demoPanel{border:var(--border-width) solid var(--line-strong);border-radius:var(--radius-panel);padding:var(--space-3);background-color:var(--graphite-850);}
+.demoOrbit{display:grid;place-items:center;padding:var(--space-4);}
+

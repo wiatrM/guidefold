@@ -133,7 +133,11 @@ for(const file of cssFiles){
 }
 // Owner-authorized registry sources are separate from the 15 stable product APIs.
 // Their source remains in the AST/token scan; runtime behavior is browser-tested.
-const registryDirs=new Set(['spectrumui','ui']);
+// `effects` (ADR-0049, 2026-09-13) is a components kit, not one more named product API: many
+// small, typed, tokens-only visual effects documented in the gallery rather than individually
+// contracted with a CSF story. Its CSS/token literals and imports still run through every
+// check below; only the fixed expected-list/story-per-component requirement is exempt.
+const registryDirs=new Set(['spectrumui','ui','effects']);
 const dirs=(await readdir(resolve(src,'components'),{withFileTypes:true})).filter(d=>d.isDirectory()&&!registryDirs.has(d.name)).map(d=>d.name).sort();
 if(dirs.length!==expected.length)issue(resolve(src,'components'),1,'component-count','Expected exactly '+expected.length+' public component directories; found '+dirs.length);
 for(const name of dirs)if(!expected.includes(name))issue(resolve(src,'components',name),1,'component-name','Unexpected public component '+name);

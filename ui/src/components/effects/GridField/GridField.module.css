@@ -1,0 +1,3 @@
+.field{position:absolute;inset:var(--zero);background-image:var(--tile-pattern);background-size:var(--effect-grid-cell) var(--effect-grid-cell);pointer-events:none;}
+.field.drift{animation:grid-drift var(--effect-grid-duration) linear infinite;}
+@keyframes grid-drift{from{background-position:var(--zero) var(--zero);}to{background-position:var(--effect-grid-cell) var(--effect-grid-travel);}}

@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-12T16:47:56.717Z",
+  "capturedAt": "2026-09-13T17:16:27.304Z",
   "purpose": "Accepted capture of the ui component gallery (/__components, sample values from src/sample.ts). Regenerate only to accept a reviewed visual change.",
   "records": [
     {
@@ -93,6 +93,90 @@
       "sha256": "f4d72dbdf1872bc2219176e2f0d75e313412581991fd59c5e1c4a27c56df935b"
     },
     {
+      "name": "HeaderGlow",
+      "width": 1280,
+      "file": "HeaderGlow-1280.png",
+      "sha256": "337f2f04f79bd1e0ba8ddb7a66be9c0780f596b4e389c8a1bd1c303b919973a2"
+    },
+    {
+      "name": "BorderBeam",
+      "width": 1280,
+      "file": "BorderBeam-1280.png",
+      "sha256": "fd1b1cf6643ddaba580bc2d7649163b5236c14326e213de7d3bbade580e7e2ec"
+    },
+    {
+      "name": "ShineBorder",
+      "width": 1280,
+      "file": "ShineBorder-1280.png",
+      "sha256": "8ba3ac3c51b41f0c08eb8360aeabe35e64f0e5c30f7efb9ea12d74f6c3645f84"
+    },
+    {
+      "name": "GlowSurface",
+      "width": 1280,
+      "file": "GlowSurface-1280.png",
+      "sha256": "2c801f894ba3157d5f70bdcd80a32490d59599ce8b378944069b6105e2093bc0"
+    },
+    {
+      "name": "GlowAction",
+      "width": 1280,
+      "file": "GlowAction-1280.png",
+      "sha256": "fd75096518d253c27f797caf9fe8ec3975631138d29d05b934b41129b0544f46"
+    },
+    {
+      "name": "ShaderField",
+      "width": 1280,
+      "file": "ShaderField-1280.png",
+      "sha256": "35d85fb4abd24ab1ad83750f094abaf816918099f9fbab2c71a4e95d67684b39"
+    },
+    {
+      "name": "GridField",
+      "width": 1280,
+      "file": "GridField-1280.png",
+      "sha256": "4d1f6a7406765e225a38828a415a69c6c21da7cb44a06a04c87f1fa6e4b7436b"
+    },
+    {
+      "name": "NumberTicker",
+      "width": 1280,
+      "file": "NumberTicker-1280.png",
+      "sha256": "f87620dcc09c9321215cd27a878186b663681785db6f82b75866c258ef6a48f2"
+    },
+    {
+      "name": "AnimatedList",
+      "width": 1280,
+      "file": "AnimatedList-1280.png",
+      "sha256": "a6f66cf76c4755804715fdf6f651a2787d37526711e0300e3ca7da7d6ace7ed5"
+    },
+    {
+      "name": "Marquee",
+      "width": 1280,
+      "file": "Marquee-1280.png",
+      "sha256": "75e06d26b7361b36f2cd309b9545541761f3837395f4128cf9268b59742e2a9b"
+    },
+    {
+      "name": "OrbitingCircles",
+      "width": 1280,
+      "file": "OrbitingCircles-1280.png",
+      "sha256": "b72a95ecaa6a3103fca3b64b4158d88bac24293021e737896eaa3ff65bce3f2e"
+    },
+    {
+      "name": "AnimatedText",
+      "width": 1280,
+      "file": "AnimatedText-1280.png",
+      "sha256": "ad36b67589904804a95bae5a3ea2109055d66536093a4b2bde83e5861411fb14"
+    },
+    {
+      "name": "SuccessBurst",
+      "width": 1280,
+      "file": "SuccessBurst-1280.png",
+      "sha256": "a04f19803461b7120455ba6b080c2345818019bfaa54dafe1412fee4821ef3d5"
+    },
+    {
+      "name": "ShimmerSkeleton",
+      "width": 1280,
+      "file": "ShimmerSkeleton-1280.png",
+      "sha256": "799a11374c0c9b4a965a877c0e3458f135114de761c373bbe08047471da330b4"
+    },
+    {
       "name": "ActionButton",
       "width": 820,
       "file": "ActionButton-820.png",
@@ -183,6 +267,90 @@
       "sha256": "19b4501ab082d5c29c4ae2155e04067d029f5294a30b779c05300f325f081e76"
     },
     {
+      "name": "HeaderGlow",
+      "width": 820,
+      "file": "HeaderGlow-820.png",
+      "sha256": "d97445cd41d7d9ff224ee1e02d5d949f261d7c8286bab7f54c7bcef34a333597"
+    },
+    {
+      "name": "BorderBeam",
+      "width": 820,
+      "file": "BorderBeam-820.png",
+      "sha256": "d3608aab06fe99e2c88076d68b01169927bbbea2af0dcdb47c2b9197d5079492"
+    },
+    {
+      "name": "ShineBorder",
+      "width": 820,
+      "file": "ShineBorder-820.png",
+      "sha256": "2ec6cca489273157342d2de728680bfab94bd5445bab6ce761d1353f336c9f48"
+    },
+    {
+      "name": "GlowSurface",
+      "width": 820,
+      "file": "GlowSurface-820.png",
+      "sha256": "f2dd37c71fd51f01387842c6884ed2bdc139b2ec00beec51267f49ab6f9d5e53"
+    },
+    {
+      "name": "GlowAction",
+      "width": 820,
+      "file": "GlowAction-820.png",
+      "sha256": "5029777506d301f5a89d1cea096a054c73616b1e83abf129aac84341c81183ef"
+    },
+    {
+      "name": "ShaderField",
+      "width": 820,
+      "file": "ShaderField-820.png",
+      "sha256": "8ec0fd25c36b4d495dab41771802c61028ad93ab6245bbeae65328c2deaaa02d"
+    },
+    {
+      "name": "GridField",
+      "width": 820,
+      "file": "GridField-820.png",
+      "sha256": "8b5e66788ce589a8b0e39f0eea14e342dee36d271de57cdcef079298341e73d6"
+    },
+    {
+      "name": "NumberTicker",
+      "width": 820,
+      "file": "NumberTicker-820.png",
+      "sha256": "8208c2ea48ea63fe9caff03544ff6e0b8bf8ee8d855202275956dc14af6b6e68"
+    },
+    {
+      "name": "AnimatedList",
+      "width": 820,
+      "file": "AnimatedList-820.png",
+      "sha256": "f9ae276273f27144d0b24a9ab284d64ad748429b8a1a536f103e605dcce28823"
+    },
+    {
+      "name": "Marquee",
+      "width": 820,
+      "file": "Marquee-820.png",
+      "sha256": "602b5bf3b5ffe2dc9cd2e7cec3b642512943333b5d263b19010199f7e506a5d3"
+    },
+    {
+      "name": "OrbitingCircles",
+      "width": 820,
+      "file": "OrbitingCircles-820.png",
+      "sha256": "ab6a12c0c6ec84e254059744915099a895ac57154814d33068905781f9b29505"
+    },
+    {
+      "name": "AnimatedText",
+      "width": 820,
+      "file": "AnimatedText-820.png",
+      "sha256": "975831e807a85ba9b1841d11a7e5dd6a556987451a5884f9366fa1e137b0c6f9"
+    },
+    {
+      "name": "SuccessBurst",
+      "width": 820,
+      "file": "SuccessBurst-820.png",
+      "sha256": "f17a6c05f0218d5155b3d5fcfcdd135b04e4ed72bca6338d625bda1c8825edee"
+    },
+    {
+      "name": "ShimmerSkeleton",
+      "width": 820,
+      "file": "ShimmerSkeleton-820.png",
+      "sha256": "d7ebeb0753ccc0cd2ce057902f3b55863f5574b0eaa659c2bb46bd25c3be17b9"
+    },
+    {
       "name": "ActionButton",
       "width": 390,
       "file": "ActionButton-390.png",
@@ -271,6 +439,90 @@
       "width": 390,
       "file": "PyramidChart-390.png",
       "sha256": "b497b53de3b68a92d2642cfa4b9a8340a8e002acb4a699503ad762472ab524b6"
+    },
+    {
+      "name": "HeaderGlow",
+      "width": 390,
+      "file": "HeaderGlow-390.png",
+      "sha256": "a6e65f7fbb9188b01512a1f8ecd5bc0445da5bef850edd416b3c0c44b8a29f04"
+    },
+    {
+      "name": "BorderBeam",
+      "width": 390,
+      "file": "BorderBeam-390.png",
+      "sha256": "a725cc4b6260b8bfc916bc4023384288cb580e7b6bc118121f6ac64e7ddf46d9"
+    },
+    {
+      "name": "ShineBorder",
+      "width": 390,
+      "file": "ShineBorder-390.png",
+      "sha256": "2e052bde740594fd923f0eabde47948a3ef302fb8b5ebedb251715fb985b53ca"
+    },
+    {
+      "name": "GlowSurface",
+      "width": 390,
+      "file": "GlowSurface-390.png",
+      "sha256": "6238e931f0435dc7c4848b2cef474251b529dfe3c1ab954ee8481e44ecd4b588"
+    },
+    {
+      "name": "GlowAction",
+      "width": 390,
+      "file": "GlowAction-390.png",
+      "sha256": "829ffd66d6e6593e21649f56ff4b35d636db04dfe3a8e605893f107714f4b633"
+    },
+    {
+      "name": "ShaderField",
+      "width": 390,
+      "file": "ShaderField-390.png",
+      "sha256": "592fef1f7410140ce58231d9459eb946e0d2b6a976d9218865d9ffa8ed7784b6"
+    },
+    {
+      "name": "GridField",
+      "width": 390,
+      "file": "GridField-390.png",
+      "sha256": "91d6664d60a857d92633d513525c550bfc61c97020cdb3af9e4d0094d85df179"
+    },
+    {
+      "name": "NumberTicker",
+      "width": 390,
+      "file": "NumberTicker-390.png",
+      "sha256": "66ce2356ead10914f072398b16a07356f893847fa75793aec04091b128b1a651"
+    },
+    {
+      "name": "AnimatedList",
+      "width": 390,
+      "file": "AnimatedList-390.png",
+      "sha256": "0e98dcbb30ba4cc0c0283d2dc80358058bf50e069ae7e6c85d797945e7ca56cf"
+    },
+    {
+      "name": "Marquee",
+      "width": 390,
+      "file": "Marquee-390.png",
+      "sha256": "01228ab4d0c970dbd55e863028b50967714876bc895013de1db002dc90ed7a86"
+    },
+    {
+      "name": "OrbitingCircles",
+      "width": 390,
+      "file": "OrbitingCircles-390.png",
+      "sha256": "5c5f2d2e8dabeea562074bc451948519b3352d635c2569ab0ff75c2a2121fc7c"
+    },
+    {
+      "name": "AnimatedText",
+      "width": 390,
+      "file": "AnimatedText-390.png",
+      "sha256": "15b93896e75b8da3de53d8da30288a61d1b1e65472d23383d5f0e80590f99099"
+    },
+    {
+      "name": "SuccessBurst",
+      "width": 390,
+      "file": "SuccessBurst-390.png",
+      "sha256": "8461b7bcae72bc681ead4b1351391b6e1fe601c97d113127cf355f1f9814d003"
+    },
+    {
+      "name": "ShimmerSkeleton",
+      "width": 390,
+      "file": "ShimmerSkeleton-390.png",
+      "sha256": "5c16ec956f50d0423ede416d7b5f84e2554b6ce27082893b2038ea56509b9da1"
     }
   ]
 }
