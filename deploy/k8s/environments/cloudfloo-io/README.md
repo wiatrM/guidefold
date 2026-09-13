@@ -39,7 +39,9 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
-## Skills duplicated across repositories — 2026-09-13 (current)
+## Skills duplicated across repositories — 2026-09-13 (superseded at 14:17 UTC)
+
+> Superseded the same day at about 14:17 UTC by the release built from `23f7878` (PR #156, adapter device login; `guidefold-search@sha256:45f88f1b…`), deployed from another session. It is recorded here so the digests and the smoke test of 13:42 stay traceable. The migrate Job `guidefold-migrate-20260913b` (13:32 UTC, see the correction in the entry below) ran before this release, so its schema check against `b8b76ba` compared against a migrated database.
 
 Built by `publish-images.yml` (run 34760491551) from `main` at `6a6753a`: PR #159, which adds
 `GET {org_base}/skills/duplicates` (contract 1.12.0). It lists skill names that exist in more than one
@@ -56,7 +58,7 @@ The four digests were patched into the live `Application/guidefold` inline Helm 
 | `ghcr.io/wiatrm/guidefold-ui` | `sha256:2de23bd87e6a3ec9171783eafa496661d703e2b44c0fe146ba25c42c8b26a42e` |
 | `ghcr.io/wiatrm/guidefold-portal` | `sha256:614ca35485188e4beee588dd00b43bbad9b928edd051d7ecf5bbea704176f1bc` |
 
-Rollback point: the digests of the release below (`b8b76ba`).
+Rollback point at the time: the digests of the release below (`b8b76ba`). This is no longer the live rollback point after the 14:17 release.
 
 Smoke test after the rollout. All four deployments were ready on the new digests with 0 restarts, and
 `Application/guidefold` was Synced and Healthy at `6a6753a`.
