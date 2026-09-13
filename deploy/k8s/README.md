@@ -65,11 +65,85 @@ Create existing Secrets through the cluster's secret-management process:
   encryption keyring — see "Organisation credential keyring" below. Without it, the
   Live Agent and PR-review model calls cannot store an organisation's provider key at
   all; that is a deliberately honest failure, not a bug to work around by other means.
+- Optional (`github.webhookSecretName`): a `webhook-secret` key, mounted by the API
+  only, that verifies `X-Hub-Signature-256` on inbound GitHub deliveries.
+- Optional (`github.appId` + `github.privateKeySecretName`, set together): the
+  latter's `private-key` key holds the GitHub App's PEM private key, mounted by the
+  worker only — see "GitHub App identity" below. Without both, `ascend.run` and
+  `pr.report` end `skipped` with `github_app_not_configured`.
 
 Do not put secret values in Helm values, release manifests, images or Git. API pods
 receive no operator credential or Kubernetes API token. Database password/token rotation
 requires coordinating the service restart and clients; the current process reads its
 bearer credential at startup, not continuously from the mounted file.
+
+## GitHub App identity (ADR-0036)
+
+The GitHub App that drives pull-request coverage reports and knowledge ascent
+(`pr.report`, `ascend.run`) needs three pieces of configuration, and the chart
+only wires them when they are present — it never defaults or generates any of
+them:
+
+- `github.webhookSecretName` — mounted by the **API** only. The API verifies
+  every inbound delivery's `X-Hub-Signature-256` against it
+  (`internal/identity/github.go`); without it the webhook route answers
+  `503 github_app_not_configured` to GitHub.
+- `github.appId` and `github.privateKeySecretName` — mounted by the **worker**
+  only, never the API. The worker is what signs an RS256 JWT from the private
+  key and exchanges it for a short-lived installation token to call
+  `api.github.com` (`ghapp.ConfigFromEnv`, ADR-0036 point 2); the API never
+  reads `GITHUB_APP_ID` or `GITHUB_APP_PRIVATE_KEY_FILE`. These two must be set
+  together — the chart's `fail` guard refuses a render that sets exactly one,
+  because a half-configured App is an operator mistake, not a partial feature.
+
+**Register the App** in the GitHub organisation or user account that will
+install it (Settings → Developer settings → GitHub Apps → New GitHub App).
+Point its webhook URL at this deployment's public origin plus the route the
+API actually serves: `{publicURL}/api/v1/github/webhook`
+(`POST /api/v1/github/webhook`, `internal/identity/routes.go`). Generate a
+webhook secret yourself and enter the same value when registering the App and
+when creating `github.webhookSecretName`'s Secret below — GitHub does not
+generate this one for you.
+
+Grant exactly the permissions and events ADR-0036 needs, and no more:
+
+| Permission/event | Why |
+|---|---|
+| Repository permission `contents: write` | `ascend.run` writes `AGENTS.md` and files under `.agents/skills` through the git data API and pushes a branch (ADR-0036 point 2a). |
+| Repository permission `pull_requests: write` | `pr.report` posts and rewrites its sticky comment on the customer's pull request, and `ascend.run` opens the ascent PR. |
+| Repository permission `metadata: read` | Baseline read access GitHub requires for any repository permission above. |
+| Subscribe to event `pull_request` | Drives `pr.report` on `opened`/`synchronize`/`reopened` (ADR-0036 point 1). |
+| Subscribe to event `installation` | Keeps `gfm.github_installations` in sync on `created`/`deleted`. |
+
+After registering, GitHub shows the **private key exactly once** as a
+downloaded `.pem` file — save it immediately; GitHub does not display it
+again, only lets you generate a new one (which invalidates the old one).
+Create the Secret from it without letting the key touch shell history or Git:
+
+```sh
+kubectl create secret generic guidefold-github-app -n "$NS" \
+  --from-file=private-key=/path/to/downloaded-key.pem
+```
+
+Then set `github.appId: "<numeric App ID>"` and
+`github.privateKeySecretName: guidefold-github-app` in the release's values,
+alongside `github.webhookSecretName` for the webhook secret (its own,
+differently-named Secret with a `webhook-secret` key), and apply.
+
+**This private key is as sensitive as the keyring below, not less.** It lets
+its holder mint an installation token and act — read repository contents,
+write files, open pull requests — on **every repository the App is installed
+on**, across every organisation that installed it, until the key is rotated.
+Treat its Secret with the same handling as `secretKeyringSecretName`'s: never
+in Helm values, release manifests, images or Git, and rotate it (generate a
+new key in the App settings, update the Secret, delete the old key from
+GitHub) if it is ever suspected exposed.
+
+Also add `api.github.com` and `github.com` to `worker.externalEgress` (see
+"API egress for provider-key verification" below for the pattern) — the App
+being configured does not by itself open the worker's NetworkPolicy egress;
+until both the App identity and this egress exist, ADR-0036 jobs terminate
+`skipped` with `github_app_not_configured`.
 
 ## Organisation credential keyring (ADR-0045)
 

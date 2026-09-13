@@ -12,6 +12,8 @@ app.kubernetes.io/instance: {{ include "gf.name" . }}
 {{- if and (ne .Values.workload "migrate") (empty .Values.snapshotID) }}{{ fail "snapshotID is required; serving must never follow a mutable head" }}{{ end -}}
 {{- if and (eq .Values.workload "publish") (empty .Values.artifactImage) }}{{ fail "publish requires artifactImage" }}{{ end -}}
 {{- if not (has .Values.auth (list "workos" "dev")) }}{{ fail "auth must be workos or dev" }}{{ end -}}
+{{- if and (empty .Values.github.appId) (not (empty .Values.github.privateKeySecretName)) }}{{ fail "github.appId is required when github.privateKeySecretName is set" }}{{ end -}}
+{{- if and (not (empty .Values.github.appId)) (empty .Values.github.privateKeySecretName) }}{{ fail "github.privateKeySecretName is required when github.appId is set" }}{{ end -}}
 {{- if and (eq .Values.auth "workos") (not .Values.developmentMode) (eq .Values.workload "serve") }}
   {{- if empty .Values.publicURL }}{{ fail "publicURL is required for WorkOS callbacks" }}{{ end -}}
   {{- if empty .Values.workos.clientID }}{{ fail "workos.clientID is required when auth=workos" }}{{ end -}}
