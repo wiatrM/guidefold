@@ -132,9 +132,20 @@ paths:
       summary: >-
         Begin the explicit GitHub App installation link (ADR-0034, owner + CSRF). Creates a
         single-use signed state and answers with the URL to send the browser to on
-        github.com/apps/<slug>/installations/new.
+        github.com/apps/<slug>/installations/new. An optional return_to (1.13.0) tells the
+        callback which console screen to send the browser back to; a value outside the
+        allow-list (/import, /organization) is ignored, falling back to the Integrations tab.
       parameters:
         - { name: org, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                return_to: { type: string }
+              additionalProperties: false
       responses:
         "200":
           description: The GitHub installation URL to redirect the browser to.
@@ -1071,6 +1082,81 @@ paths:
         "404":
           description: "`import_not_found`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/repos/{repo}/github/import:
+    post:
+      tags: [repositories]
+      summary: >-
+        Import one repository registered from a linked GitHub installation (Task 3, 1.13.0).
+        Owners only. Enqueues github.import_repo (fetch + import.parse only, never
+        proposal.generate), so it never requires an organisation model key.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }, { $ref: "#/components/parameters/Repo" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotency_key]
+              properties:
+                idempotency_key: { type: string }
+              additionalProperties: false
+      responses:
+        "202":
+          description: Import queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, org_id, repo_id, job_id]
+                properties:
+                  schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+                  org_id: { type: string, format: uuid }
+                  repo_id: { type: string }
+                  job_id: { type: string, format: uuid }
+        "404":
+          description: "`repo_not_github_linked`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/github/import:
+    post:
+      tags: [repositories]
+      summary: >-
+        Import every repository of this organisation registered from a linked GitHub
+        installation, one call (Task 3, 1.13.0). Owners only. Never requires a model key.
+      x-idempotent: true
+      parameters: [{ $ref: "#/components/parameters/Org" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotency_key]
+              properties:
+                idempotency_key: { type: string }
+              additionalProperties: false
+      responses:
+        "202":
+          description: Import queued for every GitHub-registered repository (possibly none).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, org_id, items, count]
+                properties:
+                  schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+                  org_id: { type: string, format: uuid }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [repo_id, job_id]
+                      properties:
+                        repo_id: { type: string }
+                        job_id: { type: string, format: uuid }
+                  count: { type: integer }
 
   /api/v1/orgs/{org}/repos/{repo}/skills:
     get:
@@ -2839,6 +2925,13 @@ components:
       properties:
         installation_id: { type: integer }
         account: { type: string }
+        account_type:
+          type: [string, "null"]
+          enum: [user, organization, null]
+          description: >-
+            GitHub's own account.type on the installation object, lower-cased (1.13.0).
+            Null until either the callback's GET /user/installations proof or an
+            "installation" webhook reports it, the same rule repository_selection follows.
         repositories:
           type: array
           items:
@@ -3356,6 +3449,20 @@ components:
         name: { type: string }
         git_host_url: { type: string }
         created_at: { type: [string, "null"], format: date-time }
+        github_installation_id:
+          type: [integer, "null"]
+          description: >-
+            gfm.repos.github_installation_id (1.13.0). Non-null only for a repository
+            github.sync_repositories actually registered from a linked installation.
+        github_account: { type: [string, "null"], description: "Account of the linked installation, if any (1.13.0)." }
+        import_blocked_reason:
+          type: [string, "null"]
+          description: >-
+            gfm.repos.import_blocked_reason (1.13.0). Today only "guidefold_yaml_missing",
+            written by github.import_repo when the repository has no guidefold.yaml.
+        last_import_state: { type: [string, "null"], description: "Newest gfm.imports.state for this repository (1.13.0)." }
+        last_import_error: { type: [string, "null"], description: "Newest gfm.imports.error for this repository (1.13.0)." }
+        last_import_at: { type: [string, "null"], format: date-time, description: "Newest import's finalized_at or created_at (1.13.0)." }
 
     RepoCreated:
       allOf:

@@ -101,6 +101,13 @@ type UserInstallation struct {
 	// gfm.github_installations row even when it runs before any webhook
 	// delivery arrives (API-CONTRACT §4.7's documented either-order case).
 	RepositorySelection string
+	// AccountType is GitHub's own "User"|"Organization" on the installation's
+	// account object (API-CONTRACT §5.1 GitHubInstallation.account_type),
+	// lower-cased by the caller before it is stored. The console's "missing a
+	// repository" link needs it to build the right settings URL: a personal
+	// account's installation settings live at a different path than an
+	// organisation's.
+	AccountType string
 }
 
 // ListUserInstallations returns the installations visible to the given
@@ -136,6 +143,7 @@ func ListUserInstallations(ctx context.Context, cfg UserOAuthConfig, userAccessT
 				ID      int64 `json:"id"`
 				Account struct {
 					Login string `json:"login"`
+					Type  string `json:"type"`
 				} `json:"account"`
 				RepositorySelection string `json:"repository_selection"`
 			} `json:"installations"`
@@ -146,6 +154,7 @@ func ListUserInstallations(ctx context.Context, cfg UserOAuthConfig, userAccessT
 		for _, it := range out.Installations {
 			installations = append(installations, UserInstallation{
 				ID: it.ID, AccountLogin: it.Account.Login, RepositorySelection: it.RepositorySelection,
+				AccountType: strings.ToLower(strings.TrimSpace(it.Account.Type)),
 			})
 		}
 		rawURL = parseNextLink(resp.Header.Get("Link"))

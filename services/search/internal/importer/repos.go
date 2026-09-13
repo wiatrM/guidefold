@@ -9,11 +9,25 @@ import (
 )
 
 // repoView is the `Repo` DTO (API-CONTRACT §5.2 / decoders.ts `repo`).
+//
+// The GitHub-sourced fields (GitHubInstallationID, GitHubAccount) and the
+// import-status fields (ImportBlockedReason, LastImportState,
+// LastImportError, LastImportAt) are new in 1.13.0 (Task 2), so the import
+// screen can list an organisation's repositories with, per repository,
+// which installation it came from, whether it is imported and when, and
+// why one is not importable. They are all nullable — CLI-registered
+// repositories and ones never imported carry none of them.
 type repoView struct {
-	RepoID     string    `json:"repo_id"`
-	Name       string    `json:"name"`
-	GitHostURL string    `json:"git_host_url"`
-	CreatedAt  time.Time `json:"created_at"`
+	RepoID               string     `json:"repo_id"`
+	Name                 string     `json:"name"`
+	GitHostURL           string     `json:"git_host_url"`
+	CreatedAt            time.Time  `json:"created_at"`
+	GitHubInstallationID *int64     `json:"github_installation_id"`
+	GitHubAccount        *string    `json:"github_account"`
+	ImportBlockedReason  *string    `json:"import_blocked_reason"`
+	LastImportState      *string    `json:"last_import_state"`
+	LastImportError      *string    `json:"last_import_error"`
+	LastImportAt         *time.Time `json:"last_import_at"`
 }
 
 func (s *Service) handleListRepos(c *mgmt.Context) error {
@@ -21,8 +35,26 @@ func (s *Service) handleListRepos(c *mgmt.Context) error {
 	if e != nil {
 		return e
 	}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT r.repo_id,r.name,r.git_host_url,r.created_at
- FROM gfm.repos r WHERE r.org_id=$1::uuid
+	// gi joins the linked installation's own account name (never repo_id:
+	// §5.1 says that field on GitHubInstallation.repositories[] is always
+	// null; the match here is the same github_installation_id column
+	// github.sync_repositories itself writes). li is the newest gfm.imports
+	// row for this repository, read the same way the import list's own
+	// "newest first" order does (imports_recent's own (org_id,repo_id,
+	// created_at DESC) index) — never derived from gfm.jobs, which is
+	// retained only 90 days (§5.1's own rule for GitHubInstallation.synced
+	// applies here for the identical reason: a repository imported months
+	// ago must not silently read as never imported).
+	rows, err := s.pool.Query(c.Ctx(), `SELECT r.repo_id,r.name,r.git_host_url,r.created_at,
+ r.github_installation_id,gi.account,r.import_blocked_reason,
+ li.state,li.error,COALESCE(li.finalized_at,li.created_at)
+ FROM gfm.repos r
+ LEFT JOIN gfm.github_installations gi ON gi.installation_id=r.github_installation_id
+ LEFT JOIN LATERAL (
+   SELECT state,error,finalized_at,created_at FROM gfm.imports i
+   WHERE i.org_id=r.org_id AND i.repo_id=r.repo_id ORDER BY i.created_at DESC LIMIT 1
+ ) li ON true
+ WHERE r.org_id=$1::uuid
    AND ($2='owner'
      OR (NOT EXISTS(SELECT 1 FROM gfm.repo_acl_policies p WHERE p.org_id=r.org_id AND p.repo_id=r.repo_id AND p.enabled)
          AND NOT EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id))
@@ -35,7 +67,9 @@ func (s *Service) handleListRepos(c *mgmt.Context) error {
 	items := []repoView{}
 	for rows.Next() {
 		var v repoView
-		if err = rows.Scan(&v.RepoID, &v.Name, &v.GitHostURL, &v.CreatedAt); err != nil {
+		if err = rows.Scan(&v.RepoID, &v.Name, &v.GitHostURL, &v.CreatedAt,
+			&v.GitHubInstallationID, &v.GitHubAccount, &v.ImportBlockedReason,
+			&v.LastImportState, &v.LastImportError, &v.LastImportAt); err != nil {
 			return mgmt.Internal(err)
 		}
 		items = append(items, v)

@@ -55,7 +55,7 @@ export const portMethods = [
   'listInstallations', 'createInstallation', 'revokeInstallation', 'listGitHubInstallations', 'startGitHubInstall', 'deleteGitHubInstallation', 'getAudit',
   'listCredentials', 'setCredential', 'patchCredential', 'deleteCredential',
   'listLiveRuns', 'getLiveRun', 'getLiveRunEvents', 'startLiveRun', 'cancelLiveRun',
-  'listRepos', 'createRepo', 'listRepoAccess', 'setRepoAccess', 'removeRepoAccess', 'listReviewers', 'assignReviewer', 'removeReviewer', 'listImports', 'createImport', 'uploadImportBlob', 'finalizeImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
+  'listRepos', 'createRepo', 'importGitHubRepo', 'importAllGitHubRepos', 'listRepoAccess', 'setRepoAccess', 'removeRepoAccess', 'listReviewers', 'assignReviewer', 'removeReviewer', 'listImports', 'createImport', 'uploadImportBlob', 'finalizeImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
   'listSkills', 'getFacets', 'listDuplicates', 'lookupFacet', 'getSkill', 'getRevision', 'getRevisionRaw', 'sendFeedback',
   'getMapRepository', 'getMapScopes', 'getMapLayers', 'getRelations', 'getModule',
   'listProposals', 'getProposal', 'decideProposal', 'exportProposal', 'getProposalPublication',

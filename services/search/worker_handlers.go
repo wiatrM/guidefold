@@ -125,7 +125,8 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	if e != nil {
 		return nil, e
 	}
-	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, importer.New(pool, blobs)).
+	importerSvc := importer.New(pool, blobs)
+	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, importerSvc).
 		WithProposalGenerator(agentrun.NewReviewProposalGenerator(pool, reviewer))
 	for kind, h := range liveRepo.Handlers() {
 		handlers[kind] = h
@@ -139,6 +140,15 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	// "skipped" degradation as pr.report/live.repo when gh is nil.
 	githubSync := agentrun.NewGitHubSyncWorker(pool, gh)
 	for kind, h := range githubSync.Handlers() {
+		handlers[kind] = h
+	}
+	// github.import_repo (Task 3, API-CONTRACT §4.2/§8 1.13.0): importing a
+	// GitHub-registered repository's skills without an organisation model
+	// key. Reuses live.repo's own fetch/import core (github_import.go) and
+	// the same importer seam; same "skipped" degradation as the other
+	// GitHub-backed jobs when gh is nil.
+	githubImport := agentrun.NewGitHubImportWorker(pool, gh, importerSvc)
+	for kind, h := range githubImport.Handlers() {
 		handlers[kind] = h
 	}
 
