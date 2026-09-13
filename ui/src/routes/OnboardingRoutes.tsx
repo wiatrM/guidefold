@@ -228,20 +228,66 @@ const generationPanelId = 'generate-proposals';
 const createInstallationPanelId = 'create-installation';
 
 /**
- * `registered_repositories` and `synced` (contract §5.1 `GitHubInstallation`, Task 3) are the
- * real fields: `registered_repositories` counts `gfm.repos` this organisation actually
- * registered from this installation, and `synced` is true only once `github.sync_repositories`
- * has completed at least once (`gfm.github_installation_links.repositories_synced_at`). This
- * used to be inferred from the webhook mirror's `created_at`/`updated_at` timestamps happening
- * to differ — an inference, not an observation, and wrong whenever reconciliation had genuinely
- * found zero repositories on time. `repositories[]` (GitHub's own mirror of what it last
- * reported) is a different measurement and stays out of this label so the two are never
- * conflated.
+ * `registered_repositories`, `synced`, `sync_failed_at` and `sync_failure_reason` (contract
+ * §5.1 `GitHubInstallation`, 1.9.0) together give three distinct, honest states for one
+ * installation's reconciliation, never more than one at once: `never_run` (`sync_failed_at`
+ * null, `synced` false — the console says "still syncing", because `github.sync_repositories`
+ * has not finished even once yet, successfully or otherwise), `synced` (`sync_failed_at` null,
+ * `synced` true — `registered_repositories` counts `gfm.repos` this organisation actually
+ * registered from this installation, not the webhook mirror's own `repositories[]`), and
+ * `failed` (`sync_failed_at` set — the *last* reconciliation attempt did not succeed, checked
+ * first because a failure always overrides a `synced:true` left over from an earlier, since-
+ * stale success). A permanent failure and exhausted retries both land here identically; a
+ * later success clears `sync_failed_at`/`sync_failure_reason` back to null server-side, so this
+ * never has to guess which of the two is more recent. Before 1.9.0 a link stuck permanently
+ * failing (the installation gone, its permissions refused, or GitHub simply never answering)
+ * had no way to say so and read as "still syncing" forever — a spinner that would never finish.
  */
 function githubRepositoriesLabel(entry: GitHubInstallation): string {
+  if (entry.sync_failed_at) return githubSyncFailureSentence(entry.sync_failure_reason, entry.suspended);
   if (!entry.synced) return 'Linked. Repositories still syncing.';
   if (entry.registered_repositories === 0) return 'No repositories registered.';
   return entry.registered_repositories + ' repositor' + (entry.registered_repositories === 1 ? 'y' : 'ies') + ' registered.';
+}
+
+/** Plain-language sentence for each `sync_failure_reason` `github.sync_repositories` may
+ * record (contract §5.1/§8, 1.9.0), mapped from the named errors `internal/ghapp` already
+ * distinguishes — never invented categories. Each names what went wrong and what the owner can
+ * do about it: `installation_not_found` and `permission_refused` are permanent (the fix is an
+ * owner action on GitHub's side, not a retry this worker could do on its own), so both name a
+ * concrete next step; `provider_unavailable` is a retried failure that ran out of attempts, so
+ * it says this will pick back up on its own once GitHub notifies Guidefold about the
+ * installation again; `github_app_not_configured` is this deployment's own worker half of the
+ * App missing its credentials (`internal/agentrun/github_sync.go`'s `w.gh == nil` — a different
+ * deployable from the one that let an owner link this installation at all), so it names that
+ * as a deployment problem, the same voice Task 5's own `githubAppNotConfigured` state already
+ * uses just above this table. None of the four offer a "retry now" button — contract §4.7 notes
+ * the gap explicitly: no manual re-run route exists today. An unrecognised reason (a future
+ * addition this console has not been taught yet) still names itself rather than falling back to
+ * something generic.
+ *
+ * `suspended` (contract §5.1, same row) matters specifically for `installation_not_found`:
+ * `ghapp.ErrInstallationNotFound` covers both an installation GitHub deleted outright and one
+ * it merely suspended (ghapp/errors.go's own doc comment says both), and those two need
+ * opposite advice — "disconnect and reconnect" is correct for a deleted installation but wrong,
+ * and destructive for no reason, for one an owner can simply resume from GitHub's own App
+ * settings. `entry.suspended` (the webhook mirror's own `suspended_at`) lets the sentence tell
+ * them apart instead of guessing "deleted" every time. */
+function githubSyncFailureSentence(reason: string | null, suspended: boolean): string {
+  switch (reason) {
+    case 'installation_not_found':
+      return suspended
+        ? 'Repositories did not sync: this installation is suspended on GitHub. Resume it from the App’s settings on GitHub — this picks back up automatically once you do.'
+        : 'Repositories did not sync: GitHub no longer recognizes this installation — it may have been uninstalled. An owner can disconnect and reconnect it to try again.';
+    case 'permission_refused':
+      return 'Repositories did not sync: GitHub refused this because the App’s permissions were not approved. Approve the App’s permissions on GitHub — this picks back up automatically once you do.';
+    case 'provider_unavailable':
+      return 'Repositories did not sync: GitHub did not answer, after every retry. This picks back up automatically the next time GitHub notifies us about this installation.';
+    case 'github_app_not_configured':
+      return 'Repositories did not sync: this deployment’s background worker has no GitHub App configured. This is not something to retry — ask whoever operates this deployment to configure it.';
+    default:
+      return 'Repositories did not sync' + (reason ? ' (' + reason + ').' : '.') + ' An owner can disconnect and reconnect it if this keeps happening.';
+  }
 }
 
 /** `repository_selection` (contract §5.1, Task 4): GitHub's own "all"/"selected" on the

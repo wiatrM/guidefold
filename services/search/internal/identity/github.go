@@ -594,9 +594,14 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 	// could see. synced comes from repositories_synced_at, written inside
 	// that same job's own transaction (never from gfm.jobs, retained only 90
 	// days) — a real "reconciliation has run at least once" flag, not an
-	// inference from created_at/updated_at.
+	// inference from created_at/updated_at. sync_failed_at/
+	// sync_failure_reason are that job's other outcome (Task, API-CONTRACT
+	// §5.1): a permanent failure or the last attempt of a retryable one,
+	// cleared by the same job's own next success — so an owner watching a
+	// link that will never finish reconciling sees why, instead of a
+	// spinner that never resolves.
 	rows, err := s.pool.Query(c.Ctx(), `SELECT gi.installation_id,gi.account,gi.repositories,gi.repository_selection,gi.suspended_at,gi.created_at,gi.updated_at,
- l.linked_at,l.repositories_synced_at,
+ l.linked_at,l.repositories_synced_at,l.last_sync_failed_at,l.last_sync_failure_reason,
  (SELECT count(*) FROM gfm.repos r WHERE r.org_id=$1::uuid AND r.github_installation_id=gi.installation_id)
  FROM gfm.github_installations gi JOIN gfm.github_installation_links l ON l.installation_id=gi.installation_id
  WHERE l.org_id=$1::uuid ORDER BY gi.installation_id`, org.ID)
@@ -610,10 +615,11 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 		var account string
 		var repositories []byte
 		var repositorySelection *string
-		var suspended, created, updated, linkedAt, syncedAt any
+		var suspended, created, updated, linkedAt, syncedAt, syncFailedAt any
+		var syncFailureReason *string
 		var registered int64
 		if err := rows.Scan(&id, &account, &repositories, &repositorySelection, &suspended, &created, &updated,
-			&linkedAt, &syncedAt, &registered); err != nil {
+			&linkedAt, &syncedAt, &syncFailedAt, &syncFailureReason, &registered); err != nil {
 			return mgmt.Internal(err)
 		}
 		var repoList []any
@@ -625,6 +631,7 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 			"repository_selection": repositorySelection, "suspended": suspended != nil,
 			"created_at": created, "updated_at": updated, "linked_at": linkedAt,
 			"registered_repositories": registered, "synced": syncedAt != nil,
+			"sync_failed_at": syncFailedAt, "sync_failure_reason": syncFailureReason,
 		})
 	}
 	if err := rows.Err(); err != nil {
