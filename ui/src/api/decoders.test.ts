@@ -166,7 +166,19 @@ describe('decoders accept the contract payloads', () => {
 
   test('Map, relations and module page', () => {
     expect(decode({ path: '', children: [{ name: 'platforms', path: 'platforms', kind: 'dir', count: 12 }], next_cursor: null }, d.mapRepository).children[0].kind).toBe('dir');
-    expect(decode({ scope: { id: 'forge', owner: 'o', paths: ['platforms/forge'], parent: null }, children: [], skills: [], unmapped: [] }, d.mapScopes).scope?.paths).toEqual(['platforms/forge']);
+    const body = {
+      schema_version: '1', scope: null,
+      scopes: [
+        { id: '_root', owner: 'platform-engineering', parent: null, paths: ['**'], source: 'guidefold_yaml', count: 3 },
+        { id: 'atlas.identity', owner: null, parent: 'atlas', paths: ['platforms/atlas/identity/**'], source: 'guidefold_yaml', count: 2 },
+      ],
+      skills: [{ skill_id: 'urn:skill:meridian:_root:adr-process', name: 'adr-process', scope: '_root' }],
+      unmapped: [{ scope: '_index', count: 1 }],
+    };
+    const decoded = decode(body, d.mapScopes);
+    expect(decoded.scopes.map(item => [item.id, item.parent, item.count])).toEqual([['_root', null, 3], ['atlas.identity', 'atlas', 2]]);
+    expect(decoded.unmapped).toEqual([{ scope: '_index', count: 1 }]);
+    expect(decode({ ...body, scope: body.scopes[1] }, d.mapScopes).scope?.paths).toEqual(['platforms/atlas/identity/**']);
     expect(decode({ layers: [{ layer: 'atomic', count: 4 }] }, d.mapLayers).layers[0].layer).toBe('atomic');
     expect(decode({ items: [{ from: 'a', to: 'b', type: 'derived_from', provenance: 'inferred', revision: 'r' }], next_cursor: null, truncated: true }, d.relations).truncated).toBe(true);
     expect(decode({ scope: 'forge', owner: 'o', skills: [], reading_order: [], shared: [], documents: [{ path: 'AGENTS.md', kind: 'document' }] }, d.modulePage).documents[0].path).toBe('AGENTS.md');
