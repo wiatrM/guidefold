@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeftIcon, ArrowRightIcon, BuildingsIcon, CaretRightIcon, CheckCircleIcon, CopyIcon, FileCodeIcon, GitBranchIcon, GithubLogoIcon, GoogleLogoIcon, KeyIcon, LinkSimpleIcon, ListChecksIcon, MagnifyingGlassIcon, PlugsConnectedIcon, PulseIcon, ShieldCheckIcon, SparkleIcon, TerminalIcon, UsersIcon } from '@phosphor-icons/react';
 import { ActionButton, DataTable, Field, IconTile, MetricRow, Panel, ProvenanceTrail, RouteState, StateBadge, Tabs, Urn } from '../Shared';
@@ -727,8 +727,15 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const [appNotConfigured, setAppNotConfigured] = useState(false);
   // Filter, search and account are URL state (ImportFilter's contract): a filtered list is
   // shareable and Back restores it. A filter or account change is a navigation (pushed); each
-  // search keystroke replaces the entry so Back does not step through every letter. The local
-  // copies follow the address whenever it changes (Back, a pasted link).
+  // search keystroke replaces the entry so Back does not step through every letter.
+  //
+  // react-router's BrowserRouter applies every history change inside React.startTransition, so the
+  // rendered location can lag behind the browser's address. Two consequences are handled here:
+  // - Back/Forward (popstate) re-reads the address immediately. Syncing only from the rendered
+  //   location missed a fast Back: React rendered the final location alone, the account never
+  //   visibly changed ('all' to 'all') and the undone choice stayed on screen.
+  // - The next address is built from this page's own in-flight target when one is pending, so an
+  //   account chosen right after typing keeps the search that has not rendered yet.
   const urlFilter = parseImportFilter(ctx.params.get('filter'));
   const urlSearch = ctx.params.get('q') ?? '';
   const urlAccount = ctx.params.get('account') ?? 'all';
@@ -738,10 +745,34 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   useEffect(() => { setSearch(urlSearch); }, [urlSearch]);
   useEffect(() => { setFilter(urlFilter); }, [urlFilter]);
   useEffect(() => { setAccount(urlAccount); }, [urlAccount]);
+  const location = useLocation();
   const navigate = useNavigate();
-  const chooseFilter = (value: ImportFilterValue) => { setFilter(value); navigate(ctx.href('import', { filter: value === 'all' ? null : value })); };
-  const chooseAccount = (value: string) => { setAccount(value); navigate(ctx.href('import', { account: value === 'all' ? null : value })); };
-  const typeSearch = (value: string) => { setSearch(value); navigate(ctx.href('import', { q: value ? value : null }), { replace: true }); };
+  const inFlight = useRef<string | null>(null);
+  useEffect(() => { if (inFlight.current === location.search) inFlight.current = null; }, [location.search]);
+  useEffect(() => {
+    const onPopState = () => {
+      inFlight.current = null;
+      const address = new URLSearchParams(window.location.search);
+      setSearch(address.get('q') ?? '');
+      setFilter(parseImportFilter(address.get('filter')));
+      setAccount(address.get('account') ?? 'all');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  function writeList(key: 'filter' | 'q' | 'account', value: string | null, replace: boolean) {
+    const next = new URLSearchParams(inFlight.current ?? location.search);
+    next.delete('github');
+    if (org) next.set('org', org);
+    if (repo) next.set('repo', repo);
+    if (value === null) next.delete(key); else next.set(key, value);
+    const query = next.toString();
+    inFlight.current = query ? '?' + query : '';
+    navigate(location.pathname + inFlight.current, { replace });
+  }
+  const chooseFilter = (value: ImportFilterValue) => { setFilter(value); writeList('filter', value === 'all' ? null : value, false); };
+  const chooseAccount = (value: string) => { setAccount(value); writeList('account', value === 'all' ? null : value, false); };
+  const typeSearch = (value: string) => { setSearch(value); writeList('q', value ? value : null, true); };
   const [burst, setBurst] = useState('');
   const [shine, setShine] = useState(0);
   // `?github=<code>` (contract §4.7): the one-shot outcome of a round trip started from this
