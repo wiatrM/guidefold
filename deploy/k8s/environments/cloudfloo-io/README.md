@@ -1,6 +1,60 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## Contract 1.3.0 wired into the console — 2026-09-12 (current)
+## Live Agent, organisation model keys and the init reconciliation — 2026-09-12 (current)
+
+Built by `publish-images.yml` from `main` at `6aa8ad8` (PR #143: the Live Agent
+rebuilt as one button that refreshes the skill library and creates consolidation
+proposals, organisation model keys encrypted at rest, the GitHub App content
+adapter, and `guidefold init` reconciling a partial install). The four image
+digests were patched into the live `Application/guidefold` inline Helm values,
+the same way as every release below.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:aaba07d14a2f8e1378837e686c4a124619d6fffc28304eebfaf4ca6256ed06c0` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:66d6d00e95dd1c4b04432b356a6fc626d1dec135f6f3a8386f6df70bfc1994d4` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:d49337b171e8aff1bbddfd07a1bd715d434b1fe930543dc36284c79fdfab8ad0` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:96620231335d6cd9bb736730117cb37192c98f9758152f81592ff24d9b600cf5` |
+
+Sync Succeeded; all four deployments ready on the new images. `/health/ready`
+200. Rollback: the digests of the previous release below.
+
+**Two operator settings went with it (PR #146), because without either one the
+feature deploys as screens that cannot be used.**
+
+- `secretKeyringSecretName: guidefold-keyring`. The Secret was created in the
+  `guidefold` namespace with one AES-256 key under `key_id` `prod-1`, in the
+  JSON shape `internal/secrets.LoadKeyring` reads. It is mounted read-only on
+  the API and the worker at `/run/keyring/keyring`. **Losing this file makes
+  every stored organisation credential unrecoverable**: the ciphertext is bound
+  to the key, and to the organisation and provider as additional authenticated
+  data. Back it up separately from the database dump — whoever holds both holds
+  the customers' model keys in the clear. Rotation is additive: add a second
+  `key_id`, flip `active`, and rows sealed under the old key stay readable until
+  they are re-sealed, so never delete a key a row still references.
+- `api.externalEgress`, TCP 443 to `0.0.0.0/0` with `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16` and `169.254.0.0/16` excluded. Storing a
+  model key verifies it against the provider before sealing it, and until this
+  rule existed the API pod reached DNS and the database and nothing else, so
+  every attempt answered `provider_unavailable`. The owner chose the open form
+  over a list of Cloudflare ranges deliberately: OpenRouter and GitHub sit
+  behind Cloudflare, and a pinned CIDR list stops working silently the day
+  those ranges change, surfacing as an unreachable provider that nobody
+  connects to a network policy. The excluded ranges keep the pod off the
+  cluster's own network and off the cloud metadata endpoint.
+
+Verified after the sync: the egress rule renders as intended, and
+`GUIDEFOLD_SECRET_KEY_FILE` is present on both the API and the worker
+Deployments. **Not verified:** that the service parsed the keyring. The images
+are distroless with no shell, so the file could not be inspected in place; the
+first stored model key is what proves it.
+
+`worker.externalEgress` is still empty. Until an operator fills it, `live.repo`
+and `pr.report` cannot reach `api.github.com` or a model provider and end
+`skipped` with a named reason, which is the honest behaviour rather than a
+failure.
+
+## Contract 1.3.0 wired into the console — 2026-09-12 (previous)
 
 Built by `publish-images.yml` from `main` at `31524dd` (PR #144: Overview
 trends against the previous usage window, "Your decisions", "Decided by",
@@ -19,7 +73,7 @@ the new images (`guidefold` 2/2, `guidefold-ui` 2/2, worker 1/1, portal 1/1).
 Public checks: `/` 200, `/health/ready` 200, `/api/v1/me` 401 (anonymous).
 Rollback: the digests of the previous release below.
 
-## shadcn console and contract 1.3.0 — 2026-09-12 (previous)
+## shadcn console and contract 1.3.0 — 2026-09-12 (earlier)
 
 Built by `publish-images.yml` from `main` at `b49777d` (PR #141 console on
 shadcn/shadcnspace, Overview view, contract 1.3.0; PR #142 sign-in race fix and
