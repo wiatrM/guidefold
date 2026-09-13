@@ -164,6 +164,12 @@ func TestOrganisationScopeResponsesMatchTheOpenAPIComponents(t *testing.T) {
 		spec.Check(t, "RelationEdge", raw.(map[string]any))
 	}
 	spec.Check(t, "ModulePage", c.mustGetOrg(t, "/modules/atlas.identity?repo=meridian"))
+	duplicates := c.mustGetOrg(t, "/skills/duplicates?limit=5")
+	spec.Check(t, "DuplicatePage", duplicates)
+	for _, raw := range duplicates["items"].([]any) {
+		spec.Check(t, "DuplicateGroup", raw.(map[string]any))
+	}
+	spec.Check(t, "DuplicatePage", c.mustGetOrg(t, "/skills/duplicates?repo=second"))
 
 	status, body, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodGet,
 		Path: c.orgBase() + "/modules/atlas.identity"})

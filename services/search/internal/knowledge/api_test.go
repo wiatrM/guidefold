@@ -743,8 +743,16 @@ func (c *catalog) mustGetOrg(t *testing.T, path string) map[string]any {
 // which is exactly the ambiguity §4.10.6 is about.
 func (c *catalog) addSecondRepo(t *testing.T) {
 	t.Helper()
+	c.addSecondRepoWith(t, func(string) {})
+}
+
+// addSecondRepoWith is addSecondRepo with a hook that edits the second tree
+// before it is imported.
+func (c *catalog) addSecondRepoWith(t *testing.T, edit func(tree string)) {
+	t.Helper()
 	c.owner.CreateRepo(t, c.org, "second", "")
 	tree := pivottest.Monorepo(t)
+	edit(tree)
 	cfg := filepath.Join(tree, "guidefold.yaml")
 	raw, e := os.ReadFile(cfg)
 	if e != nil {
@@ -1069,5 +1077,146 @@ func TestOrganisationRevisionLinksToItsOwnRepositoryHost(t *testing.T) {
 		if status != http.StatusOK || len(raw) == 0 || header.Get("X-Content-SHA256") != summary["content_sha256"] {
 			t.Fatalf("raw through the organisation: %d %d bytes %q", status, len(raw), header.Get("X-Content-SHA256"))
 		}
+	}
+}
+
+// ---- duplicates across repositories (API-CONTRACT §4.10 item 9) ----
+
+// duplicateGroups walks every page of the duplicates read for one client.
+func (c *catalog) duplicateGroups(t *testing.T, who *pivottest.Client, query string) []map[string]any {
+	t.Helper()
+	out, cursor := []map[string]any{}, ""
+	for pages := 0; pages < 20; pages++ {
+		path := c.orgBase() + "/skills/duplicates?" + query
+		if cursor != "" {
+			path += "&cursor=" + url.QueryEscape(cursor)
+		}
+		status, body := c.getAs(t, who, path)
+		if status != http.StatusOK {
+			t.Fatalf("GET %s: %d %v", path, status, body)
+		}
+		for _, raw := range body["items"].([]any) {
+			out = append(out, raw.(map[string]any))
+		}
+		next, _ := body["next_cursor"].(string)
+		if next == "" {
+			return out
+		}
+		cursor = next
+	}
+	t.Fatal("the duplicates read never ended")
+	return nil
+}
+
+func TestDuplicatesGroupTheSameNameAcrossRepositories(t *testing.T) {
+	c := newCatalog(t)
+	const edited = "adr-process"
+	c.addSecondRepoWith(t, func(tree string) {
+		file := filepath.Join(tree, ".agents", "skills", edited, "SKILL.md")
+		raw, e := os.ReadFile(file)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e := os.WriteFile(file, append(raw, []byte("\nOne line only the second repository has.\n")...), 0o644); e != nil {
+			t.Fatal(e)
+		}
+	})
+
+	groups := c.duplicateGroups(t, c.owner, "limit=100")
+	if len(groups) != fixtureSkills {
+		t.Fatalf("%d duplicate groups, want %d", len(groups), fixtureSkills)
+	}
+	names := []string{}
+	for _, g := range groups {
+		name := g["name"].(string)
+		names = append(names, name)
+		if !reflect.DeepEqual(g["repos"], []any{"meridian", "second"}) || g["count"].(float64) != 2 {
+			t.Fatalf("group %s: repos %v count %v", name, g["repos"], g["count"])
+		}
+		members := g["skills"].([]any)
+		if len(members) != 2 {
+			t.Fatalf("group %s lists %d members", name, len(members))
+		}
+		for _, raw := range members {
+			m := raw.(map[string]any)
+			if m["skill_id"] == "" || m["path"] == "" || m["scope"] == "" || m["content_sha256"] == nil {
+				t.Fatalf("group %s member %v", name, m)
+			}
+		}
+		if want := name != edited; g["identical"] != want {
+			t.Fatalf("group %s identical=%v, want %v", name, g["identical"], want)
+		}
+	}
+	if !sort.StringsAreSorted(names) {
+		t.Fatalf("groups of equal count are not ordered by name: %v", names)
+	}
+
+	// repo=second keeps the groups that include second, with both members.
+	narrowed := c.duplicateGroups(t, c.owner, "repo=second&limit=100")
+	if !reflect.DeepEqual(narrowed, groups) {
+		t.Fatalf("repo=second changed the groups:\n %v\n %v", narrowed, groups)
+	}
+
+	// limit=10 pages without overlap and reaches every group.
+	status, first := c.getAs(t, c.owner, c.orgBase()+"/skills/duplicates?limit=10")
+	if status != http.StatusOK || len(first["items"].([]any)) != 10 || first["next_cursor"] == nil {
+		t.Fatalf("first page: %d %v", status, first)
+	}
+	_, second := c.getAs(t, c.owner, c.orgBase()+"/skills/duplicates?limit=10&cursor="+
+		url.QueryEscape(first["next_cursor"].(string)))
+	seen := map[string]bool{}
+	for _, raw := range append(first["items"].([]any), second["items"].([]any)...) {
+		name := raw.(map[string]any)["name"].(string)
+		if seen[name] {
+			t.Fatalf("%s is on both pages", name)
+		}
+		seen[name] = true
+	}
+	if len(seen) != 20 || second["items"].([]any)[0].(map[string]any)["name"] != names[10] {
+		t.Fatalf("the second page does not continue the first: %v", second["items"])
+	}
+	if paged := c.duplicateGroups(t, c.owner, "limit=10"); len(paged) != fixtureSkills {
+		t.Fatalf("paging by 10 reached %d groups", len(paged))
+	}
+
+	status, body := c.getAs(t, c.owner, c.orgBase()+"/skills/duplicates?repo=nope")
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("an unknown repository: %d %v", status, body)
+	}
+	status, body = c.getAs(t, c.owner, c.orgBase()+"/skills/duplicates?cursor=nope")
+	if status != http.StatusBadRequest || body["error"] != "invalid_cursor" {
+		t.Fatalf("a malformed cursor: %d %v", status, body)
+	}
+}
+
+// The literal segment is not read as a skill id.
+func TestDuplicatesRouteIsNotASkillID(t *testing.T) {
+	c := newCatalog(t)
+	body := c.mustGetOrg(t, "/skills/duplicates")
+	if _, isSkill := body["skill_id"]; isSkill {
+		t.Fatalf("/skills/duplicates answered as a skill: %v", body)
+	}
+	if items, ok := body["items"].([]any); !ok || len(items) != 0 {
+		t.Fatalf("one repository cannot hold a cross-repository duplicate: %v", body)
+	}
+}
+
+// A member who can read only one repository sees no group.
+func TestARestrictedMemberSeesNoDuplicates(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+	member := c.invite(t, "member", "member@example.test")
+	ownerID := c.owner.User["id"].(string)
+	status, body, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(c.org, "second") + "/access/" + ownerID,
+		Body: map[string]any{"access": "read"}, Key: "restrict-second"})
+	if status != http.StatusOK {
+		t.Fatalf("restrict second: %d %v", status, body)
+	}
+	if groups := c.duplicateGroups(t, member, "limit=100"); len(groups) != 0 {
+		t.Fatalf("the restricted member sees %d groups", len(groups))
+	}
+	if groups := c.duplicateGroups(t, c.owner, "limit=100"); len(groups) != fixtureSkills {
+		t.Fatalf("the owner sees %d groups", len(groups))
 	}
 }

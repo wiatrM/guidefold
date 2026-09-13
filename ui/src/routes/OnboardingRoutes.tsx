@@ -319,9 +319,18 @@ const GITHUB_CALLBACK_MESSAGES: Record<string, string> = {
  * The Integrations tab's "Set up an adapter" guide (Task 7): the owner asked what an adapter
  * is after seeing "No adapter installed" on Overview. Every command here is quoted verbatim
  * from `skills/guidefold/scripts/guidefold` — its usage block, `cmd_install`, `cmd_login`,
- * `cmd_doctor`, `cmd_telemetry_flush` and the argparse definitions for those subcommands — never
- * invented. `docs/HOWTO-adapter.md` carries the same five steps for a reader outside the UI,
- * plus a troubleshooting table.
+ * `cmd_doctor`, `cmd_telemetry` and the argparse definitions for those subcommands — never
+ * invented. `docs/HOWTO-adapter.md` carries the same steps for a reader outside the UI, plus a
+ * troubleshooting table.
+ *
+ * Owner instruction, 2026-09-13: sign in the way Claude Code does -- `guidefold login`'s device
+ * flow, approved right here, is enough on its own; no token is copied, pasted, exported or
+ * written by hand. `resolve_search_config` now falls back to the credentials file `login`
+ * writes when no `GUIDEFOLD_TOKEN`/`token_file` is configured (skills/guidefold/scripts/
+ * guidefold, docs/CONVENTIONS.md §1a). The installation-token path (`INSTALLATION_TOKEN_STEP`
+ * below) still exists and still works -- it is the right choice for CI and scripted use, where
+ * there is no browser to approve a device code -- but it is no longer part of the default,
+ * numbered flow.
  */
 const ADAPTER_STEPS: { title: string; detail: string; command: string }[] = [
   {
@@ -331,15 +340,8 @@ const ADAPTER_STEPS: { title: string; detail: string; command: string }[] = [
   },
   {
     title: 'Sign in',
-    detail: 'Starts the device flow; open the printed link and approve the code it shows, right here under Organization › Integrations.',
+    detail: 'Starts the device flow: the CLI prints a short code and this console’s URL. Open the link, confirm the same code shows here, then approve — nothing is copied or pasted. That one sign-in is enough; the adapter’s SEARCH/USE calls use it automatically.',
     command: 'guidefold login',
-  },
-  {
-    title: 'Store the installation token',
-    detail: 'Paste the token an owner creates below into a file only you can read, then point the adapter at it.',
-    command: 'printf \'%s\' "<paste the installation token>" > ~/.config/guidefold/search-token '
-      + '&& chmod 600 ~/.config/guidefold/search-token '
-      + '&& export GUIDEFOLD_SEARCH_TOKEN_FILE=~/.config/guidefold/search-token',
   },
   {
     title: 'Check the setup',
@@ -347,11 +349,23 @@ const ADAPTER_STEPS: { title: string; detail: string; command: string }[] = [
     command: 'guidefold doctor',
   },
   {
-    title: 'Send telemetry',
-    detail: 'Posts queued SEARCH/USE events to /v1/events:batch; run this by hand or from CI, never from the hook.',
-    command: 'guidefold telemetry flush --url <api>',
+    title: 'Telemetry',
+    detail: 'On by default once this sign-in has a token and an endpoint (owner decision, ADR-0048) — queued SEARCH/USE events are sent automatically in the background after a harness call, no manual flush and no hook-path network call. Switch it off any time with guidefold telemetry disable (or GUIDEFOLD_TELEMETRY=0 for one job); GUIDEFOLD_TELEMETRY_DISABLE stops local collection entirely.',
+    command: 'guidefold telemetry status # or: disable · enable',
   },
 ];
+
+/** Collapsed fallback (Task 7 / 2026-09-13): CI and other scripted, browser-less use still needs
+ * an installation token, created by an owner below and stored the way this always worked. Not
+ * part of the numbered flow above — a human running the adapter interactively should sign in
+ * instead. */
+const INSTALLATION_TOKEN_STEP = {
+  title: 'CI or another script without a browser: use an installation token',
+  detail: 'guidefold login needs a browser to approve the device code. CI and other unattended, scripted use has none, so create an installation token below (Owner) and store it in a file only the job can read.',
+  command: 'printf \'%s\' "<paste the installation token>" > ~/.config/guidefold/search-token '
+    + '&& chmod 600 ~/.config/guidefold/search-token '
+    + '&& export GUIDEFOLD_SEARCH_TOKEN_FILE=~/.config/guidefold/search-token',
+};
 
 function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
   const { source, org, repo, role } = ctx;
@@ -928,6 +942,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     return code && code !== 'github_app_not_configured' ? code : '';
   });
   const [deviceStatus, setDeviceStatus] = useState('');
+  const [deviceDecided, setDeviceDecided] = useState(false);
   const [busy, setBusy] = useState(false);
   const [keyProvider, setKeyProvider] = useState<OrgCredentialProvider>(orgCredentialProviders[0]);
   const [keyName, setKeyName] = useState('');
@@ -1166,12 +1181,24 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     await source.patchCredential(org, provider, { model }, 'credential-patch:' + org + ':' + provider + ':model');
     credentials.reload();
   }
+  /* Contract §4.1: `POST /api/v1/auth/device/approve|deny` needs only "sesja + CSRF" -- any
+   * signed-in member of this organization, not an owner. This route already requires a session
+   * to be reached at all (app.tsx redirects an unauthenticated visitor to /login and back), so
+   * the only real guard left here is against a double submit while the request is in flight, or
+   * after it already resolved once (the server's code is single-use either way). */
   async function decideDevice(approve: boolean) {
-    if (!deviceCode) return;
+    if (!deviceCode || busy || deviceDecided) return;
+    setBusy(true);
     try {
       const result = await source.decideDevice(deviceCode, approve, 'device:' + deviceCode + ':' + (approve ? 'approve' : 'deny'));
       setDeviceStatus('Device request ' + deviceCode + ' is now ' + result.state + '.');
-    } catch (error) { setDeviceStatus('The device request was not decided (' + asApiError(error).code + '). It stays as it was, and no device was authorized.'); }
+      setDeviceDecided(true);
+    } catch (error) {
+      // The server answers one code, `device_code_not_found` (404), for "unknown, already used
+      // or expired" (API-CONTRACT §4.1) -- it does not distinguish them, so this copy must not
+      // invent a distinction the server itself does not make. The raw code is shown as-is.
+      setDeviceStatus('The device request was not decided (' + asApiError(error).code + '). It stays as it was, and no device was authorized.');
+    } finally { setBusy(false); }
   }
   /** Never auto-linked: the operator picks the provider, then the API redirects to confirm it. */
   async function startLink(provider: string) {
@@ -1360,14 +1387,18 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       </Panel>}
       </div>
     </> : <>
-      {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<KeyIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone="warning">Pending</StateBadge>}>
+      {/* API-CONTRACT §4.1: approve/deny needs only "sesja + CSRF" -- any signed-in member, not
+          an owner. Reaching this route at all already required signing in (app.tsx redirects an
+          unauthenticated visitor to /login and back with `?device=<code>` preserved), so the
+          buttons are gated on the request being in flight or already decided, never on role. */}
+      {deviceCode && <Panel title="Device authorization" eyebrow="CLI sign-in" icon={<KeyIcon weight="regular" aria-hidden="true" />} action={<StateBadge tone={deviceDecided ? 'neutral' : 'warning'}>{deviceDecided ? 'Decided' : 'Pending'}</StateBadge>}>
         <div className={styles.shownOnce}>
           <IconTile icon={<KeyIcon weight="duotone" />} size="lg" tone="human" />
-          <p>A CLI on another machine asked for code <code>{deviceCode}</code>. Approve it only if you started that sign-in.</p>
+          <p>A CLI on another machine asked for code <code>{deviceCode}</code>. Approve it only if you started that sign-in — otherwise deny it.</p>
         </div>
         <div className={styles.actions}>
-          <ActionButton tone="human" disabled={!owner} onClick={() => { void decideDevice(true); }}>Approve this device</ActionButton>
-          <ActionButton disabled={!owner} onClick={() => { void decideDevice(false); }}>Deny</ActionButton>
+          <ActionButton tone="human" disabled={busy || deviceDecided} onClick={() => { void decideDevice(true); }}>Approve this device</ActionButton>
+          <ActionButton disabled={busy || deviceDecided} onClick={() => { void decideDevice(false); }}>Deny</ActionButton>
         </div>
         <p className={styles.feedback} role="status">{deviceStatus}</p>
       </Panel>}
@@ -1375,7 +1406,7 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         <div className={styles.shownOnce}>
           <IconTile icon={<PlugsConnectedIcon weight="duotone" />} size="lg" tone="system" />
           <div className={styles.shownOnceBody}>
-            <p>An adapter is the CLI package copied into your repo (<code>skills/guidefold/</code> to <code>.agents/skills/guidefold/</code>) that runs SEARCH and USE against this organization with an installation token, and queues the telemetry events this console reads.</p>
+            <p>An adapter is the CLI package copied into your repo (<code>skills/guidefold/</code> to <code>.agents/skills/guidefold/</code>) that runs SEARCH and USE against this organization and queues the telemetry events this console reads. Signing in once is enough &mdash; no token to copy, paste or export.</p>
             <ol className="grid gap-5">
               {ADAPTER_STEPS.map((step, index) => <li key={step.title} className={styles.stack}>
                 <div className={styles.stepText}>
@@ -1384,12 +1415,21 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
                   <span className={styles.stepDetail}>{step.detail}</span>
                 </div>
                 <CommandBlock commands={step.command} />
-                {index === 2 && (owner
-                  ? <ActionButton size="sm" tone="system" href={'#' + createInstallationPanelId}>Open Create an installation</ActionButton>
-                  : <p className={styles.help}>Only an owner can create an installation token here; ask one to run this step.</p>)}
               </li>)}
             </ol>
             <p>Once the adapter runs and flushes, <Link to={ctx.href('home', {})}>Overview</Link> stops showing &ldquo;No adapter installed&rdquo; and &ldquo;No telemetry in the last 30d&rdquo;, and <Link to={ctx.href('usage', {})}>Usage &amp; quality</Link> begins to fill in.</p>
+          </div>
+        </div>
+      </Panel>
+      <Panel title={INSTALLATION_TOKEN_STEP.title} eyebrow="Fallback, not the default" icon={<KeyIcon weight="regular" aria-hidden="true" />} collapsible defaultOpen={false}>
+        <div className={styles.shownOnce}>
+          <IconTile icon={<KeyIcon weight="duotone" />} size="lg" tone="system" />
+          <div className={styles.shownOnceBody}>
+            <p>{INSTALLATION_TOKEN_STEP.detail}</p>
+            <CommandBlock commands={INSTALLATION_TOKEN_STEP.command} />
+            {owner
+              ? <ActionButton size="sm" tone="system" href={'#' + createInstallationPanelId}>Open Create an installation</ActionButton>
+              : <p className={styles.help}>Only an owner can create an installation token here; ask one to run this step.</p>}
           </div>
         </div>
       </Panel>

@@ -11,7 +11,7 @@ import { ApiClient, ApiError, type RequestSpec } from '../api/client';
 import { AccessController } from '../api/access';
 import * as d from '../api/decoders';
 import type {
-  AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, ExportPayload, Facets, FacetLookup,
+  AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, DuplicatePage, ExportPayload, Facets, FacetLookup,
   ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
   Me, Member, ModulePage, Org, Profile, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
@@ -19,7 +19,7 @@ import type {
   OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
-import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, ReadScope, RelationQuery, SkillQuery, UsageQuery } from './source';
+import type { DataSource, DraftStore, DuplicateQuery, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, ReadScope, RelationQuery, SkillQuery, UsageQuery } from './source';
 
 /** Drafts live in RAM only and are dropped with the access generation. */
 export function createMemoryDraftStore(): DraftStore {
@@ -343,6 +343,9 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
     getFacets(t: ReadScope, query: FacetQuery): Promise<Facets> {
       return read({ path: readBase(t) + '/skills/facets', query: { field: query.field, q: query.q, cursor: query.cursor }, decode: d.facets, resource: 'facets/' + scopeKey(t) + '/' + query.field });
+    },
+    listDuplicates(org: string, query: DuplicateQuery): Promise<DuplicatePage> {
+      return read({ path: '/orgs/' + encodeURIComponent(org) + '/skills/duplicates', query: { repo: query.repo ?? undefined, cursor: query.cursor, limit: query.limit }, decode: d.duplicatePage, resource: 'duplicates/' + org + '/' + (query.repo ?? '*') + '/' + (query.cursor ?? '') });
     },
     lookupFacet(t: ReadScope, field: string, value: string): Promise<FacetLookup> {
       return read({ path: readBase(t) + '/skills/facets/lookup', query: { field, value }, decode: d.facetLookup, resource: 'facet-lookup/' + scopeKey(t) + '/' + field });

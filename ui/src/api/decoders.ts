@@ -560,6 +560,24 @@ export const skillPage = object<SkillPage>({
   schema_version: nullable(str), filters: fallback(dictionary(filterEcho), {}),
 });
 
+/** `GET {org_base}/skills/duplicates` (contract 1.12.0, §4.10 item 9): the same exact skill name in
+ * at least two readable repositories. `identical` is true only when every member has a non-null and
+ * equal `content_sha256`; similarity is not measured here. */
+export interface DuplicateMember {
+  skill_id: string; repo_id: string; scope: string; path: string;
+  content_sha256: string | null; publication_status: string;
+}
+export const duplicateMember = object<DuplicateMember>({
+  skill_id: str, repo_id: str, scope: str, path: str,
+  content_sha256: nullable(str), publication_status: str,
+});
+export interface DuplicateGroup { name: string; repos: string[]; count: number; identical: boolean; skills: DuplicateMember[] }
+export const duplicateGroup = object<DuplicateGroup>({
+  name: str, repos: arrayOf(str), count: num, identical: bool, skills: arrayOf(duplicateMember),
+});
+export interface DuplicatePage { items: DuplicateGroup[]; next_cursor: string | null }
+export const duplicatePage = object<DuplicatePage>({ items: arrayOf(duplicateGroup), next_cursor: nullable(str) });
+
 export interface Facets { field: string; values: { value: string; count: number }[]; next_cursor: string | null }
 export const facets = object<Facets>({
   field: fallback(str, ''),

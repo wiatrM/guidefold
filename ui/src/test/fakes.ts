@@ -56,7 +56,7 @@ export const portMethods = [
   'listCredentials', 'setCredential', 'patchCredential', 'deleteCredential',
   'listLiveRuns', 'getLiveRun', 'getLiveRunEvents', 'startLiveRun', 'cancelLiveRun',
   'listRepos', 'createRepo', 'listRepoAccess', 'setRepoAccess', 'removeRepoAccess', 'listReviewers', 'assignReviewer', 'removeReviewer', 'listImports', 'createImport', 'uploadImportBlob', 'finalizeImport', 'getImport', 'cancelImport', 'getImportPlan', 'generateProposals',
-  'listSkills', 'getFacets', 'lookupFacet', 'getSkill', 'getRevision', 'getRevisionRaw', 'sendFeedback',
+  'listSkills', 'getFacets', 'listDuplicates', 'lookupFacet', 'getSkill', 'getRevision', 'getRevisionRaw', 'sendFeedback',
   'getMapRepository', 'getMapScopes', 'getMapLayers', 'getRelations', 'getModule',
   'listProposals', 'getProposal', 'decideProposal', 'exportProposal', 'getProposalPublication',
   'listSnapshots', 'activateSnapshot', 'publish',
