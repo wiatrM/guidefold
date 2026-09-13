@@ -40,7 +40,7 @@ function renderRoute(source: DataSource, search = '', over: Partial<ApiRouteCont
     go: vi.fn(),
     ...over,
   };
-  return render(<MemoryRouter><ApiImportRoute ctx={ctx} />{extra}</MemoryRouter>);
+  return render(<MemoryRouter initialEntries={['/import' + (search ? '?' + search : '')]}><ApiImportRoute ctx={ctx} />{extra}</MemoryRouter>);
 }
 
 describe('Import route, hosted API, six states', () => {
@@ -726,6 +726,49 @@ describe('Organization wizard, list state in the URL', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('account=2');
     await userEvent.type(screen.getByRole('textbox', { name: 'Search repositories' }), 'wi');
     expect(screen.getByTestId('location')).toHaveTextContent('q=wi');
+  });
+});
+
+describe('Organization wizard, Back while a navigation is still pending (react-router transitions)', () => {
+  // BrowserRouter applies every history change inside React.startTransition. When the owner picks
+  // an account and presses Back before that push has rendered, React renders only the final
+  // location: the account in the address never visibly changes ('all' to 'all'), so a copy of it
+  // synced by a value-change effect stayed on the undone choice (CI failure on main 69f6e9a, e2e
+  // org-wizard step 3). The browser's own popstate arrives immediately, so the list re-reads the
+  // address from it. Both events are dispatched inside one act(), before any transition renders.
+  const twoAccounts = () => fakeSource({
+    listRepos: async () => [githubRepo({ name: 'acme/widgets' }), githubRepo({ repo_id: 'blog', name: 'ada/blog', github_installation_id: 2, github_account: 'ada' })],
+    listGitHubInstallations: async () => [installation(), installation({ installation_id: 2, account: 'ada', account_type: 'user' })],
+    listCredentials: async () => [],
+  });
+
+  test('Back undoes an account choice whose navigation had not rendered yet', async () => {
+    const before = window.location.href;
+    try {
+      renderRoute(twoAccounts(), 'step=preview');
+      const select = await screen.findByLabelText('GitHub account');
+      await act(async () => {
+        window.history.replaceState(null, '', '/import?step=preview');
+        fireEvent.change(select, { target: { value: '2' } });
+        // What the browser does on Back: the address is already the previous entry, then popstate.
+        window.history.replaceState(null, '', '/import?step=preview');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await waitFor(() => expect(screen.getByLabelText('GitHub account')).toHaveValue('all'));
+      expect(within(screen.getByRole('list', { name: 'Repositories' })).getByText('acme/widgets')).toBeInTheDocument();
+    } finally { window.history.replaceState(null, '', before); }
+  });
+
+  test('an account chosen while a typed search has not rendered yet keeps that search in the address', async () => {
+    renderRoute(twoAccounts(), 'step=preview', {}, <LocationProbe />);
+    const select = await screen.findByLabelText('GitHub account');
+    await act(async () => {
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search repositories' }), { target: { value: 'blo' } });
+      fireEvent.change(select, { target: { value: '2' } });
+    });
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('account=2'));
+    expect(screen.getByTestId('location')).toHaveTextContent('q=blo');
+    expect(screen.getByRole('textbox', { name: 'Search repositories' })).toHaveValue('blo');
   });
 });
 
