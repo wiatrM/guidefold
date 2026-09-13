@@ -83,6 +83,9 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills", s.handleListSkills)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/facets", s.handleFacets)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/facets/lookup", s.handleFacetLookup)
+	// Organisation scope only (§4.10 item 9): a duplicate across repositories
+	// needs more than one. The literal segment outranks {skill_id} in ServeMux.
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/duplicates", s.handleDuplicates)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}", s.handleSkill)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}", s.handleRevision)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}/raw", s.handleRaw)

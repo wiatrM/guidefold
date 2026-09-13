@@ -291,6 +291,18 @@ func (c *Context) AuthorizeScope(orgParam, repoParam string, min Role) (*Org, *S
 		}
 		return org, &Scope{Repos: []string{repo.ID}, Repo: repo}, nil
 	}
+	repos, e := c.ReadableRepos(org)
+	if e != nil {
+		return nil, nil, e
+	}
+	return org, &Scope{Repos: repos}, nil
+}
+
+// ReadableRepos is every repository of the organisation the caller may read,
+// in id order and never nil: the unnarrowed scope of AuthorizeScope. A read
+// that must look beyond a `?repo=` filter (duplicates across repositories,
+// API-CONTRACT §4.10 item 9) takes it from here, so the ACL rule stays in one place.
+func (c *Context) ReadableRepos(org *Org) ([]string, error) {
 	rows, e := c.router.opts.Pool.Query(c.Ctx(), `SELECT r.repo_id FROM gfm.repos r
  WHERE r.org_id=$1::uuid
    AND ($2 OR NOT (EXISTS(SELECT 1 FROM gfm.repo_acl_policies p WHERE p.org_id=r.org_id AND p.repo_id=r.repo_id AND p.enabled)
@@ -298,21 +310,21 @@ func (c *Context) AuthorizeScope(orgParam, repoParam string, min Role) (*Org, *S
         OR EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id AND m.user_id=$3::uuid))
  ORDER BY r.repo_id`, org.ID, org.Role == "owner", c.Principal.UserID)
 	if e != nil {
-		return nil, nil, Internal(e)
+		return nil, Internal(e)
 	}
 	defer rows.Close()
-	scope := &Scope{Repos: []string{}}
+	repos := []string{}
 	for rows.Next() {
 		var id string
 		if e := rows.Scan(&id); e != nil {
-			return nil, nil, Internal(e)
+			return nil, Internal(e)
 		}
-		scope.Repos = append(scope.Repos, id)
+		repos = append(repos, id)
 	}
 	if e := rows.Err(); e != nil {
-		return nil, nil, Internal(e)
+		return nil, Internal(e)
 	}
-	return org, scope, nil
+	return repos, nil
 }
 
 // AuthorizeReviewerRepo is the narrow permission used for proposal decisions
