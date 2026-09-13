@@ -117,7 +117,7 @@ func countRows(t *testing.T, h *pivottest.Harness, query string, args ...any) in
 // proposal.generate job is enqueued and gfm.org_credentials stays empty.
 func TestGitHubImportRepoWorksWithoutModelKey(t *testing.T) {
 	bodies := map[string]string{
-		"guidefold.yaml":               rootGuidefoldYAML(t),
+		"guidefold.yaml":                 rootGuidefoldYAML(t),
 		".agents/skills/widget/SKILL.md": sharedProcedureSkill("widget", "platform-engineering"),
 	}
 	files := []string{"guidefold.yaml", ".agents/skills/widget/SKILL.md"}
