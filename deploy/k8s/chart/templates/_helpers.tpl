@@ -14,6 +14,10 @@ app.kubernetes.io/instance: {{ include "gf.name" . }}
 {{- if not (has .Values.auth (list "workos" "dev")) }}{{ fail "auth must be workos or dev" }}{{ end -}}
 {{- if and (empty .Values.github.appId) (not (empty .Values.github.privateKeySecretName)) }}{{ fail "github.appId is required when github.privateKeySecretName is set" }}{{ end -}}
 {{- if and (not (empty .Values.github.appId)) (empty .Values.github.privateKeySecretName) }}{{ fail "github.privateKeySecretName is required when github.appId is set" }}{{ end -}}
+{{- $ghOAuthAll := and (not (empty .Values.github.appSlug)) (not (empty .Values.github.clientID)) (not (empty .Values.github.clientSecretName)) -}}
+{{- $ghOAuthNone := and (empty .Values.github.appSlug) (empty .Values.github.clientID) (empty .Values.github.clientSecretName) -}}
+{{- if not (or $ghOAuthAll $ghOAuthNone) }}{{ fail "github.appSlug, github.clientID and github.clientSecretName must be set together or not at all" }}{{ end -}}
+{{- if and $ghOAuthAll (or (empty .Values.github.appId) (empty .Values.github.privateKeySecretName)) }}{{ fail "github.appSlug/github.clientID/github.clientSecretName also require github.appId and github.privateKeySecretName: linking an installation the worker cannot act on is pointless" }}{{ end -}}
 {{- if and (eq .Values.auth "workos") (not .Values.developmentMode) (eq .Values.workload "serve") }}
   {{- if empty .Values.publicURL }}{{ fail "publicURL is required for WorkOS callbacks" }}{{ end -}}
   {{- if empty .Values.workos.clientID }}{{ fail "workos.clientID is required when auth=workos" }}{{ end -}}

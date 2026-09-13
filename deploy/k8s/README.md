@@ -71,6 +71,11 @@ Create existing Secrets through the cluster's secret-management process:
   latter's `private-key` key holds the GitHub App's PEM private key, mounted by the
   worker only — see "GitHub App identity" below. Without both, `ascend.run` and
   `pr.report` end `skipped` with `github_app_not_configured`.
+- Optional (`github.appSlug` + `github.clientID` + `github.clientSecretName`, set
+  together, and only together with `github.appId` + `github.privateKeySecretName`
+  above): the latter's `client-secret` key holds the App's OAuth-during-install
+  client secret, mounted by the **API** only — see "Installing the App from the
+  console" below.
 
 Do not put secret values in Helm values, release manifests, images or Git. API pods
 receive no operator credential or Kubernetes API token. Database password/token rotation
@@ -80,9 +85,11 @@ bearer credential at startup, not continuously from the mounted file.
 ## GitHub App identity (ADR-0036)
 
 The GitHub App that drives pull-request coverage reports and knowledge ascent
-(`pr.report`, `ascend.run`) needs three pieces of configuration, and the chart
-only wires them when they are present — it never defaults or generates any of
-them:
+(`pr.report`, `ascend.run`) needs three pieces of configuration below, and the
+chart only wires them when they are present — it never defaults or generates
+any of them. A fourth, optional piece — letting an organisation owner install
+this same App and prove the link from the console — is a separate three-value
+set covered in "Installing the App from the console" further down:
 
 - `github.webhookSecretName` — mounted by the **API** only. The API verifies
   every inbound delivery's `X-Hub-Signature-256` against it
@@ -144,6 +151,54 @@ Also add `api.github.com` and `github.com` to `worker.externalEgress` (see
 being configured does not by itself open the worker's NetworkPolicy egress;
 until both the App identity and this egress exist, ADR-0036 jobs terminate
 `skipped` with `github_app_not_configured`.
+
+## Installing the App from the console
+
+An organisation owner can install this same GitHub App from the console and
+prove the link with GitHub's OAuth-during-installation flow. This needs three
+more settings, all read by the **API only** — never the worker, which keeps
+using the private key above for its own installation-token JWTs:
+
+- `github.appSlug` — the App's URL slug, plain value. The chart uses it to
+  build `https://github.com/apps/<slug>/installations/new`.
+- `github.clientID` — the App's OAuth client id, plain value.
+- `github.clientSecretName` — a Secret with a `client-secret` key holding the
+  App's OAuth client secret.
+
+All three must be set together or not at all, and only together with
+`github.appId` and `github.privateKeySecretName` above — the chart's `fail`
+guard refuses any other combination, because linking an installation the
+worker cannot act on is pointless.
+
+On the App's settings page (Settings → Developer settings → GitHub Apps →
+your App → General):
+
+- The **Client ID** sits next to the App ID; copy it into `github.clientID`.
+- **Generate a new client secret**: GitHub shows it exactly once. Create the
+  Secret from it immediately without ever letting it touch a shell history
+  file or Git, the same way as the keyring above — read it into a variable
+  with echo off, pipe it straight into `kubectl`, then unset it:
+
+  ```sh
+  read -rsp 'GitHub App client secret: ' GH_CLIENT_SECRET; echo
+  printf '%s' "$GH_CLIENT_SECRET" | kubectl create secret generic guidefold-github-app-oauth \
+    -n "$NS" --from-file=client-secret=/dev/stdin
+  unset GH_CLIENT_SECRET
+  ```
+
+  Then set `github.clientSecretName: guidefold-github-app-oauth`.
+- Set the **Callback URL** to `{publicURL}/api/v1/github/installations/callback`
+  (`GET /api/v1/github/installations/callback`, `internal/identity/routes.go`)
+  — the same `publicURL` this release already uses for WorkOS callbacks.
+- Check **"Request user authorization (OAuth) during installation"**. Without
+  it GitHub never redirects back through the callback above, and the console
+  cannot prove who completed the install.
+
+Add `api.externalEgress` peers for `github.com` and `api.github.com` (see "API
+egress for provider-key verification" below) — the API now makes that same
+code-exchange call on `GET /api/v1/github/installations/callback`, a separate
+NetworkPolicy from the worker's `worker.externalEgress` above, and this chart
+does not add a default destination there either.
 
 ## Organisation credential keyring (ADR-0045)
 
@@ -240,6 +295,13 @@ guessing a CIDR that will rot. Leaving it empty is a supported state, not an
 oversight: the API then reaches only DNS, the database and (if enabled) the GPU
 shadow, and every `PUT` fails closed with `provider_unavailable` instead of
 hanging on a connection that will never open.
+
+Once `github.appSlug`/`clientID`/`clientSecretName` are set ("Installing the
+App from the console" above), add `github.com` and `api.github.com` to this
+same list too: `GET /api/v1/github/installations/callback` exchanges GitHub's
+OAuth-during-install code on `github.com` and lists the user's installations
+on `api.github.com`. The chart does not add either host by default; without
+them the callback fails closed the same way a missing provider peer does.
 
 Copy [cluster.example.yaml](cluster.example.yaml) outside the repo and replace its DB
 host, allowed network peers, client selectors and resource budgets. The chart rejects
