@@ -46,6 +46,26 @@ Pobranie, context_loaded i outcome to różne poziomy dowodu. No observations/Un
 Macierz empty/loading/partial/error/degraded/restricted dla każdego widoku: [etap 4 §5](pipeline/04-wireframes.md). Wygląd i testy hi-fi należą do etapu 6; kontrakty API i ważność cache do etapu 7.
 U4 AC2 wymaga pierwszej strony przy 10 tys. skilli z p95 ≤2 s w zadeklarowanej sieci pilota. Nie renderujemy całego grafu. Przykładowe 27 plików z etapów 4–6 nie zalicza tego pomiaru.
 
+## 3a. Wdrożenie organizacji i repozytoria z GitHuba
+
+Reguła właściciela z 2026-09-13, wiążąca dla kreatora organizacji, ekranu Import i przełącznika organizacji. Wzorzec: Codecov, Coveralls, Vercel i GitHub, które przeprowadzają przez ten sam przepływ: logowanie, instalacja aplikacji GitHub, lista repozytoriów z akcją przy wierszu, status konfiguracji. Szczegóły tras i DTO należą do [API-CONTRACT §4.7](../API-CONTRACT.md); ten rozdział opisuje zachowanie ekranu.
+
+| Obszar | Reguła |
+|---|---|
+| Kolejność kreatora | Trzy kroki, bo każdy zależy od poprzedniego: organizacja, GitHub, import. Numerowany postęp jest dopuszczalny tylko dlatego, że to prawdziwa sekwencja. Każdy krok ma Wstecz; krok GitHub ma zwiniętą ścieżkę awaryjną (CLI albo pliki). |
+| Organizacja | Jedno pole „Name”, wstępnie wypełnione loginem konta GitHub, jeśli użytkownik logował się przez GitHub. Slug wyprowadzany na żywo, zmieniany pod „Change URL”. Zajęty slug jest błędem przy polu; wpisana nazwa zostaje. Kreator nie pyta o identyfikator repozytorium, adres Git, dostęp członków, recenzenta ani limity generowania — to ustawienia organizacji i repozytorium. |
+| Connect GitHub | Każdy przycisk „Connect GitHub” związany z importem instaluje aplikację GitHub dla bieżącej organizacji i wraca tam, skąd użytkownik zaczął. Nigdy nie jest zwykłym logowaniem przez GitHub. Tylko owner; member widzi, dlaczego nie może. |
+| Lista repozytoriów | Repozytoria z połączonych instalacji jako lista z akcją przy każdym wierszu: wyszukiwarka, filtr All / Not imported / Imported, „Import” w wierszu i „Import all” nad listą. Import repozytorium nie wymaga klucza modelu. |
+| Brakujące repozytorium | Pod listą link „Missing a repository? Change GitHub App access” do ustawień instalacji na GitHubie. Brak repozytorium na liście oznacza zakres nadany aplikacji, nie błąd Guidefold, i ekran mówi to wprost. |
+| Synchronizacja | Dopóki rejestracja repozytoriów nie przebiegła, ekran pokazuje „Syncing” z liczbą, nie pustą listę. Nieudana rejestracja jest porażką z powodem i działaniem, nigdy wiecznym „Syncing”. |
+| Kilka kont GitHub | Wybór konta GitHub (instalacji) jako lista rozwijana nad listą repozytoriów, pokazywana tylko przy więcej niż jednej instalacji. |
+| Stan repozytorium | Przy każdym wierszu dokładnie jeden stan: gotowe do importu; zaimportowane z datą ostatniego importu; brak `guidefold.yaml` z linkiem do instrukcji; rejestracja nie powiodła się z powodem. Brak `guidefold.yaml` nie jest błędem, tylko nazwanym powodem, dla którego repozytorium nie jest zarządzane. |
+| Klucz modelu | Przy kreatorze i na ekranie Import jedna linia statusu. Bez klucza: pełny import z propozycjami (duplikaty, sprzeczności) wymaga klucza modelu, z linkiem do Organization › Model keys. Z kluczem: nazwa używanego dostawcy. Link tylko dla ownera; member widzi, kto może dodać klucz. |
+| Przełącznik organizacji | W górnej części raila nazwa organizacji i rola; po otwarciu wszystkie organizacje użytkownika z rolami, zaznaczona bieżąca, na końcu „Create organization”. Zmiana zostawia bieżący widok, podmienia `org` w URL zwykłą nawigacją (Wstecz wraca) i usuwa `repo`. Dane poprzedniej organizacji nie mogą mignąć w następnym widoku. |
+| Zapamiętany kontekst | Jak w GitHubie: bez `org` w URL konsola otwiera ostatnio wybraną organizację, jeśli użytkownik nadal do niej należy. URL zawsze wygrywa i staje się nową zapamiętaną wartością. Zapamiętanie jest wygodą tej przeglądarki, nie uprawnieniem; dostęp rozstrzyga `/me`. |
+
+Nie przenosimy wzorca tokenu repozytorium do wklejenia w CI (Codecov, Coveralls): adapter loguje się kodem urządzenia, a import idzie przez aplikację GitHub.
+
 ## 4. Dostępność
 
 Wymagania, nie deklaracja ukończonego audytu:
