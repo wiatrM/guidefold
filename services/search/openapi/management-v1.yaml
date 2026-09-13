@@ -235,14 +235,74 @@ paths:
     get:
       tags: [auth]
       summary: WorkOS authorization-code callback.
+      description: >-
+        A browser navigation target, never JSON: every branch redirects, success or refusal
+        alike, to `/login?auth=<code>` (API-CONTRACT §2). On success the redirect is to
+        `return_to` and sets the session cookie instead. WorkOS may answer the exchange with a
+        recognised pending outcome instead of a user: email_verification_required opens its own
+        short-lived, attempt-limited round trip and redirects to
+        `/login/verify-email?email=<masked>` (never the raw address, the pending token, or the
+        state secret) with a fresh `gf_auth_state` cookie; organization_selection_required,
+        mfa_enrollment and mfa_challenge are reported and not built — the browser returns here
+        with WorkOS's own outcome code in `?auth=`, and the console shows one plain sentence for
+        each.
       security: []
       parameters:
         - { name: code, in: query, required: true, schema: { type: string } }
         - { name: state, in: query, required: true, schema: { type: string } }
       responses:
-        "302": { description: Session cookie set; redirect to `return_to`. }
+        "302":
+          description: >-
+            Always: session cookie set and redirect to `return_to` on success; otherwise redirect
+            to `/login?auth=<code>` (invalid_callback, invalid_state, expired_state,
+            organization_selection_required, mfa_enrollment, mfa_challenge, provider_unavailable,
+            internal_error) or to `/login/verify-email?email=<masked>` with a new
+            `gf_auth_state` cookie for email_verification_required. Never a JSON body.
+
+  /api/v1/auth/verify-email:
+    post:
+      tags: [auth]
+      summary: Complete email_verification_required with the code WorkOS emailed.
+      description: >-
+        Unlike the callback above, this is a normal fetch-based JSON route: the console's code
+        screen calls it directly, reading the `gf_auth_state` cookie set by the redirect above
+        as the only reference to the pending round trip (never a `state` transmitted back by the
+        caller). A wrong code does not consume the round trip — it stays retryable up to
+        EmailVerificationMaxAttempts — but does not reveal how many attempts remain. Success
+        finishes sign-in exactly like the callback and answers `return_to` for the console to
+        navigate to, since a fetch call cannot follow a redirect into a new document. Only when
+        `GUIDEFOLD_AUTH=workos`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: The one-time code WorkOS emailed. }
+      responses:
+        "200":
+          description: Sign-in completed; session cookie set.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, return_to]
+                properties:
+                  schema_version: { type: string }
+                  return_to: { type: string }
         "400":
-          description: Invalid or replayed state.
+          description: >-
+            invalid_request (empty/oversized code), invalid_state (no round trip for this
+            browser, or already used), expired_state, email_code_invalid (wrong code; retryable),
+            or email_code_attempts_exceeded (round trip ended; sign in again).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not a WorkOS deployment.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

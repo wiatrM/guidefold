@@ -24,6 +24,10 @@ func (s *Service) Register(r *mgmt.Router) {
 		r.Handle(http.MethodPost, "/api/v1/auth/dev", s.handleDevSubmit, mgmt.Public(), mgmt.NoCSRF())
 	}
 	r.Handle(http.MethodGet, "/api/v1/auth/callback", s.handleCallback, mgmt.Public())
+	// No session exists yet — the gf_auth_state cookie the email-verification
+	// round trip already carries is this route's CSRF defense, the same
+	// reasoning as the device flow and the dev sign-in submit below.
+	r.Handle(http.MethodPost, "/api/v1/auth/verify-email", s.handleVerifyEmailCode, mgmt.Public(), mgmt.NoCSRF())
 	r.Handle(http.MethodPost, "/api/v1/auth/logout", s.handleLogout)
 
 	r.Handle(http.MethodGet, "/api/v1/me", s.handleMe)

@@ -70,6 +70,11 @@ export interface RequestSpec<T> {
   resource: string;
   /** Required for every mutation; the caller supplies one stable key per draft. */
   idempotencyKey?: string;
+  /** `false` only for a mutation the contract itself marks `mgmt.Public()`/`mgmt.NoCSRF()` —
+   * there is no session yet to carry a CSRF token from (currently only `POST /auth/verify-email`,
+   * contract §2, §4.1: the gf_auth_state cookie is that route's own CSRF defense). Every other
+   * mutation still requires one; omit this field rather than pass `true`. */
+  csrf?: boolean;
   timeoutMs?: number;
   /** GET only, capped at 2. */
   retries?: number;
@@ -272,7 +277,7 @@ export class ApiClient {
     // Contract §3: a session mutation carries `X-CSRF-Token`. Sending it without one is not a
     // weaker request, it is a request the service refuses with an undiagnosable 403, so the
     // client refuses it here and says which token is missing. Nothing was sent.
-    if (mutation && !this.csrf) {
+    if (mutation && spec.csrf !== false && !this.csrf) {
       throw new ApiError({
         status: 0, code: 'csrf_token_missing',
         message: 'This session has no CSRF token, so nothing was sent. Re-read /api/v1/me and retry.',
@@ -293,7 +298,7 @@ export class ApiClient {
       if (spec.body !== undefined) headers['Content-Type'] = spec.contentType ?? 'application/json';
       if (mutation) {
         headers['Idempotency-Key'] = spec.idempotencyKey as string;
-        headers['X-CSRF-Token'] = this.csrf as string;
+        if (spec.csrf !== false) headers['X-CSRF-Token'] = this.csrf as string;
       }
       const response = await this.fetchImpl(this.url(spec.path, spec.query), {
         method,
