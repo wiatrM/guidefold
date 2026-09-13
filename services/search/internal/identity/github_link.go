@@ -214,14 +214,15 @@ func (s *Service) handleGitHubInstallCallback(c *mgmt.Context) error {
 		installationID, accountLogin, selection); err != nil {
 		return c.RedirectTo(githubCallbackRedirect(c, claim.orgID, err))
 	}
-	// repositories_synced_at is reset on every (re)link: a stale timestamp
-	// from a previous linkage of this same installation_id must never read
-	// as "already synced" before the fresh sync job below has actually run
-	// (internal/agentrun/github_sync.go is the only writer of a non-NULL
-	// value).
-	if _, err := tx.Exec(c.Ctx(), `INSERT INTO gfm.github_installation_links(installation_id,org_id,linked_by,linked_at,repositories_synced_at)
- VALUES($1,$2::uuid,$3::uuid,now(),NULL)
- ON CONFLICT (installation_id) DO UPDATE SET org_id=excluded.org_id,linked_by=excluded.linked_by,linked_at=now(),repositories_synced_at=NULL`,
+	// repositories_synced_at and the two last_sync_failed_at/reason columns
+	// are all reset on every (re)link: a stale timestamp or failure from a
+	// previous linkage of this same installation_id must never read as
+	// "already synced" or "still failing" before the fresh sync job below
+	// has actually run (internal/agentrun/github_sync.go is the only writer
+	// of a non-NULL value for any of the three).
+	if _, err := tx.Exec(c.Ctx(), `INSERT INTO gfm.github_installation_links(installation_id,org_id,linked_by,linked_at,repositories_synced_at,last_sync_failed_at,last_sync_failure_reason)
+ VALUES($1,$2::uuid,$3::uuid,now(),NULL,NULL,NULL)
+ ON CONFLICT (installation_id) DO UPDATE SET org_id=excluded.org_id,linked_by=excluded.linked_by,linked_at=now(),repositories_synced_at=NULL,last_sync_failed_at=NULL,last_sync_failure_reason=NULL`,
 		installationID, claim.orgID, nullable(claim.userID)); err != nil {
 		return c.RedirectTo(githubCallbackRedirect(c, claim.orgID, err))
 	}

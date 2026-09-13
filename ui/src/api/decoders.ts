@@ -205,6 +205,12 @@ export interface GitHubInstallation {
   // actually needs, distinct from `repositories` (the webhook's own mirror of what GitHub
   // last reported, not what got registered).
   registered_repositories: number; synced: boolean;
+  // sync_failed_at/sync_failure_reason (contract §5.1, 1.9.0) are the other outcome of that
+  // same job: set together on a permanent failure or on the last of its allowed retries, and
+  // cleared together by a later success. Together with `synced` they give three distinct
+  // states — never run, synced, failed — never more than one at once (a failure always wins
+  // over a stale `synced:true` from before it, because it names the *last* reconciliation).
+  sync_failed_at: string | null; sync_failure_reason: string | null;
 }
 export const githubInstallation = object<GitHubInstallation>({
   installation_id: num, account: str,
@@ -212,6 +218,7 @@ export const githubInstallation = object<GitHubInstallation>({
   repository_selection: nullable(oneOf(['all', 'selected'] as const)),
   suspended: bool, created_at: nullable(str), updated_at: nullable(str), linked_at: nullable(str),
   registered_repositories: num, synced: bool,
+  sync_failed_at: nullable(str), sync_failure_reason: nullable(str),
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 

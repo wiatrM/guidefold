@@ -28,6 +28,65 @@ const KindGitHubSyncRepositories = "github.sync_repositories"
 
 const githubSyncPayloadVersion = "github.sync_repositories-1"
 
+// Sync failure reasons (API-CONTRACT §4.7/§5.1
+// GitHubInstallation.sync_failure_reason): the vocabulary
+// classifySyncFailure maps a ListInstallationRepositories error onto,
+// written to gfm.github_installation_links.last_sync_failure_reason. The
+// first two are the named sentinels internal/ghapp already distinguishes
+// (errors.go) — this job invents nothing beyond them. Everything ghapp does
+// not name (network failures, unexpected HTTP statuses, unreadable bodies)
+// becomes reasonSyncProviderUnavailable, the same generic "GitHub did not
+// answer" bucket §4.7's own install-callback flow already uses for the
+// equivalent case, rather than a new made-up category. A fourth value,
+// reasonGitHubNotConfigured (pr_report.go), is not something
+// classifySyncFailure produces — it is written directly by Run below when
+// w.gh is nil, the worker's own half of the App not being configured.
+const (
+	reasonSyncInstallationNotFound = "installation_not_found"
+	reasonSyncPermissionRefused    = "permission_refused"
+	reasonSyncProviderUnavailable  = "provider_unavailable"
+)
+
+// classifySyncFailure turns a ListInstallationRepositories error into the
+// reason this job records and whether it is worth retrying at all.
+//
+// An installation GitHub no longer recognises (deleted, or the App was
+// uninstalled) will not start working by trying again — nothing this
+// worker does changes that outcome — and neither will one whose
+// permissions the organisation has not (re)approved (ghapp/errors.go's own
+// doc comments on both ErrInstallationNotFound and ErrPermissionRefused
+// say exactly this: "a caller should say that, not retry"). Both are
+// permanent regardless of attempts left. Everything else may be transient
+// (a timeout, a 5xx, a momentary rate limit) and keeps retrying until
+// jobs.Fail's own attempts<max_attempts runs out.
+func classifySyncFailure(e error) (reason string, permanent bool) {
+	switch {
+	case errors.Is(e, ghapp.ErrInstallationNotFound):
+		return reasonSyncInstallationNotFound, true
+	case errors.Is(e, ghapp.ErrPermissionRefused):
+		return reasonSyncPermissionRefused, true
+	default:
+		return reasonSyncProviderUnavailable, false
+	}
+}
+
+// recordGitHubSyncFailure writes the outcome of a reconciliation that did
+// not succeed: gfm.github_installation_links.last_sync_failed_at/
+// last_sync_failure_reason, the console's only honest "the last attempt
+// failed, and here is why" signal (API-CONTRACT §5.1), set outside any
+// transaction this job may have opened — a permanent failure or the last
+// attempt of a retryable one can both happen before the repos
+// attach/detach transaction below ever starts (the GitHub call itself
+// failed), so this is always its own single-statement write. A later
+// success clears both columns in the same UPDATE that sets
+// repositories_synced_at (below), never here.
+func recordGitHubSyncFailure(ctx context.Context, pool *pgxpool.Pool, orgID string, installationID int64, reason string) error {
+	_, e := pool.Exec(ctx, `UPDATE gfm.github_installation_links
+ SET last_sync_failed_at=now(), last_sync_failure_reason=$3
+ WHERE installation_id=$1 AND org_id=$2::uuid`, installationID, orgID, reason)
+	return e
+}
+
 type githubSyncPayload struct {
 	SchemaVersion  string `json:"schema_version"`
 	OrgID          string `json:"org_id"`
@@ -79,14 +138,45 @@ func (w *GitHubSyncWorker) Run(ctx context.Context, t *worker.Task) error {
 		return worker.Permanent(errors.New("github.sync_repositories payload does not match its job row"))
 	}
 	if w.gh == nil {
+		// This is the same honesty gap this whole change exists to close,
+		// reached from a different terminal state: worker.Skipped is
+		// always final (worker.finish never retries a skip), so a
+		// deployment whose API half is configured (an owner can link an
+		// installation) but whose worker half is not
+		// (GITHUB_APP_ID/GITHUB_APP_PRIVATE_KEY_FILE unset — a separate
+		// deployable, worker_handlers.go) would otherwise skip every
+		// github.sync_repositories job forever while the link keeps
+		// reading synced:false, indistinguishable from "not run yet". The
+		// reason reuses reasonGitHubNotConfigured (pr_report.go) — the
+		// same code the console's own deployment-problem state already
+		// speaks (API-CONTRACT §3/§4.7).
+		if werr := recordGitHubSyncFailure(ctx, w.pool, payload.OrgID, payload.InstallationID, reasonGitHubNotConfigured); werr != nil {
+			return fmt.Errorf("github.sync_repositories: record failure: %w", werr)
+		}
 		return worker.Skipped(reasonGitHubNotConfigured)
 	}
 	fullNames, e := w.gh.ListInstallationRepositories(ctx, payload.InstallationID)
-	if errors.Is(e, ghapp.ErrInstallationNotFound) {
-		return worker.Permanent(fmt.Errorf("github.sync_repositories: %w", e))
-	}
 	if e != nil {
-		return fmt.Errorf("github.sync_repositories: list installation repositories: %w", e)
+		reason, permanent := classifySyncFailure(e)
+		// attempts is already incremented for this lease (jobs.Queue.Lease),
+		// so attempts>=max_attempts here is exactly jobs.Fail's own
+		// retry := retryable && attempts < maxAttempts condition, negated:
+		// this is the last try regardless of what this handler returns.
+		exhausted := t.Job.Attempts >= t.Job.MaxAttempts
+		if permanent || exhausted {
+			if werr := recordGitHubSyncFailure(ctx, w.pool, payload.OrgID, payload.InstallationID, reason); werr != nil {
+				// A DB hiccup recording the outcome must not itself become
+				// the permanent, unrecorded failure this whole change
+				// exists to avoid: return it as a plain (retryable) error
+				// so a later attempt tries the write again.
+				return fmt.Errorf("github.sync_repositories: record failure: %w", werr)
+			}
+		}
+		wrapped := fmt.Errorf("github.sync_repositories: list installation repositories: %w", e)
+		if permanent {
+			return worker.Permanent(wrapped)
+		}
+		return wrapped
 	}
 
 	tx, e := w.pool.Begin(ctx)
@@ -111,8 +201,11 @@ func (w *GitHubSyncWorker) Run(ctx context.Context, t *worker.Task) error {
 	// repositories_synced_at (API-CONTRACT §4.7, §7): the console's only
 	// honest "reconciliation has run at least once" signal, written in the
 	// same transaction as the gfm.repos attach/detach above so it can never
-	// read true without those writes having actually committed.
-	if _, e := tx.Exec(ctx, `UPDATE gfm.github_installation_links SET repositories_synced_at=now()
+	// read true without those writes having actually committed. A success
+	// also clears any recorded failure — the last reconciliation to
+	// actually run is this one, and it worked.
+	if _, e := tx.Exec(ctx, `UPDATE gfm.github_installation_links
+ SET repositories_synced_at=now(), last_sync_failed_at=NULL, last_sync_failure_reason=NULL
  WHERE installation_id=$1 AND org_id=$2::uuid`, payload.InstallationID, payload.OrgID); e != nil {
 		return e
 	}

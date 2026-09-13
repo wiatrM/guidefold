@@ -212,6 +212,9 @@ func TestGitHubInstallationDTOCarriesSelectionLinkedAtAndSyncState(t *testing.T)
 	if entry["synced"] != false {
 		t.Fatalf("synced must be false before github.sync_repositories has ever run: %v", entry["synced"])
 	}
+	if entry["sync_failed_at"] != nil || entry["sync_failure_reason"] != nil {
+		t.Fatalf("never-run must carry no failure either: %v", entry)
+	}
 
 	// Simulate what agentrun.GitHubSyncWorker.Run commits (its own test
 	// coverage lives in internal/agentrun): one registered repository and
@@ -231,6 +234,62 @@ func TestGitHubInstallationDTOCarriesSelectionLinkedAtAndSyncState(t *testing.T)
 	}
 	if entry["synced"] != true {
 		t.Fatalf("synced did not pick up repositories_synced_at: %v", entry["synced"])
+	}
+	if entry["sync_failed_at"] != nil || entry["sync_failure_reason"] != nil {
+		t.Fatalf("a successful sync must carry no failure: %v", entry)
+	}
+}
+
+// Task (honesty gap): a link whose reconciliation has permanently failed —
+// or exhausted its retries — must read as failed, with a plain reason, not
+// as "still syncing" forever. This harness never runs the worker either
+// (its own coverage lives in internal/agentrun); it simulates the outcome
+// agentrun.GitHubSyncWorker.Run would have committed on such a run.
+func TestGitHubInstallationDTOCarriesSyncFailure(t *testing.T) {
+	h := newGitHubHarness(t, []int64{778})
+	owner := h.signIn(t, "google", "gh-fail-owner", "gh-fail-owner@example.test", "Owner")
+	owner.createOrg(t, "gh-fail", "GitHub Failure Org")
+
+	linkInstallation(t, owner, "gh-fail", 778)
+
+	if _, err := h.pool.Exec(context.Background(),
+		`UPDATE gfm.github_installation_links SET last_sync_failed_at=now(), last_sync_failure_reason='installation_not_found' WHERE installation_id=778`); err != nil {
+		t.Fatal(err)
+	}
+	items := installationCount(t, owner, "gh-fail")
+	if len(items) != 1 {
+		t.Fatalf("installations after link: %v", items)
+	}
+	entry := items[0]
+	if entry["synced"] != false {
+		t.Fatalf("a failed reconciliation must never read as synced: %v", entry["synced"])
+	}
+	if entry["sync_failed_at"] == nil {
+		t.Fatalf("sync_failed_at missing from the DTO: %v", entry)
+	}
+	if entry["sync_failure_reason"] != "installation_not_found" {
+		t.Fatalf("sync_failure_reason = %v, want installation_not_found", entry["sync_failure_reason"])
+	}
+
+	// A later success clears the failure (agentrun.GitHubSyncWorker.Run's
+	// own UPDATE): the DTO must show the outcome of the last reconciliation
+	// only, never a stale failure a fixed run left behind.
+	orgID := owner.refresh(t)["orgs"].([]any)[0].(map[string]any)["org_id"].(string)
+	if _, err := h.pool.Exec(context.Background(), `INSERT INTO gfm.repos(org_id,repo_id,name,git_host_url,github_installation_id)
+ VALUES($1::uuid,'repo-778','acme/repo','https://github.com/acme/repo',778)`, orgID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(context.Background(),
+		`UPDATE gfm.github_installation_links SET repositories_synced_at=now(), last_sync_failed_at=NULL, last_sync_failure_reason=NULL WHERE installation_id=778`); err != nil {
+		t.Fatal(err)
+	}
+	items = installationCount(t, owner, "gh-fail")
+	entry = items[0]
+	if entry["synced"] != true {
+		t.Fatalf("the cleared, successful run must read as synced: %v", entry)
+	}
+	if entry["sync_failed_at"] != nil || entry["sync_failure_reason"] != nil {
+		t.Fatalf("a later success must clear the earlier failure from the DTO: %v", entry)
 	}
 }
 
