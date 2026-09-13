@@ -11,6 +11,7 @@ production or CI (see ``.github/workflows/`` for that).
                                        [--ui] [--generator none|deterministic] [--reset]
     python3 tools/dev/stack.py seed   [--name dev] [--api-port 8765] [--org acme]
                                        [--repo meridian] [--email ...] [--tree DIR]
+                                       [--publisher NAME]
     python3 tools/dev/stack.py down   [--name dev] [--stop-pg]
     python3 tools/dev/stack.py status [--name dev]
     python3 tools/dev/stack.py logs   {api,worker,pg,ui} [--name dev] [-n LINES] [-f]
@@ -669,14 +670,27 @@ def device_token(base_url: str, session: ApiSession) -> str:
     return token
 
 
-def prepare_tree(source: Path, dest: Path) -> Optional[str]:
+def prepare_tree(source: Path, dest: Path, publisher: Optional[str] = None) -> Optional[str]:
     """A throwaway git work tree holding a copy of ``source``. Returns HEAD, or None when
     git is unavailable (the manifest is then `commit: null, dirty: true`, which is a valid
-    scan, just not a publishable-by-commit one)."""
+    scan, just not a publishable-by-commit one).
+
+    ``publisher`` rewrites the copy's ``publisher:`` in guidefold.yaml before the commit.
+    Skill ids are ``urn:skill:<publisher>:…`` and one organisation cannot hold the same id in
+    two repositories (the importer fails those files with ``repo_conflict``), so seeding a
+    second repository of the same organisation needs a publisher of its own."""
     if dest.exists():
         shutil.rmtree(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, dest, ignore=shutil.ignore_patterns(".git", ".guidefold"))
+    if publisher:
+        config = dest / "guidefold.yaml"
+        lines = config.read_text().splitlines(keepends=True)
+        hits = [i for i, line in enumerate(lines) if line.startswith("publisher:")]
+        if len(hits) != 1:
+            raise ValueError(f"{config}: expected exactly one top-level publisher: line, found {len(hits)}")
+        lines[hits[0]] = f"publisher: {publisher}\n"
+        config.write_text("".join(lines))
     if shutil.which("git") is None:
         return None
     env = dict(os.environ, GIT_AUTHOR_NAME="guidefold seed", GIT_AUTHOR_EMAIL="seed@example.test",
@@ -895,7 +909,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
         org_id = ensure_org(session, args.org)
         ensure_repo(session, args.org, args.repo, args.git_host_url)
         token = device_token(api, session)
-        commit = prepare_tree(paths.repo_root / "examples" / "monorepo", tree)
+        commit = prepare_tree(paths.repo_root / "examples" / "monorepo", tree, publisher=args.publisher)
         env = cli_env(api=api, org=args.org, repo=args.repo, token=token, home=home)
         result = run_cli(paths, ["import", "--wait", "--json"], cwd=tree, env=env)
         if result.returncode != 0:
@@ -1055,6 +1069,9 @@ def build_parser() -> argparse.ArgumentParser:
     seed.add_argument("--email", default=DEFAULT_SEED_EMAIL)
     seed.add_argument("--subject", default="seed-owner")
     seed.add_argument("--git-host-url", default="https://github.example.test/acme/meridian")
+    seed.add_argument("--publisher", default=None, help="rewrite guidefold.yaml publisher: in the copy; "
+                                                        "needed to seed a second repository of one organisation, "
+                                                        "whose skill ids must differ from the first")
     seed.add_argument("--tree", default=None, help="where to materialise the monorepo copy "
                                                    "(default ~/.cache/guidefold/seed/<name>/monorepo)")
     seed.set_defaults(func=cmd_seed)
