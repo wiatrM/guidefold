@@ -34,6 +34,8 @@ const skills: SkillPage = {
   next_cursor: null, snapshot_id: null, schema_version: null, filters: {},
 };
 const imports: ImportStatus[] = [{import_id: '80314462-3642-4a2a-9cee', repo_id: 'monorepo', state: 'ready', manifest_digest: null, commit: 'c0ffee', complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 12}, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's-1', state: 'published', error: null}, created_at: '2026-09-12T09:00:00Z', updated_at: null}];
+// The list endpoint never carries counts or publication (§5.2); only the detail read does.
+const listRow: ImportStatus = {...imports[0], counts: null, files_truncated: true, publication: null};
 const proposals: ProposalSummary[] = [{proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'draft', scope: 'atlas', owner: null, target_skill_id: null, path: null, created_at: null, decision: null}];
 const installations: Installation[] = [{installation_id: 'i-1', name: 'claude-code', repo_id: null, scopes: ['search'], harness: 'claude', last_seen_at: new Date().toISOString(), adapter_version: '0.4.1', capabilities: null, created_at: null, token: null}];
 
@@ -44,6 +46,7 @@ const source = (over: Parameters<typeof fakeSource>[0] = {}) => fakeSource({
   getFacets: async () => ({field: 'scope', values: [{value: 'atlas', count: 2}, {value: 'forge', count: 1}], next_cursor: null}),
   listProposals: async () => ({items: proposals, next_cursor: null}),
   listImports: async () => imports,
+  getImport: async () => imports[0],
   listInstallations: async () => installations,
   getAudit: async () => ({items: [{at: '2026-09-12T09:00:00Z', actor: 'principal:u1', action: 'import.create', entity: '80314462', revision: null, request_id: 'req-1'}], next_cursor: null}),
   ...over,
@@ -181,6 +184,34 @@ describe('Home route', () => {
     expect(await screen.findByText(/1 block could not be read/)).toBeInTheDocument();
     expect(screen.getByText('Proposals could not be read.')).toBeInTheDocument();
     expect(screen.getByRole('region', {name: 'Key numbers'})).toBeInTheDocument();
+  });
+
+  test('a list row without publication plus a published detail raises no publish action and shows the counts', async () => {
+    const getImport = vi.fn(async () => imports[0]);
+    renderApi(ApiHomeRoute, source({listImports: async () => [listRow], getImport}));
+    const importFacts = (await screen.findByText('Latest import')).closest('section')!;
+    expect(await within(importFacts).findByText('38 accepted · 1 omitted · 0 failed')).toBeInTheDocument();
+    expect(within(importFacts).getByText('published')).toBeInTheDocument();
+    expect(getImport).toHaveBeenCalledWith({org: 'meridian', repo: 'monorepo'}, '80314462-3642-4a2a-9cee');
+    expect(screen.queryByText('The latest import is not published')).not.toBeInTheDocument();
+  });
+
+  test('a failed publication in the detail is the alert, with the error code', async () => {
+    const failedDetail: ImportStatus = {...imports[0], publication: {snapshot_id: null, state: 'failed', error: 'missing_dependency'}};
+    renderApi(ApiHomeRoute, source({listImports: async () => [listRow], getImport: async () => failedDetail, listInstallations: async () => installations}));
+    expect((await screen.findAllByText('Publication of the latest import failed')).length).toBeGreaterThan(0);
+    const importFacts = screen.getByText('Latest import').closest('section')!;
+    expect(within(importFacts).getByText('missing_dependency')).toBeInTheDocument();
+    expect(screen.getAllByText(/missing_dependency/).length).toBeGreaterThan(1);
+  });
+
+  test('a detail read that fails raises no publish action and says the detail could not be read', async () => {
+    renderApi(ApiHomeRoute, source({listImports: async () => [listRow], getImport: async () => { throw new ApiError({status: 503, code: 'unavailable', message: 'down'}); }}));
+    expect(await screen.findByText(/The import detail could not be read/)).toBeInTheDocument();
+    const importFacts = screen.getByText('Latest import').closest('section')!;
+    expect(within(importFacts).getByText('Not read')).toBeInTheDocument();
+    expect(within(importFacts).getByText('Unknown')).toBeInTheDocument();
+    expect(screen.queryByText(/latest import is not published|Publication of the latest import failed|still publishing/)).not.toBeInTheDocument();
   });
 
   test('with a repository chosen the library card ranks scopes and the title names the repository', async () => {

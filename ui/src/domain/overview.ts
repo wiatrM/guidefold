@@ -244,7 +244,12 @@ export interface NextAction { kind: ActionKind; title: string; detail: string; t
 
 export function nextActions(input: {
   role: Role | null; me: Me | null; usage: Usage | null; proposals: ProposalSummary[] | null;
-  imports: ImportStatus[] | null; installations: Installation[] | null; skillsTotal: number | null; now: number;
+  imports: ImportStatus[] | null;
+  /** The detail read of the latest import (`GET …/imports/{id}`), or null while it is not read.
+   * The list carries `publication: null` for every row by contract, so only the detail can say
+   * whether the import is published; a missing detail is Unknown and pushes no publish action. */
+  latestImport: ImportStatus | null;
+  installations: Installation[] | null; skillsTotal: number | null; now: number;
 }): NextAction[] {
   const owner = input.role === 'owner';
   const actions: NextAction[] = [];
@@ -254,8 +259,13 @@ export function nextActions(input: {
   if (owner && drafts) actions.push({kind: 'proposals', tone: 'human', title: drafts + (drafts === 1 ? ' proposal waits' : ' proposals wait') + ' for a decision', detail: 'A candidate revision is prepared. Approve, edit or reject it before the Git handoff.'});
   const awaiting = input.proposals?.filter(item => item.state === 'approved_for_export' || item.state === 'awaiting_git').length ?? 0;
   if (awaiting) actions.push({kind: 'proposals', tone: 'system', title: awaiting + (awaiting === 1 ? ' approved proposal is' : ' approved proposals are') + ' not in Git yet', detail: 'Export the files and open the pull request; publication is observed after the merge.'});
-  const last = input.imports ? latestImport(input.imports) : null;
-  if (owner && last && last.state === 'ready' && last.publication?.state !== 'published') actions.push({kind: 'publish', tone: 'human', title: 'The latest import is not published', detail: 'Files are stored; nothing is served until a snapshot is activated.'});
+  const detail = input.latestImport;
+  const publication = detail?.state === 'ready' ? detail.publication : null;
+  if (owner && publication) {
+    if (publication.state === 'none') actions.push({kind: 'publish', tone: 'human', title: 'The latest import is not published', detail: 'Files are stored; nothing is served until a snapshot is activated.'});
+    else if (publication.state === 'building') actions.push({kind: 'publish', tone: 'system', title: 'The latest import is still publishing', detail: 'The snapshot is being built; the previous one is served until it is activated.'});
+    else if (publication.state === 'failed') actions.push({kind: 'publish', tone: 'human', title: 'Publication of the latest import failed', detail: publication.error ? 'The API reported ' + publication.error + '; nothing from this import is served.' : 'The API reported no error code; nothing from this import is served.'});
+  }
   if (input.imports && input.imports.length === 0) actions.push({kind: 'import', tone: 'human', title: 'No import yet', detail: 'Upload your checkout with the CLI to fill the library.'});
   if (input.installations) {
     if (input.installations.length === 0 && owner) actions.push({kind: 'adapter', tone: 'system', title: 'No adapter installed', detail: 'Without an adapter no delivery or feedback reaches the ledger, so usefulness stays Unknown.'});

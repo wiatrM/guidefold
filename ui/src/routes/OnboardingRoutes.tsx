@@ -840,9 +840,10 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
     Boolean(org) && tab === 'audit',
   );
   const telemetry = useAsync(
-    () => source.getUsage({ org: org ?? '', repo: ctx.repo ?? '' }, { window: ctx.params.get('window') || undefined }),
-    'organization-telemetry:' + org + '/' + (ctx.repo ?? '') + ':' + (ctx.params.get('window') ?? ''),
-    Boolean(org && ctx.repo && tab === 'telemetry'),
+    // ADR-0047: organization is the default read scope; a repository chosen in the rail narrows it.
+    () => source.getUsage({ org: org ?? '', repo: ctx.repo }, { window: ctx.params.get('window') || undefined }),
+    'organization-telemetry:' + org + '/' + (ctx.repo ?? '*') + ':' + (ctx.params.get('window') ?? ''),
+    Boolean(org) && tab === 'telemetry',
   );
   const credentials = useAsync(() => source.listCredentials(org ?? ''), 'credentials:' + org, Boolean(org) && tab === 'keys');
   const [linkStatus, setLinkStatus] = useState('');
@@ -1200,12 +1201,11 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       </form> : null}
       <p className={styles.feedback} role="status">{keyStatus}</p>
     </Panel> : tab === 'telemetry' ? <>
-      {!ctx.repo && <RouteState state="empty" title="No repository selected" description="Choose a repository before reading task and harness telemetry." action={<ActionButton href={ctx.href('import', { step: 'organization' })} tone="system">Choose a repository</ActionButton>} />}
-      {ctx.repo && telemetry.phase === 'loading' && <RouteState state="loading" title="Reading telemetry" description="Waiting for the execution metrics for this repository." />}
-      {ctx.repo && telemetry.phase === 'error' && telemetry.error && <ApiFailure error={telemetry.error} onRetry={telemetry.reload} retryLabel="Retry telemetry" />}
-      {ctx.repo && telemetry.value && <>
+      {telemetry.phase === 'loading' && <RouteState state="loading" title="Reading telemetry" description={'Waiting for the execution metrics for this ' + (ctx.repo ? 'repository.' : 'organization.')} />}
+      {telemetry.phase === 'error' && telemetry.error && <ApiFailure error={telemetry.error} onRetry={telemetry.reload} retryLabel="Retry telemetry" />}
+      {telemetry.value && <>
         <ScorecardPanel metrics={telemetry.value.totals.metrics} />
-        <Panel title="Telemetry context" eyebrow={'Repository ' + ctx.repo} icon={<PulseIcon weight="regular" aria-hidden="true" />}>
+        <Panel title="Telemetry context" eyebrow={ctx.repo ? 'Repository ' + ctx.repo : 'All repositories'} icon={<PulseIcon weight="regular" aria-hidden="true" />}>
           <ProvenanceTrail entries={[
             { label: 'Window', value: (ctx.params.get('window') || '30d') + ' · ' + formatDay(telemetry.value.window.from) + ' to ' + formatDay(telemetry.value.window.to), detail: 'The period is anchored to the ledger watermark, not this browser clock.' },
             { label: 'Events received', value: telemetry.value.coverage ? formatNumber(telemetry.value.coverage.events_received) : 'Unknown', detail: telemetry.value.coverage?.dropped_reported ? formatNumber(telemetry.value.coverage.dropped_reported) + ' reported dropped events; counts are lower bounds.' : 'No drops reported by adapters.' },
