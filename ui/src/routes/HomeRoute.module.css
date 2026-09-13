@@ -18,8 +18,15 @@
 .alert svg { color: var(--warning); }
 
 .kpis { display: grid; gap: var(--space-2); min-width: var(--zero); }
-.kpiGrid { display: grid; grid-template-columns: var(--kpi-columns); gap: var(--space-3); min-width: var(--zero); }
-.kpiMain { grid-column: span var(--kpi-main-span); min-width: var(--zero); }
+.kpiHeader { display: grid; gap: var(--space-1); min-width: var(--zero); }
+.kpiTitle { margin: var(--zero); font-size: var(--font-size-section); font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+.kpiGrid { display: grid; grid-template-columns: var(--kpi-columns); gap: var(--space-3); min-width: var(--zero); margin: var(--zero); padding: var(--zero); list-style: none; }
+.kpiCard { display: grid; grid-template-rows: var(--kpi-card-rows); align-content: stretch; gap: var(--space-1); min-width: var(--zero); }
+/* The Spectrum card fills its row so every trend badge sits at the same height, directly under its own card. */
+.kpiCard > :first-child { height: var(--full); }
+/* StatCards renders a grid wrapper around the card; the card itself fills that wrapper so all four cards end on one line. */
+.kpiCard > :first-child > * { height: var(--full); }
+.kpiTrend { margin: var(--zero); justify-self: start; }
 .kpiLinks { display: grid; grid-template-columns: var(--kpi-columns); gap: var(--space-3); margin: var(--zero); padding: var(--zero) var(--space-3); list-style: none; }
 .kpiLinks a { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--touch-height); font-size: var(--font-size-small); text-decoration: none; color: var(--stone-300); }
 .kpiLinks a svg { width: var(--icon-size-small); height: var(--icon-size-small); }
@@ -41,6 +48,14 @@
 .subsection h3 { display: flex; align-items: center; gap: var(--space-2); margin: var(--zero); font-size: var(--font-size-body); font-weight: var(--weight-semibold); }
 .subsection h3 svg { color: var(--survey-teal); }
 
+.chart { display: grid; margin: var(--zero); min-width: var(--zero); overflow: hidden; }
+.chart > div { height: var(--telemetry-chart-height); }
+.values { display: grid; gap: var(--space-1); margin: var(--zero); padding: var(--zero); list-style: none; }
+.values li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding-block: var(--space-1); border-bottom: var(--border-width) solid var(--line); }
+.values li > span { display: inline-flex; align-items: center; gap: var(--space-2); min-width: var(--zero); overflow-wrap: anywhere; }
+.values small { color: var(--stone-300); }
+.values strong { font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; flex: none; width: var(--home-swatch); height: var(--home-swatch); border-radius: var(--radius-small); }
 .chartFallback { min-height: var(--home-chart-small); border-radius: var(--radius); background: var(--graphite-850); }
 
 .recommendations { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--zero) var(--zero) var(--space-3); padding: var(--zero); list-style: none; }
@@ -52,10 +67,8 @@
 .splits strong { font-family: var(--font-display); font-size: var(--font-size-section); font-variant-numeric: tabular-nums; }
 
 .bars { display: grid; gap: var(--space-1); margin: var(--zero); padding: var(--zero); list-style: none; }
-.bars a { display: grid; grid-template-columns: var(--home-bar-columns); align-items: center; gap: var(--space-2); min-height: var(--control-height); text-decoration: none; color: var(--stone-100); }
+.bars a { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-height: var(--control-height); text-decoration: none; color: var(--stone-100); }
 .bars code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar { display: block; width: var(--full); height: var(--space-2); overflow: visible; }
-.bar rect { fill: var(--survey-teal); opacity: var(--home-bar-opacity); }
 .bars strong { font-variant-numeric: tabular-nums; text-align: right; }
 
 .facts { display: grid; gap: var(--space-2); margin: var(--zero); }

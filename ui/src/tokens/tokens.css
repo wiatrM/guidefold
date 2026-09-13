@@ -434,7 +434,7 @@
 
 /* HomeRoute (2026-09-12): Overview after sign-in. KPI links mirror the four stat cards; small
  * donuts sit beside their legend; scope bars are a label, a bar and a count. */
-:root{ --kpi-columns:repeat(4,minmax(0,1fr)); --home-chart-small:200px; --home-donut-columns:minmax(0,1fr) minmax(0,1fr); --home-bar-columns:minmax(0,1.2fr) minmax(0,2fr) auto; --home-swatch:10px; --home-bar-opacity:.85; --home-action-columns:auto minmax(0,1fr) auto; --kpi-main-span:2; }
+:root{ --kpi-columns:repeat(4,minmax(0,1fr));--kpi-card-rows:minmax(0,1fr) auto; --home-chart-small:200px; --home-donut-columns:minmax(0,1fr) minmax(0,1fr); --home-bar-columns:minmax(0,1.2fr) minmax(0,2fr) auto; --home-swatch:10px; --home-bar-opacity:.85; --home-action-columns:auto minmax(0,1fr) auto; --kpi-main-span:2; }
 @media(max-width:1080px){:root{--kpi-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){:root{--kpi-columns:minmax(0,1fr);--home-donut-columns:minmax(0,1fr);--kpi-main-span:1;}}
 

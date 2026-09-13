@@ -25,7 +25,7 @@ Użycie sesji nie daje OAuth dostępu do kodu repo. W aplikacji nie ma WorkOS AP
 | Usage → delivery/context, `src/components/MetricRow/SpectrumTelemetryChart.tsx` | Local dependency-free SVG bars | [`@spectrumui/bar-chart`](https://ui.spectrumhq.in/charts/bar) | `{month, desktop, mobile}` rows; text list keeps exact counts | Registry source adapted to CSS Modules/tokens; Vitest adapter test |
 | Usage → feedback, same adapter | Local stacked SVG | [`@spectrumui/pie-chart`](https://ui.spectrumhq.in/charts/pie) via `DonutPieChart` | `{name, value}` non-zero verdict slices; full verdict list remains textual | Registry source adapted to CSS Modules/tokens; Vitest adapter test |
 
-All telemetry visualizations route through the registry adapters above. Empty and unknown states are rendered as explicit text and unknown is never coerced into a failure.
+Overview (`src/routes/HomeRoute.tsx`) since 2026-09-13 uses `StatCards`, `BarChart` and `DonutPieChart` from `src/components/spectrumui/charts`; inventory and evidence: [overview-spectrum-20260913](../../reports/ui/overview-spectrum-20260913.md). Empty and unknown states are explicit text; unknown is never coerced into zero or a failure.
 
 ## Układ ui/
 | Katalog | Odpowiedzialność |
