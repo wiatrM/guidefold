@@ -272,8 +272,14 @@ func TestLiveRepoGoesFetchParseProposeDone(t *testing.T) {
 	scratch := pivottest.Scratch(t, "live-repo-happy-path")
 	recipe := generator.Recipe{Generator: generator.NameDeterministic, Version: generator.RecipeVersion}
 	drainCtx, cancelDrain := context.WithCancel(context.Background())
-	t.Cleanup(cancelDrain)
+	drained := make(chan struct{})
+	// Cancelling is not enough: the harness closes the pool in its own
+	// cleanup, and a loop still inside RunParseOnce or RunGenerate at that
+	// moment fails on a closed pool. Cleanups run last-registered-first, so
+	// waiting here holds the pool open until the loop has actually returned.
+	t.Cleanup(func() { cancelDrain(); <-drained })
 	go func() {
+		defer close(drained)
 		for {
 			select {
 			case <-drainCtx.Done():
@@ -392,8 +398,14 @@ func TestLiveRepoChildJobFailureLeavesTargetFailedAndRunPartial(t *testing.T) {
 		[]string{"guidefold.yaml", "AGENTS.md", ".agents/skills/a/SKILL.md"}, bodies)
 	scratch := pivottest.Scratch(t, "live-repo-parse-fail")
 	drainCtx, cancelDrain := context.WithCancel(context.Background())
-	t.Cleanup(cancelDrain)
+	drained := make(chan struct{})
+	// Cancelling is not enough: the harness closes the pool in its own
+	// cleanup, and a loop still inside RunParseOnce or RunGenerate at that
+	// moment fails on a closed pool. Cleanups run last-registered-first, so
+	// waiting here holds the pool open until the loop has actually returned.
+	t.Cleanup(func() { cancelDrain(); <-drained })
 	go func() {
+		defer close(drained)
 		for {
 			select {
 			case <-drainCtx.Done():
