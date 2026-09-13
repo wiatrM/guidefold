@@ -207,10 +207,10 @@
     },
     {
       "file": "src/components/ui/sidebar.tsx",
-      "sha256": "81bfaa297e21988537e44f01766bb702e92e133adc434902520cf740d87370a3",
+      "sha256": "5f0c3d1d0f5af3d73c7771ec4b0529119f9c73ba96e30686cffc967aeb361a13",
       "source": "https://ui.shadcn.com/r/styles/base-nova/sidebar.json",
       "allowInlineGeometry": true,
-      "adaptations": "2026-09-12: list reset (list-none m-0 p-0) on SidebarMenu/SidebarMenuSub <ul> and m-0 p-0 on their <li> because this app ships Tailwind without Preflight."
+      "adaptations": "2026-09-12: list reset (list-none m-0 p-0) on SidebarMenu/SidebarMenuSub <ul> and m-0 p-0 on their <li> because this app ships Tailwind without Preflight. 2026-09-12 (sidebar restyle, owner: \"styles in the post-login menu links are terrible, wrong menu styles\"): SidebarMenu gap-0 -> gap-1 (4px item gap, brief's Layout section); sidebarMenuButtonVariants base gains [&_svg]:opacity-80 with data-active:[&_svg]:opacity-100 (icons at reduced opacity except the active item's, brief's Colour section) and data-active:shadow-[inset_2px_0_0_0_var(--sidebar-primary)] (the 2px left rail, the only accent color in the rail, kept as a box-shadow rather than an absolutely-positioned pseudo-element so it is not clipped by the button's own overflow-hidden and still respects rounded-md); base weight stays 400 and only data-active:font-medium goes to 500, so weight keeps distinguishing the active item as the brief requires."
     },
     {
       "file": "src/components/ui/chart.tsx",
@@ -238,10 +238,10 @@
     },
     {
       "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/app-sidebar.tsx",
-      "sha256": "8492cab8f6cbecbc1b1935364ce16eb9da17717e54e2e33fc0c6fcc1e69617ec",
+      "sha256": "aa8d0fd42653a56edb47e49be31a1a9e4ed20c5ce5344bb113d5eefd58813fdf",
       "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
       "allowInlineGeometry": false,
-      "adaptations": null
+      "adaptations": "2026-09-12 (sidebar restyle, owner: \"styles in the post-login menu links are terrible, wrong menu styles\"): a SidebarSeparator hairline now sits between the nav content and the footer account button (brief's Layout section: \"footer account button ... pinned to the bottom with a hairline separator above\")."
     },
     {
       "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/site-header.tsx",
@@ -251,9 +251,10 @@
     },
     {
       "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/nav-main.tsx",
-      "sha256": "ba73d8d1f4d25c399d605b973729899a692a907a45d2edc23ae40c2385dd5ce8",
+      "sha256": "47faf9044b62c893e470c5c62d73ce196125ada97b34d10ff148d2b0eacb4cba",
       "source": "https://shadcnspace.com/r/dashboard-shell-01.json",
-      "allowInlineGeometry": false
+      "allowInlineGeometry": false,
+      "adaptations": "2026-09-12 (sidebar restyle, owner: \"styles in the post-login menu links are terrible, wrong menu styles\"): SidebarGroupLabel drops `uppercase tracking-wide` and its full-opacity `text-sidebar-foreground` override, restoring the vendored component's own sentence-case, reduced-opacity default (brief's Type section: sentence case, no all-caps). SidebarMenuButton now also carries `aria-current=\"page\"` on the active item."
     },
     {
       "file": "src/components/ui/shadcn-space/blocks/dashboard-shell-01/user-dropdown.tsx",

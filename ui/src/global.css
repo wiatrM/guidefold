@@ -23,6 +23,29 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 main:focus{outline:none;}
 a{color:var(--system-ink);text-underline-offset:var(--space-1);overflow-wrap:anywhere;}
 a:hover{color:var(--stone-100);}
+/* Sidebar chrome is navigation, not prose. Without Tailwind Preflight the reset above styles
+   every anchor as a teal underlined body link, including the console nav rendered through
+   shadcn's Sidebar/SidebarMenuButton (owner: "styles in the post-login menu links are
+   terrible, wrong menu styles", 2026-09-12; docs sidebar-style-report). `:where()` keeps this
+   reset's specificity at `.console` alone (0,1,0) so Tailwind's own hover/active/data-active
+   utilities on the sidebar's <a> elements (specificity 0,2,0) still win their state colors;
+   it only needs to beat the plain `a` rule above (0,0,1) and remove the underline outright. */
+.console :where([data-sidebar]) :where(a){color:inherit;text-decoration:none;}
+/* Same gap, native <button> side: global.css only resets `font`/`color` on button (line 16),
+   never `background-color`/`border`/`appearance`, so a bare <button> the shadcn Button
+   component's own Tailwind classes don't cover (the footer account trigger, the header
+   collapse trigger — buttonVariants' `ghost` variant relies on Preflight's implicit
+   transparent background and never sets one itself) falls back to the browser's native
+   ButtonFace chrome: a solid grey pill at rest, confirmed via computed style (rgb(107,107,107),
+   not any --sidebar-* token) rather than Tailwind's hover/active/data-active state classes.
+   Same `:where()` specificity budget as the anchor reset above, so it still loses to those
+   state classes on hover/active/data-active. */
+.console :where([data-sidebar]) :where(button){appearance:none;background-color:var(--transparent);border-style:none;}
+/* The sidebar's own focus ring token replaces the body's orange focus-visible outline so
+   keyboard focus in the nav never reads as the human-orange accent the brief forbids there;
+   Tailwind's `ring-sidebar-ring focus-visible:ring-2` box-shadow ring on SidebarMenuButton
+   stays as the visible ring, this only recolors the outline layered under it. */
+.console [data-sidebar] a:focus-visible,.console [data-sidebar] button:focus-visible{outline-color:var(--sidebar-ring);}
 p{margin:var(--zero) var(--zero) var(--space-3);}
 h1,h2,h3,h4{font-family:var(--font-display);line-height:var(--line-height-heading);}
 h3{font-size:var(--font-size-section);}

@@ -6,9 +6,11 @@
 // its `aria-label="Collapse sidebar"/"Expand sidebar"` + `aria-expanded` contract
 // (app.test.tsx) instead of the default sr-only "Toggle Sidebar"; the account dropdown
 // stays inside the sidebar (`SidebarFooter`), not the header, so it is still found within
-// `role=complementary`.
+// `role=complementary`. 2026-09-12 (sidebar restyle, owner: "styles in the post-login menu
+// links are terrible, wrong menu styles"): a `SidebarSeparator` hairline now sits above the
+// footer account button, matching the pinned-footer layout in the restyle brief.
 import type {ReactNode} from 'react';
-import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar} from '@/components/ui/sidebar';
+import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarSeparator, useSidebar} from '@/components/ui/sidebar';
 import {Button} from '@/components/ui/button';
 import {SidebarSimpleIcon} from '@phosphor-icons/react';
 import {NavMain, type NavGroup} from './nav-main';
@@ -31,6 +33,7 @@ export function AppSidebar({brand, groups, railContext, account, onNavigate}: {b
       <div className="group-data-[collapsible=icon]:hidden">{railContext}</div>
     </SidebarHeader>
     <SidebarContent className="gap-0 px-2"><nav aria-label="Main navigation"><NavMain groups={groups} onNavigate={onNavigate} /></nav></SidebarContent>
+    <SidebarSeparator className="mx-0" />
     <SidebarFooter>{account}</SidebarFooter>
   </Sidebar>;
 }

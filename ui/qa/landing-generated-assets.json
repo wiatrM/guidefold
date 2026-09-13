@@ -12,5 +12,31 @@
       "prompt": "Use case: stylized-concept. Asset type: cinematic footer / closing call-to-action background for the Guidefold website. Create a premium photorealistic still life in wide 3:2 format with the key subject in the right half and deep empty graphite negative space on the left for live website copy. A single thick ivory limestone sheet folded into three architectural accordion planes rests on dark basalt engraved with precise topographic contours. A thin molten orange route is inlaid into the folded surface, bending around one edge, then continuing onto the desk toward the lower-left. Warm grazing amber light, tactile limestone imperfections, tiny restrained teal bounce light in the deepest shadows, sophisticated macro architectural photography, no mountain vista necessary. Palette charcoal #0c1014, cream #efe3d0, orange #ff7a3d, minimal teal #3fb8b1. The top and bottom edges dissolve naturally into nearly black photographic shadows. No text, no letters, no logos, no interface, no circles or floating spheres, no extra desk clutter. This should feel like a frame from an expensive cinematic developer-product film, not generic SaaS abstract shapes."
     }
   ],
-  "processing": "Lossy WebP encoding at quality 86, original framing and resolution preserved; original PNGs retained in Codex generated_images."
+  "processing": "Lossy WebP encoding at quality 86, original framing and resolution preserved; original PNGs retained in Codex generated_images.",
+  "consoleCaptures": {
+    "note": "The three files below are NOT generated art; they are real screenshots of the hosted console (ui/), captured against the seeded dev API so DeviceFrame.tsx on the landing page shows the current product rather than a mockup. Recorded here per DESIGN.md §7a rule 4 so a stale screen can be told from a current one.",
+    "capturedAt": "2026-09-12 (recaptured after the sidebar restyle landed)",
+    "consoleCommit": "81d5a920d0399d2fe72c9ae0ff93fc2da4f58ef7",
+    "known_stale_risk": "None outstanding: this recapture is on top of 81d5a920 (\"fix(ui): make the console sidebar read as chrome, not as body links\" -- no underlined nav links, sentence-case group labels, active-item rail accent), which superseded the sidebar work that was still in flight during the first capture at 4f74bf9. Re-run after any future console shell change with: cd ui && node qa/tmp-capture-landing-screens.mjs <proposalId> && python3 qa/tmp-encode-landing-screens.py",
+    "stack": "tools/dev/stack.py, name=e2eauth, api-port=8766, generator=deterministic; seeded org=acme, repo=meridian, owner=owner@example.test via tools/dev/stack.py seed",
+    "additionalSeeding": "proposals: POST .../imports/{import_id}/proposals:generate (deterministic generator) to produce real draft proposals. usage: a real installation token posted genuine gf.events (schema 1.0) to POST /v1/events:batch -- card_injected/skill_load_completed/skill_feedback for several published skills plus 8 exposures with no load for one skill, so /usage renders real ledger totals and a real zero_loads \"Needs review\" queue row instead of the all-empty state. No row or number was typed into the UI or the image; every value shown was computed by the real service from these real event posts.",
+    "assets": [
+      {
+        "file": "public/assets/landing/app/proposals.webp",
+        "route": "/proposals?org=acme&repo=meridian&proposal=5e81a798-6dc7-4ef1-bfe2-776615620e98",
+        "shows": "The postgres-auth enrichment proposal (atlas.identity.turnstile): Source pane beside Candidate pane, candidate path, candidate SHA-256, expected revision. Target revision reads Unknown because this generator run never set target_revision_id on any of the 16 draft proposals it produced -- an honest current-API limitation, not a capture choice."
+      },
+      {
+        "file": "public/assets/landing/app/usage.webp",
+        "route": "/usage?org=acme&repo=meridian",
+        "shows": "Decision scorecards (contract 1.3.0; Unknown where no task-linked outcome telemetry was seeded) and the Needs review queue showing 1 open item (auth-sdk-usage, zero_loads, 8 exposures) from the real events posted above."
+      },
+      {
+        "file": "public/assets/landing/app/library.webp",
+        "route": "/library?org=acme&repo=meridian",
+        "shows": "The skill catalog filter row (scope/owner/source layer/source status) above 26 real published skill revisions from the Meridian fixture import."
+      }
+    ],
+    "captureMethod": "1280x800 viewport, deviceScaleFactor 2, Chromium via Playwright (ui/qa/tmp-capture-landing-screens.mjs, not committed), downscaled with Lanczos to the DeviceFrame intrinsic 1280x800 and re-encoded WebP at the smallest quality step that stayed <=40KB (ui/qa/tmp-encode-landing-screens.py, not committed), matching the prior assets' 30-40KB band."
+  }
 }

@@ -456,7 +456,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu"
       data-sidebar="menu"
       className={cn(
-        "flex w-full min-w-0 list-none flex-col gap-0 m-0 p-0",
+        "flex w-full min-w-0 list-none flex-col gap-1 m-0 p-0",
         className
       )}
       {...props}
@@ -476,7 +476,15 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
+  // Owner: "styles in the post-login menu links are terrible, wrong menu styles" (2026-09-12).
+  // Weight stays 400 at rest and only the active item goes to data-active:font-medium (500) —
+  // weight is one of the three things (with the accent background and the left rail below)
+  // that must set the active item apart, so the base cannot also be font-medium. The
+  // data-active shadow is the item's only left-rail accent (--sidebar-primary), rendered with
+  // box-shadow so it survives rounded-md without an absolutely-positioned pseudo-element
+  // fighting overflow-hidden. [&_svg]:opacity-80 keeps icons the same ink as the label at
+  // reduced opacity; data-active restores full opacity so the active icon does not dim too.
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,box-shadow] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground data-active:shadow-[inset_2px_0_0_0_var(--sidebar-primary)] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:opacity-80 data-active:[&_svg]:opacity-100 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
