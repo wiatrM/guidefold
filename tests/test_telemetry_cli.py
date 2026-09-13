@@ -144,7 +144,16 @@ def test_hook_makes_no_network_call(run_cli, fixture_copy, tmp_path):
     """Poison socket.socket at import time (sitecustomize.py on PYTHONPATH, same technique as
     tests/test_no_torch_import.py's torch guard) so ANY attempt anywhere in the hook's call graph
     to open a socket raises loudly instead of silently succeeding. `telemetry flush` is the only
-    command that ever makes a network call, and it is never invoked from `hook`."""
+    command that ever makes a network call, and `cmd_hook`'s own process never runs it in-process
+    (test_hook_never_calls_telemetry_flush_in_process). Since 2026-09-13, `hook` MAY spawn it as
+    a fully separate, detached OS process (`maybe_trigger_telemetry_auto_flush`/
+    `_spawn_auto_flush`) -- upload is ON by default (ADR-0048), but the trigger ALSO requires a
+    bearer token AND a configured endpoint before it spawns anything, and this fixture has
+    neither (no `guidefold login`, no installation token, no `search.url`/GUIDEFOLD_SEARCH_URL),
+    so it no-ops before ever reaching a socket and this poison is never even exercised by it.
+    tests/test_telemetry_auto_flush.py covers the trigger and the spawned child's shape directly,
+    with `subprocess.Popen` mocked rather than poisoned, since a detached child's own crash would
+    be invisible to this process's return code anyway."""
     built = run_cli(["index"], cwd=fixture_copy)
     assert built.returncode == 0, built.stderr
 
@@ -296,15 +305,27 @@ def test_flush_sends_a_bearer_token_so_it_can_reach_the_real_service(
     assert "gf_acceptance-token-value" not in result.stderr
 
 
-def test_flush_is_never_invoked_from_the_hook_command(run_cli, fixture_copy):
-    """Static check: `telemetry flush` and `hook` are two completely separate argparse subcommands
-    and cmd_hook's source never calls cmd_telemetry_flush -- confirmed the exercised way too by
-    test_hook_makes_no_network_call above (hook succeeds even when sockets are poisoned)."""
+def test_hook_never_calls_telemetry_flush_in_process(run_cli, fixture_copy):
+    """Static check: `cmd_hook`'s own source never calls `cmd_telemetry_flush` and never imports
+    `urllib` -- E1.5's zero-sockets-in-the-hook-process invariant, unaffected by the 2026-09-13
+    automatic upload feature. That feature (`maybe_trigger_telemetry_auto_flush`, called from
+    `cmd_hook`) only ever asks the OS to start a SEPARATE process
+    (`subprocess.Popen`/`_spawn_auto_flush`) that itself, in its own interpreter, calls
+    `cmd_telemetry_flush` and imports `urllib` -- neither name is expected to appear in
+    `cmd_hook`'s own source, and this test still checks exactly that, not merely that they don't
+    appear together with a literal call. tests/test_telemetry_auto_flush.py covers the spawn
+    itself (detached, argv shape, no secret on the command line) and the min-interval/opt-in
+    gating that keeps it from firing on every single hook call."""
     src = (REPO_ROOT / "skills" / "guidefold" / "scripts" / "guidefold").read_text(encoding="utf-8")
     hook_start = src.index("def cmd_hook(")
     hook_end = src.index("\ndef cmd_prewarm(")
-    assert "cmd_telemetry_flush" not in src[hook_start:hook_end]
-    assert "urllib" not in src[hook_start:hook_end]
+    hook_src = src[hook_start:hook_end]
+    assert "cmd_telemetry_flush" not in hook_src
+    assert "urllib" not in hook_src
+    assert "subprocess.Popen" not in hook_src, \
+        "cmd_hook must spawn nothing directly -- only via maybe_trigger_telemetry_auto_flush"
+    assert "maybe_trigger_telemetry_auto_flush" in hook_src, \
+        "the automatic-upload trigger call itself must still be present in cmd_hook"
 
 
 # --------------------------------------------------------------- bounded spool: age eviction
