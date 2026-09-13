@@ -35,7 +35,41 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
-## Organisation scope, catalog integrity and Overview publication truth — 2026-09-13 (current)
+## Skills duplicated across repositories — 2026-09-13 (current)
+
+Built by `publish-images.yml` (run 34760491551) from `main` at `6a6753a`: PR #159, which adds
+`GET {org_base}/skills/duplicates` (contract 1.12.0). It lists skill names that exist in more than one
+repository the reader may read, with an `identical` flag. Library shows a "Duplicated across
+repositories" panel, and Overview shows a count line at organisation scope. There is no change to
+`services/search/internal/schema/sql.go` since the previous release (`b8b76ba`), so no migrate Job ran.
+The four digests were patched into the live `Application/guidefold` inline Helm values at
+2026-09-13T13:42:14Z. A dry run first confirmed the patch changed exactly the four image lines.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:691f0ad66c009daaeb0fcb01a3c543a04d88849d5fd96607c4b8798e48b55fa0` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:d566a50419ccf715804ab6e4e3ca16a00a8ac91e11d29df15bc25cbe0e3f40c1` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:2de23bd87e6a3ec9171783eafa496661d703e2b44c0fe146ba25c42c8b26a42e` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:614ca35485188e4beee588dd00b43bbad9b928edd051d7ecf5bbea704176f1bc` |
+
+Rollback point: the digests of the release below (`b8b76ba`).
+
+Smoke test after the rollout. All four deployments were ready on the new digests with 0 restarts, and
+`Application/guidefold` was Synced and Healthy at `6a6753a`.
+
+| Check | Before | After |
+|---|---|---|
+| `/` | 200 | 200 |
+| `/health/ready` | 200 | 200 |
+| `GET /api/v1/auth/login/google` | 302 to WorkOS | 302 to WorkOS |
+| `/api/v1/me` (no session) | 401 | 401 |
+| `/api/v1/orgs/acme/skills` (no session) | 401 | 401 |
+| `/api/v1/orgs/acme/skills/duplicates` (no session) | not listed | 401 |
+| Public `/api/v1/openapi.yaml` lists `/skills/duplicates` | no | yes |
+| API and worker `ERROR` lines right after the rollout | 0 | 0 |
+| Recheck at 13:45:31Z: `ERROR` lines since the rollout, restarts, sign-in, `/health/ready` | — | 0, 0, 302 to WorkOS, 200 |
+
+## Organisation scope, catalog integrity and Overview publication truth — 2026-09-13
 
 Built by `publish-images.yml` (run 34759073012) from `main` at `b8b76ba`: PR #155 (the console reads the
 whole organisation by default and a repository is a filter, contract 1.11.0, ADR-0047), PR #158 (Overview
