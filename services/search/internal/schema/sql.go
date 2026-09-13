@@ -464,7 +464,21 @@ CREATE TABLE IF NOT EXISTS gfm.auth_states (
 -- ties a 'link' round trip to a person. NULL for 'login'/'link'.
 ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES gfm.orgs(org_id) ON DELETE CASCADE;
 ALTER TABLE gfm.auth_states DROP CONSTRAINT IF EXISTS auth_states_kind_check;
-ALTER TABLE gfm.auth_states ADD CONSTRAINT auth_states_kind_check CHECK(kind IN ('login','link','github_install'));
+ALTER TABLE gfm.auth_states ADD CONSTRAINT auth_states_kind_check CHECK(kind IN ('login','link','github_install','email_verification'));
+-- 'email_verification' (API-CONTRACT §2, §4.1): WorkOS AuthKit answered the
+-- login/link round trip's Authenticate call with email_verification_required
+-- instead of a user. pending_token is WorkOS's own pending_authentication_token,
+-- replayed verbatim to WorkOS's email-verification grant, so unlike every other
+-- secret this package stores it cannot be reduced to a SHA-256: it must be
+-- readable again. It is still short-lived (AuthStateTTL), single-use (deleted
+-- on success or on exhausting attempts), never leaves this server, and never
+-- reaches a URL, a script-readable cookie or a log line. attempts counts wrong
+-- codes against EmailVerificationMaxAttempts; the row is deleted, not merely
+-- expired, once that limit is reached, so a retried state can never look like
+-- a fresh one.
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS pending_token text;
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS pending_email text;
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS gfm.audit (
  org_id uuid NOT NULL,
  audit_id bigint GENERATED ALWAYS AS IDENTITY,

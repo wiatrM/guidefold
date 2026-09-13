@@ -183,15 +183,18 @@ func (s *Service) handleCallback(c *mgmt.Context) error {
 	if e != nil {
 		return c.RedirectTo(loginCallbackRedirect(c, e))
 	}
-	user, err := s.workos.Authenticate(c.Ctx(), code)
+	result, err := s.workos.Authenticate(c.Ctx(), code)
 	if err != nil {
+		if pending, ok := err.(*PendingAuthError); ok {
+			return c.RedirectTo(s.handlePendingAuth(c, claim, pending))
+		}
 		return c.RedirectTo(loginOutcomeReturn("provider_unavailable"))
 	}
 	linkUser := ""
 	if claim.kind == "link" {
 		linkUser = claim.userID
 	}
-	if err := s.completeSignIn(c, claim.provider, user.ID, user.Email, user.Name(), linkUser, claim.returnTo); err != nil {
+	if err := s.completeSignIn(c, claim.provider, result.User.ID, result.User.Email, result.User.Name(), linkUser, claim.returnTo); err != nil {
 		// completeSignIn's own failures (signIn/startSession) are rare
 		// database errors, not one of §4.7's named outcomes, but this is
 		// still the same browser navigation target — never render them as
@@ -201,21 +204,64 @@ func (s *Service) handleCallback(c *mgmt.Context) error {
 	return nil
 }
 
-// completeSignIn applies the identity rule and starts a session.
-//
-// A fresh login never merges accounts, even when the e-mail matches an existing
-// user: matching addresses are a claim by the provider, not proof that the same
-// person controls both. Linking is an explicit, session-bound action.
-func (s *Service) completeSignIn(c *mgmt.Context, providerID, subject, email, name, linkUser, returnTo string) error {
+// handlePendingAuth turns one of workos.PendingAuthError's closed set of
+// outcomes into the address handleCallback redirects to (API-CONTRACT §2,
+// §4.1). email_verification_required is the only one this service carries
+// forward: it opens its own short-lived, attempt-limited round trip
+// (identity/email_verify.go) and sends the browser to the console's code
+// screen. The other three (organization_selection_required, mfa_enrollment,
+// mfa_challenge) are reported and not built: the browser returns to the
+// sign-in page with WorkOS's own outcome code in `?auth=`, and the console
+// shows one plain sentence for each (never a fabricated flow).
+func (s *Service) handlePendingAuth(c *mgmt.Context, claim authClaim, pending *PendingAuthError) string {
+	switch pending.Code {
+	case "email_verification_required":
+		state, e := s.newEmailVerificationState(c.Ctx(), claim, pending.PendingAuthenticationToken, pending.Email)
+		if e != nil {
+			return loginCallbackRedirect(c, e)
+		}
+		s.setAuthStateCookie(c, state)
+		return "/login/verify-email?email=" + url.QueryEscape(maskEmail(pending.Email))
+	case "organization_selection_required":
+		return loginOutcomeReturn("organization_selection_required")
+	case "mfa_enrollment":
+		return loginOutcomeReturn("mfa_enrollment")
+	case "mfa_challenge":
+		return loginOutcomeReturn("mfa_challenge")
+	default:
+		// workos.go's pendingAuthCodes is the only source of PendingAuthError,
+		// and it names exactly the four cases above — unreachable in
+		// practice, kept closed rather than echoing an unlisted code.
+		return loginOutcomeReturn("provider_unavailable")
+	}
+}
+
+// completeSignInCore applies the identity rule (a fresh login never merges
+// accounts, even when the e-mail matches an existing user: matching
+// addresses are a claim by the provider, not proof that the same person
+// controls both — linking is an explicit, session-bound action) and starts a
+// session, without deciding how the caller reports success: handleCallback
+// and handleDevSubmit are browser navigation targets and redirect
+// (completeSignIn below); handleVerifyEmailCode is a fetch-based JSON route
+// and answers with `return_to` in its own body instead.
+func (s *Service) completeSignInCore(c *mgmt.Context, providerID, subject, email, name, linkUser string) (string, error) {
 	userID, e := s.signIn(c.Ctx(), providerID, subject, email, name, linkUser)
 	if e != nil {
-		return e
+		return "", e
 	}
 	if linkUser != "" {
 		// The link flow keeps the session it was started from.
-		return c.Redirect(returnTo)
+		return userID, nil
 	}
 	if e = s.startSession(c, userID); e != nil {
+		return "", e
+	}
+	return userID, nil
+}
+
+// completeSignIn is completeSignInCore for a browser navigation target.
+func (s *Service) completeSignIn(c *mgmt.Context, providerID, subject, email, name, linkUser, returnTo string) error {
+	if _, e := s.completeSignInCore(c, providerID, subject, email, name, linkUser); e != nil {
 		return e
 	}
 	return c.Redirect(returnTo)
