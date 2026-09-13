@@ -9,7 +9,7 @@ import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
 const summary = (name: string, over: Partial<SkillSummary> = {}): SkillSummary => ({
-  skill_id: 'urn:skill:meridian:forge.pipelines:' + name, name, description: '[forge.pipelines] ' + name,
+  skill_id: 'urn:skill:meridian:forge.pipelines:' + name, repo_id: 'monorepo', name, description: '[forge.pipelines] ' + name,
   scope: 'forge.pipelines', owner: 'pipelines-team', source_layer: 'team', knowledge_layer: 'unclassified',
   source_status: 'active', publication_status: 'draft', path: 'platforms/forge/' + name + '/SKILL.md',
   content_sha256: 'sha-' + name, revision_id: 'rev-' + name, card_revision: null, package_digest: null, commit: 'c0ffee', updated_at: null,
@@ -135,9 +135,23 @@ describe('Library route, filters and paging', () => {
     expect(getRevision).not.toHaveBeenCalled();
   });
 
-  test('a repository is required before anything is read', () => {
-    renderApi(ApiLibraryRoute, fakeSource(), '', { repo: null });
-    expect(screen.getByText('No repository selected')).toBeInTheDocument();
+  test('ADR-0047: no repository reads the whole organisation and each row names its repository', async () => {
+    const listSkills = vi.fn(async () => page({ items: [summary('pipeline-testing'), summary('billing-rules', { repo_id: 'billing', scope: 'billing.core' })] }));
+    const getFacets = vi.fn(async (_target: unknown, query: { field: string }) => ({ field: query.field, values: [], next_cursor: null }));
+    renderApi(ApiLibraryRoute, fakeSource({ listSkills, getFacets }), '', { repo: null });
+    const first = (await screen.findByRole('link', { name: 'pipeline-testing' })).closest('tr')!;
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(listSkills).toHaveBeenCalledWith({ org: 'meridian', repo: null }, expect.anything());
+    expect(getFacets).toHaveBeenCalledWith({ org: 'meridian', repo: null }, { field: 'scope' });
+    expect(within(first).getByText('monorepo', { selector: 'code' })).toBeInTheDocument();
+    const second = screen.getByRole('link', { name: 'billing-rules' }).closest('tr')!;
+    expect(within(second).getByText('billing', { selector: 'code' })).toBeInTheDocument();
+  });
+
+  test('with a repository chosen the row does not repeat it', async () => {
+    renderApi(ApiLibraryRoute, facets);
+    const row = (await screen.findByRole('link', { name: 'pipeline-testing' })).closest('tr')!;
+    expect(within(row).queryByText('monorepo', { selector: 'code' })).not.toBeInTheDocument();
   });
 });
 

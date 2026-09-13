@@ -10,10 +10,12 @@
 // tools/telemetry/report.py without a server.
 //
 // The ledger is organisation-scoped (`gf.events.tenant_id = org_id`) while
-// these endpoints are repository-scoped. A row is therefore attributed to this
-// repository when the catalog says its skill belongs here, and a skill the
-// catalog has never seen is still counted — the ledger observed it — with no
-// scope and no owner rather than being silently dropped.
+// these endpoints read a repository scope: one repository on a `{repo_base}`
+// route, every repository the caller may read on an `{org_base}` route, or the
+// one `?repo=` named (API-CONTRACT §4.10). A row is attributed to a repository
+// when the catalog says its skill belongs there, and a skill the catalog has
+// never seen is still counted — the ledger observed it — with no repository,
+// no scope and no owner rather than being silently dropped.
 package usage
 
 import (
@@ -40,10 +42,13 @@ type Service struct {
 // New builds the service.
 func New(pool *pgxpool.Pool) *Service { return &Service{pool: pool} }
 
-// Register mounts the usage surface (API-CONTRACT §4.6). Reading is a member
-// action; deciding a queue item is an owner action and, being a mutation, an
+// Register mounts the usage surface (API-CONTRACT §4.6, §4.10). Reading is a
+// member action, on the repository or on the organisation; deciding a queue
+// item is an owner action on one repository and, being a mutation, an
 // idempotent one.
 func (s *Service) Register(r *mgmt.Router) {
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/usage", s.handleUsage)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/usage/export", s.handleExport)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/usage", s.handleUsage)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/usage/export", s.handleExport)
 	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/repos/{repo}/usage/queue/{item_id}/decision",
@@ -94,13 +99,20 @@ type view struct {
 	filters    domain.Filter
 }
 
-// build reads everything one usage answer needs.
-func (s *Service) build(ctx context.Context, c *mgmt.Context, orgID, repoID string) (*view, error) {
-	filter := domain.Filter{Repo: repoID,
+// build reads everything one usage answer needs, over the repositories the
+// scope proved readable. `?repo=` is echoed only where it did the narrowing —
+// an organisation route; on a repository route the path decides and the
+// query parameter is not what was applied.
+func (s *Service) build(ctx context.Context, c *mgmt.Context, orgID string,
+	scope *mgmt.Scope) (*view, error) {
+	filter := domain.Filter{Repos: scope.Repos,
 		Scope:    strings.TrimSpace(c.Query("scope")),
 		SkillID:  strings.TrimSpace(c.Query("skill_id")),
 		Revision: strings.TrimSpace(c.Query("revision")),
 		Harness:  strings.TrimSpace(c.Query("harness"))}
+	if c.Param("repo") == "" {
+		filter.Repo = strings.TrimSpace(c.Query("repo"))
+	}
 	for _, v := range []string{filter.Scope, filter.SkillID, filter.Revision, filter.Harness} {
 		if len(v) > 300 {
 			return nil, mgmt.Invalid("invalid_request", "A filter value is too long.")
@@ -144,7 +156,7 @@ func (s *Service) build(ctx context.Context, c *mgmt.Context, orgID, repoID stri
 	report := domain.Aggregate(domain.Input{Events: events, EventsReceived: received,
 		OldestLagS: lag, Meta: meta, Window: window, Filter: filter, Revisions: revisions,
 		Now: c.Now().UTC()})
-	queue, e := s.queue(ctx, orgID, repoID, report, meta)
+	queue, e := s.queue(ctx, orgID, scope.Repos, report, meta)
 	if e != nil {
 		return nil, e
 	}
@@ -369,13 +381,16 @@ func windowOf(w domain.Window) windowDTO {
 
 // handleUsage answers the owner's dashboard in one request: the window, what
 // the window can and cannot see, the aggregate, the per-skill rows, the review
-// queue and the adapters behind it all.
+// queue and the adapters behind it all. It serves both the repository route
+// and the organisation route: AuthorizeScope reads the `{repo}` path parameter
+// where the route has one and falls back to `?repo=` or the whole
+// organisation where it does not.
 func (s *Service) handleUsage(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
-	v, e := s.build(c.Ctx(), c, org.ID, repo.ID)
+	v, e := s.build(c.Ctx(), c, org.ID, scope)
 	if e != nil {
 		return e
 	}

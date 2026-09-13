@@ -15,7 +15,7 @@ import (
 // (API-CONTRACT §3, "importy, propozycje i audyt `created_at desc, id desc`").
 // Members read; only owners decide.
 func (s *Service) handleListProposals(c *mgmt.Context) error {
-	rc, e := s.authorize(c, mgmt.RoleAny)
+	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -49,8 +49,11 @@ func (s *Service) handleListProposals(c *mgmt.Context) error {
 	// The lateral join pulls each proposal's latest decision (gfm.decisions,
 	// ordered `at desc`, same column the INSERT in recordDecision writes) so the
 	// list page can show `decision` without an N+1 query per row.
-	rows, err := s.pool.Query(c.Ctx(), `SELECT p.proposal_id::text,p.kind,p.state,p.scope,p.owner,
- p.target_skill_id,p.candidate_path,p.created_at,
+	// `repo_id = ANY(...)` over the scope is the one rule for both routes: the
+	// `{repo_base}` route has a scope of exactly one repository, the
+	// `{org_base}` route every one the caller may read (API-CONTRACT §4.10).
+	rows, err := s.pool.Query(c.Ctx(), `SELECT p.proposal_id::text,p.repo_id,p.kind,p.state,p.scope,
+ p.owner,p.target_skill_id,p.candidate_path,p.created_at,
  d.decision,d.actor_user_id::text,d.at
  FROM gfm.proposals p
  LEFT JOIN LATERAL (
@@ -58,28 +61,28 @@ func (s *Service) handleListProposals(c *mgmt.Context) error {
    WHERE org_id=p.org_id AND proposal_id=p.proposal_id
    ORDER BY at DESC LIMIT 1
  ) d ON true
- WHERE p.org_id=$1::uuid AND p.repo_id=$2
+ WHERE p.org_id=$1::uuid AND p.repo_id = ANY($2::text[])
    AND ($3='' OR p.state=$3) AND ($4='' OR p.kind=$4) AND ($5='' OR p.scope=$5)
    AND ($6::timestamptz IS NULL OR (p.created_at,p.proposal_id::text) < ($6::timestamptz,$7))
  ORDER BY p.created_at DESC,p.proposal_id DESC LIMIT $8`,
-		rc.Org.ID, rc.RepoID, state, kind, scope, nullableTime(after), before, limit+1)
+		sc.Org.ID, sc.Scope.Repos, state, kind, scope, nullableTime(after), before, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
 	defer rows.Close()
 	items := []map[string]any{}
 	for rows.Next() {
-		var id, kind, state, path string
+		var id, repoID, kind, state, path string
 		var scope, owner, target *string
 		var createdAt time.Time
 		var decision, actor *string
 		var decidedAt *time.Time
-		if err = rows.Scan(&id, &kind, &state, &scope, &owner, &target, &path, &createdAt,
+		if err = rows.Scan(&id, &repoID, &kind, &state, &scope, &owner, &target, &path, &createdAt,
 			&decision, &actor, &decidedAt); err != nil {
 			return mgmt.Internal(err)
 		}
-		items = append(items, map[string]any{"proposal_id": id, "kind": kind, "state": state,
-			"scope": scope, "owner": owner, "target_skill_id": target, "path": path,
+		items = append(items, map[string]any{"proposal_id": id, "repo_id": repoID, "kind": kind,
+			"state": state, "scope": scope, "owner": owner, "target_skill_id": target, "path": path,
 			"created_at": createdAt, "decision": lastDecisionSummary(decision, actor, decidedAt)})
 	}
 	if err = rows.Err(); err != nil {
@@ -93,7 +96,7 @@ func (s *Service) handleListProposals(c *mgmt.Context) error {
 			last["proposal_id"].(string))
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "org_id": rc.Org.ID, "repo_id": rc.RepoID,
+		"schema_version": mgmt.SchemaVersion, "org_id": sc.Org.ID, "repo_id": sc.Scope.RepoID(),
 		"items": items, "next_cursor": nullable(next)})
 }
 
@@ -147,7 +150,7 @@ func knownKind(v string) bool {
 // `source_body` is what makes a review possible at all — an owner comparing a
 // candidate against nothing is approving prose, not a change.
 func (s *Service) handleProposal(c *mgmt.Context) error {
-	rc, e := s.authorize(c, mgmt.RoleAny)
+	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -155,13 +158,16 @@ func (s *Service) handleProposal(c *mgmt.Context) error {
 	if !parseUUID(id) {
 		return notFound("proposal_not_found", "No such proposal in this repository.")
 	}
-	p, err := s.loadProposal(c.Ctx(), rc.Org.ID, rc.RepoID, id)
+	p, err := s.loadProposalIn(c.Ctx(), sc.Org.ID, sc.Scope.Repos, id)
 	if isNoRows(err) {
 		return notFound("proposal_not_found", "No such proposal in this repository.")
 	}
 	if err != nil {
 		return mgmt.Internal(err)
 	}
+	// A detail is always one repository: the proposal's own, whichever route
+	// reached it (API-CONTRACT §4.10.3).
+	rc := sc.repoContextFor(p.RepoID)
 	candidate, err := s.blobs.Get(c.Ctx(), rc.Org.ID, p.CandidateBlobSHA256)
 	var body *string
 	if err == nil {

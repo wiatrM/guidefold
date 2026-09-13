@@ -52,6 +52,9 @@ type exportRow struct {
 	// Contract 1.1.4, appended after the two above for the same reason.
 	ExposuresExpanded int `json:"exposures_expanded"`
 	LoadsUnlinked     int `json:"loads_unlinked"`
+	// Contract 1.11.0 (§4.10): the repository the catalog places the skill in,
+	// an empty cell for a skill the catalog does not know. Last, same rule.
+	RepoID *string `json:"repo_id"`
 }
 
 // exportHeader is the pinned column order, read once from the struct tags.
@@ -105,7 +108,8 @@ func exportRows(report domain.Report) []exportRow {
 			Exposures: s.Exposures, LoadsVerified: s.LoadsVerified,
 			ContextLoaded: s.ContextLoaded, ContextUnknown: s.ContextUnknown,
 			UseReported: s.UseReported, UseObserved: s.UseObserved, ZeroLoads: s.ZeroLoads,
-			ExposuresExpanded: s.ExposuresExpanded, LoadsUnlinked: s.LoadsUnlinked}
+			ExposuresExpanded: s.ExposuresExpanded, LoadsUnlinked: s.LoadsUnlinked,
+			RepoID: s.RepoID}
 		if s.Feedback != nil {
 			f := *s.Feedback
 			row.Helped, row.Hindered, row.Mixed = &f.Helped, &f.Hindered, &f.Mixed
@@ -131,9 +135,10 @@ type exportDocument struct {
 	Rows          []exportRow      `json:"rows"`
 }
 
-// handleExport writes the same rows as CSV or JSON.
+// handleExport writes the same rows as CSV or JSON, on the repository route
+// and on the organisation route alike.
 func (s *Service) handleExport(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -144,7 +149,7 @@ func (s *Service) handleExport(c *mgmt.Context) error {
 	if format != "csv" && format != "json" {
 		return mgmt.Invalid("invalid_request", "format must be csv or json.")
 	}
-	v, e := s.build(c.Ctx(), c, org.ID, repo.ID)
+	v, e := s.build(c.Ctx(), c, org.ID, scope)
 	if e != nil {
 		return e
 	}

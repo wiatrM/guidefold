@@ -332,7 +332,7 @@ func (s *Service) handlePublicationJob(c *mgmt.Context) error {
 // approval to serving. `awaiting_git` is a real state and not a spinner: the
 // change exists as a patch and nothing has published it yet.
 func (s *Service) handleProposalPublication(c *mgmt.Context) error {
-	rc, e := s.authorize(c, mgmt.RoleAny)
+	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -340,13 +340,16 @@ func (s *Service) handleProposalPublication(c *mgmt.Context) error {
 	if !parseUUID(id) {
 		return notFound("proposal_not_found", "No such proposal in this repository.")
 	}
-	p, err := s.loadProposal(c.Ctx(), rc.Org.ID, rc.RepoID, id)
+	p, err := s.loadProposalIn(c.Ctx(), sc.Org.ID, sc.Scope.Repos, id)
 	if isNoRows(err) {
 		return notFound("proposal_not_found", "No such proposal in this repository.")
 	}
 	if err != nil {
 		return mgmt.Internal(err)
 	}
+	// One proposal, one repository: the answer names the proposal's own
+	// (API-CONTRACT §4.10.3).
+	rc := sc.repoContextFor(p.RepoID)
 	state := StateAwaitingGit
 	switch p.State {
 	case StatePublished:

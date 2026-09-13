@@ -25,7 +25,7 @@ test('the dev provider signs the owner in and the header comes from /me', async 
 test('the seven views are reachable and each names itself', async ({ page }) => {
   await signIn(page);
   const titles: Record<string, string> = {
-    import: 'Import repository skills', library: 'Skill library', map: 'Repository knowledge map',
+    import: 'Import repository skills', library: 'Skill library', map: 'Knowledge map',
     skill: 'Skill revision', proposals: 'Review a skill revision', usage: 'Usage & quality',
     organization: 'Organization',
   };

@@ -68,11 +68,15 @@ func scanProposal(row pgx.Row) (*proposal, error) {
 	return &p, nil
 }
 
-// loadProposal reads one proposal of one repository. A proposal of another
-// repository in the same organisation is 404, not a cross-repository read.
-func (s *Service) loadProposal(ctx context.Context, orgID, repoID, proposalID string) (*proposal, error) {
+// loadProposalIn reads one proposal of any repository in the scope
+// (API-CONTRACT §4.10). A proposal outside it answers ErrNoRows exactly like a
+// proposal that does not exist: the organisation view never confirms a row the
+// same member could not read per repository.
+func (s *Service) loadProposalIn(ctx context.Context, orgID string, repos []string,
+	proposalID string) (*proposal, error) {
 	return scanProposal(s.pool.QueryRow(ctx, `SELECT `+proposalColumns+` FROM gfm.proposals
- WHERE org_id=$1::uuid AND repo_id=$2 AND proposal_id=$3::uuid`, orgID, repoID, proposalID))
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) AND proposal_id=$3::uuid`,
+		orgID, repos, proposalID))
 }
 
 // lockProposal reads it inside a transaction, so a decision and the state it
