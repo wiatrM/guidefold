@@ -25,9 +25,22 @@ const providerIcon = (id: string) => id === 'github'
   ? <GithubLogoIcon weight="regular" aria-hidden="true" />
   : id === 'google' ? <GoogleLogoIcon weight="regular" aria-hidden="true" /> : <SignInIcon weight="regular" aria-hidden="true" />;
 
-export function LoginRoute({ source, returnTo }: { source: DataSource; returnTo: string }) {
+/** Every outcome `GET /api/v1/auth/callback` may carry in `?auth=` on a failed sign-in
+ * (contract §4.7, the same Task 1 fix as the GitHub install callback: that callback never
+ * renders JSON any more, so this line is the only place the failure is ever explained). */
+const AUTH_CALLBACK_MESSAGES: Record<string, string> = {
+  invalid_callback: 'The identity provider did not return the information sign-in needs. You are not signed in.',
+  invalid_state: 'This sign-in link no longer matches this browser, or was already used. You are not signed in.',
+  expired_state: 'This sign-in link expired before it completed. You are not signed in.',
+  provider_unavailable: 'The identity provider did not complete sign-in. You are not signed in.',
+  internal_error: 'Sign-in could not be completed. You are not signed in.',
+};
+
+export function LoginRoute({ source, returnTo, authOutcome }: { source: DataSource; returnTo: string; authOutcome?: string | null }) {
   const providers = useAsync(() => source.getAuthProviders(), 'auth-providers');
-  const [error, setError] = useState('');
+  // Read once, not tracked live: `authOutcome` is this exact return trip's own one-shot signal,
+  // the same convention as the GitHub install callback's `?github=` on the Integrations tab.
+  const [error, setError] = useState(() => authOutcome ? (AUTH_CALLBACK_MESSAGES[authOutcome] ?? AUTH_CALLBACK_MESSAGES.internal_error) : '');
   const main = useRef<HTMLElement>(null);
   // Arriving here is a route change like any other, so the reading position and the keyboard
   // focus move together — the same rule the shell applies to #main on every view change.

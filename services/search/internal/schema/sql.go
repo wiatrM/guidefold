@@ -182,6 +182,15 @@ CREATE TABLE IF NOT EXISTS gfm.github_installations (
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now()
 );
+-- GitHub's own installation.repository_selection ("all"|"selected"): whether
+-- the owner granted every repository on the account or hand-picked a subset
+-- (API-CONTRACT §4.7, §5.1). Nullable: unknown until either the callback's
+-- own GET /user/installations proof or an "installation" webhook reports it,
+-- never guessed. No CHECK against the two-value domain here — GitHub is
+-- free to add a third value before this deployment's next migration, and a
+-- value this column has never seen should still store rather than fail the
+-- transaction that also links the installation.
+ALTER TABLE gfm.github_installations ADD COLUMN IF NOT EXISTS repository_selection text;
 -- Upgrades the earlier org-keyed shape, where org_id was part of the primary
 -- key and was written by the webhook itself from a login-equals-slug guess —
 -- a match that only ever worked when a Guidefold organisation's slug happened
@@ -209,6 +218,17 @@ CREATE TABLE IF NOT EXISTS gfm.github_installation_links (
  linked_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS github_installation_links_org ON gfm.github_installation_links(org_id);
+-- Set only inside GitHubSyncWorker.Run's own transaction, alongside the
+-- gfm.repos writes it commits with (agentrun/github_sync.go) — never
+-- inferred from gfm.jobs (retained only 90 days, §7, so a job-derived flag
+-- would silently flip a long-synced installation back to "syncing") and
+-- never from gfm.github_installations.created_at/updated_at (that pair only
+-- ever reflects the webhook mirror, not whether github.sync_repositories has
+-- run). NULL means reconciliation has never completed for this link; reset
+-- to NULL below whenever a link is (re)created, so a stale timestamp from a
+-- previous linkage of the same installation_id never reads as "already
+-- synced" before the fresh sync job this callback enqueues has run.
+ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS repositories_synced_at timestamptz;
 CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
  delivery_id text PRIMARY KEY,
  payload_sha256 text NOT NULL,

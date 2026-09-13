@@ -15,7 +15,7 @@ import type {
   ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
   Me, Member, ModulePage, Org, Profile, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
-  Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
+  Team, GitHubInstallation, GitHubInstallStart, RepoAccess, RepoAccessLevel, Reviewer,
   OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
@@ -195,6 +195,12 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
     listGitHubInstallations(org: string): Promise<GitHubInstallation[]> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/github/installations', decode: d.githubInstallationList, resource: 'github-installations/' + org });
+    },
+    startGitHubInstall(org: string, idempotencyKey: string): Promise<GitHubInstallStart> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/github/installations/start',
+        method: 'POST', decode: d.githubInstallStart, resource: 'github-install-start/' + org, idempotencyKey,
+      });
     },
     async deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void> {
       await write({ path: '/orgs/' + encodeURIComponent(org) + '/github/installations/' + encodeURIComponent(String(installationId)), method: 'DELETE', decode: d.ok, resource: 'github-installation/' + org + '/' + installationId, idempotencyKey });

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"html"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -140,13 +141,35 @@ func (s *Service) handleDevSubmit(c *mgmt.Context) error {
 	return s.completeSignIn(c, providerID, subject, email, name, linkUser, returnTo)
 }
 
+// loginOutcomeReturn builds /login?auth=<code> — the console's sign-in page
+// reports the outcome named in `auth` as its own line instead of the caller
+// ever seeing raw JSON, the same rule the GitHub install callback applies
+// (API-CONTRACT §4.7): this is a browser navigation target reached straight
+// from the identity provider's own redirect, never a JSON API call.
+func loginOutcomeReturn(outcome string) string {
+	return "/login?" + (url.Values{"auth": {outcome}}).Encode()
+}
+
+// loginCallbackRedirect mirrors githubCallbackRedirect for this callback: a
+// closed *mgmt.Error below 500 contributes its own code, anything else is
+// logged (mgmt.Router.render would otherwise have logged it before writing
+// the JSON envelope this handler no longer reaches) and answers as a
+// generic failure, never the raw cause.
+func loginCallbackRedirect(c *mgmt.Context, err error) string {
+	if api, ok := err.(*mgmt.Error); ok && api.Status < http.StatusInternalServerError {
+		return loginOutcomeReturn(api.Code)
+	}
+	slog.Default().Error("auth_callback_failure", "request_id", c.RequestID, "error", err)
+	return loginOutcomeReturn("internal_error")
+}
+
 func (s *Service) handleCallback(c *mgmt.Context) error {
 	if s.cfg.Mode != ModeWorkOS {
 		return mgmt.NotFound("not_found", "No such endpoint.")
 	}
 	code, state := c.Query("code"), c.Query("state")
 	if code == "" || state == "" {
-		return mgmt.Invalid("invalid_callback", "The provider returned no code.")
+		return c.RedirectTo(loginOutcomeReturn("invalid_callback"))
 	}
 	// Login CSRF. The state row alone proves that *someone* started a login, not
 	// that this browser did: an attacker can start one and then feed their own
@@ -154,22 +177,28 @@ func (s *Service) handleCallback(c *mgmt.Context) error {
 	// without noticing. The state is therefore also written as an HttpOnly
 	// cookie at handleLogin, and the two must agree here.
 	if e := s.matchAuthStateCookie(c, state); e != nil {
-		return e
+		return c.RedirectTo(loginCallbackRedirect(c, e))
 	}
 	claim, e := s.consumeAuthState(c.Ctx(), state)
 	if e != nil {
-		return e
+		return c.RedirectTo(loginCallbackRedirect(c, e))
 	}
 	user, err := s.workos.Authenticate(c.Ctx(), code)
 	if err != nil {
-		return mgmt.Fail(http.StatusBadGateway, "provider_unavailable",
-			"The identity provider did not complete the sign-in.")
+		return c.RedirectTo(loginOutcomeReturn("provider_unavailable"))
 	}
 	linkUser := ""
 	if claim.kind == "link" {
 		linkUser = claim.userID
 	}
-	return s.completeSignIn(c, claim.provider, user.ID, user.Email, user.Name(), linkUser, claim.returnTo)
+	if err := s.completeSignIn(c, claim.provider, user.ID, user.Email, user.Name(), linkUser, claim.returnTo); err != nil {
+		// completeSignIn's own failures (signIn/startSession) are rare
+		// database errors, not one of §4.7's named outcomes, but this is
+		// still the same browser navigation target — never render them as
+		// JSON either.
+		return c.RedirectTo(loginCallbackRedirect(c, err))
+	}
+	return nil
 }
 
 // completeSignIn applies the identity rule and starts a session.
@@ -545,10 +574,15 @@ func (s *Service) consumeAuthState(ctx context.Context, state string) (authClaim
 	if e = tx.Commit(ctx); e != nil {
 		return claim, mgmt.Internal(e)
 	}
+	// Populated before the expiry check, not after: a caller that gets
+	// expired_state back still has a genuine claim.userID/orgID (the row did
+	// exist and was consumed, it was merely too old), which
+	// handleGitHubInstallCallback relies on to pick a safe redirect target
+	// for an expired install-link state without a second lookup.
+	claim.userID = str(owner)
+	claim.orgID = str(org)
 	if !expires.After(s.now()) {
 		return claim, mgmt.Invalid("expired_state", "This sign-in link has expired.")
 	}
-	claim.userID = str(owner)
-	claim.orgID = str(org)
 	return claim, nil
 }

@@ -48,6 +48,14 @@ type githubInstallationPayload struct {
 			FullName string `json:"full_name"`
 		} `json:"repositories"`
 		SuspendedAt any `json:"suspended_at"`
+		// RepositorySelection is GitHub's own "all"|"selected" on the
+		// installation object — API-CONTRACT §5.1. Unlike Repositories
+		// (carried only on "created", the comment below explains why),
+		// GitHub includes this on the installation object for every
+		// "installation" and "installation_repositories" delivery, so
+		// upsertGitHubInstallationMirror can read it the same way for
+		// every action.
+		RepositorySelection string `json:"repository_selection"`
 	} `json:"installation"`
 	RepositoriesAdded []struct {
 		FullName string `json:"full_name"`
@@ -215,7 +223,7 @@ func (s *Service) handleGitHubInstallationEvent(c *mgmt.Context, tx pgx.Tx, even
 			}
 		}
 		if err := upsertGitHubInstallationMirror(c.Ctx(), tx, s.now, installationID,
-			payload.Installation.Account.Login, repositories, payload.Action); err != nil {
+			payload.Installation.Account.Login, repositories, payload.Installation.RepositorySelection, payload.Action); err != nil {
 			return mgmt.Internal(err)
 		}
 		if payload.Action == "created" {
@@ -243,7 +251,7 @@ func (s *Service) handleGitHubInstallationEvent(c *mgmt.Context, tx pgx.Tx, even
 		}
 		merged := mergeGitHubRepositories(existing, added, removed)
 		if err := upsertGitHubInstallationMirror(c.Ctx(), tx, s.now, installationID,
-			payload.Installation.Account.Login, merged, ""); err != nil {
+			payload.Installation.Account.Login, merged, payload.Installation.RepositorySelection, ""); err != nil {
 			return mgmt.Internal(err)
 		}
 		jobID, err := s.syncIfLinked(c.Ctx(), tx, installationID, "github-sync:"+strconv.FormatInt(installationID, 10)+":"+delivery)
@@ -332,7 +340,7 @@ func (s *Service) enqueueGitHubSync(ctx context.Context, tx pgx.Tx, orgID string
 // installation_repositories path is unaffected — it always passes the
 // already-merged list) preserve whatever is already stored.
 func upsertGitHubInstallationMirror(ctx context.Context, tx pgx.Tx, now func() time.Time, installationID int64,
-	account string, repositories []githubRepoRef, action string) error {
+	account string, repositories []githubRepoRef, repositorySelection, action string) error {
 	encoded, err := json.Marshal(repositories)
 	if err != nil {
 		return err
@@ -350,10 +358,21 @@ func upsertGitHubInstallationMirror(ctx context.Context, tx pgx.Tx, now func() t
 	default:
 		suspendedClause = "suspended_at=gfm.github_installations.suspended_at"
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO gfm.github_installations(installation_id,account,repositories,suspended_at,updated_at)
- VALUES($1,$2,$3::jsonb,$4,now())
- ON CONFLICT (installation_id) DO UPDATE SET account=excluded.account,`+reposClause+`,`+suspendedClause+`,updated_at=now()`,
-		installationID, account, encoded, suspended)
+	// repositorySelection is a scalar property of the installation object
+	// GitHub includes on every action of both event types, unlike
+	// repositories above, so it is not gated by action: whenever the caller
+	// has it, it is written; otherwise COALESCE keeps whatever is already
+	// stored, NULL for a brand new row.
+	var selection any
+	if v := strings.TrimSpace(repositorySelection); v != "" {
+		selection = v
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO gfm.github_installations(installation_id,account,repositories,repository_selection,suspended_at,updated_at)
+ VALUES($1,$2,$3::jsonb,$4,$5,now())
+ ON CONFLICT (installation_id) DO UPDATE SET account=excluded.account,`+reposClause+`,
+   repository_selection=COALESCE(excluded.repository_selection,gfm.github_installations.repository_selection),
+   `+suspendedClause+`,updated_at=now()`,
+		installationID, account, encoded, selection, suspended)
 	return err
 }
 
@@ -568,7 +587,17 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 	if err != nil {
 		return err
 	}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT gi.installation_id,gi.account,gi.repositories,gi.suspended_at,gi.created_at,gi.updated_at
+	// registered_repositories is gfm.repos, not the webhook mirror's own
+	// repositories[] list: github.sync_repositories (agentrun/github_sync.go)
+	// is the only writer of gfm.repos.github_installation_id, so this count
+	// is what the owner actually gets, not what GitHub merely reported it
+	// could see. synced comes from repositories_synced_at, written inside
+	// that same job's own transaction (never from gfm.jobs, retained only 90
+	// days) — a real "reconciliation has run at least once" flag, not an
+	// inference from created_at/updated_at.
+	rows, err := s.pool.Query(c.Ctx(), `SELECT gi.installation_id,gi.account,gi.repositories,gi.repository_selection,gi.suspended_at,gi.created_at,gi.updated_at,
+ l.linked_at,l.repositories_synced_at,
+ (SELECT count(*) FROM gfm.repos r WHERE r.org_id=$1::uuid AND r.github_installation_id=gi.installation_id)
  FROM gfm.github_installations gi JOIN gfm.github_installation_links l ON l.installation_id=gi.installation_id
  WHERE l.org_id=$1::uuid ORDER BY gi.installation_id`, org.ID)
 	if err != nil {
@@ -580,15 +609,23 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 		var id int64
 		var account string
 		var repositories []byte
-		var suspended, created, updated any
-		if err := rows.Scan(&id, &account, &repositories, &suspended, &created, &updated); err != nil {
+		var repositorySelection *string
+		var suspended, created, updated, linkedAt, syncedAt any
+		var registered int64
+		if err := rows.Scan(&id, &account, &repositories, &repositorySelection, &suspended, &created, &updated,
+			&linkedAt, &syncedAt, &registered); err != nil {
 			return mgmt.Internal(err)
 		}
 		var repoList []any
 		if err := json.Unmarshal(repositories, &repoList); err != nil {
 			return mgmt.Internal(err)
 		}
-		items = append(items, map[string]any{"installation_id": id, "account": account, "repositories": repoList, "suspended": suspended != nil, "created_at": created, "updated_at": updated})
+		items = append(items, map[string]any{
+			"installation_id": id, "account": account, "repositories": repoList,
+			"repository_selection": repositorySelection, "suspended": suspended != nil,
+			"created_at": created, "updated_at": updated, "linked_at": linkedAt,
+			"registered_repositories": registered, "synced": syncedAt != nil,
+		})
 	}
 	if err := rows.Err(); err != nil {
 		return mgmt.Internal(err)

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ApiOrganizationRoute } from './OnboardingRoutes';
 import { ApiError } from '../api/client';
-import type { AuditPage, Installation, InvitationLifecycle, Member, OrgCredential, Usage } from '../api/decoders';
+import type { AuditPage, GitHubInstallation, Installation, InvitationLifecycle, Member, OrgCredential, Usage } from '../api/decoders';
 import type { ApiRouteContext } from '../domain';
 import type { DataSource } from '../data/source';
 import { fakeSource } from '../test/fakes';
@@ -18,6 +18,12 @@ const owners: Member[] = [{ user_id: 'u1', email: 'ada@example.com', name: 'Ada'
 const installation = (over: Partial<Installation> = {}): Installation => ({
   installation_id: 'k1', name: 'ci-runner', repo_id: 'monorepo', scopes: ['search', 'use', 'events'],
   harness: 'claude', last_seen_at: null, adapter_version: null, capabilities: null, created_at: null, token: null,
+  ...over,
+});
+const githubInstallation = (over: Partial<GitHubInstallation> = {}): GitHubInstallation => ({
+  installation_id: 501, account: 'meridian-data', repositories: [{ full_name: 'meridian-data/monorepo', repo_id: null }],
+  repository_selection: 'all', suspended: false, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:05:00Z',
+  linked_at: '2026-09-01T00:00:00Z', registered_repositories: 1, synced: true,
   ...over,
 });
 
@@ -466,4 +472,121 @@ describe('Organization route, model keys', () => {
     expect(screen.queryByRole('button', { name: 'Make preferred' })).not.toBeInTheDocument();
     expect(screen.getByText(/Member access is read only here/)).toBeInTheDocument();
   });
+});
+
+describe('Organization route, GitHub App installations (contract §4.7, ADR-0034/ADR-0036)', () => {
+  test('an owner sees Connect GitHub, next to the recommendation to choose All repositories', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [githubInstallation()] }), 'tab=integrations');
+    expect(await screen.findByRole('button', { name: 'Connect GitHub' })).toBeInTheDocument();
+    // The recommendation Task 1 asks for: since Guidefold cannot preselect it, the copy names
+    // "All repositories" (bold, its own element) inside the explanation of why.
+    expect(screen.getByText('All repositories')).toBeInTheDocument();
+    expect(screen.getByText(/Guidefold cannot preselect that for you/)).toBeInTheDocument();
+    expect(await screen.findByText('meridian-data')).toBeInTheDocument();
+  });
+
+  test('a member sees the same installation but no button to connect one', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [githubInstallation()] }), 'tab=integrations', { role: 'member' });
+    // Member-readable per contract (GET is `member`, not `owner`): the list still reads, the
+    // connect action does not appear at all (never merely disabled).
+    expect(await screen.findAllByText('meridian-data')).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Connect GitHub' })).not.toBeInTheDocument();
+    expect(screen.queryByText('All repositories')).not.toBeInTheDocument();
+  });
+
+  test('Connect GitHub starts the link with a stable per-organization key; the browser is sent to what the API returns', async () => {
+    const startGitHubInstall = vi.fn(async () => ({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold/installations/new?state=s1' }));
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [], startGitHubInstall }), 'tab=integrations');
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect GitHub' }));
+    // jsdom's window.location.assign is a non-configurable, non-writable own property and cannot
+    // be spied on (same limitation as the identity-link tests above); this stops at the call that
+    // decides where the browser goes, which is the boundary this test double can observe.
+    await waitFor(() => expect(startGitHubInstall).toHaveBeenCalledWith('meridian', 'github-install-start:meridian'));
+    expect(screen.queryByText(/could not start/)).not.toBeInTheDocument();
+  });
+
+  test('github_app_not_configured reads as a deployment problem with nothing left to click, not a retryable error', async () => {
+    const startGitHubInstall = vi.fn(async () => { throw new ApiError({ status: 503, code: 'github_app_not_configured', message: 'no app' }); });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [], startGitHubInstall }), 'tab=integrations');
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect GitHub' }));
+    expect(await screen.findByText('No GitHub App configured on this deployment')).toBeInTheDocument();
+    expect(screen.getByText(/ask whoever operates this deployment/i)).toBeInTheDocument();
+    // The button itself is gone — there is nothing here for the owner to click through.
+    expect(screen.queryByRole('button', { name: 'Connect GitHub' })).not.toBeInTheDocument();
+    // Nor does the empty-list state get to say "Install the Guidefold GitHub App..." right under
+    // a message saying this deployment cannot start an install — that would contradict it.
+    expect(screen.queryByText('No GitHub App installation')).not.toBeInTheDocument();
+  });
+
+  // Task 3: `synced` is the real field (`gfm.github_installation_links.repositories_synced_at`),
+  // not the retired `created_at === updated_at` heuristic on the webhook mirror.
+  test('a linked installation whose reconciliation has not run yet reads as still syncing, never as zero', async () => {
+    const syncing = githubInstallation({ repositories: [], registered_repositories: 0, synced: false });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [syncing] }), 'tab=integrations');
+    expect(await screen.findByText('Linked. Repositories still syncing.')).toBeInTheDocument();
+    expect(screen.queryByText('No repositories registered.')).not.toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+
+  test('a genuinely empty registered count — confirmed by a completed reconciliation — reads as zero, not syncing', async () => {
+    const confirmedEmpty = githubInstallation({ repositories: [], registered_repositories: 0, synced: true });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [confirmedEmpty] }), 'tab=integrations');
+    expect(await screen.findByText('No repositories registered.')).toBeInTheDocument();
+    expect(screen.queryByText('Linked. Repositories still syncing.')).not.toBeInTheDocument();
+  });
+
+  test('Disconnect is owner-only: a member reads the installation but has no control to remove it', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [githubInstallation()] }), 'tab=integrations', { role: 'member' });
+    expect(await screen.findByText('meridian-data')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
+    expect(screen.getByText('Owner only')).toBeInTheDocument();
+  });
+
+  test('Disconnect says plainly that the App stays installed on GitHub and must be uninstalled there too', async () => {
+    const deleteGitHubInstallation = vi.fn(async () => {});
+    const listGitHubInstallations = vi.fn(async () => [githubInstallation()]);
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations, deleteGitHubInstallation }), 'tab=integrations');
+    await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+    expect(deleteGitHubInstallation).toHaveBeenCalledWith('meridian', 501, 'github-installation:meridian:501');
+    expect(await screen.findByText(/App stays installed on GitHub — uninstall it there too/)).toBeInTheDocument();
+    await waitFor(() => expect(listGitHubInstallations.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  test('a failed disconnect is reported honestly and the installation is not claimed removed', async () => {
+    const deleteGitHubInstallation = vi.fn(async () => { throw new ApiError({ status: 404, code: 'installation_not_found', message: 'gone' }); });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [githubInstallation()], deleteGitHubInstallation }), 'tab=integrations');
+    await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+    expect(await screen.findByText('The GitHub installation was not disconnected (installation_not_found).')).toBeInTheDocument();
+  });
+
+  test('landing back from a successful GitHub round trip shows its own message, not a generic one', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=linked');
+    const banner = await screen.findByText(/back from GitHub/);
+    expect(banner).toHaveAttribute('role', 'status');
+  });
+
+  // Task 1/2: every outcome the callback may carry in `?github=` renders as its own message —
+  // a refusal must never read as success or as a generic error.
+  test.each([
+    ['installation_not_owned', /not visible to your GitHub account/],
+    ['invalid_state', /no longer matches this browser/],
+    ['expired_state', /expired before it completed/],
+    ['provider_unavailable', /GitHub did not answer/],
+    ['invalid_callback', /missing information/],
+  ] as const)('the %s outcome reads as its own refusal, never as success', async (code, expected) => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=' + code);
+    const banner = await screen.findByText(expected);
+    expect(banner).toHaveAttribute('role', 'alert');
+    expect(screen.queryByText(/back from GitHub/)).not.toBeInTheDocument();
+  });
+
+  // github_app_not_configured routes through the same deployment-problem state Task 5 already
+  // covers when `start` itself fails, never through the plain outcome banner: telling the owner
+  // "install the App" right under "this deployment cannot start an install" would contradict it.
+  test('the github_app_not_configured outcome reads as the deployment problem, not a generic refusal', async () => {
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [] }), 'tab=integrations&github=github_app_not_configured');
+    expect(await screen.findByText('No GitHub App configured on this deployment')).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing was linked/)).not.toBeInTheDocument();
+  });
+
 });

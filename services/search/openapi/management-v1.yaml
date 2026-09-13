@@ -158,35 +158,25 @@ paths:
       summary: >-
         GitHub's OAuth-during-install redirect (ADR-0034). Exchanges code for a user token,
         verifies installation_id against GET /user/installations, links only a proven
-        installation, enqueues one github.sync_repositories job, and redirects the browser back
-        to the console. Never links an installation_id the token cannot see.
+        installation, enqueues one github.sync_repositories job, and always redirects the
+        browser to the console's /organization?tab=integrations, success or failure alike —
+        never JSON, since this is a browser navigation target, not an API call. The outcome is
+        carried as ?github=<code>: "linked" on success, or one of invalid_callback,
+        invalid_state, expired_state, installation_not_owned, provider_unavailable,
+        github_app_not_configured, internal_error. ?org=<org_id> is present whenever an
+        organisation was already proven for this browser at the point of failure (every outcome
+        except invalid_callback, github_app_not_configured, and invalid_state from a cookie that
+        never matched or a state already consumed) — never resolved from unproven input.
       security: []
       parameters:
         - { name: code, in: query, required: true, schema: { type: string } }
         - { name: state, in: query, required: true, schema: { type: string } }
         - { name: installation_id, in: query, required: true, schema: { type: integer } }
       responses:
-        "302": { description: Linked; redirect to the console. }
-        "400":
-          description: Invalid, expired, replayed or foreign-browser state, or a malformed callback.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: installation_id is not visible to the signed-in owner's GitHub account.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "502":
-          description: GitHub did not complete the code exchange or the installations list.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "503":
-          description: App not configured.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "302":
+          description: >-
+            Always: redirect to /organization?tab=integrations&github=<code>[&org=<org_id>],
+            success or failure alike. Never a JSON body.
 
   /api/v1/auth/login/{provider}:
     get:
@@ -2368,7 +2358,7 @@ components:
 
     GitHubInstallation:
       type: object
-      required: [installation_id, account, repositories, suspended]
+      required: [installation_id, account, repositories, suspended, registered_repositories, synced]
       properties:
         installation_id: { type: integer }
         account: { type: string }
@@ -2380,9 +2370,13 @@ components:
             properties:
               full_name: { type: string }
               repo_id: { type: [string, "null"] }
+        repository_selection: { type: [string, "null"], enum: [all, selected, null] }
         suspended: { type: boolean }
         created_at: { type: [string, "null"], format: date-time }
         updated_at: { type: [string, "null"], format: date-time }
+        linked_at: { type: [string, "null"], format: date-time }
+        registered_repositories: { type: integer }
+        synced: { type: boolean }
 
     GitHubInstallationList:
       type: object

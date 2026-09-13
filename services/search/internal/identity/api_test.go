@@ -1132,13 +1132,16 @@ func TestWorkOSDeploymentExchangesTheCode(t *testing.T) {
 		t.Fatalf("user %v", body["user"])
 	}
 	// The state is single use, so a replayed callback cannot mint a session.
+	// This callback is a browser navigation target, not a JSON API call, so
+	// the refusal is a redirect back to the console's own sign-in page
+	// naming the outcome, never a raw JSON error page.
 	replay, e := c.http.Get(h.server.URL + "/api/v1/auth/callback?code=code-1&state=" + url.QueryEscape(state))
 	if e != nil {
 		t.Fatal(e)
 	}
 	replay.Body.Close()
-	if replay.StatusCode != 400 {
-		t.Fatalf("state replay: %d", replay.StatusCode)
+	if replay.StatusCode != http.StatusFound || replay.Header.Get("Location") != "/login?auth=invalid_state" {
+		t.Fatalf("state replay: %d %q", replay.StatusCode, replay.Header.Get("Location"))
 	}
 	// The development form does not exist in a WorkOS deployment.
 	if status, _, _ := c.call(t, call{method: http.MethodGet, path: "/api/v1/auth/dev"}); status != 404 {
@@ -1184,7 +1187,10 @@ func TestCallbackRefusesAStateFromAnotherBrowser(t *testing.T) {
 		t.Fatal(e)
 	}
 	forged.Body.Close()
-	if forged.StatusCode != http.StatusBadRequest {
+	// A browser navigation target, never JSON: the refusal redirects to the
+	// console's own sign-in page instead of rendering mgmt.Router's error
+	// envelope.
+	if forged.StatusCode != http.StatusFound || forged.Header.Get("Location") != "/login?auth=invalid_state" {
 		t.Fatalf("a callback from another browser was accepted: %d %q",
 			forged.StatusCode, forged.Header.Get("Location"))
 	}
