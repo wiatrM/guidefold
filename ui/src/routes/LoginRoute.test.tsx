@@ -85,3 +85,27 @@ describe('login page, full width, outside the shell', () => {
     expect(screen.getByRole('button', { name: 'Retry the provider list' })).toBeInTheDocument();
   });
 });
+
+// `GET /api/v1/auth/callback` (contract §4.7) never renders JSON on a failed sign-in any more —
+// it redirects here with `?auth=<code>`, and this is the only place that failure is explained.
+describe('a failed sign-in callback explains itself, never a bare page', () => {
+  function renderLoginWithOutcome(authOutcome: string) {
+    return render(<MemoryRouter><LoginRoute source={withProviders([github])} returnTo="/import" authOutcome={authOutcome} /></MemoryRouter>);
+  }
+
+  test.each([
+    ['invalid_state', /no longer matches this browser/],
+    ['expired_state', /expired before it completed/],
+    ['provider_unavailable', /did not complete sign-in/],
+    ['invalid_callback', /did not return the information/],
+    ['some_future_code', /Sign-in could not be completed/],
+  ] as const)('%s renders its own message', async (code, expected) => {
+    renderLoginWithOutcome(code);
+    expect(await screen.findByRole('alert')).toHaveTextContent(expected);
+  });
+
+  test('no outcome means no banner', () => {
+    render(<MemoryRouter><LoginRoute source={withProviders([github])} returnTo="/import" /></MemoryRouter>);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});

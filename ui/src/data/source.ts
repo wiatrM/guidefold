@@ -9,7 +9,7 @@ import type {
   ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Profile, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
-  Team, GitHubInstallation, RepoAccess, RepoAccessLevel, Reviewer,
+  Team, GitHubInstallation, GitHubInstallStart, RepoAccess, RepoAccessLevel, Reviewer,
   OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
@@ -79,6 +79,10 @@ export interface DataSource {
   createInstallation(org: string, input: { name: string; repo_id?: string | null; scopes: string[]; harness?: string | null }, idempotencyKey: string): Promise<Installation>;
   revokeInstallation(org: string, installationId: string, idempotencyKey: string): Promise<void>;
   listGitHubInstallations(org: string): Promise<GitHubInstallation[]>;
+  /** `POST {org_base}/github/installations/start`, owner + CSRF (contract §4.7, ADR-0034). The
+   * caller sends the browser to the returned `install_url`; this call never links anything by
+   * itself. */
+  startGitHubInstall(org: string, idempotencyKey: string): Promise<GitHubInstallStart>;
   deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void>;
   /** `GET {org_base}/audit`, owner only (contract §4.1). */
   getAudit(org: string, cursor?: string): Promise<AuditPage>;

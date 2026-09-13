@@ -95,6 +95,12 @@ func ExchangeUserCode(ctx context.Context, cfg UserOAuthConfig, code string) (st
 type UserInstallation struct {
 	ID           int64
 	AccountLogin string
+	// RepositorySelection is GitHub's own "all"|"selected" (API-CONTRACT
+	// §5.1) — carried by GET /user/installations exactly as it is by the
+	// "installation" webhook, so the callback can populate a brand new
+	// gfm.github_installations row even when it runs before any webhook
+	// delivery arrives (API-CONTRACT §4.7's documented either-order case).
+	RepositorySelection string
 }
 
 // ListUserInstallations returns the installations visible to the given
@@ -131,13 +137,16 @@ func ListUserInstallations(ctx context.Context, cfg UserOAuthConfig, userAccessT
 				Account struct {
 					Login string `json:"login"`
 				} `json:"account"`
+				RepositorySelection string `json:"repository_selection"`
 			} `json:"installations"`
 		}
 		if err := json.Unmarshal(body, &out); err != nil {
 			return nil, fmt.Errorf("ghapp: list user installations: unreadable response")
 		}
 		for _, it := range out.Installations {
-			installations = append(installations, UserInstallation{ID: it.ID, AccountLogin: it.Account.Login})
+			installations = append(installations, UserInstallation{
+				ID: it.ID, AccountLogin: it.Account.Login, RepositorySelection: it.RepositorySelection,
+			})
 		}
 		rawURL = parseNextLink(resp.Header.Get("Link"))
 	}

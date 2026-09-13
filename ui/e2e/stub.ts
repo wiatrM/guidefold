@@ -94,20 +94,31 @@ const facetValues = (field: string) => counted(
 /** `signedOut` models a browser with no session: `/me` is refused until the provider round trip
  *  hands one back, which is what the app's session gate reacts to. Default false — the scenarios
  *  describe an organisation's data, not its session. */
-export interface StubCredential { name: string; last4: string; created_at: string; created_by: string }
+export interface StubCredential { name: string; last4: string; model: string; preferred: boolean; created_at: string; created_by: string }
 export interface StubLiveRun {
   run_id: string; state: string; prompt: string; provider: string; model: string;
   created_by: string; created_at: string; started_at: string | null; finished_at: string | null;
   counts: { targets: number; done: number; failed: number; skipped: number };
+  summary: { skills_indexed: number; proposals_created: number } | null;
   cost: { tokens_in: number; tokens_out: number; usd: number; usd_estimated: boolean };
   error: string | null;
 }
+interface StubGitHubInstallation {
+  installation_id: number; account: string;
+  repositories: { full_name: string; repo_id: string | null }[];
+  suspended: boolean; created_at: string | null; updated_at: string | null;
+}
+
 export interface StubState {
   proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number; signedOut: boolean;
   /** ADR-0045: absent means "no key stored", matching the contract's `OrgCredential` semantics. */
   credentials: Partial<Record<'openrouter' | 'anthropic' | 'openai', StubCredential>>;
   /** ADR-0046: `lr-1` is a finished seeded run; a start creates a new one deterministically. */
   liveRuns: StubLiveRun[];
+  /** ADR-0034/ADR-0036: installations linked to this organization. `partial` seeds one whose
+   * repository list has not been reconciled yet (`updated_at` unchanged since `created_at`),
+   * the same "still syncing" shape the real webhook/callback race produces. */
+  githubInstallations: StubGitHubInstallation[];
 }
 
 const importPlan = () => ({
@@ -187,6 +198,14 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
       counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, summary: { skills_indexed: 12, proposals_created: 3 },
       cost: { tokens_in: 800, tokens_out: 220, usd: 0.006, usd_estimated: false }, error: null,
     }],
+    githubInstallations: scenario === 'empty' ? [] : scenario === 'partial' ? [{
+      installation_id: 501, account: 'meridian-data', repositories: [], suspended: false,
+      created_at: '2026-09-10T00:00:00Z', updated_at: '2026-09-10T00:00:00Z',
+    }] : [{
+      installation_id: 501, account: 'meridian-data',
+      repositories: [{ full_name: 'meridian-data/monorepo', repo_id: null }], suspended: false,
+      created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:05:00Z',
+    }],
   };
   const listed = scenario === 'empty' ? [] : skills;
   const proposal = () => ({
@@ -262,6 +281,23 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
     if (at === '/orgs/' + org.slug) return json({ ...org, my_role: 'owner', created_at: null, counts: { members: 1, repos: 1 } });
     if (at === '/orgs/' + org.slug + '/members') return json({ items: scenario === 'empty' ? [] : [{ user_id: 'u-1', email: 'ada@meridian.test', name: 'Ada', role: 'owner', joined_at: null }], next_cursor: null });
     if (at === '/orgs/' + org.slug + '/installations') return json({ items: [], next_cursor: null });
+
+    // GitHub App installations (contract §4.7, ADR-0034/ADR-0036). `list` is member-readable;
+    // `start` and the `DELETE` below require the owner role, same as the real API's 403.
+    if (at === '/orgs/' + org.slug + '/github/installations') return json({ schema_version: 'mgmt-1', items: state.githubInstallations });
+    if (at === '/orgs/' + org.slug + '/github/installations/start' && method === 'POST') {
+      if (role !== 'owner') return failure(403, 'forbidden', 'This action requires the owner role.');
+      return json({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold-stub/installations/new?state=stub-install-state' });
+    }
+    const githubInstallationMatch = at.match(/^\/orgs\/[^/]+\/github\/installations\/(\d+)$/);
+    if (githubInstallationMatch && method === 'DELETE') {
+      if (role !== 'owner') return failure(403, 'forbidden', 'This action requires the owner role.');
+      const id = Number(githubInstallationMatch[1]);
+      const before = state.githubInstallations.length;
+      state.githubInstallations = state.githubInstallations.filter(entry => entry.installation_id !== id);
+      if (state.githubInstallations.length === before) return failure(404, 'installation_not_found', 'No such GitHub installation.');
+      return route.fulfill({ status: 204, headers: { 'Cache-Control': 'no-store', 'X-Request-Id': 'stub-1' } });
+    }
     if (at === '/orgs/' + org.slug + '/audit') {
       if (scenario === 'empty') return json({ items: [], next_cursor: null });
       if (role === 'member') {
@@ -296,9 +332,15 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
     const credentialMatch = at.startsWith(credentialsBase + '/') ? at.slice((credentialsBase + '/').length) : null;
     if (credentialMatch && (credentialMatch === 'openrouter' || credentialMatch === 'anthropic' || credentialMatch === 'openai')) {
       if (method === 'PUT') {
-        const body = route.request().postDataJSON() as { api_key: string; name?: string };
+        const body = route.request().postDataJSON() as { api_key: string; name?: string; model?: string };
         if (!body.api_key) return failure(400, 'invalid_body', 'A key value is required.');
-        const stored: StubCredential = { name: body.name || 'default', last4: body.api_key.slice(-4), created_at: '2026-09-12T00:00:00Z', created_by: 'u-1' };
+        // §4.8: the first stored credential becomes preferred; a later one never takes the mark
+        // away, so this only ever sets it true when nothing else already holds it.
+        const preferred = !Object.values(state.credentials).some(entry => entry?.preferred);
+        const stored: StubCredential = {
+          name: body.name || 'default', last4: body.api_key.slice(-4), model: body.model || 'openai/gpt-4o-mini',
+          preferred, created_at: '2026-09-12T00:00:00Z', created_by: 'u-1',
+        };
         state.credentials[credentialMatch] = stored;
         return json({ provider: credentialMatch, ...stored });
       }

@@ -37,7 +37,7 @@ func githubOAuthStub(t *testing.T, owned []int64) *httptest.Server {
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		items := make([]map[string]any, 0, len(owned))
 		for _, id := range owned {
-			items = append(items, map[string]any{"id": id, "account": map[string]any{"login": "acme"}})
+			items = append(items, map[string]any{"id": id, "account": map[string]any{"login": "acme"}, "repository_selection": "all"})
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"installations": items})
 	})
@@ -105,15 +105,16 @@ func callbackURL(state, code string, installationID int64) string {
 
 // linkInstallation drives the whole happy-path flow (start, then callback)
 // for an owner already positioned at orgSlug, and fails the test unless the
-// callback redirected successfully.
+// callback redirected to the console's real route with the "linked" outcome
+// (API-CONTRACT §4.7, Task 1/2) — never JSON.
 func linkInstallation(t *testing.T, owner *client, orgSlug string, installationID int64) {
 	t.Helper()
 	state := startGitHubInstall(t, owner, orgSlug)
 	status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", installationID)})
-	if status != http.StatusFound {
-		t.Fatalf("callback: %d %v", status, body)
+	q := githubCallbackLocation(t, status, body, headers)
+	if q.Get("github") != "linked" || q.Get("tab") != "integrations" || q.Get("org") == "" {
+		t.Fatalf("successful link redirect: %v", q)
 	}
-	_ = headers
 }
 
 func installationCount(t *testing.T, c *client, orgSlug string) []map[string]any {
@@ -180,6 +181,108 @@ func TestGitHubInstallCallbackLinksAnOwnedInstallation(t *testing.T) {
 	}
 }
 
+// Task 3/4: the DTO carries repository_selection and linked_at from the
+// proven callback, and registered_repositories/synced from gfm.repos and
+// the sync job's own completion — never from the webhook mirror's
+// created_at/updated_at. This harness never runs the worker, so the
+// enqueued github.sync_repositories job stays queued: reconciliation has
+// not actually happened yet, and the DTO must say so honestly rather than
+// inferring it from the link having just been created.
+func TestGitHubInstallationDTOCarriesSelectionLinkedAtAndSyncState(t *testing.T) {
+	h := newGitHubHarness(t, []int64{777})
+	owner := h.signIn(t, "google", "gh-dto-owner", "gh-dto-owner@example.test", "Owner")
+	owner.createOrg(t, "gh-dto", "GitHub DTO Org")
+
+	linkInstallation(t, owner, "gh-dto", 777)
+
+	items := installationCount(t, owner, "gh-dto")
+	if len(items) != 1 {
+		t.Fatalf("installations after link: %v", items)
+	}
+	entry := items[0]
+	if entry["repository_selection"] != "all" {
+		t.Fatalf("repository_selection not carried from the callback's proof: %v", entry["repository_selection"])
+	}
+	if entry["linked_at"] == nil || entry["linked_at"] == "" {
+		t.Fatalf("linked_at missing from the DTO: %v", entry)
+	}
+	if entry["registered_repositories"] != float64(0) {
+		t.Fatalf("registered_repositories must reflect gfm.repos, not GitHub's own list: %v", entry["registered_repositories"])
+	}
+	if entry["synced"] != false {
+		t.Fatalf("synced must be false before github.sync_repositories has ever run: %v", entry["synced"])
+	}
+
+	// Simulate what agentrun.GitHubSyncWorker.Run commits (its own test
+	// coverage lives in internal/agentrun): one registered repository and
+	// repositories_synced_at set, in the same transaction shape.
+	orgID := owner.refresh(t)["orgs"].([]any)[0].(map[string]any)["org_id"].(string)
+	if _, err := h.pool.Exec(context.Background(), `INSERT INTO gfm.repos(org_id,repo_id,name,git_host_url,github_installation_id)
+ VALUES($1::uuid,'repo-777','acme/repo','https://github.com/acme/repo',777)`, orgID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(context.Background(), `UPDATE gfm.github_installation_links SET repositories_synced_at=now() WHERE installation_id=777`); err != nil {
+		t.Fatal(err)
+	}
+	items = installationCount(t, owner, "gh-dto")
+	entry = items[0]
+	if entry["registered_repositories"] != float64(1) {
+		t.Fatalf("registered_repositories did not pick up the gfm.repos write: %v", entry["registered_repositories"])
+	}
+	if entry["synced"] != true {
+		t.Fatalf("synced did not pick up repositories_synced_at: %v", entry["synced"])
+	}
+}
+
+// The webhook can create the mirror row (with a real account) before the
+// owner ever reaches the callback (API-CONTRACT §4.7's documented
+// either-order case) — and that webhook payload here carries no
+// repository_selection at all, the ordinary case for a bare "created"
+// fixture. The callback's own INSERT must still fill repository_selection
+// in from its /user/installations proof: an UPDATE gated on an empty account
+// would silently skip it once the webhook has already set a real account.
+func TestGitHubInstallationSelectionFillsInAfterWebhookSetsAccountFirst(t *testing.T) {
+	h := newGitHubHarness(t, []int64{888})
+	owner := h.signIn(t, "google", "gh-selection-owner", "gh-selection-owner@example.test", "Owner")
+	owner.createOrg(t, "gh-selection", "GitHub Selection Order Org")
+
+	installed := []byte(`{"action":"created","installation":{"id":888,"account":{"login":"acme"},"repositories":[{"full_name":"acme/repo"}]}}`)
+	if status, result := sendGitHubWebhook(t, owner, "installation", "selection-delivery-1", installed); status != http.StatusAccepted || result["accepted"] != true {
+		t.Fatalf("installation webhook before link: %d %v", status, result)
+	}
+
+	linkInstallation(t, owner, "gh-selection", 888)
+
+	items := installationCount(t, owner, "gh-selection")
+	if len(items) != 1 {
+		t.Fatalf("installations after link: %v", items)
+	}
+	if items[0]["account"] != "acme" {
+		t.Fatalf("account was not the webhook's own value: %v", items[0]["account"])
+	}
+	if items[0]["repository_selection"] != "all" {
+		t.Fatalf("repository_selection must still fill in from the callback's proof even though the webhook already set a real account: %v", items[0]["repository_selection"])
+	}
+}
+
+// githubCallbackLocation asserts the callback redirected (never JSON, Task
+// 1) and returns its Location as query values, so a caller can check the
+// outcome code and the organisation carried in it.
+func githubCallbackLocation(t *testing.T, status int, body map[string]any, headers http.Header) url.Values {
+	t.Helper()
+	if status != http.StatusFound {
+		t.Fatalf("callback did not redirect: %d %v", status, body)
+	}
+	if len(body) != 0 {
+		t.Fatalf("callback must never answer JSON to the browser: %v", body)
+	}
+	loc := mustURL(t, headers.Get("Location"))
+	if loc.Path != "/organization" {
+		t.Fatalf("callback redirect did not land on the console's real route: %v", loc)
+	}
+	return loc.Query()
+}
+
 // A forged installation_id — one the query string names but the signed-in
 // owner's own GitHub account cannot see — must be refused and nothing
 // linked. This is the whole point of the OAuth-during-install proof
@@ -187,18 +290,51 @@ func TestGitHubInstallCallbackLinksAnOwnedInstallation(t *testing.T) {
 func TestGitHubInstallCallbackRefusesAForgedInstallationID(t *testing.T) {
 	h := newGitHubHarness(t, []int64{111}) // the account only owns 111
 	owner := h.signIn(t, "google", "gh-forge-owner", "gh-forge-owner@example.test", "Owner")
-	owner.createOrg(t, "gh-forge", "GitHub Forge Org")
+	orgID := owner.createOrg(t, "gh-forge", "GitHub Forge Org")
 
 	state := startGitHubInstall(t, owner, "gh-forge")
-	status, body, _ := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 999)})
-	if status != http.StatusForbidden || body["error"] != "installation_not_owned" {
-		t.Fatalf("forged installation_id: %d %v", status, body)
+	status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 999)})
+	q := githubCallbackLocation(t, status, body, headers)
+	if q.Get("github") != "installation_not_owned" || q.Get("org") != orgID {
+		t.Fatalf("forged installation_id redirect: %v", q)
 	}
 	if items := installationCount(t, owner, "gh-forge"); len(items) != 0 {
 		t.Fatalf("a forged installation_id linked something: %v", items)
 	}
 	if n := countJobsOfKind(t, h, "github.sync_repositories"); n != 0 {
 		t.Fatalf("a refused link must enqueue no job, got %d", n)
+	}
+}
+
+// The callback checks GitHubAppClientID/Secret before it touches any state,
+// so an unconfigured deployment redirects straight to the console with no
+// organisation attached — there is no state to have decoded one from yet.
+func TestGitHubInstallCallbackReportsAppNotConfigured(t *testing.T) {
+	h := newHarnessWith(t, identity.Config{Mode: identity.ModeDev, PublicURL: "http://127.0.0.1", InsecureCookies: true})
+	status, body, headers := h.newClient().call(t, call{method: http.MethodGet, path: callbackURL("some-state", "some-code", 1)})
+	q := githubCallbackLocation(t, status, body, headers)
+	if q.Get("github") != "github_app_not_configured" || q.Get("org") != "" {
+		t.Fatalf("unconfigured deployment redirect: %v", q)
+	}
+}
+
+// GitHub itself failing the code exchange (a stale or already-used
+// authorization code, or GitHub being unreachable) redirects with
+// provider_unavailable, and still carries the organisation: the state was
+// already proven to belong to this browser by the time this call is made.
+func TestGitHubInstallCallbackRefusesWhenProviderUnavailable(t *testing.T) {
+	h := newGitHubHarness(t, []int64{444})
+	owner := h.signIn(t, "google", "gh-provider-owner", "gh-provider-owner@example.test", "Owner")
+	orgID := owner.createOrg(t, "gh-provider", "GitHub Provider Org")
+
+	state := startGitHubInstall(t, owner, "gh-provider")
+	status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "bad-code", 444)})
+	q := githubCallbackLocation(t, status, body, headers)
+	if q.Get("github") != "provider_unavailable" || q.Get("org") != orgID {
+		t.Fatalf("provider_unavailable redirect: %v", q)
+	}
+	if items := installationCount(t, owner, "gh-provider"); len(items) != 0 {
+		t.Fatalf("a refused exchange linked something: %v", items)
 	}
 }
 
@@ -215,9 +351,13 @@ func TestGitHubInstallCallbackRefusesAReplayedState(t *testing.T) {
 	// The state cookie was cleared by the first callback (matchAuthStateCookie
 	// always clears it), so a same-browser replay now fails on the cookie
 	// check before it even reaches the "already used" state lookup — still
-	// refused either way.
-	if status, body, _ := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 222)}); status != http.StatusBadRequest {
-		t.Fatalf("replayed state: %d %v", status, body)
+	// refused either way, and still a redirect (never JSON), with no
+	// organisation carried: an unmatched cookie proves nothing about which
+	// organisation this browser may see.
+	status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 222)})
+	q := githubCallbackLocation(t, status, body, headers)
+	if q.Get("github") != "invalid_state" || q.Get("org") != "" {
+		t.Fatalf("replayed state redirect: %v", q)
 	}
 }
 
@@ -230,8 +370,14 @@ func TestGitHubInstallCallbackRefusesAForeignBrowserState(t *testing.T) {
 	state := startGitHubInstall(t, owner, "gh-foreign")
 
 	attacker := h.signIn(t, "google", "gh-foreign-attacker", "gh-foreign-attacker@example.test", "Attacker")
-	if status, body, _ := attacker.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 333)}); status != http.StatusBadRequest {
-		t.Fatalf("callback from a browser that never started it: %d %v", status, body)
+	status, body, headers := attacker.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 333)})
+	q := githubCallbackLocation(t, status, body, headers)
+	// The foreign browser never proved which organisation's round trip this
+	// was, so nothing is carried in the redirect — never the victim
+	// organisation's id, which would leak it to a browser that never proved
+	// anything.
+	if q.Get("github") != "invalid_state" || q.Get("org") != "" {
+		t.Fatalf("callback from a browser that never started it: %v", q)
 	}
 	if items := installationCount(t, owner, "gh-foreign"); len(items) != 0 {
 		t.Fatalf("a foreign-browser callback linked something: %v", items)
