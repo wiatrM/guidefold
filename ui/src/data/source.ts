@@ -95,8 +95,10 @@ export interface DataSource {
   listGitHubInstallations(org: string): Promise<GitHubInstallation[]>;
   /** `POST {org_base}/github/installations/start`, owner + CSRF (contract §4.7, ADR-0034). The
    * caller sends the browser to the returned `install_url`; this call never links anything by
-   * itself. */
-  startGitHubInstall(org: string, idempotencyKey: string): Promise<GitHubInstallStart>;
+   * itself. `returnTo` (1.13.0, Task 1) is an optional console path — the wizard and the import
+   * screen pass their own address so the callback sends the owner back there instead of always
+   * landing on the Integrations tab; the server ignores anything outside its allow-list. */
+  startGitHubInstall(org: string, idempotencyKey: string, returnTo?: string): Promise<GitHubInstallStart>;
   deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void>;
   /** `GET {org_base}/audit`, owner only (contract §4.1). */
   getAudit(org: string, cursor?: string): Promise<AuditPage>;
@@ -130,6 +132,16 @@ export interface DataSource {
   // Repositories and import -------------------------------------------------
   listRepos(org: string): Promise<Repo[]>;
   createRepo(org: string, input: { repo_id: string; name?: string | null; git_host_url?: string | null }, idempotencyKey: string): Promise<Repo>;
+  /** `POST {repo_base}/github/import`, owner + CSRF (contract §4.2, Task 3, 1.13.0). Enqueues
+   * `github.import_repo` (fetch + `import.parse` only, never `proposal.generate`) for one
+   * repository already registered from a linked GitHub installation; never requires an
+   * organization model key. `repo_not_github_linked` when the repository was registered by hand
+   * or the CLI instead. */
+  importGitHubRepo(target: OrgRepo, idempotencyKey: string): Promise<{ job_id: string }>;
+  /** `POST {org_base}/github/import`, owner + CSRF (contract §4.2, Task 3, 1.13.0). "Import all"
+   * as one call: enqueues `github.import_repo` for every repository of the organization
+   * registered from a linked GitHub installation. */
+  importAllGitHubRepos(org: string, idempotencyKey: string): Promise<{ items: { repo_id: string; job_id: string }[]; count: number }>;
   listRepoAccess(target: OrgRepo): Promise<RepoAccess[]>;
   setRepoAccess(target: OrgRepo, userId: string, access: RepoAccessLevel, idempotencyKey: string): Promise<RepoAccess>;
   removeRepoAccess(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;

@@ -43,6 +43,11 @@ type githubInstallationPayload struct {
 		ID      int64 `json:"id"`
 		Account struct {
 			Login string `json:"login"`
+			// Type is GitHub's own "User"|"Organization" on the account
+			// object (API-CONTRACT §5.1 GitHubInstallation.account_type) —
+			// present on every "installation" and "installation_repositories"
+			// delivery, the same way RepositorySelection below is.
+			Type string `json:"type"`
 		} `json:"account"`
 		Repositories []struct {
 			FullName string `json:"full_name"`
@@ -223,7 +228,7 @@ func (s *Service) handleGitHubInstallationEvent(c *mgmt.Context, tx pgx.Tx, even
 			}
 		}
 		if err := upsertGitHubInstallationMirror(c.Ctx(), tx, s.now, installationID,
-			payload.Installation.Account.Login, repositories, payload.Installation.RepositorySelection, payload.Action); err != nil {
+			payload.Installation.Account.Login, payload.Installation.Account.Type, repositories, payload.Installation.RepositorySelection, payload.Action); err != nil {
 			return mgmt.Internal(err)
 		}
 		if payload.Action == "created" {
@@ -251,7 +256,7 @@ func (s *Service) handleGitHubInstallationEvent(c *mgmt.Context, tx pgx.Tx, even
 		}
 		merged := mergeGitHubRepositories(existing, added, removed)
 		if err := upsertGitHubInstallationMirror(c.Ctx(), tx, s.now, installationID,
-			payload.Installation.Account.Login, merged, payload.Installation.RepositorySelection, ""); err != nil {
+			payload.Installation.Account.Login, payload.Installation.Account.Type, merged, payload.Installation.RepositorySelection, ""); err != nil {
 			return mgmt.Internal(err)
 		}
 		jobID, err := s.syncIfLinked(c.Ctx(), tx, installationID, "github-sync:"+strconv.FormatInt(installationID, 10)+":"+delivery)
@@ -340,7 +345,7 @@ func (s *Service) enqueueGitHubSync(ctx context.Context, tx pgx.Tx, orgID string
 // installation_repositories path is unaffected — it always passes the
 // already-merged list) preserve whatever is already stored.
 func upsertGitHubInstallationMirror(ctx context.Context, tx pgx.Tx, now func() time.Time, installationID int64,
-	account string, repositories []githubRepoRef, repositorySelection, action string) error {
+	account, accountType string, repositories []githubRepoRef, repositorySelection, action string) error {
 	encoded, err := json.Marshal(repositories)
 	if err != nil {
 		return err
@@ -367,12 +372,22 @@ func upsertGitHubInstallationMirror(ctx context.Context, tx pgx.Tx, now func() t
 	if v := strings.TrimSpace(repositorySelection); v != "" {
 		selection = v
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO gfm.github_installations(installation_id,account,repositories,repository_selection,suspended_at,updated_at)
- VALUES($1,$2,$3::jsonb,$4,$5,now())
- ON CONFLICT (installation_id) DO UPDATE SET account=excluded.account,`+reposClause+`,
+	// accountType follows repositorySelection's own rule exactly (API-CONTRACT
+	// §5.1 GitHubInstallation.account_type): a scalar GitHub includes on every
+	// delivery, written whenever the caller has it, COALESCEd to whatever is
+	// already stored otherwise. Lower-cased so it matches the DTO's closed
+	// vocabulary ("user"|"organization") regardless of GitHub's own casing.
+	var accType any
+	if v := strings.ToLower(strings.TrimSpace(accountType)); v != "" {
+		accType = v
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO gfm.github_installations(installation_id,account,account_type,repositories,repository_selection,suspended_at,updated_at)
+ VALUES($1,$2,$3,$4::jsonb,$5,$6,now())
+ ON CONFLICT (installation_id) DO UPDATE SET account=excluded.account,
+   account_type=COALESCE(excluded.account_type,gfm.github_installations.account_type),`+reposClause+`,
    repository_selection=COALESCE(excluded.repository_selection,gfm.github_installations.repository_selection),
    `+suspendedClause+`,updated_at=now()`,
-		installationID, account, encoded, selection, suspended)
+		installationID, account, accType, encoded, selection, suspended)
 	return err
 }
 
@@ -600,7 +615,7 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 	// cleared by the same job's own next success — so an owner watching a
 	// link that will never finish reconciling sees why, instead of a
 	// spinner that never resolves.
-	rows, err := s.pool.Query(c.Ctx(), `SELECT gi.installation_id,gi.account,gi.repositories,gi.repository_selection,gi.suspended_at,gi.created_at,gi.updated_at,
+	rows, err := s.pool.Query(c.Ctx(), `SELECT gi.installation_id,gi.account,gi.account_type,gi.repositories,gi.repository_selection,gi.suspended_at,gi.created_at,gi.updated_at,
  l.linked_at,l.repositories_synced_at,l.last_sync_failed_at,l.last_sync_failure_reason,
  (SELECT count(*) FROM gfm.repos r WHERE r.org_id=$1::uuid AND r.github_installation_id=gi.installation_id)
  FROM gfm.github_installations gi JOIN gfm.github_installation_links l ON l.installation_id=gi.installation_id
@@ -613,12 +628,13 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 	for rows.Next() {
 		var id int64
 		var account string
+		var accountType *string
 		var repositories []byte
 		var repositorySelection *string
 		var suspended, created, updated, linkedAt, syncedAt, syncFailedAt any
 		var syncFailureReason *string
 		var registered int64
-		if err := rows.Scan(&id, &account, &repositories, &repositorySelection, &suspended, &created, &updated,
+		if err := rows.Scan(&id, &account, &accountType, &repositories, &repositorySelection, &suspended, &created, &updated,
 			&linkedAt, &syncedAt, &syncFailedAt, &syncFailureReason, &registered); err != nil {
 			return mgmt.Internal(err)
 		}
@@ -627,7 +643,7 @@ func (s *Service) handleListGitHubInstallations(c *mgmt.Context) error {
 			return mgmt.Internal(err)
 		}
 		items = append(items, map[string]any{
-			"installation_id": id, "account": account, "repositories": repoList,
+			"installation_id": id, "account": account, "account_type": accountType, "repositories": repoList,
 			"repository_selection": repositorySelection, "suspended": suspended != nil,
 			"created_at": created, "updated_at": updated, "linked_at": linkedAt,
 			"registered_repositories": registered, "synced": syncedAt != nil,

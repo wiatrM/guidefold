@@ -208,10 +208,11 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     listGitHubInstallations(org: string): Promise<GitHubInstallation[]> {
       return read({ path: '/orgs/' + encodeURIComponent(org) + '/github/installations', decode: d.githubInstallationList, resource: 'github-installations/' + org });
     },
-    startGitHubInstall(org: string, idempotencyKey: string): Promise<GitHubInstallStart> {
+    startGitHubInstall(org: string, idempotencyKey: string, returnTo?: string): Promise<GitHubInstallStart> {
       return write({
         path: '/orgs/' + encodeURIComponent(org) + '/github/installations/start',
-        method: 'POST', decode: d.githubInstallStart, resource: 'github-install-start/' + org, idempotencyKey,
+        method: 'POST', body: returnTo ? { return_to: returnTo } : undefined,
+        decode: d.githubInstallStart, resource: 'github-install-start/' + org, idempotencyKey,
       });
     },
     async deleteGitHubInstallation(org: string, installationId: number, idempotencyKey: string): Promise<void> {
@@ -278,6 +279,20 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
         path: '/orgs/' + encodeURIComponent(org) + '/repos', method: 'POST', body: input,
         decode: d.repo, resource: 'create-repo/' + org + '/' + input.repo_id, idempotencyKey,
         confirm: async () => (await source.listRepos(org)).find(entry => entry.repo_id === input.repo_id) ?? null,
+      });
+    },
+    importGitHubRepo(t: OrgRepo, idempotencyKey: string): Promise<{ job_id: string }> {
+      return write({
+        path: target(t) + '/github/import', method: 'POST', body: { idempotency_key: idempotencyKey },
+        decode: d.object({ job_id: d.str }), resource: 'github-import/' + t.org + '/' + t.repo, idempotencyKey,
+      });
+    },
+    importAllGitHubRepos(org: string, idempotencyKey: string): Promise<{ items: { repo_id: string; job_id: string }[]; count: number }> {
+      return write({
+        path: '/orgs/' + encodeURIComponent(org) + '/github/import', method: 'POST',
+        body: { idempotency_key: idempotencyKey },
+        decode: d.object({ items: d.listOf(d.object({ repo_id: d.str, job_id: d.str })), count: d.num }),
+        resource: 'github-import-all/' + org, idempotencyKey,
       });
     },
     listRepoAccess(t: OrgRepo): Promise<RepoAccess[]> {
