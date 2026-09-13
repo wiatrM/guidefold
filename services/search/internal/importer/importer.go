@@ -71,6 +71,11 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/repos/{repo}/imports", s.handleCreateImport,
 		mgmt.IdempotentLive())
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/imports/{import_id}", s.handleGetImport)
+	// Organisation-scope twins of the two reads (API-CONTRACT §4.10): same
+	// handler, same shape; `?repo=` narrows to one repository. Mutations stay
+	// per repository.
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/imports", s.handleListImports)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/imports/{import_id}", s.handleGetImport)
 	r.Handle(http.MethodPut, "/api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/blobs/{sha256}",
 		s.handlePutBlob, mgmt.Stream(domain.MaxBlobBytes+1))
 	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/repos/{repo}/imports/{import_id}/finalize",
@@ -93,6 +98,23 @@ func (s *Service) authorizeRepo(c *mgmt.Context, min mgmt.Role) (*repoContext, e
 		return nil, e
 	}
 	return &repoContext{Org: org, Repo: repo, RepoID: repo.ID}, nil
+}
+
+// scopeContext is the authorised (organisation, repository scope) pair of one
+// read that may span repositories (API-CONTRACT §4.10): exactly one repository
+// on a `{repo_base}` route, every readable one (or the one `?repo=` names) on
+// an `{org_base}` route.
+type scopeContext struct {
+	Org   *mgmt.Org
+	Scope *mgmt.Scope
+}
+
+func (s *Service) authorizeScope(c *mgmt.Context, min mgmt.Role) (*scopeContext, error) {
+	org, scope, e := c.AuthorizeScope("org", "repo", min)
+	if e != nil {
+		return nil, e
+	}
+	return &scopeContext{Org: org, Scope: scope}, nil
 }
 
 func (s *Service) tx(ctx context.Context) (pgx.Tx, error) {

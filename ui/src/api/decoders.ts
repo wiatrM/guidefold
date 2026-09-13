@@ -431,12 +431,16 @@ export const importCounts = object<ImportCounts>({
 });
 
 export interface ImportStatus {
-  import_id: string; state: ImportState; manifest_digest: string | null; commit: string | null; complete: boolean;
+  import_id: string;
+  /** Contract 1.11.0 (§4.10): the repository the import belongs to; null only from a client older than 1.11.0. */
+  repo_id: string | null;
+  state: ImportState; manifest_digest: string | null; commit: string | null; complete: boolean;
   counts: ImportCounts | null; files: ImportFile[]; files_truncated: boolean; jobs: Job[]; publication: ImportPublication | null;
   created_at: string | null; updated_at: string | null;
 }
 export const importStatus = object<ImportStatus>({
   import_id: str,
+  repo_id: nullable(str),
   state: fallback(oneOf(importStates), 'queued'),
   manifest_digest: nullable(str), commit: nullable(str),
   complete: fallback(bool, false),
@@ -522,7 +526,10 @@ export const knowledgeLayers = ['atomic', 'task', 'abstract', 'unclassified'] as
 export type KnowledgeLayer = typeof knowledgeLayers[number];
 
 export interface SkillSummary {
-  skill_id: string; name: string; description: string;
+  skill_id: string;
+  /** Contract 1.11.0 (§4.10): the repository the skill belongs to; an organisation-scope list mixes repositories. */
+  repo_id: string | null;
+  name: string; description: string;
   scope: string; owner: string | null;
   source_layer: string | null; knowledge_layer: KnowledgeLayer | null; source_status: string | null;
   publication_status: SkillPublicationStatus;
@@ -532,7 +539,7 @@ export interface SkillSummary {
   package_digest: string | null; commit: string | null; updated_at: string | null;
 }
 export const skillSummary = object<SkillSummary>({
-  skill_id: str, name: str, description: fallback(str, ''),
+  skill_id: str, repo_id: nullable(str), name: str, description: fallback(str, ''),
   scope: fallback(str, ''), owner: nullable(str),
   source_layer: nullable(str), knowledge_layer: nullable(oneOf(knowledgeLayers)), source_status: nullable(str),
   publication_status: fallback(oneOf(skillPublicationStates), 'draft'),
@@ -635,10 +642,11 @@ export const judgment = object<Judgment>({ judgment_id: str });
 // Map and modules
 // ---------------------------------------------------------------------------
 
-export interface MapChild { name: string; path: string; kind: 'dir' | 'skill' | 'document'; skill_id: string | null; count: number | null }
+/** `repository` (1.11.0) only at the root of an organisation-scope tree: one child per readable repository (§4.10.5). */
+export interface MapChild { name: string; path: string; kind: 'dir' | 'skill' | 'document' | 'repository'; skill_id: string | null; count: number | null }
 export const mapChild = object<MapChild>({
   name: str, path: str,
-  kind: fallback(oneOf(['dir', 'skill', 'document'] as const), 'dir'),
+  kind: fallback(oneOf(['dir', 'skill', 'document', 'repository'] as const), 'dir'),
   skill_id: nullable(str), count: nullable(num),
 });
 export interface MapRepository { path: string; children: MapChild[]; next_cursor: string | null }
@@ -646,9 +654,9 @@ export const mapRepository = object<MapRepository>({
   path: fallback(str, ''), children: listOf(mapChild), next_cursor: nullable(str),
 });
 
-export interface ScopeNode { id: string; owner: string | null; parent: string | null; paths: string[]; source: string | null; count: number }
+export interface ScopeNode { id: string; repo_id: string | null; owner: string | null; parent: string | null; paths: string[]; source: string | null; count: number }
 export const scopeNode = object<ScopeNode>({
-  id: str, owner: nullable(str), parent: nullable(str), paths: listOf(str), source: nullable(str), count: fallback(num, 0),
+  id: str, repo_id: nullable(str), owner: nullable(str), parent: nullable(str), paths: listOf(str), source: nullable(str), count: fallback(num, 0),
 });
 export interface MapScopes {
   scope: ScopeNode | null;
@@ -672,12 +680,12 @@ export const relations = object<Relations>({
 });
 
 export interface ModulePage {
-  scope: string; owner: string | null; skills: SkillSummary[]; reading_order: string[];
+  scope: string; repo_id: string | null; owner: string | null; skills: SkillSummary[]; reading_order: string[];
   shared: { skill_id: string; name: string; used_by: string[] }[];
   documents: { path: string; kind: string | null }[];
 }
 export const modulePage = object<ModulePage>({
-  scope: str, owner: nullable(str), skills: listOf(skillSummary), reading_order: listOf(str),
+  scope: str, repo_id: nullable(str), owner: nullable(str), skills: listOf(skillSummary), reading_order: listOf(str),
   shared: listOf(object({ skill_id: str, name: str, used_by: listOf(str) })),
   documents: listOf(object({ path: str, kind: nullable(str) })),
 });
@@ -700,12 +708,15 @@ export const proposalDecision = object<ProposalDecision>({
 });
 
 export interface ProposalSummary {
-  proposal_id: string; kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
+  proposal_id: string;
+  /** Contract 1.11.0 (§4.10): the repository the proposal targets; decisions and exports go to its `{repo_base}`. */
+  repo_id: string | null;
+  kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
   target_skill_id: string | null; path: string | null; created_at: string | null;
   decision: ProposalDecision | null;
 }
 export const proposalSummary = object<ProposalSummary>({
-  proposal_id: str, kind: fallback(oneOf(proposalKinds), 'extraction'),
+  proposal_id: str, repo_id: nullable(str), kind: fallback(oneOf(proposalKinds), 'extraction'),
   state: fallback(oneOf(proposalStates), 'draft'),
   scope: nullable(str), owner: nullable(str), target_skill_id: nullable(str),
   path: nullable(str), created_at: nullable(str),
@@ -715,7 +726,10 @@ export interface ProposalList { items: ProposalSummary[]; next_cursor: string | 
 export const proposalList = object<ProposalList>({ items: listOf(proposalSummary), next_cursor: nullable(str) });
 
 export interface ProposalDetail {
-  proposal_id: string; kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
+  proposal_id: string;
+  /** Contract 1.11.0 (§4.10): the repository the proposal targets; the decision and export mutations go to its `{repo_base}`. */
+  repo_id: string | null;
+  kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
   target_skill_id: string | null; target_revision_id: string | null;
   sources: { path: string; sha256: string | null; commit: string | null; lines: number[] | null }[];
   recipe: { version: string; generator: string; model: string | null } | null;
@@ -748,7 +762,7 @@ const proposalDetailDecision: Decoder<{ decision: DecisionKind; reason: string |
   };
 };
 export const proposalDetail = object<ProposalDetail>({
-  proposal_id: str, kind: fallback(oneOf(proposalKinds), 'extraction'),
+  proposal_id: str, repo_id: nullable(str), kind: fallback(oneOf(proposalKinds), 'extraction'),
   state: fallback(oneOf(proposalStates), 'draft'),
   scope: nullable(str), owner: nullable(str),
   target_skill_id: nullable(str), target_revision_id: nullable(str),
@@ -836,7 +850,10 @@ export const helpedRatio = object<HelpedRatio>({
 });
 
 export interface UsageSkill {
-  skill_id: string; revision: string | null;
+  skill_id: string;
+  /** Contract 1.11.0: the catalogue's repository for the skill; null when the ledger saw a skill the catalogue does not know. */
+  repo_id: string | null;
+  revision: string | null;
   /** The same revision's two other names: the delivery path uses `card_revision`, the UI the catalogue one. */
   card_revision: string | null; content_sha256: string | null;
   /** From the current catalogue revision; `harness` only when one adapter produced the row (§5.5). */
@@ -850,7 +867,7 @@ export interface UsageSkill {
   feedback: FeedbackTotals | null; helped_ratio: HelpedRatio | null; zero_loads: boolean;
 }
 export const usageSkill = object<UsageSkill>({
-  skill_id: str, revision: nullable(str),
+  skill_id: str, repo_id: nullable(str), revision: nullable(str),
   card_revision: nullable(str), content_sha256: nullable(str),
   scope: nullable(str), owner: nullable(str), harness: nullable(str),
   exposures: fallback(num, 0), loads_verified: fallback(num, 0), context_loaded: fallback(num, 0),
@@ -868,13 +885,16 @@ export type QueueReason = typeof queueReasons[number];
 export const queueActions = ['reviewed', 'fixed_in_git', 'no_change'] as const;
 export type QueueAction = typeof queueActions[number];
 export interface QueueItem {
-  item_id: string; skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
+  item_id: string;
+  /** Contract 1.11.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
+  repo_id: string | null;
+  skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
   evidence: Record<string, unknown> | null;
   decision: { action: QueueAction; reason: string | null; at: string | null; actor: string | null } | null;
 }
 export const queueItem = object<QueueItem>({
   // The reason drives the owner decision, so an absent or unknown one is a contract break, not a default.
-  item_id: str, skill_id: str, revision: nullable(str),
+  item_id: str, repo_id: nullable(str), skill_id: str, revision: nullable(str),
   reason: oneOf(queueReasons), since: nullable(str),
   evidence: nullable(dictionary(anyValue)),
   // `actor` (1.3.0) is the owner who recorded the decision; null when a worker wrote the row.

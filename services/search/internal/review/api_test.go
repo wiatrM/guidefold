@@ -798,3 +798,253 @@ func TestPublishRefusesAnImportThatCannotBeBuilt(t *testing.T) {
 		t.Fatalf("publish of a ready import: %d %v", status, ok)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// §4.10 organisation scope
+// ---------------------------------------------------------------------------
+
+// orgBase is the prefix of the organisation-scope twins (API-CONTRACT §4.10).
+func orgBase(e *env) string { return "/api/v1/orgs/" + e.orgID }
+
+// rawGet answers one GET's status and exact bytes, for "identical answer"
+// comparisons between the `{org_base}?repo=` route and the `{repo_base}` one.
+func rawGet(t *testing.T, c *pivottest.Client, path string) (int, string) {
+	t.Helper()
+	status, raw, _ := c.Raw(t, pivottest.Call{Method: http.MethodGet, Path: path})
+	return status, string(raw)
+}
+
+// secondRepo registers a second repository in the fixture's organisation,
+// imports a tree with an extractable runbook into it, parses it and generates
+// its proposals, so the organisation holds proposals of two repositories.
+//
+// The runbook differs from the first repository's on purpose: the generation
+// cache key is (org, kind, source digests, recipe), so byte-identical sources
+// in a second repository would dedupe against the first and leave it empty.
+func secondRepo(t *testing.T, e *env) {
+	t.Helper()
+	e.owner.CreateRepo(t, e.orgID, "second", "")
+	tree := pivottest.Monorepo(t)
+	write(t, filepath.Join(tree, "README.md"),
+		strings.ReplaceAll(runbook, "auth-sdk signing key", "storage bucket key"))
+	manifest := pivottest.Manifest(t, tree, "acme", "second", true)
+	importID := pivottest.Push(t, e.owner, e.orgID, "second", tree, manifest, "import-second")
+	if n := e.h.RunParse(t, pivottest.Scratch(t, "parse-second")); n == 0 {
+		t.Fatal("the parse worker ran nothing for the second repository")
+	}
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: pivottest.RepoBase(e.orgID, "second") + "/imports/" + importID + "/proposals:generate",
+		Body: map[string]any{"idempotency_key": "gen-second"}, Key: "gen-second"})
+	if status != 200 {
+		t.Fatalf("generate (second): %d %v", status, body)
+	}
+	e.h.RunGenerate(t, &generator.Deterministic{},
+		generator.Recipe{Generator: generator.NameDeterministic, Version: generator.RecipeVersion})
+}
+
+// idsByRepo groups a proposal page's items by their `repo_id`, failing on any
+// row that lacks one: the field is required on every row (§4.10.3).
+func idsByRepo(t *testing.T, page map[string]any) map[string][]string {
+	t.Helper()
+	out := map[string][]string{}
+	items, _ := page["items"].([]any)
+	for _, raw := range items {
+		item, _ := raw.(map[string]any)
+		repoID, _ := item["repo_id"].(string)
+		if repoID == "" {
+			t.Fatalf("proposal row without repo_id: %v", item)
+		}
+		out[repoID] = append(out[repoID], item["proposal_id"].(string))
+	}
+	return out
+}
+
+// §4.10.1–3: for the owner, `GET {org_base}/proposals` is the union of both
+// repositories' proposals, every row names its repository, the envelope's
+// repo_id is null, and `?repo=` gives byte-for-byte the `{repo_base}` answer.
+func TestOrganisationScopeListsProposalsOfEveryRepository(t *testing.T) {
+	e := setup(t)
+	generate(t, e)
+	secondRepo(t, e)
+
+	status, page, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?limit=100"})
+	if status != 200 {
+		t.Fatalf("org proposals: %d %v", status, page)
+	}
+	if page["repo_id"] != nil {
+		t.Fatalf("an organisation-wide page must carry repo_id: null, got %v", page["repo_id"])
+	}
+	if page["org_id"] != e.orgID {
+		t.Fatalf("org_id %v", page["org_id"])
+	}
+	byRepo := idsByRepo(t, page)
+	if len(byRepo["meridian"]) == 0 || len(byRepo["second"]) == 0 {
+		t.Fatalf("the organisation page is not the union of both repositories: %v", byRepo)
+	}
+	if want := list(t, e, ""); len(byRepo["meridian"]) != len(want) {
+		t.Fatalf("meridian rows at org level %d, at repo level %d", len(byRepo["meridian"]), len(want))
+	}
+	if len(page["items"].([]any)) != len(byRepo["meridian"])+len(byRepo["second"]) {
+		t.Fatal("a row named a third repository")
+	}
+
+	// Repository rows carry repo_id on the {repo_base} route too (additive).
+	status, repoPage, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: e.base + "/proposals?limit=100"})
+	if status != 200 {
+		t.Fatalf("repo proposals: %d %v", status, repoPage)
+	}
+	if repoPage["repo_id"] != "meridian" {
+		t.Fatalf("the {repo_base} envelope must name its repository, got %v", repoPage["repo_id"])
+	}
+	for repoID := range idsByRepo(t, repoPage) {
+		if repoID != "meridian" {
+			t.Fatalf("the meridian page carried a row of %q", repoID)
+		}
+	}
+
+	// `?repo=` is the same answer as the repository route, byte for byte, with
+	// every filter still applied.
+	for _, q := range []string{"limit=100", "limit=100&kind=" + generator.KindExtraction,
+		"limit=100&state=draft", "limit=2"} {
+		a, orgRaw := rawGet(t, e.owner, orgBase(e)+"/proposals?repo=meridian&"+q)
+		b, repoRaw := rawGet(t, e.owner, e.base+"/proposals?"+q)
+		if a != 200 || b != 200 || orgRaw != repoRaw {
+			t.Fatalf("?repo=meridian&%s differs from the repository route:\n%d %s\n%d %s",
+				q, a, orgRaw, b, repoRaw)
+		}
+	}
+	_, secondRaw := rawGet(t, e.owner, orgBase(e)+"/proposals?repo=second&limit=100")
+	_, secondRepoRaw := rawGet(t, e.owner, pivottest.RepoBase(e.orgID, "second")+"/proposals?limit=100")
+	if secondRaw != secondRepoRaw {
+		t.Fatalf("?repo=second differs from the repository route:\n%s\n%s", secondRaw, secondRepoRaw)
+	}
+	// The filters the repository route validates are validated here too.
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?state=nope"})
+	if status != 400 || body["error"] != "invalid_filter_value" {
+		t.Fatalf("invalid filter at org level: %d %v", status, body)
+	}
+	status, body, _ = e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?cursor=nope"})
+	if status != 400 || body["error"] != "invalid_cursor" {
+		t.Fatalf("invalid cursor at org level: %d %v", status, body)
+	}
+}
+
+// §4.10: a proposal detail and its publication view answer the same body on
+// both routes, naming the proposal's own repository; a member who cannot read
+// that repository gets the same 404 as for a proposal that does not exist.
+func TestOrganisationScopeProposalDetailNamesItsRepository(t *testing.T) {
+	e := setup(t)
+	generate(t, e)
+	secondRepo(t, e)
+	id := pick(t, e, generator.KindExtraction, "rotate-an-auth-sdk-signing-key")
+
+	for _, suffix := range []string{"", "/publication"} {
+		a, orgRaw := rawGet(t, e.owner, orgBase(e)+"/proposals/"+id+suffix)
+		b, repoRaw := rawGet(t, e.owner, e.base+"/proposals/"+id+suffix)
+		if a != 200 || b != 200 || orgRaw != repoRaw {
+			t.Fatalf("proposal%s differs between routes:\n%d %s\n%d %s", suffix, a, orgRaw, b, repoRaw)
+		}
+		c, narrowed := rawGet(t, e.owner, orgBase(e)+"/proposals/"+id+suffix+"?repo=meridian")
+		if c != 200 || narrowed != repoRaw {
+			t.Fatalf("proposal%s?repo=meridian differs from the repository route:\n%s\n%s",
+				suffix, narrowed, repoRaw)
+		}
+		var body map[string]any
+		if err := json.Unmarshal([]byte(orgRaw), &body); err != nil {
+			t.Fatal(err)
+		}
+		if body["repo_id"] != "meridian" {
+			t.Fatalf("proposal%s at org level names %v, not its own repository", suffix, body["repo_id"])
+		}
+		// Narrowed to the other repository, the proposal is not there.
+		status, err, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+			Path: orgBase(e) + "/proposals/" + id + suffix + "?repo=second"})
+		if status != 404 || err["error"] != "proposal_not_found" {
+			t.Fatalf("proposal%s?repo=second: %d %v", suffix, status, err)
+		}
+	}
+
+	// A member locked out of meridian (the owner grants themself read access,
+	// which turns the repository's ACL on without listing the member) cannot
+	// reach its proposal by any route.
+	member := e.h.SignIn(t, "member", "member@example.test")
+	invite(t, e, member)
+	status, granted, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: e.base + "/access/" + e.owner.User["id"].(string),
+		Body: map[string]any{"access": "read"}, Key: "acl-meridian"})
+	if status != 200 {
+		t.Fatalf("restrict meridian: %d %v", status, granted)
+	}
+	for _, path := range []string{orgBase(e) + "/proposals/" + id, e.base + "/proposals/" + id,
+		orgBase(e) + "/proposals/" + id + "/publication"} {
+		status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodGet, Path: path})
+		if path == e.base+"/proposals/"+id {
+			if status != 403 {
+				t.Fatalf("%s: %d %v (the repository route is forbidden)", path, status, body)
+			}
+			continue
+		}
+		if status != 404 || body["error"] != "proposal_not_found" {
+			t.Fatalf("%s: %d %v (a proposal outside the scope is not found)", path, status, body)
+		}
+	}
+}
+
+// §4.10.1–2: a member's organisation view holds only the repositories the
+// member may read; `?repo=` on a restricted one is forbidden, on an unknown
+// one not found.
+func TestOrganisationScopeAppliesTheMembersRepositoryACL(t *testing.T) {
+	e := setup(t)
+	generate(t, e)
+	secondRepo(t, e)
+	member := e.h.SignIn(t, "member", "member@example.test")
+	invite(t, e, member)
+	status, granted, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(e.orgID, "second") + "/access/" + e.owner.User["id"].(string),
+		Body: map[string]any{"access": "read"}, Key: "acl-second"})
+	if status != 200 {
+		t.Fatalf("restrict second: %d %v", status, granted)
+	}
+
+	status, page, _ := member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?limit=100"})
+	if status != 200 {
+		t.Fatalf("member org proposals: %d %v", status, page)
+	}
+	byRepo := idsByRepo(t, page)
+	if len(byRepo["second"]) != 0 {
+		t.Fatalf("the member saw %d proposals of a repository they cannot read", len(byRepo["second"]))
+	}
+	if len(byRepo["meridian"]) != len(list(t, e, "")) {
+		t.Fatalf("the member's view of meridian is incomplete: %v", byRepo)
+	}
+	if page["repo_id"] != nil {
+		t.Fatalf("an organisation-wide page carries repo_id: null even with one readable repository, got %v",
+			page["repo_id"])
+	}
+	status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?repo=second"})
+	if status != 403 || body["error"] != "forbidden" {
+		t.Fatalf("?repo=second for a locked-out member: %d %v", status, body)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?repo=nope"})
+	if status != 404 || body["error"] != "not_found" {
+		t.Fatalf("?repo=nope: %d %v", status, body)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?repo=not%20valid"})
+	if status != 400 || body["error"] != "invalid_repo_id" {
+		t.Fatalf("?repo=<invalid>: %d %v", status, body)
+	}
+	// The owner still sees both: the ACL restricts members, not owners.
+	status, page, _ = e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase(e) + "/proposals?limit=100"})
+	if status != 200 || len(idsByRepo(t, page)["second"]) == 0 {
+		t.Fatalf("the owner lost the restricted repository: %d %v", status, page)
+	}
+}

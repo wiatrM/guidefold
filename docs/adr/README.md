@@ -51,6 +51,7 @@ index was built from; the two must not drift.
 | [0040](ADR-0040-edgewise-source-grounded-ascent.md) | Edgewise, source-grounded ascent for abstract skill maps | Proposed | 2026-09-09 | proposes amendment to ADR-0035; uses ADR-0039 proof state |
 | [0041](ADR-0041-training-signal-storage-and-dataset-boundaries.md) | Training-signal storage and dataset boundaries | Accepted | 2026-09-09 | amends ADR-0033 for telemetry dataset projection |
 | [0042](ADR-0042-multi-repo-organisation-and-ci-configurator.md) | Multi-repository organisations, a CI configurator, and per-organisation generator settings | Proposed | 2026-09-12 | relies on ADR-0036, ADR-0035, ADR-0038 |
+| [0047](ADR-0047-organisation-is-the-default-read-scope.md) | The organisation is the default read scope; a repository is a filter (`{org_base}` twins of every read, one ACL rule in `mgmt.AuthorizeScope`, contract 1.11.0) | Accepted | 2026-09-13 | relies on ADR-0033, ADR-0042; Live Agent (ADR-0046) already organisation-wide; no `{repo_base}` route or mutation changed |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

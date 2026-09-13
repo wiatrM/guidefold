@@ -74,6 +74,71 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/map/layers", s.handleMapLayers)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/map/relations", s.handleMapRelations)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/modules/{scope}", s.handleModule)
+
+	// Organisation-scope twins (API-CONTRACT §4.10): the same handlers, whose
+	// scope is every repository the caller may read unless `?repo=` narrows it.
+	// On these routes c.Param("repo") is "", so AuthorizeScope falls through to
+	// the query parameter and then to the organisation. Feedback stays per
+	// repository: a mutation names the row it acts on.
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills", s.handleListSkills)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/facets", s.handleFacets)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/facets/lookup", s.handleFacetLookup)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}", s.handleSkill)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}", s.handleRevision)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}/raw", s.handleRaw)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/map/repository", s.handleMapRepository)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/map/scopes", s.handleMapScopes)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/map/layers", s.handleMapLayers)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/map/relations", s.handleMapRelations)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/modules/{scope}", s.handleModule)
+}
+
+// repoByID reads one repository of the organisation, for the source permalink
+// of a revision read at organisation scope. Access was already decided by
+// AuthorizeScope; this only fetches the git host of a repository the scope
+// contains, so it never widens what the caller may see.
+func (s *Service) repoByID(ctx context.Context, orgID, repoID string) (*mgmt.Repo, error) {
+	repo := &mgmt.Repo{ID: repoID}
+	e := s.pool.QueryRow(ctx, `SELECT name,git_host_url FROM gfm.repos
+ WHERE org_id=$1::uuid AND repo_id=$2`, orgID, repoID).Scan(&repo.Name, &repo.GitHostURL)
+	if e != nil {
+		return nil, e
+	}
+	return repo, nil
+}
+
+// reposHoldingScope narrows an organisation-scope read of one scope id to the
+// repository that declares it (API-CONTRACT §4.10.6). Scope ids are unique per
+// repository, not per organisation: a scope in none of the readable
+// repositories is not found, and one in several needs `repo=` — guessing would
+// answer for a module the caller did not name.
+func (s *Service) reposHoldingScope(ctx context.Context, orgID string, repos []string, scope string) ([]string, error) {
+	rows, e := s.pool.Query(ctx, `SELECT repo_id FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) AND scope=$3 ORDER BY repo_id`, orgID, repos, scope)
+	if e != nil {
+		return nil, mgmt.Internal(e)
+	}
+	defer rows.Close()
+	holders := []string{}
+	for rows.Next() {
+		var id string
+		if e = rows.Scan(&id); e != nil {
+			return nil, mgmt.Internal(e)
+		}
+		holders = append(holders, id)
+	}
+	if e = rows.Err(); e != nil {
+		return nil, mgmt.Internal(e)
+	}
+	switch len(holders) {
+	case 0:
+		return nil, mgmt.NotFound("not_found", "No such scope in the repositories you can read.")
+	case 1:
+		return holders, nil
+	default:
+		return nil, mgmt.Conflict("scope_ambiguous",
+			"This scope exists in more than one repository; add repo=.")
+	}
 }
 
 func nullable(s string) any {

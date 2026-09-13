@@ -408,15 +408,33 @@ func (s *Service) handleCancel(c *mgmt.Context) error {
 }
 
 func (s *Service) handleGetImport(c *mgmt.Context) error {
-	rc, e := s.authorizeRepo(c, mgmt.RoleAny)
+	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
-	return s.respondStatus(c, rc, c.Param("import_id"))
+	importID := c.Param("import_id")
+	if _, e := parseUUID(importID); e != nil {
+		return mgmt.NotFound("import_not_found", "No such import in this repository.")
+	}
+	// The import names its repository; the scope says whether the caller may
+	// read it. Outside the scope it is the same 404 as an import that does not
+	// exist (API-CONTRACT §4.10.1).
+	repo := &mgmt.Repo{}
+	err := s.pool.QueryRow(c.Ctx(), `SELECT i.repo_id,r.name,r.git_host_url FROM gfm.imports i
+ JOIN gfm.repos r ON r.org_id=i.org_id AND r.repo_id=i.repo_id
+ WHERE i.org_id=$1::uuid AND i.import_id=$2::uuid AND i.repo_id = ANY($3::text[])`,
+		sc.Org.ID, importID, sc.Scope.Repos).Scan(&repo.ID, &repo.Name, &repo.GitHostURL)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return mgmt.NotFound("import_not_found", "No such import in this repository.")
+	}
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	return s.respondStatus(c, &repoContext{Org: sc.Org, Repo: repo, RepoID: repo.ID}, importID)
 }
 
 func (s *Service) handleListImports(c *mgmt.Context) error {
-	rc, e := s.authorizeRepo(c, mgmt.RoleAny)
+	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -440,12 +458,15 @@ func (s *Service) handleListImports(c *mgmt.Context) error {
 		}
 		after, before = ts, parts[1]
 	}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT import_id::text,state,manifest_digest,commit,complete,
- created_at,updated_at FROM gfm.imports
- WHERE org_id=$1::uuid AND repo_id=$2
+	// `repo_id = ANY(...)` over the scope is the one rule for both routes
+	// (API-CONTRACT §4.10): one repository on `{repo_base}`, every readable
+	// one on `{org_base}`.
+	rows, err := s.pool.Query(c.Ctx(), `SELECT import_id::text,repo_id,state,manifest_digest,commit,
+ complete,created_at,updated_at FROM gfm.imports
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[])
    AND ($3::timestamptz IS NULL OR (created_at,import_id::text) < ($3::timestamptz,$4))
  ORDER BY created_at DESC,import_id DESC LIMIT $5`,
-		rc.Org.ID, rc.RepoID, nullableTime(after), before, limit+1)
+		sc.Org.ID, sc.Scope.Repos, nullableTime(after), before, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -454,18 +475,19 @@ func (s *Service) handleListImports(c *mgmt.Context) error {
 	var lastAt time.Time
 	var lastID string
 	for rows.Next() {
-		var id, state, digest string
+		var id, repoID, state, digest string
 		var commit *string
 		var complete bool
 		var createdAt, updatedAt time.Time
-		if err = rows.Scan(&id, &state, &digest, &commit, &complete, &createdAt, &updatedAt); err != nil {
+		if err = rows.Scan(&id, &repoID, &state, &digest, &commit, &complete, &createdAt,
+			&updatedAt); err != nil {
 			return mgmt.Internal(err)
 		}
 		// The list carries no per-file detail and no counts: files_truncated
 		// says so, and a null count is "not measured here" rather than zero.
 		// One import's status endpoint answers the detailed question.
 		items = append(items, map[string]any{
-			"import_id": id, "state": state, "manifest_digest": digest,
+			"import_id": id, "repo_id": repoID, "state": state, "manifest_digest": digest,
 			"commit": commit, "complete": complete, "counts": nil,
 			"files": []any{}, "files_truncated": true, "jobs": []any{}, "publication": nil,
 			"created_at": createdAt, "updated_at": updatedAt})
@@ -483,7 +505,7 @@ func (s *Service) handleListImports(c *mgmt.Context) error {
 		next = mgmt.EncodeCursor(lastAt.UTC().Format(time.RFC3339Nano), lastID)
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "org_id": rc.Org.ID, "repo_id": rc.RepoID,
+		"schema_version": mgmt.SchemaVersion, "org_id": sc.Org.ID, "repo_id": sc.Scope.RepoID(),
 		"items": items, "next_cursor": nullable(next)})
 }
 

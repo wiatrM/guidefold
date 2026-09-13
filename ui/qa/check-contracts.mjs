@@ -15,7 +15,10 @@ const tokenFile=resolve(src,'tokens/tokens.css');
 // IconTile (2026-09-12) is the sixteenth public component: the owner asked for large icons on
 // every console surface, and one tile with a fixed size/tone contract keeps that from becoming
 // per-route <svg> sizing (docs/ui/UI.md §4, docs/ui/pipeline/08-components.md).
-const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile'];
+// RepositoryFilter (2026-09-13, ADR-0047) is the seventeenth: the one repository selector of the
+// console, mounted once in the shell rail; the organisation is the default read scope and this
+// control is how a reader narrows it (docs/ui/IA.md, contract §4.10).
+const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile','RepositoryFilter'];
 // registry.css may declare Tailwind theme entries, but only as references into tokens.css.
 const registryCss=resolve(src,'registry.css');
 function themeRanges(text){const out=[];const re=/@theme\b[^{]*\{/g;let m;while((m=re.exec(text))){let depth=1,i=re.lastIndex;for(;i<text.length&&depth;i++){if(text[i]==='{')depth++;else if(text[i]==='}')depth--;}out.push([m.index,i]);}return out;}

@@ -11,13 +11,14 @@ import type {NavGroup} from './components/ui/shadcn-space/blocks/dashboard-shell
 import {Breadcrumb,BreadcrumbList,BreadcrumbItem,BreadcrumbPage,BreadcrumbSeparator} from '@/components/ui/breadcrumb';
 import {useAccess,useAccessController} from './api/access';
 import {loginHref,safeReturn} from './routes/loginTarget';
+import {useAsync} from './routes/apiState';
+import {RepositoryFilter} from './components/RepositoryFilter';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiHomeRoute=lazy(()=>import('./routes/HomeRoute').then(m=>({default:m.ApiHomeRoute})));
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
 const ApiInvitationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiInvitationRoute})));
 const ApiOrganizationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiOrganizationRoute})));
-const DemoRoute=lazy(()=>import('./routes/DemoRoute').then(m=>({default:m.DemoRoute})));
 const ApiLibraryRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiLibraryRoute})));
 const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiMapRoute})));
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
@@ -34,7 +35,7 @@ const viewInfo:Record<View,{label:string;title:string;description:string;icon:ty
  home:{label:'Overview',title:'Overview',description:'What waits for you, how the library is doing and what the last window of telemetry says.',icon:SquaresFourIcon},
  import:{label:'Import',title:'Import repository skills',description:'Inspect source files before adding them to your library.',icon:ArrowSquareInIcon},
  library:{label:'Library',title:'Skill library',description:'Find an instruction and check its source, scope and revision.',icon:BooksIcon},
- map:{label:'Map',title:'Repository knowledge map',description:'Trace source paths, ownership scopes and declared skill relationships.',icon:TreeStructureIcon},
+ map:{label:'Map',title:'Knowledge map',description:'Trace source paths across repositories, ownership scopes and declared skill relationships.',icon:TreeStructureIcon},
  skill:{label:'Skill',title:'Skill revision',description:'Read the instruction and the evidence that defines its scope.',icon:FileTextIcon},
  proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequestIcon},
  usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBarIcon},
@@ -131,6 +132,13 @@ function ApiApp({source}:{source:DataSource}){
  // bookmarked or shared from this page would otherwise replay "you're back from GitHub" (or
  // a refusal) on an address nobody returned from.
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);next.delete('github');if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // ADR-0047: the organisation is the default read scope. The repository list feeds the one
+ // selector in the rail; the chosen repository lives in `?repo=` and every view reads it from
+ // there. Not read while access is unconfirmed: the rail must not reveal repository names then.
+ const repos=useAsync(()=>source.listRepos(membership?.org_id??''),'repos:'+(membership?.org_id??''),Boolean(membership)&&access.status==='confirmed'&&!foreign);
+ // Changing the scope drops any page cursor, since a cursor belongs to one listing; the rest of
+ // the address (filters, tab, open skill) stays, so a reader narrows without losing their place.
+ const chooseRepo=(next:string|null)=>navigate(href(view,{repo:next,cursor:null}));
  // An invitation link must render for a visitor who has no session yet, so it is checked before
  // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
  if(invitationToken)return <Shell view="import" href={href}
@@ -182,7 +190,7 @@ function ApiApp({source}:{source:DataSource}){
   try{if(id)await source.logout('logout:'+id);}catch{/* The local session is dropped either way. */}
  };
  return <Shell view={view} href={href}
-  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></div>}
+  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong>{masked?<small>Sign in or check access</small>:<RepositoryFilter repos={repos.value??null} value={repo} onChange={chooseRepo}/>}</div>}
   workspace={masked?'Workspace unavailable':membership?.name??'No organization'} repo={repo} masked={masked}
   account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">
@@ -238,9 +246,5 @@ export default function App({source}:{source:DataSource}){
  if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
  if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
  if(path==='login/verify-email')return <><VerifyEmailEntry source={source}/>{toaster}</>;
- // Its own top-level branch, not a check inside ApiApp: ApiApp calls useAccess/useAccessController
- // and other hooks unconditionally, and an early return above those would change the Hook order
- // between /demo and every other address for what React treats as the same component instance.
- if(path==='demo')return <><Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }

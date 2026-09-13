@@ -25,12 +25,12 @@ const report = (over: Partial<Usage> = {}): Usage => ({
   coverage: { events_received: 420, dropped_reported: 0, oldest_lag_s: 12, task_ids_present: true },
   totals: { exposures: 120, loads_verified: 44, context_loaded: 40, context_unknown: 4, use_reported: 11, use_observed: 7, use_episodes: 9, exposures_expanded: 38, loads_unlinked: 6, feedback: null, metrics: noMetrics },
   skills: [
-    { skill_id: 'urn:a', revision: 'rev-a', card_revision: 'card-a', content_sha256: 'sha-a', scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 8, use_observed: 5, use_episodes: 6, exposures_expanded: 26, loads_unlinked: 4, feedback: null, helped_ratio: { numerator: 21, denominator: 30, small_sample: false }, zero_loads: false },
-    { skill_id: 'urn:b', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: { numerator: 2, denominator: 3, small_sample: true }, zero_loads: true },
-    { skill_id: 'urn:c', revision: null, card_revision: null, content_sha256: null, scope: null, owner: null, harness: null, exposures: 20, loads_verified: 14, context_loaded: 12, context_unknown: 2, use_reported: 3, use_observed: 2, use_episodes: 2, exposures_expanded: 12, loads_unlinked: 2, feedback: null, helped_ratio: null, zero_loads: false },
+    { skill_id: 'urn:a', repo_id: 'monorepo', revision: 'rev-a', card_revision: 'card-a', content_sha256: 'sha-a', scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 8, use_observed: 5, use_episodes: 6, exposures_expanded: 26, loads_unlinked: 4, feedback: null, helped_ratio: { numerator: 21, denominator: 30, small_sample: false }, zero_loads: false },
+    { skill_id: 'urn:b', repo_id: 'monorepo', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: { numerator: 2, denominator: 3, small_sample: true }, zero_loads: true },
+    { skill_id: 'urn:c', repo_id: 'monorepo', revision: null, card_revision: null, content_sha256: null, scope: null, owner: null, harness: null, exposures: 20, loads_verified: 14, context_loaded: 12, context_unknown: 2, use_reported: 3, use_observed: 2, use_episodes: 2, exposures_expanded: 12, loads_unlinked: 2, feedback: null, helped_ratio: null, zero_loads: false },
   ],
   queue: [{
-    item_id: 'q-1', skill_id: 'urn:b', revision: 'rev-b', reason: 'zero_loads', since: '2026-09-01T00:00:00Z',
+    item_id: 'q-1', repo_id: 'monorepo', skill_id: 'urn:b', revision: 'rev-b', reason: 'zero_loads', since: '2026-09-01T00:00:00Z',
     evidence: { exposures: 40, loads: 0 }, decision: null,
   }],
   health: { adapters: [{ harness: 'claude', adapter_version: '0.4.1', capabilities: ['search', 'use'], last_seen_at: '2026-09-06T09:00:00Z', lag_s: 3, dropped: 0 }] },
@@ -69,7 +69,7 @@ describe('Usage route, hosted API, six states', () => {
     expect(scorecards.getByText('14 · 6')).toBeInTheDocument();
     expect(scorecards.getByText('1,700 tok · 300 ms avg')).toBeInTheDocument();
     expect(scorecards.getByText(/Reasons: Missing dependencies 1 · Conflicting rules 1/)).toBeInTheDocument();
-    expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
+    expect(scorecards.getByText(/A direction signal, not a single quality score/)).toBeInTheDocument();
   });
 
   test('scorecards keep unmeasured tokens Unknown when only latency is observed', async () => {
@@ -221,6 +221,63 @@ describe('Usage route, queue, denominators and export', () => {
   });
 });
 
+describe('Usage route, organisation scope (ADR-0047)', () => {
+  test('no repository means every repository: the report reads with repo null and rows name their repository', async () => {
+    const getUsage = vi.fn(async () => report({ skills: [report().skills[0], { ...report().skills[2], repo_id: null }] }));
+    renderApi(ApiUsageRoute, fakeSource({ getUsage }), '', { repo: null });
+    const perSkill = await screen.findByRole('table', { name: 'Delivery and outcome per skill' });
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(getUsage).toHaveBeenCalledWith({ org: 'meridian', repo: null }, expect.any(Object));
+    const rowA = within(perSkill).getByRole('link', { name: 'urn:a' }).closest('tr')!;
+    expect(within(rowA).getByText('monorepo')).toBeInTheDocument();
+    // The ledger can see a skill the catalogue does not know: its repository is Unknown, not blank.
+    const rowC = within(perSkill).getByRole('link', { name: 'urn:c' }).closest('tr')!;
+    expect(rowC).toHaveTextContent('Repository Unknown');
+    const queue = within(screen.getByRole('table', { name: 'Skills that need an owner decision' }));
+    expect(queue.getByText('monorepo')).toBeInTheDocument();
+    expect(screen.queryByText(/Filtered to Repository/)).not.toBeInTheDocument();
+  });
+
+  test('a queue decision at organisation scope goes to the item\'s own repository, never an empty one', async () => {
+    const decideQueueItem = vi.fn(async () => undefined);
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report(), decideQueueItem }), '', { repo: null });
+    await userEvent.type(await screen.findByLabelText('Reason'), 'Removed the stale skill.');
+    await userEvent.click(screen.getByRole('button', { name: 'Record decision' }));
+    await waitFor(() => expect(decideQueueItem).toHaveBeenCalledWith(
+      { org: 'meridian', repo: 'monorepo' }, 'q-1',
+      { action: 'reviewed', reason: 'Removed the stale skill.' },
+      expect.stringMatching(/^queue:[0-9a-f]{8}$/),
+    ));
+  });
+
+  test('a queue item without a repository cannot be decided from organisation scope, and says so', async () => {
+    const decideQueueItem = vi.fn();
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report({ queue: [{ ...report().queue[0], repo_id: null }] }), decideQueueItem }), '', { repo: null });
+    expect(await screen.findByText('The repository of this item is unknown; nothing can be decided from here.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Record decision' })).toBeDisabled();
+    expect(decideQueueItem).not.toHaveBeenCalled();
+  });
+
+  test('the export at organisation scope reads the organisation report and names the file after it', async () => {
+    const exportUsage = vi.fn(async () => '{}');
+    URL.createObjectURL = vi.fn(() => 'blob:test') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as typeof URL.revokeObjectURL;
+    // `window=30d` opens the folded filters panel that holds the export buttons.
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report(), exportUsage }), 'window=30d', { repo: null });
+    await userEvent.click(await screen.findByRole('button', { name: 'Export JSON' }));
+    await waitFor(() => expect(exportUsage).toHaveBeenCalledWith({ org: 'meridian', repo: null }, { format: 'json', window: '30d' }));
+    expect(await screen.findByText(/Downloaded the JSON report/)).toBeInTheDocument();
+  });
+
+  test('a selected repository is an active filter chip beside the others', async () => {
+    renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }), 'scope=atlas.identity');
+    expect(await screen.findByText('Filtered to Repository monorepo, Scope atlas.identity.')).toBeInTheDocument();
+    const perSkill = await screen.findByRole('table', { name: 'Delivery and outcome per skill' });
+    // One repository: the rows do not repeat what the rail already says.
+    expect(within(perSkill).queryByText('monorepo')).not.toBeInTheDocument();
+  });
+});
+
 describe('Usage route, funnel, ranking and teams', () => {
   test('the funnel names every step with its count and never calls a SEARCH response an exposure', async () => {
     renderApi(ApiUsageRoute, fakeSource({ getUsage: async () => report() }));
@@ -338,7 +395,7 @@ describe('Usage route, delivery and feedback charts', () => {
 // ---------------------------------------------------------------------------
 
 const healthy = (over: Partial<UsageSkill> & { skill_id: string }): UsageSkill => ({
-  revision: 'rev', card_revision: null, content_sha256: null, scope: 'atlas.identity', owner: 'identity-team', harness: 'claude',
+  repo_id: 'monorepo', revision: 'rev', card_revision: null, content_sha256: null, scope: 'atlas.identity', owner: 'identity-team', harness: 'claude',
   exposures: 50, loads_verified: 30, context_loaded: 30, context_unknown: 0, use_reported: 10, use_observed: 10, use_episodes: 30,
   exposures_expanded: 30, loads_unlinked: 0, feedback: null,
   helped_ratio: { numerator: 24, denominator: 30, small_sample: false }, zero_loads: false,
@@ -355,9 +412,9 @@ const healthSkills: UsageSkill[] = [
 const healthReport = (over: Partial<Usage> = {}) => report({
   skills: healthSkills,
   queue: [
-    { item_id: 'q-drift', skill_id: 'urn:review-queue', revision: 'rev', reason: 'source_changed', since: null, evidence: null, decision: null },
+    { item_id: 'q-drift', repo_id: 'monorepo', skill_id: 'urn:review-queue', revision: 'rev', reason: 'source_changed', since: null, evidence: null, decision: null },
     // A decided item no longer asks anything: it must not pull urn:promote into review.
-    { item_id: 'q-done', skill_id: 'urn:promote', revision: 'rev', reason: 'zero_loads', since: null, evidence: null, decision: { action: 'reviewed', reason: 'Checked', at: null, actor: null } },
+    { item_id: 'q-done', repo_id: 'monorepo', skill_id: 'urn:promote', revision: 'rev', reason: 'zero_loads', since: null, evidence: null, decision: { action: 'reviewed', reason: 'Checked', at: null, actor: null } },
   ],
   ...over,
 });
@@ -498,7 +555,7 @@ describe('Usage route, skill health unknowns and funnel', () => {
 
 // A ledger whose six rows land on every gate state and every recommendation of domain/skillHealth.
 const ledgerRow = (over: Partial<UsageSkill> & { skill_id: string; scope: string; owner: string }): UsageSkill => ({
-  revision: 'rev', card_revision: null, content_sha256: null, harness: 'claude',
+  repo_id: 'monorepo', revision: 'rev', card_revision: null, content_sha256: null, harness: 'claude',
   exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0,
   use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0,
   feedback: null, helped_ratio: null, zero_loads: false,
@@ -521,9 +578,9 @@ const fullLedger = (): Usage => report({
     ledgerRow({ skill_id: 'urn:archive', scope: '_root', owner: 'platform-engineering', zero_loads: true }),
   ],
   queue: [
-    { item_id: 'q-drift', skill_id: 'urn:review-drift', revision: 'rev', reason: 'source_changed', since: '2026-09-02T10:15:00Z', evidence: { commit: '88e40456' }, decision: null },
-    { item_id: 'q-neg', skill_id: 'urn:review-hindered', revision: 'rev', reason: 'negative_feedback', since: '2026-08-28T08:00:00Z', evidence: { hindered: 7, helped: 5 }, decision: null },
-    { item_id: 'q-zero', skill_id: 'urn:archive', revision: 'rev', reason: 'zero_loads', since: '2026-08-16T00:00:00Z', evidence: { exposures: 0, loads: 0 }, decision: null },
+    { item_id: 'q-drift', repo_id: 'monorepo', skill_id: 'urn:review-drift', revision: 'rev', reason: 'source_changed', since: '2026-09-02T10:15:00Z', evidence: { commit: '88e40456' }, decision: null },
+    { item_id: 'q-neg', repo_id: 'monorepo', skill_id: 'urn:review-hindered', revision: 'rev', reason: 'negative_feedback', since: '2026-08-28T08:00:00Z', evidence: { hindered: 7, helped: 5 }, decision: null },
+    { item_id: 'q-zero', repo_id: 'monorepo', skill_id: 'urn:archive', revision: 'rev', reason: 'zero_loads', since: '2026-08-16T00:00:00Z', evidence: { exposures: 0, loads: 0 }, decision: null },
   ],
 });
 

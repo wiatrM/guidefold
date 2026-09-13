@@ -1,4 +1,4 @@
-import {describe, expect, test} from 'vitest';
+import {describe, expect, test, vi} from 'vitest';
 import {screen, within} from '@testing-library/react';
 import {ApiHomeRoute} from './HomeRoute';
 import {ApiError} from '../api/client';
@@ -23,18 +23,18 @@ const usage: Usage = {
     totals: {exposures: 100, loads_verified: 40, context_loaded: 36, context_unknown: 4, use_reported: 9, use_observed: 6, use_episodes: 8, exposures_expanded: 34, loads_unlinked: 6, feedback: {helped: 15, hindered: 5, mixed: 1, not_applicable: 0, unknown: 0, n: 21}, metrics: emptyExecutionMetrics},
   },
   skills: [
-    {skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', revision: 'rev-a', card_revision: null, content_sha256: null, scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 6, use_observed: 4, use_episodes: 5, exposures_expanded: 30, loads_unlinked: 0, feedback: {helped: 18, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 23}, helped_ratio: {numerator: 18, denominator: 22, small_sample: false}, zero_loads: false},
-    {skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: null, zero_loads: true},
+    {skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', repo_id: 'monorepo', revision: 'rev-a', card_revision: null, content_sha256: null, scope: 'atlas.identity', owner: 'identity-team', harness: 'claude', exposures: 60, loads_verified: 30, context_loaded: 28, context_unknown: 2, use_reported: 6, use_observed: 4, use_episodes: 5, exposures_expanded: 30, loads_unlinked: 0, feedback: {helped: 18, hindered: 4, mixed: 1, not_applicable: 0, unknown: 0, n: 23}, helped_ratio: {numerator: 18, denominator: 22, small_sample: false}, zero_loads: false},
+    {skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', repo_id: null, revision: 'rev-b', card_revision: null, content_sha256: null, scope: 'forge.pipelines', owner: null, harness: null, exposures: 40, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: null, zero_loads: true},
   ],
-  queue: [{item_id: 'q-1', skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', revision: 'rev-b', reason: 'zero_loads', since: '2026-09-01T00:00:00Z', evidence: null, decision: null}],
+  queue: [{item_id: 'q-1', repo_id: 'monorepo', skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', revision: 'rev-b', reason: 'zero_loads', since: '2026-09-01T00:00:00Z', evidence: null, decision: null}],
   health: {adapters: [{harness: 'claude', adapter_version: '0.4.1', capabilities: ['search'], last_seen_at: '2026-09-12T09:00:00Z', lag_s: 3, dropped: 0}]},
 };
 const skills: SkillPage = {
-  items: ['a', 'b', 'c'].map((name, index) => ({skill_id: 'urn:' + name, name, description: '', scope: 'atlas', owner: null, source_layer: null, knowledge_layer: 'task' as const, source_status: null, publication_status: index === 2 ? 'draft' as const : 'published' as const, path: name + '/SKILL.md', content_sha256: null, revision_id: null, card_revision: null, package_digest: null, commit: null, updated_at: null})),
+  items: ['a', 'b', 'c'].map((name, index) => ({skill_id: 'urn:' + name, repo_id: 'monorepo', name, description: '', scope: 'atlas', owner: null, source_layer: null, knowledge_layer: 'task' as const, source_status: null, publication_status: index === 2 ? 'draft' as const : 'published' as const, path: name + '/SKILL.md', content_sha256: null, revision_id: null, card_revision: null, package_digest: null, commit: null, updated_at: null})),
   next_cursor: null, snapshot_id: null, schema_version: null, filters: {},
 };
-const imports: ImportStatus[] = [{import_id: '80314462-3642-4a2a-9cee', state: 'ready', manifest_digest: null, commit: 'c0ffee', complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 12}, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's-1', state: 'published', error: null}, created_at: '2026-09-12T09:00:00Z', updated_at: null}];
-const proposals: ProposalSummary[] = [{proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas', owner: null, target_skill_id: null, path: null, created_at: null, decision: null}];
+const imports: ImportStatus[] = [{import_id: '80314462-3642-4a2a-9cee', repo_id: 'monorepo', state: 'ready', manifest_digest: null, commit: 'c0ffee', complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 12}, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's-1', state: 'published', error: null}, created_at: '2026-09-12T09:00:00Z', updated_at: null}];
+const proposals: ProposalSummary[] = [{proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'draft', scope: 'atlas', owner: null, target_skill_id: null, path: null, created_at: null, decision: null}];
 const installations: Installation[] = [{installation_id: 'i-1', name: 'claude-code', repo_id: null, scopes: ['search'], harness: 'claude', last_seen_at: new Date().toISOString(), adapter_version: '0.4.1', capabilities: null, created_at: null, token: null}];
 
 const source = (over: Parameters<typeof fakeSource>[0] = {}) => fakeSource({
@@ -132,8 +132,8 @@ describe('Home route', () => {
 
   test('"Your decisions" lists proposals and queue items I decided, newest first (1.3.0)', async () => {
     const decidedProposals: ProposalSummary[] = [
-      {proposal_id: 'p-1', kind: 'extraction', state: 'approved_for_export', scope: 'atlas', owner: null, target_skill_id: 'urn:skill:meridian:atlas:demo', path: null, created_at: null, decision: {decision: 'approve', actor: 'u1', at: '2026-09-10T00:00:00Z'}},
-      {proposal_id: 'p-2', kind: 'extraction', state: 'rejected', scope: 'atlas', owner: null, target_skill_id: 'urn:skill:meridian:atlas:other', path: null, created_at: null, decision: {decision: 'reject', actor: 'someone-else', at: '2026-09-12T00:00:00Z'}},
+      {proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'approved_for_export', scope: 'atlas', owner: null, target_skill_id: 'urn:skill:meridian:atlas:demo', path: null, created_at: null, decision: {decision: 'approve', actor: 'u1', at: '2026-09-10T00:00:00Z'}},
+      {proposal_id: 'p-2', repo_id: 'monorepo', kind: 'extraction', state: 'rejected', scope: 'atlas', owner: null, target_skill_id: 'urn:skill:meridian:atlas:other', path: null, created_at: null, decision: {decision: 'reject', actor: 'someone-else', at: '2026-09-12T00:00:00Z'}},
     ];
     const decidedUsage: Usage = {...usage, queue: [{...usage.queue[0], decision: {action: 'reviewed', reason: 'ok', at: '2026-09-11T00:00:00Z', actor: 'u1'}}]};
     renderApi(ApiHomeRoute, source({listProposals: async () => ({items: decidedProposals, next_cursor: null}), getUsage: async () => decidedUsage}));
@@ -183,9 +183,35 @@ describe('Home route', () => {
     expect(screen.getByRole('region', {name: 'Key numbers'})).toBeInTheDocument();
   });
 
-  test('no repository is the one next step, not eight empty cards', async () => {
-    renderApi(ApiHomeRoute, source(), '', {repo: null});
-    expect(await screen.findByRole('heading', {level: 2, name: 'Choose a repository'})).toBeInTheDocument();
-    expect(screen.queryByText('Published skills')).not.toBeInTheDocument();
+  test('with a repository chosen the library card ranks scopes and the title names the repository', async () => {
+    const getFacets = vi.fn(async (_target: unknown, query: {field: string}) => ({field: query.field, values: [{value: 'atlas', count: 2}, {value: 'forge', count: 1}], next_cursor: null}));
+    renderApi(ApiHomeRoute, source({getFacets}));
+    expect(await screen.findByText('meridian / monorepo')).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'Largest scopes'})).toBeInTheDocument();
+    expect(getFacets).toHaveBeenCalledWith({org: 'meridian', repo: 'monorepo'}, {field: 'scope'});
+    expect(screen.queryByText('Repository', {selector: 'dt'})).not.toBeInTheDocument();
+  });
+
+  test('ADR-0047: no repository is the whole organisation, read once at organisation scope, not a gate', async () => {
+    const getUsage = vi.fn(async () => usage);
+    const getFacets = vi.fn(async (_target: unknown, query: {field: string}) => ({field: query.field, values: [{value: 'monorepo', count: 26}, {value: 'billing', count: 4}], next_cursor: null}));
+    renderApi(ApiHomeRoute, source({getUsage, getFacets}), '', {repo: null});
+    expect(await screen.findByText('meridian · all repositories')).toBeInTheDocument();
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(screen.queryByText('Choose a repository')).not.toBeInTheDocument();
+    expect(getUsage).toHaveBeenCalledWith({org: 'meridian', repo: null}, {window: '30d'});
+    // The library card ranks repositories (facet `repo`), each bar narrowing the address to that repository.
+    expect(getFacets).toHaveBeenCalledWith({org: 'meridian', repo: null}, {field: 'repo'});
+    expect(await screen.findByRole('heading', {name: 'Largest repositories'})).toBeInTheDocument();
+    const bars = screen.getByRole('list', {name: 'Skills per repository, largest first'});
+    expect(within(bars).getByRole('link', {name: /monorepo/})).toHaveAttribute('href', expect.stringContaining('repo=monorepo'));
+    // Rows say which repository they come from: the latest import and each top skill.
+    const importFacts = screen.getByText('Latest import').closest('section')!;
+    expect(within(importFacts).getByText('Repository')).toBeInTheDocument();
+    expect(within(importFacts).getByText('monorepo')).toBeInTheDocument();
+    const table = screen.getByRole('region', {name: 'Top skills with their four gates'});
+    expect(within(table).getByText('monorepo / atlas.identity')).toBeInTheDocument();
+    // A skill the ledger saw but the catalogue does not know has no repository: Unknown, never a guess.
+    expect(within(table).getByText('Unknown repository / forge.pipelines')).toBeInTheDocument();
   });
 });

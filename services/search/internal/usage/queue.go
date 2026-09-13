@@ -17,7 +17,11 @@ import (
 
 // queueItem is the `QueueItem` DTO (API-CONTRACT §5.5).
 type queueItem struct {
-	ItemID   string         `json:"item_id"`
+	ItemID string `json:"item_id"`
+	// RepoID is the repository the item belongs to: a queue read over an
+	// organisation is a union, and the decision is still made per repository,
+	// so the reader needs it to know where to send that decision (§4.10.3).
+	RepoID   string         `json:"repo_id"`
 	SkillID  string         `json:"skill_id"`
 	Revision *string        `json:"revision"`
 	Reason   string         `json:"reason"`
@@ -85,6 +89,7 @@ func derivedUUID(id string) string {
 // queueRow is one gfm.owner_queue row as read.
 type queueRow struct {
 	itemID    string
+	repoID    string
 	skillID   string
 	revision  string
 	reason    string
@@ -97,20 +102,21 @@ type queueRow struct {
 	decided   *time.Time
 }
 
-// queue merges what the import worker wrote with what this report derived.
+// queue merges what the import worker wrote with what this report derived,
+// over the repositories in scope.
 //
 // A derived item is suppressed as soon as a row exists for the same
 // (skill, reason, revision): either the worker already raised it, or an owner
 // already decided it. That is what makes the derived items decidable at all —
 // the decision is a row, so the observation stops being asked about.
-func (s *Service) queue(ctx context.Context, orgID, repoID string, report domain.Report,
+func (s *Service) queue(ctx context.Context, orgID string, repos []string, report domain.Report,
 	meta map[string]domain.SkillMeta) ([]queueItem, error) {
-	rows, e := s.pool.Query(ctx, `SELECT item_id::text,skill_id,revision_id,reason,since,
+	rows, e := s.pool.Query(ctx, `SELECT item_id::text,repo_id,skill_id,revision_id,reason,since,
  evidence,state,decision,decision_reason,decided_by::text,decided_at
  FROM gfm.owner_queue
- WHERE org_id=$1::uuid AND repo_id=$2
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[])
    AND (state='open' OR reason IN ('negative_feedback','zero_loads'))
- ORDER BY since DESC,item_id`, orgID, repoID)
+ ORDER BY since DESC,item_id`, orgID, repos)
 	if e != nil {
 		return nil, mgmt.Internal(e)
 	}
@@ -120,8 +126,8 @@ func (s *Service) queue(ctx context.Context, orgID, repoID string, report domain
 	for rows.Next() {
 		var r queueRow
 		var revision *string
-		if e := rows.Scan(&r.itemID, &r.skillID, &revision, &r.reason, &r.since, &r.evidence,
-			&r.state, &r.decision, &r.reasonTx, &r.decidedBy, &r.decided); e != nil {
+		if e := rows.Scan(&r.itemID, &r.repoID, &r.skillID, &revision, &r.reason, &r.since,
+			&r.evidence, &r.state, &r.decision, &r.reasonTx, &r.decidedBy, &r.decided); e != nil {
 			return nil, mgmt.Internal(e)
 		}
 		r.revision = text(revision)
@@ -139,21 +145,35 @@ func (s *Service) queue(ctx context.Context, orgID, repoID string, report domain
 		if settled[id] {
 			continue
 		}
-		if m, ok := meta[computed.SkillID]; ok && m.RepoID != repoID {
+		// A derived item is always about a skill the catalog knows (the
+		// derivations read the catalog's revisions), and it is listed only
+		// when that skill's repository is in scope.
+		m, ok := meta[computed.SkillID]
+		if !ok || !inRepos(repos, m.RepoID) {
 			continue
 		}
 		since := computed.Since.UTC().Format(time.RFC3339)
-		items = append(items, queueItem{ItemID: id, SkillID: computed.SkillID,
+		items = append(items, queueItem{ItemID: id, RepoID: m.RepoID, SkillID: computed.SkillID,
 			Revision: optional(computed.Revision), Reason: computed.Reason,
 			Since: &since, Evidence: computed.Evidence, Source: "computed"})
 	}
 	return items, nil
 }
 
+func inRepos(repos []string, repoID string) bool {
+	for _, id := range repos {
+		if id == repoID {
+			return true
+		}
+	}
+	return false
+}
+
 func persistedItem(r queueRow) queueItem {
 	since := r.since.UTC().Format(time.RFC3339)
-	item := queueItem{ItemID: r.itemID, SkillID: r.skillID, Revision: optional(r.revision),
-		Reason: r.reason, Since: &since, Source: "worker"}
+	item := queueItem{ItemID: r.itemID, RepoID: r.repoID, SkillID: r.skillID,
+		Revision: optional(r.revision),
+		Reason:   r.reason, Since: &since, Source: "worker"}
 	if len(r.evidence) > 0 {
 		var evidence map[string]any
 		if json.Unmarshal(r.evidence, &evidence) == nil {
@@ -257,11 +277,11 @@ func (s *Service) decidePersisted(c *mgmt.Context, tx pgx.Tx, orgID, repoID, ite
 	e := tx.QueryRow(c.Ctx(), `UPDATE gfm.owner_queue
  SET state='resolved',decision=$4,decision_reason=$5,decided_by=$6::uuid,decided_at=now()
  WHERE org_id=$1::uuid AND repo_id=$2 AND item_id=$3::uuid AND state='open'
- RETURNING item_id::text,skill_id,revision_id,reason,since,evidence,state,
+ RETURNING item_id::text,repo_id,skill_id,revision_id,reason,since,evidence,state,
   decision,decision_reason,decided_by::text,decided_at`,
 		orgID, repoID, itemID, action, reason, nullable(actor)).
-		Scan(&r.itemID, &r.skillID, &revision, &r.reason, &r.since, &r.evidence, &r.state,
-			&r.decision, &r.reasonTx, &r.decidedBy, &r.decided)
+		Scan(&r.itemID, &r.repoID, &r.skillID, &revision, &r.reason, &r.since, &r.evidence,
+			&r.state, &r.decision, &r.reasonTx, &r.decidedBy, &r.decided)
 	if isNoRows(e) {
 		return queueItem{}, mgmt.NotFound("not_found", "No open review item with that id.")
 	}
@@ -346,8 +366,8 @@ func (s *Service) decideComputed(c *mgmt.Context, tx pgx.Tx, orgID, repoID, item
 	}
 	at := decidedAt.UTC().Format(time.RFC3339)
 	reasonCopy := reason
-	return queueItem{ItemID: itemID, SkillID: skillID, Revision: optional(revision),
-		Reason: reasonName, Source: "computed",
+	return queueItem{ItemID: itemID, RepoID: repoID, SkillID: skillID,
+		Revision: optional(revision), Reason: reasonName, Source: "computed",
 		Evidence: map[string]any{"computed_item_id": itemID},
 		Decision: &decisionDTO{Action: action, Reason: &reasonCopy, At: &at,
 			Actor: optional(actor)}}, nil

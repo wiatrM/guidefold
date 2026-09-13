@@ -19,23 +19,27 @@ import (
 type mapChild struct {
 	Name    string  `json:"name"`
 	Path    string  `json:"path"`
-	Kind    string  `json:"kind"` // dir|skill|document
+	Kind    string  `json:"kind"` // dir|skill|document|repository
 	SkillID *string `json:"skill_id"`
 	Count   *int    `json:"count"`
 }
 
+// mapPageLimit bounds one page of tree children.
+const mapPageLimit = 200
+
 // handleMapRepository lists the direct children of one path: the source tree as
 // the scan saw it, not a rendering of the scope map.
+//
+// At organisation scope without `repo=` the tree gains one level: the empty
+// path lists one `repository` child per readable repository, and every deeper
+// path starts with `<repo_id>/` (API-CONTRACT §4.10.5). With `repo=`, or on
+// the repository route, the tree is the repository's own.
 func (s *Service) handleMapRepository(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
-	path := strings.Trim(c.Query("path"), "/")
-	prefix := ""
-	if path != "" {
-		prefix = path + "/"
-	}
+	requested := strings.Trim(c.Query("path"), "/")
 	after := ""
 	if v := c.Query("cursor"); v != "" {
 		parts, err := mgmt.DecodeCursor(v, 1)
@@ -43,6 +47,21 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 			return err
 		}
 		after = parts[0]
+	}
+	repos, path, pathPrefix := scope.Repos, requested, ""
+	if !scope.Single() {
+		if requested == "" {
+			return s.repositoryRoots(c, org, scope, after)
+		}
+		repo, rest, _ := strings.Cut(requested, "/")
+		if !scope.Contains(repo) {
+			return mgmt.NotFound("not_found", "No such repository in this organization.")
+		}
+		repos, path, pathPrefix = []string{repo}, strings.Trim(rest, "/"), repo+"/"
+	}
+	prefix := ""
+	if path != "" {
+		prefix = path + "/"
 	}
 	type entry struct {
 		child mapChild
@@ -63,7 +82,7 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 		}
 		v, ok := children[name]
 		if !ok {
-			v = &entry{child: mapChild{Name: name, Path: prefix + name, Kind: "dir"}}
+			v = &entry{child: mapChild{Name: name, Path: pathPrefix + prefix + name, Kind: "dir"}}
 			children[name] = v
 		}
 		v.count++
@@ -76,7 +95,7 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 		}
 	}
 	rows, err := s.pool.Query(c.Ctx(), `SELECT path,skill_id FROM gfm.skills
- WHERE org_id=$1::uuid AND repo_id=$2`, org.ID, repo.ID)
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[])`, org.ID, repos)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -93,7 +112,7 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 		return mgmt.Internal(err)
 	}
 	docs, err := s.pool.Query(c.Ctx(), `SELECT DISTINCT path FROM gfm.documents
- WHERE org_id=$1::uuid AND repo_id=$2`, org.ID, repo.ID)
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[])`, org.ID, repos)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -117,10 +136,9 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 		}
 	}
 	sort.Strings(names)
-	const limit = 200
 	next := ""
-	if len(names) > limit {
-		names = names[:limit]
+	if len(names) > mapPageLimit {
+		names = names[:mapPageLimit]
 		next = mgmt.EncodeCursor(names[len(names)-1])
 	}
 	items := make([]mapChild, 0, len(names))
@@ -133,13 +151,61 @@ func (s *Service) handleMapRepository(c *mgmt.Context) error {
 		items = append(items, v.child)
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "path": path,
+		"schema_version": mgmt.SchemaVersion, "path": requested,
+		"children": items, "next_cursor": nullable(next)})
+}
+
+// repositoryRoots answers the empty path of an organisation-scope tree: one
+// `repository` child per readable repository, counting its skills and
+// documents. A repository with nothing imported yet is still listed, with
+// zero — it exists, the catalog is simply empty.
+func (s *Service) repositoryRoots(c *mgmt.Context, org *mgmt.Org, scope *mgmt.Scope, after string) error {
+	counts := map[string]int{}
+	rows, err := s.pool.Query(c.Ctx(), `SELECT repo_id,count(*) FROM gfm.skills
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) GROUP BY 1
+ UNION ALL
+ SELECT repo_id,count(DISTINCT path) FROM gfm.documents
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) GROUP BY 1`, org.ID, scope.Repos)
+	if err != nil {
+		return mgmt.Internal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var n int
+		if err = rows.Scan(&id, &n); err != nil {
+			return mgmt.Internal(err)
+		}
+		counts[id] += n
+	}
+	if err = rows.Err(); err != nil {
+		return mgmt.Internal(err)
+	}
+	names := make([]string, 0, len(scope.Repos))
+	for _, id := range scope.Repos { // already in id order
+		if after == "" || id > after {
+			names = append(names, id)
+		}
+	}
+	next := ""
+	if len(names) > mapPageLimit {
+		names = names[:mapPageLimit]
+		next = mgmt.EncodeCursor(names[len(names)-1])
+	}
+	items := make([]mapChild, 0, len(names))
+	for _, id := range names {
+		count := counts[id]
+		items = append(items, mapChild{Name: id, Path: id, Kind: "repository", Count: &count})
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"schema_version": mgmt.SchemaVersion, "path": "",
 		"children": items, "next_cursor": nullable(next)})
 }
 
 // scopeView is one node of the scope map.
 type scopeView struct {
 	ID     string   `json:"id"`
+	RepoID string   `json:"repo_id"`
 	Owner  *string  `json:"owner"`
 	Parent *string  `json:"parent"`
 	Paths  []string `json:"paths"`
@@ -151,66 +217,81 @@ type scopeView struct {
 // skills each node holds, and — separately — the skills whose scope is not a
 // declared node. An unmapped skill is shown as unmapped rather than folded into
 // the root, because "we do not know who owns this" is the finding (U1).
+//
+// Scope ids are unique per repository, so at organisation scope every node and
+// every unmapped entry names its repository, and `scope=` without `repo=` is
+// answered only when exactly one readable repository declares that scope
+// (API-CONTRACT §4.10.6).
 func (s *Service) handleMapScopes(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
-	scope := c.Query("scope")
-	counts := map[string]int{}
-	rows, err := s.pool.Query(c.Ctx(), `SELECT scope,count(*) FROM gfm.skills
- WHERE org_id=$1::uuid AND repo_id=$2 GROUP BY scope`, org.ID, repo.ID)
+	node := c.Query("scope")
+	repos := scope.Repos
+	if node != "" && !scope.Single() {
+		if repos, e = s.reposHoldingScope(c.Ctx(), org.ID, scope.Repos, node); e != nil {
+			return e
+		}
+	}
+	type key struct{ repo, scope string }
+	counts := map[key]int{}
+	rows, err := s.pool.Query(c.Ctx(), `SELECT repo_id,scope,count(*) FROM gfm.skills
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) GROUP BY 1,2`, org.ID, repos)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
 	for rows.Next() {
-		var name string
+		var k key
 		var n int
-		if err = rows.Scan(&name, &n); err != nil {
+		if err = rows.Scan(&k.repo, &k.scope, &n); err != nil {
 			rows.Close()
 			return mgmt.Internal(err)
 		}
-		counts[name] = n
+		counts[k] = n
 	}
 	rows.Close()
 	if err = rows.Err(); err != nil {
 		return mgmt.Internal(err)
 	}
 
-	nodes, err := s.scopes(c.Ctx(), org.ID, repo.ID)
+	nodes, err := s.scopes(c.Ctx(), org.ID, repos)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
-	known := map[string]bool{}
+	known := map[key]bool{}
 	items := []scopeView{}
 	var selected *scopeView
 	for i := range nodes {
-		node := nodes[i]
-		known[node.ID] = true
-		node.Count = counts[node.ID]
-		if node.ID == scope {
-			copied := node
+		view := nodes[i]
+		known[key{view.RepoID, view.ID}] = true
+		view.Count = counts[key{view.RepoID, view.ID}]
+		if view.ID == node {
+			copied := view
 			selected = &copied
 		}
-		if scope == "" || strings.HasPrefix(node.ID, scope+".") {
-			items = append(items, node)
+		if node == "" || strings.HasPrefix(view.ID, node+".") {
+			items = append(items, view)
 		}
 	}
-	if scope != "" && selected == nil {
+	if node != "" && selected == nil {
 		return mgmt.NotFound("not_found", "No such scope in this repository.")
 	}
 
-	skills, err := s.summariesForScope(c.Ctx(), org.ID, repo.ID, scope)
+	skills, err := s.summariesForScope(c.Ctx(), org.ID, repos, node)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
 	unmapped := []map[string]any{}
-	for name, n := range counts {
-		if !known[name] {
-			unmapped = append(unmapped, map[string]any{"scope": name, "count": n})
+	for k, n := range counts {
+		if !known[k] {
+			unmapped = append(unmapped, map[string]any{"scope": k.scope, "repo_id": k.repo, "count": n})
 		}
 	}
 	sort.Slice(unmapped, func(i, j int) bool {
+		if unmapped[i]["repo_id"] != unmapped[j]["repo_id"] {
+			return unmapped[i]["repo_id"].(string) < unmapped[j]["repo_id"].(string)
+		}
 		return unmapped[i]["scope"].(string) < unmapped[j]["scope"].(string)
 	})
 	return c.JSON(http.StatusOK, map[string]any{
@@ -218,9 +299,9 @@ func (s *Service) handleMapScopes(c *mgmt.Context) error {
 		"scopes": items, "skills": skills, "unmapped": unmapped})
 }
 
-func (s *Service) scopes(ctx context.Context, orgID, repoID string) ([]scopeView, error) {
-	rows, e := s.pool.Query(ctx, `SELECT scope,owner,parent,paths,source FROM gfm.scopes
- WHERE org_id=$1::uuid AND repo_id=$2 ORDER BY scope`, orgID, repoID)
+func (s *Service) scopes(ctx context.Context, orgID string, repos []string) ([]scopeView, error) {
+	rows, e := s.pool.Query(ctx, `SELECT repo_id,scope,owner,parent,paths,source FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) ORDER BY repo_id,scope`, orgID, repos)
 	if e != nil {
 		return nil, e
 	}
@@ -228,7 +309,7 @@ func (s *Service) scopes(ctx context.Context, orgID, repoID string) ([]scopeView
 	out := []scopeView{}
 	for rows.Next() {
 		var v scopeView
-		if e = rows.Scan(&v.ID, &v.Owner, &v.Parent, &v.Paths, &v.Source); e != nil {
+		if e = rows.Scan(&v.RepoID, &v.ID, &v.Owner, &v.Parent, &v.Paths, &v.Source); e != nil {
 			return nil, e
 		}
 		if v.Paths == nil {
@@ -239,10 +320,10 @@ func (s *Service) scopes(ctx context.Context, orgID, repoID string) ([]scopeView
 	return out, rows.Err()
 }
 
-func (s *Service) summariesForScope(ctx context.Context, orgID, repoID, scope string) ([]skillSummary, error) {
+func (s *Service) summariesForScope(ctx context.Context, orgID string, repos []string, scope string) ([]skillSummary, error) {
 	rows, e := s.pool.Query(ctx, `SELECT `+summaryColumns+summaryFrom+`
- WHERE s.org_id=$1::uuid AND s.repo_id=$2 AND ($3='' OR s.scope=$3 OR s.scope LIKE $3||'.%')
- ORDER BY s.name,s.skill_id LIMIT 1000`, orgID, repoID, scope)
+ WHERE s.org_id=$1::uuid AND s.repo_id = ANY($2::text[]) AND ($3='' OR s.scope=$3 OR s.scope LIKE $3||'.%')
+ ORDER BY s.name,s.skill_id LIMIT 1000`, orgID, repos, scope)
 	if e != nil {
 		return nil, e
 	}
@@ -262,12 +343,12 @@ func (s *Service) summariesForScope(ctx context.Context, orgID, repoID, scope st
 // the scope map: a layer says how abstract a skill is, not who owns it, and it
 // never follows from directory depth (API-CONTRACT §5.3).
 func (s *Service) handleMapLayers(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	rows, err := s.pool.Query(c.Ctx(), `SELECT knowledge_layer,count(*) FROM gfm.skills
- WHERE org_id=$1::uuid AND repo_id=$2 GROUP BY 1 ORDER BY 1`, org.ID, repo.ID)
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) GROUP BY 1 ORDER BY 1`, org.ID, scope.Repos)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -292,7 +373,7 @@ func (s *Service) handleMapLayers(c *mgmt.Context) error {
 // declared graph when none is named. `truncated` says outright when the answer
 // was cut, so a reader never mistakes a page for the whole graph.
 func (s *Service) handleMapRelations(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -315,12 +396,12 @@ func (s *Service) handleMapRelations(c *mgmt.Context) error {
 	}
 	rows, err := s.pool.Query(c.Ctx(), `SELECT r.from_skill_id,r.to_skill_id,r.type,r.provenance,
  COALESCE(r.revision_id,'') FROM gfm.relations r
- JOIN gfm.skills s ON s.org_id=r.org_id AND s.skill_id=r.from_skill_id AND s.repo_id=$2
+ JOIN gfm.skills s ON s.org_id=r.org_id AND s.skill_id=r.from_skill_id AND s.repo_id = ANY($2::text[])
  WHERE r.org_id=$1::uuid
    AND ($3='' OR r.from_skill_id=$3 OR r.to_skill_id=$3)
    AND ($4='' OR r.type=$4)
  ORDER BY r.from_skill_id,r.type,r.to_skill_id LIMIT $5`,
-		org.ID, repo.ID, skillID, kind, limit+1)
+		org.ID, scope.Repos, skillID, kind, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -354,19 +435,29 @@ var relationTypes = map[string]bool{"derived_from": true, "requires": true, "ref
 // handleModule answers one scope as a module: who owns it, what to read and in
 // which order, what it borrows from elsewhere and which documents belong to it.
 func (s *Service) handleModule(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, span, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	scope := c.Param("scope")
+	// A module is one scope of one repository. At organisation scope the
+	// repository is the one that declares the scope, if exactly one does
+	// (API-CONTRACT §4.10.6).
+	repos := span.Repos
+	if !span.Single() {
+		if repos, e = s.reposHoldingScope(c.Ctx(), org.ID, span.Repos, scope); e != nil {
+			return e
+		}
+	}
+	repoID := repos[0]
 	var owner *string
 	var paths []string
 	if err := s.pool.QueryRow(c.Ctx(), `SELECT owner,paths FROM gfm.scopes
- WHERE org_id=$1::uuid AND repo_id=$2 AND scope=$3`, org.ID, repo.ID, scope).
+ WHERE org_id=$1::uuid AND repo_id=$2 AND scope=$3`, org.ID, repoID, scope).
 		Scan(&owner, &paths); err != nil {
 		return mgmt.NotFound("not_found", "No such scope in this repository.")
 	}
-	skills, err := s.summariesForScope(c.Ctx(), org.ID, repo.ID, scope)
+	skills, err := s.summariesForScope(c.Ctx(), org.ID, []string{repoID}, scope)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -396,7 +487,7 @@ func (s *Service) handleModule(c *mgmt.Context) error {
 	sort.Slice(borrowed, func(i, j int) bool {
 		return borrowed[i]["skill_id"].(string) < borrowed[j]["skill_id"].(string)
 	})
-	documents, err := s.documentsOfScope(c.Ctx(), org.ID, repo.ID, scope)
+	documents, err := s.documentsOfScope(c.Ctx(), org.ID, repoID, scope)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -404,8 +495,9 @@ func (s *Service) handleModule(c *mgmt.Context) error {
 		paths = []string{}
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "scope": scope, "owner": owner, "paths": paths,
-		"skills": skills, "reading_order": order, "shared": borrowed, "documents": documents})
+		"schema_version": mgmt.SchemaVersion, "repo_id": repoID, "scope": scope, "owner": owner,
+		"paths": paths, "skills": skills, "reading_order": order, "shared": borrowed,
+		"documents": documents})
 }
 
 // readingOrder sorts the module's skills so that a skill's own prerequisites

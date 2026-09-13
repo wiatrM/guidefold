@@ -82,20 +82,30 @@ type SkillMeta struct {
 	PublishedAt       time.Time
 }
 
-// Filter narrows the view. Every field is optional; an empty field filters
-// nothing. `Repo` is not user input — it is the repository the request proved,
-// so it is never echoed.
+// Filter narrows the view. Every query field is optional; an empty field
+// filters nothing.
+//
+// `Repos` is not user input — it is the set of repositories the request
+// proved the caller may read (API-CONTRACT §4.10), so it is never echoed. The
+// handler always sets it: an empty set means no catalog repository is
+// readable, so a skill the catalog knows never matches, while a skill the
+// catalog has never seen is still counted — the ledger observed it and no
+// repository can claim or deny it.
+//
+// `Repo` is the `?repo=` query value that narrowed an organisation read, kept
+// only so `filters` can echo it (§4.10.7); the narrowing itself is `Repos`.
 //
 // The tags are the query parameter names on purpose: `/usage` echoes this
 // struct back as `filters`, and a reader comparing what they asked for with
 // what was applied has to see the same words (API-CONTRACT §5.5). `omitempty`
 // keeps "not asked for" and "asked for and empty" distinguishable.
 type Filter struct {
-	Repo     string `json:"-"`
-	Scope    string `json:"scope,omitempty"`
-	SkillID  string `json:"skill_id,omitempty"`
-	Revision string `json:"revision,omitempty"`
-	Harness  string `json:"harness,omitempty"`
+	Repos    []string `json:"-"`
+	Repo     string   `json:"repo,omitempty"`
+	Scope    string   `json:"scope,omitempty"`
+	SkillID  string   `json:"skill_id,omitempty"`
+	Revision string   `json:"revision,omitempty"`
+	Harness  string   `json:"harness,omitempty"`
 	// Window is the applied window spec, including the default: unlike the
 	// others it always has a value, because a report always covers a period.
 	Window string `json:"window,omitempty"`
@@ -269,7 +279,10 @@ func safeAskReason(reason string) string {
 
 // Skill is one `(skill_id, revision)` row of the report.
 type Skill struct {
-	SkillID  string  `json:"skill_id"`
+	SkillID string `json:"skill_id"`
+	// RepoID is the repository the catalog places this skill in, or nil for a
+	// skill the ledger observed but the catalog does not know (§4.10.3).
+	RepoID   *string `json:"repo_id"`
 	Revision *string `json:"revision"`
 	// CardRevision and ContentSHA256 are the same revision's other two names,
 	// or nil when the catalog does not know this revision at all.
@@ -559,7 +572,7 @@ func Aggregate(in Input) Report {
 	totalFeedback := Feedback{}
 	judged := false
 	for _, b := range rows {
-		meta := in.Meta[b.skillID]
+		meta, known := in.Meta[b.skillID]
 		row := Skill{
 			SkillID:        b.skillID,
 			Revision:       optional(b.revision),
@@ -576,6 +589,10 @@ func Aggregate(in Input) Report {
 			UseObserved:    len(b.observed),
 			UseEpisodes:    len(b.episodes),
 			ZeroLoads:      len(b.loads) == 0,
+		}
+		if known {
+			id := meta.RepoID
+			row.RepoID = &id
 		}
 		for _, s := range b.exposureSearch {
 			if linkedSearches[b.skillID][s] {
@@ -820,7 +837,7 @@ func computeQueue(rows []Skill, in Input) []Computed {
 		if !meta.Published || loaded[id] {
 			continue
 		}
-		if in.Filter.Repo != "" && meta.RepoID != in.Filter.Repo {
+		if !in.Filter.inRepos(meta.RepoID) {
 			continue
 		}
 		// The harness filter narrows observed traffic; it cannot narrow the
@@ -863,12 +880,24 @@ func exposureCount(rows []Skill, skillID string) int {
 	return n
 }
 
-// matches applies the four query filters. Scope comes from the catalog, so a
-// skill the catalog does not know cannot satisfy a scope filter — it is not
-// silently included under "no scope".
+// inRepos reports whether a repository is one the request may read.
+func (f Filter) inRepos(repoID string) bool {
+	for _, id := range f.Repos {
+		if id == repoID {
+			return true
+		}
+	}
+	return false
+}
+
+// matches applies the repository scope and the four query filters. Scope
+// comes from the catalog, so a skill the catalog does not know cannot satisfy
+// a scope filter — it is not silently included under "no scope". The
+// repository scope is the reverse: a skill the catalog does not know belongs
+// to no repository, so no scope can exclude it.
 func (f Filter) matches(skillID, revision, producer string, meta map[string]SkillMeta) bool {
 	known, isKnown := meta[skillID]
-	if f.Repo != "" && isKnown && known.RepoID != f.Repo {
+	if isKnown && !f.inRepos(known.RepoID) {
 		return false
 	}
 	if f.SkillID != "" && skillID != f.SkillID {

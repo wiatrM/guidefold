@@ -13,7 +13,7 @@ import {assessSkills, countRecommendations, queueReasonLabels, sortKeys, type Ga
 import {isStale} from '../api/client';
 import {proposalKinds, proposalStates, queueActions} from '../api/decoders';
 import {
-  ApiFailure, DegradedNotice, OwnerNote, PartialNotice, RepositoryRequired, asApiError, downloadText,
+  ApiFailure, DegradedNotice, OwnerNote, PartialNotice, asApiError, downloadText,
   formatNumber, readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
 import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
@@ -133,15 +133,28 @@ const decisionChoices = [
 ];
 const terminalPublicationStates = ['published', 'superseded'];
 
+/** Cache-key segment for a read scope: `repo: null` is the whole organisation (ADR-0047), not an empty repository. */
+const scopeKey = (org: string | null, repo: string | null) => org + '/' + (repo ?? '*');
+/** Nothing here reads without an organisation; the shell normally never renders the route without one. */
+function OrganisationRequired() {
+  return <RouteState state="empty" title="No organization selected" description="Open an organization you belong to. Reads are scoped to it; a repository is a filter on top." />;
+}
+/** A row's repository at organisation scope; a mutation needs a named repository and a row may not carry one. */
+function RepoNote({repoId}: {repoId: string | null}) {
+  return <span className={styles.cellNote}>Repository <code>{repoId ?? 'Unknown'}</code></span>;
+}
+const unknownRepoNote = 'The repository of this proposal is unknown; nothing can be decided from here.';
+
 function ProposalQueue({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
+  // ADR-0047: `repo: null` reads every repository the principal may read; the API decides the set.
+  const target = {org: org ?? '', repo};
   const at = (key: string) => ctx.params.get(key) ?? '';
   const cursor = ctx.params.get('cursor');
   const list = useAsync(
     () => source.listProposals(target, {state: at('state') || undefined, kind: at('kind') || undefined, scope: at('scope') || undefined, cursor: cursor ?? undefined}),
-    'proposals:' + org + '/' + repo + ':' + proposalKeys.map(at).join('|') + ':' + (cursor ?? ''),
-    Boolean(org && repo),
+    'proposals:' + scopeKey(org, repo) + ':' + proposalKeys.map(at).join('|') + ':' + (cursor ?? ''),
+    Boolean(org),
   );
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -167,17 +180,18 @@ function ProposalQueue({ctx}: ApiProps) {
       </form>
     </Panel>
     <Panel title="Review queue" eyebrow="Candidates" icon={<ListChecksIcon aria-hidden="true" />}>
-      {list.phase === 'loading' && !value && <RouteState state="loading" title="Reading proposals" description="Waiting for the candidate list of this repository." />}
+      {list.phase === 'loading' && !value && <RouteState state="loading" title="Reading proposals" description={'Waiting for the candidate list of this ' + (repo ? 'repository.' : 'organization.')} />}
       {list.phase === 'error' && list.error && !value && <ApiFailure error={list.error} onRetry={list.reload} retryLabel="Retry the queue" />}
       {value && (value.items.length ? <>
         {selected.length > 0 && <div className={styles.notice} role="status"><StateBadge tone="system">{selected.length} selected</StateBadge><span>Select candidates to compare their scope, source and generated body together.</span><ActionButton onClick={() => setSelected([])}>Clear selection</ActionButton></div>}
-        <DataTable caption="Proposals in this repository" headings={['Select', 'Proposal', 'Kind', 'State', 'Scope', 'Target file', 'Decided by']}>
+        <DataTable caption={repo ? 'Proposals in this repository' : 'Proposals in this organization'} headings={['Select', 'Proposal', 'Kind', 'State', 'Scope', 'Target file', 'Decided by']}>
           {value.items.map(item => <tr key={item.proposal_id}>
             <td><input type="checkbox" aria-label={'Select proposal ' + item.proposal_id} checked={selected.includes(item.proposal_id)} onChange={() => toggle(item.proposal_id)} /></td>
             <th scope="row" className={styles.pathCell}><Link to={ctx.href('proposals', {proposal: item.proposal_id})}>{item.proposal_id}</Link></th>
             <td><StateBadge>{item.kind}</StateBadge></td>
             <td><StateBadge tone={item.state === 'published' ? 'system' : item.state === 'rejected' ? 'warning' : item.state === 'draft' ? 'human' : 'neutral'}>{item.state}</StateBadge></td>
-            <td>{item.scope ?? 'Unknown'}</td>
+            {/* At organisation scope the list mixes repositories, so the row says which one it targets. */}
+            <td className={styles.pathCell}>{item.scope ?? 'Unknown'}{repo === null && <RepoNote repoId={item.repo_id} />}</td>
             <td className={styles.pathCell}><code>{item.path ?? 'Unknown'}</code></td>
             {/* 1.3.0: `ProposalSummary.decision.actor` — the principal who recorded the latest decision. */}
             <td>{item.decision ? unknown(item.decision.actor) : 'Undecided'}</td>
@@ -195,9 +209,9 @@ function ProposalQueue({ctx}: ApiProps) {
 function BatchReviewPanel({ctx, proposalIds, onClear}: ApiProps & {proposalIds: string[]; onClear: () => void}) {
   const {source, org, repo} = ctx;
   const details = useAsync<ProposalDetail[]>(
-    () => Promise.all(proposalIds.map(id => source.getProposal({org: org ?? '', repo: repo ?? ''}, id))),
-    'batch-proposals:' + org + '/' + repo + ':' + proposalIds.join(','),
-    Boolean(org && repo && proposalIds.length),
+    () => Promise.all(proposalIds.map(id => source.getProposal({org: org ?? '', repo}, id))),
+    'batch-proposals:' + scopeKey(org, repo) + ':' + proposalIds.join(','),
+    Boolean(org && proposalIds.length),
   );
   return <Panel title="Compare selected proposals" eyebrow="Batch review" icon={<ListNumbersIcon aria-hidden="true" />} action={<ActionButton onClick={onClear}>Close comparison</ActionButton>}>
     <p>Differences remain visible per candidate. Open each row to record its own decision and reason; this comparison never approves or rejects automatically.</p>
@@ -214,13 +228,14 @@ function BatchReviewPanel({ctx, proposalIds, onClear}: ApiProps & {proposalIds: 
   </Panel>;
 }
 
-function ExportPanel({ctx, proposalId, state, onExported}: ApiProps & {proposalId: string; state: string; onExported: () => void}) {
-  const {source, org, repo} = ctx;
+/** `repo` is the proposal's own repository (its `repo_id`, else the selected one): the export is a mutation on one repository. */
+function ExportPanel({ctx, repo, proposalId, state, onExported}: ApiProps & {repo: string | null; proposalId: string; state: string; onExported: () => void}) {
+  const {source, org} = ctx;
   const owner = ctx.role === 'owner';
   const [result, setResult] = useState<ExportPayload | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const blocked = !owner || readOnly(ctx) || busy;
+  const blocked = !owner || readOnly(ctx) || busy || !repo;
 
   async function runExport() {
     if (blocked || !org || !repo) return;
@@ -248,6 +263,7 @@ function ExportPanel({ctx, proposalId, state, onExported}: ApiProps & {proposalI
       {state === 'approved_for_export' && <div className={styles.actions}>
         <ActionButton id="export-patch" tone="human" disabled={blocked} onClick={runExport}><DownloadSimpleIcon aria-hidden="true" />{busy ? 'Preparing export…' : 'Create export'}</ActionButton>
       </div>}
+      {state === 'approved_for_export' && !repo && <p className={styles.muted} role="status">{unknownRepoNote}</p>}
       {error && <p className={styles.error} role="alert">{error}</p>}
       {result && <>
         <ProvenanceTrail entries={[
@@ -279,7 +295,8 @@ function PublicationPanel({ctx, proposalId, active}: ApiProps & {proposalId: str
   const [publication, setPublication] = useState<Publication | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
-    if (!org || !repo || !active) return;
+    // A read: at organisation scope `repo` is null and the API locates the proposal itself.
+    if (!org || !active) return;
     let live = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const poll = async () => {
@@ -321,10 +338,11 @@ function PublicationPanel({ctx, proposalId, active}: ApiProps & {proposalId: str
   </Panel>;
 }
 
-function SnapshotsPanel({ctx}: ApiProps) {
-  const {source, org, repo} = ctx;
+/** Snapshots belong to one repository (`listSnapshots` takes an `OrgRepo`); `repo` is the proposal's repository. */
+function SnapshotsPanel({ctx, repo}: ApiProps & {repo: string | null}) {
+  const {source, org} = ctx;
   const owner = ctx.role === 'owner';
-  const snapshots = useAsync(() => source.listSnapshots({org: org ?? '', repo: repo ?? ''}), 'snapshots:' + org + '/' + repo, Boolean(org && repo) && owner);
+  const snapshots = useAsync(() => source.listSnapshots({org: org ?? '', repo: repo ?? ''}), 'snapshots:' + scopeKey(org, repo), Boolean(org && repo) && owner);
   const [reason, setReason] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
   const [importId, setImportId] = useState('');
@@ -332,7 +350,8 @@ function SnapshotsPanel({ctx}: ApiProps) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const blocked = !owner || readOnly(ctx) || busy;
-  if (!owner) return null;
+  // Without a named repository there is no snapshot list to read and nothing to roll back.
+  if (!owner || !repo) return null;
 
   async function activate(snapshotId: string) {
     if (blocked || !org || !repo || !reason.trim()) {setError('Give the reason for this rollback before activating another snapshot.'); return;}
@@ -412,7 +431,7 @@ function SnapshotsPanel({ctx}: ApiProps) {
 function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) {
   const {source, org, repo} = ctx;
   const owner = ctx.role === 'owner';
-  const detail = useAsync(() => source.getProposal({org: org ?? '', repo: repo ?? ''}, proposalId), 'proposal:' + org + '/' + repo + ':' + proposalId, Boolean(org && repo));
+  const detail = useAsync(() => source.getProposal({org: org ?? '', repo}, proposalId), 'proposal:' + scopeKey(org, repo) + ':' + proposalId, Boolean(org));
   const [decision, setDecision] = useState<'approve' | 'edit' | 'reject'>('approve');
   const [reason, setReason] = useState('');
   const [candidate, setCandidate] = useState<string | null>(null);
@@ -424,7 +443,10 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
   const [exported, setExported] = useState(false);
   const value = detail.value;
   const degraded = readOnly(ctx, detail.phase === 'error' && Boolean(value));
-  const blocked = !owner || degraded || busy || mustReread;
+  // The decision and the export act on the proposal's own repository (ADR-0047): its `repo_id`, or the
+  // selected repository from a client older than 1.11.0. With neither, nothing is sent with an empty repo.
+  const actRepo = value?.repo_id ?? repo;
+  const blocked = !owner || degraded || busy || mustReread || !actRepo;
 
   if (detail.phase === 'error' && detail.error && !value) return <ApiFailure error={detail.error} onRetry={detail.reload} retryLabel="Retry this proposal" />;
   if (!value) return <RouteState state="loading" title="Reading the proposal" description="Waiting for the source, the candidate and their provenance." />;
@@ -436,14 +458,14 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
 
   async function record(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (blocked || !org || !repo) return;
+    if (blocked || !org || !actRepo) return;
     const text = reason.trim();
     if (!text) {setError('Every decision needs a reason. It is stored with the decision.'); return;}
     if (decision === 'edit' && !body.trim()) {setError('An edited candidate needs a body.'); return;}
     setBusy(true);
     setError('');
     try {
-      const result = await source.decideProposal({org, repo}, proposalId, {
+      const result = await source.decideProposal({org, repo: actRepo}, proposalId, {
         decision, reason: text,
         candidate_body: decision === 'edit' ? body : undefined,
         expected_revision: value!.expected_revision ?? null,
@@ -474,7 +496,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
     <section className={cn(styles.summary, 'rounded-xl border border-line-strong bg-graphite-900 shadow-(--shadow-card)')} aria-label="Proposal status and evidence">
       <div className={styles.summaryHeading}>
         <IconTile icon={<GitPullRequestIcon weight="duotone" />} size="lg" tone={value.state === 'published' ? 'system' : 'human'} />
-        <div className={styles.summaryText}><span className={styles.eyebrow}>{value.kind} · {value.scope ?? 'Unknown scope'}</span><h2 className={styles.name}><code>{value.candidate.path}</code></h2></div>
+        <div className={styles.summaryText}><span className={styles.eyebrow}>{value.kind} · {value.scope ?? 'Unknown scope'} · repository {actRepo ?? 'Unknown'}</span><h2 className={styles.name}><code>{value.candidate.path}</code></h2></div>
         <StateBadge tone={value.state === 'published' ? 'system' : value.state === 'rejected' ? 'warning' : 'human'}>{value.state}</StateBadge>
       </div>
       <div className={styles.actions}>
@@ -487,6 +509,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
     <div className={styles.comparison}>
       <Panel title="Source" eyebrow="What the candidate was built from" icon={<FileTextIcon aria-hidden="true" />}>
         <ProvenanceTrail entries={[
+          {label: 'Repository', value: actRepo ?? 'Unknown', code: true, detail: value.repo_id ? undefined : (repo ? 'From the selected repository; the proposal carries none.' : 'The proposal carries no repository.')},
           {label: 'Scope', value: value.scope ?? 'Unknown', code: true},
           {label: 'Owner from source', value: unknown(value.owner)},
           {label: 'Target revision', value: unknown(value.target_revision_id), code: true},
@@ -549,6 +572,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
             </AlertDescription>
           </Alert>}
           {value.decision && <p className={styles.reasonRecord}><strong>Recorded decision</strong>{value.decision.decision} · {unknown(value.decision.reason)} · {unknown(value.decision.at)}</p>}
+          {value.state === 'draft' && !actRepo && <p className={styles.muted} role="status">{unknownRepoNote}</p>}
           {value.state === 'draft' ? <form id="decision-form" className={styles.form} onSubmit={record}>
             <fieldset disabled={blocked} className={styles.choices}>
               <legend>Review decision</legend>
@@ -571,15 +595,16 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
       </Panel>
     </div>
 
-    <ExportPanel ctx={ctx} proposalId={proposalId} state={value.state} onExported={() => {setExported(true); detail.reload();}} />
+    <ExportPanel ctx={ctx} repo={actRepo} proposalId={proposalId} state={value.state} onExported={() => {setExported(true); detail.reload();}} />
     <PublicationPanel ctx={ctx} proposalId={proposalId} active={exported || value.state === 'awaiting_git' || value.state === 'published'} />
-    <SnapshotsPanel ctx={ctx} />
+    <SnapshotsPanel ctx={ctx} repo={actRepo} />
   </>;
 }
 
 export function ApiProposalsRoute({ctx}: ApiProps) {
   const proposalId = ctx.params.get('proposal');
-  if (!ctx.org || !ctx.repo) return <RepositoryRequired ctx={ctx} />;
+  // ADR-0047: the organisation is the read scope; no repository means every repository, not a gate.
+  if (!ctx.org) return <OrganisationRequired />;
   return <div className={styles.route}>
     {proposalId ? <ProposalDetailView key={proposalId} ctx={ctx} proposalId={proposalId} /> : <><OwnerNote role={ctx.role} /><ProposalQueue ctx={ctx} /></>}
   </div>;
@@ -606,16 +631,18 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const blocked = !owner || readOnly(ctx) || busy;
+  // The decision is posted to the item's own repository (ADR-0047); a row without one cannot be decided here.
+  const actRepo = item.repo_id ?? repo;
+  const blocked = !owner || readOnly(ctx) || busy || !actRepo;
 
   async function decide() {
-    if (blocked || !org || !repo) return;
+    if (blocked || !org || !actRepo) return;
     const text = reason.trim();
     if (!text) {setError('Say what you did. The reason is stored with the decision.'); return;}
     setBusy(true);
     setError('');
     try {
-      await source.decideQueueItem({org, repo}, item.item_id, {action, reason: text}, stableKey('queue', item.item_id, action, text));
+      await source.decideQueueItem({org, repo: actRepo}, item.item_id, {action, reason: text}, stableKey('queue', item.item_id, action, text));
       onDecided();
     } catch (failure) {
       setError('The decision was not saved (' + asApiError(failure).code + '). The item stays open.');
@@ -626,6 +653,7 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
     <th scope="row" className={styles.pathCell}>
       <Link to={ctx.href('skill', {skill: item.skill_id, revision: item.revision, scope: ctx.params.get('scope'), tab: 'content', from: 'usage'})}>{item.skill_id}</Link>
       <span className={styles.muted}>{item.revision ? 'Revision ' + item.revision : 'No revision recorded'}</span>
+      {repo === null && <RepoNote repoId={item.repo_id} />}
     </th>
     <td>{queueReasonLabels[item.reason]}</td>
     <td>{unknown(item.since)}</td>
@@ -645,6 +673,7 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
           <Input id={'queue-reason-' + item.item_id} className={inputClass} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} maxLength={200} aria-invalid={Boolean(error)} />
         </Field>
         <div><ActionButton size="sm" tone="human" disabled={blocked} onClick={() => {void decide();}}>{busy ? 'Saving…' : 'Record decision'}</ActionButton></div>
+        {!actRepo && <span className={styles.muted} role="status">The repository of this item is unknown; nothing can be decided from here.</span>}
       </div>}</td>
   </tr>;
 }
@@ -940,21 +969,22 @@ export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
           : 'No token or latency measurements in this window',
       },
     ]} />
-    <p className={styles.panelNote}>To sygnał kierunkowy, nie jeden wynik jakości. Unknown oznacza brak obserwacji, a nie zero.</p>
+    <p className={styles.panelNote}>A direction signal, not a single quality score. Unknown means nothing was observed, not zero.</p>
   </Panel>;
 }
 
 export function ApiUsageRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
+  // ADR-0047: `repo: null` is the organisation-wide report; the repository is a filter the rail sets.
+  const target = {org: org ?? '', repo};
   const at = (key: string) => ctx.params.get(key) ?? '';
   const report = useAsync(
     () => source.getUsage(target, {
       window: at('window') || undefined, scope: at('scope') || undefined, skillId: at('skill') || undefined,
       revision: at('revision') || undefined, harness: at('harness') || undefined,
     }),
-    'usage:' + org + '/' + repo + ':' + usageKeys.map(at).join('|'),
-    Boolean(org && repo),
+    'usage:' + scopeKey(org, repo) + ':' + usageKeys.map(at).join('|'),
+    Boolean(org),
   );
   const [exportStatus, setExportStatus] = useState('');
   const value = report.value;
@@ -966,18 +996,18 @@ export function ApiUsageRoute({ctx}: ApiProps) {
     ctx.go('usage', Object.fromEntries(usageKeys.map(key => [key, String(form.get(key) ?? '').trim() || null])));
   }
   async function exportReport(format: 'csv' | 'json') {
-    if (!org || !repo) return;
+    if (!org) return;
     setExportStatus('');
     try {
       const text = await source.exportUsage({org, repo}, {format, window: at('window') || undefined});
-      downloadText('usage-' + repo + '.' + format, text, format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8');
+      downloadText('usage-' + (repo ?? org) + '.' + format, text, format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8');
       setExportStatus('Downloaded the ' + format.toUpperCase() + ' report for the current window. Filters other than the window are not applied to the export.');
     } catch (failure) {
       setExportStatus('The export failed (' + asApiError(failure).code + '). Nothing was downloaded.');
     }
   }
 
-  if (!org || !repo) return <RepositoryRequired ctx={ctx} />;
+  if (!org) return <OrganisationRequired />;
   if (report.phase === 'error' && report.error && !value) return <ApiFailure error={report.error} onRetry={report.reload} retryLabel="Retry this report" />;
   if (!value) return <RouteState state="loading" title="Reading the usage report" description="Waiting for the aggregate over the selected window. No number is shown before it arrives." />;
 
@@ -995,6 +1025,9 @@ export function ApiUsageRoute({ctx}: ApiProps) {
   const taskIds = value.coverage?.task_ids_present ?? false;
   const helpedDenominator = (feedback?.helped ?? 0) + (feedback?.hindered ?? 0);
   const activeFilters: {label: string; value: string}[] = [];
+  // The `Usage` decoder carries no `filters` echo (unlike `SkillPage`), so the repository chip is
+  // derived from the rail's selection in `ctx.repo`: the report was read with exactly that filter.
+  if (repo) activeFilters.push({label: 'Repository', value: repo});
   if (at('scope')) activeFilters.push({label: 'Scope', value: at('scope')});
   if (at('skill')) activeFilters.push({label: 'Skill', value: at('skill')});
   if (at('revision')) activeFilters.push({label: 'Revision', value: at('revision')});
@@ -1017,7 +1050,7 @@ export function ApiUsageRoute({ctx}: ApiProps) {
         {value.queue.map(item => <QueueRow key={item.item_id} ctx={ctx} item={item} onDecided={report.reload} />)}
       </DataTable>
       <OwnerNote role={ctx.role} />
-    </Panel> : <div id="needs-review"><RouteState compact state="empty" title="No observations" description="Nothing needs an owner decision: no drift, feedback or dependency problem is recorded for this repository." /></div>}
+    </Panel> : <div id="needs-review"><RouteState compact state="empty" title="No observations" description={'Nothing needs an owner decision: no drift, feedback or dependency problem is recorded for this ' + (repo ? 'repository.' : 'organization.')} /></div>}
 
     <NotificationPanel queue={value.queue} role={ctx.role} />
 
@@ -1083,6 +1116,8 @@ export function ApiUsageRoute({ctx}: ApiProps) {
           <th scope="row" className={styles.pathCell}>
             <Link to={skillHref(ctx, item)}>{item.skill_id}</Link>
             {item.zero_loads && <span className={styles.muted}>{zeroLoadsLabel(item)}</span>}
+            {/* Organisation scope mixes repositories; Unknown when the ledger saw a skill the catalogue does not know. */}
+            {repo === null && <RepoNote repoId={item.repo_id} />}
           </th>
           <td>{item.scope ?? <span className={styles.muted}>No scope in catalog</span>}</td>
           <td>{unknown(item.owner)}</td>

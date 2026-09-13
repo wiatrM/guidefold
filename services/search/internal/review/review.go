@@ -118,6 +118,13 @@ func (s *Service) Register(r *mgmt.Router) {
 		s.handleExport, mgmt.Idempotent())
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/proposals/{proposal_id}/publication",
 		s.handleProposalPublication)
+	// Organisation-scope twins of the three proposal reads (API-CONTRACT
+	// §4.10): same handler, same shape; the repository is a filter, not a
+	// precondition. Mutations stay per repository.
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/proposals", s.handleListProposals)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/proposals/{proposal_id}", s.handleProposal)
+	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/proposals/{proposal_id}/publication",
+		s.handleProposalPublication)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/exports/{export_id}", s.handleGetExport)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/exports/{export_id}/patch", s.handleExportPatch)
 
@@ -142,6 +149,33 @@ func (s *Service) authorize(c *mgmt.Context, min mgmt.Role) (*repoContext, error
 		return nil, e
 	}
 	return &repoContext{Org: org, Repo: repo, RepoID: repo.ID}, nil
+}
+
+// scopeContext is the authorised (organisation, repository scope) pair of one
+// read that may span repositories (API-CONTRACT §4.10). On a `{repo_base}`
+// route the scope is the one repository in the path; on an `{org_base}` route
+// it is every repository the caller may read, or the one `?repo=` names.
+type scopeContext struct {
+	Org   *mgmt.Org
+	Scope *mgmt.Scope
+}
+
+// repoContextFor narrows a scope to one repository a row turned out to belong
+// to, so the single-repository helpers (targetBody, …) keep their signature.
+func (sc *scopeContext) repoContextFor(repoID string) *repoContext {
+	rc := &repoContext{Org: sc.Org, RepoID: repoID}
+	if sc.Scope.Single() {
+		rc.Repo = sc.Scope.Repo
+	}
+	return rc
+}
+
+func (s *Service) authorizeScope(c *mgmt.Context, min mgmt.Role) (*scopeContext, error) {
+	org, scope, e := c.AuthorizeScope("org", "repo", min)
+	if e != nil {
+		return nil, e
+	}
+	return &scopeContext{Org: org, Scope: scope}, nil
 }
 
 func (s *Service) authorizeReviewer(c *mgmt.Context) (*repoContext, error) {

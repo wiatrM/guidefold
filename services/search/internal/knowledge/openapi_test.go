@@ -119,3 +119,56 @@ func TestKnowledgeErrorEnvelopesMatchTheContract(t *testing.T) {
 		})
 	}
 }
+
+// The organisation-scope twins (API-CONTRACT §4.10) render the same components,
+// including the shapes only they produce: `repository` tree children, scope
+// nodes and module pages that name their repository.
+func TestOrganisationScopeResponsesMatchTheOpenAPIComponents(t *testing.T) {
+	spec := pivottest.LoadContract(t)
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+
+	// The unnarrowed page's envelope carries repo_id: null (contract §4.10.3);
+	// SkillPage.repo_id is nullable in the OpenAPI document for exactly that
+	// answer, so both the spanning page and a narrowed one validate.
+	page := c.mustGetOrg(t, "/skills?limit=5")
+	spec.Check(t, "SkillPage", page)
+	for _, raw := range page["items"].([]any) {
+		spec.Check(t, "SkillSummary", raw.(map[string]any))
+	}
+	spec.Check(t, "SkillPage", c.mustGetOrg(t, "/skills?repo=second&scope=atlas.identity"))
+	spec.Check(t, "Facets", c.mustGetOrg(t, "/skills/facets?field=repo"))
+	spec.Check(t, "FacetLookup", c.mustGetOrg(t, "/skills/facets/lookup?field=repo&value=second"))
+
+	summary := page["items"].([]any)[0].(map[string]any)
+	skillID, revisionID := summary["skill_id"].(string), summary["revision_id"].(string)
+	spec.Check(t, "SkillDetail", c.mustGetOrg(t, c.skillPath(skillID)))
+	spec.Check(t, "Revision", c.mustGetOrg(t, c.skillPath(skillID)+"/revisions/"+revisionID))
+
+	root := c.mustGetOrg(t, "/map/repository")
+	spec.Check(t, "MapRepository", root)
+	for _, raw := range root["children"].([]any) {
+		spec.Check(t, "MapChild", raw.(map[string]any))
+	}
+	spec.Check(t, "MapRepository", c.mustGetOrg(t, "/map/repository?path=second/.agents/skills"))
+	scopes := c.mustGetOrg(t, "/map/scopes")
+	spec.Check(t, "MapScopes", scopes)
+	for _, raw := range scopes["scopes"].([]any) {
+		spec.Check(t, "ScopeNode", raw.(map[string]any))
+	}
+	spec.Check(t, "MapScopes", c.mustGetOrg(t, "/map/scopes?scope=atlas.identity&repo=second"))
+	spec.Check(t, "MapLayers", c.mustGetOrg(t, "/map/layers"))
+	relations := c.mustGetOrg(t, "/map/relations")
+	spec.Check(t, "Relations", relations)
+	for _, raw := range relations["items"].([]any) {
+		spec.Check(t, "RelationEdge", raw.(map[string]any))
+	}
+	spec.Check(t, "ModulePage", c.mustGetOrg(t, "/modules/atlas.identity?repo=meridian"))
+
+	status, body, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: c.orgBase() + "/modules/atlas.identity"})
+	if status != http.StatusConflict || body["error"] != "scope_ambiguous" {
+		t.Fatalf("%d %v", status, body)
+	}
+	spec.Check(t, "Error", body)
+}
