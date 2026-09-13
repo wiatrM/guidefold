@@ -27,7 +27,7 @@ test('owner completes sign-in, import, library, review and export with keyboard 
 
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
   await enter(page, navigation.getByRole('link', { name: 'Map', exact: true }));
-  await expect(page.getByRole('heading', { level: 1, name: 'Repository knowledge map' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Knowledge map' })).toBeVisible();
   await enter(page, navigation.getByRole('link', { name: 'Library', exact: true }));
   await tabTo(page, page.getByLabel('Search name, description or path', { exact: true }));
   await page.keyboard.type(chosen.name);

@@ -34,7 +34,7 @@ const viewInfo:Record<View,{label:string;title:string;description:string;icon:ty
  home:{label:'Overview',title:'Overview',description:'What waits for you, how the library is doing and what the last window of telemetry says.',icon:SquaresFourIcon},
  import:{label:'Import',title:'Import repository skills',description:'Inspect source files before adding them to your library.',icon:ArrowSquareInIcon},
  library:{label:'Library',title:'Skill library',description:'Find an instruction and check its source, scope and revision.',icon:BooksIcon},
- map:{label:'Map',title:'Repository knowledge map',description:'Trace source paths, ownership scopes and declared skill relationships.',icon:TreeStructureIcon},
+ map:{label:'Map',title:'Knowledge map',description:'Trace source paths across repositories, ownership scopes and declared skill relationships.',icon:TreeStructureIcon},
  skill:{label:'Skill',title:'Skill revision',description:'Read the instruction and the evidence that defines its scope.',icon:FileTextIcon},
  proposals:{label:'Proposals',title:'Review a skill revision',description:'Compare the source and candidate before a decision and Git handoff.',icon:GitPullRequestIcon},
  usage:{label:'Usage & quality',title:'Usage & quality',description:'Distinguish publication, delivery and evidence of usefulness.',icon:ChartBarIcon},

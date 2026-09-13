@@ -969,7 +969,7 @@ export function ScorecardPanel({metrics}: {metrics: ExecutionMetrics}) {
           : 'No token or latency measurements in this window',
       },
     ]} />
-    <p className={styles.panelNote}>To sygnał kierunkowy, nie jeden wynik jakości. Unknown oznacza brak obserwacji, a nie zero.</p>
+    <p className={styles.panelNote}>A direction signal, not a single quality score. Unknown means nothing was observed, not zero.</p>
   </Panel>;
 }
 

@@ -69,7 +69,7 @@ describe('Usage route, hosted API, six states', () => {
     expect(scorecards.getByText('14 · 6')).toBeInTheDocument();
     expect(scorecards.getByText('1,700 tok · 300 ms avg')).toBeInTheDocument();
     expect(scorecards.getByText(/Reasons: Missing dependencies 1 · Conflicting rules 1/)).toBeInTheDocument();
-    expect(scorecards.getByText(/To sygnał kierunkowy/)).toBeInTheDocument();
+    expect(scorecards.getByText(/A direction signal, not a single quality score/)).toBeInTheDocument();
   });
 
   test('scorecards keep unmeasured tokens Unknown when only latency is observed', async () => {
