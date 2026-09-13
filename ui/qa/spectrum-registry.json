@@ -263,24 +263,6 @@
       "allowInlineGeometry": false
     },
     {
-      "file": "src/components/ui/shadcn-space/blocks/statistics-01/statistics.tsx",
-      "sha256": "83a333dbe2cf4cdec051609daddd59ee0c411e4288990c8b6bd466848969a7d8",
-      "source": "https://shadcnspace.com/r/statistics-01.json",
-      "allowInlineGeometry": false
-    },
-    {
-      "file": "src/components/ui/shadcn-space/blocks/chart-01/chart.tsx",
-      "sha256": "28bf6cb50dfc32827bd93002eec6e926a03880faaf0ab189b090e740cf66cc6a",
-      "source": "https://shadcnspace.com/r/chart-01.json",
-      "allowInlineGeometry": false
-    },
-    {
-      "file": "src/components/ui/shadcn-space/blocks/chart-02/chart.tsx",
-      "sha256": "b2ce276081c78e73d16115b7a478878dd9e6094447697a021e0750fe7f9fbb3a",
-      "source": "https://shadcnspace.com/r/chart-02.json",
-      "allowInlineGeometry": false
-    },
-    {
       "file": "src/components/ui/shadcn-space/blocks/table-01/table.tsx",
       "sha256": "eb5217baf66477f0f42a2ecb0b321d835baa14911dce3ec04956e4a9c65355a8",
       "source": "https://shadcnspace.com/r/table-01.json",

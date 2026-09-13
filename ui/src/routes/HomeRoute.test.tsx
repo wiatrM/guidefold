@@ -189,7 +189,77 @@ describe('Home route', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', {name: /Delivery funnel/})).not.toBeInTheDocument();
     expect(screen.getByText('No adapter events')).toBeInTheDocument();
-    expect(screen.getByText('Unknown', {selector: '[data-slot=statistic] dd, dd'})).toBeInTheDocument();
+    // Helped share with no assessment is the word Unknown in its Spectrum stat card, never 0%.
+    const kpis = screen.getByRole('region', {name: 'Key numbers'});
+    expect(within(kpis).getByText('Unknown', {selector: '[data-slot=statistic] dd'})).toBeInTheDocument();
+  });
+
+  test('Spectrum funnel: a bar chart plus every step as its exact count in text', async () => {
+    renderApi(ApiHomeRoute, source());
+    expect(await screen.findByRole('figure', {name: 'Delivery funnel, one bar per step'})).toBeInTheDocument();
+    const items = within(screen.getByRole('list', {name: 'Delivery funnel counts'})).getAllByRole('listitem');
+    expect(items.map(item => item.textContent)).toEqual(['Exposed120', 'Expanded (lower bound: 6 unlinked loads)38', 'Loaded44', 'Context confirmed (4 unknown)40', 'Used episodes9']);
+  });
+
+  test('Spectrum feedback donut: n=0 is the no-assessment state with no chart and no verdict list', async () => {
+    const unrated: Usage = {...usage, totals: {...usage.totals, feedback: {helped: 0, hindered: 0, mixed: 0, not_applicable: 0, unknown: 0, n: 0}}};
+    renderApi(ApiHomeRoute, source({getUsage: async () => unrated}));
+    expect(await screen.findByText('No assessment yet')).toBeInTheDocument();
+    await screen.findByRole('figure', {name: 'Delivery funnel, one bar per step'});
+    expect(screen.queryByRole('figure', {name: /Feedback verdicts/})).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', {name: 'Feedback verdict counts'})).not.toBeInTheDocument();
+  });
+
+  test('Spectrum feedback donut: verdict counts are the API counts, a known zero included', async () => {
+    renderApi(ApiHomeRoute, source());
+    expect(await screen.findByRole('figure', {name: 'Feedback verdicts out of 23 assessments'})).toBeInTheDocument();
+    const items = within(screen.getByRole('list', {name: 'Feedback verdict counts'})).getAllByRole('listitem');
+    expect(items.map(item => item.textContent)).toEqual(['Helped18', 'Hindered4', 'Mixed1', 'Not applicable0', 'Unknown0']);
+  });
+
+  test('Spectrum layers donut: values match the map/layers counts', async () => {
+    renderApi(ApiHomeRoute, source());
+    expect(await screen.findByRole('figure', {name: 'Skills by knowledge layer out of 3'})).toBeInTheDocument();
+    const items = within(screen.getByRole('list', {name: 'Skills per knowledge layer'})).getAllByRole('listitem');
+    expect(items.map(item => item.textContent)).toEqual(['Task2', 'Unclassified1']);
+    expect(screen.getByText('3 skills in total')).toBeInTheDocument();
+  });
+
+  test('a layer read with no positive count draws no donut', async () => {
+    renderApi(ApiHomeRoute, source({getMapLayers: async () => ({layers: [{layer: 'task', count: 0}]})}));
+    expect(await screen.findByText(/No layer declared/)).toBeInTheDocument();
+    expect(screen.queryByRole('figure', {name: /knowledge layer/})).not.toBeInTheDocument();
+  });
+
+  test('Spectrum bars for the largest repositories and for proposals by state, with the link lists kept', async () => {
+    renderApi(ApiHomeRoute, source(), '', {repo: null});
+    expect(await screen.findByRole('figure', {name: 'Skills per repository, bars'})).toBeInTheDocument();
+    expect(await screen.findByRole('figure', {name: 'Proposals per state, bars'})).toBeInTheDocument();
+    expect(within(screen.getByRole('list', {name: 'Proposals by state'})).getAllByRole('listitem')[0]).toHaveTextContent('1');
+  });
+
+  test('no proposal at all draws no proposals chart, only the zero counts as text', async () => {
+    renderApi(ApiHomeRoute, source({listProposals: async () => ({items: [], next_cursor: null})}));
+    const list = await screen.findByRole('list', {name: 'Proposals by state'});
+    await screen.findByRole('figure', {name: 'Skills per scope, bars'});
+    expect(screen.queryByRole('figure', {name: 'Proposals per state, bars'})).not.toBeInTheDocument();
+    expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('0');
+  });
+
+  test('Recent activity says "You" for the reader\'s own pseudonym and keeps other actors as written', async () => {
+    const items = [
+      {at: '2026-09-12T09:00:00Z', actor: 'user:u1', action: 'import.create', entity: '80314462', revision: null, request_id: 'req-1'},
+      {at: '2026-09-12T08:00:00Z', actor: 'user:u2', action: 'proposal.approve', entity: 'p-1', revision: null, request_id: 'req-2'},
+      {at: '2026-09-12T07:00:00Z', actor: 'worker', action: 'drift.decide', entity: 'q-1', revision: null, request_id: 'req-3'},
+    ];
+    renderApi(ApiHomeRoute, source({getAudit: async () => ({items, next_cursor: null})}));
+    const region = await screen.findByRole('region', {name: 'Recent audit entries'});
+    const rows = within(region).getAllByRole('row').slice(1);
+    expect(within(rows[0]).getByText('You')).toHaveAttribute('title', 'user:u1');
+    expect(within(rows[1]).getByText('user:u2')).toBeInTheDocument();
+    expect(within(rows[1]).queryByText('You')).not.toBeInTheDocument();
+    expect(within(rows[2]).getByText('worker')).toBeInTheDocument();
+    expect(within(region).getAllByText('You')).toHaveLength(1);
   });
 
   test('the window comes from the address and both usage links keep it', async () => {

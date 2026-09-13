@@ -1,6 +1,7 @@
-/** Home (Overview): the first screen after sign-in (IA §3, 2026-09-12), rebuilt on the
- * shadcnspace dashboard blocks (owner instruction: "site looks way off" from
- * https://dashboard.shadcnspace.com/ — docs/reports/ui/console-shadcn-20260912.md §9).
+/** Home (Overview): the first screen after sign-in (IA §3, 2026-09-12), composed on shadcn cards
+ * (docs/reports/ui/console-shadcn-20260912.md §9). Since 2026-09-13 every number card and chart is a
+ * Spectrum UI Charts item (`StatCards`, `BarChart`, `DonutPieChart`; docs/ui/UI.md §7 and
+ * docs/reports/ui/overview-spectrum-20260913.md), each with its exact values beside it as text.
  *
  * One read per block, all in parallel, every number a count the API returned. One extra read
  * follows the imports list: the detail of the latest import, because the list carries no counts
@@ -17,11 +18,11 @@
  */
 import {lazy, Suspense, useMemo} from 'react';
 import {Link} from 'react-router-dom';
-import {BookOpenIcon, ListChecksIcon as LucideListChecksIcon, ThumbsUpIcon as LucideThumbsUpIcon} from 'lucide-react';
+import {BookOpenIcon, ThumbsUpIcon as LucideThumbsUpIcon} from 'lucide-react';
 import {ArrowRightIcon, BooksIcon, ChartBarIcon, ClockCounterClockwiseIcon, GitPullRequestIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, StarIcon, StackIcon, ThumbsUpIcon, UploadSimpleIcon, UserCircleIcon, WarningCircleIcon} from '@phosphor-icons/react';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {Progress} from '@/components/ui/progress';
+import {Badge} from '@/components/ui/badge';
 import {Table, TableBody, TableCell, TableHead, TableHeader as TableHeadRow, TableRow} from '@/components/ui/table';
 import {ActionButton, IconTile, Panel, RouteState, StateBadge} from '../Shared';
 import {ApiFailure, DegradedNotice, PartialNotice, formatNumber, readOnly, shortId, useAsync, type ApiProps} from './apiState';
@@ -30,14 +31,15 @@ import type {Facets, MapLayers} from '../api/decoders';
 import type {ReadScope} from '../data/source';
 import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topFacetValues, topSkills, yourDecisions, type ActionKind, type Delta, type NextAction, type YourDecisions} from '../domain/overview';
 import type {GateState, Recommendation} from '../domain/skillHealth';
-import {StatisticsMain, StatisticsSecondary, type MainMetric, type StatTrend} from '../components/ui/shadcn-space/blocks/statistics-01/statistics';
+import {StatCards, type StatCardData} from '../components/spectrumui/charts/stat-cards';
 import {SkillsTable, GateBadge, type SkillRow} from '../components/ui/shadcn-space/blocks/table-01/table';
-import type {DonutSegment} from '../components/ui/shadcn-space/blocks/chart-02/chart';
 import {EmptyStateBlock} from '../components/ui/shadcn-space/blocks/empty-state-01/empty-state';
+import {cn} from '@/lib/utils';
 import styles from './HomeRoute.module.css';
 
-const FunnelBarChart = lazy(() => import('../components/ui/shadcn-space/blocks/chart-01/chart').then(m => ({default: m.FunnelBarChart})));
-const DonutChart = lazy(() => import('../components/ui/shadcn-space/blocks/chart-02/chart').then(m => ({default: m.DonutChart})));
+// Recharts stays in its own chunk: the adapters around the Spectrum bar and donut items load lazily.
+const OverviewBarChart = lazy(() => import('./overviewCharts').then(m => ({default: m.OverviewBarChart})));
+const OverviewDonutChart = lazy(() => import('./overviewCharts').then(m => ({default: m.OverviewDonutChart})));
 
 const usageWindows = ['7d', '30d', '90d'] as const;
 const gateTone: Record<GateState, 'neutral' | 'system' | 'warning'> = {clear: 'system', attention: 'warning', low: 'neutral', partial: 'neutral', unknown: 'neutral'};
@@ -73,6 +75,17 @@ function actionHref(ctx: ApiProps['ctx'], kind: ActionKind): string {
 
 function ChartFallback() { return <div className={styles.chartFallback} aria-busy="true"><span className="sr-only">Loading chart</span></div>; }
 
+interface StatTrend { label: string; tone: 'system' | 'warning' | 'neutral' }
+const trendToneClass: Record<StatTrend['tone'], string> = {system: 'bg-chart-2/15 text-chart-2', warning: 'bg-chart-5/15 text-chart-5', neutral: 'bg-muted text-muted-foreground'};
+
+/** The Spectrum `StatCards` item computes its own relative delta from a series or a previous value;
+ * Overview never feeds it one, because helped share is a point difference and "new"/"no change"
+ * are words, not percents. The trend is this badge, beside the card and outside its `<dl>`. */
+function TrendBadge({trend}: {trend: StatTrend | null}) {
+  if (!trend) return <Badge variant="outline" className="font-normal text-muted-foreground">No previous window</Badge>;
+  return <Badge className={cn('font-normal', trendToneClass[trend.tone])}>{trend.label}</Badge>;
+}
+
 /** `domain/overview.delta`/`helpedShareDelta` stay UI-agnostic; this is the one place that turns
  * a verdict into the `Badge` tone the trend widget understands. `known: false` (no previous
  * window, or — for helped share — nothing comparable on either side) is the only case that
@@ -107,34 +120,51 @@ function Kpis({ctx, usage, skills, windowLabel}: ApiProps & {usage: Usage | null
   const loadsTrend = usage ? delta(usage.totals.loads_verified, usage.previous?.totals.loads_verified ?? null) : null;
   // Percentage points, never a relative percent of a percent (75% → 82% is "+7 pp", not "+9%").
   const helpedTrend = helpedShareDelta(usage);
-  const mainMetrics: [MainMetric, MainMetric] = [
-    {label: 'Published skills', value: library ? formatNumber(library.published) + (library.truncated ? '+' : '') : 'Unknown', caption: library ? formatNumber(library.draft) + ' draft · ' + formatNumber(library.needsReview) + ' needs review' : 'The catalogue could not be read.', trend: null},
-    {
-      label: 'Exposures, ' + windowLabel,
-      value: usage ? formatNumber(usage.totals.exposures) : 'Unknown',
-      caption: usage ? formatNumber(usage.totals.loads_verified) + ' verified loads' + (loadsTrend && loadsTrend.known ? ' (' + loadsTrend.label + ' from the equal-length window before)' : '') : 'No report for this window.',
-      trend: exposuresTrend ? toTrend(exposuresTrend) : null,
-    },
-  ];
   // The queue is a live count of open decisions, not a windowed total: the contract carries no
   // previous value for it, so its trend badge always reads "No previous window".
   const openTrend: StatTrend | null = null;
-  const links = [ctx.href('library', {status: 'published'}), ctx.href('usage', {window: windowLabel}), ctx.href('usage', {window: windowLabel}), ctx.href('usage', {}) + '#needs-review'];
-  const cardLabels = [mainMetrics[0].label, mainMetrics[1].label, 'Helped share', 'Needs review'];
+  // Every card gets `displayValue`, a string the API count was formatted into, so the Spectrum item
+  // neither tweens a number nor turns a missing read into 0; `Unknown` stays the word.
+  const cards: {card: StatCardData; trend: StatTrend | null; href: string}[] = [
+    {card: {label: 'Published skills', displayValue: library ? formatNumber(library.published) + (library.truncated ? '+' : '') : 'Unknown', caption: library ? formatNumber(library.draft) + ' draft · ' + formatNumber(library.needsReview) + ' needs review' : 'The catalogue could not be read.'}, trend: null, href: ctx.href('library', {status: 'published'})},
+    {
+      card: {
+        label: 'Exposures, ' + windowLabel,
+        displayValue: usage ? formatNumber(usage.totals.exposures) : 'Unknown',
+        caption: usage ? formatNumber(usage.totals.loads_verified) + ' verified loads' + (loadsTrend && loadsTrend.known ? ' (' + loadsTrend.label + ' from the equal-length window before)' : '') : 'No report for this window.',
+      },
+      trend: exposuresTrend ? toTrend(exposuresTrend) : null,
+      href: ctx.href('usage', {window: windowLabel}),
+    },
+    {card: {label: 'Helped share', displayValue: share ? share.label : 'Unknown', caption: share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'}, trend: toTrend(helpedTrend), href: ctx.href('usage', {window: windowLabel})},
+    {card: {label: 'Needs review', displayValue: open === null ? 'Unknown' : formatNumber(open), caption: open === null ? 'The queue could not be read.' : open === 0 ? 'No open owner decision' : (open === 1 ? 'Open owner decision' : 'Open owner decisions')}, trend: openTrend, href: ctx.href('usage', {}) + '#needs-review'},
+  ];
   return <section aria-label="Key numbers" className={styles.kpis}>
-    <div className={styles.kpiGrid}>
-      {/* ADR-0047: no repository chosen means every repository this reader may see, and the title says so. */}
-      <div className={styles.kpiMain}><StatisticsMain title={ctx.org ? (ctx.repo ? ctx.org + ' / ' + ctx.repo : ctx.org + ' · all repositories') : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></div>
-      <StatisticsSecondary title="Helped share" value={share ? share.label : 'Unknown'} caption={share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'} icon={LucideThumbsUpIcon} tone="system" trend={toTrend(helpedTrend)} />
-      <StatisticsSecondary title="Needs review" value={open === null ? 'Unknown' : formatNumber(open)} caption={open === null ? 'The queue could not be read.' : open === 0 ? 'No open owner decision' : (open === 1 ? 'Open owner decision' : 'Open owner decisions')} icon={LucideListChecksIcon} tone={open ? 'warning' : 'neutral'} trend={openTrend} />
-    </div>
-    <ul className={styles.kpiLinks} aria-label="Open the source of each number">{cardLabels.map((label, index) => <li key={label}><Link to={links[index]}>{label}<ArrowRightIcon aria-hidden="true" /></Link></li>)}</ul>
+    {/* ADR-0047: no repository chosen means every repository this reader may see, and the title says so. */}
+    <header className={styles.kpiHeader}>
+      <p className={styles.kpiTitle}>{ctx.org ? (ctx.repo ? ctx.org + ' / ' + ctx.repo : ctx.org + ' · all repositories') : 'This workspace'}</p>
+      <p className={styles.muted}>Published skills and delivery in the chosen window</p>
+    </header>
+    <ul className={styles.kpiGrid}>{cards.map(({card, trend}) => <li key={card.label} className={styles.kpiCard}>
+      <StatCards cards={[card]} columns={1} />
+      <p className={styles.kpiTrend}><span className="sr-only">{card.label + ' trend: '}</span><TrendBadge trend={trend} /></p>
+    </li>)}</ul>
+    <ul className={styles.kpiLinks} aria-label="Open the source of each number">{cards.map(({card, href}) => <li key={card.label}><Link to={href}>{card.label}<ArrowRightIcon aria-hidden="true" /></Link></li>)}</ul>
   </section>;
 }
 
 function Funnel({usage}: {usage: Usage}) {
   const steps = funnelSteps(usage);
-  return <Suspense fallback={<ChartFallback />}><FunnelBarChart title="Delivery funnel" eyebrow="Every step is its own count; a later step can exceed an earlier one when loads carry no search id" data={steps.map(step => ({category: step.label, value: step.value}))} /></Suspense>;
+  return <Card className="h-full rounded-xl border py-6 shadow-xs">
+    <CardHeader className="px-6">
+      <CardTitle className="text-lg font-medium">Delivery funnel</CardTitle>
+      <CardDescription>Every step is its own count; a later step can exceed an earlier one when loads carry no search id</CardDescription>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-4 px-6">
+      <Suspense fallback={<ChartFallback />}><OverviewBarChart horizontal label="Delivery funnel, one bar per step" bars={steps.map(step => ({key: step.key, label: step.label, value: step.value}))} /></Suspense>
+      <ul className={styles.values} aria-label="Delivery funnel counts">{steps.map(step => <li key={step.key}><span>{step.label}{step.note && <small>{' (' + step.note + ')'}</small>}</span><strong>{formatNumber(step.value)}</strong></li>)}</ul>
+    </CardContent>
+  </Card>;
 }
 
 function Feedback({usage}: {usage: Usage}) {
@@ -144,8 +174,16 @@ function Feedback({usage}: {usage: Usage}) {
   const valid = counted.length > 0 && counted.every(segment => Number.isFinite(segment.value) && segment.value >= 0) && counted.reduce((sum, segment) => sum + segment.value, 0) === total && total > 0;
   if (!feedback || total === 0) return <Card className="h-full rounded-xl border shadow-xs"><CardContent className="flex h-full items-center justify-center p-6"><EmptyStateBlock compact icon={<LucideThumbsUpIcon aria-hidden="true" />} title="No assessment yet" description="Nobody rated a revision in this window. Usefulness is Unknown, not zero." /></CardContent></Card>;
   if (!valid) return <Card className="h-full rounded-xl border p-6 shadow-xs"><p role="status" className={styles.muted}>The verdict counts do not match the assessment total. Showing the reported counts without a chart.</p></Card>;
-  const segments: DonutSegment[] = counted.filter(segment => segment.value > 0);
-  return <Suspense fallback={<ChartFallback />}><DonutChart title="Feedback" eyebrow={formatNumber(total) + ' assessments in this window'} centerLabel="Assessments" centerValue={formatNumber(total)} segments={segments} /></Suspense>;
+  return <Card className="h-full rounded-xl border py-6 shadow-xs">
+    <CardHeader className="px-6">
+      <CardTitle className="text-lg font-medium">Feedback</CardTitle>
+      <CardDescription>{formatNumber(total) + ' assessments in this window'}</CardDescription>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-4 px-6">
+      <Suspense fallback={<ChartFallback />}><OverviewDonutChart label={'Feedback verdicts out of ' + formatNumber(total) + ' assessments'} slices={counted.map(segment => ({key: segment.key, label: segment.label, value: segment.value, fill: segment.fill}))} /></Suspense>
+      <ul className={styles.values} aria-label="Feedback verdict counts">{counted.map(segment => <li key={segment.key}><span><span className={cn(styles.swatch, segment.swatchClass)} aria-hidden="true" />{segment.label}</span><strong>{formatNumber(segment.value)}</strong></li>)}</ul>
+    </CardContent>
+  </Card>;
 }
 
 function TopSkillsPanel({ctx, usage}: ApiProps & {usage: Usage}) {
@@ -208,15 +246,20 @@ function Library({ctx, skills, layers, largest, duplicates}: ApiProps & {skills:
       <div className={styles.twoUp}>
         <section aria-labelledby="home-layers" className={styles.subsection}>
           <h3 id="home-layers"><StackIcon aria-hidden="true" />Knowledge layers</h3>
-          {layerTotal > 0 ? <Suspense fallback={<ChartFallback />}><DonutChart title="" centerLabel="Skills" centerValue={formatNumber(layerTotal)} segments={layerRows.map(row => ({key: row.layer, label: layerLabels[row.layer] ?? row.layer, value: row.count, fill: layerFills[row.layer] ?? 'var(--chart-4)', swatchClass: layerSwatch[row.layer] ?? 'bg-chart-4'}))} /></Suspense>
+          {layerTotal > 0 ? <>
+            <Suspense fallback={<ChartFallback />}><OverviewDonutChart label={'Skills by knowledge layer out of ' + formatNumber(layerTotal)} slices={layerRows.map(row => ({key: row.layer, label: layerLabels[row.layer] ?? row.layer, value: row.count, fill: layerFills[row.layer] ?? 'var(--chart-4)'}))} /></Suspense>
+            <ul className={styles.values} aria-label="Skills per knowledge layer">{layerRows.map(row => <li key={row.layer}><span><span className={cn(styles.swatch, layerSwatch[row.layer] ?? 'bg-chart-4')} aria-hidden="true" />{layerLabels[row.layer] ?? row.layer}</span><strong>{formatNumber(row.count)}</strong></li>)}</ul>
+            <p className={styles.muted}>{formatNumber(layerTotal) + ' skills in total'}</p>
+          </>
           : <p className={styles.muted}>No layer declared. A layer is declared in the skill, never inferred from its folder.</p>}
         </section>
         <section aria-labelledby="home-scopes" className={styles.subsection}>
           <h3 id="home-scopes"><ChartBarIcon aria-hidden="true" />{byRepository ? 'Largest repositories' : 'Largest scopes'}</h3>
-          {largestRows.length ? <ol className={styles.bars} aria-label={byRepository ? 'Skills per repository, largest first' : 'Skills per scope, largest first'}>{largestRows.map(row => {
-            const width = Math.max(4, Math.round((row.count / largestRows[0].count) * 100));
-            return <li key={row.value}><Link to={largestHref(row.value)}><code>{row.value}</code><svg className={styles.bar} viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width={width} height="8" rx="2" /></svg><strong>{formatNumber(row.count)}</strong></Link></li>;
-          })}</ol> : <p className={styles.muted}>{byRepository ? 'No repository with a skill yet.' : 'No scope with a skill yet.'}</p>}
+          {/* The chart draws the bars; the list beside it carries the links and the exact counts. */}
+          {largestRows.length ? <>
+            <Suspense fallback={<ChartFallback />}><OverviewBarChart horizontal label={byRepository ? 'Skills per repository, bars' : 'Skills per scope, bars'} bars={largestRows.map(row => ({key: row.value, label: row.value, value: row.count}))} /></Suspense>
+            <ol className={styles.bars} aria-label={byRepository ? 'Skills per repository, largest first' : 'Skills per scope, largest first'}>{largestRows.map(row => <li key={row.value}><Link to={largestHref(row.value)}><code>{row.value}</code><strong>{formatNumber(row.count)}</strong></Link></li>)}</ol>
+          </> : <p className={styles.muted}>{byRepository ? 'No repository with a skill yet.' : 'No scope with a skill yet.'}</p>}
         </section>
       </div>
     </CardContent>
@@ -249,7 +292,10 @@ function Pipeline({ctx, imports, detail, detailFailed, proposals, installations,
         </section>
         <section aria-labelledby="home-proposals" className={styles.subsection}>
           <h3 id="home-proposals"><GitPullRequestIcon aria-hidden="true" />Proposals by state</h3>
-          {states ? <ul className={styles.states} aria-label="Proposals by state">{states.map(row => <li key={row.state}><Link to={ctx.href('proposals', {state: row.state})} className={styles.stateLink}><span className={styles.stateRow}><span>{row.label}</span><strong>{formatNumber(row.count)}</strong></span>{statesTotal > 0 && <Progress value={Math.round((row.count / statesTotal) * 100)} aria-label={row.label + ' share'} />}</Link></li>)}</ul> : <p className={styles.muted}>Proposals could not be read.</p>}
+          {states ? <>
+            {statesTotal > 0 && <Suspense fallback={<ChartFallback />}><OverviewBarChart horizontal label="Proposals per state, bars" color="var(--spectrum-chart-2)" bars={states.map(row => ({key: row.state, label: row.label, value: row.count}))} /></Suspense>}
+            <ul className={styles.states} aria-label="Proposals by state">{states.map(row => <li key={row.state}><Link to={ctx.href('proposals', {state: row.state})} className={styles.stateLink}><span className={styles.stateRow}><span>{row.label}</span><strong>{formatNumber(row.count)}</strong></span></Link></li>)}</ul>
+          </> : <p className={styles.muted}>Proposals could not be read.</p>}
         </section>
         <section aria-labelledby="home-adapters" className={styles.subsection}>
           <h3 id="home-adapters"><PlugsConnectedIcon aria-hidden="true" />Adapters</h3>
@@ -285,6 +331,16 @@ function YourDecisionsPanel({ctx, decisions}: ApiProps & {decisions: YourDecisio
   </Card>;
 }
 
+/** The server writes the audit actor as the principal's pseudonym, `user:<user_id>` for a person
+ * (`services/search/internal/mgmt/principal.go` `Principal.ID`). The reader's own rows say "You",
+ * with the pseudonym kept in `title`; every other actor, `worker` and `system` stay as written
+ * (contract §5.1: a pseudonym, never an e-mail). */
+function ActorCell({actor, meId}: {actor: string | null; meId: string | null}) {
+  if (!actor) return <>Unknown</>;
+  if (meId && actor === 'user:' + meId) return <span title={actor}>You</span>;
+  return <>{actor}</>;
+}
+
 function Activity({ctx, entries, owner}: ApiProps & {entries: AuditEntry[]; owner: boolean}) {
   return <Card className="rounded-xl border py-6 shadow-xs">
     <CardHeader className="px-6">
@@ -297,7 +353,7 @@ function Activity({ctx, entries, owner}: ApiProps & {entries: AuditEntry[]; owne
     </CardHeader>
     <CardContent className="px-0">
       {entries.length ? <div role="region" aria-label="Recent audit entries" className="overflow-x-auto"><Table><TableHeadRow><TableRow><TableHead className="ps-6">At</TableHead><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead className="pe-6">Entity</TableHead></TableRow></TableHeadRow>
-        <TableBody>{entries.slice(0, 8).map((entry, index) => <TableRow key={entry.request_id ?? entry.at + index}><TableCell className="ps-6">{entry.at}</TableCell><TableCell>{entry.actor ?? 'Unknown'}</TableCell><TableCell><code>{entry.action}</code></TableCell><TableCell className="pe-6">{entry.entity ? <code>{shortId(entry.entity)}</code> : 'Unknown'}</TableCell></TableRow>)}</TableBody>
+        <TableBody>{entries.slice(0, 8).map((entry, index) => <TableRow key={entry.request_id ?? entry.at + index}><TableCell className="ps-6">{entry.at}</TableCell><TableCell><ActorCell actor={entry.actor} meId={ctx.me?.user.id ?? null} /></TableCell><TableCell><code>{entry.action}</code></TableCell><TableCell className="pe-6">{entry.entity ? <code>{shortId(entry.entity)}</code> : 'Unknown'}</TableCell></TableRow>)}</TableBody>
       </Table></div> : <p className={styles.muted + ' px-6'}>No audit entries.</p>}
     </CardContent>
   </Card>;
