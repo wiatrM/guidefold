@@ -18,5 +18,15 @@
 /* Event log: a growing, scrollable list. One <code> per event line so seq stays a stable key
    and each line is exactly the server's own `payload.text` sentence, nothing assembled here. */
 .transcript { margin: var(--zero); max-height: var(--raw-max-height); overflow: auto; padding: var(--space-3); border: var(--border-width) solid var(--line); border-radius: var(--radius); background: var(--graphite-950); font-family: var(--font-mono); font-size: var(--font-size-small); line-height: var(--line-height-body); }
-.transcriptLine { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
-.transcriptLine + .transcriptLine { margin-top: var(--space-1); }
+.transcriptLine { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); }
+
+/* Effects layer (ADR-0049): the empty run history sits over a shader; the card itself stays opaque
+   graphite, so text contrast never depends on the shader frame. */
+.emptyField { position: relative; isolation: isolate; overflow: hidden; padding: var(--space-4); border-radius: var(--radius-panel); }
+.shaderBackdrop { position: absolute; inset: var(--zero); }
+.emptyContent { position: relative; z-index: 1; }
+/* The beam ring and the shine edge are drawn under the content layer; one border width of padding
+   moves them just outside the Panel's own opaque ring, where they can be seen. */
+.beam { padding: var(--border-width); border-radius: var(--flow-radius); }
+/* The success moment is its own row under the run's facts, separated like the facts themselves. */
+.successRow { display: flex; margin-top: var(--space-3); padding-top: var(--space-3); border-top: var(--border-width) solid var(--line); }

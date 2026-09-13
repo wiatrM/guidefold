@@ -23,7 +23,10 @@ export function ActionButton(props:ButtonProps){
  const className=cn(css.button,base,toneClass[tone],size==='sm'&&'min-h-(--touch-height) sm:min-h-8 px-2.5',size==='icon'&&'w-(--control-height) px-0',props.className);
  if(props.href){
   const {href,tone:_,size:__,disabled,children,className:___,...rest}=props as Extract<ButtonProps,{href:string}>;
-  const shared={...rest,className,'data-slot':'button','data-tone':tone,'aria-disabled':disabled||undefined,tabIndex:disabled?-1:rest.tabIndex,onClick:(e:React.MouseEvent<HTMLAnchorElement>)=>{if(disabled)e.preventDefault();else rest.onClick?.(e);}};
+  // A link does not go through shadcn `Button`, so it never received buttonVariants' layout
+  // classes: without them the anchor stayed `display:inline`, where min-height and vertical padding
+  // do nothing, and an ActionButton with `href` rendered as a thin highlighted link.
+  const shared={...rest,className:cn('inline-flex shrink-0 items-center justify-center border border-transparent',className),'data-slot':'button','data-tone':tone,'aria-disabled':disabled||undefined,tabIndex:disabled?-1:rest.tabIndex,onClick:(e:React.MouseEvent<HTMLAnchorElement>)=>{if(disabled)e.preventDefault();else rest.onClick?.(e);}};
   // A disabled link must not retain a target for middle-click or the context menu.
   if(disabled)return <a {...shared} role={rest.role||'link'}>{children}</a>;
   return /^https?:/.test(href)?<a {...shared} href={href} target={rest.target||'_blank'} rel="noopener noreferrer">{children}</a>:<Link {...shared} to={href}>{children}</Link>;

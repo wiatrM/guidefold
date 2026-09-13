@@ -1,5 +1,5 @@
 import {describe, expect, test, vi} from 'vitest';
-import {screen, within} from '@testing-library/react';
+import {screen, waitFor, within} from '@testing-library/react';
 import {ApiHomeRoute} from './HomeRoute';
 import {ApiError} from '../api/client';
 import type {ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
@@ -189,6 +189,10 @@ describe('Home route', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', {name: /Delivery funnel/})).not.toBeInTheDocument();
     expect(screen.getByText('No adapter events')).toBeInTheDocument();
+    // The page is `aria-busy` until every block's read has settled. Until the latest import's detail
+    // arrives, Pipeline's "Files" row honestly reads Unknown as well, so counting Unknowns before the
+    // page settles raced that read (a second, legitimate <dd>Unknown</dd>, not a duplicate render).
+    await waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull());
     expect(screen.getByText('Unknown', {selector: '[data-slot=statistic] dd, dd'})).toBeInTheDocument();
   });
 

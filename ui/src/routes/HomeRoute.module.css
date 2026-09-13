@@ -2,6 +2,16 @@
 .muted { margin: var(--zero); color: var(--stone-300); font-size: var(--font-size-small); }
 .inlineIcon { width: var(--icon-size-small); height: var(--icon-size-small); vertical-align: middle; margin-right: var(--space-1); }
 
+/* Effects layer (ADR-0049). The beam frame follows the card's own radius; empty states get a
+   drifting grid behind their text; the repository strip is decoration over data already shown. */
+.beam { height: var(--full); padding: var(--border-width); border-radius: var(--flow-radius); }
+.emptyField { position: relative; isolation: isolate; overflow: hidden; padding: var(--space-4); border: var(--border-width) solid var(--line); border-radius: var(--radius-panel); }
+.emptyContent { position: relative; z-index: 1; }
+.repoStrip { padding-block: var(--space-2); border-block: var(--border-width) solid var(--line); }
+.repoChip { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; color: var(--stone-300); font-size: var(--font-size-small); }
+.repoChip svg { color: var(--survey-teal); }
+.repoChip strong { color: var(--stone-100); font-variant-numeric: tabular-nums; }
+
 /* Window, coverage and the way to the full report, on one line. */
 .context { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-width: var(--zero); }
 .windows { display: inline-flex; gap: var(--space-1); padding: var(--space-1); border: var(--border-width) solid var(--line-strong); border-radius: var(--radius); background: var(--graphite-900); }
@@ -41,7 +51,7 @@
 .subsection h3 { display: flex; align-items: center; gap: var(--space-2); margin: var(--zero); font-size: var(--font-size-body); font-weight: var(--weight-semibold); }
 .subsection h3 svg { color: var(--survey-teal); }
 
-.chartFallback { min-height: var(--home-chart-small); border-radius: var(--radius); background: var(--graphite-850); }
+.chartFallback { min-height: var(--home-chart-small); padding: var(--space-3); border-radius: var(--radius); background: var(--graphite-900); }
 
 .recommendations { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--zero) var(--zero) var(--space-3); padding: var(--zero); list-style: none; }
 .recommendations li { display: inline-flex; align-items: center; gap: var(--space-2); }

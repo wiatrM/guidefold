@@ -7,6 +7,8 @@ import {ActionButton, DataTable, Field, IconTile, Panel, ProvenanceTrail, Pyrami
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
+import {Pagination, PaginationContent, PaginationItem} from '@/components/ui/pagination';
+import {GlowAction, GlowSurface, GridField} from '../components/effects';
 import {
   ApiFailure, DegradedNotice, PartialNotice, asApiError, cleared, downloadText,
   readOnly, stableKey, unknown, useAsync, type ApiProps,
@@ -140,6 +142,17 @@ function DuplicatesTable({ctx, groups}: ApiProps & {groups: DuplicateGroup[]}) {
 
 const DUPLICATE_PREVIEW = 5;
 
+/** shadcn `pagination` over a cursor API: the list is read by `next_cursor`, so there are no page
+ * numbers to show and none are invented. Only Previous and Next, as buttons, in the primitive's nav. */
+export function CursorPages({label, previous, next}: {label: string; previous?: ReactNode; next: ReactNode}) {
+  return <Pagination aria-label={label} className="mx-0 w-auto justify-start">
+    <PaginationContent className="m-0 list-none flex-wrap gap-3 p-0">
+      {previous && <PaginationItem>{previous}</PaginationItem>}
+      <PaginationItem>{next}</PaginationItem>
+    </PaginationContent>
+  </Pagination>;
+}
+
 export function ApiLibraryRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
   const target = readScope(ctx);
@@ -219,8 +232,8 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
         {groups.items.length ? <>
           <DuplicatesTable ctx={ctx} groups={groups.items} />
           <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <ActionButton onClick={pagePrevious} disabled={duplicateTrail.length === 0} size="sm">Previous page</ActionButton>
-            <ActionButton onClick={() => pageNext(groups.next_cursor as string)} disabled={!groups.next_cursor} size="sm">Next page</ActionButton>
+            <CursorPages label="Duplicated skill pages" previous={<ActionButton onClick={pagePrevious} disabled={duplicateTrail.length === 0} size="sm">Previous page</ActionButton>}
+              next={<ActionButton onClick={() => pageNext(groups.next_cursor as string)} disabled={!groups.next_cursor} size="sm">Next page</ActionButton>} />
           </div>
           <p className={styles.muted}>Names are compared exactly. Similar instructions under different names are not listed here.</p>
         </> : <RouteState state="empty" title="No duplicated skill names" description="No skill name appears in more than one repository you can read." />}
@@ -258,7 +271,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
             </Field>
             <MagnifyingGlassIcon aria-hidden="true" className="pointer-events-none absolute left-3 bottom-[calc((var(--control-height)-var(--icon-size))/2)] text-stone-300" />
           </div>
-          <ActionButton type="submit" tone="system">Apply filters</ActionButton>
+          <GlowAction tone="system" className={styles.glowFit}><ActionButton type="submit" tone="system">Apply filters</ActionButton></GlowAction>
         </div>
         {/* The four facets sit under the search in a quiet, foldable section. They start open:
             the stubbed e2e flow selects a scope before the first Apply, and a folded select is
@@ -281,7 +294,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
       action={<ActionButton href={ctx.href('library', {duplicates: '1', cursor: null})} size="sm" tone="system">{'Show all ' + duplicates.value.items.length + (duplicates.value.next_cursor ? '+' : '')}</ActionButton>}>
       <DuplicatesTable ctx={ctx} groups={duplicates.value.items.slice(0, DUPLICATE_PREVIEW)} />
     </Panel>}
-    <Panel title="Skill revisions" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}
+    <GlowSurface className={styles.glowFill}><Panel title="Skill revisions" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}
       action={<StateBadge tone={blocked.length ? 'warning' : 'neutral'}>{blocked.length ? 'Filter value unavailable' : result.items.length + ' on this page'}</StateBadge>}>
       {result.items.length ? <>
         <DataTable dense flush caption="Skill summaries matching the current filters" headings={['Skill', 'Scope', 'Owner from source', 'Source layer', 'Publication', 'Actions']}>
@@ -304,23 +317,23 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
           </Fragment>;})}
         </DataTable>
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
-          <ActionButton onClick={openPrevious} disabled={trail.length === 0} size="sm">Previous page</ActionButton>
-          <ActionButton onClick={() => openNext(result.next_cursor as string)} disabled={!result.next_cursor} size="sm">Next page</ActionButton>
+          <CursorPages label="Skill summary pages" previous={<ActionButton onClick={openPrevious} disabled={trail.length === 0} size="sm">Previous page</ActionButton>}
+            next={<ActionButton onClick={() => openNext(result.next_cursor as string)} disabled={!result.next_cursor} size="sm">Next page</ActionButton>} />
           <p className={styles.muted}>{cursor ? 'Reading a page after the first. The cursor stays in the address.' : 'First page.'}</p>
         </div>
         <div className="grid gap-1 pt-3">
           <p role="status" className={styles.muted}>{result.items.length} skill summaries on this page{result.next_cursor ? ', more pages follow' : ', last page'}. Bodies are read on the Skill view.</p>
           <p className={styles.muted}>Snapshot {result.snapshot_id ?? 'Unknown'}. Source status does not establish publication.</p>
         </div>
-      </> : <RouteState state="empty"
+      </> : <div className={styles.emptyField}><GridField /><div className={styles.emptyContent}><RouteState state="empty"
         title={blocked.length ? 'Filter value unavailable' : filtered ? 'No matching skills' : 'No skills yet'}
         description={blocked.length
           ? 'The requested value is kept in the address. Choose an available value or clear this filter.'
           : filtered
             ? 'No summary in this snapshot matches the current search and filters.'
             : 'Nothing has been imported into ' + (repo ? 'this repository' : 'this organization') + ' yet. Run the CLI from your checkout, then read the import result.'}
-        action={<ActionButton href={filtered || blocked.length ? clearHref : ctx.href('import', {step: 'preview'})} tone="system">{filtered || blocked.length ? 'Clear filters' : 'Open Import'}</ActionButton>} />}
-    </Panel>
+        action={<ActionButton href={filtered || blocked.length ? clearHref : ctx.href('import', {step: 'preview'})} tone="system">{filtered || blocked.length ? 'Clear filters' : 'Open Import'}</ActionButton>} /></div></div>}
+    </Panel></GlowSurface>
   </div>;
 }
 
@@ -480,11 +493,11 @@ export function ApiMapRoute({ctx}: ApiProps) {
     <Tabs label="Map axes" current={axis} items={axes.map(id => ({id, label: id === 'repository' ? 'Repository' : id === 'scopes' ? 'Scopes' : 'Pyramid', href: ctx.href('map', {tab: id, skill: selectedSkill, scope: selectedScope})}))} />
     <div className={styles.mapGrid}>
       <div className={styles.stack}>
-        {axis === 'repository' && <Panel title="Repository tree" eyebrow="Where each file lives" icon={<FolderSimpleIcon weight="duotone" aria-hidden="true" />}>
+        {axis === 'repository' && <GlowSurface className={styles.glowFill}><Panel title="Repository tree" eyebrow="Where each file lives" icon={<FolderSimpleIcon weight="duotone" aria-hidden="true" />}>
           <p className={muted + ' pb-3'}>{repo ? '' : 'The top level is one branch per repository you can read. '}Each directory is read when you open it, up to 100 objects per request. Directory depth does not assign a knowledge layer.</p>
           <RepositoryBranch ctx={ctx} path="" label="/" depth={0} />
-        </Panel>}
-        {axis === 'scopes' && <Panel title="Declared scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
+        </Panel></GlowSurface>}
+        {axis === 'scopes' && <GlowSurface className={styles.glowFill}><Panel title="Declared scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
           {scopes.phase === 'loading' && !scopes.value && <RouteState state="loading" title="Reading scopes" description="Waiting for the scope map of this repository." />}
           {scopes.phase === 'error' && scopes.error && !scopes.value && (isScopeAmbiguous(scopes.error) && selectedScope
             ? <ScopeAmbiguous ctx={ctx} scope={selectedScope} />
@@ -516,7 +529,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
               <p>{scopes.value.unmapped.reduce((total, item) => total + item.count, 0)} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.scope + ' (' + item.count + ')').join(', ')}. They stay readable and are not assigned to a parent.</p>
             </div>}
           </div>}
-        </Panel>}
+        </Panel></GlowSurface>}
         {axis === 'scopes' && selectedScope && <ModulePanel ctx={ctx} scope={selectedScope} />}
         {axis === 'pyramid' && <Panel title="Knowledge layer" eyebrow="How declared relations run, general to specific" icon={<StackIcon weight="duotone" aria-hidden="true" />}>
           <div className="grid gap-3">
@@ -557,7 +570,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
             ? <div className="grid gap-3">
               <code className="break-all">{selectedSkill}</code>
               <RelationList ctx={ctx} skillId={selectedSkill} />
-              <div><ActionButton tone="human" href={ctx.href('skill', {skill: selectedSkill, revision: null, tab: 'content', from: 'map', return_tab: axis})}>Open this skill</ActionButton></div>
+              <div><GlowAction><ActionButton tone="human" href={ctx.href('skill', {skill: selectedSkill, revision: null, tab: 'content', from: 'map', return_tab: axis})}>Open this skill</ActionButton></GlowAction></div>
             </div>
             : <RouteState compact state="empty" title="Nothing selected" description="Choose a skill in the tree, a scope or a relation to read its neighbourhood." />}
         </Panel>
@@ -629,7 +642,7 @@ function FeedbackPanel({ctx, skillId, revisionId, repoId, existing}: ApiProps & 
         <Field id="feedback-task" label="Task id" hint="Optional. Links this assessment to one episode in the usage report.">
           <Input id="feedback-task" name="task_id" value={taskId} onChange={event => setTaskId(event.target.value)} disabled={blocked || busy} maxLength={120} className={inputClass} />
         </Field>
-        <div className={styles.actions}><ActionButton type="submit" tone="human" disabled={blocked || busy}>{busy ? 'Recording assessment…' : 'Record assessment'}</ActionButton></div>
+        <div className={styles.actions}><GlowAction><ActionButton type="submit" tone="human" disabled={blocked || busy}>{busy ? 'Recording assessment…' : 'Record assessment'}</ActionButton></GlowAction></div>
         <p className={styles.feedbackStatus} role="status">{judgment ? 'Recorded as judgment ' + judgment + '. A correction refers to this identifier instead of adding a second vote.' : ''}</p>
       </form>
       <h3 className={styles.relationHeading}>Recorded assessments</h3>
