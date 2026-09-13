@@ -266,3 +266,249 @@ func TestGitHubSyncMarksReconciliationDone(t *testing.T) {
 		t.Fatal("a completed sync must record repositories_synced_at")
 	}
 }
+
+// --- the honesty gap: a reconciliation that does not succeed must also
+// leave a trace, or a link stuck failing reads forever as "still syncing"
+// (API-CONTRACT §4.7/§5.1) ------------------------------------------------
+
+// lastSyncFailure reads gfm.github_installation_links.last_sync_failed_at
+// and last_sync_failure_reason directly, the same way syncedAt above reads
+// repositories_synced_at.
+func lastSyncFailure(t *testing.T, h *pivottest.Harness, installationID int64) (*time.Time, *string) {
+	t.Helper()
+	var at *time.Time
+	var reason *string
+	if e := h.Pool.QueryRow(context.Background(),
+		`SELECT last_sync_failed_at, last_sync_failure_reason FROM gfm.github_installation_links WHERE installation_id=$1`,
+		installationID).Scan(&at, &reason); e != nil {
+		t.Fatal(e)
+	}
+	return at, reason
+}
+
+func jobState(t *testing.T, h *pivottest.Harness, jobID string) string {
+	t.Helper()
+	var state string
+	if e := h.Pool.QueryRow(context.Background(), `SELECT state FROM gfm.jobs WHERE job_id=$1::uuid`, jobID).Scan(&state); e != nil {
+		t.Fatal(e)
+	}
+	return state
+}
+
+// notFoundTokenServer answers the installation-token exchange with GitHub's
+// own 404 — ghapp.ErrInstallationNotFound (client.go), the installation was
+// deleted or the App was uninstalled after Guidefold's own mirror row was
+// written.
+func notFoundTokenServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/app/installations/1/access_tokens", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
+}
+
+// forbiddenRepositoriesServer answers the token exchange normally but
+// refuses GET /installation/repositories with a 403 —
+// ghapp.ErrPermissionRefused (pull_requests.go's getJSONPage), the
+// installation exists but the organisation has not (re)approved the
+// permission this call needs.
+func forbiddenRepositoriesServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/app/installations/1/access_tokens", tokenHandler)
+	mux.HandleFunc("/installation/repositories", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
+}
+
+// unavailableRepositoriesServer answers the token exchange normally but
+// GET /installation/repositories with a plain 500 every time — a transient
+// GitHub outage, not one of ghapp's two named sentinels, so
+// classifySyncFailure buckets it as reasonSyncProviderUnavailable.
+func unavailableRepositoriesServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/app/installations/1/access_tokens", tokenHandler)
+	mux.HandleFunc("/installation/repositories", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
+}
+
+func enqueueGitHubSyncJobWithLimits(t *testing.T, h *pivottest.Harness, orgID string, installationID int64, idempotencyKey string, maxAttempts int) *jobs.Job {
+	t.Helper()
+	ctx := context.Background()
+	tx, e := h.Pool.Begin(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback(ctx)
+	payload, _ := json.Marshal(map[string]any{
+		"schema_version": "github.sync_repositories-1", "org_id": orgID, "installation_id": installationID,
+	})
+	q := jobs.New(h.Pool)
+	job, e := q.Enqueue(ctx, tx, jobs.Job{OrgID: orgID, Kind: agentrun.KindGitHubSyncRepositories,
+		Payload: payload, IdempotencyKey: idempotencyKey, MaxAttempts: maxAttempts})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e := tx.Commit(ctx); e != nil {
+		t.Fatal(e)
+	}
+	return job
+}
+
+// An installation GitHub no longer recognises ends the job permanently on
+// the very first attempt, and the link records why: an owner watching this
+// link must see "failed", never an unending "still syncing".
+func TestGitHubSyncRecordsPermanentFailureInstallationNotFound(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	server := notFoundTokenServer(t)
+	gh, _ := newGHClient(t, server.URL)
+
+	job := enqueueGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, gh).Handlers())
+
+	if state := jobState(t, h, job.JobID); state != jobs.StateFailed {
+		t.Fatalf("job state = %q, want failed (permanent, no retry)", state)
+	}
+	at, reason := lastSyncFailure(t, h, 1)
+	if at == nil {
+		t.Fatal("a permanent failure must record last_sync_failed_at")
+	}
+	if reason == nil || *reason != "installation_not_found" {
+		t.Fatalf("last_sync_failure_reason = %v, want installation_not_found", reason)
+	}
+	if at := syncedAt(t, h, 1); at != nil {
+		t.Fatalf("a failed reconciliation must not claim repositories_synced_at: %v", at)
+	}
+}
+
+// GitHub's 403 on the repository list is the other named, permanent
+// sentinel: the fix is the organisation re-approving the App's
+// permissions, not this worker trying again.
+func TestGitHubSyncRecordsPermanentFailurePermissionRefused(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	server := forbiddenRepositoriesServer(t)
+	gh, _ := newGHClient(t, server.URL)
+
+	job := enqueueGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, gh).Handlers())
+
+	if state := jobState(t, h, job.JobID); state != jobs.StateFailed {
+		t.Fatalf("job state = %q, want failed (permanent, no retry)", state)
+	}
+	_, reason := lastSyncFailure(t, h, 1)
+	if reason == nil || *reason != "permission_refused" {
+		t.Fatalf("last_sync_failure_reason = %v, want permission_refused", reason)
+	}
+}
+
+// A transient failure on an attempt that still has retries left must not
+// be recorded yet — the job is still trying, and the link must keep
+// reading as "still syncing", not "failed", until it genuinely has nothing
+// left to try.
+func TestGitHubSyncTransientFailureWithRetriesLeftRecordsNothingYet(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	server := unavailableRepositoriesServer(t)
+	gh, _ := newGHClient(t, server.URL)
+
+	job := enqueueGitHubSyncJobWithLimits(t, h, org, 1, "test-github-sync-retry", 3)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, gh).Handlers())
+
+	if state := jobState(t, h, job.JobID); state != jobs.StateQueued {
+		t.Fatalf("job state = %q, want queued (retries remain)", state)
+	}
+	at, reason := lastSyncFailure(t, h, 1)
+	if at != nil || reason != nil {
+		t.Fatalf("a retryable attempt with attempts left must not record a failure yet: at=%v reason=%v", at, reason)
+	}
+}
+
+// Exhausted retries end the job the same way a permanent failure does: the
+// link records last_sync_failed_at/last_sync_failure_reason on the final
+// attempt, even though no individual error was ghapp.ErrInstallationNotFound
+// or ghapp.ErrPermissionRefused.
+func TestGitHubSyncExhaustedRetriesRecordFailure(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	server := unavailableRepositoriesServer(t)
+	gh, _ := newGHClient(t, server.URL)
+
+	job := enqueueGitHubSyncJobWithLimits(t, h, org, 1, "test-github-sync-exhausted", 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, gh).Handlers())
+
+	if state := jobState(t, h, job.JobID); state != jobs.StateFailed {
+		t.Fatalf("job state = %q, want failed (attempts exhausted)", state)
+	}
+	at, reason := lastSyncFailure(t, h, 1)
+	if at == nil {
+		t.Fatal("exhausted retries must record last_sync_failed_at")
+	}
+	if reason == nil || *reason != "provider_unavailable" {
+		t.Fatalf("last_sync_failure_reason = %v, want provider_unavailable", reason)
+	}
+}
+
+// A worker whose own half of the App is not configured (gh == nil) — a
+// different deployable from the API half that let an owner link the
+// installation in the first place — must not silently skip forever either:
+// worker.Skipped is just as terminal as worker.Permanent (never retried),
+// so this is the same honesty gap reached a different way.
+func TestGitHubSyncRecordsFailureWhenAppNotConfigured(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+
+	job := enqueueGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, nil).Handlers())
+
+	if state := jobState(t, h, job.JobID); state != jobs.StateSkipped {
+		t.Fatalf("job state = %q, want skipped (gh not configured, never retried)", state)
+	}
+	at, reason := lastSyncFailure(t, h, 1)
+	if at == nil {
+		t.Fatal("a skipped-for-not-configured run must still record last_sync_failed_at")
+	}
+	if reason == nil || *reason != "github_app_not_configured" {
+		t.Fatalf("last_sync_failure_reason = %v, want github_app_not_configured", reason)
+	}
+}
+
+// A later, successful reconciliation clears a previously recorded failure:
+// the outcome the console shows is always the last reconciliation's own
+// outcome, never a stale one a fixed run left behind.
+func TestGitHubSyncLaterSuccessClearsRecordedFailure(t *testing.T) {
+	h, _, org := newHarness(t)
+	registerInstallation(t, h, org, 1, "acme/one")
+	failingServer := notFoundTokenServer(t)
+	failingGH, _ := newGHClient(t, failingServer.URL)
+	enqueueGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, failingGH).Handlers())
+	if at, _ := lastSyncFailure(t, h, 1); at == nil {
+		t.Fatal("setup: expected a recorded failure before the successful retry")
+	}
+
+	workingServer := installationRepositoriesServer(t, []string{"acme/one"})
+	workingGH, _ := newGHClient(t, workingServer.URL)
+	enqueueSecondGitHubSyncJob(t, h, org, 1)
+	runOnce(t, h, agentrun.NewGitHubSyncWorker(h.Pool, workingGH).Handlers())
+
+	if at := syncedAt(t, h, 1); at == nil {
+		t.Fatal("the successful run must record repositories_synced_at")
+	}
+	at, reason := lastSyncFailure(t, h, 1)
+	if at != nil || reason != nil {
+		t.Fatalf("a later success must clear the earlier failure: at=%v reason=%v", at, reason)
+	}
+}

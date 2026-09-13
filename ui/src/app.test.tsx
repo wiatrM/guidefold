@@ -426,6 +426,7 @@ describe('shell composition', () => {
         installation_id: 501, account: 'meridian-data', repositories: [], repository_selection: 'all',
         suspended: false, created_at: '2026-09-13T00:00:00Z', updated_at: '2026-09-13T00:00:00Z',
         linked_at: '2026-09-13T00:00:00Z', registered_repositories: 0, synced: false,
+        sync_failed_at: null, sync_failure_reason: null,
       }],
     });
     render(<MemoryRouter initialEntries={['/organization?tab=integrations&org=o1&github=linked']}>
