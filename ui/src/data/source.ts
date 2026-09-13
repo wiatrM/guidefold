@@ -26,7 +26,7 @@ export interface SkillQuery {
   q?: string; scope?: string; owner?: string; layer?: string; status?: string;
   cursor?: string; limit?: number; snapshotId?: string;
 }
-export interface FacetQuery { field: 'scope' | 'owner' | 'layer' | 'status'; q?: string; cursor?: string }
+export interface FacetQuery { field: 'scope' | 'owner' | 'layer' | 'status' | 'repo'; q?: string; cursor?: string }
 export interface RelationQuery { skillId?: string; type?: string; cursor?: string; limit?: number }
 export interface ProposalQuery { state?: string; kind?: string; scope?: string; cursor?: string }
 /** Contract §4.6: `window, scope, skill_id, revision, harness` for the report, `format, window` for the export. */
@@ -35,6 +35,13 @@ export interface UsageQuery {
   format?: 'csv' | 'json';
 }
 export interface OrgRepo { org: string; repo: string }
+/**
+ * Where a read looks (contract §4.10, 1.9.0): one repository, or — with `repo: null` — every
+ * repository of the organisation the signed-in principal may read. The API decides the set; the
+ * console never fans out per repository. Mutations always take an `OrgRepo`: they act on one
+ * repository, named by the row they act on.
+ */
+export interface ReadScope { org: string; repo: string | null }
 
 export interface LoginRedirect {
   loginUrl: string;
@@ -118,11 +125,11 @@ export interface DataSource {
   listReviewers(target: OrgRepo): Promise<Reviewer[]>;
   assignReviewer(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;
   removeReviewer(target: OrgRepo, userId: string, idempotencyKey: string): Promise<void>;
-  listImports(target: OrgRepo, cursor?: string): Promise<ImportStatus[]>;
+  listImports(target: ReadScope, cursor?: string): Promise<ImportStatus[]>;
   createImport(target: OrgRepo, manifest: unknown, idempotencyKey: string): Promise<ImportCreated>;
   uploadImportBlob(target: OrgRepo, importId: string, sha256: string, bytes: Uint8Array): Promise<void>;
   finalizeImport(target: OrgRepo, importId: string, idempotencyKey: string): Promise<ImportStatus>;
-  getImport(target: OrgRepo, importId: string): Promise<ImportStatus>;
+  getImport(target: ReadScope, importId: string): Promise<ImportStatus>;
   cancelImport(target: OrgRepo, importId: string, idempotencyKey: string): Promise<void>;
   /** `GET {repo_base}/imports/{id}/plan`: estimate before any generation starts (contract §4.2). */
   getImportPlan(target: OrgRepo, importId: string, kinds: ProposalKind[]): Promise<ImportPlan>;
@@ -130,27 +137,27 @@ export interface DataSource {
   generateProposals(target: OrgRepo, importId: string, input: { kinds: ProposalKind[]; limits: Partial<ProposalLimits> }, idempotencyKey: string): Promise<ProposalGenerationResult>;
 
   // Knowledge ---------------------------------------------------------------
-  listSkills(target: OrgRepo, query: SkillQuery): Promise<SkillPage>;
-  getFacets(target: OrgRepo, query: FacetQuery): Promise<Facets>;
-  lookupFacet(target: OrgRepo, field: string, value: string): Promise<FacetLookup>;
-  getSkill(target: OrgRepo, skillId: string): Promise<SkillDetail>;
-  getRevision(target: OrgRepo, skillId: string, revisionId: string): Promise<Revision>;
-  getRevisionRaw(target: OrgRepo, skillId: string, revisionId: string): Promise<string>;
+  listSkills(target: ReadScope, query: SkillQuery): Promise<SkillPage>;
+  getFacets(target: ReadScope, query: FacetQuery): Promise<Facets>;
+  lookupFacet(target: ReadScope, field: string, value: string): Promise<FacetLookup>;
+  getSkill(target: ReadScope, skillId: string): Promise<SkillDetail>;
+  getRevision(target: ReadScope, skillId: string, revisionId: string): Promise<Revision>;
+  getRevisionRaw(target: ReadScope, skillId: string, revisionId: string): Promise<string>;
   sendFeedback(target: OrgRepo, skillId: string, revisionId: string, input: { verdict: string; reason?: string; task_id?: string }, idempotencyKey: string): Promise<Judgment>;
 
   // Map and modules ---------------------------------------------------------
-  getMapRepository(target: OrgRepo, path?: string, cursor?: string): Promise<MapRepository>;
-  getMapScopes(target: OrgRepo, scope?: string): Promise<MapScopes>;
-  getMapLayers(target: OrgRepo): Promise<MapLayers>;
-  getRelations(target: OrgRepo, query: RelationQuery): Promise<Relations>;
-  getModule(target: OrgRepo, scope: string): Promise<ModulePage>;
+  getMapRepository(target: ReadScope, path?: string, cursor?: string): Promise<MapRepository>;
+  getMapScopes(target: ReadScope, scope?: string): Promise<MapScopes>;
+  getMapLayers(target: ReadScope): Promise<MapLayers>;
+  getRelations(target: ReadScope, query: RelationQuery): Promise<Relations>;
+  getModule(target: ReadScope, scope: string): Promise<ModulePage>;
 
   // Proposals and review ----------------------------------------------------
-  listProposals(target: OrgRepo, query: ProposalQuery): Promise<ProposalList>;
-  getProposal(target: OrgRepo, proposalId: string): Promise<ProposalDetail>;
+  listProposals(target: ReadScope, query: ProposalQuery): Promise<ProposalList>;
+  getProposal(target: ReadScope, proposalId: string): Promise<ProposalDetail>;
   decideProposal(target: OrgRepo, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult>;
   exportProposal(target: OrgRepo, proposalId: string, idempotencyKey: string): Promise<ExportPayload>;
-  getProposalPublication(target: OrgRepo, proposalId: string): Promise<Publication>;
+  getProposalPublication(target: ReadScope, proposalId: string): Promise<Publication>;
 
   // Publication -------------------------------------------------------------
   listSnapshots(target: OrgRepo, cursor?: string): Promise<Snapshot[]>;
@@ -159,7 +166,7 @@ export interface DataSource {
   publish(target: OrgRepo, importId: string, idempotencyKey: string): Promise<{ job_id: string }>;
 
   // Usage and quality -------------------------------------------------------
-  getUsage(target: OrgRepo, query: UsageQuery): Promise<Usage>;
-  exportUsage(target: OrgRepo, query: UsageQuery): Promise<string>;
+  getUsage(target: ReadScope, query: UsageQuery): Promise<Usage>;
+  exportUsage(target: ReadScope, query: UsageQuery): Promise<string>;
   decideQueueItem(target: OrgRepo, itemId: string, input: { action: 'reviewed' | 'fixed_in_git' | 'no_change'; reason: string }, idempotencyKey: string): Promise<void>;
 }

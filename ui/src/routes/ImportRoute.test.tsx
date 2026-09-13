@@ -17,7 +17,7 @@ const me = {
 };
 
 const status = (over: Partial<ImportStatus> = {}): ImportStatus => ({
-  import_id: 'im-1', state: 'ready', manifest_digest: 'digest-1', commit: 'c0ffee', complete: true,
+  import_id: 'im-1', repo_id: 'monorepo', state: 'ready', manifest_digest: 'digest-1', commit: 'c0ffee', complete: true,
   counts: { files: 3, accepted: 2, omitted: 1, failed: 0, new_blobs: 1, reused_blobs: 2, skills: 2, documents: 0 },
   files: [
     { path: 'a/SKILL.md', sha256: 's1', size: 10, kind: 'skill', status: 'accepted', reason: null, skill_id: 'urn:a' },

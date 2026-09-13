@@ -102,6 +102,7 @@ Aktualne 15 eksportów [ui/src/Shared.tsx](../../ui/src/Shared.tsx). Każdy wydz
 | SkillContent | Skill i porównanie propozycji | Semantyczny Markdown bez raw HTML; surowy plik jest osobnym odczytem. |
 | Field | Filtry, feedback i decyzje | Jawna etykieta, hint/error oraz aria-describedby; poprawność kontrolki sprawdza kontrakt a11y. |
 | IconTile | Nagłówek każdej trasy, kroki Import, stany RouteState, puste stany | Jeden duży glif (Phosphor duotone) na siatce grafitowej; size sm/md/lg/xl, tone system/human/neutral; dekoracyjny (aria-hidden), chyba że `label` czyni go jedynym nośnikiem nazwy. Dodany 2026-09-12 na polecenie właściciela (duże ikony, czytelność quickstartu). |
+| RepositoryFilter | Rail powłoki, pod nazwą organizacji | Etykieta „Repository” i natywny `<select>` w klasach kontrolek Library (bez Base UI); „All repositories” + `repo_id` każdego dostępnego repozytorium; zmiana zapisuje `?repo=` i kasuje kursor strony. Dodany 2026-09-13 (ADR-0047: organizacja jest domyślnym zakresem odczytu). |
 
 Formularz decyzji, lifecycle, eksport, filtry, auth i wybór źródła zostają w routes/data. Nie tworzymy GateList, StageTrace, PromotionRoute ani CommandPalette bez zadania U4.
 Każdy komponent ma index.tsx, CSS Module, test i story. Drugi wariant wymaga pisemnego powodu; siedemnasty komponent wymaga ograniczenia zakresu lub jawnej zmiany decyzji.

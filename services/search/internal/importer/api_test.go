@@ -442,3 +442,197 @@ func TestRegisteringARepositoryTwiceIsSuccess(t *testing.T) {
 		t.Fatalf("second: %d %v", status, second)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// §4.10 organisation scope
+// ---------------------------------------------------------------------------
+
+// rawGet answers one GET's status and exact bytes, for "identical answer"
+// comparisons between the `{org_base}?repo=` route and the `{repo_base}` one.
+func rawGet(t *testing.T, c *pivottest.Client, path string) (int, string) {
+	t.Helper()
+	status, raw, _ := c.Raw(t, pivottest.Call{Method: http.MethodGet, Path: path})
+	return status, string(raw)
+}
+
+// twoRepos pushes one import into the fixture's repository and one into a
+// second repository of the same organisation, and returns both import ids.
+func twoRepos(t *testing.T, f *fixture) (meridian, second string) {
+	t.Helper()
+	f.owner.CreateRepo(t, f.org, "second", "")
+	meridian = pivottest.Push(t, f.owner, f.org, f.repo, f.tree, f.manifest(t, true), "org-meridian")
+	tree := pivottest.Monorepo(t)
+	second = pivottest.Push(t, f.owner, f.org, "second", tree,
+		pivottest.Manifest(t, tree, "acme", "second", true), "org-second")
+	return meridian, second
+}
+
+// importsByRepo groups an import page's items by `repo_id`, failing on a row
+// that lacks one: the field is required on every row (§4.10.3).
+func importsByRepo(t *testing.T, page map[string]any) map[string][]string {
+	t.Helper()
+	out := map[string][]string{}
+	items, _ := page["items"].([]any)
+	for _, raw := range items {
+		item, _ := raw.(map[string]any)
+		repoID, _ := item["repo_id"].(string)
+		if repoID == "" {
+			t.Fatalf("import row without repo_id: %v", item)
+		}
+		out[repoID] = append(out[repoID], item["import_id"].(string))
+	}
+	return out
+}
+
+// §4.10.1–3: for the owner, `GET {org_base}/imports` is the union of both
+// repositories' imports, every row names its repository, the envelope's
+// repo_id is null, and `?repo=` gives byte-for-byte the `{repo_base}` answer.
+func TestOrganisationScopeListsImportsOfEveryRepository(t *testing.T) {
+	f := newFixture(t)
+	meridian, second := twoRepos(t, f)
+	orgBase := "/api/v1/orgs/" + f.org
+
+	status, page, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports"})
+	if status != http.StatusOK {
+		t.Fatalf("org imports: %d %v", status, page)
+	}
+	if page["repo_id"] != nil {
+		t.Fatalf("an organisation-wide page must carry repo_id: null, got %v", page["repo_id"])
+	}
+	if page["org_id"] != f.org {
+		t.Fatalf("org_id %v", page["org_id"])
+	}
+	byRepo := importsByRepo(t, page)
+	if len(byRepo) != 2 || byRepo["meridian"][0] != meridian || byRepo["second"][0] != second {
+		t.Fatalf("the organisation page is not the union of both repositories: %v", byRepo)
+	}
+
+	// The repository route names its repository on the envelope and the rows.
+	status, repoPage, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: f.base + "/imports"})
+	if status != http.StatusOK || repoPage["repo_id"] != "meridian" {
+		t.Fatalf("repo imports: %d %v", status, repoPage)
+	}
+	if got := importsByRepo(t, repoPage); len(got) != 1 || got["meridian"][0] != meridian {
+		t.Fatalf("the meridian page carried the wrong rows: %v", got)
+	}
+
+	for _, q := range []string{"", "&limit=1"} {
+		a, orgRaw := rawGet(t, f.owner, orgBase+"/imports?repo=meridian"+q)
+		b, repoRaw := rawGet(t, f.owner, f.base+"/imports?"+strings.TrimPrefix(q, "&"))
+		if a != http.StatusOK || b != http.StatusOK || orgRaw != repoRaw {
+			t.Fatalf("?repo=meridian%s differs from the repository route:\n%d %s\n%d %s",
+				q, a, orgRaw, b, repoRaw)
+		}
+	}
+	a, orgRaw := rawGet(t, f.owner, orgBase+"/imports?repo=second")
+	b, repoRaw := rawGet(t, f.owner, pivottest.RepoBase(f.org, "second")+"/imports")
+	if a != http.StatusOK || b != http.StatusOK || orgRaw != repoRaw {
+		t.Fatalf("?repo=second differs from the repository route:\n%s\n%s", orgRaw, repoRaw)
+	}
+	status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase + "/imports?cursor=nonsense"})
+	if status != http.StatusBadRequest || body["error"] != "invalid_cursor" {
+		t.Fatalf("invalid cursor at org level: %d %v", status, body)
+	}
+}
+
+// §4.10: one import answers the same ImportStatus on both routes, naming its
+// own repository; a member who cannot read that repository gets the same 404
+// as for an import that does not exist.
+func TestOrganisationScopeImportStatusNamesItsRepository(t *testing.T) {
+	f := newFixture(t)
+	meridian, second := twoRepos(t, f)
+	orgBase := "/api/v1/orgs/" + f.org
+
+	for _, x := range []struct{ repo, id string }{{"meridian", meridian}, {"second", second}} {
+		a, orgRaw := rawGet(t, f.owner, orgBase+"/imports/"+x.id)
+		b, repoRaw := rawGet(t, f.owner, pivottest.RepoBase(f.org, x.repo)+"/imports/"+x.id)
+		if a != http.StatusOK || b != http.StatusOK || orgRaw != repoRaw {
+			t.Fatalf("import %s differs between routes:\n%d %s\n%d %s", x.repo, a, orgRaw, b, repoRaw)
+		}
+		c, narrowed := rawGet(t, f.owner, orgBase+"/imports/"+x.id+"?repo="+x.repo)
+		if c != http.StatusOK || narrowed != repoRaw {
+			t.Fatalf("import %s ?repo= differs from the repository route:\n%s\n%s", x.repo, narrowed, repoRaw)
+		}
+		status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports/" + x.id})
+		if status != http.StatusOK || body["repo_id"] != x.repo {
+			t.Fatalf("import %s at org level names %v", x.repo, body["repo_id"])
+		}
+	}
+	// Narrowed to the other repository, the import is not there.
+	status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase + "/imports/" + meridian + "?repo=second"})
+	if status != http.StatusNotFound || body["error"] != "import_not_found" {
+		t.Fatalf("meridian import ?repo=second: %d %v", status, body)
+	}
+	status, body, _ = f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: orgBase + "/imports/not-a-uuid"})
+	if status != http.StatusNotFound || body["error"] != "import_not_found" {
+		t.Fatalf("malformed import id: %d %v", status, body)
+	}
+
+	// A member locked out of `second` (the owner grants themself read access,
+	// which turns the repository's ACL on without listing the member).
+	member := f.h.SignIn(t, "second", "second@example.test")
+	inviteInto(t, f, member, "member")
+	status, granted, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(f.org, "second") + "/access/" + f.owner.User["id"].(string),
+		Body: map[string]any{"access": "read"}, Key: "acl-second"})
+	if status != http.StatusOK {
+		t.Fatalf("restrict second: %d %v", status, granted)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports/" + second})
+	if status != http.StatusNotFound || body["error"] != "import_not_found" {
+		t.Fatalf("an import outside the member's scope must be not found: %d %v", status, body)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports/" + meridian})
+	if status != http.StatusOK || body["repo_id"] != "meridian" {
+		t.Fatalf("the member lost the readable import: %d %v", status, body)
+	}
+}
+
+// §4.10.1–2: a member's organisation view holds only the repositories the
+// member may read; `?repo=` on a restricted one is forbidden, on an unknown
+// one not found.
+func TestOrganisationScopeAppliesTheMembersRepositoryACL(t *testing.T) {
+	f := newFixture(t)
+	meridian, _ := twoRepos(t, f)
+	orgBase := "/api/v1/orgs/" + f.org
+	member := f.h.SignIn(t, "second", "second@example.test")
+	inviteInto(t, f, member, "member")
+	status, granted, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(f.org, "second") + "/access/" + f.owner.User["id"].(string),
+		Body: map[string]any{"access": "read"}, Key: "acl-second"})
+	if status != http.StatusOK {
+		t.Fatalf("restrict second: %d %v", status, granted)
+	}
+
+	status, page, _ := member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports"})
+	if status != http.StatusOK {
+		t.Fatalf("member org imports: %d %v", status, page)
+	}
+	byRepo := importsByRepo(t, page)
+	if len(byRepo) != 1 || len(byRepo["meridian"]) != 1 || byRepo["meridian"][0] != meridian {
+		t.Fatalf("the member's organisation view is not exactly the readable repository: %v", byRepo)
+	}
+	if page["repo_id"] != nil {
+		t.Fatalf("an organisation-wide page carries repo_id: null, got %v", page["repo_id"])
+	}
+	status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports?repo=second"})
+	if status != http.StatusForbidden || body["error"] != "forbidden" {
+		t.Fatalf("?repo=second for a locked-out member: %d %v", status, body)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports?repo=nope"})
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("?repo=nope: %d %v", status, body)
+	}
+	status, body, _ = member.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports?repo=not%20valid"})
+	if status != http.StatusBadRequest || body["error"] != "invalid_repo_id" {
+		t.Fatalf("?repo=<invalid>: %d %v", status, body)
+	}
+	// The owner still sees both: the ACL restricts members, not owners.
+	status, page, _ = f.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: orgBase + "/imports"})
+	if status != http.StatusOK || len(importsByRepo(t, page)) != 2 {
+		t.Fatalf("the owner lost the restricted repository: %d %v", status, page)
+	}
+}

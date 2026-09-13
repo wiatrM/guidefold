@@ -22,7 +22,7 @@ Budżet 15 minut aktywnego review jest [założeniem], nie wynikiem badania. Oba
 | Dowód przed wnioskiem | Przy instrukcji dostępne są źródło, commit i SHA-256 treści. Liczba bez źródła lub mianownika nie staje się metryką jakości. |
 | Decyzja z konsekwencją | Approve for export, Edit candidate i Reject mają porównywalną dostępność. Decyzja wymaga powodu; odrzucenie nie jest błędem systemu. |
 | Git pozostaje kanoniczny | UI przygotowuje treść i decyzję. Eksport prowadzi do Awaiting Git; Published wymaga właściwego review/merge, walidacji i sync. |
-| Zachowanie kontekstu | Powrót ze Skill odtwarza filtry Library lub oś Map. Link do obserwacji niesie skill, scope i revision. URL nie nadaje uprawnień. |
+| Zachowanie kontekstu | Powrót ze Skill odtwarza filtry Library lub oś Map. Link do obserwacji niesie skill, scope i revision. URL nie nadaje uprawnień. Od 2026-09-13 (ADR-0047) domyślnym zakresem jest cała organizacja; repozytorium to filtr w railu zapisany w `?repo=`, wspólny dla Overview, Library, Map, Skill, Proposals i Usage; zmiana filtra kasuje kursor strony, zachowuje resztę adresu. |
 | Rozdzielenie znaczeń | Repository, Scopes i Pyramid odpowiadają na inne pytania. Source layer/status nie określa Knowledge layer ani stanu publikacji. |
 | Jawne ograniczenie | Partial opisuje brakujące źródła; degraded dostępny odczyt i zablokowane operacje; restricted usuwa dane organizacji z widoku i cache. |
 

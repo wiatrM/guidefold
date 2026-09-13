@@ -11,13 +11,14 @@ import type {NavGroup} from './components/ui/shadcn-space/blocks/dashboard-shell
 import {Breadcrumb,BreadcrumbList,BreadcrumbItem,BreadcrumbPage,BreadcrumbSeparator} from '@/components/ui/breadcrumb';
 import {useAccess,useAccessController} from './api/access';
 import {loginHref,safeReturn} from './routes/loginTarget';
+import {useAsync} from './routes/apiState';
+import {RepositoryFilter} from './components/RepositoryFilter';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiHomeRoute=lazy(()=>import('./routes/HomeRoute').then(m=>({default:m.ApiHomeRoute})));
 const ApiImportRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiImportRoute})));
 const ApiInvitationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiInvitationRoute})));
 const ApiOrganizationRoute=lazy(()=>import('./routes/OnboardingRoutes').then(m=>({default:m.ApiOrganizationRoute})));
-const DemoRoute=lazy(()=>import('./routes/DemoRoute').then(m=>({default:m.DemoRoute})));
 const ApiLibraryRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiLibraryRoute})));
 const ApiMapRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiMapRoute})));
 const ApiSkillRoute=lazy(()=>import('./routes/CatalogRoutes').then(m=>({default:m.ApiSkillRoute})));
@@ -122,6 +123,13 @@ function ApiApp({source}:{source:DataSource}){
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
  const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // ADR-0047: the organisation is the default read scope. The repository list feeds the one
+ // selector in the rail; the chosen repository lives in `?repo=` and every view reads it from
+ // there. Not read while access is unconfirmed: the rail must not reveal repository names then.
+ const repos=useAsync(()=>source.listRepos(membership?.org_id??''),'repos:'+(membership?.org_id??''),Boolean(membership)&&access.status==='confirmed'&&!foreign);
+ // Changing the scope drops any page cursor, since a cursor belongs to one listing; the rest of
+ // the address (filters, tab, open skill) stays, so a reader narrows without losing their place.
+ const chooseRepo=(next:string|null)=>navigate(href(view,{repo:next,cursor:null}));
  // An invitation link must render for a visitor who has no session yet, so it is checked before
  // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
  if(invitationToken)return <Shell view="import" href={href}
@@ -173,7 +181,7 @@ function ApiApp({source}:{source:DataSource}){
   try{if(id)await source.logout('logout:'+id);}catch{/* The local session is dropped either way. */}
  };
  return <Shell view={view} href={href}
-  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong><small>{masked?'Sign in or check access':repo??'No repository selected'}</small></div>}
+  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong>{masked?<small>Sign in or check access</small>:<RepositoryFilter repos={repos.value??null} value={repo} onChange={chooseRepo}/>}</div>}
   workspace={masked?'Workspace unavailable':membership?.name??'No organization'} repo={repo} masked={masked}
   account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">
@@ -212,9 +220,5 @@ export default function App({source}:{source:DataSource}){
  const path=location.pathname.replace(/^\//,'').replace(/\/$/,'');
  if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
  if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
- // Its own top-level branch, not a check inside ApiApp: ApiApp calls useAccess/useAccessController
- // and other hooks unconditionally, and an early return above those would change the Hook order
- // between /demo and every other address for what React treats as the same component instance.
- if(path==='demo')return <><Suspense fallback={<RouteState state="loading" title="Loading demo" description="Preparing the isolated sample repository."/>}><DemoRoute/></Suspense>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }

@@ -19,7 +19,7 @@ import type {
   OrgCredential, OrgCredentialProvider, LiveRun, LiveRunDetail, LiveRunEventPage, LiveRunPage,
 } from '../api/decoders';
 import type { Session } from '../domain';
-import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, RelationQuery, SkillQuery, UsageQuery } from './source';
+import type { DataSource, DraftStore, FacetQuery, LoginRedirect, OrgRepo, ProposalQuery, ReadScope, RelationQuery, SkillQuery, UsageQuery } from './source';
 
 /** Drafts live in RAM only and are dropped with the access generation. */
 export function createMemoryDraftStore(): DraftStore {
@@ -54,7 +54,12 @@ const namespaceKey = (value: Namespace): string =>
   [value.user, value.org, value.repo, value.policy].map(part => part ?? '-').join('/');
 
 const target = (t: OrgRepo) => '/orgs/' + encodeURIComponent(t.org) + '/repos/' + encodeURIComponent(t.repo);
-const skillPath = (t: OrgRepo, skillId: string) => target(t) + '/skills/' + encodeURIComponent(skillId);
+/** Contract §4.10: a read with a repository goes to `{repo_base}`, one without to `{org_base}`,
+ *  whose answer covers every repository the principal may read. Same shape either way. */
+const readBase = (t: ReadScope) => t.repo ? target({ org: t.org, repo: t.repo }) : '/orgs/' + encodeURIComponent(t.org);
+/** Resource keys carry the scope so an organisation-wide answer never supersedes a repository one. */
+const scopeKey = (t: ReadScope) => t.org + '/' + (t.repo ?? '*');
+const skillPath = (t: ReadScope, skillId: string) => readBase(t) + '/skills/' + encodeURIComponent(skillId);
 
 export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiDataSource {
   const client = options.client ?? new ApiClient();
@@ -280,8 +285,8 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     async removeReviewer(t: OrgRepo, userId: string, idempotencyKey: string): Promise<void> {
       await write({ path: target(t) + '/reviewers/' + encodeURIComponent(userId), method: 'DELETE', decode: d.ok, resource: 'repo-reviewers/' + t.org + '/' + t.repo + '/' + userId, idempotencyKey });
     },
-    listImports(t: OrgRepo, cursor?: string): Promise<ImportStatus[]> {
-      return read({ path: target(t) + '/imports', query: { cursor }, decode: d.importStatusList, resource: 'imports/' + t.org + '/' + t.repo });
+    listImports(t: ReadScope, cursor?: string): Promise<ImportStatus[]> {
+      return read({ path: readBase(t) + '/imports', query: { cursor }, decode: d.importStatusList, resource: 'imports/' + scopeKey(t) });
     },
     async createImport(t: OrgRepo, manifest: unknown, idempotencyKey: string): Promise<ImportCreated> {
       return await write({
@@ -296,8 +301,8 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     finalizeImport(t: OrgRepo, importId: string, idempotencyKey: string): Promise<ImportStatus> {
       return write({ path: target(t) + '/imports/' + encodeURIComponent(importId) + '/finalize', method: 'POST', body: {}, decode: d.importStatus, resource: 'finalize-import/' + t.org + '/' + t.repo + '/' + importId, idempotencyKey });
     },
-    getImport(t: OrgRepo, importId: string): Promise<ImportStatus> {
-      return read({ path: target(t) + '/imports/' + encodeURIComponent(importId), decode: d.importStatus, resource: 'import/' + t.org + '/' + t.repo + '/' + importId });
+    getImport(t: ReadScope, importId: string): Promise<ImportStatus> {
+      return read({ path: readBase(t) + '/imports/' + encodeURIComponent(importId), decode: d.importStatus, resource: 'import/' + scopeKey(t) + '/' + importId });
     },
     async cancelImport(t: OrgRepo, importId: string, idempotencyKey: string): Promise<void> {
       await write({ path: target(t) + '/imports/' + encodeURIComponent(importId) + '/cancel', method: 'POST', body: { idempotency_key: idempotencyKey }, decode: d.nothing, resource: 'import/' + t.org + '/' + t.repo + '/' + importId, idempotencyKey });
@@ -319,24 +324,24 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
 
     // Knowledge -------------------------------------------------------------
-    listSkills(t: OrgRepo, query: SkillQuery): Promise<SkillPage> {
+    listSkills(t: ReadScope, query: SkillQuery): Promise<SkillPage> {
       const filters = { q: query.q, scope: query.scope, owner: query.owner, layer: query.layer, status: query.status, limit: query.limit };
-      return read({ path: target(t) + '/skills', query: { ...filters, cursor: query.cursor, snapshot_id: query.snapshotId }, decode: d.skillPage, resource: 'skills/' + t.org + '/' + t.repo });
+      return read({ path: readBase(t) + '/skills', query: { ...filters, cursor: query.cursor, snapshot_id: query.snapshotId }, decode: d.skillPage, resource: 'skills/' + scopeKey(t) });
     },
-    getFacets(t: OrgRepo, query: FacetQuery): Promise<Facets> {
-      return read({ path: target(t) + '/skills/facets', query: { field: query.field, q: query.q, cursor: query.cursor }, decode: d.facets, resource: 'facets/' + t.org + '/' + t.repo + '/' + query.field });
+    getFacets(t: ReadScope, query: FacetQuery): Promise<Facets> {
+      return read({ path: readBase(t) + '/skills/facets', query: { field: query.field, q: query.q, cursor: query.cursor }, decode: d.facets, resource: 'facets/' + scopeKey(t) + '/' + query.field });
     },
-    lookupFacet(t: OrgRepo, field: string, value: string): Promise<FacetLookup> {
-      return read({ path: target(t) + '/skills/facets/lookup', query: { field, value }, decode: d.facetLookup, resource: 'facet-lookup/' + t.org + '/' + t.repo + '/' + field });
+    lookupFacet(t: ReadScope, field: string, value: string): Promise<FacetLookup> {
+      return read({ path: readBase(t) + '/skills/facets/lookup', query: { field, value }, decode: d.facetLookup, resource: 'facet-lookup/' + scopeKey(t) + '/' + field });
     },
-    getSkill(t: OrgRepo, skillId: string): Promise<SkillDetail> {
-      return read({ path: skillPath(t, skillId), decode: d.skillDetail, resource: 'skill/' + t.org + '/' + t.repo + '/' + skillId });
+    getSkill(t: ReadScope, skillId: string): Promise<SkillDetail> {
+      return read({ path: skillPath(t, skillId), decode: d.skillDetail, resource: 'skill/' + scopeKey(t) + '/' + skillId });
     },
-    getRevision(t: OrgRepo, skillId: string, revisionId: string): Promise<Revision> {
-      return read({ path: skillPath(t, skillId) + '/revisions/' + encodeURIComponent(revisionId), decode: d.revision, resource: 'revision/' + t.org + '/' + t.repo + '/' + skillId });
+    getRevision(t: ReadScope, skillId: string, revisionId: string): Promise<Revision> {
+      return read({ path: skillPath(t, skillId) + '/revisions/' + encodeURIComponent(revisionId), decode: d.revision, resource: 'revision/' + scopeKey(t) + '/' + skillId });
     },
-    getRevisionRaw(t: OrgRepo, skillId: string, revisionId: string): Promise<string> {
-      return read({ path: skillPath(t, skillId) + '/revisions/' + encodeURIComponent(revisionId) + '/raw', responseType: 'text', decode: d.str, resource: 'revision-raw/' + t.org + '/' + t.repo + '/' + skillId });
+    getRevisionRaw(t: ReadScope, skillId: string, revisionId: string): Promise<string> {
+      return read({ path: skillPath(t, skillId) + '/revisions/' + encodeURIComponent(revisionId) + '/raw', responseType: 'text', decode: d.str, resource: 'revision-raw/' + scopeKey(t) + '/' + skillId });
     },
     sendFeedback(t: OrgRepo, skillId: string, revisionId: string, input: { verdict: string; reason?: string; task_id?: string }, idempotencyKey: string): Promise<Judgment> {
       return write({
@@ -346,30 +351,30 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
 
     // Map and modules -------------------------------------------------------
-    getMapRepository(t: OrgRepo, path = '', cursor?: string): Promise<MapRepository> {
+    getMapRepository(t: ReadScope, path = '', cursor?: string): Promise<MapRepository> {
       // One branch at a time: the resource key carries the path so two open branches do not
       // supersede each other.
-      return read({ path: target(t) + '/map/repository', query: { path, cursor }, decode: d.mapRepository, resource: 'map-repository/' + t.org + '/' + t.repo + '/' + path });
+      return read({ path: readBase(t) + '/map/repository', query: { path, cursor }, decode: d.mapRepository, resource: 'map-repository/' + scopeKey(t) + '/' + path });
     },
-    getMapScopes(t: OrgRepo, scope?: string): Promise<MapScopes> {
-      return read({ path: target(t) + '/map/scopes', query: { scope }, decode: d.mapScopes, resource: 'map-scopes/' + t.org + '/' + t.repo });
+    getMapScopes(t: ReadScope, scope?: string): Promise<MapScopes> {
+      return read({ path: readBase(t) + '/map/scopes', query: { scope }, decode: d.mapScopes, resource: 'map-scopes/' + scopeKey(t) });
     },
-    getMapLayers(t: OrgRepo): Promise<MapLayers> {
-      return read({ path: target(t) + '/map/layers', decode: d.mapLayers, resource: 'map-layers/' + t.org + '/' + t.repo });
+    getMapLayers(t: ReadScope): Promise<MapLayers> {
+      return read({ path: readBase(t) + '/map/layers', decode: d.mapLayers, resource: 'map-layers/' + scopeKey(t) });
     },
-    getRelations(t: OrgRepo, query: RelationQuery): Promise<Relations> {
-      return read({ path: target(t) + '/map/relations', query: { skill_id: query.skillId, type: query.type, cursor: query.cursor, limit: query.limit }, decode: d.relations, resource: 'relations/' + t.org + '/' + t.repo + '/' + (query.skillId ?? '') });
+    getRelations(t: ReadScope, query: RelationQuery): Promise<Relations> {
+      return read({ path: readBase(t) + '/map/relations', query: { skill_id: query.skillId, type: query.type, cursor: query.cursor, limit: query.limit }, decode: d.relations, resource: 'relations/' + scopeKey(t) + '/' + (query.skillId ?? '') });
     },
-    getModule(t: OrgRepo, scope: string): Promise<ModulePage> {
-      return read({ path: target(t) + '/modules/' + encodeURIComponent(scope), decode: d.modulePage, resource: 'module/' + t.org + '/' + t.repo + '/' + scope });
+    getModule(t: ReadScope, scope: string): Promise<ModulePage> {
+      return read({ path: readBase(t) + '/modules/' + encodeURIComponent(scope), decode: d.modulePage, resource: 'module/' + scopeKey(t) + '/' + scope });
     },
 
     // Proposals and review --------------------------------------------------
-    listProposals(t: OrgRepo, query: ProposalQuery): Promise<ProposalList> {
-      return read({ path: target(t) + '/proposals', query: { state: query.state, kind: query.kind, scope: query.scope, cursor: query.cursor }, decode: d.proposalList, resource: 'proposals/' + t.org + '/' + t.repo });
+    listProposals(t: ReadScope, query: ProposalQuery): Promise<ProposalList> {
+      return read({ path: readBase(t) + '/proposals', query: { state: query.state, kind: query.kind, scope: query.scope, cursor: query.cursor }, decode: d.proposalList, resource: 'proposals/' + scopeKey(t) });
     },
-    getProposal(t: OrgRepo, proposalId: string): Promise<ProposalDetail> {
-      return read({ path: target(t) + '/proposals/' + encodeURIComponent(proposalId), decode: d.proposalDetail, resource: 'proposal/' + t.org + '/' + t.repo + '/' + proposalId });
+    getProposal(t: ReadScope, proposalId: string): Promise<ProposalDetail> {
+      return read({ path: readBase(t) + '/proposals/' + encodeURIComponent(proposalId), decode: d.proposalDetail, resource: 'proposal/' + scopeKey(t) + '/' + proposalId });
     },
     decideProposal(t: OrgRepo, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult> {
       return write({
@@ -381,8 +386,8 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     exportProposal(t: OrgRepo, proposalId: string, idempotencyKey: string): Promise<ExportPayload> {
       return write({ path: target(t) + '/proposals/' + encodeURIComponent(proposalId) + '/export', method: 'POST', body: { idempotency_key: idempotencyKey }, decode: d.exportPayload, resource: 'export/' + t.org + '/' + t.repo + '/' + proposalId, idempotencyKey });
     },
-    getProposalPublication(t: OrgRepo, proposalId: string): Promise<Publication> {
-      return read({ path: target(t) + '/proposals/' + encodeURIComponent(proposalId) + '/publication', decode: d.publication, resource: 'publication/' + t.org + '/' + t.repo + '/' + proposalId });
+    getProposalPublication(t: ReadScope, proposalId: string): Promise<Publication> {
+      return read({ path: readBase(t) + '/proposals/' + encodeURIComponent(proposalId) + '/publication', decode: d.publication, resource: 'publication/' + scopeKey(t) + '/' + proposalId });
     },
 
     // Publication -----------------------------------------------------------
@@ -404,13 +409,13 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     },
 
     // Usage and quality -----------------------------------------------------
-    getUsage(t: OrgRepo, query: UsageQuery): Promise<Usage> {
+    getUsage(t: ReadScope, query: UsageQuery): Promise<Usage> {
       // Contract §4.6 accepts exactly these five parameters; the report is not a paged list.
       const filters = { window: query.window, scope: query.scope, skill_id: query.skillId, revision: query.revision, harness: query.harness };
-      return read({ path: target(t) + '/usage', query: filters, decode: d.usage, resource: 'usage/' + t.org + '/' + t.repo });
+      return read({ path: readBase(t) + '/usage', query: filters, decode: d.usage, resource: 'usage/' + scopeKey(t) });
     },
-    exportUsage(t: OrgRepo, query: UsageQuery): Promise<string> {
-      return read({ path: target(t) + '/usage/export', query: { format: query.format ?? 'csv', window: query.window }, responseType: 'text', decode: d.str, resource: 'usage-export/' + t.org + '/' + t.repo + '/' + (query.format ?? 'csv') });
+    exportUsage(t: ReadScope, query: UsageQuery): Promise<string> {
+      return read({ path: readBase(t) + '/usage/export', query: { format: query.format ?? 'csv', window: query.window }, responseType: 'text', decode: d.str, resource: 'usage-export/' + scopeKey(t) + '/' + (query.format ?? 'csv') });
     },
     async decideQueueItem(t: OrgRepo, itemId: string, input: { action: 'reviewed' | 'fixed_in_git' | 'no_change'; reason: string }, idempotencyKey: string): Promise<void> {
       await write({ path: target(t) + '/usage/queue/' + encodeURIComponent(itemId) + '/decision', method: 'POST', body: { idempotency_key: idempotencyKey, ...input }, decode: d.nothing, resource: 'queue/' + t.org + '/' + t.repo + '/' + itemId, idempotencyKey });

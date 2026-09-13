@@ -28,7 +28,9 @@ var pinnedCSVColumns = []string{"skill_id", "revision", "scope", "owner", "harne
 	// column may be added at the end, never inserted (API-CONTRACT §5.5).
 	"card_revision", "content_sha256",
 	// Appended in contract 1.1.4, same rule.
-	"exposures_expanded", "loads_unlinked"}
+	"exposures_expanded", "loads_unlinked",
+	// Appended in contract 1.9.0 (§4.10), same rule.
+	"repo_id"}
 
 // fixture is one organisation with one repository and a signed-in owner.
 type fixture struct {
@@ -844,14 +846,254 @@ func TestUsageResponsesMatchTheOpenAPIComponents(t *testing.T) {
 	}
 	spec.Check(t, "Error", envelope)
 
-	// The document and the router describe the same three routes.
+	// The document and the router describe the same five routes.
 	document := spec.Document["paths"].(map[string]any)
 	for _, route := range []string{
+		"/api/v1/orgs/{org}/usage",
+		"/api/v1/orgs/{org}/usage/export",
 		"/api/v1/orgs/{org}/repos/{repo}/usage",
 		"/api/v1/orgs/{org}/repos/{repo}/usage/export",
 		"/api/v1/orgs/{org}/repos/{repo}/usage/queue/{item_id}/decision"} {
 		if _, ok := document[route]; !ok {
 			t.Fatalf("the OpenAPI document does not describe %s", route)
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Contract 1.9.0 (§4.10) — the organisation is the default read scope; a
+// repository is a filter.
+// ---------------------------------------------------------------------------
+
+// orgBase is the path prefix of the organisation-scoped usage routes.
+func (f *fixture) orgBase() string { return "/api/v1/orgs/" + f.org }
+
+// getAs reads one usage path as a given client and requires 200.
+func getAs(t *testing.T, c *pivottest.Client, path string) map[string]any {
+	t.Helper()
+	status, body, _ := c.Call(t, pivottest.Call{Method: http.MethodGet, Path: path})
+	if status != http.StatusOK {
+		t.Fatalf("GET %s: %d %v", path, status, body)
+	}
+	return body
+}
+
+// twoRepos adds a second repository to the fixture's organisation, one
+// published skill in each, and one exposure of each, so an organisation read
+// has something to add up and a repository read has something to leave out.
+func (f *fixture) twoRepos(t *testing.T) (skillA, skillB, revA, revB string) {
+	t.Helper()
+	f.owner.CreateRepo(t, f.org, "second", "")
+	revA, revB = strings.Repeat("a", 64), strings.Repeat("b", 64)
+	skillA, skillB = "urn:skill:acme:atlas:first", "urn:skill:acme:orion:second"
+	// Both published a month ago and never loaded: each raises a computed
+	// zero_loads item, one per repository.
+	f.skill(t, f.org, f.repo, skillA, "atlas", "platform", revA, "published",
+		f.clock.Add(-30*24*time.Hour))
+	f.skill(t, f.org, "second", skillB, "orion", "search", revB, "published",
+		f.clock.Add(-30*24*time.Hour))
+	f.expose(t, skillA, revA, "claude-code", 2)
+	f.expose(t, skillB, revB, "copilot-cli", 3)
+	return skillA, skillB, revA, revB
+}
+
+func TestUsageOrganisationScopeSumsTheRepositoriesAndRepoNarrowsToOne(t *testing.T) {
+	f := newFixture(t)
+	skillA, skillB, revA, revB := f.twoRepos(t)
+
+	org := getAs(t, f.owner, f.orgBase()+"/usage?window=30d")
+	first := f.get(t, "/usage?window=30d")
+	second := getAs(t, f.owner, pivottest.RepoBase(f.org, "second")+"/usage?window=30d")
+
+	// totals are the sum of the two repository reports.
+	if got, a, b := number(t, totals(t, org), "exposures"), number(t, totals(t, first), "exposures"),
+		number(t, totals(t, second), "exposures"); got != a+b || a != 2 || b != 3 {
+		t.Fatalf("org exposures = %d, repos = %d + %d", got, a, b)
+	}
+	// Every row says which repository it belongs to.
+	if row := skillRow(t, org, skillA); row["repo_id"] != f.repo {
+		t.Fatalf("row %s repo_id = %v, want %s", skillA, row["repo_id"], f.repo)
+	}
+	if row := skillRow(t, org, skillB); row["repo_id"] != "second" {
+		t.Fatalf("row %s repo_id = %v, want second", skillB, row["repo_id"])
+	}
+	// The repository route carries the same field, additively.
+	if row := skillRow(t, first, skillA); row["repo_id"] != f.repo {
+		t.Fatalf("repo route row lacks repo_id: %v", row)
+	}
+	// `repo` is echoed only when it was given.
+	if filters := org["filters"].(map[string]any); filters["repo"] != nil {
+		t.Fatalf("org read without ?repo= echoed one: %v", filters)
+	}
+	if filters := first["filters"].(map[string]any); filters["repo"] != nil {
+		t.Fatalf("repository route echoed a repo filter: %v", filters)
+	}
+
+	// The queue is the union of both repositories' queues, each item naming
+	// its repository (a computed zero_loads item per skill here).
+	items := queueOf(t, org)
+	itemA, okA := items["zero_loads:"+skillA+":"+revA]
+	itemB, okB := items["zero_loads:"+skillB+":"+revB]
+	if !okA || !okB {
+		t.Fatalf("org queue is not the union of both repositories: %v", items)
+	}
+	if itemA["repo_id"] != f.repo || itemB["repo_id"] != "second" {
+		t.Fatalf("queue items do not name their repository: %v / %v", itemA, itemB)
+	}
+	if _, leaked := queueOf(t, first)["zero_loads:"+skillB+":"+revB]; leaked {
+		t.Fatalf("the meridian queue listed second's item: %v", queueOf(t, first))
+	}
+
+	// ?repo= narrows to one repository and the answer is then identical to
+	// the repository route's, plus the echo.
+	narrowed := getAs(t, f.owner, f.orgBase()+"/usage?window=30d&repo="+f.repo)
+	for _, key := range []string{"totals", "skills", "queue", "coverage", "previous"} {
+		want, _ := json.Marshal(first[key])
+		got, _ := json.Marshal(narrowed[key])
+		if string(want) != string(got) {
+			t.Fatalf("?repo=%s %s differs from the repository route:\n got %s\nwant %s",
+				f.repo, key, got, want)
+		}
+	}
+	if filters := narrowed["filters"].(map[string]any); filters["repo"] != f.repo {
+		t.Fatalf("?repo= was not echoed: %v", filters)
+	}
+	// Unknown and malformed repositories are named as such.
+	if status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: f.orgBase() + "/usage?repo=nope"}); status != http.StatusNotFound ||
+		body["error"] != "not_found" {
+		t.Fatalf("unknown repo: %d %v", status, body)
+	}
+	if status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: f.orgBase() + "/usage?repo=" + url.QueryEscape("bad repo")}); status != http.StatusBadRequest ||
+		body["error"] != "invalid_repo_id" {
+		t.Fatalf("malformed repo: %d %v", status, body)
+	}
+}
+
+func TestUsageOrganisationScopeIsOnlyTheRepositoriesTheMemberMayRead(t *testing.T) {
+	f := newFixture(t)
+	skillA, skillB, _, revB := f.twoRepos(t)
+	member := f.member(t)
+	// Restricting `second` to a third person turns its ACL on; the member,
+	// who is not listed, may no longer read it (identity: PUT …/access).
+	third := f.h.SignIn(t, "usage-third", "third@example.test")
+	thirdID, _ := third.User["id"].(string)
+	if thirdID == "" {
+		t.Fatalf("third user has no id: %v", third.User)
+	}
+	f.exec(t, `INSERT INTO gfm.memberships(org_id,user_id,role) VALUES($1::uuid,$2::uuid,'member')`,
+		f.org, thirdID)
+	if status, body, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(f.org, "second") + "/access/" + thirdID,
+		Body: map[string]any{"access": "read"}, Key: "grant-third"}); status != http.StatusOK {
+		t.Fatalf("grant access: %d %v", status, body)
+	}
+
+	// The organisation read excludes what the member could not read per
+	// repository: second's row, second's exposures, second's queue item.
+	body := getAs(t, member, f.orgBase()+"/usage?window=30d")
+	if got := number(t, totals(t, body), "exposures"); got != 2 {
+		t.Fatalf("member's org exposures = %d, want only meridian's 2: %v", got, totals(t, body))
+	}
+	skillRow(t, body, skillA)
+	for _, raw := range body["skills"].([]any) {
+		if raw.(map[string]any)["skill_id"] == skillB {
+			t.Fatalf("a restricted repository's skill appeared: %v", raw)
+		}
+	}
+	if _, leaked := queueOf(t, body)["zero_loads:"+skillB+":"+revB]; leaked {
+		t.Fatalf("a restricted repository's queue item appeared: %v", queueOf(t, body))
+	}
+	// Naming it is a 403; naming a repository that does not exist is a 404.
+	if status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: f.orgBase() + "/usage?repo=second"}); status != http.StatusForbidden ||
+		body["error"] != "forbidden" {
+		t.Fatalf("restricted repo: %d %v", status, body)
+	}
+	if status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: f.orgBase() + "/usage?repo=nope"}); status != http.StatusNotFound ||
+		body["error"] != "not_found" {
+		t.Fatalf("unknown repo: %d %v", status, body)
+	}
+	// The owner still sees both.
+	if got := number(t, totals(t, getAs(t, f.owner, f.orgBase()+"/usage?window=30d")),
+		"exposures"); got != 5 {
+		t.Fatalf("owner's org exposures = %d, want 5", got)
+	}
+}
+
+func TestUsageOrganisationExportCarriesTheRepositoryAsTheLastColumn(t *testing.T) {
+	f := newFixture(t)
+	skillA, skillB, _, _ := f.twoRepos(t)
+	// One skill the catalog does not know, so a row has no repository.
+	unknown := "urn:skill:acme:nowhere:ghost"
+	f.expose(t, unknown, strings.Repeat("9", 64), "claude-code", 1)
+
+	status, raw, _ := f.owner.Raw(t, pivottest.Call{Method: http.MethodGet,
+		Path: f.orgBase() + "/usage/export?format=csv"})
+	if status != http.StatusOK {
+		t.Fatalf("csv export: %d %s", status, raw)
+	}
+	records, e := csv.NewReader(strings.NewReader(string(raw))).ReadAll()
+	if e != nil {
+		t.Fatalf("export is not valid CSV: %v", e)
+	}
+	if strings.Join(records[0], ",") != strings.Join(pinnedCSVColumns, ",") {
+		t.Fatalf("CSV header drifted:\n got %v\nwant %v", records[0], pinnedCSVColumns)
+	}
+	if last := records[0][len(records[0])-1]; last != "repo_id" {
+		t.Fatalf("repo_id must be the last column, got %q", last)
+	}
+	if len(records) != 4 {
+		t.Fatalf("want a header and three rows, got %d", len(records))
+	}
+	repoOf := map[string]string{}
+	for _, row := range records[1:] {
+		repoOf[row[0]] = row[len(row)-1]
+	}
+	if repoOf[skillA] != f.repo || repoOf[skillB] != "second" || repoOf[unknown] != "" {
+		t.Fatalf("repo_id cells: %v", repoOf)
+	}
+
+	document := getAs(t, f.owner, f.orgBase()+"/usage/export?format=json")
+	rows := document["rows"].([]any)
+	if len(rows) != 3 {
+		t.Fatalf("export rows: %d", len(rows))
+	}
+	for _, raw := range rows {
+		row := raw.(map[string]any)
+		v, present := row["repo_id"]
+		if !present {
+			t.Fatalf("JSON export row lacks repo_id: %v", row)
+		}
+		switch row["skill_id"] {
+		case skillA:
+			if v != f.repo {
+				t.Fatalf("%s repo_id = %v", skillA, v)
+			}
+		case skillB:
+			if v != "second" {
+				t.Fatalf("%s repo_id = %v", skillB, v)
+			}
+		case unknown:
+			if v != nil {
+				t.Fatalf("an unknown skill's repo_id must be null, got %v", v)
+			}
+		}
+	}
+	// The organisation responses satisfy the same component schemas.
+	spec := pivottest.LoadContract(t)
+	usage := getAs(t, f.owner, f.orgBase()+"/usage?window=30d")
+	spec.Check(t, "Usage", usage)
+	for _, raw := range usage["skills"].([]any) {
+		spec.Check(t, "UsageSkill", raw.(map[string]any))
+	}
+	for _, raw := range usage["queue"].([]any) {
+		spec.Check(t, "QueueItem", raw.(map[string]any))
+	}
+	spec.Check(t, "UsageExport", document)
+	for _, raw := range rows {
+		spec.Check(t, "UsageExportRow", raw.(map[string]any))
 	}
 }

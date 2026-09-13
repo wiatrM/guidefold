@@ -157,9 +157,15 @@ export function libraryBreakdown(skills: SkillSummary[], nextCursor: string | nu
   return result;
 }
 
+export interface FacetShare { value: string; count: number }
+/** The largest values of one facet (`scope` per repository, `repo` at organisation scope, §4.10.4):
+ * zero counts dropped, largest first, ties by name. Shape-agnostic; the caller names the field. */
+export function topFacetValues(values: {value: string; count: number}[], limit = 6): FacetShare[] {
+  return [...values].filter(item => item.count > 0).sort((a, b) => b.count - a.count || (a.value < b.value ? -1 : 1)).slice(0, limit).map(item => ({value: item.value, count: item.count}));
+}
 export interface ScopeShare { scope: string; count: number }
 export function topScopes(values: {value: string; count: number}[], limit = 6): ScopeShare[] {
-  return [...values].filter(item => item.count > 0).sort((a, b) => b.count - a.count || (a.value < b.value ? -1 : 1)).slice(0, limit).map(item => ({scope: item.value, count: item.count}));
+  return topFacetValues(values, limit).map(item => ({scope: item.value, count: item.count}));
 }
 
 // ---------------------------------------------------------------------------
@@ -202,7 +208,9 @@ export function latestImport(imports: ImportStatus[]): ImportStatus | null {
 
 export const YOUR_DECISIONS_LIMIT = 5;
 export type YourDecisionKind = 'proposal' | 'queue';
-export interface YourDecisionEntry { kind: YourDecisionKind; id: string; skillId: string | null; label: string; detail: string; at: string | null }
+/** `repoId` (1.9.0, §4.10.3): the repository the row belongs to, for a link that needs exactly one;
+ * `null` only from a server older than the field. */
+export interface YourDecisionEntry { kind: YourDecisionKind; id: string; repoId: string | null; skillId: string | null; label: string; detail: string; at: string | null }
 export interface YourDecisions { count: number; items: YourDecisionEntry[] }
 
 /**
@@ -216,10 +224,10 @@ export function yourDecisions(proposals: ProposalSummary[], queue: QueueItem[], 
   if (!userId) return {count: 0, items: []};
   const fromProposals: YourDecisionEntry[] = proposals
     .filter(item => item.decision?.actor === userId)
-    .map(item => ({kind: 'proposal' as const, id: item.proposal_id, skillId: item.target_skill_id, label: item.target_skill_id ?? item.path ?? item.proposal_id, detail: item.decision!.decision, at: item.decision!.at}));
+    .map(item => ({kind: 'proposal' as const, id: item.proposal_id, repoId: item.repo_id, skillId: item.target_skill_id, label: item.target_skill_id ?? item.path ?? item.proposal_id, detail: item.decision!.decision, at: item.decision!.at}));
   const fromQueue: YourDecisionEntry[] = queue
     .filter(item => item.decision?.actor === userId)
-    .map(item => ({kind: 'queue' as const, id: item.item_id, skillId: item.skill_id, label: item.skill_id, detail: item.decision!.action, at: item.decision!.at}));
+    .map(item => ({kind: 'queue' as const, id: item.item_id, repoId: item.repo_id, skillId: item.skill_id, label: item.skill_id, detail: item.decision!.action, at: item.decision!.at}));
   // Nullable `at` pushed last: as an empty string it sorts before every real ISO timestamp, and
   // comparing (b, a) instead of (a, b) turns that ascending order into newest-first.
   const at = (value: string | null) => value ?? '';
