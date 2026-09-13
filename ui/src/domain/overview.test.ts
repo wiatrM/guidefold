@@ -217,11 +217,11 @@ describe('yourDecisions', () => {
 });
 
 describe('nextActions', () => {
-  const base = {role: 'owner' as const, me: null, usage: null, proposals: null, imports: null, installations: null, skillsTotal: 3, now: NOW};
+  const base = {role: 'owner' as const, me: null, usage: null, proposals: null, imports: null, latestImport: null, installations: null, skillsTotal: 3, now: NOW};
   test('an owner sees the queue, drafts and an unpublished import as human-tone actions', () => {
     const report = usage({queue: [{repo_id: 'monorepo', item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'source_changed', since: null, evidence: null, decision: null}]});
     const imports: ImportStatus[] = [{repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: null, state: 'none', error: null}, created_at: '2026-09-10', updated_at: null}];
-    const actions = nextActions({...base, usage: report, proposals: [{repo_id: 'monorepo', proposal_id: 'p', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null}], imports});
+    const actions = nextActions({...base, usage: report, proposals: [{repo_id: 'monorepo', proposal_id: 'p', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null}], imports, latestImport: imports[0]});
     expect(actions.map(action => action.kind)).toEqual(['queue', 'proposals', 'publish']);
     expect(actions[0].title).toBe('1 skill needs your decision');
   });
@@ -238,6 +238,26 @@ describe('nextActions', () => {
     ]});
     expect(silent).toHaveLength(1);
     expect(silent[0].detail).toBe('a: never seen; b: silent 11 d.');
+  });
+  describe('publication comes from the import detail, never from a list row', () => {
+    const detail = (publication: ImportStatus['publication']): ImportStatus => ({repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 0}, files: [], files_truncated: false, jobs: [], publication, created_at: null, updated_at: null});
+    const listRow: ImportStatus = {...detail(null), counts: null, files_truncated: true};
+    const publishActions = (latest: ImportStatus | null) => nextActions({...base, imports: [listRow], latestImport: latest}).filter(action => action.kind === 'publish');
+    test('a published detail pushes no publish action', () => {
+      expect(publishActions(detail({snapshot_id: 's', state: 'published', error: null}))).toEqual([]);
+    });
+    test('no detail, or a detail without publication, is Unknown and pushes none', () => {
+      expect(publishActions(null)).toEqual([]);
+      expect(publishActions(detail(null))).toEqual([]);
+    });
+    test('a failed publication names the error code', () => {
+      const [action] = publishActions(detail({snapshot_id: null, state: 'failed', error: 'missing_dependency'}));
+      expect(action.title).toBe('Publication of the latest import failed');
+      expect(action.detail).toContain('missing_dependency');
+    });
+    test('a building publication says it is still publishing', () => {
+      expect(publishActions(detail({snapshot_id: null, state: 'building', error: null})).map(action => action.title)).toEqual(['The latest import is still publishing']);
+    });
   });
   test('nothing waiting is an empty list, not a filler row', () => {
     expect(nextActions({...base, usage: usage(), proposals: [], imports: [{repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's', state: 'published', error: null}, created_at: null, updated_at: null}], installations: [{installation_id: 'a', name: 'a', repo_id: null, scopes: [], harness: 'claude', last_seen_at: '2026-09-12T11:00:00Z', adapter_version: null, capabilities: null, created_at: null, token: null}]})).toEqual([]);

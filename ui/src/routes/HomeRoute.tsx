@@ -2,7 +2,10 @@
  * shadcnspace dashboard blocks (owner instruction: "site looks way off" from
  * https://dashboard.shadcnspace.com/ — docs/reports/ui/console-shadcn-20260912.md §9).
  *
- * One read per block, all in parallel, every number a count the API returned. The screen answers
+ * One read per block, all in parallel, every number a count the API returned. One extra read
+ * follows the imports list: the detail of the latest import, because the list carries no counts
+ * and no publication by contract. Until that detail arrives (or when it fails) the import's files
+ * and publication stay Unknown and no publish action is raised. The screen answers
  * three questions in order: what waits for me, how the library is doing, how delivery and value
  * look in the chosen window. A block with nothing to say folds to one line; a page with no
  * organisation shows the one next step instead of eight empty cards.
@@ -218,27 +221,29 @@ function Library({ctx, skills, layers, largest}: ApiProps & {skills: SkillPage |
   </Card>;
 }
 
-function Pipeline({ctx, imports, proposals, installations, usage, now}: ApiProps & {imports: ImportStatus[] | null; proposals: ProposalSummary[] | null; installations: Installation[] | null; usage: Usage | null; now: number}) {
+function Pipeline({ctx, imports, detail, detailFailed, proposals, installations, usage, now}: ApiProps & {imports: ImportStatus[] | null; detail: ImportStatus | null; detailFailed: boolean; proposals: ProposalSummary[] | null; installations: Installation[] | null; usage: Usage | null; now: number}) {
   const last = imports ? latestImport(imports) : null;
+  // Counts and publication come only from the detail read; a list row carries neither (§5.2).
+  const counts = detail?.counts ?? null;
+  const publication = detail?.publication ?? null;
   const states = proposals ? proposalsByState(proposals) : null;
   const statesTotal = states ? states.reduce((sum, row) => sum + row.count, 0) : 0;
   const adapters = installations ? adapterRows(installations, usage?.health?.adapters ?? null, now) : null;
-  const publication = last?.publication?.state ?? 'none';
   return <Card className="rounded-xl border py-6 shadow-xs">
     <CardHeader className="px-6"><CardTitle className="text-lg font-medium"><PulseIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Pipeline</CardTitle><CardDescription>Import, proposals and adapters</CardDescription></CardHeader>
     <CardContent className="px-6">
       <div className={styles.threeUp}>
         <section aria-labelledby="home-import" className={styles.subsection}>
           <h3 id="home-import"><UploadSimpleIcon aria-hidden="true" />Latest import</h3>
-          {last ? <dl className={styles.facts}>
+          {last ? <><dl className={styles.facts}>
             <div><dt>Import</dt><dd><Link to={ctx.href('import', {step: 'result', import_id: last.import_id, repo: last.repo_id ?? ctx.repo})}><code>{shortId(last.import_id)}</code></Link></dd></div>
             {/* An organisation-scope list mixes repositories (§4.10.3); with one chosen the row would repeat the title. */}
             {!ctx.repo && <div><dt>Repository</dt><dd>{last.repo_id ?? 'Unknown'}</dd></div>}
             <div><dt>State</dt><dd><GateBadge label={last.state} tone={last.state === 'ready' ? 'system' : last.state === 'failed' ? 'warning' : 'neutral'} /></dd></div>
-            <div><dt>Files</dt><dd>{last.counts ? formatNumber(last.counts.accepted) + ' accepted · ' + formatNumber(last.counts.omitted) + ' omitted · ' + formatNumber(last.counts.failed) + ' failed' : 'Unknown'}</dd></div>
-            <div><dt>Publication</dt><dd><GateBadge label={publication} tone={publication === 'published' ? 'system' : publication === 'failed' ? 'warning' : 'neutral'} /></dd></div>
+            <div><dt>Files</dt><dd>{counts ? formatNumber(counts.accepted) + ' accepted · ' + formatNumber(counts.omitted) + ' omitted · ' + formatNumber(counts.failed) + ' failed' : 'Unknown'}</dd></div>
+            <div><dt>Publication</dt><dd>{publication ? <><GateBadge label={publication.state} tone={publication.state === 'published' ? 'system' : publication.state === 'failed' ? 'warning' : 'neutral'} />{publication.state === 'failed' && <> <code>{publication.error ?? 'no error code'}</code></>}</> : 'Not read'}</dd></div>
             <div><dt>Created</dt><dd>{day(last.created_at)}</dd></div>
-          </dl> : imports ? <p className={styles.muted}>No import yet. <Link to={ctx.href('import', {step: 'preview'})}>Upload your checkout</Link>.</p> : <p className={styles.muted}>Imports could not be read.</p>}
+          </dl>{detailFailed && <p className={styles.muted}>The import detail could not be read, so its files and publication are Unknown.</p>}</> : imports ? <p className={styles.muted}>No import yet. <Link to={ctx.href('import', {step: 'preview'})}>Upload your checkout</Link>.</p> : <p className={styles.muted}>Imports could not be read.</p>}
         </section>
         <section aria-labelledby="home-proposals" className={styles.subsection}>
           <h3 id="home-proposals"><GitPullRequestIcon aria-hidden="true" />Proposals by state</h3>
@@ -314,6 +319,9 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const largest = useAsync(() => source.getFacets(target!, {field: repo ? 'scope' : 'repo'}), 'home:largest:' + scopeKey, Boolean(target));
   const proposals = useAsync(() => source.listProposals(target!, {}), 'home:proposals:' + scopeKey, Boolean(target));
   const imports = useAsync(() => source.listImports(target!), 'home:imports:' + scopeKey, Boolean(target));
+  const lastListed = imports.value ? latestImport(imports.value) : null;
+  const lastRepo = lastListed ? lastListed.repo_id ?? repo : null;
+  const importDetail = useAsync(() => source.getImport({org: org!, repo: lastRepo}, lastListed!.import_id), 'home:import:' + org + '/' + (lastRepo ?? '*') + ':' + (lastListed?.import_id ?? ''), Boolean(org && lastListed));
   const installations = useAsync(() => source.listInstallations(org!), 'home:installations:' + org, Boolean(org));
   // 1.3.0: `{org_base}/audit` is readable by a member too, scoped server-side to their own rows
   // (contract §4.1) — the client reads it for every signed-in role, not just an owner.
@@ -321,7 +329,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
 
   if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
 
-  const reads = [usage, skills, layers, largest, proposals, imports, installations];
+  const reads = [usage, skills, layers, largest, proposals, imports, importDetail, installations];
   // The usage report is the spine of the page: the window, the coverage chip, two of the four
   // numbers and the next actions come from it. The page waits for it alone; every other block
   // arrives on its own and, when it fails, says so in place while the rest stays complete.
@@ -334,10 +342,13 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const skillsValue = skills.value ?? null;
   const proposalsValue = proposals.value?.items ?? null;
   const importsValue = imports.value ?? null;
+  // A stale detail of a previous latest import is never shown against a new one.
+  const detailValue = importDetail.value && lastListed && importDetail.value.import_id === lastListed.import_id ? importDetail.value : null;
+  const detailFailed = importDetail.phase === 'error' && !detailValue;
   const installationsValue = installations.value ?? null;
   const coverage = coverageOf(usageValue);
   const observed = hasObservations(usageValue);
-  const actions = nextActions({role, me, usage: usageValue, proposals: proposalsValue, imports: importsValue, installations: installationsValue, skillsTotal: skillsValue?.items.length ?? null, now});
+  const actions = nextActions({role, me, usage: usageValue, proposals: proposalsValue, imports: importsValue, latestImport: detailValue, installations: installationsValue, skillsTotal: skillsValue?.items.length ?? null, now});
   const blocking = actions.find(action => action.kind === 'adapter' || action.kind === 'publish' || action.kind === 'import');
   const decisions = yourDecisions(proposalsValue ?? [], usageValue?.queue ?? [], me);
   const windowText = usageValue ? 'Last ' + windowLabel + ' · ' + day(usageValue.window.from) + ' to ' + day(usageValue.window.to) : 'Last ' + windowLabel;
@@ -369,7 +380,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
     {usageValue && observed && <TopSkillsPanel ctx={ctx} usage={usageValue} />}
 
     <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} largest={largest.value ?? null} />
-    <Pipeline ctx={ctx} imports={importsValue} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
+    <Pipeline ctx={ctx} imports={importsValue} detail={detailValue} detailFailed={detailFailed} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
     {/* 1.3.0: the audit route now scopes a member to their own rows server-side (contract §4.1),
         so "Recent activity" is no longer owner-only; the eyebrow says which scope this reader gets. */}
     {audit.value && <Activity ctx={ctx} entries={audit.value.items} owner={owner} />}
