@@ -47,6 +47,15 @@
         },
         "privateKeySecretName": {
           "type": "string"
+        },
+        "appSlug": {
+          "type": "string"
+        },
+        "clientID": {
+          "type": "string"
+        },
+        "clientSecretName": {
+          "type": "string"
         }
       }
     },
