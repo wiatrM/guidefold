@@ -115,6 +115,26 @@ describe('decoders accept the contract payloads', () => {
     expect(decode({ field: 'scope', value: 'nope', count: 0, available: false }, d.facetLookup).available).toBe(false);
   });
 
+  test('DuplicatePage and DuplicateGroup exactly as the service writes them (contract 1.12.0)', () => {
+    const body = {
+      schema_version: 'mgmt-1', org_id: '0b6d3c9e-0000-4000-8000-000000000001', repo_id: null,
+      items: [{
+        name: 'adr-process', repos: ['meridian', 'second'], count: 2, identical: false,
+        skills: [
+          { skill_id: 'urn:skill:meridian:_root:adr-process', repo_id: 'meridian', scope: '_root', path: '.agents/skills/adr-process/SKILL.md', content_sha256: 'a'.repeat(64), publication_status: 'draft' },
+          { skill_id: 'urn:skill:second:_root:adr-process', repo_id: 'second', scope: '_root', path: '.agents/skills/adr-process/SKILL.md', content_sha256: null, publication_status: 'published' },
+        ],
+      }],
+      next_cursor: 'Mh9hZHItcHJvY2Vzcw',
+    };
+    const page = decode(body, d.duplicatePage);
+    expect(page.next_cursor).toBe('Mh9hZHItcHJvY2Vzcw');
+    expect(page.items[0].repos).toEqual(['meridian', 'second']);
+    expect(page.items[0].identical).toBe(false);
+    expect(page.items[0].skills[1].content_sha256).toBeNull();
+    expect(() => decode({ ...body, items: [{ ...body.items[0], identical: undefined }] }, d.duplicatePage)).toThrowError(/identical: expected boolean/);
+  });
+
   test('SkillDetail revisions and a full Revision', () => {
     const summary = {
       skill_id: 's1', name: 'n', description: '', scope: 'a', owner: 'o', source_layer: 'team',

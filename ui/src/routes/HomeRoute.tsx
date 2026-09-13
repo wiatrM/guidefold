@@ -22,7 +22,7 @@ import {Progress} from '@/components/ui/progress';
 import {Table, TableBody, TableCell, TableHead, TableHeader as TableHeadRow, TableRow} from '@/components/ui/table';
 import {ActionButton, IconTile, Panel, RouteState, StateBadge} from '../Shared';
 import {ApiFailure, DegradedNotice, PartialNotice, formatNumber, readOnly, shortId, useAsync, type ApiProps} from './apiState';
-import type {AuditEntry, ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
+import type {AuditEntry, DuplicatePage, ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
 import type {Facets, MapLayers} from '../api/decoders';
 import type {ReadScope} from '../data/source';
 import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topFacetValues, topSkills, yourDecisions, type ActionKind, type Delta, type NextAction, type YourDecisions} from '../domain/overview';
@@ -180,7 +180,7 @@ function TopSkillsPanel({ctx, usage}: ApiProps & {usage: Usage}) {
 
 /** `largest` is the `scope` facet with a repository chosen and the `repo` facet without one
  * (§4.10.4): the same bars, a different heading, and each bar links where that value is read. */
-function Library({ctx, skills, layers, largest}: ApiProps & {skills: SkillPage | null; layers: MapLayers | null; largest: Facets | null}) {
+function Library({ctx, skills, layers, largest, duplicates}: ApiProps & {skills: SkillPage | null; layers: MapLayers | null; largest: Facets | null; duplicates: DuplicatePage | null}) {
   const breakdown = skills ? libraryBreakdown(skills.items, skills.next_cursor) : null;
   const layerRows = (layers?.layers ?? []).filter(row => row.count > 0);
   const layerTotal = layerRows.reduce((sum, row) => sum + row.count, 0);
@@ -200,6 +200,8 @@ function Library({ctx, skills, layers, largest}: ApiProps & {skills: SkillPage |
         <li><Link to={ctx.href('library', {status: 'needs_review'})}><StateBadge tone="warning">Needs review</StateBadge><strong>{formatNumber(breakdown.needsReview)}</strong></Link></li>
         {breakdown.other > 0 && <li><StateBadge>Other states</StateBadge><strong>{formatNumber(breakdown.other)}</strong></li>}
       </ul>}
+      {/* Contract 1.12.0: organisation scope only, and only the first page's count; `+` says more pages exist. */}
+      {!ctx.repo && duplicates && duplicates.items.length > 0 && <p className={styles.muted}><Link to={ctx.href('library', {duplicates: '1'})}>{formatNumber(duplicates.items.length) + (duplicates.next_cursor ? '+' : '') + (duplicates.items.length === 1 && !duplicates.next_cursor ? ' skill name appears' : ' skill names appear') + ' in more than one repository'}</Link></p>}
       <div className={styles.twoUp}>
         <section aria-labelledby="home-layers" className={styles.subsection}>
           <h3 id="home-layers"><StackIcon aria-hidden="true" />Knowledge layers</h3>
@@ -318,10 +320,12 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   // 1.3.0: `{org_base}/audit` is readable by a member too, scoped server-side to their own rows
   // (contract §4.1) — the client reads it for every signed-in role, not just an owner.
   const audit = useAsync(() => source.getAudit(org!), 'home:audit:' + org, Boolean(org));
+  // Contract 1.12.0: duplicates across repositories only mean something at organisation scope.
+  const duplicates = useAsync(() => source.listDuplicates(org!, {}), 'home:duplicates:' + org, Boolean(org) && !repo);
 
   if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
 
-  const reads = [usage, skills, layers, largest, proposals, imports, installations];
+  const reads = [usage, skills, layers, largest, proposals, imports, installations, ...(repo ? [] : [duplicates])];
   // The usage report is the spine of the page: the window, the coverage chip, two of the four
   // numbers and the next actions come from it. The page waits for it alone; every other block
   // arrives on its own and, when it fails, says so in place while the rest stays complete.
@@ -368,7 +372,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
     : <div className="px-1"><EmptyStateBlock icon={<BookOpenIcon aria-hidden="true" />} title={'No telemetry in the last ' + windowLabel} description="No adapter event and no assessment reached the ledger. Usefulness is Unknown, not zero." action={{label: 'Set up an adapter', href: ctx.href('organization', {tab: 'integrations'}), tone: 'system'}} /></div>}
     {usageValue && observed && <TopSkillsPanel ctx={ctx} usage={usageValue} />}
 
-    <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} largest={largest.value ?? null} />
+    <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} largest={largest.value ?? null} duplicates={duplicates.value ?? null} />
     <Pipeline ctx={ctx} imports={importsValue} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
     {/* 1.3.0: the audit route now scopes a member to their own rows server-side (contract §4.1),
         so "Recent activity" is no longer owner-only; the eyebrow says which scope this reader gets. */}

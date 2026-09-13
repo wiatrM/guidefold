@@ -1776,6 +1776,32 @@ paths:
           description: "`invalid_request`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /api/v1/orgs/{org}/skills/duplicates:
+    get:
+      tags: [knowledge]
+      summary: "Skill names that appear in more than one readable repository (contract 1.12.0, §4.10 item 9). Organisation scope only."
+      description: >-
+        A group is the skills with the same exact, case-sensitive `name` in at
+        least two distinct repositories the caller may read. With `repo`, only
+        groups that include that repository. Ordered by `count` desc then
+        `name`; keyset cursor on `(count, name)`. Similarity is out of scope
+        and belongs to proposals of kind `consolidation`.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: One page of duplicate groups.
+          content: { application/json: { schema: { $ref: "#/components/schemas/DuplicatePage" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`not_found` for an unknown `repo`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /api/v1/orgs/{org}/skills/{skill_id}:
     get:
       tags: [knowledge]
@@ -3993,6 +4019,37 @@ components:
         filters:
           type: object
           additionalProperties: { $ref: "#/components/schemas/FilterEcho" }
+
+    DuplicatePage:
+      type: object
+      required: [schema_version, org_id, items]
+      properties:
+        schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        org_id: { type: string, format: uuid }
+        repo_id: { type: [string, "null"], description: "The `repo` filter when given; null otherwise." }
+        items: { type: array, items: { $ref: "#/components/schemas/DuplicateGroup" } }
+        next_cursor: { type: [string, "null"] }
+
+    DuplicateGroup:
+      type: object
+      required: [name, repos, count, identical, skills]
+      properties:
+        name: { type: string }
+        repos: { type: array, items: { type: string }, minItems: 2, description: "Distinct repo_ids of the members, sorted." }
+        count: { type: integer, minimum: 2, description: "Skills in the group." }
+        identical: { type: boolean, description: "Every member has a non-null and equal content_sha256." }
+        skills:
+          type: array
+          items:
+            type: object
+            required: [skill_id, repo_id, scope, path, content_sha256, publication_status]
+            properties:
+              skill_id: { type: string }
+              repo_id: { type: string }
+              scope: { type: string }
+              path: { type: string }
+              content_sha256: { type: [string, "null"] }
+              publication_status: { type: string }
 
     Facets:
       type: object

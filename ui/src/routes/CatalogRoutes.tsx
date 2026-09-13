@@ -12,7 +12,7 @@ import {
   readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
 import type {ApiError} from '../api/client';
-import type {FeedbackEntry, MapChild, SkillSummary} from '../api/decoders';
+import type {DuplicateGroup, FeedbackEntry, MapChild, SkillSummary} from '../api/decoders';
 import type {ReadScope, SkillQuery} from '../data/source';
 import type {View} from '../domain';
 import {pyramidGraphBands, pyramidGraphEdges, hasAnyClassification, type PyramidLayer} from '../domain/pyramidGraph';
@@ -123,6 +123,23 @@ const libraryKeys = ['q', 'scope', 'owner', 'layer', 'status'];
 const MAP_RENDER_LIMIT = 200;
 const MAP_MAX_DEPTH = 8;
 
+/** Contract 1.12.0 (§4.10 item 9): the same exact skill name in more than one readable repository.
+ * Every copy links to its own Skill view with its repository, so the owner can compare them. */
+function DuplicatesTable({ctx, groups}: ApiProps & {groups: DuplicateGroup[]}) {
+  return <DataTable dense flush caption="Skill names that appear in more than one repository" headings={['Skill name', 'Repositories', 'Content', 'Open a copy']}>
+    {groups.map(group => <tr key={group.name}>
+      <th scope="row"><span className="font-semibold">{group.name}</span><span className={styles.muted}>{group.count} copies</span></th>
+      <td><div className="flex flex-wrap gap-1">{group.repos.map(id => <StateBadge key={id}>{id}</StateBadge>)}</div></td>
+      <td><StateBadge tone={group.identical ? 'system' : 'warning'}>{group.identical ? 'Identical' : 'Differs'}</StateBadge></td>
+      <td><div className="flex flex-wrap gap-x-3 gap-y-1">{group.skills.map(member => <Link key={member.skill_id} className="inline-flex min-h-(--touch-height) items-center"
+        aria-label={'Open ' + group.name + ' in ' + member.repo_id}
+        to={ctx.href('skill', {skill: member.skill_id, revision: null, tab: 'content', from: 'library', return_tab: null, repo: member.repo_id})}>{member.repo_id}</Link>)}</div></td>
+    </tr>)}
+  </DataTable>;
+}
+
+const DUPLICATE_PREVIEW = 5;
+
 export function ApiLibraryRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
   const target = readScope(ctx);
@@ -134,7 +151,12 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
     layer: at('layer') || undefined, status: at('status') || undefined, cursor: cursor ?? undefined,
   };
   const signature = [...libraryKeys.map(at), cursor ?? ''].join('|');
-  const page = useAsync(() => source.listSkills(target, query), 'skills:' + scopeKey(ctx) + ':' + signature, ready);
+  // `?duplicates=1` swaps the skill list for the full list of duplicate groups (contract 1.12.0).
+  const showDuplicates = at('duplicates') === '1';
+  const [duplicateTrail, setDuplicateTrail] = useState<string[]>([]);
+  const [duplicateCursor, setDuplicateCursor] = useState<string | null>(null);
+  const duplicates = useAsync(() => source.listDuplicates(org ?? '', {repo, cursor: duplicateCursor ?? undefined}), 'duplicates:' + scopeKey(ctx) + ':' + (duplicateCursor ?? ''), ready);
+  const page = useAsync(() => source.listSkills(target, query), 'skills:' + scopeKey(ctx) + ':' + signature, ready && !showDuplicates);
   const facets = useAsync(
     () => Promise.all(catalogFilters.map(entry => source.getFacets(target, {field: entry.field}))),
     'facets:' + scopeKey(ctx), ready,
@@ -183,6 +205,28 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
   }
 
   if (!ready) return <RouteState state="empty" title="No organization selected" description="Sign in to an organization to read its catalog." action={<ActionButton href={ctx.href('import', {step: 'organization'})} tone="system">Open Import</ActionButton>} />;
+  if (showDuplicates) {
+    const back = <div className={styles.actions}><ActionButton href={ctx.href('library', {duplicates: null, cursor: null})} size="sm"><ArrowLeftIcon aria-hidden="true" />Back to all skills</ActionButton></div>;
+    const groups = duplicates.value;
+    if (!groups && duplicates.phase === 'error' && duplicates.error) return <div className={styles.stack}>{back}<ApiFailure error={duplicates.error} onRetry={duplicates.reload} retryLabel="Retry duplicated skills" /></div>;
+    if (!groups) return <div className={styles.stack}>{back}<RouteState state="loading" title="Reading duplicated skills" description="Waiting for skill names that appear in more than one repository." /></div>;
+    const pageNext = (next: string) => { setDuplicateTrail(current => [...current, duplicateCursor ?? '']); setDuplicateCursor(next); };
+    const pagePrevious = () => { const previous = duplicateTrail[duplicateTrail.length - 1] ?? ''; setDuplicateTrail(current => current.slice(0, -1)); setDuplicateCursor(previous || null); };
+    return <div className={styles.stack}>
+      {back}
+      <Panel title="Duplicated across repositories" eyebrow="Same skill name, more than one repository" icon={<CopySimpleIcon weight="duotone" aria-hidden="true" />}
+        action={<StateBadge>{groups.items.length + (groups.next_cursor ? '+' : '') + ' on this page'}</StateBadge>}>
+        {groups.items.length ? <>
+          <DuplicatesTable ctx={ctx} groups={groups.items} />
+          <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <ActionButton onClick={pagePrevious} disabled={duplicateTrail.length === 0} size="sm">Previous page</ActionButton>
+            <ActionButton onClick={() => pageNext(groups.next_cursor as string)} disabled={!groups.next_cursor} size="sm">Next page</ActionButton>
+          </div>
+          <p className={styles.muted}>Names are compared exactly. Similar instructions under different names are not listed here.</p>
+        </> : <RouteState state="empty" title="No duplicated skill names" description="No skill name appears in more than one repository you can read." />}
+      </Panel>
+    </div>;
+  }
   if (!result && page.phase === 'error' && page.error) return <ApiFailure error={page.error} onRetry={page.reload} retryLabel="Retry this page" />;
   if (!result) return <RouteState state="loading" title="Reading the catalog" description="Waiting for the first page of skill summaries. No body is requested here." />;
 
@@ -232,6 +276,11 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
         </Panel>
       </form>
     </Panel>
+    {/* A failed duplicates read hides this panel: the skill list below is complete without it. */}
+    {!cursor && duplicates.value && duplicates.value.items.length > 0 && <Panel title="Duplicated across repositories" eyebrow="Same skill name, more than one repository" icon={<CopySimpleIcon weight="duotone" aria-hidden="true" />}
+      action={<ActionButton href={ctx.href('library', {duplicates: '1', cursor: null})} size="sm" tone="system">{'Show all ' + duplicates.value.items.length + (duplicates.value.next_cursor ? '+' : '')}</ActionButton>}>
+      <DuplicatesTable ctx={ctx} groups={duplicates.value.items.slice(0, DUPLICATE_PREVIEW)} />
+    </Panel>}
     <Panel title="Skill revisions" icon={<FileTextIcon weight="duotone" aria-hidden="true" />}
       action={<StateBadge tone={blocked.length ? 'warning' : 'neutral'}>{blocked.length ? 'Filter value unavailable' : result.items.length + ' on this page'}</StateBadge>}>
       {result.items.length ? <>

@@ -45,11 +45,31 @@ const source = (over: Parameters<typeof fakeSource>[0] = {}) => fakeSource({
   listProposals: async () => ({items: proposals, next_cursor: null}),
   listImports: async () => imports,
   listInstallations: async () => installations,
+  listDuplicates: async () => ({items: [], next_cursor: null}),
   getAudit: async () => ({items: [{at: '2026-09-12T09:00:00Z', actor: 'principal:u1', action: 'import.create', entity: '80314462', revision: null, request_id: 'req-1'}], next_cursor: null}),
   ...over,
 });
 
 describe('Home route', () => {
+  test('1.12.0: at organisation scope the library card counts names duplicated across repositories', async () => {
+    const groups = ['a', 'b', 'c'].map(name => ({name, repos: ['monorepo', 'billing'], count: 2, identical: true, skills: []}));
+    renderApi(ApiHomeRoute, source({listDuplicates: async () => ({items: groups, next_cursor: 'more'})}), '', {repo: null});
+    const line = await screen.findByRole('link', {name: '3+ skill names appear in more than one repository'});
+    expect(line).toHaveAttribute('href', expect.stringContaining('duplicates=1'));
+  });
+
+  test('1.12.0: no duplicate line when there is none, or when a repository is chosen', async () => {
+    const {unmount} = renderApi(ApiHomeRoute, source(), '', {repo: null});
+    await screen.findByRole('heading', {name: 'Largest repositories'});
+    expect(screen.queryByText(/appear in more than one repository/)).not.toBeInTheDocument();
+    unmount();
+    const listDuplicates = vi.fn(async () => ({items: [{name: 'a', repos: ['monorepo', 'billing'], count: 2, identical: true, skills: []}], next_cursor: null}));
+    renderApi(ApiHomeRoute, source({listDuplicates}));
+    await screen.findByRole('heading', {name: 'Largest scopes'});
+    expect(screen.queryByText(/appears? in more than one repository/)).not.toBeInTheDocument();
+    expect(listDuplicates).not.toHaveBeenCalled();
+  });
+
   test('shows the four key numbers as counts and links each to its source view', async () => {
     renderApi(ApiHomeRoute, source());
     const kpis = await screen.findByRole('region', {name: 'Key numbers'});
