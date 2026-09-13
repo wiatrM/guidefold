@@ -22,6 +22,14 @@ kontrakt API/DB: [API-CONTRACT](docs/API-CONTRACT.md).
 
 Zapisana jest wyłącznie ścieżka, nie sekret. Nie wypisuj ani nie kopiuj zawartości kubeconfig do repozytorium lub rozmowy. Przed wdrożeniem zweryfikuj kontekst i stan zasobów; nie zmieniaj innych aplikacji w tym klastrze. Ten wpis nie stanowi samodzielnej zgody na przyszłe wdrożenia.
 
+**Produkcja to skarb** (reguła właściciela z 2026-09-13, po tym jak agent zepsuł logowanie na produkcji). Wiąże każdego agenta i każdą sesję:
+
+1. **Żadnej zmiany na produkcji bez wyraźnej zgody właściciela w bieżącej rozmowie.** Dotyczy skrótów obrazów, wartości aplikacji ArgoCD, sekretów, jobów, polityk sieciowych i ustawień aplikacji GitHub. Zgoda na jedną zmianę nie przechodzi na następną.
+2. **ArgoCD nie uruchamia migracji.** Synchronizuje tylko Deploymenty; job migracji z charta (`workload: migrate`) uruchamia się wyłącznie ręcznie. Wydanie, które zmienia `services/search/internal/schema/sql.go`, idzie w tej kolejności: wyrenderuj job z charta z bieżących wartości aplikacji, z nowym obrazem `search` i `--set workload=migrate`, uruchom go, poczekaj na zakończenie, potwierdź nowe kolumny i tabele, i dopiero wtedy podmień skróty obrazów. Nowy kod na niezmigrowanej bazie to awaria.
+3. **Wdrożenie przechodzi tylko po teście z logowaniem.** `/health/ready` z kodem 200 nie mówi nic o schemacie: 2026-09-13 odpowiadał 200 przez 25 minut, a każde logowanie kończyło się błędem `column "org_id" of relation "auth_states" does not exist`. Po każdym wdrożeniu `GET /api/v1/auth/login/google` musi odpowiedzieć 302 do WorkOS, każda zmieniona trasa musi odpowiadać zgodnie z założeniem, a logi API nie mogą zawierać linii `ERROR` w pierwszych minutach.
+4. **Przed podmianą zapisz poprzednie skróty i cofnij wdrożenie przy pierwszej regresji**, zamiast diagnozować na produkcji.
+5. **Testuj na lokalnym stosie** (`tools/dev/stack.py`), nigdy na produkcji, wszystko, co da się tam przetestować.
+
 ## Pozycjonowanie: co sprzedajemy
 
 Decyzja właściciela, 2026-09-09. Obowiązuje w każdym tekście marketingowym, na
