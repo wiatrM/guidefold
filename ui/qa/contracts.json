@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-13T17:15:15.259Z",
+  "capturedAt": "2026-09-13T17:43:05.202Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
-    "components": 18,
-    "cssFiles": 57,
+    "components": 24,
+    "cssFiles": 63,
     "tokens": 476,
-    "productionFilesTraversed": 64,
+    "productionFilesTraversed": 86,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -235,6 +235,82 @@
         "SingleOrganisation",
         "NoOrganisation"
       ]
+    },
+    {
+      "name": "StageStatus",
+      "files": [
+        "src/components/StageStatus/index.tsx",
+        "src/components/StageStatus/StageStatus.module.css",
+        "src/components/StageStatus/StageStatus.test.tsx",
+        "src/components/StageStatus/StageStatus.stories.tsx"
+      ],
+      "scenarios": [
+        "Steps",
+        "Inline"
+      ]
+    },
+    {
+      "name": "RepositoryItem",
+      "files": [
+        "src/components/RepositoryItem/index.tsx",
+        "src/components/RepositoryItem/RepositoryItem.module.css",
+        "src/components/RepositoryItem/RepositoryItem.test.tsx",
+        "src/components/RepositoryItem/RepositoryItem.stories.tsx"
+      ],
+      "scenarios": [
+        "ReadyToImport",
+        "Imported"
+      ]
+    },
+    {
+      "name": "ImportFilter",
+      "files": [
+        "src/components/ImportFilter/index.tsx",
+        "src/components/ImportFilter/ImportFilter.module.css",
+        "src/components/ImportFilter/ImportFilter.test.tsx",
+        "src/components/ImportFilter/ImportFilter.stories.tsx"
+      ],
+      "scenarios": [
+        "Default"
+      ]
+    },
+    {
+      "name": "ConfirmDialog",
+      "files": [
+        "src/components/ConfirmDialog/index.tsx",
+        "src/components/ConfirmDialog/ConfirmDialog.module.css",
+        "src/components/ConfirmDialog/ConfirmDialog.test.tsx",
+        "src/components/ConfirmDialog/ConfirmDialog.stories.tsx"
+      ],
+      "scenarios": [
+        "DisconnectGitHub",
+        "DeleteModelKey"
+      ]
+    },
+    {
+      "name": "ModelKeysTable",
+      "files": [
+        "src/components/ModelKeysTable/index.tsx",
+        "src/components/ModelKeysTable/ModelKeysTable.module.css",
+        "src/components/ModelKeysTable/ModelKeysTable.test.tsx",
+        "src/components/ModelKeysTable/ModelKeysTable.stories.tsx"
+      ],
+      "scenarios": [
+        "Default",
+        "Empty"
+      ]
+    },
+    {
+      "name": "AdapterFallback",
+      "files": [
+        "src/components/AdapterFallback/index.tsx",
+        "src/components/AdapterFallback/AdapterFallback.module.css",
+        "src/components/AdapterFallback/AdapterFallback.test.tsx",
+        "src/components/AdapterFallback/AdapterFallback.stories.tsx"
+      ],
+      "scenarios": [
+        "Default"
+      ]
     }
   ],
   "typeOnlyEdges": [
@@ -291,6 +367,26 @@
       "specifier": "../../domain/orgSwitch"
     },
     {
+      "file": "src/components/RepositoryItem/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/ui/toggle-group.tsx",
+      "specifier": "class-variance-authority"
+    },
+    {
+      "file": "src/components/ConfirmDialog/index.tsx",
+      "specifier": "react"
+    },
+    {
+      "file": "src/components/ui/code-block.tsx",
+      "specifier": "shiki"
+    },
+    {
+      "file": "src/components/ui/code-block.tsx",
+      "specifier": "react"
+    },
+    {
       "file": "src/domain/orgSwitch.ts",
       "specifier": "../api/decoders"
     },
@@ -328,6 +424,16 @@
     {
       "file": "src/components/spectrumui/bento-card.tsx",
       "line": 131,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/blocks/ai-assistants/status-tracker.tsx",
+      "line": 51,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/spectrumui/blocks/ai-assistants/status-tracker.tsx",
+      "line": 75,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     },
     {
@@ -531,6 +637,11 @@
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     },
     {
+      "file": "src/components/ui/autocomplete.tsx",
+      "line": 412,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
       "file": "src/components/ui/chart.tsx",
       "line": 231,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
@@ -538,6 +649,11 @@
     {
       "file": "src/components/ui/chart.tsx",
       "line": 314,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/code-block.tsx",
+      "line": 184,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     },
     {
@@ -553,6 +669,16 @@
     {
       "file": "src/components/ui/sidebar.tsx",
       "line": 637,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/sonner.tsx",
+      "line": 29,
+      "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
+    },
+    {
+      "file": "src/components/ui/toggle-group.tsx",
+      "line": 43,
       "reason": "Explicit hash-pinned Spectrum geometry exception; see spectrum-registry.json"
     }
   ],

@@ -291,6 +291,43 @@
       "sha256": "77f61a837788d635947f30e7fd69973dd3a0dd0e0da76e48a97529e5816dfc15",
       "source": "https://shadcnspace.com/r/empty-state-01.json",
       "allowInlineGeometry": false
+    },
+    {
+      "file": "src/components/ui/code-block.tsx",
+      "sha256": "d65eece85dbec71fa98cd20c899434f3343b6e002633d19d3594ba6da4ce2501",
+      "source": "https://shadcnspace.com/r/code-block-01.json",
+      "allowInlineGeometry": true,
+      "reason": "style={scrollable ? {maxHeight:`${maxHeight}px`} : undefined} carries the caller-configured pixel height of a scrollable code panel, not a design value; geometry only, no colour in the inline style. Also remapped the highlighted-line colours in the injected <style> block from literal oklch() to var(--warning)/var(--warning-wash), CopyBtn's checkmark from text-teal-400 to text-primary, and (2026-09-13 review) turned the static `import {codeToHtml} from \"shiki\"` into a dynamic import inside renderCode so shiki's grammars/themes only load once a CodeBlock actually mounts, never sitting in a chunk that merely imports this file."
+    },
+    {
+      "file": "src/components/ui/autocomplete.tsx",
+      "sha256": "14162807bbbc0a12198143a66c6b008c98a5dcbee0e20f34d7745c98ae47bbba",
+      "source": "https://shadcnspace.com/r/autocomplete-05.json",
+      "allowInlineGeometry": true,
+      "reason": "style={{...posStyle, ...styleProp}} applies the floating listbox's measured position (getBoundingClientRect-derived top/left/width), recomputed per open/resize; geometry only, no colour in the inline style attribute."
+    },
+    {
+      "file": "src/components/ui/sonner.tsx",
+      "sha256": "d0a3d387e539fc849f136a34879c88825f72e3438e778b9f5de6c6b8e05ebc52",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/sonner.json",
+      "allowInlineGeometry": true,
+      "adaptations": "2026-09-13: dropped next-themes (this is a Vite app with one fixed graphite theme, no toggle) for a hardcoded theme=\"dark\"; the 5 icons were re-pointed from IconPlaceholder to the project's own lucide-react imports by the shadcn CLI's iconLibrary setting.",
+      "reason": "style={{...} as React.CSSProperties} maps only var(--token) references for four CSS custom properties (--normal-bg etc.); the `as` cast (required because CSSProperties does not type custom properties) makes the object non-auditable to the static scanner even though every value is already a token."
+    },
+    {
+      "file": "src/components/ui/toggle-group.tsx",
+      "sha256": "3f5c3103a68b14a8539121315db585970e8471fd214a5fe5c3c720cbd9fa7f80",
+      "source": "https://ui.shadcn.com/r/styles/base-nova/toggle-group.json",
+      "allowInlineGeometry": true,
+      "reason": "style={{\"--gap\": spacing} as React.CSSProperties} carries the caller-configured item spacing as a CSS custom property; the `as` cast makes it non-auditable to the scanner even though the value is a plain number, not a colour."
+    },
+    {
+      "file": "src/components/spectrumui/blocks/ai-assistants/status-tracker.tsx",
+      "sha256": "56f38a0c4a89bb988693bbe9d51b807e4c668441a3d5013c272c33673915ade0",
+      "source": "https://ui.spectrumhq.in/r/status-tracker.json",
+      "allowInlineGeometry": true,
+      "adaptations": "2026-09-13: literal neutral-900/black/white(/opacity) classes remapped onto bg-primary/text-primary-foreground/border-border/bg-muted/text-foreground/text-muted-foreground; removed the continuous motion-safe:animate-pulse on the active stage's dot (UX §6 bans automatic pulsing statuses) while keeping the one-shot completion-checkmark pop, which fires only on a real state change.",
+      "reason": "The two style={{width:...}} attributes are the live fill of the stage connector/progress bar, computed from the caller's activeIndex/progress props, not a design value; geometry only, no colour in the inline style."
     }
   ]
 }

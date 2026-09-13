@@ -1,7 +1,7 @@
 {
-  "date": "2026-09-13T17:16:47.797Z",
+  "date": "2026-09-13T17:43:48.519Z",
   "kind": "ui component gallery versus its accepted baseline (qa/baseline)",
-  "baselineCapturedAt": "2026-09-13T17:16:27.304Z",
+  "baselineCapturedAt": "2026-09-13T17:41:11.391Z",
   "records": [
     {
       "name": "ActionButton",
@@ -124,25 +124,25 @@
       "name": "Field",
       "width": 1280,
       "file": "Field-1280.png",
-      "sha256": "1b72e3e3aad71ea2bfd1d30d82bc00791c4a90d9bcc46a9eb6a3d77c47c32a32",
+      "sha256": "fe62c6761a31a51411533e80d43afcf1af603d9adecbd916b923386081101bea",
       "changedPixels": 0,
-      "totalPixels": 210816,
+      "totalPixels": 218624,
       "pass": true
     },
     {
       "name": "PyramidChart",
       "width": 1280,
       "file": "PyramidChart-1280.png",
-      "sha256": "f4d72dbdf1872bc2219176e2f0d75e313412581991fd59c5e1c4a27c56df935b",
+      "sha256": "75f5d1a53fb99a4f567a3f3456592ed46dbccd3407ee307c6dc76f094821765e",
       "changedPixels": 0,
-      "totalPixels": 685152,
+      "totalPixels": 686128,
       "pass": true
     },
     {
       "name": "HeaderGlow",
       "width": 1280,
       "file": "HeaderGlow-1280.png",
-      "sha256": "337f2f04f79bd1e0ba8ddb7a66be9c0780f596b4e389c8a1bd1c303b919973a2",
+      "sha256": "28f11af5744f331fb024768f226a55b3092b180164d74f2e79b1578a10a5d0e6",
       "changedPixels": 0,
       "totalPixels": 142496,
       "pass": true
@@ -151,25 +151,25 @@
       "name": "BorderBeam",
       "width": 1280,
       "file": "BorderBeam-1280.png",
-      "sha256": "fd1b1cf6643ddaba580bc2d7649163b5236c14326e213de7d3bbade580e7e2ec",
+      "sha256": "dd34ff94628478e11323d97b3598778eac210ff5b8d0db8b57609ea67ecb8569",
       "changedPixels": 0,
-      "totalPixels": 180560,
+      "totalPixels": 179584,
       "pass": true
     },
     {
       "name": "ShineBorder",
       "width": 1280,
       "file": "ShineBorder-1280.png",
-      "sha256": "8ba3ac3c51b41f0c08eb8360aeabe35e64f0e5c30f7efb9ea12d74f6c3645f84",
+      "sha256": "5a2c08d831f2a382d2967a97ec52d5d155f8edee55e1573c1e0d2df7df4bf5e4",
       "changedPixels": 0,
-      "totalPixels": 234240,
+      "totalPixels": 235216,
       "pass": true
     },
     {
       "name": "GlowSurface",
       "width": 1280,
       "file": "GlowSurface-1280.png",
-      "sha256": "2c801f894ba3157d5f70bdcd80a32490d59599ce8b378944069b6105e2093bc0",
+      "sha256": "8fbe7f84c86590318faa0e504b22e982c012769fa0fd6ddc3a5c0b232d652c8f",
       "changedPixels": 0,
       "totalPixels": 180560,
       "pass": true
@@ -178,7 +178,7 @@
       "name": "GlowAction",
       "width": 1280,
       "file": "GlowAction-1280.png",
-      "sha256": "fd75096518d253c27f797caf9fe8ec3975631138d29d05b934b41129b0544f46",
+      "sha256": "dddaec600822b7d08513fd8dab1f9265fd4824fbc9165d9bd829e0f39d765261",
       "changedPixels": 0,
       "totalPixels": 111264,
       "pass": true
@@ -187,7 +187,7 @@
       "name": "ShaderField",
       "width": 1280,
       "file": "ShaderField-1280.png",
-      "sha256": "35d85fb4abd24ab1ad83750f094abaf816918099f9fbab2c71a4e95d67684b39",
+      "sha256": "571b04469161fd34d83a3d61a58cdd2f4c98ba757bb8cc8559555a47a1d0fac9",
       "changedPixels": 0,
       "totalPixels": 345504,
       "pass": true
@@ -196,7 +196,7 @@
       "name": "GridField",
       "width": 1280,
       "file": "GridField-1280.png",
-      "sha256": "4d1f6a7406765e225a38828a415a69c6c21da7cb44a06a04c87f1fa6e4b7436b",
+      "sha256": "12db4ec74ef1e208bd5058b391fcef3d2d6c7c23863495ac55f8017848ffde1e",
       "changedPixels": 0,
       "totalPixels": 345504,
       "pass": true
@@ -205,25 +205,25 @@
       "name": "NumberTicker",
       "width": 1280,
       "file": "NumberTicker-1280.png",
-      "sha256": "f87620dcc09c9321215cd27a878186b663681785db6f82b75866c258ef6a48f2",
+      "sha256": "45f5c03ae1333e2b8029f5d4d145976ccd4191a6eed2ba8e85985b0e0e496a7d",
       "changedPixels": 0,
-      "totalPixels": 94672,
+      "totalPixels": 93696,
       "pass": true
     },
     {
       "name": "AnimatedList",
       "width": 1280,
       "file": "AnimatedList-1280.png",
-      "sha256": "a6f66cf76c4755804715fdf6f651a2787d37526711e0300e3ca7da7d6ace7ed5",
+      "sha256": "54e406a779b9054042600692224fc80f7bb7adec921392c026ca67efc57ba895",
       "changedPixels": 0,
-      "totalPixels": 153232,
+      "totalPixels": 154208,
       "pass": true
     },
     {
       "name": "Marquee",
       "width": 1280,
       "file": "Marquee-1280.png",
-      "sha256": "75e06d26b7361b36f2cd309b9545541761f3837395f4128cf9268b59742e2a9b",
+      "sha256": "a193b3e3c37995cd9f036a6da2584434fcb609fdb472fd599bb823a2b33d57bf",
       "changedPixels": 0,
       "totalPixels": 93696,
       "pass": true
@@ -232,7 +232,7 @@
       "name": "OrbitingCircles",
       "width": 1280,
       "file": "OrbitingCircles-1280.png",
-      "sha256": "b72a95ecaa6a3103fca3b64b4158d88bac24293021e737896eaa3ff65bce3f2e",
+      "sha256": "b79274f83587e58edec1119a814c7490cb6d9965dc513acb6beaca9b8302353c",
       "changedPixels": 0,
       "totalPixels": 333792,
       "pass": true
@@ -241,16 +241,16 @@
       "name": "AnimatedText",
       "width": 1280,
       "file": "AnimatedText-1280.png",
-      "sha256": "ad36b67589904804a95bae5a3ea2109055d66536093a4b2bde83e5861411fb14",
+      "sha256": "9332138458eadc1ec3e6d01a962a483bad4abb723a5641d2273b50e50890075d",
       "changedPixels": 0,
-      "totalPixels": 94672,
+      "totalPixels": 93696,
       "pass": true
     },
     {
       "name": "SuccessBurst",
       "width": 1280,
       "file": "SuccessBurst-1280.png",
-      "sha256": "a04f19803461b7120455ba6b080c2345818019bfaa54dafe1412fee4821ef3d5",
+      "sha256": "f13ef5f31a14240165174245c1f2721d3f06397f6f7c9111c5749d3d83ea4f7c",
       "changedPixels": 0,
       "totalPixels": 126880,
       "pass": true
@@ -259,7 +259,7 @@
       "name": "ShimmerSkeleton",
       "width": 1280,
       "file": "ShimmerSkeleton-1280.png",
-      "sha256": "799a11374c0c9b4a965a877c0e3458f135114de761c373bbe08047471da330b4",
+      "sha256": "1a5908d9457c5df1ec144bfe68a7e32dac636f07456be9a98af5685dd6b9537a",
       "changedPixels": 0,
       "totalPixels": 204960,
       "pass": true
@@ -385,25 +385,25 @@
       "name": "Field",
       "width": 820,
       "file": "Field-820.png",
-      "sha256": "500854c6137420725eb08cd2aecbbbb271d4c5b45915ce587af76980e039c0dd",
+      "sha256": "3eb0c9714dfb2a0a77d191faf5b6055d8c93cacba92ed8a531afea0034b47e5b",
       "changedPixels": 0,
-      "totalPixels": 166752,
+      "totalPixels": 172928,
       "pass": true
     },
     {
       "name": "PyramidChart",
       "width": 820,
       "file": "PyramidChart-820.png",
-      "sha256": "19b4501ab082d5c29c4ae2155e04067d029f5294a30b779c05300f325f081e76",
+      "sha256": "171c676ddebda5c3d6fa1f686ffa933addc5f29a1f639270f00308fe10726117",
       "changedPixels": 0,
-      "totalPixels": 568964,
+      "totalPixels": 569736,
       "pass": true
     },
     {
       "name": "HeaderGlow",
       "width": 820,
       "file": "HeaderGlow-820.png",
-      "sha256": "d97445cd41d7d9ff224ee1e02d5d949f261d7c8286bab7f54c7bcef34a333597",
+      "sha256": "ef1a8ac50ac1bf5d19d36ec74bc9da0922023a6fc9da3c33c41c6574e02fb657",
       "changedPixels": 0,
       "totalPixels": 112712,
       "pass": true
@@ -412,7 +412,7 @@
       "name": "BorderBeam",
       "width": 820,
       "file": "BorderBeam-820.png",
-      "sha256": "d3608aab06fe99e2c88076d68b01169927bbbea2af0dcdb47c2b9197d5079492",
+      "sha256": "ae7189c78e3b61561e955b071d4a5056831e08dbe9d29a81527e46f3af06d64b",
       "changedPixels": 0,
       "totalPixels": 142820,
       "pass": true
@@ -421,25 +421,25 @@
       "name": "ShineBorder",
       "width": 820,
       "file": "ShineBorder-820.png",
-      "sha256": "2ec6cca489273157342d2de728680bfab94bd5445bab6ce761d1353f336c9f48",
+      "sha256": "7deb5ef9924d4a6de455b2f7fbcc1d9e83a642a6970049d95a40c211e8709702",
       "changedPixels": 0,
-      "totalPixels": 186052,
+      "totalPixels": 185280,
       "pass": true
     },
     {
       "name": "GlowSurface",
       "width": 820,
       "file": "GlowSurface-820.png",
-      "sha256": "f2dd37c71fd51f01387842c6884ed2bdc139b2ec00beec51267f49ab6f9d5e53",
+      "sha256": "4829561e41f11907ef38a65424383dbc48bd68a9701d61e3db9bb0a2d0d9a617",
       "changedPixels": 0,
-      "totalPixels": 142048,
+      "totalPixels": 142820,
       "pass": true
     },
     {
       "name": "GlowAction",
       "width": 820,
       "file": "GlowAction-820.png",
-      "sha256": "5029777506d301f5a89d1cea096a054c73616b1e83abf129aac84341c81183ef",
+      "sha256": "2a38087963f400417e5d5c762bb3319d858b7248715cf203cb3f9d41b1392169",
       "changedPixels": 0,
       "totalPixels": 88008,
       "pass": true
@@ -448,7 +448,7 @@
       "name": "ShaderField",
       "width": 820,
       "file": "ShaderField-820.png",
-      "sha256": "8ec0fd25c36b4d495dab41771802c61028ad93ab6245bbeae65328c2deaaa02d",
+      "sha256": "802c8a6943fe2b0399274b087d674eccccb448e0fea6b62a1eb238ec1794f68e",
       "changedPixels": 0,
       "totalPixels": 273288,
       "pass": true
@@ -466,7 +466,7 @@
       "name": "NumberTicker",
       "width": 820,
       "file": "NumberTicker-820.png",
-      "sha256": "8208c2ea48ea63fe9caff03544ff6e0b8bf8ee8d855202275956dc14af6b6e68",
+      "sha256": "1906f177cff4bfa4478dcab59edb133ece0e24cb09c23e78eb8fc847c9402799",
       "changedPixels": 0,
       "totalPixels": 74884,
       "pass": true
@@ -475,7 +475,7 @@
       "name": "AnimatedList",
       "width": 820,
       "file": "AnimatedList-820.png",
-      "sha256": "f9ae276273f27144d0b24a9ab284d64ad748429b8a1a536f103e605dcce28823",
+      "sha256": "b0e0966c18bf707b3408011e28bb0dfd6103e12522b0226e5588a499d6370238",
       "changedPixels": 0,
       "totalPixels": 121204,
       "pass": true
@@ -484,7 +484,7 @@
       "name": "Marquee",
       "width": 820,
       "file": "Marquee-820.png",
-      "sha256": "602b5bf3b5ffe2dc9cd2e7cec3b642512943333b5d263b19010199f7e506a5d3",
+      "sha256": "5be6cc793bd78a29126d026c5e21d474dfbe939aa5f422c2cbbe97c6043a56af",
       "changedPixels": 0,
       "totalPixels": 74112,
       "pass": true
@@ -502,27 +502,27 @@
       "name": "AnimatedText",
       "width": 820,
       "file": "AnimatedText-820.png",
-      "sha256": "975831e807a85ba9b1841d11a7e5dd6a556987451a5884f9366fa1e137b0c6f9",
+      "sha256": "4933002dea4a7af55731bec9a8278c50cb6dddf7e0ef04dbb5a7766f1b5dc29f",
       "changedPixels": 0,
-      "totalPixels": 74884,
+      "totalPixels": 74112,
       "pass": true
     },
     {
       "name": "SuccessBurst",
       "width": 820,
       "file": "SuccessBurst-820.png",
-      "sha256": "f17a6c05f0218d5155b3d5fcfcdd135b04e4ed72bca6338d625bda1c8825edee",
+      "sha256": "f894d2dd84ccd0671b98c045d7bd42f924aa3d3d53ccbbfb4c11fef5e94fce6c",
       "changedPixels": 0,
-      "totalPixels": 100360,
+      "totalPixels": 99588,
       "pass": true
     },
     {
       "name": "ShimmerSkeleton",
       "width": 820,
       "file": "ShimmerSkeleton-820.png",
-      "sha256": "d7ebeb0753ccc0cd2ce057902f3b55863f5574b0eaa659c2bb46bd25c3be17b9",
+      "sha256": "609e6e22f1ac481014a17fa7dbdc33eb20c4d9f24fd6761eee1c1fa7aff73626",
       "changedPixels": 0,
-      "totalPixels": 162120,
+      "totalPixels": 161348,
       "pass": true
     },
     {
@@ -646,16 +646,16 @@
       "name": "Field",
       "width": 390,
       "file": "Field-390.png",
-      "sha256": "fd2a2a7ce1786a9f76932fae9ccb80e5ee45ad52358319fa04b8eaef8755c82d",
+      "sha256": "a36f8d9dee1dd4827bcd685997bfb202fc5455070491bda922cd39cb64a7cf2f",
       "changedPixels": 0,
-      "totalPixels": 76970,
+      "totalPixels": 80192,
       "pass": true
     },
     {
       "name": "PyramidChart",
       "width": 390,
       "file": "PyramidChart-390.png",
-      "sha256": "b497b53de3b68a92d2642cfa4b9a8340a8e002acb4a699503ad762472ab524b6",
+      "sha256": "abb0b70dee428237692e66beb988162fbf210dc8240d3ec7508365790efdec99",
       "changedPixels": 0,
       "totalPixels": 276376,
       "pass": true
@@ -664,7 +664,7 @@
       "name": "HeaderGlow",
       "width": 390,
       "file": "HeaderGlow-390.png",
-      "sha256": "a6e65f7fbb9188b01512a1f8ecd5bc0445da5bef850edd416b3c0c44b8a29f04",
+      "sha256": "2d81d18375599c6b64a286df3e6f946d2bdb33af442aa3f8b4dd7ed6c04c0e72",
       "changedPixels": 0,
       "totalPixels": 46540,
       "pass": true
@@ -673,25 +673,25 @@
       "name": "BorderBeam",
       "width": 390,
       "file": "BorderBeam-390.png",
-      "sha256": "a725cc4b6260b8bfc916bc4023384288cb580e7b6bc118121f6ac64e7ddf46d9",
+      "sha256": "1098f4dc0d7e9296329eaa7d36065761a54918675d7d68eeb135387d64b5d083",
       "changedPixels": 0,
-      "totalPixels": 74464,
+      "totalPixels": 74106,
       "pass": true
     },
     {
       "name": "ShineBorder",
       "width": 390,
       "file": "ShineBorder-390.png",
-      "sha256": "2e052bde740594fd923f0eabde47948a3ef302fb8b5ebedb251715fb985b53ca",
+      "sha256": "69f9b492534995ca0d4627eb32f069f7ccd8a27bfa016e550db86d9edf9908a0",
       "changedPixels": 0,
-      "totalPixels": 87352,
+      "totalPixels": 87710,
       "pass": true
     },
     {
       "name": "GlowSurface",
       "width": 390,
       "file": "GlowSurface-390.png",
-      "sha256": "6238e931f0435dc7c4848b2cef474251b529dfe3c1ab954ee8481e44ecd4b588",
+      "sha256": "5e0e227f9061f10aa20e07f2e157a5589afa76a06163b7c3e1ad93cd929b7755",
       "changedPixels": 0,
       "totalPixels": 66230,
       "pass": true
@@ -700,7 +700,7 @@
       "name": "GlowAction",
       "width": 390,
       "file": "GlowAction-390.png",
-      "sha256": "829ffd66d6e6593e21649f56ff4b35d636db04dfe3a8e605893f107714f4b633",
+      "sha256": "b126435a5b2cf5c2ea82ed7da87abb588d0285dd38155d197c0d4ec80dc0abff",
       "changedPixels": 0,
       "totalPixels": 42244,
       "pass": true
@@ -709,7 +709,7 @@
       "name": "ShaderField",
       "width": 390,
       "file": "ShaderField-390.png",
-      "sha256": "592fef1f7410140ce58231d9459eb946e0d2b6a976d9218865d9ffa8ed7784b6",
+      "sha256": "8aa4edbb503a25203b5c9acf1a0db284cd5e64688fa13ce81dc9fd3a18004420",
       "changedPixels": 0,
       "totalPixels": 126732,
       "pass": true
@@ -718,7 +718,7 @@
       "name": "GridField",
       "width": 390,
       "file": "GridField-390.png",
-      "sha256": "91d6664d60a857d92633d513525c550bfc61c97020cdb3af9e4d0094d85df179",
+      "sha256": "da42acb428f884665eed9115248996c34f6523675d74d34879e18c90a3402747",
       "changedPixels": 0,
       "totalPixels": 126732,
       "pass": true
@@ -727,16 +727,16 @@
       "name": "NumberTicker",
       "width": 390,
       "file": "NumberTicker-390.png",
-      "sha256": "66ce2356ead10914f072398b16a07356f893847fa75793aec04091b128b1a651",
+      "sha256": "a570c7032b45361f8f685a8751ebc5570e90871d9c273c484dd96c6895b6bf3b",
       "changedPixels": 0,
-      "totalPixels": 34726,
+      "totalPixels": 34368,
       "pass": true
     },
     {
       "name": "AnimatedList",
       "width": 390,
       "file": "AnimatedList-390.png",
-      "sha256": "0e98dcbb30ba4cc0c0283d2dc80358058bf50e069ae7e6c85d797945e7ca56cf",
+      "sha256": "7e5dc41a948b8fca6ff5074d559f9a2aec8177711a6ee62304dd02ed82866b91",
       "changedPixels": 0,
       "totalPixels": 56206,
       "pass": true
@@ -745,16 +745,16 @@
       "name": "Marquee",
       "width": 390,
       "file": "Marquee-390.png",
-      "sha256": "01228ab4d0c970dbd55e863028b50967714876bc895013de1db002dc90ed7a86",
+      "sha256": "7745640565a713990f50dbb433e7c4fffd225c856dc2827c3de5885c60434213",
       "changedPixels": 0,
-      "totalPixels": 34368,
+      "totalPixels": 34726,
       "pass": true
     },
     {
       "name": "OrbitingCircles",
       "width": 390,
       "file": "OrbitingCircles-390.png",
-      "sha256": "5c5f2d2e8dabeea562074bc451948519b3352d635c2569ab0ff75c2a2121fc7c",
+      "sha256": "192ddfbbcbe3e54bc9901774c86e25d3f1352f57a2cf7241fef0445c1baefa02",
       "changedPixels": 0,
       "totalPixels": 122436,
       "pass": true
@@ -763,7 +763,7 @@
       "name": "AnimatedText",
       "width": 390,
       "file": "AnimatedText-390.png",
-      "sha256": "15b93896e75b8da3de53d8da30288a61d1b1e65472d23383d5f0e80590f99099",
+      "sha256": "fba7b465d87231f233e25cd87ccb35640004026291b97f681520684470272301",
       "changedPixels": 0,
       "totalPixels": 42602,
       "pass": true
@@ -781,7 +781,7 @@
       "name": "ShimmerSkeleton",
       "width": 390,
       "file": "ShimmerSkeleton-390.png",
-      "sha256": "5c16ec956f50d0423ede416d7b5f84e2554b6ce27082893b2038ea56509b9da1",
+      "sha256": "479b27d133f2d20b11402de46b43c0cd18bf8ba5bb2d885ca0f8ab881afcd37d",
       "changedPixels": 0,
       "totalPixels": 75180,
       "pass": true

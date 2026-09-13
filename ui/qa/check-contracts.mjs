@@ -24,7 +24,17 @@ const tokenFile=resolve(src,'tokens/tokens.css');
 // the URL/remembered-organisation choice and the per-organisation menu links stay in the pure
 // ui/src/domain/orgSwitch.ts (Base UI Menu hangs jsdom once opened, so this component is only
 // ever rendered closed in Vitest; opening it is ui/e2e/org-switcher.spec.ts).
-const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile','RepositoryFilter','OrgSwitcher'];
+// StageStatus, RepositoryItem, ImportFilter, ConfirmDialog, ModelKeysTable and AdapterFallback
+// (2026-09-13, premium-components pass) are nineteenth through twenty-fourth: concrete surfaces
+// named by UX §3a (the organisation wizard's step progress, the GitHub repository list and its
+// row actions/preview, the switcher/import confirmations, the model-keys table and the collapsed
+// CLI/file fallback), each composing a shadcn/ui or Spectrum primitive installed the same pass.
+// StageStatus alone covers both the wizard's three-step header and each repository's inline
+// fetch/parse/propose status (one adapted @spectrumui/status-tracker, two variants) rather than
+// a second, motion-duplicating stepper implementation.
+// docs/reports/ui/premium-components-20260913.md records the full install and the primitives
+// left unwrapped for a later consumer.
+const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile','RepositoryFilter','OrgSwitcher','StageStatus','RepositoryItem','ImportFilter','ConfirmDialog','ModelKeysTable','AdapterFallback'];
 // registry.css may declare Tailwind theme entries, but only as references into tokens.css.
 const registryCss=resolve(src,'registry.css');
 function themeRanges(text){const out=[];const re=/@theme\b[^{]*\{/g;let m;while((m=re.exec(text))){let depth=1,i=re.lastIndex;for(;i<text.length&&depth;i++){if(text[i]==='{')depth++;else if(text[i]==='}')depth--;}out.push([m.index,i]);}return out;}

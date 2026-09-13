@@ -1,0 +1,2 @@
+.drop{border:var(--border-width) dashed var(--line-strong);border-radius:var(--radius);padding:var(--space-4);text-align:center;color:var(--stone-300);cursor:pointer;}
+.drop[data-active]{border-color:var(--survey-teal);color:var(--system-ink);background:var(--system-wash);}
