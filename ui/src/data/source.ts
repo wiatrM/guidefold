@@ -5,7 +5,7 @@
  * call `fetch` and never hold sample data of their own.
  */
 import type {
-  AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, ExportPayload, Facets, FacetLookup,
+  AuditPage, AuthProviders, DecisionResult, DeviceApproval, DeviceStart, DuplicatePage, ExportPayload, Facets, FacetLookup,
   ImportCreated, ImportPlan, ImportStatus, Installation, Invitation, InvitationAccepted, InvitationLifecycle, Judgment, MapLayers, MapRepository, MapScopes,
   Me, Member, ModulePage, Org, ProposalDetail, ProposalGenerationResult, ProposalKind, ProposalList,
   ProposalLimits, Profile, Publication, Relations, Repo, Revision, Role, SkillDetail, SkillPage, Snapshot, Usage,
@@ -27,6 +27,7 @@ export interface SkillQuery {
   cursor?: string; limit?: number; snapshotId?: string;
 }
 export interface FacetQuery { field: 'scope' | 'owner' | 'layer' | 'status' | 'repo'; q?: string; cursor?: string }
+export interface DuplicateQuery { repo?: string | null; cursor?: string; limit?: number }
 export interface RelationQuery { skillId?: string; type?: string; cursor?: string; limit?: number }
 export interface ProposalQuery { state?: string; kind?: string; scope?: string; cursor?: string }
 /** Contract §4.6: `window, scope, skill_id, revision, harness` for the report, `format, window` for the export. */
@@ -149,6 +150,8 @@ export interface DataSource {
   // Knowledge ---------------------------------------------------------------
   listSkills(target: ReadScope, query: SkillQuery): Promise<SkillPage>;
   getFacets(target: ReadScope, query: FacetQuery): Promise<Facets>;
+  /** `GET {org_base}/skills/duplicates` (contract 1.12.0): organisation scope only; `repo` keeps the groups that include it. */
+  listDuplicates(org: string, query: DuplicateQuery): Promise<DuplicatePage>;
   lookupFacet(target: ReadScope, field: string, value: string): Promise<FacetLookup>;
   getSkill(target: ReadScope, skillId: string): Promise<SkillDetail>;
   getRevision(target: ReadScope, skillId: string, revisionId: string): Promise<Revision>;

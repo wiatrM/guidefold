@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiLibraryRoute } from './CatalogRoutes';
 import { ApiError } from '../api/client';
-import type { SkillPage, SkillSummary } from '../api/decoders';
+import type { DuplicateGroup, SkillPage, SkillSummary } from '../api/decoders';
 import type { SkillQuery } from '../data/source';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
@@ -210,5 +210,66 @@ describe('Library route, rows', () => {
     expect(await screen.findByText(/2 skill summaries on this page, more pages follow/)).toBeInTheDocument();
     expect(screen.getByText(/Snapshot Unknown\./)).toBeInTheDocument();
     expect(screen.getByText('2 on this page')).toBeInTheDocument();
+  });
+});
+
+const group = (name: string, identical = true): DuplicateGroup => ({
+  name, repos: ['meridian', 'second'], count: 2, identical,
+  skills: ['meridian', 'second'].map(repo => ({ skill_id: 'urn:skill:' + repo + ':_root:' + name, repo_id: repo, scope: '_root', path: '.agents/skills/' + name + '/SKILL.md', content_sha256: 'sha', publication_status: 'draft' })),
+});
+const sevenGroups = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((name, index) => group('skill-' + name, index !== 1));
+
+describe('Library route, duplicates across repositories (contract 1.12.0)', () => {
+  test('a compact panel shows five groups, their badges and a link to all of them', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page(),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+      listDuplicates: async () => ({ items: sevenGroups, next_cursor: null }),
+    }), '', { repo: null });
+    const panel = (await screen.findByText('Duplicated across repositories')).closest('section') ?? document.body;
+    const table = within(panel as HTMLElement).getByRole('table', { name: 'Skill names that appear in more than one repository' });
+    expect(within(table).getAllByRole('row')).toHaveLength(6);
+    expect(within(table).queryByText('skill-f')).not.toBeInTheDocument();
+    expect(within(table).getAllByText('Differs')).toHaveLength(1);
+    expect(within(table).getAllByText('Identical')).toHaveLength(4);
+    expect(screen.getByRole('link', { name: 'Show all 7' })).toHaveAttribute('href', expect.stringContaining('duplicates=1'));
+    expect(screen.getByText('pipeline-testing')).toBeInTheDocument();
+  });
+
+  test('each copy links to its own Skill view with its repository', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page(),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+      listDuplicates: async () => ({ items: [group('adr-process')], next_cursor: 'more' }),
+    }), '', { repo: null });
+    const link = await screen.findByRole('link', { name: 'Open adr-process in second' });
+    expect(link).toHaveAttribute('href', expect.stringContaining('repo=second'));
+    expect(link).toHaveAttribute('href', expect.stringContaining('skill=' + encodeURIComponent('urn:skill:second:_root:adr-process')));
+    expect(screen.getByRole('link', { name: 'Show all 1+' })).toBeInTheDocument();
+  });
+
+  test('no group means no panel', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({
+      listSkills: async () => page(),
+      getFacets: async (_target, query) => ({ field: query.field, values: [], next_cursor: null }),
+      listDuplicates: async () => ({ items: [], next_cursor: null }),
+    }));
+    expect(await screen.findByText('pipeline-testing')).toBeInTheDocument();
+    expect(screen.queryByText('Duplicated across repositories')).not.toBeInTheDocument();
+  });
+
+  test('duplicates=1 replaces the skill list with every group and a way back', async () => {
+    const listSkills = vi.fn(async () => page());
+    renderApi(ApiLibraryRoute, fakeSource({ listSkills, listDuplicates: async () => ({ items: sevenGroups, next_cursor: null }) }), 'duplicates=1', { repo: null });
+    const table = await screen.findByRole('table', { name: 'Skill names that appear in more than one repository' });
+    expect(within(table).getAllByRole('row')).toHaveLength(8);
+    expect(screen.getByRole('link', { name: 'Back to all skills' })).not.toHaveAttribute('href', expect.stringContaining('duplicates'));
+    expect(listSkills).not.toHaveBeenCalled();
+    expect(screen.queryByText('pipeline-testing')).not.toBeInTheDocument();
+  });
+
+  test('duplicates=1 with no group says so plainly', async () => {
+    renderApi(ApiLibraryRoute, fakeSource({ listDuplicates: async () => ({ items: [], next_cursor: null }) }), 'duplicates=1', { repo: null });
+    expect(await screen.findByText('No skill name appears in more than one repository you can read.')).toBeInTheDocument();
   });
 });
