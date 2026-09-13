@@ -61,7 +61,10 @@ paths:
   /api/v1/github/webhook:
     post:
       tags: [github]
-      summary: GitHub App webhook (ADR-0036). Verifies X-Hub-Signature-256; may enqueue one ascend.run job.
+      summary: >-
+        GitHub App webhook (ADR-0036/ADR-0034). Verifies X-Hub-Signature-256; a linked
+        pull_request may enqueue one pr.report job, and a linked installation/installation_repositories
+        event may enqueue one github.sync_repositories job. Never enqueues ascend.run or calls GitHub.
       security: []
       parameters:
         - { name: X-GitHub-Event, in: header, required: true, schema: { type: string } }
@@ -111,7 +114,7 @@ paths:
   /api/v1/orgs/{org}/github/installations/{installation_id}:
     delete:
       tags: [github]
-      summary: Forget a GitHub App installation (ADR-0036).
+      summary: Unlink a GitHub App installation from this organisation (ADR-0034). Detaches its reconciled repositories.
       parameters:
         - { name: org, in: path, required: true, schema: { type: string } }
         - { name: installation_id, in: path, required: true, schema: { type: integer } }
@@ -119,6 +122,68 @@ paths:
         "204": { description: Removed. }
         "404":
           description: Unknown installation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/github/installations/start:
+    post:
+      tags: [github]
+      summary: >-
+        Begin the explicit GitHub App installation link (ADR-0034, owner + CSRF). Creates a
+        single-use signed state and answers with the URL to send the browser to on
+        github.com/apps/<slug>/installations/new.
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The GitHub installation URL to redirect the browser to.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, install_url]
+                properties:
+                  schema_version: { type: string }
+                  install_url: { type: string }
+        "503":
+          description: App not configured (GITHUB_APP_SLUG unset).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/github/installations/callback:
+    get:
+      tags: [github]
+      summary: >-
+        GitHub's OAuth-during-install redirect (ADR-0034). Exchanges code for a user token,
+        verifies installation_id against GET /user/installations, links only a proven
+        installation, enqueues one github.sync_repositories job, and redirects the browser back
+        to the console. Never links an installation_id the token cannot see.
+      security: []
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: installation_id, in: query, required: true, schema: { type: integer } }
+      responses:
+        "302": { description: Linked; redirect to the console. }
+        "400":
+          description: Invalid, expired, replayed or foreign-browser state, or a malformed callback.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: installation_id is not visible to the signed-in owner's GitHub account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "502":
+          description: GitHub did not complete the code exchange or the installations list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: App not configured.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

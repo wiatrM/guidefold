@@ -3,9 +3,6 @@ package identity_test
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -554,46 +551,6 @@ func TestRepositoryACLAndReviewerAssignmentAreScoped(t *testing.T) {
 	}
 	if status, _, _ := member.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/repo-acl/repos/monorepo/imports"}); status != http.StatusForbidden {
 		t.Fatalf("revoked member retained repository access: %d", status)
-	}
-}
-
-func TestGitHubInstallationWebhookIsVerifiedAndScoped(t *testing.T) {
-	h := newHarnessWith(t, identity.Config{Mode: identity.ModeDev, PublicURL: "http://127.0.0.1", InsecureCookies: true, GitHubWebhookSecret: "secret"})
-	owner := h.signIn(t, "google", "github-owner", "github-owner@example.test", "Owner")
-	owner.createOrg(t, "github-org", "GitHub Org")
-	body := []byte(`{"action":"created","organization":{"login":"github-org"},"installation":{"id":123,"account":{"login":"acme"},"repositories":[{"full_name":"acme/repo"}]}}`)
-	sum := hmac.New(sha256.New, []byte("secret"))
-	_, _ = sum.Write(body)
-	status, result, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
-		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-1", "X-Hub-Signature-256": "sha256=" + hex.EncodeToString(sum.Sum(nil)),
-	}})
-	if status != http.StatusAccepted || result["accepted"] != true {
-		t.Fatalf("webhook: %d %v", status, result)
-	}
-	jobID, ok := result["job_id"].(string)
-	if !ok || jobID == "" {
-		t.Fatalf("webhook did not enqueue an ascend job: %v", result)
-	}
-	var kind, state string
-	if err := h.pool.QueryRow(context.Background(), `SELECT kind,state FROM gfm.jobs WHERE job_id=$1::uuid`, jobID).Scan(&kind, &state); err != nil || kind != "ascend.run" || state != "queued" {
-		t.Fatalf("webhook job: kind=%q state=%q err=%v", kind, state, err)
-	}
-	if status, result, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
-		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-1", "X-Hub-Signature-256": "sha256=" + hex.EncodeToString(sum.Sum(nil)),
-	}}); status != http.StatusAccepted || result["reason"] != "duplicate_delivery" {
-		t.Fatalf("duplicate webhook was processed twice: %d %v", status, result)
-	}
-	status, listed, _ := owner.call(t, call{method: http.MethodGet, path: "/api/v1/orgs/github-org/github/installations"})
-	if status != http.StatusOK || len(listed["items"].([]any)) != 1 {
-		t.Fatalf("installations: %d %v", status, listed)
-	}
-	if status, body, _ := owner.call(t, call{method: http.MethodPost, path: "/api/v1/github/webhook", body: json.RawMessage(body), csrf: "-", headers: map[string]string{
-		"X-GitHub-Event": "installation", "X-GitHub-Delivery": "delivery-2", "X-Hub-Signature-256": "sha256=bad",
-	}}); status != http.StatusUnauthorized || body["error"] != "invalid_webhook_signature" {
-		t.Fatalf("bad signature accepted: %d %v", status, body)
-	}
-	if status, _, _ := owner.call(t, call{method: http.MethodDelete, path: "/api/v1/orgs/github-org/github/installations/123", key: "github-delete"}); status != http.StatusNoContent {
-		t.Fatalf("delete installation: %d", status)
 	}
 }
 

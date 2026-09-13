@@ -10,16 +10,14 @@ import (
 )
 
 // installationLookup resolves a Guidefold repo_id to the GitHub App
-// installation that covers it. There is, as of this change, no column that
-// links the two directly — ADR-0036 point 4's "thin github module" that
-// would maintain such a link is not part of this task, and gfm.repos
-// carries only a free-text git_host_url. This lookup is this package's own
-// judgment call for bridging that gap without a schema change: it derives
-// an "owner/repo" full name from git_host_url and matches it against
-// gfm.github_installations.repositories, the array the (future) webhook
-// module populates from GitHub's own installation_repositories payload. A
-// repository this cannot resolve is exactly the "no installation" case
-// API-CONTRACT §4.9 names — reported, never dropped.
+// installation that covers it. gfm.github_installation_links (ADR-0034's
+// explicit link) ties an installation to an organisation, but not to a
+// specific repo_id — gfm.repos carries only a free-text git_host_url, so
+// this lookup still derives an "owner/repo" full name from it and matches
+// that against gfm.github_installations.repositories, restricted to
+// installations linked to this organisation. A repository this cannot
+// resolve is exactly the "no installation" case API-CONTRACT §4.9 names —
+// reported, never dropped.
 type installationLookup struct {
 	// byFullName maps "owner/repo" (lowercase) to the installation that
 	// covers it, built once per live.plan run from the organisation's own
@@ -28,8 +26,9 @@ type installationLookup struct {
 }
 
 func loadInstallationLookup(ctx context.Context, q querier, orgID string) (*installationLookup, error) {
-	rows, e := q.Query(ctx, `SELECT installation_id, repositories FROM gfm.github_installations
- WHERE org_id=$1::uuid AND suspended_at IS NULL`, orgID)
+	rows, e := q.Query(ctx, `SELECT gi.installation_id, gi.repositories FROM gfm.github_installations gi
+ JOIN gfm.github_installation_links l ON l.installation_id=gi.installation_id
+ WHERE l.org_id=$1::uuid AND gi.suspended_at IS NULL`, orgID)
 	if e != nil {
 		return nil, e
 	}
