@@ -119,8 +119,12 @@ trusted builder (`importer.PythonBuilder`) all exist and are the shape to reuse.
 ## Consequences
 
 - Prerequisites outside this repository: a registered GitHub App with `contents: write`,
-  `pull_requests: write`, `metadata: read` and the `pull_request` + `installation` events; its
-  private key and webhook secret mounted at the worker and API respectively.
+  `pull_requests: write`, `issues: write`, `metadata: read` and the `pull_request` event
+  (`installation` events are always delivered to an App and have no checkbox); its private key
+  and webhook secret mounted at the worker and API respectively. `issues: write` is there because
+  the sticky pull-request comment goes through the issue-comments endpoint — GitHub models a pull
+  request's conversation as an issue — so without it the comment in point 1a cannot be written.
+  Found while registering the lab App on 2026-09-13; the list above omitted it.
 - Acceptance test (to be written under `tests/acceptance/`): against a running stack with a fake
   GitHub API (`httptest`, same pattern as `generator/remote_test.go`), a signed `pull_request`
   webhook for a linked repository whose PR changed a leaf skill produces one `ascend.run` job, one
