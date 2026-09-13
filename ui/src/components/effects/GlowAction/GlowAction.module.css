@@ -1,0 +1,7 @@
+.wrap{position:relative;display:inline-flex;isolation:isolate;border-radius:var(--radius);}
+.halo{position:absolute;inset:var(--zero);border-radius:inherit;box-shadow:var(--glow-route);pointer-events:none;transition:box-shadow var(--duration-menu) var(--ease);}
+.wrap.system .halo{box-shadow:var(--glow-system);}
+.wrap:focus-within .halo{box-shadow:var(--effect-focus-glow-route);}
+.wrap.system:focus-within .halo{box-shadow:var(--effect-focus-glow-system);}
+.content{position:relative;z-index:1;display:inline-flex;}
+@media(prefers-reduced-motion:reduce){.halo{transition:none;}}

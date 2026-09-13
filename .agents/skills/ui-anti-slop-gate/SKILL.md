@@ -14,15 +14,23 @@ Indeks: [AGENTS.md](../../../AGENTS.md). Zakres zastępowania: brak; skill jest 
 
 | Niedopuszczalne | Wymagana postać |
 |---|---|
-| Gradienty jako powierzchnia, glassmorphism, glow, neon | Płaskie tło graphite i obrys 1 px |
+| Glassmorphism (rozmyte szklane panele, `backdrop-filter`) | Płaskie tło graphite i obrys 1 px |
 | Duże zaokrąglenia, pill badges, emoji jako ikony | Promień 2 px i Phosphor regular |
 | Hero, slogan, wyśrodkowany wielki nagłówek w produkcie | Nazwa widoku, identyfikacja obiektu i jego działanie |
 | Karty albo metryki dodane dla symetrii | Tylko dane potrzebne do konkretnej decyzji |
 | Wykres bez pytania, skali lub danych | Tekstowy dowód albo jawny brak obserwacji |
 | Przykładowe firmy/ludzie/liczby udające produkcję | Dane rzeczywiste lub podpisany Meridian fixture |
 | Przełączniki motywu lub gęstości | Jeden graphite, stałe Balanced 40 px |
-| Automatyczne ruchy, confetti, pulsujące statusy | Ruch wyłącznie po zmianie stanu, z reduced motion |
+| Pulsujące statusy (stan wywnioskowany z animacji zamiast z etykiety StateBadge) | Ruch wyłącznie po zmianie stanu, z reduced motion |
 | Nowy wariant komponentu bez potrzeby | Istniejące API; drugi wariant ma pisemne uzasadnienie |
+
+Decyzja właściciela 2026-09-13 ([ADR-0049](../../../docs/adr/ADR-0049-premium-visual-effects-layer.md)):
+gradienty jako powierzchnia, glow, neon, animowane obramowania, shadery i kategorie dekoracyjne
+(animowane listy/tekst, liczniki, marquee, orbiting circles) z `ui/src/components/effects/*` są
+dopuszczone wszędzie, bez ograniczenia miejsca, w tym jako ciągły ruch dekoracyjny. Glassmorphism i
+pulsujące statusy zostają zakazane. Wiążące jako dostępność, nie estetyka: `prefers-reduced-motion`,
+kontrast WCAG AA na efekcie, brak informacji niesionej wyłącznie przez efekt, widoczny focus (glow
+jest dodatkiem, nie zastąpieniem obrysu), brak migania szybszego niż 3 Hz.
 
 ## Odrzuć słowa i struktury
 

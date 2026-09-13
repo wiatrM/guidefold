@@ -1,0 +1,3 @@
+.field{position:relative;overflow:hidden;width:var(--full);height:var(--full);}
+.fallback{position:absolute;inset:var(--zero);background-image:var(--effect-shader-fallback);}
+.canvas{width:var(--full);height:var(--full);display:block;}

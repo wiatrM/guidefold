@@ -1,0 +1,2 @@
+.list{list-style:none;margin:var(--zero);padding:var(--zero);display:flex;flex-direction:column;gap:var(--space-2);}
+.item{min-width:var(--zero);}

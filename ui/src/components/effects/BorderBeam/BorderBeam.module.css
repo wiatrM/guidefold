@@ -1,0 +1,8 @@
+.frame{position:relative;isolation:isolate;border-radius:var(--radius-panel);}
+.mask{position:absolute;inset:var(--zero);border-radius:inherit;overflow:hidden;pointer-events:none;display:block;
+ -webkit-mask:linear-gradient(var(--effect-mask-solid) 0 0) content-box,linear-gradient(var(--effect-mask-solid) 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+ padding:var(--border-width);opacity:.7;}
+.spinner{position:absolute;top:var(--half);left:var(--half);width:var(--effect-beam-spread);aspect-ratio:1;transform:translate(var(--negative-half),var(--negative-half));background-image:var(--effect-beam-conic);}
+.spinner.spin{animation:beam-spin var(--effect-beam-duration) linear infinite;}
+@keyframes beam-spin{from{transform:translate(var(--negative-half),var(--negative-half)) rotate(var(--zero-deg));}to{transform:translate(var(--negative-half),var(--negative-half)) rotate(var(--full-turn));}}
+.content{position:relative;z-index:1;}
