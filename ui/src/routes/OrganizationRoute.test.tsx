@@ -341,6 +341,31 @@ describe('Organization route, presentation', () => {
     expect(await screen.findByText('Events received')).toBeInTheDocument();
   });
 
+  test('telemetry tab reads at organization scope when no repository is selected', async () => {
+    const getUsage = vi.fn(async (): Promise<Usage> => ({
+      window: { from: '2026-09-01T00:00:00Z', to: '2026-09-10T00:00:00Z', watermark: '2026-09-10T00:00:00Z' },
+      coverage: { events_received: 7, dropped_reported: 0, oldest_lag_s: 2, task_ids_present: true },
+      totals: {
+        exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0,
+        use_episodes: 0, exposures_expanded: 0, loads_unlinked: 0, feedback: null,
+        metrics: {
+          tasks_started: 4, tasks_finished: 4, tasks_succeeded: 3, tasks_failed: 1, tasks_unknown: 0, harness_errors: 0,
+          search_requests: 4, search_results: 4, search_errors: 0, use_requests: 3, ask_count: 0,
+          input_tokens: 100, output_tokens: 40, tool_calls: 5, latency_ms: 900, latency_samples: 3,
+          tasks_observed: true, cost_observed: true,
+        },
+      },
+      previous: null,
+      skills: [], queue: [], health: null,
+    }));
+    renderRoute(fakeSource({ getUsage }), 'tab=telemetry', { repo: null });
+    const scorecards = within(await screen.findByRole('region', { name: 'Decision scorecards' }));
+    expect(scorecards.getByText('3 / 4')).toBeInTheDocument();
+    expect(getUsage).toHaveBeenCalledWith({ org: 'meridian', repo: null }, { window: undefined });
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(screen.getByText('All repositories')).toBeInTheDocument();
+  });
+
   test('the member status line is empty before any action and carries the outcome after one', async () => {
     const removeMember = vi.fn(async () => {});
     renderRoute(fakeSource({ listMembers: async () => owners, removeMember }));

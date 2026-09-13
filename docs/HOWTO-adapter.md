@@ -2,7 +2,7 @@
 
 Status: how-to, updated 2026-09-13 (owner instructions: sign in the way Claude Code does — a
 device code confirmed in the browser, no token copied by hand — and telemetry upload is
-automatic and on by default once a credential and endpoint exist, [ADR-0047](adr/ADR-0047-telemetry-upload-on-by-default.md); an organisation that must not upload has to disable it
+automatic and on by default once a credential and endpoint exist, [ADR-0048](adr/ADR-0048-telemetry-upload-on-by-default.md); an organisation that must not upload has to disable it
 explicitly). Originally written 2026-09-12 after an owner asked "what is an
 adapter? did you write a HOWTO how to install both?" on seeing "No adapter installed" and "No
 telemetry in the last 30d" on Overview. This is the reference version of the same steps shown in
@@ -108,7 +108,7 @@ installation token always overrides a human's own sign-in on the same machine.
 ### 5. Telemetry — on automatically, once a credential and endpoint exist
 
 Telemetry upload is **on by default** — owner decision 2026-09-13
-([ADR-0047](adr/ADR-0047-telemetry-upload-on-by-default.md)), amending the earlier opt-in
+([ADR-0048](adr/ADR-0048-telemetry-upload-on-by-default.md)), amending the earlier opt-in
 reading of `docs/SEARCH-USE-TELEMETRY.md` §5 and `docs/DESIGN.md` R7. As soon as steps 2 (or 4)
 have given the adapter a bearer credential and an endpoint, the next `find`/`hook`/`load` call
 that emits telemetry triggers an upload automatically — nothing to run by hand, and

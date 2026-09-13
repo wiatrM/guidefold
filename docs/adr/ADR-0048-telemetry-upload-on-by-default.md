@@ -1,4 +1,4 @@
-# ADR-0047: Telemetry upload is on by default once a token and endpoint exist; opt-out is explicit
+# ADR-0048: Telemetry upload is on by default once a token and endpoint exist; opt-out is explicit
 
 **Status:** Accepted · 2026-09-13 · owner, before the automation work in this change started: "klient automatycznie powinien miec opt in na telemetrie" (a client should automatically have telemetry opted in) — the user switches it off explicitly in the CLI settings.
 **Amends:** [docs/DESIGN.md](../DESIGN.md) R7 ("opt-in upload") and [docs/SEARCH-USE-TELEMETRY.md](../SEARCH-USE-TELEMETRY.md) §5 ("Enable upload through explicit organization configuration with visible diagnostics"), for the *default* only.

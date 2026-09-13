@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -711,5 +712,362 @@ func TestAMalformedCursorIsRejected(t *testing.T) {
 	status, body := c.get(t, "/skills?cursor=not-a-cursor")
 	if status != http.StatusBadRequest || body["error"] != "invalid_cursor" {
 		t.Fatalf("%d %v", status, body)
+	}
+}
+
+// ---- organisation scope (API-CONTRACT §4.10) ----
+
+// orgBase is the organisation-scope prefix every `{org_base}` twin shares.
+func (c *catalog) orgBase() string { return "/api/v1/orgs/" + c.org }
+
+func (c *catalog) getAs(t *testing.T, who *pivottest.Client, path string) (int, map[string]any) {
+	t.Helper()
+	status, body, _ := who.Call(t, pivottest.Call{Method: http.MethodGet, Path: path})
+	return status, body
+}
+
+func (c *catalog) mustGetOrg(t *testing.T, path string) map[string]any {
+	t.Helper()
+	status, body := c.getAs(t, c.owner, c.orgBase()+path)
+	if status != http.StatusOK {
+		t.Fatalf("GET %s: %d %v", c.orgBase()+path, status, body)
+	}
+	return body
+}
+
+// addSecondRepo imports the same fixture tree into a second repository,
+// "second", which has no git host. The tree's publisher is renamed first: a URN
+// is unique per organisation (gfm.skills is keyed by org and skill_id), so the
+// same publisher twice would have moved the 26 rows rather than doubled them.
+// The scope ids come from the node map and stay identical in both repositories,
+// which is exactly the ambiguity §4.10.6 is about.
+func (c *catalog) addSecondRepo(t *testing.T) {
+	t.Helper()
+	c.owner.CreateRepo(t, c.org, "second", "")
+	tree := pivottest.Monorepo(t)
+	cfg := filepath.Join(tree, "guidefold.yaml")
+	raw, e := os.ReadFile(cfg)
+	if e != nil {
+		t.Fatal(e)
+	}
+	edited := strings.Replace(string(raw), "publisher: meridian", "publisher: second", 1)
+	if edited == string(raw) {
+		t.Fatal("the fixture's guidefold.yaml no longer declares `publisher: meridian`")
+	}
+	if e := os.WriteFile(cfg, []byte(edited), 0o644); e != nil {
+		t.Fatal(e)
+	}
+	manifest := pivottest.Manifest(t, tree, "acme", "second", true)
+	pivottest.Push(t, c.owner, c.org, "second", tree, manifest, "second")
+	c.h.RunParse(t, pivottest.Scratch(t, "second"))
+	page := c.mustGetOrg(t, "/skills?repo=second&limit=1")
+	if len(page["items"].([]any)) != 1 {
+		t.Fatalf("the second repository imported nothing: %v", page)
+	}
+}
+
+// invite adds one member to the organisation and returns their client.
+func (c *catalog) invite(t *testing.T, subject, email string) *pivottest.Client {
+	t.Helper()
+	member := c.h.SignIn(t, subject, email)
+	status, invitation, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: c.orgBase() + "/invitations",
+		Body: map[string]any{"email": email, "role": "member"}, Key: "invite-" + subject})
+	if status != http.StatusCreated {
+		t.Fatalf("invite: %d %v", status, invitation)
+	}
+	accept := invitation["accept_url"].(string)
+	accept = accept[strings.Index(accept, "/api/v1/"):]
+	if status, body, _ := member.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: accept, Key: "accept-" + subject}); status != http.StatusOK {
+		t.Fatalf("accept: %d %v", status, body)
+	}
+	return member
+}
+
+// repoIDs counts the rows of a skill list per repository.
+func repoIDs(t *testing.T, items []any) map[string]int {
+	t.Helper()
+	out := map[string]int{}
+	for _, raw := range items {
+		item := raw.(map[string]any)
+		id, ok := item["repo_id"].(string)
+		if !ok || id == "" {
+			t.Fatalf("a summary carries no repo_id: %v", item)
+		}
+		out[id]++
+	}
+	return out
+}
+
+// §4.10.1–3 — the organisation list covers both repositories, every row names
+// its repository, the envelope's repo_id is null; narrowed with `repo=` it is
+// the repository route's answer, row for row.
+func TestOrganisationSkillListSpansRepositoriesAndNarrowsToOne(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+
+	page := c.mustGetOrg(t, "/skills?limit=100")
+	items := page["items"].([]any)
+	if len(items) != 2*fixtureSkills {
+		t.Fatalf("the organisation list holds %d skills, want %d", len(items), 2*fixtureSkills)
+	}
+	per := repoIDs(t, items)
+	if per["meridian"] != fixtureSkills || per["second"] != fixtureSkills || len(per) != 2 {
+		t.Fatalf("rows per repository %v", per)
+	}
+	if v, present := page["repo_id"]; !present || v != nil {
+		t.Fatalf("an answer spanning two repositories reports repo_id %v", v)
+	}
+
+	narrowed := c.mustGetOrg(t, "/skills?repo=meridian&limit=100")
+	if narrowed["repo_id"] != "meridian" {
+		t.Fatalf("narrowed envelope repo_id %v", narrowed["repo_id"])
+	}
+	direct := c.mustGet(t, "/skills?limit=100")
+	if direct["repo_id"] != "meridian" {
+		t.Fatalf("the repository route's envelope repo_id %v", direct["repo_id"])
+	}
+	if !reflect.DeepEqual(narrowed["items"], direct["items"]) {
+		t.Fatalf("org?repo=meridian and the repository route disagree:\n %v\n %v",
+			narrowed["items"], direct["items"])
+	}
+	echo := narrowed["filters"].(map[string]any)["repo"].(map[string]any)
+	if echo["value"] != "meridian" || echo["available"] != true {
+		t.Fatalf("repo filter echo %v", echo)
+	}
+}
+
+// §4.10.4 — `field=repo` counts skills per repository.
+func TestRepoFacetCountsSkillsPerRepository(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+	facets := c.mustGetOrg(t, "/skills/facets?field=repo")
+	got := map[string]int{}
+	for _, raw := range facets["values"].([]any) {
+		v := raw.(map[string]any)
+		got[v["value"].(string)] = int(v["count"].(float64))
+	}
+	if got["meridian"] != fixtureSkills || got["second"] != fixtureSkills || len(got) != 2 {
+		t.Fatalf("repo facet %v", got)
+	}
+	lookup := c.mustGetOrg(t, "/skills/facets/lookup?field=repo&value=second")
+	if lookup["available"] != true || int(lookup["count"].(float64)) != fixtureSkills {
+		t.Fatalf("repo lookup %v", lookup)
+	}
+	// The repository route counts only itself.
+	own := c.mustGet(t, "/skills/facets?field=repo")
+	if values := own["values"].([]any); len(values) != 1 ||
+		values[0].(map[string]any)["value"] != "meridian" {
+		t.Fatalf("the repository route's repo facet %v", values)
+	}
+}
+
+// §4.10.5 — the organisation tree starts with one `repository` child per
+// readable repository, and deeper paths carry the repository prefix.
+func TestOrganisationTreeStartsWithRepositories(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+
+	root := c.mustGetOrg(t, "/map/repository")
+	children := root["children"].([]any)
+	if len(children) != 2 {
+		t.Fatalf("the organisation root shows %d children: %v", len(children), children)
+	}
+	for i, want := range []string{"meridian", "second"} {
+		child := children[i].(map[string]any)
+		if child["name"] != want || child["path"] != want || child["kind"] != "repository" {
+			t.Fatalf("root child %d is %v", i, child)
+		}
+		if child["skill_id"] != nil || child["count"] == nil || child["count"].(float64) < fixtureSkills {
+			t.Fatalf("repository child %v counts too little", child)
+		}
+	}
+
+	// The repository's own root, addressed through the organisation.
+	inside := c.mustGetOrg(t, "/map/repository?path=second")
+	direct := c.mustGet(t, "/map/repository")
+	if len(inside["children"].([]any)) != len(direct["children"].([]any)) {
+		t.Fatalf("second's root through the org has %d children, its own route %d",
+			len(inside["children"].([]any)), len(direct["children"].([]any)))
+	}
+	first := ""
+	for _, raw := range inside["children"].([]any) {
+		child := raw.(map[string]any)
+		if !strings.HasPrefix(child["path"].(string), "second/") {
+			t.Fatalf("child path %v lacks the repository prefix", child["path"])
+		}
+		if first == "" && child["kind"] == "dir" {
+			first = child["name"].(string)
+		}
+	}
+	if first == "" {
+		t.Fatal("the repository root holds no directory")
+	}
+	deeper := c.mustGetOrg(t, "/map/repository?path=second/"+first)
+	if deeper["path"] != "second/"+first || len(deeper["children"].([]any)) == 0 {
+		t.Fatalf("descending into second/%s: %v", first, deeper)
+	}
+	for _, raw := range deeper["children"].([]any) {
+		if p := raw.(map[string]any)["path"].(string); !strings.HasPrefix(p, "second/"+first+"/") {
+			t.Fatalf("child path %q is not under second/%s", p, first)
+		}
+	}
+	// Narrowed with repo=, the tree is the repository's own, prefix-free.
+	narrowed := c.mustGetOrg(t, "/map/repository?repo=meridian")
+	if !reflect.DeepEqual(narrowed["children"], direct["children"]) {
+		t.Fatalf("org?repo=meridian and the repository route disagree on the tree")
+	}
+	status, body := c.getAs(t, c.owner, c.orgBase()+"/map/repository?path=nope/.agents")
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("a path under an unknown repository: %d %v", status, body)
+	}
+}
+
+// §4.10.6 — a scope declared by two readable repositories is ambiguous without
+// `repo=`; with it, the scope map and the module page answer for that one.
+func TestAScopeInTwoRepositoriesNeedsRepo(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+	const scope = "atlas.identity"
+
+	all := c.mustGetOrg(t, "/map/scopes")
+	if got := len(all["scopes"].([]any)); got != 2*17 {
+		t.Fatalf("the organisation scope map holds %d nodes, want %d", got, 2*17)
+	}
+	per := map[string]int{}
+	for _, raw := range all["scopes"].([]any) {
+		per[raw.(map[string]any)["repo_id"].(string)]++
+	}
+	if per["meridian"] != 17 || per["second"] != 17 {
+		t.Fatalf("nodes per repository %v", per)
+	}
+
+	for _, path := range []string{"/map/scopes?scope=" + scope, "/modules/" + scope} {
+		status, body := c.getAs(t, c.owner, c.orgBase()+path)
+		if status != http.StatusConflict || body["error"] != "scope_ambiguous" {
+			t.Fatalf("%s without repo: %d %v", path, status, body)
+		}
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		body = c.mustGetOrg(t, path+sep+"repo=second")
+		switch {
+		case strings.HasPrefix(path, "/modules/"):
+			if body["repo_id"] != "second" || body["scope"] != scope {
+				t.Fatalf("%s with repo=second: %v", path, body)
+			}
+		default:
+			selected := body["scope"].(map[string]any)
+			if selected["repo_id"] != "second" || selected["id"] != scope {
+				t.Fatalf("%s with repo=second: %v", path, selected)
+			}
+		}
+		for _, raw := range body["skills"].([]any) {
+			if raw.(map[string]any)["repo_id"] != "second" {
+				t.Fatalf("%s with repo=second lists a skill of %v", path, raw.(map[string]any)["repo_id"])
+			}
+		}
+	}
+	status, body := c.getAs(t, c.owner, c.orgBase()+"/map/scopes?scope=no.such.scope")
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("an unknown scope at organisation scope: %d %v", status, body)
+	}
+	// Declared by one repository only, the scope needs no repo=.
+	if _, e := c.h.Pool.Exec(context.Background(),
+		`DELETE FROM gfm.scopes WHERE org_id=$1::uuid AND repo_id='second' AND scope=$2`,
+		c.org, scope); e != nil {
+		t.Fatal(e)
+	}
+	module := c.mustGetOrg(t, "/modules/"+scope)
+	if module["repo_id"] != "meridian" {
+		t.Fatalf("a scope one repository declares answered for %v", module["repo_id"])
+	}
+	scopes := c.mustGetOrg(t, "/map/scopes?scope="+scope)
+	if scopes["scope"].(map[string]any)["repo_id"] != "meridian" {
+		t.Fatalf("a scope one repository declares answered for %v", scopes["scope"])
+	}
+}
+
+// §4.10.1–2 — a member restricted from one repository never sees its rows at
+// organisation scope; naming it is forbidden, naming nothing is not found.
+func TestARestrictedMemberSeesOnlyReadableRepositories(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+	member := c.invite(t, "member", "member@example.test")
+
+	// An ACL on "second" that lists the owner and not the member: the
+	// repository is now restricted and the member is not on it.
+	ownerID := c.owner.User["id"].(string)
+	status, body, _ := c.owner.Call(t, pivottest.Call{Method: http.MethodPut,
+		Path: pivottest.RepoBase(c.org, "second") + "/access/" + ownerID,
+		Body: map[string]any{"access": "read"}, Key: "restrict-second"})
+	if status != http.StatusOK {
+		t.Fatalf("restrict second: %d %v", status, body)
+	}
+
+	status, page := c.getAs(t, member, c.orgBase()+"/skills?limit=100")
+	if status != http.StatusOK {
+		t.Fatalf("member org list: %d %v", status, page)
+	}
+	per := repoIDs(t, page["items"].([]any))
+	if per["meridian"] != fixtureSkills || len(per) != 1 {
+		t.Fatalf("the restricted member sees %v", per)
+	}
+	_, root := c.getAs(t, member, c.orgBase()+"/map/repository")
+	if children := root["children"].([]any); len(children) != 1 ||
+		children[0].(map[string]any)["name"] != "meridian" {
+		t.Fatalf("the restricted member's tree root %v", children)
+	}
+	status, body = c.getAs(t, member, c.orgBase()+"/skills?repo=second")
+	if status != http.StatusForbidden || body["error"] != "forbidden" {
+		t.Fatalf("a restricted repository named outright: %d %v", status, body)
+	}
+	status, body = c.getAs(t, member, c.orgBase()+"/skills?repo=nope")
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("an unknown repository: %d %v", status, body)
+	}
+	// The owner keeps both.
+	owner := repoIDs(t, c.mustGetOrg(t, "/skills?limit=100")["items"].([]any))
+	if len(owner) != 2 {
+		t.Fatalf("the owner sees %v", owner)
+	}
+}
+
+// §4.10 — a revision read at organisation scope links to the git host of the
+// repository the row belongs to, and to nothing when that repository has none.
+func TestOrganisationRevisionLinksToItsOwnRepositoryHost(t *testing.T) {
+	c := newCatalog(t)
+	c.addSecondRepo(t)
+	for repo, wantHost := range map[string]string{"meridian": gitHost, "second": ""} {
+		page := c.mustGetOrg(t, "/skills?repo="+repo+"&limit=1")
+		summary := page["items"].([]any)[0].(map[string]any)
+		skillID, revisionID := summary["skill_id"].(string), summary["revision_id"].(string)
+		// Read through the organisation, without repo=: the row decides.
+		revision := c.mustGetOrg(t, c.skillPath(skillID)+"/revisions/"+revisionID)
+		if revision["repo_id"] != repo {
+			t.Fatalf("revision of %s reports repo_id %v", repo, revision["repo_id"])
+		}
+		url := revision["source"].(map[string]any)["url"]
+		if wantHost == "" {
+			if url != nil {
+				t.Fatalf("a repository with no git host produced a link: %v", url)
+			}
+			continue
+		}
+		want := wantHost + "/blob/" + summary["commit"].(string) + "/" + summary["path"].(string)
+		if url != want {
+			t.Fatalf("source url %v, want %v", url, want)
+		}
+		detail := c.mustGetOrg(t, c.skillPath(skillID))
+		if detail["repo_id"] != repo {
+			t.Fatalf("detail of a %s skill reports repo_id %v", repo, detail["repo_id"])
+		}
+		status, raw, header := c.owner.Raw(t, pivottest.Call{Method: http.MethodGet,
+			Path: c.orgBase() + c.skillPath(skillID) + "/revisions/" + revisionID + "/raw"})
+		if status != http.StatusOK || len(raw) == 0 || header.Get("X-Content-SHA256") != summary["content_sha256"] {
+			t.Fatalf("raw through the organisation: %d %d bytes %q", status, len(raw), header.Get("X-Content-SHA256"))
+		}
 	}
 }

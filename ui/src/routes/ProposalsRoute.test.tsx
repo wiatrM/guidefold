@@ -10,11 +10,11 @@ import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
 const list: ProposalList = {
-  items: [{ proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null }],
+  items: [{ proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null }],
   next_cursor: null,
 };
 const detail = (over: Partial<ProposalDetail> = {}): ProposalDetail => ({
-  proposal_id: 'p-1', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team',
+  proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'draft', scope: 'atlas.identity', owner: 'identity-team',
   target_skill_id: 'urn:a', target_revision_id: 'rev-1',
   sources: [{ path: 'platforms/atlas/README.md', sha256: 'sha-src', commit: 'c0ffee', lines: [10, 40] }],
   recipe: { version: 'det-1', generator: 'deterministic', model: null },
@@ -94,9 +94,9 @@ describe('Proposals route, decided-by column (1.3.0)', () => {
   test('an undecided proposal reads "Undecided"; a decided one names the actor or "Unknown"', async () => {
     const listProposals = async () => ({
       items: [
-        { proposal_id: 'p-1', kind: 'extraction' as const, state: 'draft' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null },
-        { proposal_id: 'p-2', kind: 'extraction' as const, state: 'approved_for_export' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:b', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'approve' as const, actor: 'u1', at: '2026-09-06T10:00:00Z' } },
-        { proposal_id: 'p-3', kind: 'extraction' as const, state: 'rejected' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:c', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'reject' as const, actor: null, at: '2026-09-06T10:00:00Z' } },
+        { proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction' as const, state: 'draft' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:a', path: 'platforms/atlas/SKILL.md', created_at: null, decision: null },
+        { proposal_id: 'p-2', repo_id: 'monorepo', kind: 'extraction' as const, state: 'approved_for_export' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:b', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'approve' as const, actor: 'u1', at: '2026-09-06T10:00:00Z' } },
+        { proposal_id: 'p-3', repo_id: 'monorepo', kind: 'extraction' as const, state: 'rejected' as const, scope: 'atlas.identity', owner: 'identity-team', target_skill_id: 'urn:c', path: 'platforms/atlas/SKILL.md', created_at: null, decision: { decision: 'reject' as const, actor: null, at: '2026-09-06T10:00:00Z' } },
       ],
       next_cursor: null,
     });
@@ -231,6 +231,48 @@ describe('Proposals route, decision, conflict and export', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Queue publication' }));
     await waitFor(() => expect(publish).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'im-3', expect.any(String)));
     expect(await screen.findByText(/Publication job job-7 was queued/)).toBeInTheDocument();
+  });
+});
+
+describe('Proposals route, organisation scope (ADR-0047)', () => {
+  test('no repository means every repository: the queue reads with repo null and names each row\'s repository', async () => {
+    const listProposals = vi.fn(async () => list);
+    renderApi(ApiProposalsRoute, base({ listProposals }), '', { repo: null });
+    const table = await screen.findByRole('region', { name: 'Proposals in this organization' });
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(listProposals).toHaveBeenCalledWith({ org: 'meridian', repo: null }, expect.any(Object));
+    const row = within(table).getByRole('row', { name: /p-1/ });
+    expect(within(row).getByText('monorepo')).toBeInTheDocument();
+  });
+
+  test('a decision at organisation scope goes to the proposal\'s own repository, never an empty one', async () => {
+    const getProposal = vi.fn(async () => detail());
+    const decideProposal = vi.fn(async () => ({ proposal_id: 'p-1', state: 'approved_for_export' as const, revision_id: 'rev-2', expected_revision: 'rev-2' }));
+    renderApi(ApiProposalsRoute, base({ getProposal, decideProposal }), 'proposal=p-1', { repo: null });
+    await userEvent.type(await screen.findByLabelText('Reason for this decision'), 'Matches the source.');
+    expect(getProposal).toHaveBeenCalledWith({ org: 'meridian', repo: null }, 'p-1');
+    expect(screen.getByText(/repository monorepo/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save decision' }));
+    await waitFor(() => expect(decideProposal).toHaveBeenCalled());
+    expect((decideProposal.mock.calls[0] as unknown as [unknown])[0]).toEqual({ org: 'meridian', repo: 'monorepo' });
+  });
+
+  test('an export at organisation scope uses the proposal\'s repository', async () => {
+    const exportProposal = vi.fn(async () => exported);
+    URL.createObjectURL = vi.fn(() => 'blob:test') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = vi.fn() as typeof URL.revokeObjectURL;
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => detail({ state: 'approved_for_export' }), exportProposal, getProposalPublication: async () => ({ state: 'awaiting_git' as const, published_revision_id: null, import_id: null, snapshot_id: null }) }), 'proposal=p-1', { repo: null });
+    await userEvent.click(await screen.findByRole('button', { name: 'Create export' }));
+    await waitFor(() => expect(exportProposal).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'p-1', expect.any(String)));
+  });
+
+  test('a proposal without a repository cannot be decided from organisation scope, and says so', async () => {
+    const decideProposal = vi.fn();
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => detail({ repo_id: null }), decideProposal }), 'proposal=p-1', { repo: null });
+    expect(await screen.findByText('The repository of this proposal is unknown; nothing can be decided from here.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save decision' })).toBeDisabled();
+    expect(decideProposal).not.toHaveBeenCalled();
+    expect(screen.getByText('Source to candidate')).toBeInTheDocument();
   });
 });
 

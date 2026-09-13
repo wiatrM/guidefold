@@ -1,11 +1,11 @@
 import {describe, expect, test} from 'vitest';
 import type {ImportStatus, Installation, Me, ProposalSummary, QueueItem, SkillSummary, Usage, UsageSkill} from '../api/decoders';
 import {emptyExecutionMetrics} from '../api/decoders';
-import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, previousHelpedShare, proposalsByState, topScopes, topSkills, yourDecisions} from './overview';
+import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, previousHelpedShare, proposalsByState, topFacetValues, topScopes, topSkills, yourDecisions} from './overview';
 
 const NOW = Date.parse('2026-09-12T12:00:00Z');
 const usageSkill = (id: string, over: Partial<UsageSkill> = {}): UsageSkill => ({
-  skill_id: id, revision: 'r', card_revision: null, content_sha256: null, scope: 'atlas', owner: null, harness: null,
+  skill_id: id, repo_id: 'monorepo', revision: 'r', card_revision: null, content_sha256: null, scope: 'atlas', owner: null, harness: null,
   exposures: 0, loads_verified: 0, context_loaded: 0, context_unknown: 0, use_reported: 0, use_observed: 0, use_episodes: 0,
   exposures_expanded: 0, loads_unlinked: 0, feedback: null, helped_ratio: null, zero_loads: false, ...over,
 });
@@ -129,8 +129,8 @@ describe('topSkills and queue', () => {
   });
   test('decided queue items do not count as open', () => {
     const report = usage({queue: [
-      {item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'zero_loads', since: null, evidence: null, decision: null},
-      {item_id: 'q2', skill_id: 'urn:b', revision: null, reason: 'zero_loads', since: null, evidence: null, decision: {action: 'reviewed', reason: null, at: null, actor: null}},
+      {repo_id: 'monorepo', item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'zero_loads', since: null, evidence: null, decision: null},
+      {repo_id: 'monorepo', item_id: 'q2', skill_id: 'urn:b', revision: null, reason: 'zero_loads', since: null, evidence: null, decision: {action: 'reviewed', reason: null, at: null, actor: null}},
     ]});
     expect(openQueueCount(report)).toBe(1);
     expect(openQueueCount(null)).toBeNull();
@@ -139,7 +139,7 @@ describe('topSkills and queue', () => {
 
 describe('library', () => {
   const skill = (name: string, status: SkillSummary['publication_status']): SkillSummary => ({
-    skill_id: 'urn:' + name, name, description: '', scope: 'atlas', owner: null, source_layer: null, knowledge_layer: null, source_status: null,
+    skill_id: 'urn:' + name, repo_id: 'monorepo', name, description: '', scope: 'atlas', owner: null, source_layer: null, knowledge_layer: null, source_status: null,
     publication_status: status, path: name + '/SKILL.md', content_sha256: null, revision_id: null, card_revision: null, package_digest: null, commit: null, updated_at: null,
   });
   test('counts by publication state and says when the page was not the whole catalogue', () => {
@@ -149,10 +149,13 @@ describe('library', () => {
   test('top scopes drop zero counts and sort by count then name', () => {
     expect(topScopes([{value: 'b', count: 2}, {value: 'a', count: 2}, {value: 'z', count: 0}, {value: 'c', count: 9}], 2)).toEqual([{scope: 'c', count: 9}, {scope: 'a', count: 2}]);
   });
+  test('top facet values apply the same rule to any field, e.g. repo at organisation scope (1.11.0)', () => {
+    expect(topFacetValues([{value: 'monorepo', count: 26}, {value: 'billing', count: 0}, {value: 'atlas', count: 26}, {value: 'edge', count: 3}], 2)).toEqual([{value: 'atlas', count: 26}, {value: 'monorepo', count: 26}]);
+  });
 });
 
 describe('pipeline', () => {
-  const proposal = (state: ProposalSummary['state']): ProposalSummary => ({proposal_id: state, kind: 'extraction', state, scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null});
+  const proposal = (state: ProposalSummary['state']): ProposalSummary => ({repo_id: 'monorepo', proposal_id: state, kind: 'extraction', state, scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null});
   const installation = (name: string, last: string | null, harness = 'claude'): Installation => ({installation_id: name, name, repo_id: null, scopes: [], harness, last_seen_at: last, adapter_version: '1', capabilities: null, created_at: null, token: null});
   test('proposals by state keep every state in order, zeros included', () => {
     const rows = proposalsByState([proposal('draft'), proposal('draft'), proposal('published')]);
@@ -165,7 +168,7 @@ describe('pipeline', () => {
     expect(rows[2].label).toBe('Reporting, lag 4 s');
   });
   test('latest import is the newest created_at', () => {
-    const imp = (id: string, at: string): ImportStatus => ({import_id: id, state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: null, created_at: at, updated_at: null});
+    const imp = (id: string, at: string): ImportStatus => ({repo_id: 'monorepo', import_id: id, state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: null, created_at: at, updated_at: null});
     expect(latestImport([imp('old', '2026-09-01'), imp('new', '2026-09-10')])?.import_id).toBe('new');
     expect(latestImport([])).toBeNull();
   });
@@ -173,8 +176,8 @@ describe('pipeline', () => {
 
 describe('yourDecisions', () => {
   const me: Me = {user: {id: 'u1', email: 'ada@example.com', name: 'Ada'}, identities: [], orgs: [], csrf_token: null, access: {checked_at: null, valid_for_s: 45}, link_suggestions: []};
-  const proposal = (id: string, actor: string | null, at: string | null): ProposalSummary => ({proposal_id: id, kind: 'extraction', state: 'approved_for_export', scope: null, owner: null, target_skill_id: 'urn:' + id, path: null, created_at: null, decision: actor ? {decision: 'approve', actor, at} : null});
-  const queueItem = (id: string, actor: string | null, at: string | null): QueueItem => ({item_id: id, skill_id: 'urn:' + id, revision: null, reason: 'zero_loads', since: null, evidence: null, decision: actor ? {action: 'reviewed', reason: null, at, actor} : null});
+  const proposal = (id: string, actor: string | null, at: string | null): ProposalSummary => ({repo_id: 'monorepo', proposal_id: id, kind: 'extraction', state: 'approved_for_export', scope: null, owner: null, target_skill_id: 'urn:' + id, path: null, created_at: null, decision: actor ? {decision: 'approve', actor, at} : null});
+  const queueItem = (id: string, actor: string | null, at: string | null): QueueItem => ({repo_id: 'monorepo', item_id: id, skill_id: 'urn:' + id, revision: null, reason: 'zero_loads', since: null, evidence: null, decision: actor ? {action: 'reviewed', reason: null, at, actor} : null});
 
   test('with no signed-in user, nothing is "mine"', () => {
     expect(yourDecisions([proposal('p1', 'u1', null)], [], null)).toEqual({count: 0, items: []});
@@ -189,6 +192,13 @@ describe('yourDecisions', () => {
     expect(result.count).toBe(3);
     expect(result.items.map(item => item.id)).toEqual(['q1', 'p3', 'p1']);
     expect(result.items[0].kind).toBe('queue');
+    // 1.11.0: each entry carries the row's repository so a link that needs one can narrow to it.
+    expect(result.items.map(item => item.repoId)).toEqual(['monorepo', 'monorepo', 'monorepo']);
+  });
+
+  test('a row from a server older than 1.11.0 has no repository: repoId is null, never a guess', () => {
+    const result = yourDecisions([{...proposal('p1', 'u1', null), repo_id: null}], [], me);
+    expect(result.items[0].repoId).toBeNull();
   });
 
   test('capped at five, but the count stays the true total', () => {
@@ -207,16 +217,16 @@ describe('yourDecisions', () => {
 });
 
 describe('nextActions', () => {
-  const base = {role: 'owner' as const, me: null, usage: null, proposals: null, imports: null, installations: null, skillsTotal: 3, now: NOW};
+  const base = {role: 'owner' as const, me: null, usage: null, proposals: null, imports: null, latestImport: null, installations: null, skillsTotal: 3, now: NOW};
   test('an owner sees the queue, drafts and an unpublished import as human-tone actions', () => {
-    const report = usage({queue: [{item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'source_changed', since: null, evidence: null, decision: null}]});
-    const imports: ImportStatus[] = [{import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: null, state: 'none', error: null}, created_at: '2026-09-10', updated_at: null}];
-    const actions = nextActions({...base, usage: report, proposals: [{proposal_id: 'p', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null}], imports});
+    const report = usage({queue: [{repo_id: 'monorepo', item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'source_changed', since: null, evidence: null, decision: null}]});
+    const imports: ImportStatus[] = [{repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: null, state: 'none', error: null}, created_at: '2026-09-10', updated_at: null}];
+    const actions = nextActions({...base, usage: report, proposals: [{repo_id: 'monorepo', proposal_id: 'p', kind: 'extraction', state: 'draft', scope: null, owner: null, target_skill_id: null, path: null, created_at: null, decision: null}], imports, latestImport: imports[0]});
     expect(actions.map(action => action.kind)).toEqual(['queue', 'proposals', 'publish']);
     expect(actions[0].title).toBe('1 skill needs your decision');
   });
   test('a member never gets owner work; with skills to read they get the rating prompt', () => {
-    const report = usage({queue: [{item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'source_changed', since: null, evidence: null, decision: null}]});
+    const report = usage({queue: [{repo_id: 'monorepo', item_id: 'q1', skill_id: 'urn:a', revision: null, reason: 'source_changed', since: null, evidence: null, decision: null}]});
     const actions = nextActions({...base, role: 'member', usage: report});
     expect(actions.map(action => action.kind)).toEqual(['rate']);
   });
@@ -229,7 +239,27 @@ describe('nextActions', () => {
     expect(silent).toHaveLength(1);
     expect(silent[0].detail).toBe('a: never seen; b: silent 11 d.');
   });
+  describe('publication comes from the import detail, never from a list row', () => {
+    const detail = (publication: ImportStatus['publication']): ImportStatus => ({repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 0}, files: [], files_truncated: false, jobs: [], publication, created_at: null, updated_at: null});
+    const listRow: ImportStatus = {...detail(null), counts: null, files_truncated: true};
+    const publishActions = (latest: ImportStatus | null) => nextActions({...base, imports: [listRow], latestImport: latest}).filter(action => action.kind === 'publish');
+    test('a published detail pushes no publish action', () => {
+      expect(publishActions(detail({snapshot_id: 's', state: 'published', error: null}))).toEqual([]);
+    });
+    test('no detail, or a detail without publication, is Unknown and pushes none', () => {
+      expect(publishActions(null)).toEqual([]);
+      expect(publishActions(detail(null))).toEqual([]);
+    });
+    test('a failed publication names the error code', () => {
+      const [action] = publishActions(detail({snapshot_id: null, state: 'failed', error: 'missing_dependency'}));
+      expect(action.title).toBe('Publication of the latest import failed');
+      expect(action.detail).toContain('missing_dependency');
+    });
+    test('a building publication says it is still publishing', () => {
+      expect(publishActions(detail({snapshot_id: null, state: 'building', error: null})).map(action => action.title)).toEqual(['The latest import is still publishing']);
+    });
+  });
   test('nothing waiting is an empty list, not a filler row', () => {
-    expect(nextActions({...base, usage: usage(), proposals: [], imports: [{import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's', state: 'published', error: null}, created_at: null, updated_at: null}], installations: [{installation_id: 'a', name: 'a', repo_id: null, scopes: [], harness: 'claude', last_seen_at: '2026-09-12T11:00:00Z', adapter_version: null, capabilities: null, created_at: null, token: null}]})).toEqual([]);
+    expect(nextActions({...base, usage: usage(), proposals: [], imports: [{repo_id: 'monorepo', import_id: 'i', state: 'ready', manifest_digest: null, commit: null, complete: true, counts: null, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's', state: 'published', error: null}, created_at: null, updated_at: null}], installations: [{installation_id: 'a', name: 'a', repo_id: null, scopes: [], harness: 'claude', last_seen_at: '2026-09-12T11:00:00Z', adapter_version: null, capabilities: null, created_at: null, token: null}]})).toEqual([]);
   });
 });

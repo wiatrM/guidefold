@@ -13,16 +13,20 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/mgmt"
 )
 
-// facetColumns maps the four filter names the contract exposes to the columns
+// facetColumns maps the five filter names the contract exposes to the columns
 // that hold them. The two layer axes are deliberately separate: `layer` is the
 // source's own org/platform/team label, while the knowledge layer is a
-// classification and has its own map endpoint (API-CONTRACT §5.3).
+// classification and has its own map endpoint (API-CONTRACT §5.3). `repo`
+// counts skills per repository, for an organisation-scope read (§4.10.4).
 var facetColumns = map[string]string{
 	"scope":  "scope",
 	"owner":  "owner",
 	"layer":  "source_layer",
 	"status": "source_status",
+	"repo":   "repo_id",
 }
+
+const facetFields = "field must be one of scope, owner, layer, status, repo."
 
 // maxPage bounds one page of skills.
 const maxPage = 100
@@ -30,6 +34,7 @@ const maxPage = 100
 // skillSummary is the `SkillSummary` DTO.
 type skillSummary struct {
 	SkillID           string     `json:"skill_id"`
+	RepoID            string     `json:"repo_id"`
 	Name              string     `json:"name"`
 	Description       string     `json:"description"`
 	Scope             string     `json:"scope"`
@@ -47,7 +52,7 @@ type skillSummary struct {
 	UpdatedAt         *time.Time `json:"updated_at"`
 }
 
-const summaryColumns = `s.skill_id,s.name,s.description,s.scope,s.owner,s.source_layer,
+const summaryColumns = `s.skill_id,s.repo_id,s.name,s.description,s.scope,s.owner,s.source_layer,
  s.knowledge_layer,s.source_status,s.publication_status,s.path,
  r.content_sha256,s.current_revision_id,r.card_revision,r.commit,s.updated_at`
 
@@ -56,7 +61,7 @@ const summaryFrom = ` FROM gfm.skills s
 
 func scanSummary(rows pgx.Rows) (skillSummary, error) {
 	var v skillSummary
-	e := rows.Scan(&v.SkillID, &v.Name, &v.Description, &v.Scope, &v.Owner, &v.SourceLayer,
+	e := rows.Scan(&v.SkillID, &v.RepoID, &v.Name, &v.Description, &v.Scope, &v.Owner, &v.SourceLayer,
 		&v.KnowledgeLayer, &v.SourceStatus, &v.PublicationStatus, &v.Path,
 		&v.ContentSHA256, &v.RevisionID, &v.CardRevision, &v.Commit, &v.UpdatedAt)
 	return v, e
@@ -70,7 +75,7 @@ func scanSummary(rows pgx.Rows) (skillSummary, error) {
 // which would show the reader a list that answers a different question
 // (API-CONTRACT §3).
 func (s *Service) handleListSkills(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
@@ -94,10 +99,10 @@ func (s *Service) handleListSkills(c *mgmt.Context) error {
 	if len(q) > 200 {
 		return mgmt.Invalid("invalid_request", "q must be at most 200 characters.")
 	}
-	scope, owner, layer, status := c.Query("scope"), c.Query("owner"), c.Query("layer"), c.Query("status")
+	node, owner, layer, status := c.Query("scope"), c.Query("owner"), c.Query("layer"), c.Query("status")
 
 	rows, err := s.pool.Query(c.Ctx(), `SELECT `+summaryColumns+summaryFrom+`
- WHERE s.org_id=$1::uuid AND s.repo_id=$2
+ WHERE s.org_id=$1::uuid AND s.repo_id = ANY($2::text[])
    AND ($3='' OR s.scope=$3)
    AND ($4='' OR s.owner=$4)
    AND ($5='' OR s.source_layer=$5)
@@ -107,7 +112,7 @@ func (s *Service) handleListSkills(c *mgmt.Context) error {
      OR s.path ILIKE '%'||$7||'%' ESCAPE '\')
    AND ($8='' OR (s.name,s.skill_id) > ($8,$9))
  ORDER BY s.name,s.skill_id LIMIT $10`,
-		org.ID, repo.ID, scope, owner, layer, status, likeEscape(q), afterName, afterID, limit+1)
+		org.ID, scope.Repos, node, owner, layer, status, likeEscape(q), afterName, afterID, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -132,11 +137,12 @@ func (s *Service) handleListSkills(c *mgmt.Context) error {
 
 	filters := map[string]any{}
 	for field, value := range map[string]string{
-		"scope": scope, "owner": owner, "layer": layer, "status": status} {
+		"scope": node, "owner": owner, "layer": layer, "status": status,
+		"repo": c.Query("repo")} {
 		if value == "" {
 			continue
 		}
-		available, e := s.facetExists(c.Ctx(), org.ID, repo.ID, field, value)
+		available, e := s.facetExists(c.Ctx(), org.ID, scope.Repos, field, value)
 		if e != nil {
 			return mgmt.Internal(e)
 		}
@@ -146,7 +152,7 @@ func (s *Service) handleListSkills(c *mgmt.Context) error {
 		filters["q"] = map[string]any{"value": q, "available": len(items) > 0}
 	}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "org_id": org.ID, "repo_id": repo.ID,
+		"schema_version": mgmt.SchemaVersion, "org_id": org.ID, "repo_id": scope.RepoID(),
 		"items": items, "next_cursor": nullable(next), "snapshot_id": nil,
 		"filters": filters})
 }
@@ -158,27 +164,27 @@ func likeEscape(q string) string {
 	return r.Replace(q)
 }
 
-func (s *Service) facetExists(ctx context.Context, orgID, repoID, field, value string) (bool, error) {
+func (s *Service) facetExists(ctx context.Context, orgID string, repos []string, field, value string) (bool, error) {
 	column, ok := facetColumns[field]
 	if !ok {
 		return false, nil
 	}
 	var exists bool
 	e := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM gfm.skills
- WHERE org_id=$1::uuid AND repo_id=$2 AND `+column+`=$3)`, orgID, repoID, value).Scan(&exists)
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) AND `+column+`=$3)`, orgID, repos, value).Scan(&exists)
 	return exists, e
 }
 
 // handleFacets counts the distinct values of one filter field.
 func (s *Service) handleFacets(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	field := c.Query("field")
 	column, ok := facetColumns[field]
 	if !ok {
-		return mgmt.Invalid("invalid_request", "field must be one of scope, owner, layer, status.")
+		return mgmt.Invalid("invalid_request", facetFields)
 	}
 	after := ""
 	if v := c.Query("cursor"); v != "" {
@@ -190,11 +196,11 @@ func (s *Service) handleFacets(c *mgmt.Context) error {
 	}
 	const limit = 200
 	rows, err := s.pool.Query(c.Ctx(), `SELECT `+column+` AS value,count(*)
- FROM gfm.skills WHERE org_id=$1::uuid AND repo_id=$2 AND `+column+` IS NOT NULL AND `+column+`<>''
+ FROM gfm.skills WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) AND `+column+` IS NOT NULL AND `+column+`<>''
    AND ($3='' OR `+column+` ILIKE '%'||$3||'%' ESCAPE '\')
    AND ($4='' OR `+column+` > $4)
  GROUP BY 1 ORDER BY 1 LIMIT $5`,
-		org.ID, repo.ID, likeEscape(strings.TrimSpace(c.Query("q"))), after, limit+1)
+		org.ID, scope.Repos, likeEscape(strings.TrimSpace(c.Query("q"))), after, limit+1)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -225,14 +231,14 @@ func (s *Service) handleFacets(c *mgmt.Context) error {
 // visible even when it is not on the current page of facet values — and so an
 // unknown value is reported as unavailable rather than dropped.
 func (s *Service) handleFacetLookup(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	field := c.Query("field")
 	column, ok := facetColumns[field]
 	if !ok {
-		return mgmt.Invalid("invalid_request", "field must be one of scope, owner, layer, status.")
+		return mgmt.Invalid("invalid_request", facetFields)
 	}
 	value := c.Query("value")
 	if value == "" {
@@ -240,7 +246,7 @@ func (s *Service) handleFacetLookup(c *mgmt.Context) error {
 	}
 	var count int
 	if err := s.pool.QueryRow(c.Ctx(), `SELECT count(*) FROM gfm.skills
- WHERE org_id=$1::uuid AND repo_id=$2 AND `+column+`=$3`, org.ID, repo.ID, value).Scan(&count); err != nil {
+ WHERE org_id=$1::uuid AND repo_id = ANY($2::text[]) AND `+column+`=$3`, org.ID, scope.Repos, value).Scan(&count); err != nil {
 		return mgmt.Internal(err)
 	}
 	return c.JSON(http.StatusOK, map[string]any{
@@ -250,13 +256,13 @@ func (s *Service) handleFacetLookup(c *mgmt.Context) error {
 
 // handleSkill answers one skill and every revision the catalog holds for it.
 func (s *Service) handleSkill(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	skillID := c.Param("skill_id")
 	rows, err := s.pool.Query(c.Ctx(), `SELECT `+summaryColumns+summaryFrom+`
- WHERE s.org_id=$1::uuid AND s.repo_id=$2 AND s.skill_id=$3`, org.ID, repo.ID, skillID)
+ WHERE s.org_id=$1::uuid AND s.repo_id = ANY($2::text[]) AND s.skill_id=$3`, org.ID, scope.Repos, skillID)
 	if err != nil {
 		return mgmt.Internal(err)
 	}
@@ -265,7 +271,7 @@ func (s *Service) handleSkill(c *mgmt.Context) error {
 		if err = rows.Err(); err != nil {
 			return mgmt.Internal(err)
 		}
-		return mgmt.NotFound("skill_not_found", "No such skill in this repository.")
+		return mgmt.NotFound("skill_not_found", "No such skill in the repositories you can read.")
 	}
 	summary, err := scanSummary(rows)
 	if err != nil {
@@ -277,8 +283,10 @@ func (s *Service) handleSkill(c *mgmt.Context) error {
 	if err != nil {
 		return mgmt.Internal(err)
 	}
+	// SkillDetail is a SkillSummary, so repo_id is the row's repository here
+	// rather than the scope's: one skill lives in exactly one repository.
 	body := map[string]any{"schema_version": mgmt.SchemaVersion, "org_id": org.ID,
-		"repo_id": repo.ID, "revisions": revisions}
+		"revisions": revisions}
 	mergeSummary(body, summary)
 	return c.JSON(http.StatusOK, body)
 }
@@ -319,6 +327,7 @@ func (s *Service) revisionRefs(ctx context.Context, orgID, skillID string) ([]re
 // is a SkillSummary plus revisions rather than a summary nested inside it.
 func mergeSummary(into map[string]any, v skillSummary) {
 	into["skill_id"] = v.SkillID
+	into["repo_id"] = v.RepoID
 	into["name"] = v.Name
 	into["description"] = v.Description
 	into["scope"] = v.Scope
@@ -340,6 +349,7 @@ func mergeSummary(into map[string]any, v skillSummary) {
 type revisionRow struct {
 	RevisionID    string
 	SkillID       string
+	RepoID        string
 	ContentSHA256 string
 	// CardRevision is the identifier the delivery path and adapter telemetry
 	// use for this revision, or "" while it has never entered a snapshot.
@@ -355,22 +365,23 @@ type revisionRow struct {
 	Publication  string
 }
 
-// loadRevision reads one revision of one skill.
+// loadRevision reads one revision of one skill inside the repositories the
+// request may read.
 //
 // The skill and the revision are matched together on purpose: asking for a
 // revision that belongs to a different skill is 404, and a revision that no
 // longer exists is 404 as well. Substituting the newest revision would hand the
 // caller bytes they did not ask for (§9, "Rewizja niedostępna to 404").
-func (s *Service) loadRevision(ctx context.Context, orgID, repoID, skillID, revisionID string) (*revisionRow, error) {
+func (s *Service) loadRevision(ctx context.Context, orgID string, repos []string, skillID, revisionID string) (*revisionRow, error) {
 	var v revisionRow
 	var commit, importID, proposalID, cardRevision *string
-	e := s.pool.QueryRow(ctx, `SELECT r.revision_id,r.skill_id,r.content_sha256,r.card_revision,r.blob_sha256,
+	e := s.pool.QueryRow(ctx, `SELECT r.revision_id,r.skill_id,s.repo_id,r.content_sha256,r.card_revision,r.blob_sha256,
  r.frontmatter::text,r.commit,r.import_id::text,r.proposal_id::text,r.origin,r.source_path,
  r.created_at,s.publication_status
  FROM gfm.skill_revisions r JOIN gfm.skills s ON s.org_id=r.org_id AND s.skill_id=r.skill_id
- WHERE r.org_id=$1::uuid AND s.repo_id=$2 AND r.skill_id=$3 AND r.revision_id=$4`,
-		orgID, repoID, skillID, revisionID).
-		Scan(&v.RevisionID, &v.SkillID, &v.ContentSHA256, &cardRevision, &v.BlobSHA256, &v.Frontmatter,
+ WHERE r.org_id=$1::uuid AND s.repo_id = ANY($2::text[]) AND r.skill_id=$3 AND r.revision_id=$4`,
+		orgID, repos, skillID, revisionID).
+		Scan(&v.RevisionID, &v.SkillID, &v.RepoID, &v.ContentSHA256, &cardRevision, &v.BlobSHA256, &v.Frontmatter,
 			&commit, &importID, &proposalID, &v.Origin, &v.SourcePath, &v.CreatedAt, &v.Publication)
 	if errors.Is(e, pgx.ErrNoRows) {
 		return nil, mgmt.NotFound("revision_not_found", "No such revision of this skill.")

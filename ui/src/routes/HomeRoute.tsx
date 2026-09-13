@@ -2,15 +2,23 @@
  * shadcnspace dashboard blocks (owner instruction: "site looks way off" from
  * https://dashboard.shadcnspace.com/ — docs/reports/ui/console-shadcn-20260912.md §9).
  *
- * One read per block, all in parallel, every number a count the API returned. The screen answers
+ * One read per block, all in parallel, every number a count the API returned. One extra read
+ * follows the imports list: the detail of the latest import, because the list carries no counts
+ * and no publication by contract. Until that detail arrives (or when it fails) the import's files
+ * and publication stay Unknown and no publish action is raised. The screen answers
  * three questions in order: what waits for me, how the library is doing, how delivery and value
  * look in the chosen window. A block with nothing to say folds to one line; a page with no
- * organisation or repository shows the one next step instead of eight empty cards.
+ * organisation shows the one next step instead of eight empty cards.
+ *
+ * ADR-0047 (contract §4.10): the organisation is the read scope by default and `?repo=` is a
+ * filter. With no repository chosen every read goes to the `{org_base}` twin, the title says "all
+ * repositories", the library card ranks repositories instead of scopes, and rows name the
+ * repository they come from. Nothing here fans out per repository; the API returns the counts.
  */
 import {lazy, Suspense, useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {BookOpenIcon, ListChecksIcon as LucideListChecksIcon, ThumbsUpIcon as LucideThumbsUpIcon} from 'lucide-react';
-import {ArrowRightIcon, BooksIcon, ChartBarIcon, ClockCounterClockwiseIcon, FolderOpenIcon, GitPullRequestIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, StarIcon, StackIcon, ThumbsUpIcon, UploadSimpleIcon, UserCircleIcon, WarningCircleIcon} from '@phosphor-icons/react';
+import {ArrowRightIcon, BooksIcon, ChartBarIcon, ClockCounterClockwiseIcon, GitPullRequestIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, StarIcon, StackIcon, ThumbsUpIcon, UploadSimpleIcon, UserCircleIcon, WarningCircleIcon} from '@phosphor-icons/react';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Progress} from '@/components/ui/progress';
@@ -19,7 +27,8 @@ import {ActionButton, IconTile, Panel, RouteState, StateBadge} from '../Shared';
 import {ApiFailure, DegradedNotice, PartialNotice, formatNumber, readOnly, shortId, useAsync, type ApiProps} from './apiState';
 import type {AuditEntry, ImportStatus, Installation, ProposalSummary, SkillPage, Usage} from '../api/decoders';
 import type {Facets, MapLayers} from '../api/decoders';
-import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topScopes, topSkills, yourDecisions, type ActionKind, type Delta, type NextAction, type YourDecisions} from '../domain/overview';
+import type {ReadScope} from '../data/source';
+import {adapterRows, coverageOf, delta, funnelSteps, hasObservations, helpedShare, helpedShareDelta, latestImport, libraryBreakdown, nextActions, openQueueCount, proposalsByState, topFacetValues, topSkills, yourDecisions, type ActionKind, type Delta, type NextAction, type YourDecisions} from '../domain/overview';
 import type {GateState, Recommendation} from '../domain/skillHealth';
 import {StatisticsMain, StatisticsSecondary, type MainMetric, type StatTrend} from '../components/ui/shadcn-space/blocks/statistics-01/statistics';
 import {SkillsTable, GateBadge, type SkillRow} from '../components/ui/shadcn-space/blocks/table-01/table';
@@ -114,7 +123,8 @@ function Kpis({ctx, usage, skills, windowLabel}: ApiProps & {usage: Usage | null
   const cardLabels = [mainMetrics[0].label, mainMetrics[1].label, 'Helped share', 'Needs review'];
   return <section aria-label="Key numbers" className={styles.kpis}>
     <div className={styles.kpiGrid}>
-      <div className={styles.kpiMain}><StatisticsMain title={ctx.org && ctx.repo ? ctx.org + ' / ' + ctx.repo : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></div>
+      {/* ADR-0047: no repository chosen means every repository this reader may see, and the title says so. */}
+      <div className={styles.kpiMain}><StatisticsMain title={ctx.org ? (ctx.repo ? ctx.org + ' / ' + ctx.repo : ctx.org + ' · all repositories') : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></div>
       <StatisticsSecondary title="Helped share" value={share ? share.label : 'Unknown'} caption={share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'} icon={LucideThumbsUpIcon} tone="system" trend={toTrend(helpedTrend)} />
       <StatisticsSecondary title="Needs review" value={open === null ? 'Unknown' : formatNumber(open)} caption={open === null ? 'The queue could not be read.' : open === 0 ? 'No open owner decision' : (open === 1 ? 'Open owner decision' : 'Open owner decisions')} icon={LucideListChecksIcon} tone={open ? 'warning' : 'neutral'} trend={openTrend} />
     </div>
@@ -141,8 +151,11 @@ function Feedback({usage}: {usage: Usage}) {
 function TopSkillsPanel({ctx, usage}: ApiProps & {usage: Usage}) {
   const top = useMemo(() => topSkills(usage), [usage]);
   const counts = top.recommendations;
+  // At organisation scope the same scope name can exist in several repositories (§4.10.6), so the
+  // cell names the repository first. `UsageSkill.repo_id` is null for a skill the catalogue never saw.
+  const scopeCell = (skill: Usage['skills'][number]) => (ctx.repo ? '' : (skill.repo_id ?? 'Unknown repository') + ' / ') + (skill.scope ?? 'Unknown scope');
   const rows: SkillRow[] = top.rows.map(row => ({
-    skillId: row.skill.skill_id, skillName: skillName(row.skill.skill_id), scope: row.skill.scope ?? 'Unknown scope',
+    skillId: row.skill.skill_id, skillName: skillName(row.skill.skill_id), scope: scopeCell(row.skill),
     href: ctx.href('skill', {skill: row.skill.skill_id, from: 'home'}),
     recommendation: {label: recommendationLabels[row.recommendation], tone: recommendationTone[row.recommendation]},
     reach: {label: row.reach.label, tone: gateTone[row.reach.state]},
@@ -168,11 +181,15 @@ function TopSkillsPanel({ctx, usage}: ApiProps & {usage: Usage}) {
   </Card>;
 }
 
-function Library({ctx, skills, layers, scopes}: ApiProps & {skills: SkillPage | null; layers: MapLayers | null; scopes: Facets | null}) {
+/** `largest` is the `scope` facet with a repository chosen and the `repo` facet without one
+ * (§4.10.4): the same bars, a different heading, and each bar links where that value is read. */
+function Library({ctx, skills, layers, largest}: ApiProps & {skills: SkillPage | null; layers: MapLayers | null; largest: Facets | null}) {
   const breakdown = skills ? libraryBreakdown(skills.items, skills.next_cursor) : null;
   const layerRows = (layers?.layers ?? []).filter(row => row.count > 0);
   const layerTotal = layerRows.reduce((sum, row) => sum + row.count, 0);
-  const scopeRows = scopes ? topScopes(scopes.values) : [];
+  const byRepository = !ctx.repo;
+  const largestRows = largest ? topFacetValues(largest.values) : [];
+  const largestHref = (value: string) => byRepository ? ctx.href('home', {repo: value}) : ctx.href('library', {scope: value});
   return <Card className="rounded-xl border py-6 shadow-xs">
     <CardHeader className="px-6">
       <CardTitle className="text-lg font-medium"><BooksIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Library at a glance</CardTitle>
@@ -193,36 +210,40 @@ function Library({ctx, skills, layers, scopes}: ApiProps & {skills: SkillPage | 
           : <p className={styles.muted}>No layer declared. A layer is declared in the skill, never inferred from its folder.</p>}
         </section>
         <section aria-labelledby="home-scopes" className={styles.subsection}>
-          <h3 id="home-scopes"><ChartBarIcon aria-hidden="true" />Largest scopes</h3>
-          {scopeRows.length ? <ol className={styles.bars} aria-label="Skills per scope, largest first">{scopeRows.map(row => {
-            const width = Math.max(4, Math.round((row.count / scopeRows[0].count) * 100));
-            return <li key={row.scope}><Link to={ctx.href('library', {scope: row.scope})}><code>{row.scope}</code><svg className={styles.bar} viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width={width} height="8" rx="2" /></svg><strong>{formatNumber(row.count)}</strong></Link></li>;
-          })}</ol> : <p className={styles.muted}>No scope with a skill yet.</p>}
+          <h3 id="home-scopes"><ChartBarIcon aria-hidden="true" />{byRepository ? 'Largest repositories' : 'Largest scopes'}</h3>
+          {largestRows.length ? <ol className={styles.bars} aria-label={byRepository ? 'Skills per repository, largest first' : 'Skills per scope, largest first'}>{largestRows.map(row => {
+            const width = Math.max(4, Math.round((row.count / largestRows[0].count) * 100));
+            return <li key={row.value}><Link to={largestHref(row.value)}><code>{row.value}</code><svg className={styles.bar} viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width={width} height="8" rx="2" /></svg><strong>{formatNumber(row.count)}</strong></Link></li>;
+          })}</ol> : <p className={styles.muted}>{byRepository ? 'No repository with a skill yet.' : 'No scope with a skill yet.'}</p>}
         </section>
       </div>
     </CardContent>
   </Card>;
 }
 
-function Pipeline({ctx, imports, proposals, installations, usage, now}: ApiProps & {imports: ImportStatus[] | null; proposals: ProposalSummary[] | null; installations: Installation[] | null; usage: Usage | null; now: number}) {
+function Pipeline({ctx, imports, detail, detailFailed, proposals, installations, usage, now}: ApiProps & {imports: ImportStatus[] | null; detail: ImportStatus | null; detailFailed: boolean; proposals: ProposalSummary[] | null; installations: Installation[] | null; usage: Usage | null; now: number}) {
   const last = imports ? latestImport(imports) : null;
+  // Counts and publication come only from the detail read; a list row carries neither (§5.2).
+  const counts = detail?.counts ?? null;
+  const publication = detail?.publication ?? null;
   const states = proposals ? proposalsByState(proposals) : null;
   const statesTotal = states ? states.reduce((sum, row) => sum + row.count, 0) : 0;
   const adapters = installations ? adapterRows(installations, usage?.health?.adapters ?? null, now) : null;
-  const publication = last?.publication?.state ?? 'none';
   return <Card className="rounded-xl border py-6 shadow-xs">
     <CardHeader className="px-6"><CardTitle className="text-lg font-medium"><PulseIcon aria-hidden="true" className="mr-2 inline align-text-bottom" />Pipeline</CardTitle><CardDescription>Import, proposals and adapters</CardDescription></CardHeader>
     <CardContent className="px-6">
       <div className={styles.threeUp}>
         <section aria-labelledby="home-import" className={styles.subsection}>
           <h3 id="home-import"><UploadSimpleIcon aria-hidden="true" />Latest import</h3>
-          {last ? <dl className={styles.facts}>
-            <div><dt>Import</dt><dd><Link to={ctx.href('import', {step: 'result', import_id: last.import_id})}><code>{shortId(last.import_id)}</code></Link></dd></div>
+          {last ? <><dl className={styles.facts}>
+            <div><dt>Import</dt><dd><Link to={ctx.href('import', {step: 'result', import_id: last.import_id, repo: last.repo_id ?? ctx.repo})}><code>{shortId(last.import_id)}</code></Link></dd></div>
+            {/* An organisation-scope list mixes repositories (§4.10.3); with one chosen the row would repeat the title. */}
+            {!ctx.repo && <div><dt>Repository</dt><dd>{last.repo_id ?? 'Unknown'}</dd></div>}
             <div><dt>State</dt><dd><GateBadge label={last.state} tone={last.state === 'ready' ? 'system' : last.state === 'failed' ? 'warning' : 'neutral'} /></dd></div>
-            <div><dt>Files</dt><dd>{last.counts ? formatNumber(last.counts.accepted) + ' accepted · ' + formatNumber(last.counts.omitted) + ' omitted · ' + formatNumber(last.counts.failed) + ' failed' : 'Unknown'}</dd></div>
-            <div><dt>Publication</dt><dd><GateBadge label={publication} tone={publication === 'published' ? 'system' : publication === 'failed' ? 'warning' : 'neutral'} /></dd></div>
+            <div><dt>Files</dt><dd>{counts ? formatNumber(counts.accepted) + ' accepted · ' + formatNumber(counts.omitted) + ' omitted · ' + formatNumber(counts.failed) + ' failed' : 'Unknown'}</dd></div>
+            <div><dt>Publication</dt><dd>{publication ? <><GateBadge label={publication.state} tone={publication.state === 'published' ? 'system' : publication.state === 'failed' ? 'warning' : 'neutral'} />{publication.state === 'failed' && <> <code>{publication.error ?? 'no error code'}</code></>}</> : 'Not read'}</dd></div>
             <div><dt>Created</dt><dd>{day(last.created_at)}</dd></div>
-          </dl> : imports ? <p className={styles.muted}>No import yet. <Link to={ctx.href('import', {step: 'preview'})}>Upload your checkout</Link>.</p> : <p className={styles.muted}>Imports could not be read.</p>}
+          </dl>{detailFailed && <p className={styles.muted}>The import detail could not be read, so its files and publication are Unknown.</p>}</> : imports ? <p className={styles.muted}>No import yet. <Link to={ctx.href('import', {step: 'preview'})}>Upload your checkout</Link>.</p> : <p className={styles.muted}>Imports could not be read.</p>}
         </section>
         <section aria-labelledby="home-proposals" className={styles.subsection}>
           <h3 id="home-proposals"><GitPullRequestIcon aria-hidden="true" />Proposals by state</h3>
@@ -250,6 +271,8 @@ function YourDecisionsPanel({ctx, decisions}: ApiProps & {decisions: YourDecisio
     </CardHeader>
     <CardContent className="px-0">
       <ul className={styles.states} aria-label="Your most recent decisions">
+        {/* Both destinations read at the current scope (a proposal detail and the merged queue are
+            organisation-scope reads, §4.10), so the link does not force `item.repoId` into the address. */}
         {decisions.items.map(item => <li key={item.kind + ':' + item.id}>
           <Link to={item.kind === 'proposal' ? ctx.href('proposals', {proposal: item.id}) : ctx.href('usage', {}) + '#needs-review'} className={styles.stateLink}>
             <span className={styles.stateRow}><span>{item.kind === 'proposal' ? 'Proposal for ' : 'Queue item for '}{skillName(item.skillId ?? item.label)}</span><StateBadge>{item.detail}</StateBadge></span>
@@ -282,25 +305,31 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const {source, org, repo, me, role} = ctx;
   const at = (key: string) => ctx.params.get(key) ?? '';
   const windowLabel = usageWindows.includes(at('window') as typeof usageWindows[number]) ? at('window') : '30d';
-  const target = org && repo ? {org, repo} : null;
+  // ADR-0047: `repo: null` is every repository this principal may read, resolved by the API.
+  const target: ReadScope | null = org ? {org, repo} : null;
+  const scopeKey = org + '/' + (repo ?? '*');
   const owner = role === 'owner';
   const now = Date.now();
 
-  const usage = useAsync(() => source.getUsage(target!, {window: windowLabel}), 'home:usage:' + org + '/' + repo + ':' + windowLabel, Boolean(target));
-  const skills = useAsync(() => source.listSkills(target!, {limit: 100}), 'home:skills:' + org + '/' + repo, Boolean(target));
-  const layers = useAsync(() => source.getMapLayers(target!), 'home:layers:' + org + '/' + repo, Boolean(target));
-  const scopes = useAsync(() => source.getFacets(target!, {field: 'scope'}), 'home:scopes:' + org + '/' + repo, Boolean(target));
-  const proposals = useAsync(() => source.listProposals(target!, {}), 'home:proposals:' + org + '/' + repo, Boolean(target));
-  const imports = useAsync(() => source.listImports(target!), 'home:imports:' + org + '/' + repo, Boolean(target));
+  const usage = useAsync(() => source.getUsage(target!, {window: windowLabel}), 'home:usage:' + scopeKey + ':' + windowLabel, Boolean(target));
+  const skills = useAsync(() => source.listSkills(target!, {limit: 100}), 'home:skills:' + scopeKey, Boolean(target));
+  const layers = useAsync(() => source.getMapLayers(target!), 'home:layers:' + scopeKey, Boolean(target));
+  // With a repository chosen the library card ranks its scopes; without one it ranks the
+  // repositories themselves (`field=repo`, §4.10.4), because a scope id is only unique per repository.
+  const largest = useAsync(() => source.getFacets(target!, {field: repo ? 'scope' : 'repo'}), 'home:largest:' + scopeKey, Boolean(target));
+  const proposals = useAsync(() => source.listProposals(target!, {}), 'home:proposals:' + scopeKey, Boolean(target));
+  const imports = useAsync(() => source.listImports(target!), 'home:imports:' + scopeKey, Boolean(target));
+  const lastListed = imports.value ? latestImport(imports.value) : null;
+  const lastRepo = lastListed ? lastListed.repo_id ?? repo : null;
+  const importDetail = useAsync(() => source.getImport({org: org!, repo: lastRepo}, lastListed!.import_id), 'home:import:' + org + '/' + (lastRepo ?? '*') + ':' + (lastListed?.import_id ?? ''), Boolean(org && lastListed));
   const installations = useAsync(() => source.listInstallations(org!), 'home:installations:' + org, Boolean(org));
   // 1.3.0: `{org_base}/audit` is readable by a member too, scoped server-side to their own rows
   // (contract §4.1) — the client reads it for every signed-in role, not just an owner.
   const audit = useAsync(() => source.getAudit(org!), 'home:audit:' + org, Boolean(org));
 
-  if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization and a repository. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
-  if (!repo) return <EmptyStateBlock icon={<FolderOpenIcon aria-hidden="true" />} title="Choose a repository" description={'No repository is selected for ' + org + '. Pick one, or upload a checkout with the CLI, and the overview fills itself.'} action={{label: 'Choose a repository', href: ctx.href('import', {step: 'preview'}), tone: 'human'}} />;
+  if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
 
-  const reads = [usage, skills, layers, scopes, proposals, imports, installations];
+  const reads = [usage, skills, layers, largest, proposals, imports, importDetail, installations];
   // The usage report is the spine of the page: the window, the coverage chip, two of the four
   // numbers and the next actions come from it. The page waits for it alone; every other block
   // arrives on its own and, when it fails, says so in place while the rest stays complete.
@@ -313,10 +342,13 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   const skillsValue = skills.value ?? null;
   const proposalsValue = proposals.value?.items ?? null;
   const importsValue = imports.value ?? null;
+  // A stale detail of a previous latest import is never shown against a new one.
+  const detailValue = importDetail.value && lastListed && importDetail.value.import_id === lastListed.import_id ? importDetail.value : null;
+  const detailFailed = importDetail.phase === 'error' && !detailValue;
   const installationsValue = installations.value ?? null;
   const coverage = coverageOf(usageValue);
   const observed = hasObservations(usageValue);
-  const actions = nextActions({role, me, usage: usageValue, proposals: proposalsValue, imports: importsValue, installations: installationsValue, skillsTotal: skillsValue?.items.length ?? null, now});
+  const actions = nextActions({role, me, usage: usageValue, proposals: proposalsValue, imports: importsValue, latestImport: detailValue, installations: installationsValue, skillsTotal: skillsValue?.items.length ?? null, now});
   const blocking = actions.find(action => action.kind === 'adapter' || action.kind === 'publish' || action.kind === 'import');
   const decisions = yourDecisions(proposalsValue ?? [], usageValue?.queue ?? [], me);
   const windowText = usageValue ? 'Last ' + windowLabel + ' · ' + day(usageValue.window.from) + ' to ' + day(usageValue.window.to) : 'Last ' + windowLabel;
@@ -347,8 +379,8 @@ export function ApiHomeRoute({ctx}: ApiProps) {
     : <div className="px-1"><EmptyStateBlock icon={<BookOpenIcon aria-hidden="true" />} title={'No telemetry in the last ' + windowLabel} description="No adapter event and no assessment reached the ledger. Usefulness is Unknown, not zero." action={{label: 'Set up an adapter', href: ctx.href('organization', {tab: 'integrations'}), tone: 'system'}} /></div>}
     {usageValue && observed && <TopSkillsPanel ctx={ctx} usage={usageValue} />}
 
-    <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} scopes={scopes.value ?? null} />
-    <Pipeline ctx={ctx} imports={importsValue} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
+    <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} largest={largest.value ?? null} />
+    <Pipeline ctx={ctx} imports={importsValue} detail={detailValue} detailFailed={detailFailed} proposals={proposalsValue} installations={installationsValue} usage={usageValue} now={now} />
     {/* 1.3.0: the audit route now scopes a member to their own rows server-side (contract §4.1),
         so "Recent activity" is no longer owner-only; the eyebrow says which scope this reader gets. */}
     {audit.value && <Activity ctx={ctx} entries={audit.value.items} owner={owner} />}

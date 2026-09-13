@@ -44,14 +44,23 @@ type feedbackEntry struct {
 // parsed frontmatter, where it came from, its package files, its declared
 // relations and the judgments people recorded against it.
 func (s *Service) handleRevision(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
 	skillID, revisionID := c.Param("skill_id"), c.Param("revision_id")
-	rev, err := s.loadRevision(c.Ctx(), org.ID, repo.ID, skillID, revisionID)
+	rev, err := s.loadRevision(c.Ctx(), org.ID, scope.Repos, skillID, revisionID)
 	if err != nil {
 		return err
+	}
+	// The permalink is built from the git host of the repository the row
+	// belongs to. At organisation scope that repository is only known once the
+	// row is, so it is looked up then; a wrong host would be worse than none.
+	repo := scope.Repo
+	if !scope.Single() {
+		if repo, err = s.repoByID(c.Ctx(), org.ID, rev.RepoID); err != nil {
+			return mgmt.Internal(err)
+		}
 	}
 	// A revision whose raw upload has expired keeps its metadata: the hashes
 	// and the provenance are still true. The body is then null — a named
@@ -96,7 +105,7 @@ func (s *Service) handleRevision(c *mgmt.Context) error {
 	provenance := map[string]any{"origin": rev.Origin,
 		"import_id": nullable(rev.ImportID), "proposal_id": nullable(rev.ProposalID)}
 	return c.JSON(http.StatusOK, map[string]any{
-		"schema_version": mgmt.SchemaVersion, "org_id": org.ID, "repo_id": repo.ID,
+		"schema_version": mgmt.SchemaVersion, "org_id": org.ID, "repo_id": rev.RepoID,
 		"skill_id": rev.SkillID, "revision_id": rev.RevisionID,
 		"content_sha256": rev.ContentSHA256, "card_revision": nullable(rev.CardRevision),
 		"body": body, "frontmatter": frontmatter,
@@ -108,11 +117,11 @@ func (s *Service) handleRevision(c *mgmt.Context) error {
 // handleRaw answers the exact bytes that were imported, with their digest in a
 // header so a caller can verify them without trusting the transport.
 func (s *Service) handleRaw(c *mgmt.Context) error {
-	org, repo, e := c.AuthorizeRepo("org", "repo", mgmt.RoleAny)
+	org, scope, e := c.AuthorizeScope("org", "repo", mgmt.RoleAny)
 	if e != nil {
 		return e
 	}
-	rev, err := s.loadRevision(c.Ctx(), org.ID, repo.ID, c.Param("skill_id"), c.Param("revision_id"))
+	rev, err := s.loadRevision(c.Ctx(), org.ID, scope.Repos, c.Param("skill_id"), c.Param("revision_id"))
 	if err != nil {
 		return err
 	}
@@ -279,7 +288,7 @@ func (s *Service) handleFeedback(c *mgmt.Context) error {
 		return mgmt.Invalid("invalid_request", "reason and task_id are too long.")
 	}
 	skillID, revisionID := c.Param("skill_id"), c.Param("revision_id")
-	rev, err := s.loadRevision(c.Ctx(), org.ID, repo.ID, skillID, revisionID)
+	rev, err := s.loadRevision(c.Ctx(), org.ID, []string{repo.ID}, skillID, revisionID)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 
 const detail: SkillDetail = {
-  skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', name: 'postgres-auth',
+  skill_id: 'urn:skill:meridian:atlas.identity:postgres-auth', repo_id: 'monorepo', name: 'postgres-auth',
   description: '[atlas.identity] Connect a service to the shared Postgres cluster.',
   scope: 'atlas.identity', owner: 'identity-team', source_layer: 'team', knowledge_layer: 'unclassified',
   source_status: 'active', publication_status: 'published', path: 'platforms/atlas/identity/postgres-auth/SKILL.md',
@@ -148,6 +148,35 @@ describe('Skill route, revision, source and feedback', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Record assessment' }));
     expect(await screen.findByText(/was not recorded \(internal_error\)/)).toBeInTheDocument();
     expect(screen.getByLabelText('What happened')).toHaveValue('Kept text');
+  });
+});
+
+describe('Skill route, organisation scope (ADR-0047)', () => {
+  test('no repository reads the skill at organisation scope and the provenance trail names its repository', async () => {
+    const getSkill = vi.fn(async () => detail);
+    const getRevision = vi.fn(async () => revision());
+    renderApi(ApiSkillRoute, source({ getSkill, getRevision }), 'skill=urn:a&tab=source', { repo: null });
+    const trail = await screen.findByText('Repository');
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(getSkill).toHaveBeenCalledWith({ org: 'meridian', repo: null }, 'urn:a');
+    expect(getRevision).toHaveBeenCalledWith({ org: 'meridian', repo: null }, 'urn:a', 'rev-current');
+    expect(within(trail.closest('div') ?? trail.parentElement!).getByText('monorepo')).toBeInTheDocument();
+  });
+
+  test('feedback is a mutation: it goes to the repository of the skill row, never to an empty one', async () => {
+    const sendFeedback = vi.fn(async () => ({ judgment_id: 'j-44' }));
+    renderApi(ApiSkillRoute, source({ sendFeedback }), 'skill=urn:a&tab=feedback', { repo: null });
+    await userEvent.type(await screen.findByLabelText('What happened'), 'Read at organisation scope.');
+    await userEvent.click(screen.getByRole('button', { name: 'Record assessment' }));
+    expect(sendFeedback).toHaveBeenCalledWith({ org: 'meridian', repo: 'monorepo' }, 'urn:a', 'rev-current', expect.anything(), expect.any(String));
+  });
+
+  test('with neither the row nor the address naming a repository, the rating is disabled and says why', async () => {
+    const sendFeedback = vi.fn();
+    renderApi(ApiSkillRoute, source({ getSkill: async () => ({ ...detail, repo_id: null }), sendFeedback }), 'skill=urn:a&tab=feedback', { repo: null });
+    expect(await screen.findByRole('button', { name: 'Record assessment' })).toBeDisabled();
+    expect(screen.getByText(/The repository of this skill is not known/)).toBeInTheDocument();
+    expect(sendFeedback).not.toHaveBeenCalled();
   });
 });
 

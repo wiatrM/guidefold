@@ -2692,20 +2692,20 @@ def _telemetry_disabled() -> bool:
 # `_telemetry_disabled()` above (existing, GUIDEFOLD_TELEMETRY_DISABLE) is a harder kill switch:
 # it stops local SPOOLING entirely. What follows is a separate, softer axis -- whether queued
 # events are UPLOADED automatically -- and it is ON by default once a credential and endpoint
-# exist (ADR-0047, owner decision 2026-09-13: "klient automatycznie powinien miec opt in na
+# exist (ADR-0048, owner decision 2026-09-13: "klient automatycznie powinien miec opt in na
 # telemetrie" -- a client should automatically have telemetry opted in; the user switches it off
 # explicitly). This supersedes the earlier opt-in reading of docs/SEARCH-USE-TELEMETRY.md §5 and
-# docs/DESIGN.md R7 -- both amended by ADR-0047 to describe the opt-out model instead. Nothing
+# docs/DESIGN.md R7 -- both amended by ADR-0048 to describe the opt-out model instead. Nothing
 # about event CONTENT changes: still hashes only, still no raw prompt by default, same spool
 # bounds, same detached/never-in-the-hook-process spawn.
-TELEMETRY_UPLOAD_ENABLED_DEFAULT = True         # opt-out; ADR-0047
+TELEMETRY_UPLOAD_ENABLED_DEFAULT = True         # opt-out; ADR-0048
 TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S = 60         # a burst of hook calls starts at most one flush
 TELEMETRY_AUTO_FLUSH_BUDGET_S = 10.0             # wall-clock cap on one background flush run
 
 def _telemetry_upload_enabled() -> bool:
     """Effective state for AUTOMATIC upload, precedence: `GUIDEFOLD_TELEMETRY` env (CI override)
     > the persisted CLI setting (`guidefold telemetry enable`/`disable`) > default ON
-    (ADR-0047). Also off whenever `_telemetry_disabled()` is true -- nothing is spooled to
+    (ADR-0048). Also off whenever `_telemetry_disabled()` is true -- nothing is spooled to
     upload either way, and a background flush attempt would just be wasted work. An
     organisation that must not upload telemetry has to disable one of these three explicitly,
     on every machine/CI job that runs the adapter -- docs/CONVENTIONS.md §11a,
@@ -5466,7 +5466,7 @@ def cmd_hook(a, root):
                         "score": c["score"], "rank": i} for i, c in enumerate(top, start=1)],
             "timings": {"total_ms": elapsed_ms},
         }, ids={"session_id": session_id})
-        # Owner decision, 2026-09-13 (ADR-0047): automatic background upload, on by default once
+        # Owner decision, 2026-09-13 (ADR-0048): automatic background upload, on by default once
         # a credential and endpoint exist -- `guidefold telemetry disable` (or GUIDEFOLD_
         # TELEMETRY=0/GUIDEFOLD_TELEMETRY_DISABLE) opts out. Every check inside is a local file
         # stat/read against `search_cfg` already resolved above -- no network, no new YAML parse
@@ -5535,7 +5535,7 @@ def cmd_telemetry(a, root, cfg):
 
 def cmd_telemetry_enable(a):
     """Explicitly turns automatic background upload back on after a `disable` -- upload is
-    already ON by default once a credential and endpoint exist (ADR-0047), so this command's
+    already ON by default once a credential and endpoint exist (ADR-0048), so this command's
     main job is undoing a prior `disable` (or an environment/org policy that starts a machine
     with it off). Local spooling (`_telemetry_disabled`/GUIDEFOLD_TELEMETRY_DISABLE) is
     unaffected; this only controls whether queued events get sent."""
@@ -5627,7 +5627,7 @@ def cmd_telemetry_flush(a, root, cfg=None):
     given, else the same `search.url`/`GUIDEFOLD_SEARCH_URL` `find`/`load` already resolve
     (`resolve_search_config`) -- so the automatic background flush (`--auto`, triggered by
     `hook`/`find`/`load` once a credential and endpoint exist: `_telemetry_upload_enabled`,
-    ON by default since ADR-0047) never needs `--url` spelled out. The credential is
+    ON by default since ADR-0048) never needs `--url` spelled out. The credential is
     a bearer token (see `_flush_token`); `X-Guidefold-Org`/`X-Guidefold-Repo` ride along under
     the same rule as SEARCH/USE (`_search_extra_headers`) when the token came from a stored
     login, never for an explicit `--token-file`. The `X-Guidefold-Tenant` header stays for the
@@ -5787,7 +5787,7 @@ def maybe_trigger_telemetry_auto_flush(root: Path, search_cfg: dict):
     """Called after `hook`/`find`/`load` emit telemetry. Spawns a detached `guidefold telemetry
     flush --auto` child and returns immediately -- never blocks, never raises, never touches a
     socket itself. No-ops (in order, cheapest check first) when: upload is not enabled
-    (`_telemetry_upload_enabled`, ON by default since ADR-0047 -- `guidefold telemetry disable`
+    (`_telemetry_upload_enabled`, ON by default since ADR-0048 -- `guidefold telemetry disable`
     or GUIDEFOLD_TELEMETRY=0/GUIDEFOLD_TELEMETRY_DISABLE opts out); `search_cfg` carries no
     token (never send before the user has a token -- also true before `guidefold login`/an
     installation token is configured at all) or no url (nowhere configured to send to); the
@@ -10010,8 +10010,8 @@ def main():
     telsub = tel.add_subparsers(dest="telemetry_cmd")
     st = telsub.add_parser("status", help="counts, oldest queued age, partitions and the automatic-upload switch -- read-only")
     st.add_argument("--json", action="store_true")
-    telsub.add_parser("enable", help="turn ON automatic background upload (already ON by default once a token and endpoint exist -- ADR-0047; use this to re-enable after disabling)")
-    telsub.add_parser("disable", help="turn OFF automatic background upload (it is ON by default -- ADR-0047)")
+    telsub.add_parser("enable", help="turn ON automatic background upload (already ON by default once a token and endpoint exist -- ADR-0048; use this to re-enable after disabling)")
+    telsub.add_parser("disable", help="turn OFF automatic background upload (it is ON by default -- ADR-0048)")
     fl = telsub.add_parser("flush", help="POST queued events to <url>/v1/events:batch. --url defaults to the configured search.url/GUIDEFOLD_SEARCH_URL")
     fl.add_argument("--url", help="events:batch base URL (default: search.url / GUIDEFOLD_SEARCH_URL)")
     fl.add_argument("--token-file", dest="token_file",

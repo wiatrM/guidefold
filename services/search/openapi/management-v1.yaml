@@ -1674,6 +1674,383 @@ paths:
           description: "`idempotency_payload_mismatch`, `idempotency_in_progress`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /api/v1/orgs/{org}/imports:
+    get:
+      tags: [repositories]
+      summary: "List imports, newest first. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        The list carries no per-file detail: `files` is empty, `files_truncated`
+        is true and `counts` is null, because "not measured here" is not zero.
+        One import's own endpoint answers the detailed question.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One keyset page of imports.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportList" } } }
+        "400":
+          description: "`invalid_cursor`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/imports/{import_id}:
+    get:
+      tags: [repositories]
+      summary: "Import state, files, jobs and publication. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: "`state: ready` is not `published`: the publication has its own field."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/ImportId" }
+      responses:
+        "200":
+          description: The import.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ImportStatus" } } }
+        "404":
+          description: "`import_not_found`, inside the caller's own organisation only."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills:
+    get:
+      tags: [knowledge]
+      summary: "One keyset page of skill summaries. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        `filters` echoes every filter that was applied together with whether that
+        value exists in this repository at all. An unknown value returns an empty
+        page and `available: false` — never a silent fall back to "All".
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: layer, in: query, schema: { type: string }, description: The source layer, not the knowledge layer. }
+        - { name: status, in: query, schema: { type: string }, description: The source status. }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One page of skill summaries.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SkillPage" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills/facets:
+    get:
+      tags: [knowledge]
+      summary: "Distinct values of one filter field, with counts. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: field, in: query, required: true, schema: { type: string, enum: [scope, owner, layer, status] } }
+        - { name: q, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: Facet values.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Facets" } } }
+        "400":
+          description: "`invalid_request` for an unknown field."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills/facets/lookup:
+    get:
+      tags: [knowledge]
+      summary: "One facet value, so a filter taken from a URL stays visible. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        An unrecognised value answers with `available: false` and a zero count
+        rather than disappearing from the interface.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: field, in: query, required: true, schema: { type: string, enum: [scope, owner, layer, status] } }
+        - { name: value, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The value and its count.
+          content: { application/json: { schema: { $ref: "#/components/schemas/FacetLookup" } } }
+        "400":
+          description: "`invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills/{skill_id}:
+    get:
+      tags: [knowledge]
+      summary: "One skill and every revision the catalog holds for it. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/SkillId" }
+      responses:
+        "200":
+          description: The skill.
+          content: { application/json: { schema: { $ref: "#/components/schemas/SkillDetail" } } }
+        "404":
+          description: "`skill_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}:
+    get:
+      tags: [knowledge]
+      summary: "One revision, body, references, relations and provenance. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/SkillId" }
+        - { $ref: "#/components/parameters/RevisionId" }
+      responses:
+        "200":
+          description: The revision. `body` is null when the raw upload has expired.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Revision" } } }
+        "404":
+          description: "`revision_not_found`. Never the latest revision instead."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/skills/{skill_id}/revisions/{revision_id}/raw:
+    get:
+      tags: [knowledge]
+      summary: "The exact imported bytes of one revision. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        `X-Content-SHA256` carries the digest so a caller can verify the bytes
+        without trusting the transport. The media type is octet-stream because
+        these are the bytes as imported and nothing may re-encode them.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/SkillId" }
+        - { $ref: "#/components/parameters/RevisionId" }
+      responses:
+        "200":
+          description: The bytes.
+          headers:
+            X-Content-SHA256:
+              description: sha256 of the body, lower-case hex.
+              schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          description: "`revision_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`revision_unavailable`: the revision exists but its bytes have expired."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/map/repository:
+    get:
+      tags: [knowledge]
+      summary: "The source tree, one path at a time. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: path, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: Children of one path.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapRepository" } } }
+        "400":
+          description: "`invalid_cursor`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/map/scopes:
+    get:
+      tags: [knowledge]
+      summary: "The scope map from guidefold.yaml, with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        A skill whose scope is not a declared node is listed under `unmapped`
+        rather than folded into the root: "we do not know who owns this" is the
+        finding, not a detail to hide.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: scope, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Scopes, their skills and the unmapped remainder.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapScopes" } } }
+        "404":
+          description: "`not_found` for an unknown scope."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/map/layers:
+    get:
+      tags: [knowledge]
+      summary: "Skill counts by knowledge layer. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        The knowledge layer is a classification and never follows from directory
+        depth; the source layer is a separate axis with its own filter.
+      parameters: [{ $ref: "#/components/parameters/Org" }, { $ref: "#/components/parameters/RepoFilter" }]
+      responses:
+        "200":
+          description: Layers and counts.
+          content: { application/json: { schema: { $ref: "#/components/schemas/MapLayers" } } }
+
+  /api/v1/orgs/{org}/map/relations:
+    get:
+      tags: [knowledge]
+      summary: "The declared relation neighbourhood. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: "`truncated` says outright when the answer was cut, so a page is never mistaken for the whole graph."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string, enum: [derived_from, requires, refines, similar, conflicts_with] } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: Edges.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Relations" } } }
+        "400":
+          description: "`invalid_request`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/modules/{scope}:
+    get:
+      tags: [knowledge]
+      summary: "One scope as a module — owner, reading order, borrowed skills and documents. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: scope, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The module.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ModulePage" } } }
+        "404":
+          description: "`not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/proposals:
+    get:
+      tags: [proposals]
+      summary: "One keyset page of proposals, newest first. Members read. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { name: state, in: query, schema: { $ref: "#/components/schemas/ProposalState" } }
+        - { name: kind, in: query, schema: { $ref: "#/components/schemas/ProposalKind" } }
+        - { name: scope, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: One page of proposals.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProposalList" } } }
+        "400":
+          description: "`invalid_cursor` or `invalid_filter_value`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/proposals/{proposal_id}:
+    get:
+      tags: [proposals]
+      summary: "One proposal with its candidate, the body it would replace and its provenance. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        `source_body` is what makes the review possible: an owner comparing a
+        candidate against nothing is approving prose, not a change. Every entry
+        of `provenance` either names the source bytes it came from or says
+        `needs_confirmation`.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      responses:
+        "200":
+          description: The proposal.
+          content: { application/json: { schema: { $ref: "#/components/schemas/ProposalDetail" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/proposals/{proposal_id}/publication:
+    get:
+      tags: [proposals]
+      summary: "Where one proposal stands between approval and serving. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      responses:
+        "200":
+          description: The publication state of the proposal.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Publication" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/usage:
+    get:
+      tags: [usage]
+      summary: "Usage aggregates, owner queue and adapter health. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        Every proportion carries its own numerator and denominator, and every
+        absent observation is null rather than zero: a revision nobody judged
+        has `feedback: null`, not five zeros, and a ratio with no denominator is
+        `helped_ratio: null`, not 0 %. A 200 on `/v1/use` moves no counter here.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/UsageWindowParam" }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: revision, in: query, schema: { type: string } }
+        - { name: harness, in: query, description: The event `producer`., schema: { type: string } }
+      responses:
+        "200":
+          description: Aggregates with numerators and denominators.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usage" }
+        "400":
+          description: "`invalid_request`. An unknown window or an over-long filter."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: "`forbidden`. Identical body for a non-member and for an unknown organisation."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/usage/export:
+    get:
+      tags: [usage]
+      summary: "The same rows as CSV or JSON. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      description: >-
+        Reproduces the counts, never the work: no prompt, no query, no file path
+        and no skill body appears in either format. The CSV column order is
+        pinned by API-CONTRACT §5.5; appending a column is additive, reordering
+        or removing one is a breaking change.
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/RepoFilter" }
+        - { $ref: "#/components/parameters/UsageWindowParam" }
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv, json], default: csv }
+        - { name: scope, in: query, schema: { type: string } }
+        - { name: skill_id, in: query, schema: { type: string } }
+        - { name: revision, in: query, schema: { type: string } }
+        - { name: harness, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsageExport" }
+            text/csv:
+              schema:
+                type: string
+                description: >-
+                  Header row then one line per skill revision, in the pinned
+                  column order. An empty cell is an absent observation.
+        "400":
+          description: "`invalid_request`. An unknown format or window."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: "`forbidden`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /api/v1/orgs/{org}/credentials:
     get:
       tags: [credentials]
@@ -1902,6 +2279,15 @@ components:
         The reporting period, relative to the watermark (the newest received_at
         in the ledger) rather than to the reader's clock.
       schema: { type: string, enum: ["7d", "30d", "90d"], default: "30d" }
+    RepoFilter:
+      name: repo
+      in: query
+      required: false
+      description: >-
+        Narrows an organisation-scope read to one repository (contract §4.10);
+        the answer is then identical to the `{repo_base}` route. Unknown →
+        `not_found`; known but not readable by this member → `forbidden`.
+      schema: { type: string, pattern: "^[A-Za-z0-9_.-]{1,64}$" }
     Cursor:
       name: cursor
       in: query
@@ -2206,9 +2592,12 @@ components:
         [skill_id, revision, scope, owner, harness, exposures, loads_verified,
          context_loaded, context_unknown, use_reported, use_observed,
          use_episodes, exposures_expanded, loads_unlinked, feedback,
-         helped_ratio, zero_loads]
+         helped_ratio, zero_loads, repo_id]
       properties:
         skill_id: { type: string }
+        repo_id:
+          type: [string, "null"]
+          description: The repository the catalog attributes the skill to; null when the ledger saw a skill the catalog does not know (contract §4.10).
         revision:
           type: [string, "null"]
           description: >-
@@ -2271,8 +2660,9 @@ components:
 
     QueueItem:
       type: object
-      required: [item_id, skill_id, revision, reason, since, evidence, decision]
+      required: [item_id, repo_id, skill_id, revision, reason, since, evidence, decision]
       properties:
+        repo_id: { type: string, description: "The repository whose queue holds the item; decisions stay on `{repo_base}` (contract §4.10)." }
         item_id:
           type: string
           description: >-
@@ -2369,6 +2759,7 @@ components:
             filter. A parameter that was not given has no key; `window` carries
             the window that was applied, including the default.
           properties:
+            repo: { type: string, description: "Present only when the organisation-scope read was narrowed with `repo` (contract §4.10)." }
             scope: { type: string }
             skill_id: { type: string }
             revision: { type: string }
@@ -3136,7 +3527,7 @@ components:
       properties:
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         org_id: { type: string, format: uuid }
-        repo_id: { type: string }
+        repo_id: { type: [string, "null"], description: "The repository when the answer is one repository; null when an organisation-scope read spans several (contract §4.10.3)." }
         items: { type: array, items: { $ref: "#/components/schemas/ImportStatus" } }
         next_cursor: { type: [string, "null"] }
 
@@ -3268,9 +3659,10 @@ components:
 
     ProposalSummary:
       type: object
-      required: [proposal_id, kind, state]
+      required: [proposal_id, repo_id, kind, state]
       properties:
         proposal_id: { type: string, format: uuid }
+        repo_id: { type: string, description: "The repository the proposal targets (contract 1.11.0, §4.10)." }
         kind: { $ref: "#/components/schemas/ProposalKind" }
         state: { $ref: "#/components/schemas/ProposalState" }
         scope: { type: [string, "null"] }
@@ -3297,7 +3689,7 @@ components:
       properties:
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         org_id: { type: string, format: uuid }
-        repo_id: { type: string }
+        repo_id: { type: [string, "null"], description: "The repository when the answer is one repository; null when an organisation-scope read spans several (contract §4.10.3)." }
         items: { type: array, items: { $ref: "#/components/schemas/ProposalSummary" } }
         next_cursor: { type: [string, "null"] }
 
@@ -3551,9 +3943,10 @@ components:
 
     SkillSummary:
       type: object
-      required: [skill_id, name, description, scope, knowledge_layer, source_status, publication_status, path]
+      required: [skill_id, repo_id, name, description, scope, knowledge_layer, source_status, publication_status, path]
       properties:
         skill_id: { type: string }
+        repo_id: { type: string, description: "The repository the skill belongs to (contract 1.11.0, §4.10)." }
         name: { type: string }
         description: { type: string }
         scope: { type: string }
@@ -3593,7 +3986,7 @@ components:
       properties:
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         org_id: { type: string, format: uuid }
-        repo_id: { type: string }
+        repo_id: { type: [string, "null"], description: "The repository when the answer is one repository; null when an organisation-scope read spans several (contract §4.10.3)." }
         items: { type: array, items: { $ref: "#/components/schemas/SkillSummary" } }
         next_cursor: { type: [string, "null"] }
         snapshot_id: { type: [string, "null"] }
@@ -3754,7 +4147,10 @@ components:
       properties:
         name: { type: string }
         path: { type: string }
-        kind: { type: string, enum: [dir, skill, document] }
+        kind:
+          type: string
+          enum: [dir, skill, document, repository]
+          description: "`repository` only at the root of an organisation-scope tree (contract §4.10.5)."
         skill_id: { type: [string, "null"] }
         count: { type: [integer, "null"] }
 
@@ -3769,9 +4165,10 @@ components:
 
     ScopeNode:
       type: object
-      required: [id, paths, source, count]
+      required: [id, repo_id, paths, source, count]
       properties:
         id: { type: string }
+        repo_id: { type: string, description: "Scope ids are unique per repository, not per organisation (contract §4.10.6)." }
         owner: { type: [string, "null"] }
         parent: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }
@@ -3794,9 +4191,10 @@ components:
           description: Skills whose scope is not a declared node. Named, never folded into the root.
           items:
             type: object
-            required: [scope, count]
+            required: [scope, repo_id, count]
             properties:
               scope: { type: string }
+              repo_id: { type: string, description: "The repository of the unmapped scope (contract 1.11.0, §4.10.3)." }
               count: { type: integer }
 
     MapLayers:
@@ -3824,9 +4222,10 @@ components:
 
     ModulePage:
       type: object
-      required: [schema_version, scope, paths, skills, reading_order, shared, documents]
+      required: [schema_version, repo_id, scope, paths, skills, reading_order, shared, documents]
       properties:
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
+        repo_id: { type: string }
         scope: { type: string }
         owner: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }

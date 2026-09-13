@@ -341,11 +341,11 @@ acknowledgements (never `rejected`) to drain the spool. `guidefold telemetry rep
 `tools/telemetry/report.py` (per-skill/per-revision usage from the ledger) when running from a
 guidefold tool checkout.
 
-### 11a. Automatic upload (owner instruction, 2026-09-13; default flipped by ADR-0047)
+### 11a. Automatic upload (owner instruction, 2026-09-13; default flipped by ADR-0048)
 
 Upload is **on by default** once the adapter has a bearer credential (a `guidefold login` token
 or an installation token) and a configured SEARCH/USE endpoint — owner decision 2026-09-13,
-[ADR-0047](adr/ADR-0047-telemetry-upload-on-by-default.md), amending the earlier opt-in reading
+[ADR-0048](adr/ADR-0048-telemetry-upload-on-by-default.md), amending the earlier opt-in reading
 of `docs/SEARCH-USE-TELEMETRY.md` §5 and `docs/DESIGN.md` R7. Explicit configuration is now the
 **opt-out**: `guidefold telemetry enable` / `disable` persist the switch to `settings.json`, a
 plain, non-secret JSON file next to `credentials.json` (`_settings_path()`, `$GUIDEFOLD_SETTINGS`

@@ -241,7 +241,7 @@ func TestAScopeFilterCannotMatchASkillTheCatalogDoesNotKnow(t *testing.T) {
 			"revision": "r", "exposure_id": "x2"}),
 	}
 	// No filter: both rows, the unknown one without a scope or an owner.
-	all := aggregate(t, events, meta, domain.Filter{Repo: "meridian"})
+	all := aggregate(t, events, meta, domain.Filter{Repos: []string{"meridian"}})
 	if len(all.Skills) != 2 {
 		t.Fatalf("an unattributed skill must still be counted: %v", all.Skills)
 	}
@@ -251,12 +251,12 @@ func TestAScopeFilterCannotMatchASkillTheCatalogDoesNotKnow(t *testing.T) {
 		}
 	}
 	// With a scope filter: only the one the catalog places in that scope.
-	filtered := aggregate(t, events, meta, domain.Filter{Repo: "meridian", Scope: "atlas"})
+	filtered := aggregate(t, events, meta, domain.Filter{Repos: []string{"meridian"}, Scope: "atlas"})
 	if len(filtered.Skills) != 1 || filtered.Skills[0].SkillID != known {
 		t.Fatalf("scope filter: %v", filtered.Skills)
 	}
 	// A row whose skill belongs to another repository is not this repository's.
-	other := aggregate(t, events, meta, domain.Filter{Repo: "other"})
+	other := aggregate(t, events, meta, domain.Filter{Repos: []string{"other"}})
 	for _, row := range other.Skills {
 		if row.SkillID == known {
 			t.Fatalf("a skill of another repository appeared: %+v", row)
@@ -273,7 +273,7 @@ func TestZeroLoadsNeedsAnOpportunityBeforeItAsksForAReview(t *testing.T) {
 		stale: {RepoID: "meridian", Scope: "atlas", Revision: "r2",
 			PublishedRevision: "r2", Published: true, PublishedAt: now.AddDate(0, 0, -20)},
 	}
-	report := aggregate(t, nil, meta, domain.Filter{Repo: "meridian"})
+	report := aggregate(t, nil, meta, domain.Filter{Repos: []string{"meridian"}})
 	reasons := map[string]string{}
 	for _, item := range report.Computed {
 		reasons[item.SkillID] = item.Reason

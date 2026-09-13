@@ -157,9 +157,15 @@ export function libraryBreakdown(skills: SkillSummary[], nextCursor: string | nu
   return result;
 }
 
+export interface FacetShare { value: string; count: number }
+/** The largest values of one facet (`scope` per repository, `repo` at organisation scope, §4.10.4):
+ * zero counts dropped, largest first, ties by name. Shape-agnostic; the caller names the field. */
+export function topFacetValues(values: {value: string; count: number}[], limit = 6): FacetShare[] {
+  return [...values].filter(item => item.count > 0).sort((a, b) => b.count - a.count || (a.value < b.value ? -1 : 1)).slice(0, limit).map(item => ({value: item.value, count: item.count}));
+}
 export interface ScopeShare { scope: string; count: number }
 export function topScopes(values: {value: string; count: number}[], limit = 6): ScopeShare[] {
-  return [...values].filter(item => item.count > 0).sort((a, b) => b.count - a.count || (a.value < b.value ? -1 : 1)).slice(0, limit).map(item => ({scope: item.value, count: item.count}));
+  return topFacetValues(values, limit).map(item => ({scope: item.value, count: item.count}));
 }
 
 // ---------------------------------------------------------------------------
@@ -202,7 +208,9 @@ export function latestImport(imports: ImportStatus[]): ImportStatus | null {
 
 export const YOUR_DECISIONS_LIMIT = 5;
 export type YourDecisionKind = 'proposal' | 'queue';
-export interface YourDecisionEntry { kind: YourDecisionKind; id: string; skillId: string | null; label: string; detail: string; at: string | null }
+/** `repoId` (1.11.0, §4.10.3): the repository the row belongs to, for a link that needs exactly one;
+ * `null` only from a server older than the field. */
+export interface YourDecisionEntry { kind: YourDecisionKind; id: string; repoId: string | null; skillId: string | null; label: string; detail: string; at: string | null }
 export interface YourDecisions { count: number; items: YourDecisionEntry[] }
 
 /**
@@ -216,10 +224,10 @@ export function yourDecisions(proposals: ProposalSummary[], queue: QueueItem[], 
   if (!userId) return {count: 0, items: []};
   const fromProposals: YourDecisionEntry[] = proposals
     .filter(item => item.decision?.actor === userId)
-    .map(item => ({kind: 'proposal' as const, id: item.proposal_id, skillId: item.target_skill_id, label: item.target_skill_id ?? item.path ?? item.proposal_id, detail: item.decision!.decision, at: item.decision!.at}));
+    .map(item => ({kind: 'proposal' as const, id: item.proposal_id, repoId: item.repo_id, skillId: item.target_skill_id, label: item.target_skill_id ?? item.path ?? item.proposal_id, detail: item.decision!.decision, at: item.decision!.at}));
   const fromQueue: YourDecisionEntry[] = queue
     .filter(item => item.decision?.actor === userId)
-    .map(item => ({kind: 'queue' as const, id: item.item_id, skillId: item.skill_id, label: item.skill_id, detail: item.decision!.action, at: item.decision!.at}));
+    .map(item => ({kind: 'queue' as const, id: item.item_id, repoId: item.repo_id, skillId: item.skill_id, label: item.skill_id, detail: item.decision!.action, at: item.decision!.at}));
   // Nullable `at` pushed last: as an empty string it sorts before every real ISO timestamp, and
   // comparing (b, a) instead of (a, b) turns that ascending order into newest-first.
   const at = (value: string | null) => value ?? '';
@@ -236,7 +244,12 @@ export interface NextAction { kind: ActionKind; title: string; detail: string; t
 
 export function nextActions(input: {
   role: Role | null; me: Me | null; usage: Usage | null; proposals: ProposalSummary[] | null;
-  imports: ImportStatus[] | null; installations: Installation[] | null; skillsTotal: number | null; now: number;
+  imports: ImportStatus[] | null;
+  /** The detail read of the latest import (`GET …/imports/{id}`), or null while it is not read.
+   * The list carries `publication: null` for every row by contract, so only the detail can say
+   * whether the import is published; a missing detail is Unknown and pushes no publish action. */
+  latestImport: ImportStatus | null;
+  installations: Installation[] | null; skillsTotal: number | null; now: number;
 }): NextAction[] {
   const owner = input.role === 'owner';
   const actions: NextAction[] = [];
@@ -246,8 +259,13 @@ export function nextActions(input: {
   if (owner && drafts) actions.push({kind: 'proposals', tone: 'human', title: drafts + (drafts === 1 ? ' proposal waits' : ' proposals wait') + ' for a decision', detail: 'A candidate revision is prepared. Approve, edit or reject it before the Git handoff.'});
   const awaiting = input.proposals?.filter(item => item.state === 'approved_for_export' || item.state === 'awaiting_git').length ?? 0;
   if (awaiting) actions.push({kind: 'proposals', tone: 'system', title: awaiting + (awaiting === 1 ? ' approved proposal is' : ' approved proposals are') + ' not in Git yet', detail: 'Export the files and open the pull request; publication is observed after the merge.'});
-  const last = input.imports ? latestImport(input.imports) : null;
-  if (owner && last && last.state === 'ready' && last.publication?.state !== 'published') actions.push({kind: 'publish', tone: 'human', title: 'The latest import is not published', detail: 'Files are stored; nothing is served until a snapshot is activated.'});
+  const detail = input.latestImport;
+  const publication = detail?.state === 'ready' ? detail.publication : null;
+  if (owner && publication) {
+    if (publication.state === 'none') actions.push({kind: 'publish', tone: 'human', title: 'The latest import is not published', detail: 'Files are stored; nothing is served until a snapshot is activated.'});
+    else if (publication.state === 'building') actions.push({kind: 'publish', tone: 'system', title: 'The latest import is still publishing', detail: 'The snapshot is being built; the previous one is served until it is activated.'});
+    else if (publication.state === 'failed') actions.push({kind: 'publish', tone: 'human', title: 'Publication of the latest import failed', detail: publication.error ? 'The API reported ' + publication.error + '; nothing from this import is served.' : 'The API reported no error code; nothing from this import is served.'});
+  }
   if (input.imports && input.imports.length === 0) actions.push({kind: 'import', tone: 'human', title: 'No import yet', detail: 'Upload your checkout with the CLI to fill the library.'});
   if (input.installations) {
     if (input.installations.length === 0 && owner) actions.push({kind: 'adapter', tone: 'system', title: 'No adapter installed', detail: 'Without an adapter no delivery or feedback reaches the ledger, so usefulness stays Unknown.'});

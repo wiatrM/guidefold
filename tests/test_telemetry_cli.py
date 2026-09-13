@@ -147,7 +147,7 @@ def test_hook_makes_no_network_call(run_cli, fixture_copy, tmp_path):
     command that ever makes a network call, and `cmd_hook`'s own process never runs it in-process
     (test_hook_never_calls_telemetry_flush_in_process). Since 2026-09-13, `hook` MAY spawn it as
     a fully separate, detached OS process (`maybe_trigger_telemetry_auto_flush`/
-    `_spawn_auto_flush`) -- upload is ON by default (ADR-0047), but the trigger ALSO requires a
+    `_spawn_auto_flush`) -- upload is ON by default (ADR-0048), but the trigger ALSO requires a
     bearer token AND a configured endpoint before it spawns anything, and this fixture has
     neither (no `guidefold login`, no installation token, no `search.url`/GUIDEFOLD_SEARCH_URL),
     so it no-ops before ever reaching a socket and this poison is never even exercised by it.

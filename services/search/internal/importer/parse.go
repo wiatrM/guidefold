@@ -472,6 +472,43 @@ func (w *ParseWorker) write(ctx context.Context, t *worker.Task, rec *importReco
 		claimed[s.Path] = skillID
 	}
 
+	// gfm.skills is keyed (org_id, skill_id), so a skill id another repository
+	// of the organisation already holds would be rewritten in place while its
+	// repo_id keeps naming that other repository. Such a file fails on its own
+	// and never touches the other repository's row (U2.1).
+	if len(identity) > 0 {
+		rows, e := tx.Query(ctx, `SELECT skill_id,repo_id FROM gfm.skills
+ WHERE org_id=$1::uuid AND repo_id<>$2 AND skill_id=ANY($3::text[])`, orgID, repoID, identity)
+		if e != nil {
+			return nil, fmt.Errorf("check skills held by other repositories: %w", e)
+		}
+		heldBy := map[string]string{}
+		for rows.Next() {
+			var id, other string
+			if e = rows.Scan(&id, &other); e != nil {
+				rows.Close()
+				return nil, e
+			}
+			heldBy[id] = other
+		}
+		rows.Close()
+		if e = rows.Err(); e != nil {
+			return nil, fmt.Errorf("check skills held by other repositories: %w", e)
+		}
+		for i := range inv.Skills {
+			other, ok := heldBy[identity[i]]
+			if !ok {
+				continue
+			}
+			path := inv.Skills[i].Path
+			if o := outcomes[path]; o != nil {
+				o.Status = "failed"
+				o.Reason = "repo_conflict: " + other + " already holds " + identity[i]
+			}
+			delete(claimed, path)
+		}
+	}
+
 	// A path held by a *different* identity has to be released first: editing
 	// a scope in guidefold.yaml changes a skill's URN while its file stays put.
 	// A complete scan proves the old identity is gone; a partial one does not,
@@ -500,6 +537,9 @@ func (w *ParseWorker) write(ctx context.Context, t *worker.Task, rec *importReco
 	// one-live-skill-per-path index halfway through a rename.
 	moved := []string{}
 	for i := range inv.Skills {
+		if o := outcomes[inv.Skills[i].Path]; o != nil && o.Status != "accepted" {
+			continue
+		}
 		if was, ok := findByID(existing, identity[i]); ok && was.Path != inv.Skills[i].Path {
 			moved = append(moved, identity[i])
 		}

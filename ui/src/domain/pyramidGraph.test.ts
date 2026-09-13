@@ -3,7 +3,7 @@ import {hasAnyClassification, knowledgeLayerOrder, pyramidGraphBands, pyramidGra
 import type {RelationEdge, RelationType, SkillSummary} from '../api/decoders';
 
 const skill = (name: string, knowledge_layer: SkillSummary['knowledge_layer']): SkillSummary => ({
-  skill_id: 'urn:skill:meridian:atlas.identity:' + name, name, description: '', scope: 'atlas.identity', owner: 'identity-team',
+  skill_id: 'urn:skill:meridian:atlas.identity:' + name, repo_id: 'monorepo', name, description: '', scope: 'atlas.identity', owner: 'identity-team',
   source_layer: 'team', knowledge_layer, source_status: 'active', publication_status: 'published',
   path: 'platforms/atlas/identity/' + name + '/SKILL.md', content_sha256: 'sha-' + name, revision_id: 'rev-' + name,
   card_revision: null, package_digest: null, commit: 'c0ffee', updated_at: null,

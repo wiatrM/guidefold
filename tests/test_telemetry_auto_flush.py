@@ -1,7 +1,7 @@
 """Telemetry upload is automatic (background, detached, no manual `telemetry flush` needed) and
 **on by default** once the adapter has a bearer credential and a configured endpoint -- owner
 decision 2026-09-13 ("klient automatycznie powinien miec opt in na telemetrie"), recorded in
-[ADR-0047](../docs/adr/ADR-0047-telemetry-upload-on-by-default.md), which amends the earlier
+[ADR-0048](../docs/adr/ADR-0048-telemetry-upload-on-by-default.md), which amends the earlier
 opt-in reading of docs/SEARCH-USE-TELEMETRY.md §5 and docs/DESIGN.md R7.
 
 This suite locks the DEFAULT at ON and tests the opt-out mechanism around it: the persisted
@@ -126,7 +126,7 @@ def test_telemetry_status_reports_the_env_override(run_cli, fixture_copy):
 # ------------------------------------------------------------- the trigger: never before a token
 
 def test_trigger_does_nothing_when_explicitly_disabled(gf, monkeypatch, tmp_path):
-    """Upload is ON by default (ADR-0047) -- this exercises the opt-out itself, not the
+    """Upload is ON by default (ADR-0048) -- this exercises the opt-out itself, not the
     ambient default, so it forces the disabled state explicitly rather than relying on it."""
     monkeypatch.setattr(gf, "_telemetry_upload_enabled", lambda: False)
     spawned = []

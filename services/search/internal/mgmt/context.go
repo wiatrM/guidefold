@@ -184,18 +184,29 @@ func (c *Context) AuthorizeRepo(orgParam, repoParam string, min Role) (*Org, *Re
 	if e != nil {
 		return nil, nil, e
 	}
-	id := c.Param(repoParam)
+	repo, e := c.resolveRepo(org, c.Param(repoParam))
+	if e != nil {
+		return nil, nil, e
+	}
+	return org, repo, nil
+}
+
+// resolveRepo checks one repository id against the organisation and the
+// caller's repository ACL. It is the one place that rule lives, so a
+// `{repo_base}` route and an `{org_base}` route narrowed with `?repo=` cannot
+// disagree about what the same member may read.
+func (c *Context) resolveRepo(org *Org, id string) (*Repo, error) {
 	if !repoID.MatchString(id) {
-		return nil, nil, Invalid("invalid_repo_id", "repo_id must match [A-Za-z0-9_.-]{1,64}.")
+		return nil, Invalid("invalid_repo_id", "repo_id must match [A-Za-z0-9_.-]{1,64}.")
 	}
 	repo := &Repo{ID: id}
-	e = c.router.opts.Pool.QueryRow(c.Ctx(), `SELECT name,git_host_url FROM gfm.repos
+	e := c.router.opts.Pool.QueryRow(c.Ctx(), `SELECT name,git_host_url FROM gfm.repos
  WHERE org_id=$1::uuid AND repo_id=$2`, org.ID, id).Scan(&repo.Name, &repo.GitHostURL)
 	if errors.Is(e, pgx.ErrNoRows) {
-		return nil, nil, NotFound("not_found", "No such repository in this organization.")
+		return nil, NotFound("not_found", "No such repository in this organization.")
 	}
 	if e != nil {
-		return nil, nil, Internal(e)
+		return nil, Internal(e)
 	}
 	// Repository ACLs are opt-in. Owners retain access to administer the
 	// policy; members are admitted only when the repository has no ACL rows or
@@ -208,13 +219,100 @@ func (c *Context) AuthorizeRepo(orgParam, repoParam string, min Role) (*Org, *Re
 		  OR EXISTS(SELECT 1 FROM gfm.repo_members WHERE org_id=$1::uuid AND repo_id=$2)),
  EXISTS(SELECT 1 FROM gfm.repo_members WHERE org_id=$1::uuid AND repo_id=$2 AND user_id=$3::uuid)`,
 			org.ID, repo.ID, c.Principal.UserID).Scan(&restricted, &allowed); e != nil {
-			return nil, nil, Internal(e)
+			return nil, Internal(e)
 		}
 		if restricted && !allowed {
-			return nil, nil, Forbidden()
+			return nil, Forbidden()
 		}
 	}
-	return org, repo, nil
+	return repo, nil
+}
+
+// Scope is the set of repositories one read may cover (API-CONTRACT §4.10).
+//
+// A `{repo_base}` route always has a scope of exactly one repository. An
+// `{org_base}` route covers every repository the caller may read, unless its
+// `repo` query parameter narrows it to one — in which case the answer must be
+// the same as the `{repo_base}` route's.
+type Scope struct {
+	// Repos is the id of every repository the answer may include, in id order.
+	// It is never nil: an organisation with no readable repository has an empty
+	// scope, and `repo_id = ANY(scope.Repos)` over it selects no row rather
+	// than every row.
+	Repos []string
+	// Repo is the one repository when the route or `?repo=` named it; nil when
+	// the scope spans the organisation.
+	Repo *Repo
+}
+
+// Single reports whether the scope is exactly one named repository.
+func (s *Scope) Single() bool { return s != nil && s.Repo != nil }
+
+// RepoID is what a list envelope reports as `repo_id`: the repository when
+// the scope is one, nil when the answer spans several (API-CONTRACT §4.10.3).
+func (s *Scope) RepoID() any {
+	if s.Single() {
+		return s.Repo.ID
+	}
+	return nil
+}
+
+// Contains reports whether a repository id is inside the scope.
+func (s *Scope) Contains(repoID string) bool {
+	for _, id := range s.Repos {
+		if id == repoID {
+			return true
+		}
+	}
+	return false
+}
+
+// AuthorizeScope resolves {org} and then the repository scope of the request:
+// the {repo} path parameter when the route has one, otherwise the optional
+// `repo` query parameter, otherwise every repository of the organisation the
+// caller may read. Both readers go through resolveRepo, so a member's
+// repository ACL is applied identically whichever route they take.
+func (c *Context) AuthorizeScope(orgParam, repoParam string, min Role) (*Org, *Scope, error) {
+	org, e := c.Authorize(orgParam, min)
+	if e != nil {
+		return nil, nil, e
+	}
+	id := ""
+	if repoParam != "" {
+		id = c.Param(repoParam)
+	}
+	if id == "" {
+		id = strings.TrimSpace(c.Query("repo"))
+	}
+	if id != "" {
+		repo, e := c.resolveRepo(org, id)
+		if e != nil {
+			return nil, nil, e
+		}
+		return org, &Scope{Repos: []string{repo.ID}, Repo: repo}, nil
+	}
+	rows, e := c.router.opts.Pool.Query(c.Ctx(), `SELECT r.repo_id FROM gfm.repos r
+ WHERE r.org_id=$1::uuid
+   AND ($2 OR NOT (EXISTS(SELECT 1 FROM gfm.repo_acl_policies p WHERE p.org_id=r.org_id AND p.repo_id=r.repo_id AND p.enabled)
+                OR EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id))
+        OR EXISTS(SELECT 1 FROM gfm.repo_members m WHERE m.org_id=r.org_id AND m.repo_id=r.repo_id AND m.user_id=$3::uuid))
+ ORDER BY r.repo_id`, org.ID, org.Role == "owner", c.Principal.UserID)
+	if e != nil {
+		return nil, nil, Internal(e)
+	}
+	defer rows.Close()
+	scope := &Scope{Repos: []string{}}
+	for rows.Next() {
+		var id string
+		if e := rows.Scan(&id); e != nil {
+			return nil, nil, Internal(e)
+		}
+		scope.Repos = append(scope.Repos, id)
+	}
+	if e := rows.Err(); e != nil {
+		return nil, nil, Internal(e)
+	}
+	return org, scope, nil
 }
 
 // AuthorizeReviewerRepo is the narrow permission used for proposal decisions

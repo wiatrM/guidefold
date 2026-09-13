@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "stage": 8,
-  "capturedAt": "2026-09-13T11:19:29.958Z",
+  "capturedAt": "2026-09-13T12:53:41.325Z",
   "command": "cd ui && node qa/check-contracts.mjs",
   "purpose": "Public component shape, data-boundary separation and authored CSS/token source contracts.",
   "dataBoundary": "The API adapter (src/data) and the gallery sample values (src/sample.ts) are composed by the entrypoint, the gallery and stories; never a runtime dependency of reusable components or pure domain functions.",
   "result": "passed",
   "totals": {
-    "components": 16,
-    "cssFiles": 41,
+    "components": 17,
+    "cssFiles": 42,
     "tokens": 437,
-    "productionFilesTraversed": 51,
+    "productionFilesTraversed": 53,
     "inlineProperties": 0,
     "diagnostics": 0
   },
@@ -208,6 +208,19 @@
       "scenarios": [
         "Default"
       ]
+    },
+    {
+      "name": "RepositoryFilter",
+      "files": [
+        "src/components/RepositoryFilter/index.tsx",
+        "src/components/RepositoryFilter/RepositoryFilter.module.css",
+        "src/components/RepositoryFilter/RepositoryFilter.test.tsx",
+        "src/components/RepositoryFilter/RepositoryFilter.stories.tsx"
+      ],
+      "scenarios": [
+        "Default",
+        "ListMissing"
+      ]
     }
   ],
   "typeOnlyEdges": [
@@ -250,6 +263,10 @@
     {
       "file": "src/components/PyramidChart/index.tsx",
       "specifier": "./SchemaFlow"
+    },
+    {
+      "file": "src/components/RepositoryFilter/index.tsx",
+      "specifier": "../../api/decoders"
     },
     {
       "file": "src/domain/overview.test.ts",

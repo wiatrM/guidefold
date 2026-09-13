@@ -33,3 +33,5 @@
 .feedbackStatus { margin: var(--zero); color: var(--survey-teal); }
 @media(prefers-reduced-motion:reduce){.contextMenu{transition-duration:var(--duration-reduced);}.contextMenu[data-starting-style],.contextMenu[data-ending-style]{transform:none;}}
 .detailsRow td{background:var(--graphite-850);color:var(--stone-300);}
+/* ADR-0047: at organisation scope a library row names the repository it comes from, under its scope. */
+.repoTag { display: block; font-size: var(--font-size-small); color: var(--stone-300); overflow-wrap: anywhere; }

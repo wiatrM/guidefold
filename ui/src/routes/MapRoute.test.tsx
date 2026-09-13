@@ -1,9 +1,9 @@
 import { describe, expect, test, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiMapRoute } from './CatalogRoutes';
 import { ApiError } from '../api/client';
-import type { MapRepository, MapScopes, ModulePage, Relations, SkillPage } from '../api/decoders';
+import type { MapRepository, MapScopes, ModulePage, Relations, ScopeNode, SkillPage } from '../api/decoders';
 import { fakeSource } from '../test/fakes';
 import { renderApi } from '../test/apiRoute';
 vi.mock('../components/PyramidChart/SchemaFlow',()=>({SchemaFlow:()=> <div role="region" aria-label="Skill hierarchy"/>}));
@@ -19,12 +19,29 @@ const branch: MapRepository = {
   path: 'platforms', next_cursor: 'more-1',
   children: [{ name: 'pipeline-testing', path: 'platforms/forge/SKILL.md', kind: 'skill', skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', count: null }],
 };
-const scopes: MapScopes = {
-  scope: { id: 'forge.pipelines', owner: 'pipelines-team', paths: ['platforms/forge'], parent: 'forge' },
-  children: [{ id: 'forge.pipelines.build', owner: null, skills: 3 }],
-  skills: [{ skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', name: 'pipeline-testing' }],
-  unmapped: [{ skill_id: 'urn:skill:meridian:_index:hierarchy-index', name: 'hierarchy-index' }],
+const orgRoot: MapRepository = {
+  path: '', next_cursor: null,
+  children: [
+    { name: 'monorepo', path: 'monorepo', kind: 'repository', skill_id: null, count: 27 },
+    { name: 'billing', path: 'billing', kind: 'repository', skill_id: null, count: null },
+  ],
 };
+const node = (id: string, count: number, owner: string | null = null): ScopeNode => ({
+  id, repo_id: 'monorepo', owner, parent: id.lastIndexOf('.') > 0 ? id.slice(0, id.lastIndexOf('.')) : null, paths: [], source: 'guidefold_yaml', count,
+});
+const scopes: MapScopes = {
+  scope: { ...node('forge.pipelines', 1, 'pipelines-team'), paths: ['platforms/forge'] },
+  scopes: [node('forge.pipelines.build', 3)],
+  skills: [{ skill_id: 'urn:skill:meridian:forge.pipelines:pipeline-testing', name: 'pipeline-testing' }],
+  unmapped: [{ scope: '_index', count: 1 }],
+};
+const tree = [node('_root', 3, 'platform-engineering'), node('atlas', 0), node('atlas.identity', 2, 'identity-team'), node('atlas.identity.turnstile', 4)];
+const scopeMap = (scope?: string): MapScopes => ({
+  scope: tree.find(item => item.id === scope) ?? null,
+  scopes: tree.filter(item => !scope || item.id.startsWith(scope + '.')),
+  skills: [],
+  unmapped: [{ scope: 'legacy', count: 2 }],
+});
 const relations: Relations = {
   items: [
     { from: 'urn:a', to: 'urn:b', type: 'requires', provenance: 'source', revision: 'rev-b' },
@@ -33,9 +50,9 @@ const relations: Relations = {
   next_cursor: null, truncated: true,
 };
 const module: ModulePage = {
-  scope: 'forge.pipelines', owner: 'pipelines-team',
+  scope: 'forge.pipelines', repo_id: 'monorepo', owner: 'pipelines-team',
   skills: [{
-    skill_id: 'urn:a', name: 'pipeline-testing', description: 'Read first', scope: 'forge.pipelines', owner: null,
+    skill_id: 'urn:a', repo_id: 'monorepo', name: 'pipeline-testing', description: 'Read first', scope: 'forge.pipelines', owner: null,
     source_layer: 'team', knowledge_layer: 'unclassified', source_status: 'active', publication_status: 'published',
     path: 'p/SKILL.md', content_sha256: null, revision_id: 'rev-a', card_revision: null, package_digest: null, commit: null, updated_at: null,
   }],
@@ -46,8 +63,8 @@ const module: ModulePage = {
 
 const familyPage: SkillPage = {
   items: [
-    { skill_id: 'urn:skill:meridian:forge.ontology:schema-evolution', name: 'schema-evolution', description: '', scope: 'forge.ontology', owner: null, source_layer: 'team', knowledge_layer: 'abstract', source_status: 'active', publication_status: 'published', path: 'p1', content_sha256: null, revision_id: 'r1', card_revision: null, package_digest: null, commit: null, updated_at: null },
-    { skill_id: 'urn:skill:meridian:forge.ontology:object-type-migrations', name: 'object-type-migrations', description: '', scope: 'forge.ontology', owner: 'ontology-team', source_layer: 'team', knowledge_layer: 'task', source_status: 'active', publication_status: 'published', path: 'p2', content_sha256: null, revision_id: 'r2', card_revision: null, package_digest: null, commit: null, updated_at: null },
+    { skill_id: 'urn:skill:meridian:forge.ontology:schema-evolution', repo_id: 'monorepo', name: 'schema-evolution', description: '', scope: 'forge.ontology', owner: null, source_layer: 'team', knowledge_layer: 'abstract', source_status: 'active', publication_status: 'published', path: 'p1', content_sha256: null, revision_id: 'r1', card_revision: null, package_digest: null, commit: null, updated_at: null },
+    { skill_id: 'urn:skill:meridian:forge.ontology:object-type-migrations', repo_id: 'monorepo', name: 'object-type-migrations', description: '', scope: 'forge.ontology', owner: 'ontology-team', source_layer: 'team', knowledge_layer: 'task', source_status: 'active', publication_status: 'published', path: 'p2', content_sha256: null, revision_id: 'r2', card_revision: null, package_digest: null, commit: null, updated_at: null },
   ],
   next_cursor: null, snapshot_id: null, schema_version: null, filters: {},
 };
@@ -115,10 +132,33 @@ describe('Map route, three axes', () => {
   test('the scope axis names an unmapped scope and opens the module panel', async () => {
     renderApi(ApiMapRoute, fakeSource({ getMapScopes: async () => scopes, getModule: async () => module }), 'tab=scopes&scope=forge.pipelines');
     expect(await screen.findByText('Unmapped scope')).toBeInTheDocument();
-    expect(screen.getByText(/hierarchy-index/)).toBeInTheDocument();
+    expect(screen.getByText(/_index \(1\)/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'forge.pipelines.build' })).toBeInTheDocument();
     expect(await screen.findByText('Module forge.pipelines')).toBeInTheDocument();
     expect(screen.getByText('Shared with other modules')).toBeInTheDocument();
     expect(screen.getByText('Used by atlas.identity, forge.pipelines')).toBeInTheDocument();
+  });
+
+  test('the scope axis lists direct children only and opens a child to show its own', async () => {
+    const asked: (string | undefined)[] = [];
+    const source = fakeSource({ getMapScopes: async (_target, scope) => { asked.push(scope); return scopeMap(scope); }, getModule: async () => module });
+    const top = renderApi(ApiMapRoute, source, 'tab=scopes');
+    expect(await screen.findByRole('link', { name: 'atlas' })).toHaveAttribute('href', '/map?tab=scopes&scope=atlas&repo=monorepo');
+    expect(screen.getByRole('link', { name: '_root' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'atlas.identity' })).not.toBeInTheDocument();
+    expect(screen.queryByText('No child scope is declared here.')).not.toBeInTheDocument();
+    expect(screen.getByText(/2 skills declare a scope with no mapping in this repository: legacy \(2\)\./)).toBeInTheDocument();
+    top.unmount();
+    renderApi(ApiMapRoute, source, 'tab=scopes&scope=atlas');
+    expect(await screen.findByRole('link', { name: 'atlas.identity' })).toBeInTheDocument();
+    expect(screen.getByText('2 skills, owner identity-team')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'atlas.identity.turnstile' })).not.toBeInTheDocument();
+    expect(asked).toEqual([undefined, 'atlas']);
+  });
+
+  test('a scope with no declared child says so', async () => {
+    renderApi(ApiMapRoute, fakeSource({ getMapScopes: async () => ({ ...scopeMap('atlas.identity.turnstile'), unmapped: [] }), getModule: async () => module }), 'tab=scopes&scope=atlas.identity.turnstile');
+    expect(await screen.findByText('No child scope is declared here.')).toBeInTheDocument();
   });
 
   test('the pyramid axis lists declared layers only', async () => {
@@ -159,5 +199,48 @@ describe('Map route, three axes', () => {
     const open = await screen.findByRole('link', { name: 'Open this skill' });
     expect(open).toHaveAttribute('href', expect.stringContaining('skill=urn%3Aa'));
     expect(open).toHaveAttribute('href', expect.stringContaining('return_tab=repository'));
+  });
+});
+
+describe('Map route, organisation scope (ADR-0047)', () => {
+  test('no repository reads the organisation tree, whose root is one branch per repository', async () => {
+    const asked: string[] = [];
+    const getMapRepository = vi.fn(async (_target: unknown, path = '') => { asked.push(path); return path ? { ...branch, path } : orgRoot; });
+    renderApi(ApiMapRoute, fakeSource({ getMapRepository }), 'tab=repository', { repo: null });
+    expect(await screen.findByText('monorepo')).toBeInTheDocument();
+    expect(screen.queryByText('No repository selected')).not.toBeInTheDocument();
+    expect(getMapRepository).toHaveBeenCalledWith({ org: 'meridian', repo: null }, '', undefined);
+    // Each repository branch is a disclosure whose trigger carries the label, a "Repository" badge and its count.
+    const monorepo = screen.getByText('monorepo').closest('button')!;
+    expect(within(monorepo).getByText('Repository')).toBeInTheDocument();
+    expect(within(monorepo).getByText('27 objects')).toBeInTheDocument();
+    const billing = screen.getByText('billing').closest('button')!;
+    expect(within(billing).getByText('Repository')).toBeInTheDocument();
+    expect(within(billing).getByText('Object count Unknown')).toBeInTheDocument();
+    // Descending into a repository reads by its path, the repository id (contract §4.10.5).
+    await userEvent.click(screen.getByText('monorepo'));
+    expect(await screen.findByRole('link', { name: 'pipeline-testing' })).toBeInTheDocument();
+    expect(asked).toEqual(['', 'monorepo']);
+  });
+
+  test('a scope node names its repository and opening it narrows the address to that repository', async () => {
+    const getMapScopes = vi.fn(async () => ({ ...scopes, scope: null, scopes: [{ ...node('forge.pipelines', 3), repo_id: 'monorepo', parent: null }, { ...node('forge.pipelines', 1), repo_id: 'billing', parent: null }] }));
+    renderApi(ApiMapRoute, fakeSource({ getMapScopes }), 'tab=scopes', { repo: null });
+    const links = await screen.findAllByRole('link', { name: 'forge.pipelines' });
+    expect(getMapScopes).toHaveBeenCalledWith({ org: 'meridian', repo: null }, undefined);
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute('href', expect.stringContaining('repo=monorepo'));
+    expect(links[1]).toHaveAttribute('href', expect.stringContaining('repo=billing'));
+    expect(screen.getByText(/^billing, 1 skills/)).toBeInTheDocument();
+  });
+
+  test('a scope declared in several repositories is scope_ambiguous, named as such, not retried', async () => {
+    renderApi(ApiMapRoute, fakeSource({
+      getMapScopes: async () => { throw new ApiError({ status: 409, code: 'scope_ambiguous', message: 'repo required' }); },
+      getModule: async () => { throw new ApiError({ status: 409, code: 'scope_ambiguous', message: 'repo required' }); },
+    }), 'tab=scopes&scope=forge.pipelines', { repo: null });
+    expect(await screen.findAllByText('This scope exists in more than one repository')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Retry the scope map' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'List scopes with their repositories' })[0]).toHaveAttribute('href', expect.stringContaining('tab=scopes'));
   });
 });

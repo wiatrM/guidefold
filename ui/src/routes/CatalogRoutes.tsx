@@ -8,11 +8,12 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {
-  ApiFailure, DegradedNotice, PartialNotice, RepositoryRequired, asApiError, cleared, downloadText,
+  ApiFailure, DegradedNotice, PartialNotice, asApiError, cleared, downloadText,
   readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
-import type {FeedbackEntry, MapChild, SkillSummary} from '../api/decoders';
-import type {SkillQuery} from '../data/source';
+import type {ApiError} from '../api/client';
+import type {FeedbackEntry, MapChild, ScopeNode, SkillSummary} from '../api/decoders';
+import type {ReadScope, SkillQuery} from '../data/source';
 import type {View} from '../domain';
 import {pyramidGraphBands, pyramidGraphEdges, hasAnyClassification, type PyramidLayer} from '../domain/pyramidGraph';
 import styles from './CatalogRoutes.module.css';
@@ -30,13 +31,30 @@ const axes: MapAxis[] = ['repository', 'scopes', 'pyramid'];
 const originView = (ctx: {params: URLSearchParams}): View => ['map', 'library', 'proposals', 'usage'].includes(ctx.params.get('from') || '') ? ctx.params.get('from') as View : 'library';
 const originNames: Partial<Record<View, string>> = {map: 'Map', library: 'Library', proposals: 'Proposals', usage: 'Usage & quality'};
 
+/** ADR-0047 (contract §4.10): the organisation is the read scope by default; `repo: null` is every
+ * repository this principal may read, resolved by the API. Every read in this file goes through
+ * this scope; mutations take the repository from the row they act on. */
+const readScope = (ctx: {org: string | null; repo: string | null}): ReadScope => ({org: ctx.org ?? '', repo: ctx.repo});
+const scopeKey = (ctx: {org: string | null; repo: string | null}) => ctx.org + '/' + (ctx.repo ?? '*');
+
+/** §4.10.6: a scope id is unique per repository, so an organisation-scope read of one scope that
+ * exists in several answers 409 `scope_ambiguous`. A retry would fail the same way; the honest
+ * next step is a repository, which the scope list's own links already carry. */
+function ScopeAmbiguous({ctx, scope}: ApiProps & {scope: string}) {
+  return <RouteState state="error" title="This scope exists in more than one repository"
+    description={'Scope ' + scope + ' is declared in several repositories you can read, and the same name may mean different modules. Choose a repository to open one of them.'}
+    action={<ActionButton href={ctx.href('map', {tab: 'scopes', scope: null, skill: null})} tone="system">List scopes with their repositories</ActionButton>} />;
+}
+const isScopeAmbiguous = (error: ApiError | undefined) => error?.code === 'scope_ambiguous' || error?.status === 409;
+
 /** Native select, styled like the shadcn Input; keyboard-simplest and what the tests drive. */
 const selectClass = 'min-h-(--control-height) w-full rounded-md border border-input bg-graphite-950 px-2 text-stone-100 shadow-(--shadow-control) transition-colors hover:border-(--line-hover) hover:bg-graphite-900 focus-visible:border-ring';
 const inputClass = 'min-h-(--control-height) rounded-md border-input bg-graphite-950 px-3 text-[length:var(--font-size-body)] text-stone-100 shadow-(--shadow-control) hover:border-(--line-hover) hover:bg-graphite-900';
 const muted = 'm-0 text-[length:var(--font-size-small)] text-stone-300';
 
 function favoritesKey(ctx: ApiProps['ctx']) {
-  return ['guidefold-favorites-v1', ctx.me?.user.id ?? 'unknown', ctx.org ?? 'unknown', ctx.repo ?? 'unknown'].join(':');
+  // `*` is the organisation-wide list (ADR-0047); a favourite marked there is not the same list as one repository's.
+  return ['guidefold-favorites-v1', ctx.me?.user.id ?? 'unknown', ctx.org ?? 'unknown', ctx.repo ?? '*'].join(':');
 }
 function readFavorites(key: string) {
   try {
@@ -107,8 +125,8 @@ const MAP_MAX_DEPTH = 8;
 
 export function ApiLibraryRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
-  const ready = Boolean(org && repo);
+  const target = readScope(ctx);
+  const ready = Boolean(org);
   const at = (key: string) => ctx.params.get(key) ?? '';
   const cursor = ctx.params.get('cursor');
   const query: SkillQuery = {
@@ -116,16 +134,16 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
     layer: at('layer') || undefined, status: at('status') || undefined, cursor: cursor ?? undefined,
   };
   const signature = [...libraryKeys.map(at), cursor ?? ''].join('|');
-  const page = useAsync(() => source.listSkills(target, query), 'skills:' + org + '/' + repo + ':' + signature, ready);
+  const page = useAsync(() => source.listSkills(target, query), 'skills:' + scopeKey(ctx) + ':' + signature, ready);
   const facets = useAsync(
     () => Promise.all(catalogFilters.map(entry => source.getFacets(target, {field: entry.field}))),
-    'facets:' + org + '/' + repo, ready,
+    'facets:' + scopeKey(ctx), ready,
   );
   const chosen = catalogFilters.filter(entry => at(entry.key));
   // The active value keeps its own lookup so it stays visible outside the current facet page.
   const lookups = useAsync(
     () => Promise.all(chosen.map(entry => source.lookupFacet(target, entry.field, at(entry.key)))),
-    'lookup:' + org + '/' + repo + ':' + chosen.map(entry => entry.key + '=' + at(entry.key)).join('&'),
+    'lookup:' + scopeKey(ctx) + ':' + chosen.map(entry => entry.key + '=' + at(entry.key)).join('&'),
     ready && chosen.length > 0,
   );
   const [trail, setTrail] = useState<string[]>([]);
@@ -164,7 +182,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
     ctx.go('library', {cursor: previous || null});
   }
 
-  if (!ready) return <RepositoryRequired ctx={ctx} />;
+  if (!ready) return <RouteState state="empty" title="No organization selected" description="Sign in to an organization to read its catalog." action={<ActionButton href={ctx.href('import', {step: 'organization'})} tone="system">Open Import</ActionButton>} />;
   if (!result && page.phase === 'error' && page.error) return <ApiFailure error={page.error} onRetry={page.reload} retryLabel="Retry this page" />;
   if (!result) return <RouteState state="loading" title="Reading the catalog" description="Waiting for the first page of skill summaries. No body is requested here." />;
 
@@ -223,7 +241,8 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
               <Link className="inline-flex min-h-(--touch-height) items-center font-semibold" to={skillHref}>{item.name}</Link>
               <code className="text-stone-300">{item.path}</code>
             </div></SkillContextActions></td>
-            <td><span className={styles.identifier}>{item.scope}</span></td>
+            {/* An organisation-scope page mixes repositories (§4.10.3), so each row says which one it is from. */}
+            <td><span className={styles.identifier}>{item.scope}</span>{!repo && <code className={styles.repoTag}>{item.repo_id ?? 'Unknown repository'}</code>}</td>
             <td>{unknown(item.owner)}</td>
             <td>{unknown(item.source_layer)}<span className={styles.muted}>Knowledge layer: {item.knowledge_layer ?? 'Unknown'}</span></td>
             <td><StateBadge tone={publicationTone(item.publication_status)}>{item.publication_status}</StateBadge></td>
@@ -250,7 +269,7 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
           ? 'The requested value is kept in the address. Choose an available value or clear this filter.'
           : filtered
             ? 'No summary in this snapshot matches the current search and filters.'
-            : 'Nothing has been imported into this repository yet. Run the CLI from your checkout, then read the import result.'}
+            : 'Nothing has been imported into ' + (repo ? 'this repository' : 'this organization') + ' yet. Run the CLI from your checkout, then read the import result.'}
         action={<ActionButton href={filtered || blocked.length ? clearHref : ctx.href('import', {step: 'preview'})} tone="system">{filtered || blocked.length ? 'Clear filters' : 'Open Import'}</ActionButton>} />}
     </Panel>
   </div>;
@@ -258,13 +277,16 @@ export function ApiLibraryRoute({ctx}: ApiProps) {
 
 const branchRow = 'flex min-h-(--touch-height) flex-wrap items-center gap-2 min-w-0';
 
-function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; label: string; depth: number}) {
-  const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
+/** `repository` (§4.10.5): at organisation scope the root lists one child per readable repository
+ * (`kind: 'repository'`, its `path` the repository id); the branch below it is that repository's
+ * tree, every path prefixed with `<repo_id>/`. The same descent by `child.path` reads both. */
+function RepositoryBranch({ctx, path, label, depth, repository = null}: ApiProps & {path: string; label: string; depth: number; repository?: {count: number | null} | null}) {
+  const {source} = ctx;
+  const target = readScope(ctx);
   const [open, setOpen] = useState(depth === 0);
   const [cursor, setCursor] = useState<string | null>(null);
   const [children, setChildren] = useState<MapChild[]>([]);
-  const chunk = useAsync(() => source.getMapRepository(target, path, cursor ?? undefined), 'map-repository:' + org + '/' + repo + ':' + path + ':' + (cursor ?? ''), open);
+  const chunk = useAsync(() => source.getMapRepository(target, path, cursor ?? undefined), 'map-repository:' + scopeKey(ctx) + ':' + path + ':' + (cursor ?? ''), open);
   const value = chunk.value;
   useEffect(() => {
     if (chunk.phase !== 'ready' || !value) return;
@@ -276,7 +298,9 @@ function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; l
     {chunk.phase === 'error' && chunk.error && <ApiFailure error={chunk.error} onRetry={chunk.reload} retryLabel="Retry this branch" />}
     {shown.length > 0 && <ul className={styles.branchList}>
       {shown.map(child => <li key={child.path} className="min-w-0">
-        {child.kind === 'dir'
+        {child.kind === 'repository'
+          ? <RepositoryBranch ctx={ctx} path={child.path} label={child.name} depth={depth + 1} repository={{count: child.count}} />
+          : child.kind === 'dir'
           ? <RepositoryBranch ctx={ctx} path={child.path} label={child.name + '/'} depth={depth + 1} />
           : child.kind === 'skill' && child.skill_id
             ? <div className={branchRow}><FileCodeIcon weight="duotone" aria-hidden="true" className="text-system-ink" /><Link to={ctx.href('skill', {skill: child.skill_id, revision: null, tab: 'content', from: 'map', return_tab: 'repository'})}>{child.name}</Link><code className="text-stone-300">{child.path}</code></div>
@@ -291,8 +315,11 @@ function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; l
   return <Collapsible open={open} onOpenChange={setOpen} className="min-w-0">
     <CollapsibleTrigger className={'group ' + branchRow + ' w-full cursor-pointer rounded-md border-0 bg-transparent px-1 text-left text-stone-100 hover:bg-graphite-800'}>
       <CaretRightIcon aria-hidden="true" className="size-(--icon-size-small) text-stone-300 transition-transform duration-150 group-data-panel-open:rotate-90 motion-reduce:transition-none" />
-      <FolderSimpleIcon weight="duotone" aria-hidden="true" className="text-system-ink" />
+      {repository
+        ? <GitBranchIcon weight="duotone" aria-hidden="true" className="text-system" />
+        : <FolderSimpleIcon weight="duotone" aria-hidden="true" className="text-system-ink" />}
       <span>{label}</span>
+      {repository && <><StateBadge tone="system">Repository</StateBadge><span className={styles.muted}>{repository.count === null ? 'Object count Unknown' : repository.count + ' objects'}</span></>}
       {depth >= MAP_MAX_DEPTH ? <span className={styles.muted}>Depth limit</span> : null}
     </CollapsibleTrigger>
     <CollapsibleContent className="border-l border-line pl-3 ml-2">
@@ -302,10 +329,10 @@ function RepositoryBranch({ctx, path, label, depth}: ApiProps & {path: string; l
 }
 
 function RelationList({ctx, skillId}: ApiProps & {skillId: string}) {
-  const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
+  const {source, org} = ctx;
+  const target = readScope(ctx);
   const [cursor, setCursor] = useState<string | null>(null);
-  const relations = useAsync(() => source.getRelations(target, {skillId, cursor: cursor ?? undefined}), 'relations:' + org + '/' + repo + ':' + skillId + ':' + (cursor ?? ''), Boolean(org && repo));
+  const relations = useAsync(() => source.getRelations(target, {skillId, cursor: cursor ?? undefined}), 'relations:' + scopeKey(ctx) + ':' + skillId + ':' + (cursor ?? ''), Boolean(org));
   if (relations.phase === 'loading' && !relations.value) return <RouteState state="loading" title="Reading relations" description="Waiting for the declared neighbourhood of this skill." />;
   if (relations.phase === 'error' && relations.error && !relations.value) return <ApiFailure error={relations.error} onRetry={relations.reload} retryLabel="Retry this skill's relations" />;
   const value = relations.value;
@@ -325,15 +352,15 @@ function RelationList({ctx, skillId}: ApiProps & {skillId: string}) {
 
 function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
   const {source, org, repo} = ctx;
-  const module = useAsync(() => source.getModule({org: org ?? '', repo: repo ?? ''}, scope), 'module:' + org + '/' + repo + ':' + scope, Boolean(org && repo));
+  const module = useAsync(() => source.getModule(readScope(ctx), scope), 'module:' + scopeKey(ctx) + ':' + scope, Boolean(org));
   if (module.phase === 'loading' && !module.value) return <RouteState state="loading" title="Reading the module" description="Waiting for the reading order of this scope." />;
-  if (module.phase === 'error' && module.error && !module.value) return <ApiFailure error={module.error} onRetry={module.reload} retryLabel="Retry this module" />;
+  if (module.phase === 'error' && module.error && !module.value) return isScopeAmbiguous(module.error) ? <ScopeAmbiguous ctx={ctx} scope={scope} /> : <ApiFailure error={module.error} onRetry={module.reload} retryLabel="Retry this module" />;
   const value = module.value;
   if (!value) return null;
   const byId = new Map(value.skills.map(item => [item.skill_id, item]));
   return <Panel title={'Module ' + value.scope} eyebrow="Reading order" icon={<StackIcon weight="duotone" aria-hidden="true" />} action={<StateBadge>{value.skills.length} skills</StateBadge>}>
     <div className="grid gap-4">
-      <p className={styles.muted}>Owner from source: {unknown(value.owner)}. Reading order comes from the module, not from directory depth.</p>
+      <p className={styles.muted}>{repo ? '' : 'Repository ' + (value.repo_id ?? 'Unknown') + '. '}Owner from source: {unknown(value.owner)}. Reading order comes from the module, not from directory depth.</p>
       {value.reading_order.length ? <ol className="m-0 grid gap-2 pl-6">
         {value.reading_order.map(id => <li key={id} className="min-w-0">
           <Link className="inline-flex min-h-(--touch-height) items-center" to={ctx.href('skill', {skill: id, revision: byId.get(id)?.revision_id ?? null, tab: 'content', from: 'map', return_tab: 'scopes'})}>{byId.get(id)?.name ?? id}</Link>
@@ -359,51 +386,75 @@ function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
   </Panel>;
 }
 
+// The API lists every node (no scope) or every descendant of the selected scope. A direct
+// child is a listed node with no other listed node between it and the selection, matching the
+// dotted parent the importer stores (domain.ParentScope) and keeping a node visible when an
+// intermediate scope is not declared.
+function directScopeChildren(nodes: ScopeNode[], selected: string | null): ScopeNode[] {
+  const ids = new Set(nodes.map(node => node.id));
+  return nodes.filter(node => {
+    for (let at = node.id.lastIndexOf('.'); at > 0; at = node.id.lastIndexOf('.', at - 1)) {
+      const ancestor = node.id.slice(0, at);
+      if (ancestor === selected) return true;
+      if (ids.has(ancestor)) return false;
+    }
+    return !selected;
+  });
+}
+
 export function ApiMapRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
-  const ready = Boolean(org && repo);
+  const target = readScope(ctx);
+  const key = scopeKey(ctx);
+  const ready = Boolean(org);
   const axis = axes.includes(ctx.params.get('tab') as MapAxis) ? ctx.params.get('tab') as MapAxis : 'repository';
   const selectedScope = ctx.params.get('scope');
   const selectedSkill = ctx.params.get('skill');
-  const scopes = useAsync(() => source.getMapScopes(target, selectedScope ?? undefined), 'map-scopes:' + org + '/' + repo + ':' + (selectedScope ?? ''), ready && axis === 'scopes');
-  const layers = useAsync(() => source.getMapLayers(target), 'map-layers:' + org + '/' + repo, ready && axis === 'pyramid');
+  const scopes = useAsync(() => source.getMapScopes(target, selectedScope ?? undefined), 'map-scopes:' + key + ':' + (selectedScope ?? ''), ready && axis === 'scopes');
+  const layers = useAsync(() => source.getMapLayers(target), 'map-layers:' + key, ready && axis === 'pyramid');
   // The pyramid graph is scoped to one repository scope at a time — P08's "family", not a
   // whole-repository dump (`layers` above already gives the honest whole-repository overview as
   // bare counts and stays untouched). `familySkills`/`familyRelations` only fetch once a scope is
   // chosen, via the same `scope` query param the Scopes tab already uses.
-  const familySkills = useAsync(() => source.listSkills(target, {scope: selectedScope ?? undefined, limit: 200}), 'map-family-skills:' + org + '/' + repo + ':' + (selectedScope ?? ''), ready && axis === 'pyramid' && Boolean(selectedScope));
-  const familyRelations = useAsync(() => source.getRelations(target, {type: 'refines', limit: 1000}), 'map-family-relations:' + org + '/' + repo, ready && axis === 'pyramid' && Boolean(selectedScope));
+  const familySkills = useAsync(() => source.listSkills(target, {scope: selectedScope ?? undefined, limit: 200}), 'map-family-skills:' + key + ':' + (selectedScope ?? ''), ready && axis === 'pyramid' && Boolean(selectedScope));
+  const familyRelations = useAsync(() => source.getRelations(target, {type: 'refines', limit: 1000}), 'map-family-relations:' + key, ready && axis === 'pyramid' && Boolean(selectedScope));
   const familyBandsAll = pyramidGraphBands(familySkills.value?.items ?? []);
   const familyBands = familyBandsAll.filter(band => band.layer !== 'unclassified');
   const familyUnclassifiedCount = familyBandsAll.find(band => band.layer === 'unclassified')?.items.length ?? 0;
   const familyEdges = pyramidGraphEdges(familySkills.value?.items ?? [], familyRelations.value?.items ?? []);
   const familyChartBands = familyBands.map(band => ({key: band.layer as 'abstract' | 'task' | 'atomic', label: pyramidLayerLabels[band.layer], description: pyramidLayerDescriptions[band.layer], items: band.items}));
+  const scopeChildren = directScopeChildren(scopes.value?.scopes ?? [], selectedScope);
   const degraded = readOnly(ctx);
-  if (!ready) return <RepositoryRequired ctx={ctx} action="Choose a repository" />;
+  if (!ready) return <RouteState state="empty" title="No organization selected" description="Sign in to an organization to read its map." action={<ActionButton href={ctx.href('import', {step: 'organization'})} tone="system">Open Import</ActionButton>} />;
   return <div className={styles.stack}>
     {degraded && <DegradedNotice>Membership could not be reconfirmed. The map is read only and may be behind the repository.</DegradedNotice>}
     <Tabs label="Map axes" current={axis} items={axes.map(id => ({id, label: id === 'repository' ? 'Repository' : id === 'scopes' ? 'Scopes' : 'Pyramid', href: ctx.href('map', {tab: id, skill: selectedSkill, scope: selectedScope})}))} />
     <div className={styles.mapGrid}>
       <div className={styles.stack}>
         {axis === 'repository' && <Panel title="Repository tree" eyebrow="Where each file lives" icon={<FolderSimpleIcon weight="duotone" aria-hidden="true" />}>
-          <p className={muted + ' pb-3'}>Each directory is read when you open it, up to 100 objects per request. Directory depth does not assign a knowledge layer.</p>
+          <p className={muted + ' pb-3'}>{repo ? '' : 'The top level is one branch per repository you can read. '}Each directory is read when you open it, up to 100 objects per request. Directory depth does not assign a knowledge layer.</p>
           <RepositoryBranch ctx={ctx} path="" label="/" depth={0} />
         </Panel>}
         {axis === 'scopes' && <Panel title="Declared scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
           {scopes.phase === 'loading' && !scopes.value && <RouteState state="loading" title="Reading scopes" description="Waiting for the scope map of this repository." />}
-          {scopes.phase === 'error' && scopes.error && !scopes.value && <ApiFailure error={scopes.error} onRetry={scopes.reload} retryLabel="Retry the scope map" />}
+          {scopes.phase === 'error' && scopes.error && !scopes.value && (isScopeAmbiguous(scopes.error) && selectedScope
+            ? <ScopeAmbiguous ctx={ctx} scope={selectedScope} />
+            : <ApiFailure error={scopes.error} onRetry={scopes.reload} retryLabel="Retry the scope map" />)}
           {scopes.value && <div className="grid gap-4">
             {scopes.value.scope ? <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-2">
               <div className={styles.definition}><dt>Scope</dt><dd>{scopes.value.scope.id}</dd></div>
+              {!repo && <div className={styles.definition}><dt>Repository</dt><dd>{scopes.value.scope.repo_id ?? 'Unknown'}</dd></div>}
               <div className={styles.definition}><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
               <div className={styles.definition}><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path} className="block">{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
               <div className={styles.definition}><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
-            {scopes.value.children.length ? <ul className={styles.relationList}>
-              {scopes.value.children.map(child => <li key={child.id}>
-                <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null})}><TreeStructureIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{child.id}</Link>
-                <span className={styles.muted}>{child.skills} skills, owner {unknown(child.owner)}</span>
+            {scopeChildren.length ? <ul className={styles.relationList}>
+              {/* A scope id is unique only within a repository (§4.10.6), so opening one from an
+                  organisation-scope list carries its repository into the address. That narrows the
+                  rail's repository selector as well; it is the visible, intended effect. */}
+              {scopeChildren.map(child => <li key={(child.repo_id ?? '') + ':' + child.id}>
+                <Link to={ctx.href('map', {tab: 'scopes', scope: child.id, skill: null, repo: child.repo_id ?? repo})}><TreeStructureIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{child.id}</Link>
+                <span className={styles.muted}>{repo ? '' : (child.repo_id ?? 'Unknown repository') + ', '}{child.count} skills, owner {unknown(child.owner)}</span>
               </li>)}
             </ul> : <p className={styles.muted}>No child scope is declared here.</p>}
             {scopes.value.skills.length > 0 && <ul className={styles.relationList}>
@@ -413,7 +464,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
             </ul>}
             {scopes.value.unmapped.length > 0 && <div className={styles.notice} role="status">
               <StateBadge tone="warning">Unmapped scope</StateBadge>
-              <p>{scopes.value.unmapped.length} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.name).join(', ')}. They stay readable and are not assigned to a parent.</p>
+              <p>{scopes.value.unmapped.reduce((total, item) => total + item.count, 0)} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.scope + ' (' + item.count + ')').join(', ')}. They stay readable and are not assigned to a parent.</p>
             </div>}
           </div>}
         </Panel>}
@@ -474,25 +525,29 @@ const verdicts = [
   {value: 'not_applicable', label: 'Not applicable', detail: 'The instruction did not apply to this task.', icon: ProhibitIcon},
 ];
 
-function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId: string; revisionId: string; existing: FeedbackEntry[]}) {
-  const {source, org, repo} = ctx;
+/** `repoId` is the repository the assessment is posted to: feedback is a mutation and stays per
+ * repository (§4.10, ADR-0047 §5), taken from the skill row rather than the address. With neither
+ * known there is nothing honest to post to, so the form is disabled and says why. */
+function FeedbackPanel({ctx, skillId, revisionId, repoId, existing}: ApiProps & {skillId: string; revisionId: string; repoId: string | null; existing: FeedbackEntry[]}) {
+  const {source, org} = ctx;
   const [verdict, setVerdict] = useState('helped');
   const [reason, setReason] = useState('');
   const [taskId, setTaskId] = useState('');
   const [judgment, setJudgment] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const blocked = readOnly(ctx);
+  const noRepository = !repoId;
+  const blocked = readOnly(ctx) || noRepository;
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || blocked || !org || !repo) return;
+    if (busy || blocked || !org || !repoId) return;
     const text = reason.trim();
     if (!text) {setError('Describe what happened. A verdict without a reason cannot be reviewed.'); return;}
     setBusy(true);
     setError('');
     try {
-      const result = await source.sendFeedback({org, repo}, skillId, revisionId,
+      const result = await source.sendFeedback({org, repo: repoId}, skillId, revisionId,
         {verdict, reason: text, task_id: taskId.trim() || undefined},
         stableKey('feedback', skillId, revisionId, verdict, text, taskId.trim()));
       setJudgment(result.judgment_id);
@@ -507,7 +562,9 @@ function FeedbackPanel({ctx, skillId, revisionId, existing}: ApiProps & {skillId
   return <Panel title="Feedback" eyebrow="Your assessment of this revision" icon={<ChatTextIcon weight="duotone" aria-hidden="true" />}>
     <div className="grid gap-4">
       <p className={styles.muted}>An assessment is attached to this exact revision. Members and owners may both record one.</p>
-      {blocked && <p className={styles.muted}>Membership could not be reconfirmed, so nothing can be recorded right now.</p>}
+      {noRepository
+        ? <p className={styles.muted} role="status">The repository of this skill is not known, so no assessment can be recorded. Choose a repository in the rail and open the skill again.</p>
+        : blocked && <p className={styles.muted}>Membership could not be reconfirmed, so nothing can be recorded right now.</p>}
       <form id="skill-feedback" className="grid gap-4" onSubmit={send}>
         <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0 sm:grid-cols-2" disabled={blocked || busy} data-slot="rating">
           <legend className="mb-2 p-0 font-medium">Verdict</legend>
@@ -551,26 +608,30 @@ const revisionsTable = (ctx: ApiProps['ctx'], skillId: string, revisions: {revis
 
 export function ApiSkillRoute({ctx}: ApiProps) {
   const {source, org, repo} = ctx;
-  const target = {org: org ?? '', repo: repo ?? ''};
-  const ready = Boolean(org && repo);
+  const target = readScope(ctx);
+  const key = scopeKey(ctx);
+  const ready = Boolean(org);
   const skillId = ctx.params.get('skill');
   const requested = ctx.params.get('revision');
   const from = originView(ctx);
   const [raw, setRaw] = useState<{bytes: number; ready: boolean} | null>(null);
   const [rawError, setRawError] = useState('');
   const {favorites, toggle: toggleFavorite} = useFavorites(ctx);
-  const detail = useAsync(() => source.getSkill(target, skillId ?? ''), 'skill:' + org + '/' + repo + ':' + skillId, ready && Boolean(skillId));
+  const detail = useAsync(() => source.getSkill(target, skillId ?? ''), 'skill:' + key + ':' + skillId, ready && Boolean(skillId));
   const revisionId = requested ?? detail.value?.revision_id ?? null;
-  const revision = useAsync(() => source.getRevision(target, skillId ?? '', revisionId ?? ''), 'revision:' + org + '/' + repo + ':' + skillId + ':' + revisionId, ready && Boolean(skillId && revisionId));
+  const revision = useAsync(() => source.getRevision(target, skillId ?? '', revisionId ?? ''), 'revision:' + key + ':' + skillId + ':' + revisionId, ready && Boolean(skillId && revisionId));
   // The origin keeps its own filters in the address; only this view's selection is dropped.
   const backLink = <div><ActionButton size="sm" href={ctx.href(from, {tab: ctx.params.get('return_tab') || null, from: null, return_tab: null, skill: null, revision: null})}><ArrowLeftIcon weight="regular" aria-hidden="true" />Back to {originNames[from]}</ActionButton></div>;
 
-  if (!ready) return <RepositoryRequired ctx={ctx} />;
+  if (!ready) return <RouteState state="empty" title="No organization selected" description="Sign in to an organization to read a skill." action={<ActionButton href={ctx.href('import', {step: 'organization'})} tone="system">Open Import</ActionButton>} />;
   if (!skillId) return <RouteState state="empty" title="No skill selected" description="Open a skill from the library or the map to read its exact revision." action={<ActionButton href={ctx.href('library', {skill: null, revision: null, tab: null, from: null})} tone="system">Open Library</ActionButton>} />;
   if (detail.phase === 'error' && detail.error && !detail.value) return <div className={styles.stack}>{backLink}<ApiFailure error={detail.error} onRetry={detail.reload} retryLabel="Retry this skill" /></div>;
   if (!detail.value) return <div className={styles.stack}>{backLink}<RouteState state="loading" title="Reading this skill" description="Waiting for the summary and its revision list." /></div>;
 
   const skill = detail.value;
+  // The row's repository (§4.10.3) comes first; the address is the fallback for a server older
+  // than the field. A mutation (feedback) goes to this repository, never to an empty one.
+  const skillRepo = skill.repo_id ?? repo;
   const missingRevision = revision.phase === 'error' && revision.error && (revision.error.code === 'revision_not_found' || revision.error.status === 404);
   if (missingRevision) return <div className={styles.stack}>
     {backLink}
@@ -665,7 +726,7 @@ export function ApiSkillRoute({ctx}: ApiProps) {
       <Panel title="Source and scope" eyebrow="Provenance" icon={<GitBranchIcon weight="duotone" aria-hidden="true" />}>
         <div className="grid gap-4">
           <ProvenanceTrail entries={[
-            {label: 'Repository', value: repo ?? 'Unknown'},
+            {label: 'Repository', value: skillRepo ?? 'Unknown', detail: 'From the skill row, not the address.'},
             {label: 'Scope', value: skill.scope},
             {label: 'Owner from source', value: unknown(skill.owner), detail: 'Ownership metadata; not an access grant.'},
             {label: 'Source path', value: unknown(body?.source?.path ?? skill.path), code: true},
@@ -718,6 +779,6 @@ export function ApiSkillRoute({ctx}: ApiProps) {
       </div>
     </Panel>}
 
-    {tab === 'feedback' && revisionId && <FeedbackPanel key={revisionId} ctx={ctx} skillId={skillId} revisionId={revisionId} existing={body?.feedback ?? []} />}
+    {tab === 'feedback' && revisionId && <FeedbackPanel key={revisionId} ctx={ctx} skillId={skillId} revisionId={revisionId} repoId={skillRepo} existing={body?.feedback ?? []} />}
   </div>;
 }
