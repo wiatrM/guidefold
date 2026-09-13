@@ -200,6 +200,13 @@ export const githubInstallation = object<GitHubInstallation>({
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
+/** `POST {org_base}/github/installations/start` (contract §4.7, ADR-0034): the one-time URL
+ * that starts GitHub's own "Request user authorization (OAuth) during installation" flow. */
+export interface GitHubInstallStart { schema_version: string; install_url: string }
+export const githubInstallStart = object<GitHubInstallStart>({
+  schema_version: str, install_url: str,
+});
+
 // ---------------------------------------------------------------------------
 // Organization model keys (contract §4.8, §5.5a, ADR-0045). The key itself never returns from
 // the API; `OrgCredential` carries metadata only. A provider absent from `items` means the

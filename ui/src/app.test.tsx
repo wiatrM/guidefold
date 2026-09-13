@@ -409,6 +409,38 @@ describe('shell composition', () => {
     expect(screen.getByRole('button', { name: 'Check access now' })).toBeInTheDocument();
   });
 
+  test('a successful GitHub install link (contract §4.7 callback 302) lands on the Integrations tab it names, not on /home', async () => {
+    // `GET /api/v1/github/installations/callback` redirects a successful link to exactly
+    // `/orgs/<slug>/settings/github` (`identity/github_link.go`'s `returnTo`) — a path this SPA
+    // does not itself generate and does not recognise as a view name. Before app.tsx's alias,
+    // this fell through to the unknown-view redirect and silently landed the owner on /home.
+    const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
+    await controller.check(true);
+    // The callback commits `gfm.github_installation_links` before its 302 (§4.7), so a real
+    // return from it always finds the mirror row already there — never the empty list a
+    // pre-link view would show. Seeding one keeps this test's pairing honest.
+    const source = fakeSource({
+      listMembers: async () => [],
+      listGitHubInstallations: async () => [{
+        installation_id: 501, account: 'meridian-data', repositories: [], suspended: false,
+        created_at: '2026-09-13T00:00:00Z', updated_at: '2026-09-13T00:00:00Z',
+      }],
+    });
+    render(<MemoryRouter initialEntries={['/orgs/meridian/settings/github']}>
+      <AccessProvider controller={controller}><App source={source} /><Probe /></AccessProvider>
+    </MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Organization' })).toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('/organization?tab=integrations&org=meridian&github_connected=1');
+    expect(await screen.findByText(/back from GitHub/)).toBeInTheDocument();
+    expect(await screen.findByText('meridian-data')).toBeInTheDocument();
+
+    // The banner is a one-shot signal for this exact return trip, never a fact to replay on every
+    // later visit or a bookmark of this address: `href` (app.tsx) starts from the current query
+    // string, so every link this shell builds — the sidebar and these very tab links — would
+    // otherwise carry `github_connected=1` forward forever. None of them do.
+    for (const link of screen.getAllByRole('link')) expect(link.getAttribute('href') ?? '').not.toContain('github_connected');
+  });
+
   test('the library reads the API and shows nothing when it answers an empty page', async () => {
     const controller = new AccessController({ fetchMe: async () => me, onDenied: vi.fn() });
     await controller.check(true);

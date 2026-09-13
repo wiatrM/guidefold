@@ -121,7 +121,23 @@ function ApiApp({source}:{source:DataSource}){
  useEffect(()=>{document.title=viewInfo[view].label+' | Guidefold';},[view]);
  // A route change moves the reading position and the keyboard focus together; #main is tabIndex -1.
  useEffect(()=>{window.scrollTo(0,0);document.getElementById('main')?.focus();},[location.pathname]);
- const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // `github_connected` (below) is this client's own one-shot signal for the address the GitHub
+ // callback redirect lands on, never a real navigation target: every `href` this builder produces
+ // would otherwise carry it forward (it starts from the current query string) into the sidebar,
+ // the tab links and anything bookmarked or shared from this page, replaying "you're back from
+ // GitHub" on an address nobody returned from.
+ const href=(target:View,changes:Params={})=>{const next=new URLSearchParams(location.search);next.delete('github_connected');if(org)next.set('org',org);if(repo)next.set('repo',repo);Object.entries(changes).forEach(([k,v])=>v===null||v===undefined?next.delete(k):next.set(k,String(v)));const query=next.toString();return '/'+target+(query?'?'+query:'');};
+ // `GET /api/v1/github/installations/callback` (contract §4.7, ADR-0034) 302s a successful
+ // install link to exactly this literal path (`identity/github_link.go`'s `returnTo`) — one this
+ // SPA never generates and does not recognise as a view name, so unhandled it fell through to the
+ // unknown-view redirect below and silently dropped the owner on /home with no organisation, no
+ // tab and no sign anything happened. The callback's *failures* answer raw JSON directly
+ // (`mgmt.Fail`/`mgmt.Invalid`, never a redirect — `mgmt.Router.render` always writes the JSON
+ // envelope, confirmed reading both) and never reach this router at all, so reaching this path is
+ // itself the success signal: `github_connected=1` here is not a guess at what the server meant,
+ // it is this client's own name for "the only way to arrive here at all".
+ const githubInstallReturn=location.pathname.match(/^\/orgs\/([^/]+)\/settings\/github\/?$/)?.[1] ?? null;
+ if(githubInstallReturn)return <Navigate to={'/organization?tab=integrations&org='+encodeURIComponent(githubInstallReturn)+'&github_connected=1'} replace/>;
  // An invitation link must render for a visitor who has no session yet, so it is checked before
  // the denied/unknown-view redirects below would otherwise bounce an anonymous click to /login.
  if(invitationToken)return <Shell view="import" href={href}

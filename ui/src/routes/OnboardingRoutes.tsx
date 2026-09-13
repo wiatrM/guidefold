@@ -228,6 +228,27 @@ const generationPanelId = 'generate-proposals';
 const createInstallationPanelId = 'create-installation';
 
 /**
+ * Distinguishes "reconciliation has not touched this installation yet" from "reconciliation
+ * ran and found nothing" — both read as `repositories: []` on the wire (contract §5.1
+ * `GitHubInstallation`), which has no field for that distinction. The mirror row
+ * (`gfm.github_installations`) sets `created_at` and `updated_at` to the same transaction
+ * timestamp when it is first written (`schema/sql.go`, both `DEFAULT now()`), and only a later
+ * webhook write ever moves `updated_at` past `created_at` (`identity/github.go`'s upsert always
+ * sets `updated_at=now()`); `github.sync_repositories` itself never touches this JSONB column
+ * (`agentrun/github_sync.go` writes only `gfm.repos`). So an unmoved timestamp — or either one
+ * missing — means the list is still whatever it was at creation, never confirmed empty.
+ */
+function githubRepositoriesLabel(entry: GitHubInstallation): string {
+  // `repositories` is the webhook's own mirror (`gfm.github_installations`), never written by
+  // `github.sync_repositories` (`agentrun/github_sync.go` touches only `gfm.repos`) — so this is
+  // what GitHub last reported for the installation, not a count of what got registered. Saying
+  // "registered" here would be a false zero of exactly the kind this label exists to avoid.
+  if (entry.repositories.length) return entry.repositories.length + ' repositor' + (entry.repositories.length === 1 ? 'y' : 'ies') + ' reported by GitHub: ' + entry.repositories.map(repo => repo.full_name).join(', ');
+  if (!entry.created_at || !entry.updated_at || entry.updated_at === entry.created_at) return 'Linked. Repositories still syncing.';
+  return 'GitHub reported no repositories.';
+}
+
+/**
  * The Integrations tab's "Set up an adapter" guide (Task 7): the owner asked what an adapter
  * is after seeing "No adapter installed" on Overview. Every command here is quoted verbatim
  * from `skills/guidefold/scripts/guidefold` — its usage block, `cmd_install`, `cmd_login`,
@@ -787,7 +808,9 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const teams = useAsync(() => source.listTeams(org ?? ''), 'teams:' + org, Boolean(org) && tab === 'members');
   const invitations = useAsync(() => source.listInvitations(org ?? ''), 'invitations:' + org, owner && Boolean(org) && tab === 'members');
   const installations = useAsync(() => source.listInstallations(org ?? ''), 'installations:' + org, Boolean(org) && tab === 'integrations');
-  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, owner && Boolean(org) && tab === 'integrations');
+  // Member-readable (contract §4.7 `GET {org_base}/github/installations` is `member`, not
+  // `owner`): a member sees what is linked, only the owner-only actions below are gated.
+  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, Boolean(org) && tab === 'integrations');
   // 1.3.0: `{org_base}/audit` is readable by any member (server-scoped to their own rows, §4.1),
   // not just an owner.
   const audit = useAsync(
@@ -817,6 +840,21 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
   const [harness, setHarness] = useState('claude');
   const [secret, setSecret] = useState('');
   const [integrationStatus, setIntegrationStatus] = useState('');
+  // Separate from `integrationStatus` (adapter installation tokens, below): the two live in
+  // different panels and a shared line would announce and repeat the same text in both.
+  const [githubStatus, setGithubStatus] = useState('');
+  // §4.7's only error this deployment-level, not per-click: once `start` answers
+  // `github_app_not_configured` there is nothing left for the owner to retry, so the button is
+  // replaced rather than re-offered disabled next to an explanation (Task 5).
+  const [githubAppNotConfigured, setGithubAppNotConfigured] = useState(false);
+  // Read once, not tracked live: this route only ever reaches this address by the app's own
+  // client-side redirect from `/orgs/:slug/settings/github` (below, and `app.tsx`), which itself
+  // only ever runs after `GET /api/v1/github/installations/callback` 302s the browser back on a
+  // *successful* link (§4.7) — a failed callback answers raw JSON and never reaches this route
+  // at all (confirmed against `identity/github_link.go`'s `mgmt.Fail`/`mgmt.Invalid` returns and
+  // `mgmt.Router.render`, which never redirects). So landing here with this flag is itself the
+  // success signal; there is no separate "connected" field on the wire to read.
+  const [justReturnedFromGitHub] = useState(() => ctx.params.get('github_connected') === '1');
   const [deviceStatus, setDeviceStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [keyProvider, setKeyProvider] = useState<OrgCredentialProvider>(orgCredentialProviders[0]);
@@ -960,14 +998,33 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
       installations.reload();
     } catch (error) { setIntegrationStatus('The installation was not revoked (' + asApiError(error).code + '). Its token still works.'); }
   }
+  /** Owner-only, contract §4.7 `POST {org_base}/github/installations/start`: mints a one-time
+   * signed state and answers with GitHub's own installation URL. This call never links
+   * anything by itself — only the proven callback does — so the only thing to do with the
+   * answer is send the browser there (Task 1). `github_app_not_configured` is the one error
+   * this route can return; it is a deployment problem, not a retryable click (Task 5). */
+  async function connectGitHub() {
+    if (!org || !owner || busy) return;
+    setBusy(true); setGithubStatus('');
+    try {
+      const start = await source.startGitHubInstall(org, 'github-install-start:' + org);
+      window.location.assign(start.install_url);
+    } catch (error) {
+      const failure = asApiError(error);
+      if (failure.code === 'github_app_not_configured') setGithubAppNotConfigured(true);
+      else setGithubStatus('The GitHub install could not start (' + failure.code + '). Nothing was changed.');
+    } finally { setBusy(false); }
+  }
   async function removeGitHubInstallation(installation: GitHubInstallation) {
     if (!org || !owner || busy) return;
-    setBusy(true); setIntegrationStatus('');
+    setBusy(true); setGithubStatus('');
     try {
       await source.deleteGitHubInstallation(org, installation.installation_id, 'github-installation:' + org + ':' + installation.installation_id);
-      setIntegrationStatus('GitHub installation removed. Future webhook updates are ignored until it is installed again.');
+      // §4.7: DELETE only unlinks this organization (drops the link row and its repositories'
+      // registration); the App itself is untouched on GitHub's side and keeps running there.
+      setGithubStatus('GitHub installation disconnected from this organization. Its repositories are no longer registered here, but their catalogue and history are kept. The App stays installed on GitHub — uninstall it there too if you want it fully gone.');
       githubInstallations.reload();
-    } catch (error) { setIntegrationStatus('The GitHub installation was not removed (' + asApiError(error).code + ').'); }
+    } catch (error) { setGithubStatus('The GitHub installation was not disconnected (' + asApiError(error).code + ').'); }
     finally { setBusy(false); }
   }
   async function saveCredential(event: FormEvent<HTMLFormElement>) {
@@ -1266,15 +1323,39 @@ export function ApiOrganizationRoute({ ctx }: ApiProps) {
         </div>
       </Panel>
       <div className={styles.asideColumns}>
-        {owner && <Panel title="GitHub App installations" eyebrow="Source connection" icon={<GithubLogoIcon weight="regular" aria-hidden="true" />}>
+        <Panel title="GitHub App installations" eyebrow="Source connection" icon={<GithubLogoIcon weight="regular" aria-hidden="true" />}>
+          {justReturnedFromGitHub && <p className={styles.feedback} role="status">You&rsquo;re back from GitHub. The installation is linked; its repositories are registered by a background job and may take a few minutes to appear below.</p>}
+          {owner && (githubAppNotConfigured
+            // Task 5: a deployment problem, not a click to retry — the button is gone, not disabled.
+            ? <RouteState state="error" title="No GitHub App configured on this deployment" description="This Guidefold deployment has no GitHub App client configured, so installations cannot be started here. This is not something to retry — ask whoever operates this deployment to configure it." />
+            : <div className={styles.shownOnce}>
+              <IconTile icon={<GithubLogoIcon weight="duotone" />} size="lg" tone="system" />
+              <div className={styles.shownOnceBody}>
+                <p>Install the Guidefold GitHub App on an organisation&rsquo;s GitHub account and prove the link by signing in when GitHub asks. On GitHub&rsquo;s next screen, choose <strong>All repositories</strong> &mdash; Guidefold cannot preselect that for you, and it keeps every future repository covered without repeating this flow.</p>
+                <ActionButton tone="human" disabled={busy} onClick={() => { void connectGitHub(); }}>Connect GitHub</ActionButton>
+              </div>
+            </div>)}
           {githubInstallations.phase === 'loading' && <RouteState state="loading" title="Reading GitHub installations" description="Waiting for the source connections for this organization." />}
           {githubInstallations.phase === 'error' && githubInstallations.error && <ApiFailure error={githubInstallations.error} onRetry={githubInstallations.reload} retryLabel="Retry GitHub installations" />}
           {githubInstallations.phase === 'ready' && (githubInstallations.value?.length
-            ? <DataTable flush caption="GitHub App installations" headings={['Account', 'Repositories', 'Status', 'Action']}>
-              {githubInstallations.value.map(entry => <tr key={entry.installation_id}><th scope="row">{entry.account}<span className={styles.linkHint}>Installation {entry.installation_id}</span></th><td>{entry.repositories.length ? entry.repositories.map(repo => repo.full_name).join(', ') : 'No repository list received'}</td><td><StateBadge tone={entry.suspended ? 'warning' : 'system'}>{entry.suspended ? 'suspended' : 'active'}</StateBadge></td><td><ActionButton size="sm" disabled={busy} onClick={() => { void removeGitHubInstallation(entry); }}>Remove</ActionButton></td></tr>)}
+            ? <DataTable flush caption="GitHub App installations" headings={['Account', 'Repositories', 'Status', 'First seen', 'Action']}>
+              {githubInstallations.value.map(entry => <tr key={entry.installation_id}>
+                <th scope="row">{entry.account}<span className={styles.linkHint}>Installation {entry.installation_id}</span></th>
+                <td>{githubRepositoriesLabel(entry)}</td>
+                <td><StateBadge tone={entry.suspended ? 'warning' : 'system'}>{entry.suspended ? 'suspended' : 'active'}</StateBadge></td>
+                {/* `created_at` is the mirror row's first-write timestamp (whichever of the
+                    webhook or this callback wrote it first, §4.7) — not `gfm.github_installation_links.linked_at`,
+                    which the DTO does not carry. "First seen", not "Linked". */}
+                <td>{unknown(entry.created_at)}</td>
+                <td>{owner ? <ActionButton size="sm" disabled={busy} onClick={() => { void removeGitHubInstallation(entry); }}>Disconnect</ActionButton> : <span className={styles.help}>Owner only</span>}</td>
+              </tr>)}
             </DataTable>
-            : <RouteState state="empty" title="No GitHub App installation" description="Install the Guidefold GitHub App for an organization before choosing repositories. The CLI remains available as a fallback." />)}
-        </Panel>}
+            // Never shown while `githubAppNotConfigured`: telling the owner to go install
+            // something right under the message saying this deployment cannot start an install
+            // (Task 5) would contradict it.
+            : !githubAppNotConfigured && <RouteState state="empty" title="No GitHub App installation" description="Install the Guidefold GitHub App for an organization before choosing repositories. The CLI remains available as a fallback." />)}
+          <p className={styles.feedback} role="status">{githubStatus}</p>
+        </Panel>
         <Panel title="Installations" eyebrow="Adapter tokens" icon={<LinkSimpleIcon weight="regular" aria-hidden="true" />}>
           {installations.phase === 'loading' && <RouteState state="loading" title="Reading installations" description="Waiting for the installation list." />}
           {installations.phase === 'error' && installations.error && <ApiFailure error={installations.error} onRetry={installations.reload} retryLabel="Retry the installation list" />}
