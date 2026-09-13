@@ -105,6 +105,12 @@ export const authProviders = object<AuthProviders>({
 export interface IdentityLinkStart { login_url: string }
 export const identityLinkStart = object<IdentityLinkStart>({ login_url: str });
 
+/** `POST /auth/verify-email` (contract §2, §4.1): the code screen's own success answer — a
+ * `fetch` cannot follow the 302 `handleCallback` uses, so this route answers `return_to` in its
+ * body instead, after the session cookie is already set. */
+export interface EmailVerification { schema_version: string; return_to: string }
+export const emailVerification = object<EmailVerification>({ schema_version: str, return_to: str });
+
 export interface Profile { user: { id: string; email: string; name: string } }
 export const profile = object<Profile>({ user: object({ id: str, email: str, name: str }) });
 

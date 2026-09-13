@@ -100,6 +100,13 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
       const separator = entry.login_url.includes('?') ? '&' : '?';
       return { provider, loginUrl: entry.login_url + separator + 'return_to=' + encodeURIComponent(returnTo) };
     },
+    async verifyEmailCode(code: string, idempotencyKey: string): Promise<{ returnTo: string }> {
+      const result = await write({
+        path: '/auth/verify-email', method: 'POST', body: { code },
+        decode: d.emailVerification, resource: 'auth/verify-email', idempotencyKey, csrf: false,
+      });
+      return { returnTo: result.return_to };
+    },
     async getMe(timeoutMs?: number): Promise<Me> {
       const me = await read({ path: '/me', decode: d.me, resource: 'me', retries: 0, timeoutMs });
       client.setCsrfToken(me.csrf_token);

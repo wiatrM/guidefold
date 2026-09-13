@@ -57,6 +57,29 @@ describe('URL and header contract', () => {
     const api = client(async () => fakeResponse({ value: 'ok' }));
     expect((await api.request({ path: '/me', decode: payload, resource: 'me' })).value.value).toBe('ok');
   });
+
+  // POST /auth/verify-email (contract §2, §4.1) is the one mutation the contract itself marks
+  // public/NoCSRF — there is no session yet to carry a token from, and the gf_auth_state cookie
+  // is that route's own defense. `csrf: false` is the narrow, per-request opt-out for exactly
+  // that route; everything else must keep requiring a token by default (the case below it).
+  test('csrf: false sends a session-less mutation without an X-CSRF-Token header', async () => {
+    const calls: Record<string, string>[] = [];
+    const api = client(async (_url, init) => { calls.push((init as RequestInit).headers as Record<string, string>); return fakeResponse({ value: 'ok' }); });
+    await api.request({
+      path: '/auth/verify-email', method: 'POST', body: { code: '123456' },
+      decode: payload, resource: 'auth/verify-email', idempotencyKey: 'verify-email:1', csrf: false,
+    });
+    expect(calls[0]['Idempotency-Key']).toBe('verify-email:1');
+    expect(Object.keys(calls[0])).not.toContain('X-CSRF-Token');
+  });
+
+  test('every other mutation still refuses without a token: csrf: false is not the default', async () => {
+    const fetchImpl = vi.fn(async () => fakeResponse({ value: 'ok' }));
+    const api = client(fetchImpl as unknown as typeof fetch);
+    await expect(api.request({ path: '/orgs', method: 'POST', body: {}, decode: payload, resource: 'orgs', idempotencyKey: 'create-org:x' }))
+      .rejects.toMatchObject({ code: 'csrf_token_missing' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
 });
 
 describe('generation and per-resource ordering', () => {
