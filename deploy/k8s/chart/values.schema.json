@@ -41,6 +41,21 @@
       "properties": {
         "webhookSecretName": {
           "type": "string"
+        },
+        "appId": {
+          "type": "string"
+        },
+        "privateKeySecretName": {
+          "type": "string"
+        },
+        "appSlug": {
+          "type": "string"
+        },
+        "clientID": {
+          "type": "string"
+        },
+        "clientSecretName": {
+          "type": "string"
         }
       }
     },

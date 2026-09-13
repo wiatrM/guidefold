@@ -1,6 +1,95 @@
 # guidefold.cloudfloo.io — deployment runbook
 
-## Contract 1.3.0 wired into the console — 2026-09-12 (current)
+## Releasing an image that changes the schema — read before every rollout
+
+ArgoCD syncs the Deployments in `Application/guidefold` and nothing else; it
+never runs the chart's migrate Job. Patching image digests alone therefore puts
+new code on the old database. That is exactly what took sign-in down on
+2026-09-13 (incident below). For any release whose diff touches
+`services/search/internal/schema/sql.go`, and without the owner's explicit
+approval for this release no step below runs at all:
+
+1. Export the live values:
+   `kubectl get application guidefold -n argocd -o json | python3 -c "import sys,json; print(json.load(sys.stdin)['spec']['source']['helm']['values'])" > live-values.yaml`
+   and set `image:` in that file to the new `guidefold-search` digest.
+2. Render only the Job from the chart at the release commit:
+   `helm template guidefold deploy/k8s/chart -n guidefold -f live-values.yaml --set workload=migrate`,
+   keep the single `kind: Job` document, give it a dated name, `kubectl apply` it.
+3. `kubectl wait --for=condition=complete job/<name> -n guidefold`, then confirm the
+   new columns and tables exist in `gfm` with `psql` on `guidefold-postgres-1`.
+4. Record the current digests as the rollback point, then patch the new ones.
+5. Smoke test with authentication, not only health: `/health/ready` 200,
+   `GET /api/v1/auth/login/google` 302 to WorkOS, each changed route as intended,
+   and no `ERROR` in `kubectl logs -l app.kubernetes.io/component=api` for the
+   first minutes. Roll back at the first failure.
+
+### Incident 2026-09-13: sign-in down for about 25 minutes
+
+PR #149 added `gfm.auth_states.org_id`, `gfm.github_installation_links` and
+`gfm.repos.github_installation_id`. Its digests were patched at about 10:43 UTC
+without running the migrate Job. Every `GET /api/v1/auth/login/{provider}`
+answered 500 with `column "org_id" of relation "auth_states" does not exist`,
+while `/health/ready` kept answering 200, so the post-deploy check passed. The
+migrate Job `guidefold-migrate-20260913` was run at about 11:08 UTC; sign-in
+answered 302 to WorkOS again immediately. Cause: the release procedure had no
+migration step and the smoke test did not exercise authentication. Both are now
+steps 2–5 above.
+
+## Live Agent, organisation model keys and the init reconciliation — 2026-09-12 (current)
+
+Built by `publish-images.yml` from `main` at `6aa8ad8` (PR #143: the Live Agent
+rebuilt as one button that refreshes the skill library and creates consolidation
+proposals, organisation model keys encrypted at rest, the GitHub App content
+adapter, and `guidefold init` reconciling a partial install). The four image
+digests were patched into the live `Application/guidefold` inline Helm values,
+the same way as every release below.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:aaba07d14a2f8e1378837e686c4a124619d6fffc28304eebfaf4ca6256ed06c0` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:66d6d00e95dd1c4b04432b356a6fc626d1dec135f6f3a8386f6df70bfc1994d4` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:d49337b171e8aff1bbddfd07a1bd715d434b1fe930543dc36284c79fdfab8ad0` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:96620231335d6cd9bb736730117cb37192c98f9758152f81592ff24d9b600cf5` |
+
+Sync Succeeded; all four deployments ready on the new images. `/health/ready`
+200. Rollback: the digests of the previous release below.
+
+**Two operator settings went with it (PR #146), because without either one the
+feature deploys as screens that cannot be used.**
+
+- `secretKeyringSecretName: guidefold-keyring`. The Secret was created in the
+  `guidefold` namespace with one AES-256 key under `key_id` `prod-1`, in the
+  JSON shape `internal/secrets.LoadKeyring` reads. It is mounted read-only on
+  the API and the worker at `/run/keyring/keyring`. **Losing this file makes
+  every stored organisation credential unrecoverable**: the ciphertext is bound
+  to the key, and to the organisation and provider as additional authenticated
+  data. Back it up separately from the database dump — whoever holds both holds
+  the customers' model keys in the clear. Rotation is additive: add a second
+  `key_id`, flip `active`, and rows sealed under the old key stay readable until
+  they are re-sealed, so never delete a key a row still references.
+- `api.externalEgress`, TCP 443 to `0.0.0.0/0` with `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16` and `169.254.0.0/16` excluded. Storing a
+  model key verifies it against the provider before sealing it, and until this
+  rule existed the API pod reached DNS and the database and nothing else, so
+  every attempt answered `provider_unavailable`. The owner chose the open form
+  over a list of Cloudflare ranges deliberately: OpenRouter and GitHub sit
+  behind Cloudflare, and a pinned CIDR list stops working silently the day
+  those ranges change, surfacing as an unreachable provider that nobody
+  connects to a network policy. The excluded ranges keep the pod off the
+  cluster's own network and off the cloud metadata endpoint.
+
+Verified after the sync: the egress rule renders as intended, and
+`GUIDEFOLD_SECRET_KEY_FILE` is present on both the API and the worker
+Deployments. **Not verified:** that the service parsed the keyring. The images
+are distroless with no shell, so the file could not be inspected in place; the
+first stored model key is what proves it.
+
+`worker.externalEgress` is still empty. Until an operator fills it, `live.repo`
+and `pr.report` cannot reach `api.github.com` or a model provider and end
+`skipped` with a named reason, which is the honest behaviour rather than a
+failure.
+
+## Contract 1.3.0 wired into the console — 2026-09-12 (previous)
 
 Built by `publish-images.yml` from `main` at `31524dd` (PR #144: Overview
 trends against the previous usage window, "Your decisions", "Decided by",
@@ -19,7 +108,7 @@ the new images (`guidefold` 2/2, `guidefold-ui` 2/2, worker 1/1, portal 1/1).
 Public checks: `/` 200, `/health/ready` 200, `/api/v1/me` 401 (anonymous).
 Rollback: the digests of the previous release below.
 
-## shadcn console and contract 1.3.0 — 2026-09-12 (previous)
+## shadcn console and contract 1.3.0 — 2026-09-12 (earlier)
 
 Built by `publish-images.yml` from `main` at `b49777d` (PR #141 console on
 shadcn/shadcnspace, Overview view, contract 1.3.0; PR #142 sign-in race fix and

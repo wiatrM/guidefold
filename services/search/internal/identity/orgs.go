@@ -505,7 +505,19 @@ func (s *Service) handleRevokeInvitation(c *mgmt.Context) error {
 func (s *Service) handleInvitationLanding(c *mgmt.Context) error {
 	token := strings.TrimSpace(c.Param("token"))
 	if token == "" || len(token) > 256 {
-		return mgmt.NotFound("invitation_not_found", "This invitation is not valid.")
+		// This is a browser navigation target reached by clicking an e-mailed
+		// link (never a JSON API call), the same class of endpoint as the
+		// GitHub install callback (API-CONTRACT §4.7) — so a malformed path
+		// segment still lands the browser in the console instead of showing
+		// it raw JSON. gfm.invitations.token_sha256 is a fixed-length digest
+		// of a short secret, so an empty or 256+ byte segment could never
+		// have named a real invitation; a fixed placeholder is enough to
+		// reach the console's own invitation page, which reports
+		// "invitation not valid" the same way it does for a well-formed
+		// token GET .../accept later refuses (ApiInvitationRoute never calls
+		// accept on mount, only on the owner's own click). Same absolute
+		// form as the success line below — one endpoint, one convention.
+		return c.RedirectTo(s.cfg.PublicURL + "/invitations/invalid/accept")
 	}
 	return c.RedirectTo(s.cfg.PublicURL + "/invitations/" + token + "/accept")
 }

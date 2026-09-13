@@ -61,7 +61,10 @@ paths:
   /api/v1/github/webhook:
     post:
       tags: [github]
-      summary: GitHub App webhook (ADR-0036). Verifies X-Hub-Signature-256; may enqueue one ascend.run job.
+      summary: >-
+        GitHub App webhook (ADR-0036/ADR-0034). Verifies X-Hub-Signature-256; a linked
+        pull_request may enqueue one pr.report job, and a linked installation/installation_repositories
+        event may enqueue one github.sync_repositories job. Never enqueues ascend.run or calls GitHub.
       security: []
       parameters:
         - { name: X-GitHub-Event, in: header, required: true, schema: { type: string } }
@@ -111,7 +114,7 @@ paths:
   /api/v1/orgs/{org}/github/installations/{installation_id}:
     delete:
       tags: [github]
-      summary: Forget a GitHub App installation (ADR-0036).
+      summary: Unlink a GitHub App installation from this organisation (ADR-0034). Detaches its reconciled repositories.
       parameters:
         - { name: org, in: path, required: true, schema: { type: string } }
         - { name: installation_id, in: path, required: true, schema: { type: integer } }
@@ -122,6 +125,58 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/orgs/{org}/github/installations/start:
+    post:
+      tags: [github]
+      summary: >-
+        Begin the explicit GitHub App installation link (ADR-0034, owner + CSRF). Creates a
+        single-use signed state and answers with the URL to send the browser to on
+        github.com/apps/<slug>/installations/new.
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The GitHub installation URL to redirect the browser to.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, install_url]
+                properties:
+                  schema_version: { type: string }
+                  install_url: { type: string }
+        "503":
+          description: App not configured (GITHUB_APP_SLUG unset).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/github/installations/callback:
+    get:
+      tags: [github]
+      summary: >-
+        GitHub's OAuth-during-install redirect (ADR-0034). Exchanges code for a user token,
+        verifies installation_id against GET /user/installations, links only a proven
+        installation, enqueues one github.sync_repositories job, and always redirects the
+        browser to the console's /organization?tab=integrations, success or failure alike —
+        never JSON, since this is a browser navigation target, not an API call. The outcome is
+        carried as ?github=<code>: "linked" on success, or one of invalid_callback,
+        invalid_state, expired_state, installation_not_owned, provider_unavailable,
+        github_app_not_configured, internal_error. ?org=<org_id> is present whenever an
+        organisation was already proven for this browser at the point of failure (every outcome
+        except invalid_callback, github_app_not_configured, and invalid_state from a cookie that
+        never matched or a state already consumed) — never resolved from unproven input.
+      security: []
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: installation_id, in: query, required: true, schema: { type: integer } }
+      responses:
+        "302":
+          description: >-
+            Always: redirect to /organization?tab=integrations&github=<code>[&org=<org_id>],
+            success or failure alike. Never a JSON body.
 
   /api/v1/auth/login/{provider}:
     get:
@@ -2694,7 +2749,7 @@ components:
 
     GitHubInstallation:
       type: object
-      required: [installation_id, account, repositories, suspended]
+      required: [installation_id, account, repositories, suspended, registered_repositories, synced]
       properties:
         installation_id: { type: integer }
         account: { type: string }
@@ -2706,9 +2761,13 @@ components:
             properties:
               full_name: { type: string }
               repo_id: { type: [string, "null"] }
+        repository_selection: { type: [string, "null"], enum: [all, selected, null] }
         suspended: { type: boolean }
         created_at: { type: [string, "null"], format: date-time }
         updated_at: { type: [string, "null"], format: date-time }
+        linked_at: { type: [string, "null"], format: date-time }
+        registered_repositories: { type: integer }
+        synced: { type: boolean }
 
     GitHubInstallationList:
       type: object

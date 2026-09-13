@@ -91,19 +91,30 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 
 // --- database fixtures ----------------------------------------------------
 
-// registerInstallation writes one gfm.github_installations row directly —
-// there is no endpoint for it yet (ADR-0036's own "thin github module" is
-// not part of this task), the same shortcut internal/live's own api_test.go
-// takes for a membership row an accepted invitation would otherwise leave.
+// registerInstallation writes one gfm.github_installations row plus its
+// gfm.github_installation_links row directly — there is no endpoint for the
+// mirror yet (ADR-0036's own "thin github module" is not part of this
+// task), the same shortcut internal/live's own api_test.go takes for a
+// membership row an accepted invitation would otherwise leave. The link
+// itself mirrors what internal/identity's linking callback would have
+// written after a proven GitHub OAuth round trip (ADR-0034); these tests
+// exercise the worker side of that link, not the callback.
 func registerInstallation(t *testing.T, h *pivottest.Harness, orgID string, installationID int64, fullNames ...string) {
 	t.Helper()
 	repos, e := json.Marshal(fullNames)
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e := h.Pool.Exec(context.Background(), `INSERT INTO gfm.github_installations
- (org_id,installation_id,account,repositories) VALUES($1::uuid,$2,'acme',$3::jsonb)`,
-		orgID, installationID, string(repos)); e != nil {
+	ctx := context.Background()
+	if _, e := h.Pool.Exec(ctx, `INSERT INTO gfm.github_installations
+ (installation_id,account,repositories) VALUES($1,'acme',$2::jsonb)
+ ON CONFLICT (installation_id) DO UPDATE SET account=excluded.account,repositories=excluded.repositories`,
+		installationID, string(repos)); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := h.Pool.Exec(ctx, `INSERT INTO gfm.github_installation_links(installation_id,org_id)
+ VALUES($1,$2::uuid) ON CONFLICT (installation_id) DO UPDATE SET org_id=excluded.org_id`,
+		installationID, orgID); e != nil {
 		t.Fatal(e)
 	}
 }

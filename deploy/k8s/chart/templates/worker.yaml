@@ -52,12 +52,19 @@ spec:
             {{- if .Values.secretKeyringSecretName }}
             - {name: GUIDEFOLD_SECRET_KEY_FILE, value: /run/keyring/keyring}
             {{- end }}
+            {{- if and .Values.github.appId .Values.github.privateKeySecretName }}
+            - {name: GITHUB_APP_ID, value: {{ .Values.github.appId | quote }}}
+            - {name: GITHUB_APP_PRIVATE_KEY_FILE, value: /run/github-app/private-key}
+            {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           volumeMounts:
             - {name: credentials, mountPath: /run/credentials, readOnly: true}
             {{- if .Values.secretKeyringSecretName }}
             - {name: keyring, mountPath: /run/keyring, readOnly: true}
+            {{- end }}
+            {{- if and .Values.github.appId .Values.github.privateKeySecretName }}
+            - {name: github-app, mountPath: /run/github-app, readOnly: true}
             {{- end }}
             - {name: work, mountPath: /work}
             {{- include "gf.tlsMount" . | nindent 12 }}
@@ -80,6 +87,18 @@ spec:
             defaultMode: 0440
             items:
               - {key: keyring, path: keyring}
+        {{- end }}
+        {{- if and .Values.github.appId .Values.github.privateKeySecretName }}
+        # ADR-0036: ascend.run signs an installation-token JWT with this key to call
+        # api.github.com. The webhook secret that verifies inbound deliveries is a
+        # separate Secret mounted by the API only (templates/api.yaml) — this key acts
+        # on every repository the App is installed on and is at least as sensitive.
+        - name: github-app
+          secret:
+            secretName: {{ .Values.github.privateKeySecretName }}
+            defaultMode: 0440
+            items:
+              - {key: private-key, path: private-key}
         {{- end }}
         # sizeLimit has to stay inside the container's ephemeral-storage limit,
         # or the kubelet evicts the pod before the volume quota ever applies.

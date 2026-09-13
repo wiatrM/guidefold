@@ -59,6 +59,11 @@ spec:
             {{- if .Values.github.webhookSecretName }}
             - {name: GITHUB_WEBHOOK_SECRET_FILE, value: /run/github/webhook-secret}
             {{- end }}
+            {{- if and .Values.github.appSlug .Values.github.clientID .Values.github.clientSecretName }}
+            - {name: GITHUB_APP_SLUG, value: {{ .Values.github.appSlug | quote }}}
+            - {name: GITHUB_APP_CLIENT_ID, value: {{ .Values.github.clientID | quote }}}
+            - {name: GITHUB_APP_CLIENT_SECRET_FILE, value: /run/github-oauth/client-secret}
+            {{- end }}
             {{- if .Values.secretKeyringSecretName }}
             - {name: GUIDEFOLD_SECRET_KEY_FILE, value: /run/keyring/keyring}
             {{- end }}
@@ -88,6 +93,9 @@ spec:
             {{- if .Values.github.webhookSecretName }}
             - {name: github, mountPath: /run/github, readOnly: true}
             {{- end }}
+            {{- if and .Values.github.appSlug .Values.github.clientID .Values.github.clientSecretName }}
+            - {name: github-oauth, mountPath: /run/github-oauth, readOnly: true}
+            {{- end }}
             {{- if .Values.secretKeyringSecretName }}
             - {name: keyring, mountPath: /run/keyring, readOnly: true}
             {{- end }}
@@ -116,6 +124,19 @@ spec:
             defaultMode: 0440
             items:
               - {key: webhook-secret, path: webhook-secret}
+        {{- end }}
+        {{- if and .Values.github.appSlug .Values.github.clientID .Values.github.clientSecretName }}
+        # OAuth-during-installation client secret, exchanged by
+        # GET /api/v1/github/installations/callback for a user token used only
+        # to list that user's own installations and prove the install link.
+        # Distinct from the App's own private key (templates/worker.yaml),
+        # which signs installation-token JWTs and is at least as sensitive.
+        - name: github-oauth
+          secret:
+            secretName: {{ .Values.github.clientSecretName }}
+            defaultMode: 0440
+            items:
+              - {key: client-secret, path: client-secret}
         {{- end }}
         {{- if .Values.secretKeyringSecretName }}
         # ADR-0045: the deployment's AES-256 master keyring (internal/secrets.LoadKeyring's
