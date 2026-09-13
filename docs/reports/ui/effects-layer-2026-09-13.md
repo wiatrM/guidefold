@@ -120,10 +120,47 @@ every file in it; only that one structural requirement is exempt.
   (`pointer-events: none` on every purely decorative layer except `GlowSurface`'s own
   `onPointerMove`, which never calls `preventDefault`).
 
+## Dependency audit (added after coordinator review of PR #168)
+
+`@paper-design/shaders-react` is the only new dependency. It was installed with `pnpm add`
+before checking this repo's exact-pin convention; the resulting `^0.0.80` range in
+`package.json` was corrected to the exact installed version `0.0.80` (matching
+`"border-beam": "1.3.0"`'s style) and `pnpm install` re-run to reconcile the lockfile.
+
+```
+$ pnpm why @paper-design/shaders-react
+@paper-design/shaders-react@0.0.80
+└── guidefold-ui@0.0.0 (dependencies)
+Found 1 version of @paper-design/shaders-react
+
+$ pnpm why @paper-design/shaders
+@paper-design/shaders@0.0.80
+└─┬ @paper-design/shaders-react@0.0.80
+  └── guidefold-ui@0.0.0 (dependencies)
+Found 1 version of @paper-design/shaders
+
+$ pnpm why @radix-ui/react-slot
+(no output — not in the lockfile)
+
+$ pnpm why @radix-ui/react-dialog
+(no output — not in the lockfile)
+```
+
+No `@radix-ui/*` package exists in the lockfile at all (the console is Base UI, not Radix, per
+`CLAUDE.md`), and the two `@paper-design/*` packages are the only additions — no transitive
+surprise the way `cmdk` pulled a dozen Radix packages in the failed parallel branch. Every other
+effect reuses `motion`/`framer-motion` 13.2.0 (both already installed; new code imports from
+`motion/react` only, matching `app.tsx` and the pre-existing `number-ticker.tsx`) and
+`@phosphor-icons/react` 2.1.10 (already installed; `CheckCircleIcon`, `GitBranchIcon`,
+`GithubLogoIcon`, `CircleIcon` newly used in the gallery demo, each verified present in
+`node_modules/@phosphor-icons/react/dist/index.d.ts` before use).
+
 ## Bundle cost (task §4 and §8)
 
 `cd ui && node_modules/.bin/vite build`, before adding the effects kit and after wiring it into
-the gallery (the only current consumer — no route imports `ui/src/components/effects` yet):
+the gallery (the only current consumer — no route imports `ui/src/components/effects` yet), both
+measured against the same base commit (3f9f80f, this branch's origin/main starting point, before
+`origin/main` moved further with the organisation switcher and GitHub import fix):
 
 | | Before | After | Δ |
 |---|---|---|---|
@@ -139,7 +176,35 @@ own lazy chunk, never loaded by a signed-in console route) and the new icon chun
 chunk described above. The shell entry that every route actually loads, `app-*.js`, grew by
 **0.16 kB gzip** (49.68 kB → 49.75 kB) — negligible, because no route imports any effect yet.
 
+After merging `origin/main` (organisation switcher #166, GitHub import fix #167 — unrelated to
+this task, not attributable to the effects layer) the build still succeeds:
+`js=2056.31 kB (gzip 637.70 kB) css=316.94 kB (gzip 57.01 kB) total=2373.25 kB (gzip 694.71 kB)`.
+The ~2 kB gzip difference from the effects-only "after" row above is `app-*.js` picking up
+`OrgSwitcher` and its own domain module, not this change.
+
+## Visual baseline check after the merge (coordinator review of PR #168)
+
+PR #168 shifted an untouched `PyramidChart` baseline by 1 px through generated Tailwind CSS,
+discovered only because a reviewer diffed the manifest. The same check here: `pnpm test:visual`
+run against the pre-merge baseline first (fails closed on any drift), then compared record by
+record.
+
+Before regenerating anything, `node qa/compare-gallery.mjs` (no `--update`) against the baseline
+already committed pre-merge reported exactly **3 of 87** cases changed, all three
+`NumberTicker` (1280/820/390) — expected, because the gallery's own `NumberTicker` sample was
+edited in this same change (`suffix=" skills"` → `suffix={' skills'}`, a rendering fix: a
+plain leading space collapses in an inline `<span>`, a non-breaking space does not). **All 84
+other records — the pre-existing 15 components and the other 13 effects — matched their
+committed sha256 exactly**, including through the `origin/main` merge itself: no incidental
+Tailwind/CSS regeneration shifted anything this task did not touch.
+`git diff -- ui/qa/baseline/manifest.json` confirms the same: only the 3 `NumberTicker` sha256
+entries and the top-level `capturedAt` timestamp changed. The baseline was then regenerated
+(`--update`) and re-verified clean: `{"cases":87,"passed":true,"differences":[]}`.
+
 ## Proof
+
+Final run, after merging `origin/main` (9da8c55, organisation switcher + GitHub import fix) into
+this branch:
 
 - Gallery: `ui/src/Gallery.tsx` renders all fourteen effects at `/__components` (dev-only route),
   each in its own `[data-component=Name]` section, alongside the existing 15.
@@ -148,18 +213,31 @@ chunk described above. The shell entry that every route actually loads, `app-*.j
   `motion/react`'s own `useReducedMotion`, which caches its query result once per module load and
   is therefore untestable across cases in one file — `useMotionGate` re-reads `matchMedia` live,
   the same guard pattern `components/spectrumui/use-beam-motion.ts` already used).
-- `qa/check-contracts.mjs`: passed, 0 diagnostics, 56 CSS files, 476 declared tokens.
-- Full suite: `pnpm vitest run` — 63 test files, 631 tests, all passing (no regression in the
-  existing 49 files).
-- `tsc --noEmit`: clean.
-- `vite build`: succeeds; numbers above.
+  `pnpm test`: **65 test files, 664 tests, all passing** (63/631 before the merge; the two extra
+  files/33 extra tests are `origin/main`'s own `OrgSwitcher` work, not this change).
+- `pnpm run test:contracts`: passed, 0 diagnostics, 18 components (the merged union — main's new
+  `OrgSwitcher` plus this branch's `effects` registry-dir exemption), 57 CSS files, 476 declared
+  tokens, 64 production files traversed.
+- `pnpm run typecheck` (`tsc --noEmit`): clean.
+- `pnpm run build`: succeeds; numbers in §"Bundle cost" above.
+- `pnpm test:visual` (`qa/compare-gallery.mjs`, dev server via `GUIDEFOLD_DEV_UI_PORT`): 87/87
+  cases pass against the regenerated baseline; see §"Visual baseline check" for the 3-record diff
+  this change caused and the 84-record confirmation that the merge caused none.
+- Screenshots: `ui/qa/baseline/<Effect>-{1280,820,390}.png` for all fourteen effects (42 files)
+  plus the matching `ui/qa/gallery/<Effect>-*.png` actual captures; `ui/qa/pixel-diff.json` and
+  `ui/qa/contracts.json` are the machine-readable reports from the same two runs.
 
-Files changed: `ui/src/tokens/tokens.css`, `ui/src/registry.css` (unchanged — no new Tailwind
-theme entries were needed), `ui/src/components/effects/**` (new: 14 components ×
+Files changed: `ui/src/tokens/tokens.css`, `ui/src/components/effects/**` (new: 14 components ×
 `index.tsx`/`*.module.css`/`*.test.tsx`, plus `useMotionGate.ts`, `webgl.ts`, `webgl.test.ts`,
 `ShaderField/MeshGradientCanvas.tsx`, `index.ts` barrel), `ui/src/Gallery.tsx`,
-`ui/src/Gallery.module.css`, `ui/qa/check-contracts.mjs` (the `registryDirs` exemption),
-`ui/package.json`/`ui/pnpm-lock.yaml` (`@paper-design/shaders-react`),
+`ui/src/Gallery.module.css`, `ui/qa/check-contracts.mjs` (the `registryDirs` exemption, merged
+with main's `OrgSwitcher` addition to `expected`), `ui/qa/compare-gallery.mjs` (added the 14
+effect names to the captured `components` list; added a `GUIDEFOLD_DEV_UI_PORT` override so this
+script can target a dev server on a port other worktrees are not already holding),
+`ui/qa/baseline/**` (42 new effect screenshots, 3 `NumberTicker` screenshots updated, manifest
+regenerated), `ui/qa/gallery/**`, `ui/qa/contracts.json`, `ui/qa/pixel-diff.json`,
+`ui/package.json`/`ui/pnpm-lock.yaml` (`@paper-design/shaders-react`, pinned exact),
 `docs/adr/ADR-0049-premium-visual-effects-layer.md`, `docs/adr/README.md`, `docs/ui/UX.md`,
 `docs/ui/UI.md`, `.agents/skills/ui-anti-slop-gate/SKILL.md`,
-`docs/reports/ui/effects-layer-2026-09-13.md` (this file).
+`docs/reports/ui/effects-layer-2026-09-13.md` (this file). `ui/src/registry.css` was left
+unchanged — no new Tailwind theme entries were needed.

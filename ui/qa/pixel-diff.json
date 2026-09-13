@@ -1,7 +1,7 @@
 {
-  "date": "2026-09-13T17:11:05.211Z",
+  "date": "2026-09-13T17:16:47.797Z",
   "kind": "ui component gallery versus its accepted baseline (qa/baseline)",
-  "baselineCapturedAt": "2026-09-13T17:10:43.529Z",
+  "baselineCapturedAt": "2026-09-13T17:16:27.304Z",
   "records": [
     {
       "name": "ActionButton",
@@ -205,7 +205,7 @@
       "name": "NumberTicker",
       "width": 1280,
       "file": "NumberTicker-1280.png",
-      "sha256": "49acd252826d209efbc5e38b3b64a25f2f9f7db99ee806a15e0ec89505af8dad",
+      "sha256": "f87620dcc09c9321215cd27a878186b663681785db6f82b75866c258ef6a48f2",
       "changedPixels": 0,
       "totalPixels": 94672,
       "pass": true
@@ -466,7 +466,7 @@
       "name": "NumberTicker",
       "width": 820,
       "file": "NumberTicker-820.png",
-      "sha256": "fa5b5a9c64023ca6b568433ed93b92f1dd42ba51bd9e9227bbc6af6004913ecd",
+      "sha256": "8208c2ea48ea63fe9caff03544ff6e0b8bf8ee8d855202275956dc14af6b6e68",
       "changedPixels": 0,
       "totalPixels": 74884,
       "pass": true
@@ -727,7 +727,7 @@
       "name": "NumberTicker",
       "width": 390,
       "file": "NumberTicker-390.png",
-      "sha256": "bb089ba43a2ee3b8e9546bf76bcf8cdc757641f7f78363e3d61adf465423e7bc",
+      "sha256": "66ce2356ead10914f072398b16a07356f893847fa75793aec04091b128b1a651",
       "changedPixels": 0,
       "totalPixels": 34726,
       "pass": true
