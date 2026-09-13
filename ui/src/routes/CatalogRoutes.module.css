@@ -35,3 +35,10 @@
 .detailsRow td{background:var(--graphite-850);color:var(--stone-300);}
 /* ADR-0047: at organisation scope a library row names the repository it comes from, under its scope. */
 .repoTag { display: block; font-size: var(--font-size-small); color: var(--stone-300); overflow-wrap: anywhere; }
+/* Effects layer (ADR-0049): an empty result sits over a drifting grid; the state card stays opaque. */
+.emptyField { position: relative; isolation: isolate; overflow: hidden; padding: var(--space-3); border-radius: var(--radius-panel); }
+.emptyContent { position: relative; z-index: 1; }
+/* A GlowAction wrapper is inline-flex; as a grid item it must be allowed to shrink, or at 390 px its
+   min-content width widens the search row past the viewport. */
+.glowFit { justify-self: start; min-width: var(--zero); max-width: var(--full); }
+.glowFill { min-width: var(--zero); }

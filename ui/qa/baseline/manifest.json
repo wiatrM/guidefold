@@ -1,12 +1,12 @@
 {
-  "capturedAt": "2026-09-13T17:41:11.391Z",
+  "capturedAt": "2026-09-13T18:50:58.898Z",
   "purpose": "Accepted capture of the ui component gallery (/__components, sample values from src/sample.ts). Regenerate only to accept a reviewed visual change.",
   "records": [
     {
       "name": "ActionButton",
       "width": 1280,
       "file": "ActionButton-1280.png",
-      "sha256": "ed4900be3860342a71e7c5aafe3a63f4855a17dbe74a33886897054633e0643e"
+      "sha256": "6152e5fed794eed8224cab06f1374705613ef4f3e096f3e9fe559899250dddcc"
     },
     {
       "name": "BrandMark",
@@ -120,7 +120,7 @@
       "name": "GlowAction",
       "width": 1280,
       "file": "GlowAction-1280.png",
-      "sha256": "dddaec600822b7d08513fd8dab1f9265fd4824fbc9165d9bd829e0f39d765261"
+      "sha256": "72db3f99fb7ea7ca0931f6b379d4cec13658bbb80251792844c3e4d3e50e4e39"
     },
     {
       "name": "ShaderField",
@@ -180,7 +180,7 @@
       "name": "ActionButton",
       "width": 820,
       "file": "ActionButton-820.png",
-      "sha256": "8acfa684f76cacaf62d1925b3c56330ec2b03dd3d9e5395c06946d5090ece8b9"
+      "sha256": "9189b09957f49b8883d584e895598d5c4ee8858929118c159a3258d7afee8294"
     },
     {
       "name": "BrandMark",
@@ -294,7 +294,7 @@
       "name": "GlowAction",
       "width": 820,
       "file": "GlowAction-820.png",
-      "sha256": "2a38087963f400417e5d5c762bb3319d858b7248715cf203cb3f9d41b1392169"
+      "sha256": "44c8d1789668ab30634ddc56f4cee25c7df54db02b672fcc2dee69f8509787ce"
     },
     {
       "name": "ShaderField",
@@ -354,7 +354,7 @@
       "name": "ActionButton",
       "width": 390,
       "file": "ActionButton-390.png",
-      "sha256": "c3b3163179b64a6ea14b0f4ae4d7a9b8688ef57c7e6ea6bcf0e08e37f7799590"
+      "sha256": "268673ceaa60f4620fe3029c6e3f44c96650ca55ba4c113f869e182115b6952d"
     },
     {
       "name": "BrandMark",
@@ -468,7 +468,7 @@
       "name": "GlowAction",
       "width": 390,
       "file": "GlowAction-390.png",
-      "sha256": "b126435a5b2cf5c2ea82ed7da87abb588d0285dd38155d197c0d4ec80dc0abff"
+      "sha256": "7cc4b84ad8d1e00c9245da4490e5bd6b9d9077c7878185e7ffd1f49a45fc49e9"
     },
     {
       "name": "ShaderField",

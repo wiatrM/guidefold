@@ -22,9 +22,7 @@
 .topbar code{padding-left:var(--space-2);border-left:var(--border-width) solid var(--line-strong);color:var(--stone-100);}
 .main{width:var(--full);max-width:var(--content-max-width);padding:var(--page-padding);min-width:var(--zero);}
 .pageHeading{position:relative;display:grid;grid-template-columns:var(--page-header-columns);align-items:start;gap:var(--space-3) var(--space-4);margin-bottom:var(--space-4);padding-bottom:var(--space-4);border-bottom:var(--border-width) solid var(--line);overflow:hidden;}
-.pageHeading::after{content:"";position:absolute;left:var(--zero);bottom:var(--zero);width:var(--shine-width);height:var(--border-width);background:var(--shine-gradient);transform:translateX(var(--shine-start));animation:routeShine var(--duration-shine) var(--ease-out) both;}
-@keyframes routeShine{from{transform:translateX(var(--shine-start));}to{transform:translateX(var(--shine-travel));}}
-.pageTile{margin-top:var(--space-1);}
+.pageTile{margin-top:var(--space-1);justify-self:start;align-self:start;}
 .pageText{min-width:var(--zero);}
 .pageActions{display:flex;align-items:center;gap:var(--space-2);justify-self:end;}
 .breadcrumb{margin-bottom:var(--space-2);}
@@ -36,4 +34,3 @@
 .notice p{margin:var(--zero);}
 .memberNotice{padding:var(--space-3);background:var(--graphite-850);border:var(--border-width) solid var(--line-strong);color:var(--stone-300);}
 .pageFoot{margin-top:var(--space-6);padding-top:var(--space-3);border-top:var(--border-width) solid var(--line);color:var(--stone-300);font-size:var(--font-size-small);max-width:var(--reading-width);}
-@media(prefers-reduced-motion:reduce){.pageHeading::after{animation:none;}}

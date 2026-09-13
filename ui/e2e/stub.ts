@@ -99,10 +99,10 @@ const facetValues = (field: string) => counted(
  *  describe an organisation's data, not its session. */
 export interface StubCredential { name: string; last4: string; model: string; preferred: boolean; created_at: string; created_by: string }
 export interface StubLiveRun {
-  run_id: string; state: string; prompt: string; provider: string; model: string;
+  run_id: string; state: string; provider: string; model: string;
   created_by: string; created_at: string; started_at: string | null; finished_at: string | null;
   counts: { targets: number; done: number; failed: number; skipped: number };
-  summary: { skills_indexed: number; proposals_created: number } | null;
+  summary: { skills_indexed: number; proposals_created: number };
   cost: { tokens_in: number; tokens_out: number; usd: number; usd_estimated: boolean };
   error: string | null;
 }
@@ -111,6 +111,18 @@ interface StubGitHubInstallation {
   repositories: { full_name: string; repo_id: string | null }[];
   suspended: boolean; created_at: string | null; updated_at: string | null;
 }
+
+/** The event log of a finished stub run, in the shape of contract §5.5a. Exported so a spec can
+ * serve it one event at a time to exercise a run that is still in progress. */
+export const liveEvents = (run: StubLiveRun) => [
+  { seq: 1, at: run.started_at, repo_id: null, type: 'run.started', payload: { text: 'Run started for 1 connected repository.' } },
+  { seq: 2, at: run.started_at, repo_id: repoId, type: 'repo.started', payload: { text: 'Reading ' + repoId + ' through the GitHub App.' } },
+  { seq: 3, at: run.started_at, repo_id: repoId, type: 'repo.fetched', payload: { files: 27, text: 'Fetched 27 files from ' + repoId + '.' } },
+  { seq: 4, at: run.started_at, repo_id: repoId, type: 'repo.parsed', payload: { skills: run.summary.skills_indexed, import_id: 'im-live-1', text: 'Indexed ' + run.summary.skills_indexed + ' skills from ' + repoId + '.' } },
+  { seq: 5, at: run.finished_at, repo_id: repoId, type: 'repo.proposed', payload: { proposals: run.summary.proposals_created, text: 'Created ' + run.summary.proposals_created + ' consolidation proposals for ' + repoId + '.' } },
+  { seq: 6, at: run.finished_at, repo_id: repoId, type: 'repo.finished', payload: { text: 'Finished ' + repoId + '.' } },
+  { seq: 7, at: run.finished_at, repo_id: null, type: 'run.finished', payload: { counts: run.counts, summary: run.summary, text: 'Run finished: ' + run.summary.skills_indexed + ' skills indexed, ' + run.summary.proposals_created + ' proposals waiting in review.' } },
+];
 
 export interface StubState {
   proposalState: string; publicationCalls: number; queueDecided: boolean; linkSuggested: boolean; generated: boolean; meCalls: number; signedOut: boolean;
@@ -364,14 +376,15 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
     const liveBase = '/orgs/' + org.slug + '/live/runs';
     if (at === liveBase && method === 'GET') return json({ items: state.liveRuns, next_cursor: null });
     if (at === liveBase && method === 'POST') {
-      const body = route.request().postDataJSON() as { prompt: string; provider?: string; model?: string; repos?: string[] };
-      if (!body.prompt || !body.prompt.trim()) return failure(400, 'invalid_prompt', 'The prompt is empty.');
-      const provider = body.provider ?? 'openrouter';
-      if (!state.credentials[provider as 'openrouter' | 'anthropic' | 'openai']) return failure(409, 'model_credential_missing', 'No stored key for this provider.');
+      // Contract §4.9 (1.6.0): the start request is `{}`. Provider and model are copied from the
+      // organisation's preferred key; `LiveRun` has no `prompt` and always carries `summary`.
+      const preferred = (Object.entries(state.credentials) as [string, StubCredential | undefined][]).find(([, credential]) => credential?.preferred);
+      if (!preferred || !preferred[1]) return failure(409, 'model_credential_missing', 'This organization has no stored model key.');
       const created: StubLiveRun = {
-        run_id: 'lr-' + (state.liveRuns.length + 1), state: 'succeeded', prompt: body.prompt, provider, model: body.model || 'gpt-x',
+        run_id: 'lr-' + (state.liveRuns.length + 1), state: 'succeeded', provider: preferred[0], model: preferred[1].model,
         created_by: 'u-1', created_at: '2026-09-12T00:05:00Z', started_at: '2026-09-12T00:05:01Z', finished_at: '2026-09-12T00:05:12Z',
-        counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, cost: { tokens_in: 400, tokens_out: 120, usd: 0.003, usd_estimated: false }, error: null,
+        counts: { targets: 1, done: 1, failed: 0, skipped: 0 }, summary: { skills_indexed: 12, proposals_created: 3 },
+        cost: { tokens_in: 400, tokens_out: 120, usd: 0.003, usd_estimated: false }, error: null,
       };
       state.liveRuns.unshift(created);
       return json(created, 202);
@@ -382,21 +395,18 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
       const run = state.liveRuns.find(item => item.run_id === runId);
       if (!run) return failure(404, 'live_run_not_found', 'No such run.');
       if (action === 'events') return json({
-        items: [
-          { seq: 1, at: run.started_at, repo_id: null, type: 'run.started', payload: {} },
-          { seq: 2, at: run.started_at, repo_id: repoId, type: 'repo.started', payload: {} },
-          { seq: 3, at: run.started_at, repo_id: repoId, type: 'model.delta', payload: { text: 'Reading SKILL.md files under ' + repoId + '.' } },
-          { seq: 4, at: run.finished_at, repo_id: repoId, type: 'repo.finished', payload: {} },
-          { seq: 5, at: run.finished_at, repo_id: null, type: 'run.finished', payload: {} },
-        ].filter(item => item.seq > Number(url.searchParams.get('after') ?? 0)),
-        next_after: 5, done: true,
+        // Contract §5.5a `LiveRunEvent`: `type` is one of the listed values (no `model.delta`) and
+        // every event carries `payload.text`, the sentence the console prints verbatim.
+        items: liveEvents(run).filter(item => item.seq > Number(url.searchParams.get('after') ?? 0)),
+        next_after: liveEvents(run).length, done: true,
       });
       if (action === 'cancel' && method === 'POST') {
         if (run.state !== 'queued' && run.state !== 'running') return failure(409, 'live_run_not_cancellable', 'This run already finished.');
         run.state = 'cancelled';
         return json(run);
       }
-      if (!action) return json({ run, targets: [{ repo_id: repoId, state: run.state === 'cancelled' ? 'failed' : 'done', job_id: 'j-live-1', findings: 1, error: null, started_at: run.started_at, finished_at: run.finished_at }] });
+      // Contract §5.5a `LiveRunTarget`: `phase`, `skills` and `proposals` are required; `findings` is not a field.
+      if (!action) return json({ run, targets: [{ repo_id: repoId, state: run.state === 'cancelled' ? 'failed' : 'done', job_id: 'j-live-1', phase: run.state === 'cancelled' ? 'fetch' : 'done', skills: run.summary.skills_indexed, proposals: run.summary.proposals_created, error: null, started_at: run.started_at, finished_at: run.finished_at }] });
     }
 
     if (at === repoBase + '/imports') return json({ items: scenario === 'empty' ? [] : [{ import_id: 'im-1', state: scenario === 'partial' ? 'partial' : 'ready', commit, created_at: '2026-09-06T09:00:00Z' }], next_cursor: null });
@@ -462,7 +472,9 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
         const leaf = cut === -1;
         children.set(name, leaf
           ? { name, path: item.path, kind: 'skill', skill_id: item.id, count: null }
-          : { name, path: prefix + name, kind: 'directory', skill_id: null, count: (children.get(name)?.count ?? 0) + 1 });
+          // Contract §5 `MapChild.kind` is `dir|skill|document|repository`; the stub used to send
+          // `directory`, which the decoder correctly refused, so the tree never rendered here.
+          : { name, path: prefix + name, kind: 'dir', skill_id: null, count: (children.get(name)?.count ?? 0) + 1 });
       }
       return json({ path: url.searchParams.get('path') ?? '', children: [...children.values()], next_cursor: null });
     }

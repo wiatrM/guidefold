@@ -14,6 +14,7 @@ import {loginHref,safeReturn} from './routes/loginTarget';
 import {useAsync} from './routes/apiState';
 import {RepositoryFilter} from './components/RepositoryFilter';
 import {OrgSwitcher} from './components/OrgSwitcher';
+import {HeaderGlow} from './components/effects';
 import {resolveOrg,readOrgMemory,writeOrgMemory,orgSwitcherLinks} from './domain/orgSwitch';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
@@ -70,7 +71,9 @@ function PageHeader({view,group,actions}:{view:View;group:string;actions?:ReactN
  const Icon=viewInfo[view].icon;
  const rise=(delay:number)=>({initial:reduce?false:{opacity:0,transform:'translateY(6px)'},animate:{opacity:1,transform:'translateY(0)'},transition:{duration:reduce?0:0.28,delay:reduce?0:delay,ease:[0.16,1,0.3,1] as const}});
  return <header key={view} className={css.pageHeading} data-slot="page-header">
-  <IconTile icon={<Icon weight="duotone"/>} size="lg" className={css.pageTile}/>
+  {/* ADR-0049: the halo and its one sweep on mount are the header's only decorative motion; the
+      former `.pageHeading::after` rule sweep was removed so one header never runs two sweeps. */}
+  <HeaderGlow tone={view==='live'?'human':'system'} className={css.pageTile}><IconTile icon={<Icon weight="duotone"/>} size="lg"/></HeaderGlow>
   <div className={css.pageText}>
    <Breadcrumb className={css.breadcrumb}><BreadcrumbList className="m-0 list-none gap-1 p-0 text-[length:var(--font-size-small)] text-stone-300"><BreadcrumbItem>{group}</BreadcrumbItem><BreadcrumbSeparator><CaretRightIcon aria-hidden="true"/></BreadcrumbSeparator><BreadcrumbItem><BreadcrumbPage className="font-medium text-stone-100">{viewInfo[view].label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
    <motion.h1 data-slot="animated-text" {...rise(0.04)}>{viewInfo[view].title}</motion.h1>

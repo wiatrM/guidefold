@@ -100,3 +100,7 @@
 .funnelCell { font-variant-numeric: tabular-nums; }
 .funnelCell span { white-space: nowrap; }
 .why { margin: var(--zero); padding-left: var(--space-3); font-size: var(--font-size-small); color: var(--stone-300); }
+
+/* Effects layer (ADR-0049): an empty queue or report sits over a drifting grid; the state card stays opaque. */
+.emptyField { position: relative; isolation: isolate; overflow: hidden; padding: var(--space-3); border-radius: var(--radius-panel); }
+.emptyContent { position: relative; z-index: 1; }

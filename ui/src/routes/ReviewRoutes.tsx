@@ -8,6 +8,8 @@ import {Button} from '@/components/ui/button';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from '@/components/ui/collapsible';
 import {cn} from '@/lib/utils';
+import {Pagination, PaginationContent, PaginationItem} from '@/components/ui/pagination';
+import {GlowAction, GridField} from '../components/effects';
 import {SpectrumTelemetryChart, SpectrumTelemetryStackedBar} from '../components/MetricRow/SpectrumTelemetryChart';
 import {assessSkills, countRecommendations, queueReasonLabels, sortKeys, type Gate, type GateState, type Recommendation, type SkillHealth, type SortKey} from '../domain/skillHealth';
 import {isStale} from '../api/client';
@@ -197,10 +199,11 @@ function ProposalQueue({ctx}: ApiProps) {
             <td>{item.decision ? unknown(item.decision.actor) : 'Undecided'}</td>
           </tr>)}
         </DataTable>
-        {value.next_cursor && <div className={styles.actions}><ActionButton onClick={() => ctx.go('proposals', {cursor: value.next_cursor})}>Next page</ActionButton></div>}
-      </> : <RouteState state="empty" title="No proposals to review"
+        {/* shadcn `pagination` over the cursor list: Next only, no invented page numbers. */}
+        {value.next_cursor && <div className={styles.actions}><Pagination aria-label="Proposal pages" className="mx-0 w-auto justify-start"><PaginationContent className="m-0 list-none p-0"><PaginationItem><ActionButton onClick={() => ctx.go('proposals', {cursor: value.next_cursor})}>Next page</ActionButton></PaginationItem></PaginationContent></Pagination></div>}
+      </> : <div className={styles.emptyField}><GridField /><div className={styles.emptyContent}><RouteState state="empty" title="No proposals to review"
         description="No candidate matches these filters. An absence of candidates is a valid result; the imported sources stay readable."
-        action={<ActionButton href={ctx.href('library', {})} tone="system">Browse sources</ActionButton>} />)}
+        action={<ActionButton href={ctx.href('library', {})} tone="system">Browse sources</ActionButton>} /></div></div>)}
     </Panel>
     {selectedOnPage.length > 0 && <BatchReviewPanel ctx={ctx} proposalIds={selectedOnPage.map(item => item.proposal_id)} onClear={() => setSelected([])} />}
   </>;
@@ -588,7 +591,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
             <Field id="decision-reason" label="Reason for this decision" hint="Stored with the decision and shown in the audit log." error={error || undefined}>
               <Textarea id="decision-reason" name="reason" className={cn(textareaClass, styles.reason)} value={reason} onChange={event => {setReason(event.target.value); setError('');}} disabled={blocked} required aria-invalid={Boolean(error)} />
             </Field>
-            <div className={styles.actions}><ActionButton tone="human" type="submit" disabled={blocked}>{busy ? 'Saving decision…' : 'Save decision'}</ActionButton></div>
+            <div className={styles.actions}><GlowAction><ActionButton tone="human" type="submit" disabled={blocked}>{busy ? 'Saving decision…' : 'Save decision'}</ActionButton></GlowAction></div>
           </form> : <p className={styles.muted}>This proposal is no longer a draft, so no new decision can be recorded on it.</p>}
           <p className={styles.status} role="status">{status}</p>
         </div>
@@ -1043,7 +1046,7 @@ export function ApiUsageRoute({ctx}: ApiProps) {
     {degraded && <DegradedNotice>Membership could not be reconfirmed. This is the last report read in this session and no owner decision can be recorded.</DegradedNotice>}
     {value.coverage && value.coverage.dropped_reported > 0 && <PartialNotice>{'Adapters reported ' + value.coverage.dropped_reported + ' dropped events in this window. Every count below is a lower bound.'}</PartialNotice>}
     {/* One page, one main state: with nothing in the ledger the reader sees why and where the data comes from, once. Every other empty section below folds or shrinks to a line. */}
-    {noObservations && <RouteState state="empty" title="No telemetry for this window" description="No adapter event and no assessment reached the ledger for this window and these filters. Usefulness is Unknown, not zero." action={<ActionButton href={ctx.href('organization', {tab: 'integrations'})} tone="system">Set up an adapter</ActionButton>} />}
+    {noObservations && <div className={styles.emptyField}><GridField /><div className={styles.emptyContent}><RouteState state="empty" title="No telemetry for this window" description="No adapter event and no assessment reached the ledger for this window and these filters. Usefulness is Unknown, not zero." action={<GlowAction tone="system"><ActionButton href={ctx.href('organization', {tab: 'integrations'})} tone="system">Set up an adapter</ActionButton></GlowAction>} /></div></div>}
     <ScorecardPanel metrics={metrics} />
     {value.queue.length ? <Panel id="needs-review" title="Needs review" icon={<ListChecksIcon aria-hidden="true" />} action={<StateBadge tone={open.length ? 'warning' : 'neutral'}>{open.length} open</StateBadge>}>
       <DataTable flush caption="Skills that need an owner decision" headings={['Skill and revision', 'Reason', 'Since', 'Evidence', 'Owner decision']}>

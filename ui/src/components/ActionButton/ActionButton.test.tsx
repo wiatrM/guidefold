@@ -48,6 +48,13 @@ describe('ActionButton',()=>{
   await user.tab();
   expect(screen.getByRole('button',{name:'Next action'})).toHaveFocus();
  });
+ it('lays a link out as a button box, so its height and padding apply',()=>{
+  // Regression: the link branch skips shadcn `Button`, and without these classes the anchor stayed
+  // `display:inline`, rendering "Review proposals" as a thin highlighted link.
+  render(<MemoryRouter><ActionButton href="/proposals" tone="human">Review proposals</ActionButton></MemoryRouter>);
+  const link=screen.getByRole('link',{name:'Review proposals'});
+  expect(link).toHaveClass('inline-flex','items-center','justify-center','min-h-(--control-height)','px-3');
+ });
  it('opens external source links safely and cancels disabled default navigation',()=>{
   const {rerender}=render(<ActionButton href="https://github.com/wiatrM/guidefold">Open source</ActionButton>);
   const link=screen.getByRole('link',{name:'Open source'});

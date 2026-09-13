@@ -18,7 +18,8 @@
 import {lazy, Suspense, useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {BookOpenIcon, ListChecksIcon as LucideListChecksIcon, ThumbsUpIcon as LucideThumbsUpIcon} from 'lucide-react';
-import {ArrowRightIcon, BooksIcon, ChartBarIcon, ClockCounterClockwiseIcon, GitPullRequestIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, StarIcon, StackIcon, ThumbsUpIcon, UploadSimpleIcon, UserCircleIcon, WarningCircleIcon} from '@phosphor-icons/react';
+import {BorderBeam, GlowAction, GridField, Marquee, NumberTicker, ShimmerSkeleton} from '../components/effects';
+import {ArrowRightIcon, BooksIcon, ChartBarIcon, ClockCounterClockwiseIcon, GitBranchIcon, GitPullRequestIcon, LinkSimpleIcon, ListChecksIcon, PlugsConnectedIcon, PulseIcon, StarIcon, StackIcon, ThumbsUpIcon, UploadSimpleIcon, UserCircleIcon, WarningCircleIcon} from '@phosphor-icons/react';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Progress} from '@/components/ui/progress';
@@ -71,7 +72,7 @@ function actionHref(ctx: ApiProps['ctx'], kind: ActionKind): string {
   }
 }
 
-function ChartFallback() { return <div className={styles.chartFallback} aria-busy="true"><span className="sr-only">Loading chart</span></div>; }
+function ChartFallback() { return <div className={styles.chartFallback} aria-busy="true"><ShimmerSkeleton lines={4} /><span className="sr-only">Loading chart</span></div>; }
 
 /** `domain/overview.delta`/`helpedShareDelta` stay UI-agnostic; this is the one place that turns
  * a verdict into the `Badge` tone the trend widget understands. `known: false` (no previous
@@ -124,7 +125,8 @@ function Kpis({ctx, usage, skills, windowLabel}: ApiProps & {usage: Usage | null
   return <section aria-label="Key numbers" className={styles.kpis}>
     <div className={styles.kpiGrid}>
       {/* ADR-0047: no repository chosen means every repository this reader may see, and the title says so. */}
-      <div className={styles.kpiMain}><StatisticsMain title={ctx.org ? (ctx.repo ? ctx.org + ' / ' + ctx.repo : ctx.org + ' · all repositories') : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></div>
+      {/* ADR-0049: the one hero card of the Overview carries the beam; the numbers inside stay plain text. */}
+      <div className={styles.kpiMain}><BorderBeam className={styles.beam}><StatisticsMain title={ctx.org ? (ctx.repo ? ctx.org + ' / ' + ctx.repo : ctx.org + ' · all repositories') : 'This workspace'} description="Published skills and delivery in the chosen window" metrics={mainMetrics} /></BorderBeam></div>
       <StatisticsSecondary title="Helped share" value={share ? share.label : 'Unknown'} caption={share ? share.caption : 'No helped or hindered assessment in this window; that is not 0%.'} icon={LucideThumbsUpIcon} tone="system" trend={toTrend(helpedTrend)} />
       <StatisticsSecondary title="Needs review" value={open === null ? 'Unknown' : formatNumber(open)} caption={open === null ? 'The queue could not be read.' : open === 0 ? 'No open owner decision' : (open === 1 ? 'Open owner decision' : 'Open owner decisions')} icon={LucideListChecksIcon} tone={open ? 'warning' : 'neutral'} trend={openTrend} />
     </div>
@@ -172,7 +174,7 @@ function TopSkillsPanel({ctx, usage}: ApiProps & {usage: Usage}) {
     <CardContent className="px-0">
       {top.total ? <>
         <ul className={styles.recommendations} aria-label="Recommendations over every observed skill">
-          {(Object.keys(recommendationLabels) as Recommendation[]).map(key => <li key={key}><GateBadge label={recommendationLabels[key]} tone={recommendationTone[key]} /><strong>{formatNumber(counts[key])}</strong></li>)}
+          {(Object.keys(recommendationLabels) as Recommendation[]).map(key => <li key={key}><GateBadge label={recommendationLabels[key]} tone={recommendationTone[key]} /><strong><NumberTicker value={counts[key]} locale /></strong></li>)}
         </ul>
         <SkillsTable label="Top skills with their four gates" rows={rows} />
         <p className={styles.muted + ' px-6'}>A recommendation is computed in this browser from the counts in the row; it changes nothing. Load counts alone never promote a skill.</p>
@@ -198,11 +200,17 @@ function Library({ctx, skills, layers, largest, duplicates}: ApiProps & {skills:
     </CardHeader>
     <CardContent className="flex flex-col gap-4 px-6">
       {breakdown && <ul className={styles.splits} aria-label="Skills by publication state">
-        <li><Link to={ctx.href('library', {status: 'published'})}><StateBadge tone="system">Published</StateBadge><strong>{formatNumber(breakdown.published)}</strong></Link></li>
-        <li><Link to={ctx.href('library', {status: 'draft'})}><StateBadge tone="human">Draft</StateBadge><strong>{formatNumber(breakdown.draft)}</strong></Link></li>
-        <li><Link to={ctx.href('library', {status: 'needs_review'})}><StateBadge tone="warning">Needs review</StateBadge><strong>{formatNumber(breakdown.needsReview)}</strong></Link></li>
-        {breakdown.other > 0 && <li><StateBadge>Other states</StateBadge><strong>{formatNumber(breakdown.other)}</strong></li>}
+        <li><Link to={ctx.href('library', {status: 'published'})}><StateBadge tone="system">Published</StateBadge><strong><NumberTicker value={breakdown.published} locale /></strong></Link></li>
+        <li><Link to={ctx.href('library', {status: 'draft'})}><StateBadge tone="human">Draft</StateBadge><strong><NumberTicker value={breakdown.draft} locale /></strong></Link></li>
+        <li><Link to={ctx.href('library', {status: 'needs_review'})}><StateBadge tone="warning">Needs review</StateBadge><strong><NumberTicker value={breakdown.needsReview} locale /></strong></Link></li>
+        {breakdown.other > 0 && <li><StateBadge>Other states</StateBadge><strong><NumberTicker value={breakdown.other} locale /></strong></li>}
       </ul>}
+      {/* Organisation scope only: the repositories the `repo` facet already returned, as a moving
+          strip. Plain text, not links: the scrolling copy is aria-hidden, and a focusable link inside
+          it would be a hidden tab stop. Each repository is linked in "Largest repositories" below. */}
+      {byRepository && largestRows.length > 1 && <Marquee ariaLabel="Repositories with skills" className={styles.repoStrip}>
+        {largestRows.map(row => <span key={row.value} className={styles.repoChip}><GitBranchIcon aria-hidden="true" /><code>{row.value}</code><strong>{formatNumber(row.count)}</strong></span>)}
+      </Marquee>}
       {/* Contract 1.12.0: organisation scope only, and only the first page's count; `+` says more pages exist. */}
       {!ctx.repo && duplicates && duplicates.items.length > 0 && <p className={styles.muted}><Link to={ctx.href('library', {duplicates: '1'})}>{formatNumber(duplicates.items.length) + (duplicates.next_cursor ? '+' : '') + (duplicates.items.length === 1 && !duplicates.next_cursor ? ' skill name appears' : ' skill names appear') + ' in more than one repository'}</Link></p>}
       <div className={styles.twoUp}>
@@ -331,7 +339,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
   // Contract 1.12.0: duplicates across repositories only mean something at organisation scope.
   const duplicates = useAsync(() => source.listDuplicates(org!, {}), 'home:duplicates:' + org, Boolean(org) && !repo);
 
-  if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization. Start with the import wizard." action={<ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton>} />;
+  if (!org) return <RouteState state="empty" title="Choose an organization" description="An overview needs an organization. Start with the import wizard." action={<GlowAction><ActionButton tone="human" href={ctx.href('import', {step: 'organization'})}>Open Import</ActionButton></GlowAction>} />;
 
   const reads = [usage, skills, layers, largest, proposals, imports, importDetail, installations, ...(repo ? [] : [duplicates])];
   // The usage report is the spine of the page: the window, the coverage chip, two of the four
@@ -380,7 +388,7 @@ export function ApiHomeRoute({ctx}: ApiProps) {
     {decisions.count > 0 && <YourDecisionsPanel ctx={ctx} decisions={decisions} />}
 
     {usageValue && observed ? <div className={styles.twoUp}><Funnel usage={usageValue} /><Feedback usage={usageValue} /></div>
-    : <div className="px-1"><EmptyStateBlock icon={<BookOpenIcon aria-hidden="true" />} title={'No telemetry in the last ' + windowLabel} description="No adapter event and no assessment reached the ledger. Usefulness is Unknown, not zero." action={{label: 'Set up an adapter', href: ctx.href('organization', {tab: 'integrations'}), tone: 'system'}} /></div>}
+    : <div className={styles.emptyField}><GridField /><div className={styles.emptyContent}><EmptyStateBlock icon={<BookOpenIcon aria-hidden="true" />} title={'No telemetry in the last ' + windowLabel} description="No adapter event and no assessment reached the ledger. Usefulness is Unknown, not zero." action={{label: 'Set up an adapter', href: ctx.href('organization', {tab: 'integrations'}), tone: 'system'}} /></div></div>}
     {usageValue && observed && <TopSkillsPanel ctx={ctx} usage={usageValue} />}
 
     <Library ctx={ctx} skills={skillsValue} layers={layers.value ?? null} largest={largest.value ?? null} duplicates={duplicates.value ?? null} />

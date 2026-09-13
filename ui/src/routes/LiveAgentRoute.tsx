@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LightningIcon, ListChecksIcon, PlayIcon, TerminalIcon } from '@phosphor-icons/react';
 import { ActionButton, DataTable, IconTile, Panel, ProvenanceTrail, RouteState, StateBadge } from '../Shared';
+import { AnimatedList, BorderBeam, GlowAction, ShaderField, ShineBorder, SuccessBurst } from '../components/effects';
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, DegradedNotice, OwnerNote, PartialNotice, asApiError, shortId, unknown, useAsync, type ApiProps } from './apiState';
 import { formatDay } from './ReviewRoutes';
@@ -106,6 +107,9 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
     {run.state === 'partial' && <PartialNotice>{partialSummaryText(run.counts)}</PartialNotice>}
     {run.state === 'cancelled' && <PartialNotice>This run was cancelled before it finished. Repositories it had not yet reached were left untouched.</PartialNotice>}
     {run.state === 'failed' && <PartialNotice>{'This run failed' + (run.error ? ' (' + run.error + ')' : '') + '. Nothing further ran after the point of failure.'}</PartialNotice>}
+    {/* ADR-0049: the beam runs while the run is open and freezes once it finishes; the shine passes
+        once when `finished_at` arrives. The state itself is always the StateBadge label. */}
+    <ShineBorder trigger={run.finished_at ?? undefined} className={styles.beam}><BorderBeam active={!finished} className={styles.beam}>
     <Panel title={'Run ' + shortId(run.run_id)} eyebrow="Live Agent" icon={<LightningIcon weight="regular" aria-hidden="true" />}
       action={<>
         <StateBadge tone={runStateTone[run.state]}>{run.state}</StateBadge>
@@ -122,7 +126,9 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
         ...(run.error ? [{ label: 'Error', value: run.error }] : []),
       ]} />
       {cancelStatus && <p className={styles.feedback} role="status">{cancelStatus}</p>}
+      {run.state === 'succeeded' && <div className={styles.successRow}><SuccessBurst show label="Run succeeded" /></div>}
     </Panel>
+    </BorderBeam></ShineBorder>
     {finished && <Panel title="What this run left behind" eyebrow="Summary" tone="quiet" icon={<ListChecksIcon weight="regular" aria-hidden="true" />}>
       {run.summary.skills_indexed === 0 && run.summary.proposals_created === 0
         ? <p className={styles.help}>{unsuccessfulStates.includes(run.state)
@@ -161,7 +167,8 @@ function LiveRunPanel({ ctx, runId }: ApiProps & { runId: string }) {
           // Each event's `payload.text` is a server-composed, ready-to-print sentence (contract
           // §5.5a): printed verbatim, never reconstructed from `event.type` on the client, so a
           // second person reading the same run through the API sees the same words.
-          : <pre className={styles.transcript}>{events.map(event => <code key={event.seq} className={styles.transcriptLine}>{event.payload.text}</code>)}</pre>}
+          // ADR-0049: a new line rises into the log instead of appearing unannounced; the text is still verbatim.
+          : <div className={styles.transcript}><AnimatedList ariaLabel="Run events" items={events.map(event => ({ id: String(event.seq), content: <code className={styles.transcriptLine}>{event.payload.text}</code> }))} /></div>}
       </Panel>
     </div>
   </>;
@@ -223,9 +230,9 @@ export function ApiLiveAgentRoute({ ctx }: ApiProps) {
               <StateBadge tone="warning">No key</StateBadge>
               <p>This organization has no stored model key. <Link to={ctx.href('organization', { tab: 'keys' })}>Add one in Model keys</Link> before starting a run.</p>
             </div>
-            : <ActionButton tone="human" disabled={busy || credentials.phase === 'loading'} onClick={() => { void start(); }}>
+            : <div><GlowAction><ActionButton tone="human" disabled={busy || credentials.phase === 'loading'} onClick={() => { void start(); }}>
               <PlayIcon weight="regular" aria-hidden="true" />Start run
-            </ActionButton>}
+            </ActionButton></GlowAction></div>}
           {formError && <p className={styles.feedback} role="alert">{formError}</p>}
         </div>
       </div>
@@ -244,7 +251,7 @@ export function ApiLiveAgentRoute({ ctx }: ApiProps) {
             <td>{item.started_at ? formatDay(item.started_at) : 'Not started yet'}</td>
           </tr>)}
         </DataTable>
-        : <RouteState state="empty" title="No runs yet" description="A run started above appears here, with its per-repository result and event log kept for anyone who opens it later." />)}
+        : <div className={styles.emptyField}><div className={styles.shaderBackdrop}><ShaderField /></div><div className={styles.emptyContent}><RouteState state="empty" title="No runs yet" description="A run started above appears here, with its per-repository result and event log kept for anyone who opens it later." /></div></div>)}
     </Panel>
 
     {runId && <LiveRunPanel key={runId} ctx={ctx} runId={runId} />}
