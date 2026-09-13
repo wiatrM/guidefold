@@ -50,11 +50,23 @@ search:
 
 - Env overrides win over the yaml block: `GUIDEFOLD_SEARCH_BACKEND`, `GUIDEFOLD_SEARCH_URL`,
   `GUIDEFOLD_SEARCH_DEADLINE_MS`, `GUIDEFOLD_SEARCH_TOKEN_FILE`. The bearer token itself is read
-  from `GUIDEFOLD_TOKEN` (env, checked first) or `token_file` — **never** written into
-  `guidefold.yaml` directly, never logged, never spooled.
-- `hook` reads this config from the environment **only** — it never parses `guidefold.yaml`/
-  imports PyYAML (E1.5's hard constraint is unaffected by this feature). `find`/`load` read the
-  yaml block too, layered under the same env overrides.
+  from `GUIDEFOLD_TOKEN` (env, checked first), then `token_file`, then — last resort, since
+  2026-09-13 — the credentials file `guidefold login`'s device flow already writes
+  (`_credentials_path()`, the same file `org`/`org use` read; §1b below). Precedence is
+  explicit-override-first: `GUIDEFOLD_TOKEN` > `token_file`/`GUIDEFOLD_SEARCH_TOKEN_FILE` >
+  the stored login token. None of the three is ever written into `guidefold.yaml` directly,
+  logged, or spooled. When the login token is used, the request also carries
+  `X-Guidefold-Org`/`X-Guidefold-Repo` (API-CONTRACT §2/§3): a personal token from the device
+  flow is not bound to one org/repo the way an installation token is, so the server resolves
+  them from these headers instead — never sent for an env/token_file credential, since that is
+  typically an installation token already bound server-side, where a conflicting header is a
+  hard 403, not a no-op.
+- `hook` reads the search/backend **config** (`backend`, `url`, `deadline_ms`) from the
+  environment **only** — it never parses `guidefold.yaml`/imports PyYAML (E1.5's hard constraint
+  is unaffected by this feature). The bearer **credential** is a separate axis: `hook` still
+  falls back to the stored login token exactly like `find`/`load` do, because that fallback is
+  plain `json`+`Path.read_text` on `_credentials_path()`, not YAML and not `guidefold.yaml`.
+  `find`/`load` read the yaml block too, layered under the same env overrides.
 - Anything invalid — unknown `backend` value, `service` with no `url`, no token resolvable for a
   `service` backend, `deadline_ms` outside 1..5000 — degrades silently to `backend: local` and
   reports `degradation_reason: config` in telemetry; it never crashes `find`/`hook`/`load`.
@@ -319,13 +331,50 @@ separate, non-conflated mechanisms share that one parent directory:
 | `ledger.sqlite3` | `guidefold telemetry flush` (client) / `tools/telemetry/ingest_server.py` (reference server) | The reference E6.4 event ledger (`tools/telemetry/ledger.py`), keyed `(tenant_id, event_id)`. Not part of the shipped skill ZIP. |
 | `shadow-<UTC date>.jsonl` | `find --experimental` (E1.6) | Retrieval-order shadow record for offline reranker scoring (`tools/bakeoff/`). Query stored as a SHA-256 hash unless `--telemetry-raw`. Unrelated to the spool above — `--telemetry-raw` affects only this file. |
 | `hook.jsonl` | `hook`'s watchdog | One line per hook timeout (legacy, pre-E6.4). |
+| `auto-flush-state.json` | `maybe_trigger_telemetry_auto_flush` | `{"last_attempt_at": <epoch seconds>}`, per repo — the minimum-interval marker for automatic upload (below). Best-effort, not a lock; a duplicate spawn under true concurrency is a harmless no-op server-side (idempotent accept/duplicate). |
 
-`guidefold telemetry status` (add `--json`) inspects the spool read-only. `guidefold telemetry
-flush --url <base>` POSTs queued events to `<base>/v1/events:batch` in batches of ≤500, applies
-only the server's `accepted`/`duplicate` acknowledgements (never `rejected`) to drain the spool,
-and is never called from the hook path — no command reachable from `hook` makes a network call.
-`guidefold telemetry report` wraps `tools/telemetry/report.py` (per-skill/per-revision usage from
-the ledger) when running from a guidefold tool checkout.
+`guidefold telemetry status` (add `--json`) inspects the spool AND the automatic-upload switch,
+read-only. `guidefold telemetry flush [--url <base>]` POSTs queued events to
+`<base>/v1/events:batch` in batches of ≤500 — `--url` defaults to `search.url`/
+`GUIDEFOLD_SEARCH_URL` when omitted — and applies only the server's `accepted`/`duplicate`
+acknowledgements (never `rejected`) to drain the spool. `guidefold telemetry report` wraps
+`tools/telemetry/report.py` (per-skill/per-revision usage from the ledger) when running from a
+guidefold tool checkout.
+
+### 11a. Automatic upload (owner instruction, 2026-09-13; default flipped by ADR-0048)
+
+Upload is **on by default** once the adapter has a bearer credential (a `guidefold login` token
+or an installation token) and a configured SEARCH/USE endpoint — owner decision 2026-09-13,
+[ADR-0048](adr/ADR-0048-telemetry-upload-on-by-default.md), amending the earlier opt-in reading
+of `docs/SEARCH-USE-TELEMETRY.md` §5 and `docs/DESIGN.md` R7. Explicit configuration is now the
+**opt-out**: `guidefold telemetry enable` / `disable` persist the switch to `settings.json`, a
+plain, non-secret JSON file next to `credentials.json` (`_settings_path()`, `$GUIDEFOLD_SETTINGS`
+or `_credentials_path().with_name("settings.json")` — same isolation story, same directory,
+different file because it holds no secret). `GUIDEFOLD_TELEMETRY=0`/`1` overrides the stored
+setting for one process (CI); the pre-existing `GUIDEFOLD_TELEMETRY_DISABLE` (a harder switch
+that stops local *spooling* entirely) always wins over both. **An organisation that must not
+upload telemetry has to set one of these three explicitly, on every developer machine and every
+CI job that runs the adapter** — it is no longer off until turned on.
+
+Whenever upload is enabled (the default, unless opted out), `find`/`hook`/`load` call
+`maybe_trigger_telemetry_auto_flush` right after they emit telemetry. Every check it makes is a
+local file read (never guidefold.yaml, never a socket): upload enabled, `search_cfg` already
+carries a token AND a url (never sends before there is a token or somewhere to send it — an
+adapter with neither still uploads nothing), and the per-repo minimum interval
+(`TELEMETRY_AUTO_FLUSH_MIN_INTERVAL_S`, 60s) has elapsed since the last attempt — so a burst of
+hook calls in one session starts at most one flush. When all three hold, it spawns `guidefold
+telemetry flush --auto --budget-s <TELEMETRY_AUTO_FLUSH_BUDGET_S>` as a **fully separate,
+detached OS process** (`subprocess.Popen(..., start_new_session=True)`, stdio to `DEVNULL`, never
+awaited) and returns immediately — **`cmd_hook`'s own process still never opens a socket** (E1.5
+unaffected): it only ever asks the OS to start another one. The spawned child carries no secret
+on argv (`ps` is world-readable); it re-resolves its own token/url the normal way, because unlike
+the hook process it is free to read guidefold.yaml. `--budget-s` caps one background run's
+wall-clock time, checked between partitions/files/batches, so a slow or stuck server cannot make
+a run grow unbounded — whatever is left simply stays queued for the next one. The first time a
+flush is actually spawned — before the upload happens, never after — one line goes to stderr
+(never stdout — that is the harness's own context channel on the hook path): `"[guidefold]
+telemetry: automatic upload is on (guidefold telemetry disable to turn it off)."` A persisted
+flag (`settings.telemetry.notice_shown`) keeps it from repeating.
 
 ## 12. Authoring loop: what CI tells a skill author
 
@@ -514,7 +563,7 @@ hosted management API.** Requirements: `docs/PRODUCT-PIVOT.md` §4 (U1) and §8 
 | Command | What it does |
 |---|---|
 | `guidefold scan [PATH] [--dry-run] [--json] [--partial] [--profile P]` | Build the import manifest for a tree. **Opens no socket and imports no HTTP module** — `--dry-run` only makes that explicit and prints "this manifest is exactly what `import` would send". |
-| `guidefold login [--api URL]` / `logout [--all]` | OAuth device flow; prints the user code and the absolute verification URL, honours `interval`/`slow_down`, reports `access_denied`/`expired_token` (exit 1) with nothing stored. |
+| `guidefold login [--api URL]` / `logout [--all]` | OAuth device flow; prints the user code and the absolute verification URL, honours `interval`/`slow_down`, reports `access_denied`/`expired_token` (exit 1) with nothing stored. The stored token is now also the last-resort bearer for `find`/`hook`/`load` (§1a) — signing in once is enough for SEARCH/USE, with no `search.token_file`/`GUIDEFOLD_SEARCH_TOKEN_FILE` to set up by hand; that path still exists as the documented fallback for CI and other scripted, browser-less use. |
 | `guidefold org list` / `org use <slug>` | Membership from `GET /api/v1/me` (falling back to what login stored, labelled), and the current organisation. |
 | `guidefold import [PATH] [--no-publish] [--wait] [--json]` | scan → `POST …/imports` → `PUT …/blobs/{sha}` for **only** the hashes the server reports missing → `POST …/finalize`. `--wait` polls every 2 s until `ready`/`partial`/`failed` and prints the per-file result, the jobs and the publication state. |
 | `guidefold sync [PATH] [--wait] [--json]` | The same call, reporting the new/reused blob split so "the second sync uploads 0 new blobs" is visible. |
