@@ -21,8 +21,12 @@
 .kpiHeader { display: grid; gap: var(--space-1); min-width: var(--zero); }
 .kpiTitle { margin: var(--zero); font-size: var(--font-size-section); font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
 .kpiGrid { display: grid; grid-template-columns: var(--kpi-columns); gap: var(--space-3); min-width: var(--zero); margin: var(--zero); padding: var(--zero); list-style: none; }
-.kpiCard { display: grid; align-content: start; gap: var(--space-2); min-width: var(--zero); }
-.kpiTrend { margin: var(--zero); }
+.kpiCard { display: grid; grid-template-rows: var(--kpi-card-rows); align-content: stretch; gap: var(--space-1); min-width: var(--zero); }
+/* The Spectrum card fills its row so every trend badge sits at the same height, directly under its own card. */
+.kpiCard > :first-child { height: var(--full); }
+/* StatCards renders a grid wrapper around the card; the card itself fills that wrapper so all four cards end on one line. */
+.kpiCard > :first-child > * { height: var(--full); }
+.kpiTrend { margin: var(--zero); justify-self: start; }
 .kpiLinks { display: grid; grid-template-columns: var(--kpi-columns); gap: var(--space-3); margin: var(--zero); padding: var(--zero) var(--space-3); list-style: none; }
 .kpiLinks a { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--touch-height); font-size: var(--font-size-small); text-decoration: none; color: var(--stone-300); }
 .kpiLinks a svg { width: var(--icon-size-small); height: var(--icon-size-small); }
