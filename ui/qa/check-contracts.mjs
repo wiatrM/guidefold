@@ -18,7 +18,13 @@ const tokenFile=resolve(src,'tokens/tokens.css');
 // RepositoryFilter (2026-09-13, ADR-0047) is the seventeenth: the one repository selector of the
 // console, mounted once in the shell rail; the organisation is the default read scope and this
 // control is how a reader narrows it (docs/ui/IA.md, contract §4.10).
-const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile','RepositoryFilter'];
+// OrgSwitcher (2026-09-13, owner brief, docs/ui/UX.md §3a) is the eighteenth: the organisation
+// switcher in the same shell rail header, replacing the old plain "Workspace" label. It opens
+// every membership from `me.orgs`, marks the current one and ends with "Create organization";
+// the URL/remembered-organisation choice and the per-organisation menu links stay in the pure
+// ui/src/domain/orgSwitch.ts (Base UI Menu hangs jsdom once opened, so this component is only
+// ever rendered closed in Vitest; opening it is ui/e2e/org-switcher.spec.ts).
+const expected=['ActionButton','BrandMark','Panel','StateBadge','RouteState','Tabs','ProvenanceTrail','ScopeTree','DataTable','SkillDiff','MetricRow','Urn','SkillContent','Field','PyramidChart','IconTile','RepositoryFilter','OrgSwitcher'];
 // registry.css may declare Tailwind theme entries, but only as references into tokens.css.
 const registryCss=resolve(src,'registry.css');
 function themeRanges(text){const out=[];const re=/@theme\b[^{]*\{/g;let m;while((m=re.exec(text))){let depth=1,i=re.lastIndex;for(;i<text.length&&depth;i++){if(text[i]==='{')depth++;else if(text[i]==='}')depth--;}out.push([m.index,i]);}return out;}

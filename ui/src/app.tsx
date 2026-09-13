@@ -13,6 +13,8 @@ import {useAccess,useAccessController} from './api/access';
 import {loginHref,safeReturn} from './routes/loginTarget';
 import {useAsync} from './routes/apiState';
 import {RepositoryFilter} from './components/RepositoryFilter';
+import {OrgSwitcher} from './components/OrgSwitcher';
+import {resolveOrg,readOrgMemory,writeOrgMemory,orgSwitcherLinks} from './domain/orgSwitch';
 import type {DataSource} from './data/source';
 import type {ApiRouteContext,Params,View} from './domain';
 const ApiHomeRoute=lazy(()=>import('./routes/HomeRoute').then(m=>({default:m.ApiHomeRoute})));
@@ -113,9 +115,19 @@ function ApiApp({source}:{source:DataSource}){
  const requestedOrg=params.get('org'),repo=params.get('repo');
  const me=access.me;
  const invitationToken=location.pathname.match(/^\/invitations\/([^/]+)\/accept\/?$/)?.[1] ?? null;
- const membership=me?(requestedOrg?me.orgs.find(o=>o.slug===requestedOrg||o.org_id===requestedOrg)??null:me.orgs[0]??null):null;
+ // Sticky organisation (owner brief 2026-09-13, docs/ui/UX.md §3a "Zapamiętany kontekst"): with
+ // no `?org=`, the console reopens the organisation this user chose last, like GitHub, instead
+ // of always `orgs[0]`. The URL stays authoritative — an explicit `?org=` that resolves wins and
+ // becomes the new remembered value — and storage never grants anything; `me.orgs` already came
+ // from a confirmed `/me`. `resolveOrg` is the pure decision (ui/src/domain/orgSwitch.ts,
+ // unit-tested there); this is its only impure edge, isolated to a `useEffect` below.
+ const remembered=me?readOrgMemory(me.user.id):null;
+ const resolution=me?resolveOrg(me.orgs,requestedOrg,remembered):{membership:null,action:null};
+ const membership=resolution.membership;
  const foreign=Boolean(requestedOrg&&me&&!membership);
  const org=membership?.slug??null;
+ const rememberKey=resolution.action?resolution.action.type+(resolution.action.type==='set'?':'+resolution.action.value:''):'';
+ useEffect(()=>{if(me)writeOrgMemory(me.user.id,resolution.action);},[me?.user.id,rememberKey]); // eslint-disable-line react-hooks/exhaustive-deps
  // Applied while rendering, not in an effect: effects run children first, so an effect here would
  // void the request the new organisation had already started instead of the previous one's.
  // The call returns immediately when the context is unchanged, so a re-render costs nothing.
@@ -189,8 +201,22 @@ function ApiApp({source}:{source:DataSource}){
   navigate('/login',{replace:true});
   try{if(id)await source.logout('logout:'+id);}catch{/* The local session is dropped either way. */}
  };
+ // Organisation switcher (owner brief 2026-09-13, docs/ui/UX.md §3a): replaces the old plain
+ // "Workspace" label and slug. `orgSwitcherLinks` (ui/src/domain/orgSwitch.ts) builds each
+ // membership's address from the current view's own `href`, so choosing one keeps the view,
+ // replaces `org` and drops `repo` — a repository filter belongs to the organisation that had
+ // it (IA §4). Masked (no confirmed access, or a foreign `?org=`) and the zero-organisation
+ // account keep their prior rendering unchanged; a real single organisation still gets the
+ // switcher, since it opens to "Create organization" either way.
+ const orgLinks=me?orgSwitcherLinks(me.orgs,membership,changes=>href(view,changes)):[];
+ const createOrgHref=href('import',{step:'organization',org:null,repo:null});
+ const railContext=masked
+  ?<div className={css.railContext}><span>Workspace</span><strong>Access unavailable</strong><small>Sign in or check access</small></div>
+  :membership
+   ?<div className={css.railContext}><OrgSwitcher current={membership} links={orgLinks} createHref={createOrgHref}/><RepositoryFilter repos={repos.value??null} value={repo} onChange={chooseRepo}/></div>
+   :<div className={css.railContext}><span>Workspace</span><strong>{org}</strong><RepositoryFilter repos={repos.value??null} value={repo} onChange={chooseRepo}/></div>;
  return <Shell view={view} href={href}
-  railContext={<div className={css.railContext}><span>Workspace</span><strong>{masked?'Access unavailable':org}</strong>{masked?<small>Sign in or check access</small>:<RepositoryFilter repos={repos.value??null} value={repo} onChange={chooseRepo}/>}</div>}
+  railContext={railContext}
   workspace={masked?'Workspace unavailable':membership?.name??'No organization'} repo={repo} masked={masked}
   account={me?<UserDropdown name={me.user.name||me.user.email} email={me.user.email} role={membership?.role==='owner'?'Owner':'Member'} profileHref={href('organization',{tab:'members'})} onLogout={async()=>{await source.logout('logout:'+me.user.id);controller?.reportDenied();navigate('/login',{replace:true});}}/>:<Link className={css.signInLink} to={loginHref(location.pathname+location.search)}>Sign in</Link>}
   pageFoot="Hosted API. Publication, Git handoff and adapter delivery are separate steps and are not implied by anything on this page.">

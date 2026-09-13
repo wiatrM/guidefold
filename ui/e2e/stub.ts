@@ -13,6 +13,9 @@ import path from 'node:path';
 export type Scenario = 'ready' | 'empty' | 'loading' | 'partial' | 'error' | 'degraded' | 'restricted';
 
 export const org = { org_id: 'o-1', slug: 'meridian', name: 'Meridian Data' };
+// A second membership for the organisation switcher spec (`multiOrg` option below); the account
+// is an owner of both, exercising the marked-current and role-per-row rows of the switcher list.
+export const secondOrg = { org_id: 'o-2', slug: 'apex', name: 'Apex Systems' };
 export const repoId = 'monorepo';
 export const commit = '88e404561a9f6994cd870743bf858b9b0a616126';
 export const gitHost = 'https://github.example.test/meridian/monorepo';
@@ -187,8 +190,10 @@ export const usageReport = (scenario: Scenario, state: StubState) => scenario ==
  * exists for a member session (the state matrix in `states.spec.ts` stays owner-only, since that
  * is what it already covers), but a spec that wants to prove the server-side audit scoping
  * (contract §4.1) can ask for `role: 'member'` on top of any scenario.
+ * `multiOrg` adds `secondOrg` to `/me`'s `orgs` (both owner) for the organisation switcher spec
+ * (`org-switcher.spec.ts`); every other spec keeps the single-organisation account.
  */
-export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'owner' | 'member' = 'owner'): Promise<StubState> {
+export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'owner' | 'member' = 'owner', opts: {multiOrg?: boolean} = {}): Promise<StubState> {
   const state: StubState = {
     proposalState: 'draft', publicationCalls: 0, queueDecided: false, linkSuggested: false, generated: false, meCalls: 0, signedOut: false,
     credentials: scenario === 'empty' ? {} : { openrouter: { name: 'default', last4: '9f2a', model: 'openai/gpt-4o-mini', preferred: true, created_at: '2026-09-01T00:00:00Z', created_by: 'u-1' } },
@@ -252,6 +257,8 @@ export async function stubApi(page: Page, scenario: Scenario = 'ready', role: 'o
         identities: [{ provider: 'github', created_at: null }],
         orgs: scenario === 'restricted'
           ? [{ org_id: 'o-9', slug: 'apex', name: 'Apex Holdings', role: 'member' }]
+          : opts.multiOrg
+          ? [{ org_id: org.org_id, slug: org.slug, name: org.name, role }, { org_id: secondOrg.org_id, slug: secondOrg.slug, name: secondOrg.name, role: 'owner' }]
           : [{ org_id: org.org_id, slug: org.slug, name: org.name, role }],
         csrf_token: 'csrf-1', access: { checked_at: null, valid_for_s: 45 },
         link_suggestions: state.linkSuggested ? [{ provider: 'google' }] : [],
