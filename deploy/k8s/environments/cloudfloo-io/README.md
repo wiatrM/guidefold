@@ -39,7 +39,31 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
-## Adapter device login and telemetry on by default — 2026-09-13 (current)
+## Console redesign, GitHub import and effects layer — 2026-09-13 (current)
+
+Built by `publish-images.yml` (run 34779572451) from `main` at `2a302f5`: PRs #165 (UX §3a contract),
+#166 (organisation switcher), #167 (GitHub App install and repository import, contract 1.13.0),
+#168 (shadcn components), #169 (effects layer, ADR-0049), #170 and #172 (organisation wizard),
+#171 (effects on every console route). Deployed on top of the release from `23f7878`, mapped through
+publish run 34761104916. `sql.go` between `23f7878` and `2a302f5` adds
+`gfm.github_installations.account_type` and `gfm.repos.import_blocked_reason`; both already existed
+from `guidefold-migrate-20260913c`, and `guidefold-migrate-20260913d` ran again with the new `search`
+image (completed, columns confirmed with `psql`) before the digests were patched at about 20:17 UTC.
+The server dry run changed exactly the four image lines.
+
+| Image | Digest | Rollback to |
+|---|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:10636c300fd6` | `sha256:45f88f1b45cb` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:6295278d22d3` | `sha256:09d28c5af96a` |
+| `ghcr.io/wiatrm/guidefold-ui` | `sha256:75898e20ed5e` | `sha256:e7a4c6683b1b` |
+| `ghcr.io/wiatrm/guidefold-portal` | `sha256:67dc67b5038d` | `sha256:106b2d9c83c9` |
+
+Smoke test after rollout: `/health/ready` 200; `GET /api/v1/auth/login/google` and `/github` 302 to
+WorkOS; `/api/v1/me` 401; `POST {org_base}/github/import` and `{repo_base}/github/import` 401
+(routes exist, authentication enforced); `/import` 200; no `ERROR` in API or worker logs in the
+first minutes; Application Synced/Healthy.
+
+## Adapter device login and telemetry on by default — 2026-09-13
 
 Built by `publish-images.yml` (run 34761104916) from `main` at `23f7878`: PR #156 (adapters sign in
 with `guidefold login` and a confirmation code instead of a pasted token; telemetry upload on by default
