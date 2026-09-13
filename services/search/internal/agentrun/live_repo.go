@@ -2,12 +2,9 @@ package agentrun
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,7 +12,6 @@ import (
 
 	"github.com/wiatrM/guidefold/services/search/internal/ghapp"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
-	"github.com/wiatrM/guidefold/services/search/internal/importer/domain"
 	"github.com/wiatrM/guidefold/services/search/internal/jobs"
 	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
@@ -343,171 +339,30 @@ func (w *LiveRepoWorker) startTarget(ctx context.Context, t *worker.Task, payloa
 // unmanaged repository never gets an import row.
 func (w *LiveRepoWorker) fetchAndImport(ctx context.Context, t *worker.Task, payload liveRepoPayload,
 	limits Limits) (importID, parseJobID string, err error) {
-	files, e := w.gh.ListSkillFiles(ctx, payload.InstallationID, payload.FullName, defaultReadRef)
+	// fetchRepositoryImport (github_import.go) is this same fetch → manifest
+	// → CreateImport → PutBlob → FinalizeImport pipeline, shared with
+	// github.import_repo (Task 3, API-CONTRACT §8 1.13.0). Everything below
+	// this call is live.repo's own bookkeeping — a checkpoint, target phase
+	// and event — which the shared core never touches.
+	result, ferr := fetchRepositoryImport(ctx, w.pool, w.gh, w.imp, payload.InstallationID, payload.FullName,
+		payload.OrgID, payload.RepoID, "live.repo", t.Job.JobID, limits)
 	switch {
-	case errors.Is(e, ghapp.ErrTreeTruncated):
+	case errors.Is(ferr, ghapp.ErrTreeTruncated):
 		_ = w.failTarget(ctx, t, payload, reasonTreeTruncated)
-		return "", "", worker.Permanent(e)
-	case errors.Is(e, ghapp.ErrInstallationNotFound):
+		return "", "", worker.Permanent(ferr)
+	case errors.Is(ferr, ghapp.ErrInstallationNotFound):
 		_ = w.failTarget(ctx, t, payload, live.ErrorGitHubNotWired)
-		return "", "", worker.Permanent(e)
-	case e != nil:
+		return "", "", worker.Permanent(ferr)
+	case errors.Is(ferr, errGuidefoldYAMLMissing):
+		if e := w.skipTarget(ctx, t, payload, live.ErrorGuidefoldYAMLMissing); e != nil {
+			return "", "", e
+		}
+		return "", "", worker.Skipped(live.ErrorGuidefoldYAMLMissing)
+	case ferr != nil:
 		if w.outOfAttempts(t) {
 			_ = w.failTarget(ctx, t, payload, live.ErrorProviderDown)
 		}
-		return "", "", e
-	}
-
-	// guidefold.yaml is checked, and set aside, before the MaxFiles ceiling
-	// below ever applies to it: it is the scope hierarchy import.parse's own
-	// builder needs to build anything at all, not one more skill competing
-	// with two hundred others for the same budget. Truncating it away would
-	// turn a well-formed, merely large repository into one that fails with
-	// "no guidefold.yaml" for a reason no owner watching the run could see.
-	hasHierarchy := false
-	rest := make([]string, 0, len(files))
-	for _, p := range files {
-		if p == "guidefold.yaml" {
-			hasHierarchy = true
-			continue
-		}
-		rest = append(rest, p)
-	}
-	if !hasHierarchy {
-		err := w.skipTarget(ctx, t, payload, live.ErrorGuidefoldYAMLMissing)
-		if err != nil {
-			return "", "", err
-		}
-		return "", "", worker.Skipped(live.ErrorGuidefoldYAMLMissing)
-	}
-	sort.Strings(rest)
-	if limits.MaxFiles > 0 {
-		// -1 keeps the prepended hierarchy inside the declared ceiling
-		// (API-CONTRACT §8 max_files) rather than one file over it; at
-		// MaxFiles == 1 this fetches the hierarchy alone, which is the
-		// correct precedence.
-		max := limits.MaxFiles - 1
-		if max < 0 {
-			max = 0
-		}
-		if len(rest) > max {
-			rest = rest[:max]
-		}
-	}
-	files = append([]string{"guidefold.yaml"}, rest...)
-
-	fileEntries := make([]map[string]any, 0, len(files))
-	contentBySHA := map[string][]byte{}
-	hierarchyFetched := false
-	for _, path := range files {
-		if e := ctx.Err(); e != nil {
-			return "", "", e
-		}
-		content, e := w.gh.ReadFile(ctx, payload.InstallationID, payload.FullName, defaultReadRef, path)
-		if errors.Is(e, ghapp.ErrFileTooLarge) {
-			// One oversize file is left out of the manifest, not fatal to
-			// the repository: the rest is still evidence worth keeping.
-			// guidefold.yaml itself is checked for below: dropping it here
-			// silently would leave the builder to fail with "no
-			// guidefold.yaml", a cause that would contradict what actually
-			// happened (the file exists; it is just too large to read).
-			continue
-		}
-		if e != nil {
-			if w.outOfAttempts(t) {
-				_ = w.failTarget(ctx, t, payload, live.ErrorProviderDown)
-			}
-			return "", "", e
-		}
-		sum := sha256.Sum256(content)
-		sha := hex.EncodeToString(sum[:])
-		kind := domain.KindSkill
-		switch path {
-		case "AGENTS.md":
-			kind = domain.KindDocument
-		case "guidefold.yaml":
-			kind = domain.KindConfig
-			hierarchyFetched = true
-		}
-		fileEntries = append(fileEntries, map[string]any{
-			"path": path, "sha256": sha, "size": len(content), "kind": kind, "mode": "100644"})
-		contentBySHA[sha] = content
-	}
-	if !hierarchyFetched {
-		// guidefold.yaml was listed but could not actually be read (today
-		// only ghapp.ErrFileTooLarge takes this path) — the same named skip
-		// as never having one, rather than a failed import.parse blaming
-		// build_tree.py for an absence that is really an oversize read.
-		err := w.skipTarget(ctx, t, payload, live.ErrorGuidefoldYAMLMissing)
-		if err != nil {
-			return "", "", err
-		}
-		return "", "", worker.Skipped(live.ErrorGuidefoldYAMLMissing)
-	}
-
-	publish := false
-	manifestMap := map[string]any{
-		"format": domain.Format, "org": payload.OrgID, "repo": payload.RepoID,
-		"commit": nil, "complete": false, "dirty": false, "publish": publish,
-		"cli_version": "live-agent", "scan_profile": "live", "root": ".",
-		"files": fileEntries, "excluded": []any{}, "aliases": []any{}, "suggestions": []any{},
-		"limits": map[string]any{"max_files": 0, "max_bytes": 0},
-	}
-	raw, e := json.Marshal(manifestMap)
-	if e != nil {
-		return "", "", worker.Permanent(fmt.Errorf("encode live.repo manifest: %w", e))
-	}
-	manifest, e := domain.ParseManifest(raw)
-	if e != nil {
-		return "", "", worker.Permanent(fmt.Errorf("build live.repo manifest: %w", e))
-	}
-
-	tx, e := w.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
-	if e != nil {
-		return "", "", e
-	}
-	created, e := w.imp.CreateImport(ctx, tx, payload.OrgID, payload.RepoID, manifest,
-		importer.CreateImportOptions{RawManifest: raw, Actor: "live.repo", RequestID: t.Job.JobID})
-	if e != nil {
-		_ = tx.Rollback(ctx)
-		return "", "", fmt.Errorf("live.repo: create import: %w", e)
-	}
-	if e := tx.Commit(ctx); e != nil {
-		return "", "", e
-	}
-
-	for _, sha := range created.Missing {
-		content, ok := contentBySHA[sha]
-		if !ok {
-			return "", "", worker.Permanent(fmt.Errorf("live.repo: no fetched content for blob %s", sha))
-		}
-		if _, e := w.imp.PutBlob(ctx, payload.OrgID, sha, content); e != nil {
-			return "", "", fmt.Errorf("live.repo: store blob %s: %w", sha, e)
-		}
-	}
-
-	tx2, e := w.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
-	if e != nil {
-		return "", "", e
-	}
-	_, e = w.imp.FinalizeImport(ctx, tx2, payload.OrgID, payload.RepoID, created.ImportID,
-		importer.FinalizeOptions{Actor: "live.repo", RequestID: t.Job.JobID})
-	if e != nil {
-		_ = tx2.Rollback(ctx)
-		return "", "", fmt.Errorf("live.repo: finalize import: %w", e)
-	}
-	if e := tx2.Commit(ctx); e != nil {
-		return "", "", e
-	}
-
-	// Read the parse job back by import rather than trusting
-	// FinalizeResult.QueuedJobIDs: a resumed attempt after a crash between
-	// FinalizeImport's commit and this job's own checkpoint finds the same
-	// import already queued (FinalizeImport is a no-op the second time) and
-	// still needs the job id it queued the first time.
-	parseJobID, e = w.findJob(ctx, payload.OrgID, created.ImportID, importer.KindParse)
-	if e != nil {
-		return "", "", fmt.Errorf("live.repo: find import.parse job for %s: %w", created.ImportID, e)
+		return "", "", ferr
 	}
 
 	tx3, e := w.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadWrite})
@@ -522,55 +377,21 @@ func (w *LiveRepoWorker) fetchAndImport(ctx context.Context, t *worker.Task, pay
 		return "", "", e
 	}
 	if _, e := live.Append(ctx, tx3, payload.OrgID, payload.RunID, payload.RepoID, live.EventRepoFetched,
-		fmt.Sprintf("Fetched %d %s from repository %s.", len(fileEntries), plural(len(fileEntries), "file"), payload.RepoID),
-		map[string]any{"files": len(fileEntries)}); e != nil {
+		fmt.Sprintf("Fetched %d %s from repository %s.", result.Files, plural(result.Files, "file"), payload.RepoID),
+		map[string]any{"files": result.Files}); e != nil {
 		return "", "", e
 	}
 	if e := tx3.Commit(ctx); e != nil {
 		return "", "", e
 	}
-	return created.ImportID, parseJobID, nil
+	return result.ImportID, result.ParseJobID, nil
 }
 
-// findJob reads back the one job of a kind an import has, regardless of
-// whether this attempt or an earlier one queued it.
-func (w *LiveRepoWorker) findJob(ctx context.Context, orgID, importID, kind string) (string, error) {
-	var jobID string
-	e := w.pool.QueryRow(ctx, `SELECT job_id::text FROM gfm.jobs
- WHERE org_id=$1::uuid AND import_id=$2::uuid AND kind=$3 ORDER BY created_at LIMIT 1`,
-		orgID, importID, kind).Scan(&jobID)
-	return jobID, e
-}
-
-// waitForChild is the design ADR-0046 point 9 calls out by name: one job
-// polling the row of the job it enqueued, renewing its own lease as it
-// goes. The lease is 30 s and the heartbeat interval at most 10 s
-// (API-CONTRACT §8); pollInterval() is comfortably under that ceiling. A
-// heartbeat that returns jobs.ErrFenced — a stale generation, because this
-// job's own lease expired and was re-leased, or because an owner cancelled
-// the run and the cancel route bumped this very job's generation — ends the
-// wait immediately, before any further write: the caller must return the
-// error as-is rather than finalise anything, exactly the same rule
-// fenceJob enforces for the package's transactional writes.
+// waitForChild is a thin wrapper over waitForChildJob (github_import.go),
+// extracted so github.import_repo can reuse the same wait loop verbatim
+// (ADR-0046 point 9). See that function's own doc comment for the design.
 func (w *LiveRepoWorker) waitForChild(ctx context.Context, t *worker.Task, orgID, childJobID string) (*jobs.Job, error) {
-	for {
-		job, e := w.queue.Get(ctx, orgID, childJobID)
-		if e != nil {
-			return nil, e
-		}
-		switch job.State {
-		case jobs.StateDone, jobs.StateFailed, jobs.StateSkipped, jobs.StateCancelled:
-			return job, nil
-		}
-		if e := w.queue.Heartbeat(ctx, t.Job.JobID, t.Job.Generation); e != nil {
-			return nil, e
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(w.pollInterval()):
-		}
-	}
+	return waitForChildJob(ctx, w.queue, t, w.pollInterval(), orgID, childJobID)
 }
 
 // advanceParsed records import.parse's own result on the target and in the

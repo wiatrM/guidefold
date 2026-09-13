@@ -196,8 +196,15 @@ export const installationList: Decoder<Installation[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(installation)(value, path) : field('items', arrayOf(installation))(value, path);
 
 export type GitHubRepositorySelection = 'all' | 'selected';
+export type GitHubAccountType = 'user' | 'organization';
 export interface GitHubInstallation {
   installation_id: number; account: string; repositories: { full_name: string; repo_id: string | null }[];
+  // account_type (contract §5.1, 1.13.0): GitHub's own account.type, lower-cased. Needed to
+  // build the right "missing a repository?" settings URL — a personal account and an
+  // organization live at different paths on github.com. Null until either the callback's own
+  // proof or an "installation" webhook has reported it. Optional on the type (the decoder
+  // always fills it from the real API) so existing fixtures built before 1.13.0 keep compiling.
+  account_type?: GitHubAccountType | null;
   repository_selection: GitHubRepositorySelection | null;
   suspended: boolean; created_at: string | null; updated_at: string | null; linked_at: string | null;
   // registered_repositories/synced are gfm.repos and github.sync_repositories's own
@@ -215,6 +222,7 @@ export interface GitHubInstallation {
 export const githubInstallation = object<GitHubInstallation>({
   installation_id: num, account: str,
   repositories: listOf(object({ full_name: str, repo_id: nullable(str) })),
+  account_type: nullable(oneOf(['user', 'organization'] as const)),
   repository_selection: nullable(oneOf(['all', 'selected'] as const)),
   suspended: bool, created_at: nullable(str), updated_at: nullable(str), linked_at: nullable(str),
   registered_repositories: num, synced: bool,
@@ -348,12 +356,35 @@ export type ProposalKind = typeof proposalKinds[number];
 // Repositories and import
 // ---------------------------------------------------------------------------
 
-export interface Repo { repo_id: string; name: string | null; git_host_url: string | null; created_at: string | null; created: boolean }
+export interface Repo {
+  repo_id: string; name: string | null; git_host_url: string | null; created_at: string | null; created: boolean;
+  // The six fields below are new in 1.13.0 (Task 2): they exist only for a repository
+  // registered from a linked GitHub installation (github_installation_id/github_account) or
+  // one that has ever been imported (the last_import_* trio, read from the newest gfm.imports
+  // row — never gfm.jobs, retained only 90 days). A repository registered by hand or the CLI,
+  // or never imported, carries none of them. Optional on the type (the decoder always fills
+  // them from the real API, defaulting to null) so fixtures built before 1.13.0 keep compiling.
+  github_installation_id?: number | null;
+  github_account?: string | null;
+  // import_blocked_reason names why the last github.import_repo attempt never reached
+  // CreateImport — today only "guidefold_yaml_missing". Distinct from last_import_error: no
+  // gfm.imports row exists to carry that field in this case, so this is its own column.
+  import_blocked_reason?: string | null;
+  last_import_state?: string | null;
+  last_import_error?: string | null;
+  last_import_at?: string | null;
+}
 export const repo = object<Repo>({
   repo_id: str, name: nullable(str), git_host_url: nullable(str), created_at: nullable(str),
   // `POST {org_base}/repos` answers 201 with `created: true` and 200 with `false` (§4.2);
   // a row read from the list was not created by this call, so absent means false.
   created: fallback(bool, false),
+  github_installation_id: fallback(nullable(num), null),
+  github_account: fallback(nullable(str), null),
+  import_blocked_reason: fallback(nullable(str), null),
+  last_import_state: fallback(nullable(str), null),
+  last_import_error: fallback(nullable(str), null),
+  last_import_at: fallback(nullable(str), null),
 });
 export const repoList: Decoder<Repo[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(repo)(value, path) : field('items', arrayOf(repo))(value, path);

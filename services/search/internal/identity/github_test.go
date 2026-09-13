@@ -163,6 +163,77 @@ func TestGitHubInstallStartIsOwnerOnly(t *testing.T) {
 	}
 }
 
+// Task 1 (1.13.0): a Connect GitHub button on the wizard or the import
+// screen names an allow-listed return_to, and the callback sends the owner
+// back there — with the outcome appended — instead of always landing on the
+// Integrations tab.
+func TestGitHubInstallStartHonoursAnAllowedReturnTo(t *testing.T) {
+	h := newGitHubHarness(t, []int64{661})
+	owner := h.signIn(t, "google", "gh-return-owner", "gh-return-owner@example.test", "Owner")
+	owner.createOrg(t, "gh-return", "GitHub Return Org")
+
+	status, body, _ := owner.call(t, call{method: http.MethodPost,
+		path: "/api/v1/orgs/gh-return/github/installations/start",
+		body: map[string]any{"return_to": "/import?org=gh-return&step=preview"}})
+	if status != http.StatusOK {
+		t.Fatalf("start with return_to: %d %v", status, body)
+	}
+	state := mustURL(t, body["install_url"].(string)).Query().Get("state")
+
+	status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 661)})
+	q := githubCallbackLocationTo(t, status, body, headers, "/import")
+	if q.Get("github") != "linked" || q.Get("org") != "gh-return" || q.Get("step") != "preview" {
+		t.Fatalf("honoured return_to redirect: %v", q)
+	}
+}
+
+// A return_to outside the allow-list — an absolute URL, a scheme, a
+// protocol-relative address, or simply a path the list does not name — is
+// ignored, not refused: the start request still succeeds and the callback
+// falls back to today's default Integrations tab, exactly as if no
+// return_to had been sent.
+func TestGitHubInstallStartIgnoresADisallowedReturnTo(t *testing.T) {
+	h := newGitHubHarness(t, []int64{662})
+	owner := h.signIn(t, "google", "gh-disallow-owner", "gh-disallow-owner@example.test", "Owner")
+	orgID := owner.createOrg(t, "gh-disallow", "GitHub Disallow Org")
+
+	for i, bad := range []string{
+		"https://evil.example/import", "//evil.example/import", "/skills", "/import/../../etc",
+	} {
+		status, body, _ := owner.call(t, call{method: http.MethodPost,
+			path: "/api/v1/orgs/gh-disallow/github/installations/start",
+			body: map[string]any{"return_to": bad}})
+		if status != http.StatusOK {
+			t.Fatalf("start with disallowed return_to %q: %d %v", bad, status, body)
+		}
+		state := mustURL(t, body["install_url"].(string)).Query().Get("state")
+		// The same installation_id is relinked on every iteration
+		// (ON CONFLICT DO UPDATE, exactly what a real re-click would do) —
+		// this test is only about return_to, not about the link itself.
+		status, body, headers := owner.call(t, call{method: http.MethodGet, path: callbackURL(state, "good-code", 662)})
+		q := githubCallbackLocation(t, status, body, headers) // asserts /organization
+		if q.Get("github") != "linked" || q.Get("org") != orgID {
+			t.Fatalf("disallowed return_to %q (case %d) redirect: %v", bad, i, q)
+		}
+	}
+}
+
+// c.Decode sets DisallowUnknownFields: an unrecognised field in the start
+// body is refused, not silently ignored (§10's own rule for a request
+// schema change).
+func TestGitHubInstallStartRejectsUnknownRequestField(t *testing.T) {
+	h := newGitHubHarness(t, []int64{663})
+	owner := h.signIn(t, "google", "gh-unknown-owner", "gh-unknown-owner@example.test", "Owner")
+	owner.createOrg(t, "gh-unknown", "GitHub Unknown Field Org")
+
+	status, body, _ := owner.call(t, call{method: http.MethodPost,
+		path: "/api/v1/orgs/gh-unknown/github/installations/start",
+		body: map[string]any{"bogus": "x"}})
+	if status != http.StatusBadRequest || body["error"] != "invalid_json" {
+		t.Fatalf("unknown field in start body: %d %v", status, body)
+	}
+}
+
 // --- linking: the callback proves ownership before it links ---------------
 
 func TestGitHubInstallCallbackLinksAnOwnedInstallation(t *testing.T) {
@@ -325,9 +396,18 @@ func TestGitHubInstallationSelectionFillsInAfterWebhookSetsAccountFirst(t *testi
 }
 
 // githubCallbackLocation asserts the callback redirected (never JSON, Task
-// 1) and returns its Location as query values, so a caller can check the
-// outcome code and the organisation carried in it.
+// 1) to the console's default Integrations tab and returns its Location as
+// query values, so a caller can check the outcome code and the organisation
+// carried in it.
 func githubCallbackLocation(t *testing.T, status int, body map[string]any, headers http.Header) url.Values {
+	t.Helper()
+	return githubCallbackLocationTo(t, status, body, headers, "/organization")
+}
+
+// githubCallbackLocationTo is githubCallbackLocation generalised to any
+// return_to path (1.13.0, Task 1): a start request that named one expects
+// the callback to redirect there instead of the default Integrations tab.
+func githubCallbackLocationTo(t *testing.T, status int, body map[string]any, headers http.Header, wantPath string) url.Values {
 	t.Helper()
 	if status != http.StatusFound {
 		t.Fatalf("callback did not redirect: %d %v", status, body)
@@ -336,8 +416,8 @@ func githubCallbackLocation(t *testing.T, status int, body map[string]any, heade
 		t.Fatalf("callback must never answer JSON to the browser: %v", body)
 	}
 	loc := mustURL(t, headers.Get("Location"))
-	if loc.Path != "/organization" {
-		t.Fatalf("callback redirect did not land on the console's real route: %v", loc)
+	if loc.Path != wantPath {
+		t.Fatalf("callback redirect landed on %q, want %q: %v", loc.Path, wantPath, loc)
 	}
 	return loc.Query()
 }

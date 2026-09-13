@@ -301,6 +301,39 @@ function githubSelectionLabel(entry: GitHubInstallation): string {
       : 'Unknown';
 }
 
+/** One status word per repository row on the import screen (contract §5.2 `Repo`, Task 2/3,
+ * 1.13.0). `import_blocked_reason` (today only `guidefold_yaml_missing`) is checked first: it
+ * names why the repository is not importable, distinct from a real failure, because no
+ * `gfm.imports` row exists to carry that outcome. Otherwise `last_import_state` reads the
+ * newest import the same way `ImportStatus.state` already does elsewhere in this file. */
+function repoImportStatusLabel(entry: Repo): string {
+  if (entry.import_blocked_reason) {
+    return entry.import_blocked_reason === 'guidefold_yaml_missing'
+      ? 'Not importable: no guidefold.yaml in this repository.'
+      : 'Not importable (' + entry.import_blocked_reason + ').';
+  }
+  switch (entry.last_import_state) {
+    case null:
+    case undefined:
+      return 'Not imported yet.';
+    case 'ready':
+      return 'Imported' + (entry.last_import_at ? ' ' + formatDay(entry.last_import_at) : '') + '.';
+    case 'partial':
+      return 'Imported with some files omitted' + (entry.last_import_at ? ' (' + formatDay(entry.last_import_at) + ')' : '') + '.';
+    case 'failed':
+      return 'Last import failed' + (entry.last_import_error ? ' (' + entry.last_import_error + ')' : '') + '.';
+    case 'cancelled':
+      return 'Last import was cancelled.';
+    case 'queued':
+    case 'parsing':
+    case 'uploading':
+    case 'created':
+      return 'Importing…';
+    default:
+      return entry.last_import_state;
+  }
+}
+
 /** Every outcome `GET /api/v1/github/installations/callback` may carry in `?github=` (contract
  * §4.7, Task 1/2): the callback never renders JSON any more, so this is the only place an owner
  * ever learns what happened. Each refusal is its own line — never folded into a generic
@@ -623,6 +656,14 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const repoAccess = useAsync(() => source.listRepoAccess({ org: org ?? '', repo: repo ?? '' }), 'repo-access:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
   const reviewers = useAsync(() => source.listReviewers({ org: org ?? '', repo: repo ?? '' }), 'repo-reviewers:' + org + '/' + repo, owner && Boolean(org && repo) && step === 'preview');
   const imports = useAsync(() => source.listImports({ org: org ?? '', repo: repo ?? '' }), 'imports:' + org + '/' + repo, Boolean(org && repo) && step === 'result');
+  // Member-readable (contract §4.7 `GET {org_base}/github/installations` is `member`, not
+  // `owner`), so a member sees the same syncing/failed state an owner does; only the actions
+  // below (Connect GitHub, Import) are owner-gated.
+  const githubInstallations = useAsync(() => source.listGitHubInstallations(org ?? ''), 'github-installations:' + org, Boolean(org) && step === 'preview');
+  // Model-key status line (owner instruction, 2026-09-13): member-readable (contract §4.8), so
+  // a member sees which provider proposals use, or that none is stored, without the link to add
+  // one.
+  const credentials = useAsync(() => source.listCredentials(org ?? ''), 'credentials:' + (org ?? ''), Boolean(org) && step === 'preview');
   const [orgName, setOrgName] = useState('');
   const [orgSlug, setOrgSlug] = useState('');
   const [repoId, setRepoId] = useState('');
@@ -636,14 +677,55 @@ export function ApiImportRoute({ ctx }: ApiProps) {
   const [localPackageStatus, setLocalPackageStatus] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [githubStatus, setGithubStatus] = useState('');
+  // `?github=<code>` (contract §4.7, Task 1): the one-shot outcome of a round trip that started
+  // from this screen's own Connect GitHub button, read once like ApiOrganizationRoute's own
+  // `githubCallbackOutcome` — never tracked live, so a later `ctx.href` (which always strips
+  // `github`) does not make this reappear.
+  const [githubCallbackOutcome] = useState(() => ctx.params.get('github') ?? '');
   const importId = ctx.params.get('import_id') ?? imports.value?.[0]?.import_id ?? null;
   const commands = 'guidefold login\nguidefold org use ' + (org ?? '<organization>') + '\nguidefold scan . --dry-run\nguidefold import .';
 
-  async function signIn(provider: string) {
+  /** Owner-only, contract §4.7 `POST {org_base}/github/installations/start` (Task 1): unlike the
+   * Integrations tab's own `connectGitHub` (below, in `ApiOrganizationRoute`), this one names its
+   * own address as `return_to`, so the callback sends the owner back to this wizard step instead
+   * of always landing on Integrations. */
+  async function connectGitHubForImport() {
+    if (!org || !owner || busy) return;
+    setBusy(true); setGithubStatus('');
     try {
-      const redirect = await source.startLogin(provider, '/import?step=organization');
-      if (redirect.loginUrl) window.location.assign(redirect.loginUrl);
-    } catch (error) { setFormError('Sign-in could not start (' + asApiError(error).code + '). You are not signed in and nothing was sent to the provider.'); }
+      const start = await source.startGitHubInstall(org, 'github-install-start:' + org, ctx.href('import', { step: 'preview' }));
+      window.location.assign(start.install_url);
+    } catch (error) {
+      setGithubStatus('The GitHub install could not start (' + asApiError(error).code + '). Nothing was changed.');
+      setBusy(false);
+    }
+  }
+  /** Owner-only, contract §4.2 `POST {repo_base}/github/import` (Task 3): fetch and import.parse
+   * only, never proposal.generate — no model key is required. */
+  async function importRepo(repoID: string) {
+    if (!org || !owner || busy) return;
+    setBusy(true); setGithubStatus('');
+    try {
+      await source.importGitHubRepo({ org, repo: repoID }, 'github-import:' + org + ':' + repoID + ':' + Date.now().toString(36));
+      setGithubStatus('Import queued for ' + repoID + '. Refresh in a moment to see its progress.');
+      repos.reload();
+    } catch (error) { setGithubStatus('The import of ' + repoID + ' could not start (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
+  }
+  /** Owner-only, contract §4.2 `POST {org_base}/github/import` (Task 3): "Import all" is one
+   * call, never a client-side loop over repositories. */
+  async function importAllRepos() {
+    if (!org || !owner || busy) return;
+    setBusy(true); setGithubStatus('');
+    try {
+      const result = await source.importAllGitHubRepos(org, 'github-import-all:' + org + ':' + Date.now().toString(36));
+      setGithubStatus(result.count === 0
+        ? 'No repositories registered from GitHub yet.'
+        : 'Import queued for ' + result.count + ' repositor' + (result.count === 1 ? 'y' : 'ies') + '. Refresh in a moment to see progress.');
+      repos.reload();
+    } catch (error) { setGithubStatus('Import all could not start (' + asApiError(error).code + ').'); }
+    finally { setBusy(false); }
   }
   async function createOrg(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -797,18 +879,47 @@ export function ApiImportRoute({ ctx }: ApiProps) {
         </form>
       </Panel>}
       <Panel title="Repositories" eyebrow="Repository" icon={<GitBranchIcon weight="regular" aria-hidden="true" />}>
+        {githubCallbackOutcome && <p className={styles.feedback} role={githubCallbackOutcome === 'linked' ? 'status' : 'alert'}>{GITHUB_CALLBACK_MESSAGES[githubCallbackOutcome] ?? GITHUB_CALLBACK_MESSAGES.internal_error}</p>}
+        {/* Owner instruction, 2026-09-13: importing repositories and refreshing the library
+          * never needs a model key; only proposals (duplicates, contradictions) do (Task 3). */}
+        {credentials.phase === 'ready' && (credentials.value?.find(entry => entry.preferred)
+          ? <p className={styles.feedback} role="status">Proposals (duplicates, contradictions) use {credentials.value.find(entry => entry.preferred)?.provider}.</p>
+          : <p className={styles.feedback} role="status">Proposals (duplicates, contradictions) need a model key; importing repositories does not.
+            {owner
+              ? <> <Link to={'/organization?org=' + encodeURIComponent(org ?? '') + '&tab=keys'}>Add one in Organization › Model keys</Link>.</>
+              : ' An owner can add one in Organization › Model keys.'}
+          </p>)}
         {repos.phase === 'loading' && <RouteState state="loading" title="Reading repositories" description="Waiting for the repository list of this organization." />}
         {repos.phase === 'error' && repos.error && <ApiFailure error={repos.error} onRetry={repos.reload} retryLabel="Retry the repository list" />}
         {repos.phase === 'ready' && (repos.value?.length
-          ? <DataTable flush caption="Repositories in this organization" headings={['Repository', 'Git host', 'Action']}>
-            {repos.value.map(entry => <tr key={entry.repo_id}><th scope="row"><code>{entry.repo_id}</code></th><td className={styles.pathCell}>{unknown(entry.git_host_url)}</td><td><Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link></td></tr>)}
-          </DataTable>
-          : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={<ActionButton tone="human" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>} />)}
+          ? <div className={styles.stack}>
+            {owner && repos.value.some(entry => entry.github_installation_id != null) &&
+              <ActionButton size="sm" disabled={busy} onClick={() => { void importAllRepos(); }}>Import all</ActionButton>}
+            <DataTable flush caption="Repositories in this organization" headings={['Repository', 'Source', 'Status', 'Action']}>
+              {repos.value.map(entry => <tr key={entry.repo_id}>
+                <th scope="row"><code>{entry.repo_id}</code></th>
+                <td className={styles.pathCell}>{entry.github_account ? 'GitHub (' + entry.github_account + ')' : unknown(entry.git_host_url)}</td>
+                <td>{repoImportStatusLabel(entry)}</td>
+                <td>
+                  <Link to={ctx.href('import', { repo: entry.repo_id, step: 'result', import_id: null })}>Open import status</Link>
+                  {owner && entry.github_installation_id != null && !entry.import_blocked_reason &&
+                    <ActionButton size="sm" disabled={busy} onClick={() => { void importRepo(entry.repo_id); }}>Import</ActionButton>}
+                </td>
+              </tr>)}
+            </DataTable>
+          </div>
+          : (githubInstallations.phase === 'ready' && githubInstallations.value?.length
+            ? <RouteState state={githubInstallations.value.some(entry => entry.sync_failed_at) ? 'degraded' : 'loading'}
+              title="GitHub connected" description={githubRepositoriesLabel(githubInstallations.value[0])} />
+            : <RouteState state="empty" title="Connect GitHub to import a repository" description="Guidefold will show repositories you can access, read the selected revision server-side and build the manifest for review." action={owner
+              ? <ActionButton tone="human" disabled={busy} onClick={() => { void connectGitHubForImport(); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
+              : <p className={styles.help}>Ask an owner of this organization to connect GitHub.</p>} />))}
         {owner && <div className={cn(styles.notice, styles.noticeSystem)} role="note">
           <StateBadge tone="system">Automatic import</StateBadge>
           <p>Repository registration is handled by GitHub. Select a repository and revision after connecting; no repository id or local CLI upload is required.</p>
-          <ActionButton size="sm" onClick={() => { void signIn('github'); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
+          <ActionButton size="sm" disabled={busy} onClick={() => { void connectGitHubForImport(); }}><GithubLogoIcon weight="regular" aria-hidden="true" />Connect GitHub</ActionButton>
         </div>}
+        {githubStatus && <p className={styles.feedback} role="status">{githubStatus}</p>}
       </Panel>
       {owner && repo && <Panel title="Repository access" eyebrow="Owner controls" icon={<UsersIcon weight="regular" aria-hidden="true" />}>
         <p>Limit this repository to named organization members and assign who can review proposals. Owners always retain access.</p>
