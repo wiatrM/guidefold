@@ -168,18 +168,47 @@ CREATE TABLE IF NOT EXISTS gfm.team_members (
  FOREIGN KEY(org_id,team_id) REFERENCES gfm.teams(org_id,team_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS team_members_user ON gfm.team_members(user_id);
+-- gfm.github_installations mirrors one GitHub App installation and is keyed
+-- by installation_id alone: GitHub assigns that id globally, and the row must
+-- be able to exist before any organisation has linked it — an "installation"
+-- webhook event can arrive before the OAuth-during-install callback finishes
+-- (ADR-0034). Which organisation an installation belongs to is decided only
+-- by gfm.github_installation_links below, never guessed from account/org login.
 CREATE TABLE IF NOT EXISTS gfm.github_installations (
- org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
- installation_id bigint NOT NULL,
+ installation_id bigint PRIMARY KEY,
  account text NOT NULL,
  repositories jsonb NOT NULL DEFAULT '[]',
  suspended_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(),
- updated_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(org_id,installation_id),
- UNIQUE(installation_id)
+ updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS github_installations_org ON gfm.github_installations(org_id);
+-- Upgrades the earlier org-keyed shape, where org_id was part of the primary
+-- key and was written by the webhook itself from a login-equals-slug guess —
+-- a match that only ever worked when a Guidefold organisation's slug happened
+-- to equal the GitHub account's login, never for an App installed by an
+-- unrelated account (the point of a public App). One installation belongs to
+-- at most one Guidefold organisation, decided by the explicit link, so org_id
+-- has no home on this table any more.
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='gfm' AND table_name='github_installations' AND column_name='org_id') THEN
+  DROP INDEX IF EXISTS gfm.github_installations_org;
+  ALTER TABLE gfm.github_installations DROP CONSTRAINT IF EXISTS github_installations_pkey;
+  ALTER TABLE gfm.github_installations DROP CONSTRAINT IF EXISTS github_installations_installation_id_key;
+  ALTER TABLE gfm.github_installations DROP COLUMN org_id;
+  ALTER TABLE gfm.github_installations ADD PRIMARY KEY (installation_id);
+ END IF;
+END $$;
+-- The explicit link ADR-0034 always meant to require: proven by GitHub's own
+-- OAuth-during-install user-authorization flow (the API-CONTRACT §4.7 start
+-- and callback routes), never asserted from a query string. installation_id
+-- references the mirror above so a link cannot outlive its installation row.
+CREATE TABLE IF NOT EXISTS gfm.github_installation_links (
+ installation_id bigint PRIMARY KEY REFERENCES gfm.github_installations(installation_id) ON DELETE CASCADE,
+ org_id uuid NOT NULL REFERENCES gfm.orgs(org_id) ON DELETE CASCADE,
+ linked_by uuid REFERENCES gfm.users(user_id),
+ linked_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS github_installation_links_org ON gfm.github_installation_links(org_id);
 CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
  delivery_id text PRIMARY KEY,
  payload_sha256 text NOT NULL,
@@ -291,6 +320,16 @@ CREATE TABLE IF NOT EXISTS gfm.repos (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(org_id,repo_id)
 );
+-- github_installation_id marks a repository as reconciled from a linked
+-- GitHub App installation (API-CONTRACT §4.7/§8) rather than registered by
+-- hand or the CLI. NULL means "not installation-managed", which is also
+-- what a repository reverts to when GitHub reports it removed from the
+-- installation (detached, never deleted — gfm.imports, gfm.skills,
+-- gfm.proposals and gfm.publications all cascade off gfm.repos, so deleting
+-- the row would destroy an organisation's catalogue and review history over
+-- a repository visibility change on GitHub's side).
+ALTER TABLE gfm.repos ADD COLUMN IF NOT EXISTS github_installation_id bigint;
+CREATE INDEX IF NOT EXISTS repos_github_installation ON gfm.repos(org_id,github_installation_id) WHERE github_installation_id IS NOT NULL;
 -- Optional repository policy. An empty ACL keeps the existing organization
 -- membership behavior; once an owner adds one entry, non-owners need an
 -- explicit row for every management and delivery operation.
@@ -385,6 +424,13 @@ CREATE TABLE IF NOT EXISTS gfm.auth_states (
  created_at timestamptz NOT NULL DEFAULT now(),
  expires_at timestamptz NOT NULL
 );
+-- 'github_install' (API-CONTRACT §4.7) reuses this same one-round-trip,
+-- single-use table rather than a second state mechanism: org_id ties the
+-- round trip to the organisation that started it, the way user_id already
+-- ties a 'link' round trip to a person. NULL for 'login'/'link'.
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES gfm.orgs(org_id) ON DELETE CASCADE;
+ALTER TABLE gfm.auth_states DROP CONSTRAINT IF EXISTS auth_states_kind_check;
+ALTER TABLE gfm.auth_states ADD CONSTRAINT auth_states_kind_check CHECK(kind IN ('login','link','github_install'));
 CREATE TABLE IF NOT EXISTS gfm.audit (
  org_id uuid NOT NULL,
  audit_id bigint GENERATED ALWAYS AS IDENTITY,

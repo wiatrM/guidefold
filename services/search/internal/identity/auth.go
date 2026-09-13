@@ -455,22 +455,34 @@ func (s *Service) handleLinkStart(c *mgmt.Context) error {
 }
 
 type authClaim struct {
-	kind, provider, userID, returnTo string
+	kind, provider, userID, orgID, returnTo string
 }
 
 func (s *Service) newAuthState(ctx context.Context, kind, providerID, userID, returnTo string) (string, error) {
+	return s.newOrgAuthState(ctx, kind, providerID, userID, "", returnTo)
+}
+
+// newOrgAuthState is newAuthState plus an organisation id, for a round trip
+// that must come back tied to the organisation that started it rather than
+// (or in addition to) the signed-in user — "github_install" (API-CONTRACT
+// §4.7), which reuses this same one-round-trip, single-use table rather
+// than a second state mechanism.
+func (s *Service) newOrgAuthState(ctx context.Context, kind, providerID, userID, orgID, returnTo string) (string, error) {
 	state := newSecret()
 	tx, e := s.tx(ctx)
 	if e != nil {
 		return "", mgmt.Internal(e)
 	}
 	defer tx.Rollback(ctx)
-	var owner any
+	var owner, org any
 	if userID != "" {
 		owner = userID
 	}
-	if _, e = tx.Exec(ctx, `INSERT INTO gfm.auth_states(state_sha256,kind,provider,user_id,return_to,expires_at)
- VALUES($1,$2,$3,$4::uuid,$5,$6)`, digest(state), kind, providerID, owner, returnTo,
+	if orgID != "" {
+		org = orgID
+	}
+	if _, e = tx.Exec(ctx, `INSERT INTO gfm.auth_states(state_sha256,kind,provider,user_id,org_id,return_to,expires_at)
+ VALUES($1,$2,$3,$4::uuid,$5::uuid,$6,$7)`, digest(state), kind, providerID, owner, org, returnTo,
 		s.now().Add(AuthStateTTL)); e != nil {
 		return "", mgmt.Internal(e)
 	}
@@ -514,7 +526,7 @@ func (s *Service) matchAuthStateCookie(c *mgmt.Context, state string) error {
 // consumeAuthState deletes the state as it reads it: one round trip, one use.
 func (s *Service) consumeAuthState(ctx context.Context, state string) (authClaim, error) {
 	var claim authClaim
-	var owner *string
+	var owner, org *string
 	var expires time.Time
 	tx, e := s.tx(ctx)
 	if e != nil {
@@ -522,8 +534,8 @@ func (s *Service) consumeAuthState(ctx context.Context, state string) (authClaim
 	}
 	defer tx.Rollback(ctx)
 	e = tx.QueryRow(ctx, `DELETE FROM gfm.auth_states WHERE state_sha256=$1
- RETURNING kind,provider,user_id::text,return_to,expires_at`, digest(state)).
-		Scan(&claim.kind, &claim.provider, &owner, &claim.returnTo, &expires)
+ RETURNING kind,provider,user_id::text,org_id::text,return_to,expires_at`, digest(state)).
+		Scan(&claim.kind, &claim.provider, &owner, &org, &claim.returnTo, &expires)
 	if e == pgx.ErrNoRows {
 		return claim, mgmt.Invalid("invalid_state", "This sign-in link has already been used.")
 	}
@@ -537,5 +549,6 @@ func (s *Service) consumeAuthState(ctx context.Context, state string) (authClaim
 		return claim, mgmt.Invalid("expired_state", "This sign-in link has expired.")
 	}
 	claim.userID = str(owner)
+	claim.orgID = str(org)
 	return claim, nil
 }

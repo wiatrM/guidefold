@@ -45,6 +45,8 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/teams/{team_id}/members/{user_id}", s.handleRemoveTeamMember, mgmt.Idempotent())
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/github/installations", s.handleListGitHubInstallations)
 	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/github/installations/{installation_id}", s.handleDeleteGitHubInstallation, mgmt.Idempotent())
+	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/github/installations/start", s.handleGitHubInstallStart)
+	r.Handle(http.MethodGet, "/api/v1/github/installations/callback", s.handleGitHubInstallCallback, mgmt.Public())
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/invitations", s.handleListInvitations)
 	r.Handle(http.MethodDelete, "/api/v1/orgs/{org}/invitations/{invitation_id}", s.handleRevokeInvitation, mgmt.Idempotent())
 	r.Handle(http.MethodPatch, "/api/v1/orgs/{org}/members/{user_id}", s.handleSetRole, mgmt.Idempotent())

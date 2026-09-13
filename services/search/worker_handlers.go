@@ -134,6 +134,13 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	for kind, h := range prReport.Handlers() {
 		handlers[kind] = h
 	}
+	// github.sync_repositories reconciles gfm.repos for a linked GitHub App
+	// installation (ADR-0034's explicit link, API-CONTRACT §4.7/§8). Same
+	// "skipped" degradation as pr.report/live.repo when gh is nil.
+	githubSync := agentrun.NewGitHubSyncWorker(pool, gh)
+	for kind, h := range githubSync.Handlers() {
+		handlers[kind] = h
+	}
 
 	return handlers, nil
 }

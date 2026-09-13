@@ -79,6 +79,22 @@ type Config struct {
 	WorkOSClientID      string
 	WorkOSBase          string // API endpoint base; a test points this at httptest
 	GitHubWebhookSecret string
+	// GitHubAppSlug names the App in its public installation URL
+	// (https://github.com/apps/<slug>/installations/new) — API-CONTRACT
+	// §4.7's start route. Never hardcoded: the same binary serves whichever
+	// App a deployment registered.
+	GitHubAppSlug string
+	// GitHubAppClientID/GitHubAppClientSecret are the OAuth-during-install
+	// credentials (ADR-0034's explicit link, distinct from the App's own
+	// JWT signing key in GITHUB_APP_PRIVATE_KEY_FILE, which only the
+	// worker opens): exchanging the callback's "code" for a user token and
+	// listing that user's own installations both use these.
+	GitHubAppClientID     string
+	GitHubAppClientSecret string
+	// GitHubAppAuthBaseURL/GitHubAppAPIBaseURL override github.com and
+	// api.github.com for a test; both empty in every real deployment.
+	GitHubAppAuthBaseURL string
+	GitHubAppAPIBaseURL  string
 }
 
 // Service holds the identity endpoints and the principal resolver.
@@ -134,6 +150,15 @@ func ConfigFromEnv() (Config, error) {
 			return cfg, fmt.Errorf("github_webhook_secret_unreadable: %w", e)
 		}
 		cfg.GitHubWebhookSecret = strings.TrimSpace(string(b))
+	}
+	cfg.GitHubAppSlug = strings.TrimSpace(os.Getenv("GITHUB_APP_SLUG"))
+	cfg.GitHubAppClientID = strings.TrimSpace(os.Getenv("GITHUB_APP_CLIENT_ID"))
+	if path := os.Getenv("GITHUB_APP_CLIENT_SECRET_FILE"); path != "" {
+		b, e := os.ReadFile(path)
+		if e != nil {
+			return cfg, fmt.Errorf("github_app_client_secret_unreadable: %w", e)
+		}
+		cfg.GitHubAppClientSecret = strings.TrimSpace(string(b))
 	}
 	if cfg.Mode == "" {
 		return cfg, fmt.Errorf("auth_mode_required: set GUIDEFOLD_AUTH to %q or %q", ModeWorkOS, ModeDev)
