@@ -149,7 +149,7 @@ describe('library', () => {
   test('top scopes drop zero counts and sort by count then name', () => {
     expect(topScopes([{value: 'b', count: 2}, {value: 'a', count: 2}, {value: 'z', count: 0}, {value: 'c', count: 9}], 2)).toEqual([{scope: 'c', count: 9}, {scope: 'a', count: 2}]);
   });
-  test('top facet values apply the same rule to any field, e.g. repo at organisation scope (1.9.0)', () => {
+  test('top facet values apply the same rule to any field, e.g. repo at organisation scope (1.11.0)', () => {
     expect(topFacetValues([{value: 'monorepo', count: 26}, {value: 'billing', count: 0}, {value: 'atlas', count: 26}, {value: 'edge', count: 3}], 2)).toEqual([{value: 'atlas', count: 26}, {value: 'monorepo', count: 26}]);
   });
 });
@@ -192,11 +192,11 @@ describe('yourDecisions', () => {
     expect(result.count).toBe(3);
     expect(result.items.map(item => item.id)).toEqual(['q1', 'p3', 'p1']);
     expect(result.items[0].kind).toBe('queue');
-    // 1.9.0: each entry carries the row's repository so a link that needs one can narrow to it.
+    // 1.11.0: each entry carries the row's repository so a link that needs one can narrow to it.
     expect(result.items.map(item => item.repoId)).toEqual(['monorepo', 'monorepo', 'monorepo']);
   });
 
-  test('a row from a server older than 1.9.0 has no repository: repoId is null, never a guess', () => {
+  test('a row from a server older than 1.11.0 has no repository: repoId is null, never a guess', () => {
     const result = yourDecisions([{...proposal('p1', 'u1', null), repo_id: null}], [], me);
     expect(result.items[0].repoId).toBeNull();
   });

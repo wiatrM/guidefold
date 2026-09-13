@@ -229,6 +229,20 @@ CREATE INDEX IF NOT EXISTS github_installation_links_org ON gfm.github_installat
 -- previous linkage of the same installation_id never reads as "already
 -- synced" before the fresh sync job this callback enqueues has run.
 ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS repositories_synced_at timestamptz;
+-- The other half of the same honesty rule: a run that does NOT succeed must
+-- also leave a trace, or a link whose reconciliation keeps failing reads
+-- forever as "still syncing" (never true) instead of as failed (API-CONTRACT
+-- §4.7/§5.1). Written only by agentrun.GitHubSyncWorker.Run, in the same
+-- places repositories_synced_at is written: a permanent failure (the
+-- installation gone or its permissions refused) or the last attempt of a
+-- retryable one sets both columns; any later success clears both back to
+-- NULL in the same statement that sets repositories_synced_at, so a failure
+-- never survives past the reconciliation that fixed it. Reset to NULL below
+-- whenever a link is (re)created, for the same reason repositories_synced_at
+-- is: a stale failure from a previous linkage of this installation_id must
+-- not outlive that linkage.
+ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS last_sync_failed_at timestamptz;
+ALTER TABLE gfm.github_installation_links ADD COLUMN IF NOT EXISTS last_sync_failure_reason text;
 CREATE TABLE IF NOT EXISTS gfm.github_deliveries (
  delivery_id text PRIMARY KEY,
  payload_sha256 text NOT NULL,
@@ -450,7 +464,21 @@ CREATE TABLE IF NOT EXISTS gfm.auth_states (
 -- ties a 'link' round trip to a person. NULL for 'login'/'link'.
 ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES gfm.orgs(org_id) ON DELETE CASCADE;
 ALTER TABLE gfm.auth_states DROP CONSTRAINT IF EXISTS auth_states_kind_check;
-ALTER TABLE gfm.auth_states ADD CONSTRAINT auth_states_kind_check CHECK(kind IN ('login','link','github_install'));
+ALTER TABLE gfm.auth_states ADD CONSTRAINT auth_states_kind_check CHECK(kind IN ('login','link','github_install','email_verification'));
+-- 'email_verification' (API-CONTRACT §2, §4.1): WorkOS AuthKit answered the
+-- login/link round trip's Authenticate call with email_verification_required
+-- instead of a user. pending_token is WorkOS's own pending_authentication_token,
+-- replayed verbatim to WorkOS's email-verification grant, so unlike every other
+-- secret this package stores it cannot be reduced to a SHA-256: it must be
+-- readable again. It is still short-lived (AuthStateTTL), single-use (deleted
+-- on success or on exhausting attempts), never leaves this server, and never
+-- reaches a URL, a script-readable cookie or a log line. attempts counts wrong
+-- codes against EmailVerificationMaxAttempts; the row is deleted, not merely
+-- expired, once that limit is reached, so a retried state can never look like
+-- a fresh one.
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS pending_token text;
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS pending_email text;
+ALTER TABLE gfm.auth_states ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS gfm.audit (
  org_id uuid NOT NULL,
  audit_id bigint GENERATED ALWAYS AS IDENTITY,

@@ -36,7 +36,7 @@ export interface UsageQuery {
 }
 export interface OrgRepo { org: string; repo: string }
 /**
- * Where a read looks (contract §4.10, 1.9.0): one repository, or — with `repo: null` — every
+ * Where a read looks (contract §4.10, 1.11.0): one repository, or — with `repo: null` — every
  * repository of the organisation the signed-in principal may read. The API decides the set; the
  * console never fans out per repository. Mutations always take an `OrgRepo`: they act on one
  * repository, named by the row they act on.
@@ -59,6 +59,12 @@ export interface DataSource {
   // Auth and identity -------------------------------------------------------
   getAuthProviders(): Promise<AuthProviders>;
   startLogin(provider: string, returnTo: string): Promise<LoginRedirect>;
+  /** `POST /auth/verify-email` (contract §2, §4.1): the code the callback's
+   * email_verification_required redirect sent the browser to enter. Public and CSRF-exempt — the
+   * gf_auth_state cookie the callback set is this route's own defense — so this is the one port
+   * mutation that does not require a session's CSRF token. A wrong code stays retryable and
+   * throws `ApiError` with `email_code_invalid`; success returns the address to navigate to. */
+  verifyEmailCode(code: string, idempotencyKey: string): Promise<{ returnTo: string }>;
   getMe(timeoutMs?: number): Promise<Me>;
   logout(idempotencyKey: string): Promise<void>;
   startDeviceAuthorization(idempotencyKey: string): Promise<DeviceStart>;

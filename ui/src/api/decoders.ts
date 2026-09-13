@@ -105,6 +105,12 @@ export const authProviders = object<AuthProviders>({
 export interface IdentityLinkStart { login_url: string }
 export const identityLinkStart = object<IdentityLinkStart>({ login_url: str });
 
+/** `POST /auth/verify-email` (contract §2, §4.1): the code screen's own success answer — a
+ * `fetch` cannot follow the 302 `handleCallback` uses, so this route answers `return_to` in its
+ * body instead, after the session cookie is already set. */
+export interface EmailVerification { schema_version: string; return_to: string }
+export const emailVerification = object<EmailVerification>({ schema_version: str, return_to: str });
+
 export interface Profile { user: { id: string; email: string; name: string } }
 export const profile = object<Profile>({ user: object({ id: str, email: str, name: str }) });
 
@@ -199,6 +205,12 @@ export interface GitHubInstallation {
   // actually needs, distinct from `repositories` (the webhook's own mirror of what GitHub
   // last reported, not what got registered).
   registered_repositories: number; synced: boolean;
+  // sync_failed_at/sync_failure_reason (contract §5.1, 1.9.0) are the other outcome of that
+  // same job: set together on a permanent failure or on the last of its allowed retries, and
+  // cleared together by a later success. Together with `synced` they give three distinct
+  // states — never run, synced, failed — never more than one at once (a failure always wins
+  // over a stale `synced:true` from before it, because it names the *last* reconciliation).
+  sync_failed_at: string | null; sync_failure_reason: string | null;
 }
 export const githubInstallation = object<GitHubInstallation>({
   installation_id: num, account: str,
@@ -206,6 +218,7 @@ export const githubInstallation = object<GitHubInstallation>({
   repository_selection: nullable(oneOf(['all', 'selected'] as const)),
   suspended: bool, created_at: nullable(str), updated_at: nullable(str), linked_at: nullable(str),
   registered_repositories: num, synced: bool,
+  sync_failed_at: nullable(str), sync_failure_reason: nullable(str),
 });
 export const githubInstallationList: Decoder<GitHubInstallation[]> = value => field('items', arrayOf(githubInstallation))(value);
 
@@ -419,7 +432,7 @@ export const importCounts = object<ImportCounts>({
 
 export interface ImportStatus {
   import_id: string;
-  /** Contract 1.9.0 (§4.10): the repository the import belongs to; null only from a client older than 1.9.0. */
+  /** Contract 1.11.0 (§4.10): the repository the import belongs to; null only from a client older than 1.11.0. */
   repo_id: string | null;
   state: ImportState; manifest_digest: string | null; commit: string | null; complete: boolean;
   counts: ImportCounts | null; files: ImportFile[]; files_truncated: boolean; jobs: Job[]; publication: ImportPublication | null;
@@ -514,7 +527,7 @@ export type KnowledgeLayer = typeof knowledgeLayers[number];
 
 export interface SkillSummary {
   skill_id: string;
-  /** Contract 1.9.0 (§4.10): the repository the skill belongs to; an organisation-scope list mixes repositories. */
+  /** Contract 1.11.0 (§4.10): the repository the skill belongs to; an organisation-scope list mixes repositories. */
   repo_id: string | null;
   name: string; description: string;
   scope: string; owner: string | null;
@@ -629,7 +642,7 @@ export const judgment = object<Judgment>({ judgment_id: str });
 // Map and modules
 // ---------------------------------------------------------------------------
 
-/** `repository` (1.9.0) only at the root of an organisation-scope tree: one child per readable repository (§4.10.5). */
+/** `repository` (1.11.0) only at the root of an organisation-scope tree: one child per readable repository (§4.10.5). */
 export interface MapChild { name: string; path: string; kind: 'dir' | 'skill' | 'document' | 'repository'; skill_id: string | null; count: number | null }
 export const mapChild = object<MapChild>({
   name: str, path: str,
@@ -643,7 +656,7 @@ export const mapRepository = object<MapRepository>({
 
 export interface MapScopes {
   scope: { id: string; repo_id: string | null; owner: string | null; paths: string[]; parent: string | null } | null;
-  /** `repo_id` (1.9.0): scope ids are unique per repository, so an organisation-scope list names each node's repository. */
+  /** `repo_id` (1.11.0): scope ids are unique per repository, so an organisation-scope list names each node's repository. */
   children: { id: string; repo_id: string | null; owner: string | null; skills: number }[];
   skills: { skill_id: string; name: string }[];
   unmapped: { skill_id: string; name: string }[];
@@ -693,7 +706,7 @@ export const proposalDecision = object<ProposalDecision>({
 
 export interface ProposalSummary {
   proposal_id: string;
-  /** Contract 1.9.0 (§4.10): the repository the proposal targets; decisions and exports go to its `{repo_base}`. */
+  /** Contract 1.11.0 (§4.10): the repository the proposal targets; decisions and exports go to its `{repo_base}`. */
   repo_id: string | null;
   kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
   target_skill_id: string | null; path: string | null; created_at: string | null;
@@ -711,7 +724,7 @@ export const proposalList = object<ProposalList>({ items: listOf(proposalSummary
 
 export interface ProposalDetail {
   proposal_id: string;
-  /** Contract 1.9.0 (§4.10): the repository the proposal targets; the decision and export mutations go to its `{repo_base}`. */
+  /** Contract 1.11.0 (§4.10): the repository the proposal targets; the decision and export mutations go to its `{repo_base}`. */
   repo_id: string | null;
   kind: ProposalKind; state: ProposalState; scope: string | null; owner: string | null;
   target_skill_id: string | null; target_revision_id: string | null;
@@ -835,7 +848,7 @@ export const helpedRatio = object<HelpedRatio>({
 
 export interface UsageSkill {
   skill_id: string;
-  /** Contract 1.9.0: the catalogue's repository for the skill; null when the ledger saw a skill the catalogue does not know. */
+  /** Contract 1.11.0: the catalogue's repository for the skill; null when the ledger saw a skill the catalogue does not know. */
   repo_id: string | null;
   revision: string | null;
   /** The same revision's two other names: the delivery path uses `card_revision`, the UI the catalogue one. */
@@ -870,7 +883,7 @@ export const queueActions = ['reviewed', 'fixed_in_git', 'no_change'] as const;
 export type QueueAction = typeof queueActions[number];
 export interface QueueItem {
   item_id: string;
-  /** Contract 1.9.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
+  /** Contract 1.11.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
   repo_id: string | null;
   skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
   evidence: Record<string, unknown> | null;

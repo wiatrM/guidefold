@@ -24,6 +24,7 @@ const githubInstallation = (over: Partial<GitHubInstallation> = {}): GitHubInsta
   installation_id: 501, account: 'meridian-data', repositories: [{ full_name: 'meridian-data/monorepo', repo_id: null }],
   repository_selection: 'all', suspended: false, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:05:00Z',
   linked_at: '2026-09-01T00:00:00Z', registered_repositories: 1, synced: true,
+  sync_failed_at: null, sync_failure_reason: null,
   ...over,
 });
 
@@ -558,6 +559,64 @@ describe('Organization route, GitHub App installations (contract §4.7, ADR-0034
     renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [confirmedEmpty] }), 'tab=integrations');
     expect(await screen.findByText('No repositories registered.')).toBeInTheDocument();
     expect(screen.queryByText('Linked. Repositories still syncing.')).not.toBeInTheDocument();
+  });
+
+  // Honesty gap (contract §5.1/§8, 1.9.0): a reconciliation that permanently failed, or ran out
+  // of retries, must read as failed — never as "still syncing" forever, and never silently as
+  // the registered count from before it broke.
+  test.each([
+    ['installation_not_found', /GitHub no longer recognizes this installation/, /An owner can disconnect and reconnect it/],
+    ['permission_refused', /App.s permissions were not approved/, /Approve the App.s permissions on GitHub/],
+    ['provider_unavailable', /GitHub did not answer, after every retry/, /picks back up automatically/],
+    ['github_app_not_configured', /background worker has no GitHub App configured/, /ask whoever operates this deployment/],
+  ] as const)('a %s failure reads as failed, with what went wrong and what to do, never as syncing', async (reason, whatHappened, whatToDo) => {
+    const failed = githubInstallation({ sync_failed_at: '2026-09-13T00:10:00Z', sync_failure_reason: reason });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [failed] }), 'tab=integrations');
+    expect(await screen.findByText(whatHappened)).toBeInTheDocument();
+    expect(screen.getByText(whatToDo)).toBeInTheDocument();
+    expect(screen.queryByText('Linked. Repositories still syncing.')).not.toBeInTheDocument();
+    expect(screen.queryByText(/repositor(y|ies) registered\.$/)).not.toBeInTheDocument();
+  });
+
+  // ghapp.ErrInstallationNotFound covers both a deleted installation and a merely suspended one
+  // (ghapp/errors.go's own doc comment says both) — opposite fixes, so the sentence must not
+  // assume "deleted" and tell an owner to destroy a link they could simply resume on GitHub.
+  test('installation_not_found on a suspended installation recommends resuming it, not disconnecting', async () => {
+    const suspended = githubInstallation({ suspended: true, sync_failed_at: '2026-09-13T00:10:00Z', sync_failure_reason: 'installation_not_found' });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [suspended] }), 'tab=integrations');
+    expect(await screen.findByText(/this installation is suspended on GitHub/)).toBeInTheDocument();
+    expect(screen.getByText(/Resume it from the App.s settings on GitHub/)).toBeInTheDocument();
+    expect(screen.queryByText(/GitHub no longer recognizes this installation/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/disconnect and reconnect/i)).not.toBeInTheDocument();
+  });
+
+  // A failure always wins over a stale `synced:true` left over from an earlier, since-broken
+  // reconciliation: what the console shows is the outcome of the *last* attempt, not history.
+  test('a failure recorded after an earlier success still reads as failed, not as the old registered count', async () => {
+    const brokenSinceLastRun = githubInstallation({
+      registered_repositories: 4, synced: true,
+      sync_failed_at: '2026-09-13T00:10:00Z', sync_failure_reason: 'installation_not_found',
+    });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [brokenSinceLastRun] }), 'tab=integrations');
+    expect(await screen.findByText(/GitHub no longer recognizes this installation/)).toBeInTheDocument();
+    expect(screen.queryByText('4 repositories registered.')).not.toBeInTheDocument();
+  });
+
+  // A member reading this cell has no Disconnect control of their own (owner-only, same row) —
+  // the sentence must not address "you" as if the reader can act, for either role.
+  test('the failure sentence names an owner\'s action, not "you", so a member reading it is not told to click something they cannot see', async () => {
+    const failed = githubInstallation({ sync_failed_at: '2026-09-13T00:10:00Z', sync_failure_reason: 'installation_not_found' });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [failed] }), 'tab=integrations', { role: 'member' });
+    expect(await screen.findByText(/An owner can disconnect and reconnect it/)).toBeInTheDocument();
+    expect(screen.getByText('Owner only')).toBeInTheDocument();
+  });
+
+  // An unrecognised reason (a future addition this console has not been taught yet) still names
+  // itself instead of falling back to something generic or silently reading as syncing.
+  test('an unrecognised failure reason still names itself, plainly', async () => {
+    const failed = githubInstallation({ sync_failed_at: '2026-09-13T00:10:00Z', sync_failure_reason: 'a_future_reason' });
+    renderRoute(fakeSource({ listMembers: async () => owners, listGitHubInstallations: async () => [failed] }), 'tab=integrations');
+    expect(await screen.findByText(/Repositories did not sync \(a_future_reason\)/)).toBeInTheDocument();
   });
 
   test('Disconnect is owner-only: a member reads the installation but has no control to remove it', async () => {

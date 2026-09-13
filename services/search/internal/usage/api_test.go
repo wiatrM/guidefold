@@ -29,7 +29,7 @@ var pinnedCSVColumns = []string{"skill_id", "revision", "scope", "owner", "harne
 	"card_revision", "content_sha256",
 	// Appended in contract 1.1.4, same rule.
 	"exposures_expanded", "loads_unlinked",
-	// Appended in contract 1.9.0 (§4.10), same rule.
+	// Appended in contract 1.11.0 (§4.10), same rule.
 	"repo_id"}
 
 // fixture is one organisation with one repository and a signed-in owner.
@@ -861,7 +861,7 @@ func TestUsageResponsesMatchTheOpenAPIComponents(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Contract 1.9.0 (§4.10) — the organisation is the default read scope; a
+// Contract 1.11.0 (§4.10) — the organisation is the default read scope; a
 // repository is a filter.
 // ---------------------------------------------------------------------------
 

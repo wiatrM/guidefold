@@ -26,6 +26,7 @@ const ApiProposalsRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({defau
 const ApiUsageRoute=lazy(()=>import('./routes/ReviewRoutes').then(m=>({default:m.ApiUsageRoute})));
 const ApiLiveAgentRoute=lazy(()=>import('./routes/LiveAgentRoute').then(m=>({default:m.ApiLiveAgentRoute})));
 const LoginRoute=lazy(()=>import('./routes/LoginRoute').then(m=>({default:m.LoginRoute})));
+const VerifyEmailRoute=lazy(()=>import('./routes/VerifyEmailRoute').then(m=>({default:m.VerifyEmailRoute})));
 const ToastHost=lazy(()=>import('./ToastHost'));
 import css from './App.module.css';
 
@@ -227,11 +228,23 @@ function LoginEntry({source}:{source:DataSource}){
  return <Suspense fallback={<main id="main" tabIndex={-1}><RouteState state="loading" title="Loading sign-in" description="Preparing the sign-in page."/></main>}><LoginRoute source={source} returnTo={target} authOutcome={authOutcome}/></Suspense>;
 }
 
+/** `/login/verify-email`. The code-entry half of email_verification_required (contract §2,
+ * §4.1): `GET /api/v1/auth/callback` sends the browser here with `?email=<masked>` and a fresh
+ * gf_auth_state cookie. Outside the shell and outside `View`, like LoginEntry — there is no
+ * session yet, so this must never sit behind the `/me` access gate. */
+function VerifyEmailEntry({source}:{source:DataSource}){
+ const location=useLocation();
+ const params=new URLSearchParams(location.search);
+ const email=params.get('email')??'';
+ return <Suspense fallback={<main id="main" tabIndex={-1}><RouteState state="loading" title="Loading verification" description="Preparing the code screen."/></main>}><VerifyEmailRoute source={source} email={email}/></Suspense>;
+}
+
 export default function App({source}:{source:DataSource}){
  const location=useLocation();
  const toaster=<Suspense fallback={null}><ToastHost/></Suspense>;
  const path=location.pathname.replace(/^\//,'').replace(/\/$/,'');
  if(path==='__components')return <><Suspense fallback={<p>Loading component gallery</p>}><ComponentGallery/></Suspense>{toaster}</>;
  if(path==='login')return <><LoginEntry source={source}/>{toaster}</>;
+ if(path==='login/verify-email')return <><VerifyEmailEntry source={source}/>{toaster}</>;
  return <><ApiApp source={source}/>{toaster}</>;
 }

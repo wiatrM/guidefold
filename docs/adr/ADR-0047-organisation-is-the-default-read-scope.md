@@ -6,7 +6,7 @@ powinny sie wyswietlac OGOLNIE albo filtrowane per repository", then "tak samo n
 zakladkach: Library tez jest per skill, blad myslimy globalnie z mozliwoscia fitlracji repo",
 naming Map, Proposals and Usage & quality as well, and "live agenci pracuja globalnie tez, chyba
 ze poproszeni sa o repo only".
-**Governs:** every `GET {org_base}/…` read introduced by contract 1.9.0
+**Governs:** every `GET {org_base}/…` read introduced by contract 1.11.0
 ([API-CONTRACT §4.10](../API-CONTRACT.md)), `mgmt.AuthorizeScope`, and the console's Overview,
 Library, Map, Skill, Proposals and Usage & quality views.
 **Depends on:** [ADR-0033](ADR-0033-api-contract-first-and-mvp-storage.md) (contract before code),
@@ -79,7 +79,7 @@ Two ways were considered to give the console an organisation view:
 ## Consequences
 
 - The contract grows by seventeen additive GET routes and a handful of additive fields; contract
-  1.9.0. Clients of 1.6.x are unaffected.
+  1.11.0. Clients of 1.6.x are unaffected.
 - The ACL is enforced by the same code on both route families; the tests for the new routes include
   a restricted member to prove the organisation view drops what the member could not read
   per repository.
