@@ -227,6 +227,162 @@ describe('Import route, sign in and context', () => {
   });
 });
 
+// A GitHub-registered repository (Task 2/3, 1.13.0): a helper so each test states only the
+// fields it cares about, the same shape convention `status()` above already uses.
+const githubRepo = (over: Partial<import('../api/decoders').Repo> = {}): import('../api/decoders').Repo => ({
+  repo_id: 'widgets', name: 'acme/widgets', git_host_url: 'https://github.com/acme/widgets', created_at: null, created: false,
+  github_installation_id: 1, github_account: 'acme',
+  import_blocked_reason: null, last_import_state: null, last_import_error: null, last_import_at: null,
+  ...over,
+});
+const installation = (over: Partial<import('../api/decoders').GitHubInstallation> = {}): import('../api/decoders').GitHubInstallation => ({
+  installation_id: 1, account: 'acme', account_type: 'organization', repositories: [],
+  repository_selection: 'all', suspended: false, created_at: null, updated_at: null, linked_at: null,
+  registered_repositories: 1, synced: true, sync_failed_at: null, sync_failure_reason: null,
+  ...over,
+});
+
+describe('Import route, Connect GitHub (Task 1: the real bug)', () => {
+  test('the empty-state Connect GitHub button starts the real installation flow, never a plain sign-in', async () => {
+    const startGitHubInstall = vi.fn(async () => ({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold/installations/new?state=s1' }));
+    const startLogin = vi.fn();
+    const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [], startGitHubInstall, startLogin });
+    renderRoute(source, 'step=preview');
+    await userEvent.click(await screen.findByRole('button', { name: /Connect GitHub/ }));
+    await waitFor(() => expect(startGitHubInstall).toHaveBeenCalledWith('meridian', expect.stringContaining('github-install-start:'), '/import?step=preview'));
+    expect(startLogin).not.toHaveBeenCalled();
+  });
+
+  test('the "Automatic import" notice button also starts the real installation flow with a return target', async () => {
+    const startGitHubInstall = vi.fn(async () => ({ schema_version: 'mgmt-1', install_url: 'https://github.com/apps/guidefold/installations/new?state=s1' }));
+    const source = fakeSource({
+      listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()],
+      listCredentials: async () => [], startGitHubInstall,
+    });
+    renderRoute(source, 'step=preview');
+    const buttons = await screen.findAllByRole('button', { name: /Connect GitHub/ });
+    await userEvent.click(buttons[buttons.length - 1]);
+    await waitFor(() => expect(startGitHubInstall).toHaveBeenCalledWith('meridian', expect.any(String), '/import?step=preview'));
+  });
+
+  test('a member sees why they cannot connect GitHub, with no button at all', async () => {
+    const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [] });
+    renderRoute(source, 'step=preview', { role: 'member' });
+    expect(await screen.findByText('Ask an owner of this organization to connect GitHub.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Connect GitHub/ })).not.toBeInTheDocument();
+  });
+
+  test('the callback outcome is shown once the owner is back from GitHub', async () => {
+    const source = fakeSource({ listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()], listCredentials: async () => [] });
+    renderRoute(source, 'step=preview&github=linked');
+    expect(await screen.findByText(/The installation is linked/)).toBeInTheDocument();
+  });
+});
+
+describe('Import route, repository list states (Task 2, 1.13.0)', () => {
+  test('still syncing: a linked installation with no repositories yet is not the empty state', async () => {
+    const source = fakeSource({
+      listRepos: async () => [], listGitHubInstallations: async () => [installation({ synced: false })],
+      listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    expect(await screen.findByText('Linked. Repositories still syncing.')).toBeInTheDocument();
+    // Not the "no installation at all" empty state — the owner-only reminder panel still offers
+    // Connect GitHub (an already-connected owner may want a second account), but the dedicated
+    // empty-state heading and its own button must not render once an installation exists.
+    expect(screen.queryByText('Connect GitHub to import a repository')).not.toBeInTheDocument();
+  });
+
+  test('a failed reconciliation names the reason, never "still syncing"', async () => {
+    const source = fakeSource({
+      listRepos: async () => [],
+      listGitHubInstallations: async () => [installation({ synced: false, sync_failed_at: '2026-09-13T00:00:00Z', sync_failure_reason: 'permission_refused' })],
+      listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    expect(await screen.findByText(/permissions were not approved/)).toBeInTheDocument();
+  });
+
+  test('a repository ready to import, one imported, and one not importable are each named correctly', async () => {
+    const source = fakeSource({
+      listRepos: async () => [
+        githubRepo({ repo_id: 'ready-repo' }),
+        githubRepo({ repo_id: 'done-repo', last_import_state: 'ready', last_import_at: '2026-09-01T00:00:00Z' }),
+        githubRepo({ repo_id: 'blocked-repo', import_blocked_reason: 'guidefold_yaml_missing' }),
+      ],
+      listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    expect(await screen.findByText('Not imported yet.')).toBeInTheDocument();
+    expect(screen.getByText(/^Imported /)).toBeInTheDocument();
+    expect(screen.getByText('Not importable: no guidefold.yaml in this repository.')).toBeInTheDocument();
+  });
+
+  test('importing a repository calls importGitHubRepo and never touches proposals or a model key', async () => {
+    const importGitHubRepo = vi.fn(async () => ({ job_id: 'job-1' }));
+    const setCredential = vi.fn();
+    const generateProposals = vi.fn();
+    const source = fakeSource({
+      listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()],
+      listCredentials: async () => [], importGitHubRepo, setCredential, generateProposals,
+    });
+    renderRoute(source, 'step=preview');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import' }));
+    await waitFor(() => expect(importGitHubRepo).toHaveBeenCalledWith({ org: 'meridian', repo: 'widgets' }, expect.stringContaining('github-import:meridian:widgets:')));
+    expect(setCredential).not.toHaveBeenCalled();
+    expect(generateProposals).not.toHaveBeenCalled();
+  });
+
+  test('"Import all" is one call, never a loop over repositories', async () => {
+    const importAllGitHubRepos = vi.fn(async () => ({ items: [{ repo_id: 'widgets', job_id: 'job-1' }], count: 1 }));
+    const importGitHubRepo = vi.fn();
+    const source = fakeSource({
+      listRepos: async () => [githubRepo()], listGitHubInstallations: async () => [installation()],
+      listCredentials: async () => [], importAllGitHubRepos, importGitHubRepo,
+    });
+    renderRoute(source, 'step=preview');
+    await userEvent.click(await screen.findByRole('button', { name: 'Import all' }));
+    await waitFor(() => expect(importAllGitHubRepos).toHaveBeenCalledWith('meridian', expect.stringContaining('github-import-all:meridian:')));
+    expect(importGitHubRepo).not.toHaveBeenCalled();
+  });
+
+  test('a not-importable repository offers no Import button', async () => {
+    const source = fakeSource({
+      listRepos: async () => [githubRepo({ import_blocked_reason: 'guidefold_yaml_missing' })],
+      listGitHubInstallations: async () => [installation()], listCredentials: async () => [],
+    });
+    renderRoute(source, 'step=preview');
+    await screen.findByText('Not importable: no guidefold.yaml in this repository.');
+    expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Import route, model key status line (owner instruction, 2026-09-13)', () => {
+  test('no stored key: proposals need one, with a link for the owner', async () => {
+    const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [] });
+    renderRoute(source, 'step=preview');
+    expect(await screen.findByText(/Proposals \(duplicates, contradictions\) need a model key; importing repositories does not\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Add one in Organization › Model keys' })).toHaveAttribute('href', '/organization?org=meridian&tab=keys');
+  });
+
+  test('a stored key: names the provider in use, no link', async () => {
+    const source = fakeSource({
+      listRepos: async () => [], listGitHubInstallations: async () => [],
+      listCredentials: async () => [{ provider: 'anthropic', name: 'prod', last4: '9abc', model: 'claude', preferred: true, created_at: null, created_by: null }],
+    });
+    renderRoute(source, 'step=preview');
+    expect(await screen.findByText('Proposals (duplicates, contradictions) use anthropic.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Model keys/ })).not.toBeInTheDocument();
+  });
+
+  test('a member sees the same status with no link and no owner-only phrasing', async () => {
+    const source = fakeSource({ listRepos: async () => [], listGitHubInstallations: async () => [], listCredentials: async () => [] });
+    renderRoute(source, 'step=preview', { role: 'member' });
+    expect(await screen.findByText(/An owner can add one in Organization › Model keys\./)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Model keys/ })).not.toBeInTheDocument();
+  });
+});
+
 const plan = (over: Partial<ImportPlan> = {}): ImportPlan => ({
   groups: [{ group_id: 'g1', kind: 'extraction', scope: 'atlas.identity', owner: 'identity-team', inputs: ['a/SKILL.md'], n_inputs: 1, estimated_tokens: 500, estimated_calls: 1 }],
   limits: { max_files: 20, max_bytes: 1048576, max_groups: 5, max_proposals_per_group: 5, max_neighbours: 10, max_tokens: 1000, max_calls: 10, max_usd: 5 },
