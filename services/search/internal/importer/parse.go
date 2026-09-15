@@ -56,6 +56,9 @@ type ParseWorker struct {
 	blobs   BlobStore
 	builder Builder
 	scratch string
+	// followUp is what another module asked to happen once an import landed
+	// (ADR-0051). Nil in every deployment that wires nothing.
+	followUp ImportFollowUp
 }
 
 // NewParseWorker wires the job handler.
@@ -179,9 +182,24 @@ func (w *ParseWorker) Run(ctx context.Context, t *worker.Task) error {
 	if e := t.Checkpoint(ctx, mustJSON(cp)); e != nil {
 		return e
 	}
+	// After the catalog transaction committed, never inside it: a follow-up is
+	// a separate decision about a finished import, and a failure in it must not
+	// roll back skills that are already written.
+	if failure := w.notifyFollowUp(ctx, orgID, repoID, importID, stateOf(result)); failure != "" {
+		result["follow_up_error"] = failure
+	}
 	t.Result = mustJSON(result)
 	settled = true
 	return nil
+}
+
+// stateOf reads the import state out of the parse result, which is the same
+// value the row got. It returns "" rather than guessing when the key is absent.
+func stateOf(result map[string]any) string {
+	if s, ok := result["state"].(string); ok {
+		return s
+	}
+	return ""
 }
 
 // build runs the trusted builder, and retries once without the files it could
