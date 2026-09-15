@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Branching, staging, committing and PR rules for the Guidefold repository: worktree per task, never commit on main, named-path staging, PR template, no force push or hook bypass. Use before any git write operation; not for consumer monorepo CI design.
+description: 'Branching, staging, committing and PR rules for the Guidefold repository: worktree per task, never commit on main, named-path staging, PR template, no force push or hook bypass. Use before any git write operation; not for consumer monorepo CI design.'
 ---
 
 # Praca z Gitem w tym repozytorium

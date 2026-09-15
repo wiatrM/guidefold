@@ -1336,7 +1336,7 @@ paths:
   /api/v1/orgs/{org}/repos/{repo}/map/scopes:
     get:
       tags: [knowledge]
-      summary: The scope map from guidefold.yaml, with unmapped skills named.
+      summary: The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named.
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -1971,7 +1971,7 @@ paths:
   /api/v1/orgs/{org}/map/scopes:
     get:
       tags: [knowledge]
-      summary: "The scope map from guidefold.yaml, with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      summary: "The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -3458,8 +3458,12 @@ components:
         import_blocked_reason:
           type: [string, "null"]
           description: >-
-            gfm.repos.import_blocked_reason (1.13.0). Today only "guidefold_yaml_missing",
-            written by github.import_repo when the repository has no guidefold.yaml.
+            gfm.repos.import_blocked_reason (1.13.0). Since 1.14.0 (ADR-0050) the only
+            value github.import_repo writes is "guidefold_yaml_unreadable": a repository
+            that declares a guidefold.yaml this run cannot read (too large). A repository
+            with NO guidefold.yaml is imported under an inferred scope map and is never
+            blocked. "guidefold_yaml_missing" stays decodable — rows written before 1.14.0
+            hold it.
         last_import_state: { type: [string, "null"], description: "Newest gfm.imports.state for this repository (1.13.0)." }
         last_import_error: { type: [string, "null"], description: "Newest gfm.imports.error for this repository (1.13.0)." }
         last_import_at: { type: [string, "null"], format: date-time, description: "Newest import's finalized_at or created_at (1.13.0)." }
@@ -4336,7 +4340,14 @@ components:
         owner: { type: [string, "null"] }
         parent: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }
-        source: { type: string, enum: [guidefold_yaml, directory, codeowners, unknown] }
+        source:
+          type: string
+          enum: [guidefold_yaml, inferred, directory, codeowners, unknown]
+          description: >-
+            gfm.scopes.source (contract §7). "guidefold_yaml" is a scope the repository
+            declared; "inferred" is one derived from its skill directories and CODEOWNERS
+            because it has no guidefold.yaml (1.14.0, ADR-0050) — visible as such so an
+            inferred hierarchy never passes for a declared one.
         count: { type: integer }
 
     MapScopes:

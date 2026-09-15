@@ -452,6 +452,15 @@ function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
 // child is a listed node with no other listed node between it and the selection, matching the
 // dotted parent the importer stores (domain.ParentScope) and keeping a node visible when an
 // intermediate scope is not declared.
+/** `gfm.scopes.source` (API-CONTRACT §7, ADR-0050) in the words a reader needs: an inferred
+ * scope is a reading of the tree, never something the organisation decided. */
+function scopeSourceLabel(source: string | null): string {
+  if (source === 'guidefold_yaml') return 'Declared in guidefold.yaml';
+  if (source === 'inferred') return 'Inferred from directories and CODEOWNERS';
+  if (source === null) return 'Unknown';
+  return source;
+}
+
 function directScopeChildren(nodes: ScopeNode[], selected: string | null): ScopeNode[] {
   const ids = new Set(nodes.map(node => node.id));
   return nodes.filter(node => {
@@ -497,7 +506,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
           <p className={muted + ' pb-3'}>{repo ? '' : 'The top level is one branch per repository you can read. '}Each directory is read when you open it, up to 100 objects per request. Directory depth does not assign a knowledge layer.</p>
           <RepositoryBranch ctx={ctx} path="" label="/" depth={0} />
         </Panel></GlowSurface>}
-        {axis === 'scopes' && <GlowSurface className={styles.glowFill}><Panel title="Declared scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
+        {axis === 'scopes' && <GlowSurface className={styles.glowFill}><Panel title="Scopes" eyebrow="Which scope owns what" icon={<TreeStructureIcon weight="duotone" aria-hidden="true" />}>
           {scopes.phase === 'loading' && !scopes.value && <RouteState state="loading" title="Reading scopes" description="Waiting for the scope map of this repository." />}
           {scopes.phase === 'error' && scopes.error && !scopes.value && (isScopeAmbiguous(scopes.error) && selectedScope
             ? <ScopeAmbiguous ctx={ctx} scope={selectedScope} />
@@ -509,6 +518,7 @@ export function ApiMapRoute({ctx}: ApiProps) {
               <div className={styles.definition}><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
               <div className={styles.definition}><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path} className="block">{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
               <div className={styles.definition}><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
+              <div className={styles.definition}><dt>Scope map</dt><dd>{scopeSourceLabel(scopes.value.scope.source)}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
             {scopeChildren.length ? <ul className={styles.relationList}>
               {/* A scope id is unique only within a repository (§4.10.6), so opening one from an
@@ -524,6 +534,11 @@ export function ApiMapRoute({ctx}: ApiProps) {
                 <Link to={ctx.href('map', {tab: 'scopes', skill: item.skill_id, scope: selectedScope})}><FileCodeIcon weight="duotone" aria-hidden="true" className="mr-2 inline text-system-ink" />{item.name}</Link><code>{item.skill_id}</code>
               </li>)}
             </ul>}
+            {(scopes.value.scope ? [scopes.value.scope] : []).concat(scopeChildren).some(node => node.source === 'inferred') &&
+              <div className={styles.notice} role="status">
+                <StateBadge tone="neutral">Inferred</StateBadge>
+                <p>At least one scope here was inferred from the repository's directories and CODEOWNERS, because it has no <code>guidefold.yaml</code>. An inferred scope is a reading of the tree, not a decision anyone recorded. Add <code>guidefold.yaml</code> to name scopes or owners differently.</p>
+              </div>}
             {scopes.value.unmapped.length > 0 && <div className={styles.notice} role="status">
               <StateBadge tone="warning">Unmapped scope</StateBadge>
               <p>{scopes.value.unmapped.reduce((total, item) => total + item.count, 0)} skills declare a scope with no mapping in this repository: {scopes.value.unmapped.map(item => item.scope + ' (' + item.count + ')').join(', ')}. They stay readable and are not assigned to a parent.</p>

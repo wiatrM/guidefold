@@ -1,6 +1,6 @@
 ---
 name: refactoring-rules
-description: How to refactor in Guidefold: behaviour-preserving steps under green tests, separate from behaviour changes, no drive-by edits, moving code toward KISS, YAGNI, DRY and hexagonal boundaries. Use before restructuring any file and when a task tempts you to "clean up while here". Not for parked code.
+description: 'How to refactor in Guidefold: behaviour-preserving steps under green tests, separate from behaviour changes, no drive-by edits, moving code toward KISS, YAGNI, DRY and hexagonal boundaries. Use before restructuring any file and when a task tempts you to "clean up while here". Not for parked code.'
 ---
 
 # Zasady refaktoryzacji

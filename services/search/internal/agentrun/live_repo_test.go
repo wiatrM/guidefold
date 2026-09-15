@@ -352,37 +352,69 @@ func TestLiveRepoGoesFetchParseProposeDone(t *testing.T) {
 	}
 }
 
-// A repository with no guidefold.yaml is not managed by Guidefold
-// (API-CONTRACT §8, ADR-0046 point 9): live.repo skips it before ever
-// calling CreateImport, rather than failing it the way a real import.parse
-// failure does (the next test).
-func TestLiveRepoSkipsRepositoryWithNoGuidefoldYAML(t *testing.T) {
-	f := setUpLiveRepoTarget(t, "no-guidefold-yaml",
-		[]string{"AGENTS.md", ".agents/skills/a/SKILL.md"}, nil)
+// ADR-0050 (owner decision 2026-09-15): a repository with no guidefold.yaml
+// is imported under a scope map inferred from its skill directories and
+// CODEOWNERS, not skipped. This test asserted the opposite ("skips") until
+// that decision; only a declared map too large to read skips a target now
+// (guidefold_yaml_unreadable).
+func TestLiveRepoImportsRepositoryWithNoGuidefoldYAML(t *testing.T) {
+	bodies := map[string]string{
+		".agents/skills/rotate-a/SKILL.md": sharedProcedureSkill("rotate-a", "platform-engineering"),
+		".agents/skills/rotate-b/SKILL.md": sharedProcedureSkill("rotate-b", "platform-engineering"),
+	}
+	files := []string{".agents/skills/rotate-a/SKILL.md", ".agents/skills/rotate-b/SKILL.md"}
+	f := setUpLiveRepoTarget(t, "no-guidefold-yaml", files, bodies)
 
-	w := f.newWorker()
+	// Same deterministic-recipe arrangement as the happy path above.
+	if _, e := f.h.Pool.Exec(context.Background(), `DELETE FROM gfm.org_credentials WHERE org_id=$1::uuid`,
+		f.org); e != nil {
+		t.Fatal(e)
+	}
+	scratch := pivottest.Scratch(t, "live-repo-inferred-map")
+	recipe := generator.Recipe{Generator: generator.NameDeterministic, Version: generator.RecipeVersion}
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	drained := make(chan struct{})
+	t.Cleanup(func() { cancelDrain(); <-drained })
+	go func() {
+		defer close(drained)
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			ranParse := f.h.RunParseOnce(drainCtx, t, scratch)
+			ranGenerate := f.h.RunGenerate(t, &generator.Deterministic{}, recipe) > 0
+			if !ranParse && !ranGenerate {
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+	}()
+
+	w := f.newWorker().WithProposalGenerator(agentrun.NewReviewProposalGenerator(f.h.Pool, f.h.Review))
 	if e := runLiveRepoOnce(t, f, w); e != nil {
 		t.Fatal(e)
 	}
 
 	state, errText := targetRow(t, f.h, f.org, f.runID, f.repoID)
-	if state != live.TargetSkipped || errText != live.ErrorGuidefoldYAMLMissing {
-		t.Fatalf("target = %s/%s, want %s/%s", state, errText,
-			live.TargetSkipped, live.ErrorGuidefoldYAMLMissing)
+	if state == live.TargetSkipped {
+		t.Fatalf("target = %s/%s, want an import — absence no longer skips", state, errText)
 	}
-
 	var imports int
 	if e := f.h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.imports
  WHERE org_id=$1::uuid AND repo_id=$2`, f.org, f.repoID).Scan(&imports); e != nil {
 		t.Fatal(e)
 	}
-	if imports != 0 {
-		t.Fatalf("an unmanaged repository got %d gfm.imports rows, want 0", imports)
+	if imports != 1 {
+		t.Fatalf("gfm.imports rows = %d, want 1", imports)
 	}
-
-	runState, _ := runRowState(t, f.h, f.org, f.runID)
-	if runState != live.StatePartial {
-		t.Fatalf("run state = %s, want %s (one skipped target)", runState, live.StatePartial)
+	var inferred int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id=$2 AND source='inferred'`, f.org, f.repoID).Scan(&inferred); e != nil {
+		t.Fatal(e)
+	}
+	if inferred == 0 {
+		t.Fatal("no gfm.scopes row with source='inferred'")
 	}
 }
 
