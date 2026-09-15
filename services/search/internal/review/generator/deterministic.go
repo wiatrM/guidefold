@@ -373,10 +373,16 @@ type procedure struct {
 func (d *Deterministic) consolidate(req Request) Output {
 	out := Output{Candidates: []Candidate{}, Abstentions: []Abstention{}}
 	skills := req.Skills
-	if n := req.Limits.MaxNeighbours; n > 0 && len(skills) > n {
+	if n := req.Limits.MaxNeighbours; n > 0 && len(skills) > n*n {
 		// The bound is applied here as well as in the plan, because a generator
 		// that trusts its caller to have stopped reading is not bounded at all.
-		skills = skills[:n]
+		// It is the *group's* bound, `max_neighbours²`, not one scope's: the
+		// plan builds a group out of up to max_neighbours scopes contributing up
+		// to max_neighbours skills each (API-CONTRACT §8), and cutting the
+		// concatenation at max_neighbours would let the first scope in name
+		// order spend the whole budget and leave its siblings uncompared —
+		// exactly what `combine`'s doc comment says it refuses to do.
+		skills = skills[:n*n]
 	}
 	procs := []procedure{}
 	for i := range skills {

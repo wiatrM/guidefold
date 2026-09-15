@@ -21,7 +21,7 @@ Abstynencja `no_shared_procedure` była **prawdziwa dla reguły, która ją wypo
 
 ## 3. Diagnoza: liczby na prawdziwym drzewie
 
-Komenda dla §3.1–§3.4 (czysty Python, te same reguły co `internal/review/generator/markdown.go`) i dla §3.5 (`GUIDEFOLD_REAL_TREE=$PWD go test ./internal/review/generator -run RealTree -v`).
+Komendy: §3.3 i najważniejsza liczba §3.4 (najdłuższy przebieg all-pairs) pochodzą z kodu produktu — `GUIDEFOLD_REAL_TREE=$PWD go test ./internal/review/generator -run RealTree -v`, czyli prawdziwe `Split`/`RoleOf`/`Items`/`Normalise`/`longestRun`. Zliczenia §3.1, §3.2, §3.5 i wiersze tabeli §3.4 opisujące luźniejsze sposoby czytania kroków pochodzą ze skryptu Pythona powtarzającego te same reguły (`markdown.go`); tam, gdzie obie drogi liczyły to samo, dały tę samą liczbę.
 
 ### 3.1 Co w ogóle jest w drzewie
 
@@ -74,6 +74,13 @@ To jednak **nie wystarcza**, i to jest najważniejsza liczba w raporcie. Porówn
 | **każda** ponumerowana pozycja w pliku, bez względu na nagłówek | 38 | **0** | 2 |
 | **każda** pozycja listy (`1.`, `-`, `*`) w pliku | 66 | **0** | 2 |
 
+Ta sama liczba z kodu produktu, nie z powtórzenia reguł w Pythonie (harness, wszystkie 81 skilli, wszystkie pary, prawdziwe `Split`/`RoleOf`/`Items`/`Normalise`/`longestRun`):
+
+```
+longest identical ordered-step run over all 81 skills (all pairs): 2
+  (higgsfield-generate / higgsfield-product-photoshoot)
+```
+
 Czyli: `no_shared_procedure` przy progu `minSharedSteps = 3` jest **trafnym werdyktem** dla tego drzewa i pozostałby trafny po dowolnym rozluźnieniu parsowania. Wariant (iii) z briefu sam z siebie nie produkuje niczego; wariant (ii) sam z siebie też nie (porównanie all-pairs, powyżej, daje zero).
 
 Jedyny przebieg dwóch kroków niesiony przez więcej niż dwa skille jest w całym drzewie **dokładnie jeden**:
@@ -94,7 +101,7 @@ Uogólnienie na „identyczny blok ≥N linii" łapałoby to samo, ale głośnie
 
 Trzy zmiany, z których **żadna nie działa bez pozostałych dwóch** (§3.3, §3.4 pokazują, że każda z osobna daje zero). Ranking nietknięty; `family`/relacje nadal addytywne; ścieżka deterministyczna nadal bez modelu.
 
-1. **Wybór sąsiadów po rodzinie nazw** (`internal/review/generator/neighbours.go`, `internal/review/plan.go`). `max_neighbours` bez zmian — scope nadal wnosi najwyżej 10 skilli, grupa najwyżej `max_neighbours²` — ale gdy scope ma ich więcej, pierwszeństwo ma największa rodzina nazw (pierwszy człon nazwy przed `-`), a nie alfabet. Kolejność jest totalna i zależy tylko od identyfikatorów, więc dwa plany nad tym samym katalogiem są identyczne. Dotyczy **wyłącznie** konsolidacji: enrichment ogląda każdy skill osobno, więc zostaje przy dotychczasowym porządku.
+1. **Wybór sąsiadów po rodzinie nazw** (`internal/review/generator/neighbours.go`, `internal/review/plan.go`). `max_neighbours` bez zmian — scope nadal wnosi najwyżej 10 skilli, grupa najwyżej `max_neighbours²` — ale gdy scope ma ich więcej, pierwszeństwo ma największa rodzina nazw (pierwszy człon nazwy przed `-`), a nie alfabet. Przy okazji poprawione jest własne obcięcie generatora: `consolidate()` ścinało grupę do `max_neighbours`, a nie do `max_neighbours²`, czyli robiło dokładnie to, czego `combine()` w `oneshot.go` odmawia w swoim komentarzu — pozwalało pierwszemu scope'owi w porządku nazw wydać cały budżet grupy. Na tym repozytorium niewidoczne (jeden scope, 10 skilli), na repozytorium z hierarchią realne. Kolejność jest totalna i zależy tylko od identyfikatorów, więc dwa plany nad tym samym katalogiem są identyczne. Dotyczy **wyłącznie** konsolidacji: enrichment ogląda każdy skill osobno, więc zostaje przy dotychczasowym porządku.
 2. **Dwa kształty nagłówka więcej** (`markdown.go`): `step ` i `bootstrap`. Tylko te dwa, bo tylko te dwa zostały zmierzone. Promień rażenia na ekstrakcji zmierzony osobno: na 177 dokumentach `docs/**` liczba dokumentów, z których deterministyczna ekstrakcja **wyprodukowałaby** kandydata, rośnie z **1 do 2** — jedynym nowym jest `docs/CONVENTIONS.md` („Reconciling a partial or drifted bootstrap (`init`)", 6 kroków), czyli prawdziwa procedura. Szersza lista (`workflow`, `process`, `checklist`, …) nie jest dodana, bo nie jest zmierzona.
 3. **Próg źródeł zamiast niższego progu kroków** (`deterministic.go`). `minSharedSteps = 3` zostaje nietknięte: para nadal potrzebuje trzech kroków. Dochodzi `minRepeatedSteps = 2` z `minRepeatedSources = 3` — ten sam przebieg dwóch kroków, dosłownie i w tej samej kolejności, w trzech lub więcej skillach grupy liczy się jako wspólny element. Procedura dwukrokowa wchodzi z tego powodu do porównania (wcześniej `< minSharedSteps` wypadała z grupy — to dlatego `higgsfield-product-photoshoot` był niewidoczny nawet po zmianie 1 i 2).
 4. **Źródłem jest każdy skill niosący przebieg**, nie tylko para, która go ujawniła. Wspólny element wymieniający dwa z trzech egzemplarzy duplikatu zostawiałby trzeci na miejscu po zatwierdzeniu. Skill, który niesie przebieg, ale gdzieś się z nim nie zgadza (wersja, warunek, sprzeczność) **nie** jest źródłem — dostaje własny powód w `abstentions[]`.
@@ -164,6 +171,10 @@ urn:skill:guidefold:_root:higgsfield-soul-id perform identically.
 - urn:skill:guidefold:_root:higgsfield-product-photoshoot
 - urn:skill:guidefold:_root:higgsfield-soul-id
 ```
+
+### 5.3 Fixture Meridian pod nowymi progami
+
+Sprawdzone osobno, bo obie zmiany mogłyby ruszyć `test_p08_pyramid.py`: 25 z 27 skilli fixture ma ≥2 sparsowane kroki, ale **żaden przebieg dwóch kroków nie jest niesiony przez ≥3 skille fixture (0 trafień)**, a żadna grupa rodzica nie ma więcej niż `max_neighbours` skilli (17 węzłów, 27 skilli), więc wybór po rodzinie nazw jest tam operacją pustą. Nic w fixture nie zmienia liczby wspólnych elementów.
 
 ## 6. Czego ten przebieg **nie** dowodzi
 

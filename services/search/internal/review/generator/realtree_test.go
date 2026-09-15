@@ -94,6 +94,40 @@ func TestRealTreeConsolidation(t *testing.T) {
 	}
 	t.Logf("group presented to consolidation (%d of %d): %s", len(group), len(all), strings.Join(names, ", "))
 
+	// The decisive number of the report, computed with the product's own
+	// parser rather than a reimplementation of it: over ALL of the tree's
+	// skills, not just the group, how long is the longest run of identical
+	// ordered steps between any two procedures? If that is below
+	// minSharedSteps, no neighbour selection and no heading list can make a
+	// pair alone into a shared element.
+	best, bestPair := 0, ""
+	keysOf := func(s Skill) []string {
+		steps := []Item{}
+		for _, sec := range Split(s.Body) {
+			if RoleOf(sec.Heading) == RoleSteps {
+				steps = append(steps, Items(sec)...)
+			}
+		}
+		keys := make([]string, len(steps))
+		for i, st := range steps {
+			keys[i] = strings.Join(Normalise(st.Text), " ")
+		}
+		return keys
+	}
+	all_keys := make([][]string, len(all))
+	for i := range all {
+		all_keys[i] = keysOf(all[i])
+	}
+	for i := range all {
+		for j := i + 1; j < len(all); j++ {
+			if r := longestRun(all_keys[i], all_keys[j]); r.length > best {
+				best, bestPair = r.length, all[i].Name+" / "+all[j].Name
+			}
+		}
+	}
+	t.Logf("longest identical ordered-step run over all %d skills (all pairs): %d (%s)",
+		len(all), best, bestPair)
+
 	d := &Deterministic{}
 	out := d.consolidate(Request{Kind: KindConsolidation, Scope: "_root", Owner: "",
 		Skills: group, Limits: limits})
