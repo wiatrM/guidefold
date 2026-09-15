@@ -459,7 +459,7 @@ export const job = object<Job>({
 
 export const publicationStates = ['none', 'building', 'published', 'failed'] as const;
 export type PublicationBuildState = typeof publicationStates[number];
-/** `partial` (contract 1.16.0) is null until a build finishes: unknown is not "complete". */
+/** `partial` (contract 1.17.0) is null until a build finishes: unknown is not "complete". */
 export interface ImportPublication { snapshot_id: string | null; state: PublicationBuildState; error: string | null; partial: boolean | null }
 export const importPublication = object<ImportPublication>({
   snapshot_id: nullable(str), state: fallback(oneOf(publicationStates), 'none'), error: nullable(str),
@@ -922,7 +922,7 @@ export interface Snapshot {
   import_id: string | null; job_id: string | null; commit: string | null; n_skills: number;
   builder_sha256: string | null; validation: { ok: boolean; findings: string[] } | null;
   error: string | null; activated_at: string | null; created_at: string | null;
-  /** Contract 1.16.0: built from an import the builder could not parse in full. */
+  /** Contract 1.17.0: built from an import the builder could not parse in full. */
   partial: boolean;
   /** The paths that import could not parse, with the builder's reason. Empty unless `partial`. */
   failed_files: FailedImportFile[];
@@ -1000,7 +1000,7 @@ export interface QueueItem {
   item_id: string;
   /** Contract 1.11.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
   repo_id: string | null;
-  /** A skill URN, except for `import_file_failed`, where it is `file:<repository path>` (1.16.0). */
+  /** A skill URN, except for `import_file_failed`, where it is `file:<repository path>` (1.17.0). */
   skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
   evidence: Record<string, unknown> | null;
   decision: { action: QueueAction; reason: string | null; at: string | null; actor: string | null } | null;

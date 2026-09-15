@@ -228,7 +228,7 @@ ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS proposal_id uuid;
 ALTER TABLE gfm.scopes DROP CONSTRAINT IF EXISTS scopes_source_check;
 ALTER TABLE gfm.scopes ADD CONSTRAINT scopes_source_check
  CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown'));
--- Contract 1.16.0: 'import_file_failed' joins the same constraint. A partial
+-- Contract 1.17.0: 'import_file_failed' joins the same constraint. A partial
 -- import now publishes (API-CONTRACT §4.4), so the file the builder could not
 -- parse has to be asked about somewhere; it is one owner-queue item per file,
 -- written by import.parse in the drift transaction. The CREATE TABLE above

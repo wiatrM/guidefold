@@ -89,7 +89,7 @@ type APIError struct {
 	Status int
 	Code   string
 	// Hint is the optional one-sentence `hint` of the /v1 error envelope
-	// (API-CONTRACT §3, contract 1.16.0): what the caller should send instead.
+	// (API-CONTRACT §3, contract 1.17.0): what the caller should send instead.
 	// It is a constant of the code, never built from the request, so it can
 	// carry nothing about the organisation. Clients still branch on Code.
 	Hint string

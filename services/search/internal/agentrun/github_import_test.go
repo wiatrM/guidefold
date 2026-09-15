@@ -307,7 +307,7 @@ func TestGitHubImportAllEnqueuesOnlyGitHubRegisteredRepositories(t *testing.T) {
 	}
 }
 
-// Contract 1.16.0 / ADR-0050: a repository with no guidefold.yaml but with a
+// Contract 1.17.0 / ADR-0050: a repository with no guidefold.yaml but with a
 // CODEOWNERS gets its owner from that file. Before the fetch list carried
 // CODEOWNERS the builder never saw it on this path, so every inferred scope
 // came out `owner: unknown` for a repository that states its owners plainly.

@@ -225,7 +225,7 @@ describe('decoders accept the contract payloads', () => {
     expect(rows[2].error).toBe('missing_dependency');
   });
 
-  test('a partial publication carries the annotation and an older server still decodes (1.16.0)', () => {
+  test('a partial publication carries the annotation and an older server still decodes (1.17.0)', () => {
     const rows = decode({
       items: [
         {
@@ -244,7 +244,7 @@ describe('decoders accept the contract payloads', () => {
     expect(rows[1].failed_files).toEqual([]);
   });
 
-  test('the owner queue accepts import_file_failed and its file identity (1.16.0)', () => {
+  test('the owner queue accepts import_file_failed and its file identity (1.17.0)', () => {
     const item = decode({
       item_id: 'q9', repo_id: 'monorepo', skill_id: 'file:.agents/skills/broken/SKILL.md',
       revision: null, reason: 'import_file_failed', since: '2026-09-15T00:00:00Z',

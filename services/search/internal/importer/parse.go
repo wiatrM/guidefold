@@ -835,7 +835,7 @@ func applyDrift(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string, 
 
 // queueFailedFiles asks the owner about every file the builder could not parse.
 //
-// Contract 1.16.0, U9. A partial import now publishes (API-CONTRACT §4.4), so
+// Contract 1.17.0, U9. A partial import now publishes (API-CONTRACT §4.4), so
 // the file that failed has to be visible somewhere a person looks; otherwise
 // "one broken file fails alone" would mean "one broken file disappears". It
 // runs in the same transaction as the drift it sits beside, and writes with

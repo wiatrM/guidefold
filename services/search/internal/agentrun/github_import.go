@@ -139,7 +139,7 @@ func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Cl
 			kind = domain.KindConfig
 			hierarchyFetched = true
 		}
-		// CODEOWNERS is configuration, not knowledge (contract 1.16.0): the
+		// CODEOWNERS is configuration, not knowledge (contract 1.17.0): the
 		// builder reads it to name the owner of an inferred scope, and it must
 		// not turn up in the Library as a document beside the skills.
 		for _, candidate := range ghapp.CodeownersCandidates {

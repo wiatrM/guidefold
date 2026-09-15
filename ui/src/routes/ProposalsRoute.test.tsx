@@ -274,7 +274,7 @@ describe('Proposals route, decision, conflict and export', () => {
     expect(screen.queryAllByRole('button', { name: 'Roll back to this' })).toHaveLength(0);
   });
 
-  // Contract 1.16.0: a partial import publishes, so the row that is serving
+  // Contract 1.17.0: a partial import publishes, so the row that is serving
   // less than its import carried has to say so. A snapshot that quietly holds
   // fewer skills than the repository would read as a complete library.
   test('a partial publication names itself and the files it could not parse', async () => {

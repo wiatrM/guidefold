@@ -101,7 +101,7 @@ type snapshotRow struct {
 	Error         *string         `json:"error"`
 	ActivatedAt   *time.Time      `json:"activated_at"`
 	CreatedAt     time.Time       `json:"created_at"`
-	// Partial and FailedFiles are contract 1.16.0. A partial import publishes
+	// Partial and FailedFiles are contract 1.17.0. A partial import publishes
 	// (API-CONTRACT §4.4), so the reader has to be told that this snapshot is
 	// the accepted part of an import rather than all of it — a partial library
 	// that does not say so reads as a complete one.

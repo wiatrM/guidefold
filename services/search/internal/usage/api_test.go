@@ -1098,7 +1098,7 @@ func TestUsageOrganisationExportCarriesTheRepositoryAsTheLastColumn(t *testing.T
 	}
 }
 
-// Contract 1.16.0: an `import_file_failed` item reaches the owner's queue and
+// Contract 1.17.0: an `import_file_failed` item reaches the owner's queue and
 // can be decided like any other.
 //
 // The row this test writes is exactly what `import.parse` writes for a file

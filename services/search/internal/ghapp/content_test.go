@@ -172,7 +172,7 @@ func equalSets(got, want []string) bool {
 	return true
 }
 
-// Contract 1.16.0: the three canonical CODEOWNERS locations are on the fetch
+// Contract 1.17.0: the three canonical CODEOWNERS locations are on the fetch
 // list. Without them a repository imported through the GitHub App reached the
 // builder with no ownership rule at all, so every zero-config scope inferred
 // on that path carried `owner: unknown` and every `scope_map` proposal for it

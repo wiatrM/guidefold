@@ -23,7 +23,7 @@ func writeBrokenCard(t *testing.T, tree string) {
 	}
 }
 
-// Contract 1.16.0 / U9: a file the builder could not parse becomes one item in
+// Contract 1.17.0 / U9: a file the builder could not parse becomes one item in
 // the owner's queue, with the builder's own reason on it.
 //
 // This is the half of U2.1 that publication no longer enforces. A partial

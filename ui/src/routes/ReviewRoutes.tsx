@@ -454,7 +454,7 @@ function SnapshotsPanel({ctx, repo}: ApiProps & {repo: string | null}) {
           <td>{item.validation
             ? (item.validation.ok ? 'Valid' : 'Failed: ' + (item.validation.findings.length ? item.validation.findings.join(', ') : unknown(item.error)))
             : 'Unknown'}
-            {/* Contract 1.16.0: a partial import publishes, so a row that is
+            {/* Contract 1.17.0: a partial import publishes, so a row that is
                 serving less than its import carried has to say so here rather
                 than leave the skill count to be compared by hand. */}
             {item.partial && <div className={styles.muted}>

@@ -19,7 +19,8 @@ const MaxFileBytes = 256 * 1024
 
 // ListSkillFiles returns the repository paths, at ref, that a live run or
 // ascent reads: guidefold.yaml and AGENTS.md at the root, the three
-// CodeownersCandidates, and every **/.agents/skills/**/SKILL.md. guidefold.yaml is on this list because it
+// CodeownersCandidates, and every **/.agents/skills/**/SKILL.md.
+// guidefold.yaml is on this list because it
 // declares the scope hierarchy import.parse's own builder needs (API-CONTRACT
 // §8, ADR-0046 point 9): a repository whose returned list holds no
 // guidefold.yaml is not managed by Guidefold, and the caller is expected to
@@ -113,7 +114,7 @@ func (c *Client) ReadFile(ctx context.Context, installationID int64, fullName, r
 // CodeownersCandidates is the CLI's own search order for a repository's
 // ownership rules (`_CODEOWNERS_CANDIDATES` in skills/guidefold/scripts/guidefold),
 // repeated here because the builder that reads them runs over the tree this
-// package fetched. Contract 1.16.0 puts them on the fetch list: without them a
+// package fetched. Contract 1.17.0 puts them on the fetch list: without them a
 // repository imported through the GitHub App reached the zero-config scope map
 // (ADR-0050) with no ownership evidence at all, so every inferred scope came
 // out `owner: unknown` and every `scope_map` proposal `owner: null` — for

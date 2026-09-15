@@ -168,7 +168,7 @@ func (s *Service) respondStatus(c *mgmt.Context, rc *repoContext, importID strin
 	return c.JSON(http.StatusOK, body)
 }
 
-// partialOf reads the publish.build job's own result for contract 1.16.0's
+// partialOf reads the publish.build job's own result for contract 1.17.0's
 // `partial`: this import published the files it could parse and not the ones it
 // could not (API-CONTRACT §4.4). It is read from the job result, not from
 // gfm.publications, because that table belongs to the review module and this

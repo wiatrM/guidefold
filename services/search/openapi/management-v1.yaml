@@ -2826,7 +2826,7 @@ components:
           description: >-
             The skill's URN for every reason but `import_file_failed`, where the
             item is about a file that became no skill and the value is
-            `file:<repository path>` (contract 1.16.0).
+            `file:<repository path>` (contract 1.17.0).
         revision: { type: [string, "null"] }
         reason: { $ref: "#/components/schemas/QueueReason" }
         since: { type: [string, "null"], format: date-time }
@@ -3674,7 +3674,7 @@ components:
         partial:
           type: [boolean, "null"]
           description: >-
-            Contract 1.16.0. True when the published snapshot was built from an
+            Contract 1.17.0. True when the published snapshot was built from an
             import the builder could not parse in full (API-CONTRACT §4.4).
 
     ImportStatus:
@@ -4101,14 +4101,14 @@ components:
         partial:
           type: boolean
           description: >-
-            Contract 1.16.0. True when this snapshot was built from an import
+            Contract 1.17.0. True when this snapshot was built from an import
             the builder could not parse in full: the accepted files published,
             the rest are named in `failed_files`. A partial publication that
             did not say so would read as a complete library.
         failed_files:
           type: array
           description: >-
-            Contract 1.16.0. One entry per file this snapshot's import could
+            Contract 1.17.0. One entry per file this snapshot's import could
             not parse, read from `gfm.import_files` and capped at 50. Empty for
             a publication that is not partial.
           items:

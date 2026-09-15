@@ -338,7 +338,7 @@ func TestACycleFailsPublicationAndKeepsThePreviousHead(t *testing.T) {
 	}
 }
 
-// U2.1 / contract 1.16.0: an import that could not parse every file still
+// U2.1 / contract 1.17.0: an import that could not parse every file still
 // publishes, and the publication says so.
 //
 // The refusal this test used to pin (`import_partial`, head unchanged) was the
@@ -1231,7 +1231,7 @@ func (e *pubEnv) revisions(t *testing.T, snapshot string) map[string]string {
 	return out
 }
 
-// D10 / contract 1.16.0: the catalog hands a reader two revision identifiers
+// D10 / contract 1.17.0: the catalog hands a reader two revision identifiers
 // and `/v1/use` accepts exactly one of them.
 //
 // `revision_id` is the catalog's own identity, `sha256(skill_id@content_sha256)`
