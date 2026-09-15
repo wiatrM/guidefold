@@ -124,6 +124,13 @@ const (
 	ErrorProviderDown         = "model_provider_unavailable"
 	ErrorGitHubNotWired       = "github_app_not_configured"
 	ErrorGuidefoldYAMLMissing = "guidefold_yaml_missing"
+	// ErrorGuidefoldYAMLUnreadable replaced ErrorGuidefoldYAMLMissing as the
+	// reason the import path writes (ADR-0050, contract 1.14.0): a repository
+	// with NO guidefold.yaml is imported under an inferred scope map, and only
+	// a declared map this run cannot read (too large) still skips the target.
+	// ErrorGuidefoldYAMLMissing stays defined and decodable — rows written
+	// before this change hold it.
+	ErrorGuidefoldYAMLUnreadable = "guidefold_yaml_unreadable"
 )
 
 // Job kinds this module reads and writes (API-CONTRACT §8). This package

@@ -194,12 +194,41 @@ def test_one_unparseable_skill_is_reported_and_the_rest_still_build(committed_tr
     assert rows["errors"][0]["error"]
 
 
-def test_a_tree_without_guidefold_yaml_is_rejected(tmp_path, cli_pair):
+# ADR-0050 (owner decision 2026-09-15): a tree with no guidefold.yaml builds. The scope map is
+# inferred from the skill directories and CODEOWNERS the tree does have, and the envelope says
+# so. The previous version of this test asserted the opposite ("is rejected"); the code was
+# stricter than the PRD, which has always said the file only takes PRECEDENCE (PRODUCT-PIVOT:69).
+def test_a_tree_without_guidefold_yaml_builds_with_an_inferred_scope_map(tmp_path, cli_pair):
     cli, cli_sha = cli_pair
-    (tmp_path / "empty").mkdir()
-    with pytest.raises(ValueError) as exc:
-        build_tree.build(tmp_path / "empty", "meridian", "0" * 40, cli, cli_sha)
-    assert "guidefold_yaml" in str(exc.value)
+    tree = tmp_path / "noconfig"
+    skill = tree / "platforms" / "atlas" / ".agents" / "skills" / "geo-joins"
+    skill.mkdir(parents=True)
+    skill.joinpath("SKILL.md").write_text(
+        "---\nname: geo-joins\ndescription: \"[platforms/atlas] Joining geo datasets.\"\n"
+        "metadata:\n  owner: geo-team\n  status: active\n---\n# Geo joins\n", encoding="utf-8")
+    (tree / ".github").mkdir()
+    (tree / ".github" / "CODEOWNERS").write_text("* @acme/platform\nplatforms/atlas/ @acme/atlas-team\n",
+                                                 encoding="utf-8")
+
+    bundle, cfg = build_tree.build(tree, "meridian", "0" * 40, cli, cli_sha, publisher="acme")
+
+    assert bundle["scope_source"] == "inferred"
+    assert cfg["publisher"] == "acme"          # never the scratch directory's name
+    assert cfg["_source"] == "inferred"
+    nodes = bundle["snapshot"]["nodes"]
+    assert set(nodes) == {"_root", "platforms", "platforms.atlas"}
+    assert nodes["platforms.atlas"]["paths"] == ["platforms/atlas/**"]
+    assert nodes["platforms.atlas"]["owner"] == "atlas-team"       # CODEOWNERS, last rule wins
+    assert nodes["_root"]["owner"] == "platform"
+    card = bundle["snapshot"]["cards"]["urn:skill:acme:platforms.atlas:geo-joins"]
+    assert card["node"] == "platforms.atlas"
+
+
+def test_a_tree_with_guidefold_yaml_still_reports_that_source(committed_tree, cli_pair):
+    cli, cli_sha = cli_pair
+    bundle, cfg = build_tree.build(committed_tree, "meridian", "0" * 40, cli, cli_sha)
+    assert bundle["scope_source"] == "guidefold_yaml"
+    assert cfg["publisher"] == "meridian"
 
 
 # W3 — the inventory used to enumerate every `.agents/skills/*/SKILL.md` while `Index.build`

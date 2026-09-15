@@ -54,6 +54,7 @@ index was built from; the two must not drift.
 | [0047](ADR-0047-organisation-is-the-default-read-scope.md) | The organisation is the default read scope; a repository is a filter (`{org_base}` twins of every read, one ACL rule in `mgmt.AuthorizeScope`, contract 1.11.0) | Accepted | 2026-09-13 | relies on ADR-0033, ADR-0042; Live Agent (ADR-0046) already organisation-wide; no `{repo_base}` route or mutation changed |
 | [0048](ADR-0048-telemetry-upload-on-by-default.md) | Telemetry upload is on by default once a token and endpoint exist; opt-out is explicit | Accepted | 2026-09-13 | amends docs/DESIGN.md R7 and docs/SEARCH-USE-TELEMETRY.md §5 |
 | [0049](ADR-0049-premium-visual-effects-layer.md) | A premium visual effects layer (glow, animated borders, shaders, decorative motion) is allowed everywhere in the console | Accepted | 2026-09-13 | amends UX.md §6 rows 1/8, the identical ui-anti-slop-gate rows, and UI.md §1 rows 3/4 |
+| [0050](ADR-0050-zero-config-scope-map.md) | `guidefold.yaml` is an override, not a requirement: without it the scope map is inferred from skill directories + CODEOWNERS | Accepted | 2026-09-15 | amends PRODUCT-PIVOT §4 U1 wording in code, API-CONTRACT 1.14.0 (`gfm.scopes.source: inferred`), DESIGN/CONVENTIONS config sections |
 
 `Proposed` means the decision owner has not yet accepted it; `docs/MVP.md` §8 tracks what is
 still awaiting a decision as of the MVP kickoff. Everything else in this index is `Accepted`.

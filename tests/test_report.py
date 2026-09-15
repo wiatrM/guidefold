@@ -410,7 +410,11 @@ def test_markdown_is_a_pr_comment_under_two_hundred_lines(run_cli, tmp_path):
         assert heading in lines, heading
 
 
-def test_base_commit_without_guidefold_yaml_fails_with_an_explicit_message(run_cli, tmp_path):
+# ADR-0050: a base commit with no guidefold.yaml is normal, not a fatal error. The base map is
+# inferred from the skill directories that commit had, with the working tree's publisher passed
+# in so both sides' URNs are comparable. This test asserted "fails with an explicit message"
+# before that decision.
+def test_base_commit_without_guidefold_yaml_is_compared_against_an_inferred_map(run_cli, tmp_path):
     root = _init_repo(tmp_path / "repo")
     (root / "README.md").write_text("# nothing configured yet\n")
     empty = _commit(root, "before guidefold")
@@ -424,10 +428,12 @@ def test_base_commit_without_guidefold_yaml_fails_with_an_explicit_message(run_c
     _commit(root, "configure guidefold")
 
     proc, jpath, _ = _run_report(run_cli, root, tmp_path, empty)
-    assert proc.returncode == 2
-    assert "guidefold.yaml" in proc.stderr and "no skill map" in proc.stderr
-    assert empty[:7] in proc.stderr
-    assert not jpath.exists()
+    assert proc.returncode == 0, proc.stderr
+    assert jpath.exists()
+    payload = _payload(jpath)
+    # The base commit held no skills at all, so the one in the working tree is an addition.
+    assert payload["changes"]["skills"]["added"] == ["urn:skill:acme:_root:billing-basics"]
+    assert payload["changes"]["skills"]["removed"] == []
 
 
 def test_unknown_base_ref_fails_with_an_explicit_message(run_cli, tmp_path):

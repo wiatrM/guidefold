@@ -2,7 +2,7 @@
 """guidefold — minimal CLI for hierarchy-aware skill discovery over Google Agent Registry.
 
 Subcommands
-  where                     print hierarchy node for cwd (from guidefold.yaml)
+  where                     print hierarchy node for cwd (guidefold.yaml if present, else inferred)
   find "<task>" --scope N   task-aware ranked search (Router 0.1) + URN-prefix filter for N
   load <urn>                download default revision into <cache_root>/skills/<urn>/<rev>/;
                              --delivery-policy proof_gated uses service USE 1.2 and fails closed
@@ -20,7 +20,8 @@ Subcommands
                              for the prompt from the pre-built index artifact only — never
                              guidefold.yaml, never PyYAML, hard watchdog (E1.5)
   prewarm                   Copilot sessionStart: download the node chain's skills into <cache_root>/skills
-  init                      bootstrap a consumer monorepo in one command: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore entries
+  init                      bootstrap a consumer monorepo in one command: .agents/skills/guidefold, harness hooks,
+                             CI workflow, .gitignore entries; --scope-map also writes a guidefold.yaml override
   doctor [--json]           diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness,
                              hosted-service reachability/identity, installed adapter — prints a fix for every failure
 
@@ -43,6 +44,9 @@ Design notes
     current sha (E1.4) — same Router, same ranking code, different Index source; see
     "Index artifact (E1.4)" below for the file layout. Registry/LocalRegistry are storage +
     transport only (`publish`/`download`/`search_scope`) — no ranking lives there.
+  * guidefold.yaml is an optional override (ADR-0050). Without it the scope map is inferred
+    from the tree (skill directories + CODEOWNERS) by `infer_map`, the one implementation the
+    CLI, `report --base` and the worker's build_tree.py all share.
   * Intentionally dependency-light: stdlib + PyYAML (imported lazily — see load_map/frontmatter
     — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help` and `hook`, don't pay
     for it: `hook`'s whole code path imports zero PyYAML, provable with `python3 -X importtime`).
@@ -84,13 +88,125 @@ def repo_root() -> Path:
         sys.exit("guidefold: no guidefold.yaml above cwd and not inside a git repository")
     return Path(out.stdout.strip())
 
-def load_map(root: Path) -> dict:
+# ADR-0050 (owner decision 2026-09-15): `guidefold.yaml` is an OPTIONAL OVERRIDE, never a
+# requirement. Precedence for a scope map is: the file (explicit) > an approved console/LLM
+# proposal > `inferred`. Everything below is the `inferred` tier and it is ONE implementation:
+# the CLI, `report --base` at a git ref and the worker's `tools/worker/build_tree.py` all reach
+# it through `load_map`/`infer_map`, so an inferred URN never depends on who asked.
+SOURCE_GUIDEFOLD_YAML = "guidefold_yaml"
+SOURCE_INFERRED = "inferred"
+
+def _git_remote_owner(root: Path):
+    """The owner/organisation segment of `origin` — "wiatrM" in both
+    `git@github.com:wiatrM/guidefold.git` and `https://github.com/wiatrM/guidefold`. Distinct
+    from `_infer_publisher`, which answers `init`'s narrower question (the *repository* name)."""
+    try:
+        out = subprocess.run(["git", "config", "--get", "remote.origin.url"],
+                             capture_output=True, text=True, cwd=str(root), timeout=5)
+    except Exception:                                     # noqa: BLE001 — git is optional here
+        return None
+    url = (out.stdout.strip() if out.returncode == 0 else "").rstrip("/")
+    if url.endswith(".git"):
+        url = url[:-4]
+    if not url:
+        return None
+    tail = url.split("://", 1)[1] if "://" in url else url
+    segs = [s for s in tail.replace(":", "/").split("/") if s]
+    return segs[-2] if len(segs) >= 2 else None
+
+def _inferred_publisher(root: Path, override: str = None):
+    """(publisher, publisher_source) — the logged-in organisation slug, else the git remote
+    owner slug, else the root directory name. `override` is what a caller that already knows the
+    answer passes (`report --base` uses the working tree's publisher so base and head URNs are
+    comparable; `build_tree.py` is given one, because a materialised worker tree has neither a
+    git remote nor credentials and would otherwise name itself after a scratch directory)."""
+    if override:
+        return _slugify(str(override)), "caller"
+    try:
+        _token, org = _login_token()
+    except Exception:                                     # noqa: BLE001 — credentials are optional
+        org = None
+    if org:
+        return _slugify(org), "credentials"
+    remote = _git_remote_owner(root)
+    if remote:
+        return _slugify(remote), "git_remote"
+    return _slugify(root.name), "directory"
+
+def _inferred_skill_dirs(root: Path) -> list:
+    """Every directory that holds a recognised skill directory, relative to `root`, sorted.
+    "Recognised" is `_SKILL_DIR_MARKERS`, the same pair `scan` already recognises — the
+    directory ABOVE the `.agents/skills/<name>` (or `.claude/skills/<name>`) wrapper, which is
+    the unit a team owns. A skill directly under the repository's own wrapper yields "", i.e.
+    `_root`, and is dropped here."""
+    dirs = set()
+    for marker in _SKILL_DIR_MARKERS:
+        for md in root.rglob(marker.rstrip("/") + "/*/SKILL.md"):
+            if ".guidefold" in md.parts:
+                continue
+            dirs.add(_skill_scope_prefix(rel(root, md.parent)))
+    return sorted(d for d in dirs if d)
+
+def _inferred_node_name(relative_dir: str) -> str:
+    """"platforms/Atlas/identity" -> "platforms.atlas.identity": "/" becomes ".", every segment
+    is slugified to the `[a-z0-9-]` alphabet node validation already demands, so ADR-0008's
+    flattening (`.` -> `-`) still has one node per flat id. Two directories that slugify to the
+    same name share a node (their globs are merged) instead of one silently shadowing the
+    other; `guidefold.yaml` is how you give them different names."""
+    segs = [_SLUG_RE.sub("-", _ascii_lower(s)).strip("-") for s in relative_dir.split("/")]
+    return ".".join(s for s in segs if s)
+
+def infer_map(root: Path, publisher: str = None) -> dict:
+    """The scope map a repository with no `guidefold.yaml` gets (ADR-0050).
+
+    node    every directory holding a recognised skill directory, plus every directory above it
+            on the way down, so `ancestors()` never names a node the map does not hold
+    paths   ["<dir>/**"]; `_root` is implied with ["**"]
+    owner   CODEOWNERS' own "last matching rule wins" verdict for that directory; `_root` takes
+            the whole-repo rule; "unknown" when CODEOWNERS says nothing
+    Stdlib only — no PyYAML is imported on this path, so a repository without the file needs
+    nothing installed at all."""
+    rules = _codeowners_rules(root)
+    nodes = {}
+    for directory in _inferred_skill_dirs(root):
+        segs = directory.split("/")
+        for i in range(1, len(segs) + 1):
+            sub = "/".join(segs[:i])
+            name = _inferred_node_name(sub)
+            if not name:
+                continue
+            glob = sub + "/**"
+            if name in nodes:
+                if glob not in nodes[name]["paths"]:
+                    nodes[name]["paths"].append(glob)
+                continue
+            owner, _hits = _codeowners_match(rules, sub)
+            nodes[name] = {"paths": [glob], "owner": owner or "unknown"}
+    ordered = {"_root": {"paths": ["**"], "owner": _infer_owner_from_codeowners(root)}}
+    for name in sorted(nodes):
+        ordered[name] = {"paths": sorted(nodes[name]["paths"]), "owner": nodes[name]["owner"]}
+    pub, pub_source = _inferred_publisher(root, publisher)
+    # `registry.backend` defaults to `agent-registry` for a DECLARED map, because a repository
+    # that wrote the file chose to configure publishing. A repository that configured nothing
+    # has published nothing: local is the only backend that can be true here, and it keeps
+    # `doctor` from failing a zero-config repo over a GCP project it was never asked for.
+    return {"publisher": pub, "publisher_source": pub_source, "nodes": ordered,
+            "registry": {"backend": "local"}, "_source": SOURCE_INFERRED}
+
+def load_map(root: Path, publisher: str = None) -> dict:
+    """The scope map: `guidefold.yaml` when the repository has one, inferred from the tree when
+    it does not (ADR-0050). Existence is tested BEFORE PyYAML is imported, so the inferred path
+    never needs it. `cfg["_source"]` names which tier answered."""
+    path = root / "guidefold.yaml"
+    if not path.is_file():
+        return infer_map(root, publisher)
     try:
         import yaml
     except ImportError:  # keep the failure loud but friendly
         sys.exit("guidefold: PyYAML missing — pip install pyyaml")
-    cfg = yaml.safe_load((root / "guidefold.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
     cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    cfg.setdefault("_source", SOURCE_GUIDEFOLD_YAML)
     return cfg
 
 def rel(root: Path, p: Path) -> str:
@@ -4478,10 +4594,13 @@ def _report_archive_paths(root: Path, ref: str, paths: list, dest: Path):
                 tf.extractall(dest)                    # Python < 3.12 has no `filter` kwarg
 
 
-def _report_extract_base(root: Path, ref: str, work: Path):
+def _report_extract_base(root: Path, ref: str, work: Path, publisher: str = None):
     """Materialise the base view under `work` and return (commit, base_root, cfg).
 
-    Extracts only what the report reads — `guidefold.yaml`, every `SKILL.md`, each skill's
+    Extracts only what the report reads — `guidefold.yaml` and CODEOWNERS (when that commit had
+    them — ADR-0050: without the file the base map is inferred from the same tree, with
+    `publisher` passed in from the working tree so base and head URNs stay comparable instead of
+    naming a scratch directory), every `SKILL.md`, each skill's
     packaged resource directories, and (second pass, once the cards have been parsed) the files
     `metadata.references`/`metadata.scripts` declare. A whole-repo `git archive` would be correct
     too, and far more expensive on the monorepos this is aimed at."""
@@ -4495,13 +4614,12 @@ def _report_extract_base(root: Path, ref: str, work: Path):
     if tree_out.returncode != 0:
         _die("report: cannot list the tree of --base " + ref + " (" + commit[:7] + ")")
     tree = [p.decode("utf-8", "surrogateescape") for p in tree_out.stdout.split(b"\0") if p]
+    # ADR-0050: a base commit with no guidefold.yaml is normal — the map is inferred from the
+    # skill directories that commit did have. CODEOWNERS travels with them so the inferred
+    # owners at the base are the ones that commit actually declared, not "unknown".
     cfg_path = prefix + "guidefold.yaml"
-    if cfg_path not in tree:
-        _die("report: --base " + ref + " (" + commit[:7] + ") has no " + cfg_path + " — there is "
-             "no skill map at that commit to compare against")
-
     rel_of = {}
-    want = [cfg_path]
+    want = [p for p in (cfg_path, *(prefix + c for c in _CODEOWNERS_CANDIDATES)) if p in tree]
     for p in tree:
         if not p.startswith(prefix):
             continue
@@ -4514,7 +4632,7 @@ def _report_extract_base(root: Path, ref: str, work: Path):
     base_root = (work / prefix.rstrip("/")) if prefix else work
     base_root = base_root.resolve()
     try:
-        cfg = load_map(base_root)
+        cfg = load_map(base_root, publisher)
     except SystemExit:
         raise
     except Exception as exc:                                # noqa: BLE001
@@ -5105,7 +5223,7 @@ def cmd_report(a, root, cfg):
     queries = getattr(a, "queries", None) or ((cfg.get("eval") or {}).get("queries") or None)
     work = Path(tempfile.mkdtemp(prefix="guidefold-report-"))
     try:
-        base_commit, base_root, base_cfg = _report_extract_base(root, a.base, work)
+        base_commit, base_root, base_cfg = _report_extract_base(root, a.base, work, cfg.get("publisher"))
         base = _report_scan_view(base_root, base_cfg)
         head = _report_scan_view(root, cfg)
         changes = _report_changes(base, head)
@@ -5955,10 +6073,19 @@ def _render_guidefold_yaml(publisher: str, owner: str) -> str:
     )
 
 
-def _plan_guidefold_yaml(plan, root: Path, publisher: str, owner: str):
+def _plan_guidefold_yaml(plan, root: Path, publisher: str, owner: str, requested: bool = False):
+    """ADR-0050: `init` does not write a scope map unless asked. The map is inferred from the
+    skill directories and CODEOWNERS the repository already has, so a skeleton file is one more
+    thing to keep in sync for no gain; `--scope-map` writes one for a repository that wants to
+    name its nodes differently."""
     dest = root / "guidefold.yaml"
     if dest.is_file():
         plan.add("kept", "guidefold.yaml", "already exists — never rewritten")
+        return
+    if not requested:
+        plan.add("kept", "guidefold.yaml",
+                 "not written — the scope map is inferred from your skill directories and "
+                 "CODEOWNERS; pass --scope-map to write an override")
         return
     plan.add("create", "guidefold.yaml", f"publisher={publisher}, _root owner={owner}")
     plan.writes.append((dest, _render_guidefold_yaml(publisher, owner).encode("utf-8"), False))
@@ -6116,7 +6243,7 @@ def cmd_init(a):
     plan = _InstallPlan()
     blockers = []
 
-    _plan_guidefold_yaml(plan, root, publisher, owner)
+    _plan_guidefold_yaml(plan, root, publisher, owner, bool(getattr(a, "scope_map", False)))
     files = _plan_skill_dir(plan, root, publisher, owner, recorded)
     for h in harnesses:
         _plan_hook(plan, root, h, hooks, blockers)
@@ -6205,9 +6332,20 @@ def _check_guidefold_yaml(root: Path):
     checks = []
     yaml_path = root / "guidefold.yaml"
     if not yaml_path.is_file():
-        checks.append(_doctor_check("guidefold-yaml", "fail", "guidefold.yaml not found at repo root",
-                                     "run `guidefold init` to create a skeleton"))
-        return checks, None
+        # ADR-0050: absence is never a failure. The map is inferred, and the check says what it
+        # inferred it from so an owner can judge whether an override is worth writing.
+        cfg = infer_map(root)
+        dirs = _inferred_skill_dirs(root)
+        codeowners = " + CODEOWNERS" if _codeowners_rules(root) else ""
+        checks.append(_doctor_check("guidefold-yaml", "ok",
+                                     f"no guidefold.yaml — inferred {len(cfg['nodes'])} scopes from "
+                                     f"{len(dirs)} skill directories{codeowners}",
+                                     "add guidefold.yaml only if this map is wrong"))
+        checks.append(_doctor_check("guidefold-yaml-parses", "ok",
+                                     f"publisher={cfg['publisher']} (inferred from "
+                                     f"{cfg['publisher_source']})"))
+        checks.extend(_check_node_shapes(root, cfg))
+        return checks, cfg
     checks.append(_doctor_check("guidefold-yaml", "ok", "guidefold.yaml found"))
     try:
         import yaml
@@ -6228,6 +6366,14 @@ def _check_guidefold_yaml(root: Path):
         return checks, None
     checks.append(_doctor_check("guidefold-yaml-parses", "ok", f"publisher={cfg['publisher']}"))
     cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    cfg.setdefault("_source", SOURCE_GUIDEFOLD_YAML)
+    checks.extend(_check_node_shapes(root, cfg))
+    return checks, cfg
+
+
+def _check_node_shapes(root: Path, cfg: dict) -> list:
+    """The two node-level checks, shared by the declared and the inferred map (ADR-0050)."""
+    checks = []
     bad_nodes = [n for n, spec in cfg["nodes"].items() if not spec.get("paths") or not spec.get("owner")]
     if bad_nodes:
         checks.append(_doctor_check("guidefold-yaml-nodes", "fail",
@@ -6254,7 +6400,7 @@ def _check_guidefold_yaml(root: Path):
                                      "check the `paths:` globs, or remove the node until it has code"))
     else:
         checks.append(_doctor_check("guidefold-yaml-globs", "ok", "every node's path globs match at least one path"))
-    return checks, cfg
+    return checks
 
 
 def _check_skill_layout(root: Path, cfg) -> list:
@@ -8813,7 +8959,8 @@ def cmd_install(a):
     yaml_path = root / "guidefold.yaml"
     if any(service_fields.values()):
         if not yaml_path.is_file():
-            plan.add("kept", "guidefold.yaml", "missing — run `guidefold init` first; service: not written")
+            plan.add("kept", "guidefold.yaml", "missing — the scope map is inferred (ADR-0050), but `service:` "
+                     "needs a file: run `guidefold init --scope-map`, or set GUIDEFOLD_API/GUIDEFOLD_ORG")
         else:
             current = yaml_path.read_text(encoding="utf-8")
             updated = _upsert_service_block(current, service_fields)
@@ -10000,8 +10147,10 @@ def main():
     m = sub.add_parser("materialize"); m.add_argument("--check", action="store_true")
     sub.add_parser("hook")
     sub.add_parser("prewarm")
-    i = sub.add_parser("init", help="bootstrap a consumer monorepo: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore")
+    i = sub.add_parser("init", help="bootstrap a consumer monorepo: .agents/skills/guidefold, harness hooks, CI workflow, .gitignore (the scope map is inferred; --scope-map writes an override)")
     i.add_argument("--publisher", help="override the inferred publisher name")
+    i.add_argument("--scope-map", action="store_true",
+                   help="also write a guidefold.yaml skeleton; without it the scope map is inferred from skill directories + CODEOWNERS (ADR-0050)")
     i.add_argument("--harness", choices=["claude", "copilot", "codex", "all"], default="all")
     i.add_argument("--dry-run", action="store_true", help="print what would be done; write nothing")
     doc = sub.add_parser("doctor", help="diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness")
