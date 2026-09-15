@@ -459,9 +459,11 @@ export const job = object<Job>({
 
 export const publicationStates = ['none', 'building', 'published', 'failed'] as const;
 export type PublicationBuildState = typeof publicationStates[number];
-export interface ImportPublication { snapshot_id: string | null; state: PublicationBuildState; error: string | null }
+/** `partial` (contract 1.16.0) is null until a build finishes: unknown is not "complete". */
+export interface ImportPublication { snapshot_id: string | null; state: PublicationBuildState; error: string | null; partial: boolean | null }
 export const importPublication = object<ImportPublication>({
   snapshot_id: nullable(str), state: fallback(oneOf(publicationStates), 'none'), error: nullable(str),
+  partial: fallback(nullable(bool), null),
 });
 
 export interface ImportCounts { files: number; accepted: number; omitted: number; failed: number; new_blobs: number; reused_blobs: number; skills: number; documents: number }
@@ -920,7 +922,13 @@ export interface Snapshot {
   import_id: string | null; job_id: string | null; commit: string | null; n_skills: number;
   builder_sha256: string | null; validation: { ok: boolean; findings: string[] } | null;
   error: string | null; activated_at: string | null; created_at: string | null;
+  /** Contract 1.16.0: built from an import the builder could not parse in full. */
+  partial: boolean;
+  /** The paths that import could not parse, with the builder's reason. Empty unless `partial`. */
+  failed_files: FailedImportFile[];
 }
+export interface FailedImportFile { path: string; reason: string | null }
+export const failedImportFile = object<FailedImportFile>({ path: str, reason: nullable(str) });
 export const snapshot = object<Snapshot>({
   publication_id: str, snapshot_id: nullable(str),
   state: fallback(oneOf(snapshotStates), 'building'), active: fallback(bool, false),
@@ -928,6 +936,9 @@ export const snapshot = object<Snapshot>({
   builder_sha256: nullable(str),
   validation: nullable(object({ ok: fallback(bool, false), findings: listOf(str) })),
   error: nullable(str), activated_at: nullable(str), created_at: nullable(str),
+  // Defaulted, not required: a 1.15.0 server answers without them and the row
+  // still reads as a complete publication, which is what it was.
+  partial: fallback(bool, false), failed_files: listOf(failedImportFile),
 });
 export const snapshotList: Decoder<Snapshot[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(snapshot)(value, path) : field('items', arrayOf(snapshot))(value, path);
@@ -981,7 +992,7 @@ export const usageSkill = object<UsageSkill>({
   zero_loads: fallback(bool, false),
 });
 
-export const queueReasons = ['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency'] as const;
+export const queueReasons = ['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency', 'import_file_failed'] as const;
 export type QueueReason = typeof queueReasons[number];
 export const queueActions = ['reviewed', 'fixed_in_git', 'no_change'] as const;
 export type QueueAction = typeof queueActions[number];
@@ -989,6 +1000,7 @@ export interface QueueItem {
   item_id: string;
   /** Contract 1.11.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
   repo_id: string | null;
+  /** A skill URN, except for `import_file_failed`, where it is `file:<repository path>` (1.16.0). */
   skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
   evidence: Record<string, unknown> | null;
   decision: { action: QueueAction; reason: string | null; at: string | null; actor: string | null } | null;

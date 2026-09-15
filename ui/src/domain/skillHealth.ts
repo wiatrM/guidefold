@@ -44,6 +44,7 @@ export const queueReasonLabels: Record<QueueReason, string> = {
   source_removed: 'Source file absent from a complete import',
   zero_loads: 'Published but never loaded',
   missing_dependency: 'A declared dependency is missing',
+  import_file_failed: 'A file in the repository could not be parsed',
 };
 
 const percent = (numerator: number, denominator: number) => Math.round((numerator / denominator) * 100) + '%';

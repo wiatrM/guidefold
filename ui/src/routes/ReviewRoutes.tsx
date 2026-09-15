@@ -453,7 +453,14 @@ function SnapshotsPanel({ctx, repo}: ApiProps & {repo: string | null}) {
           <td>{item.n_skills}</td>
           <td>{item.validation
             ? (item.validation.ok ? 'Valid' : 'Failed: ' + (item.validation.findings.length ? item.validation.findings.join(', ') : unknown(item.error)))
-            : 'Unknown'}</td>
+            : 'Unknown'}
+            {/* Contract 1.16.0: a partial import publishes, so a row that is
+                serving less than its import carried has to say so here rather
+                than leave the skill count to be compared by hand. */}
+            {item.partial && <div className={styles.muted}>
+              Partial: {item.failed_files.length || 'some'} file{item.failed_files.length === 1 ? '' : 's'} could not be parsed
+              {item.failed_files.length > 0 && <> — <code>{item.failed_files.map(file => file.path).join(', ')}</code></>}
+            </div>}</td>
           <td><StateBadge tone={item.active ? 'system' : item.state === 'failed' ? 'error' : 'neutral'}>{item.active ? 'active' : item.state}</StateBadge></td>
           <td>{item.active ? <span className={styles.muted}>Serving now</span>
             : !item.snapshot_id ? <span className={styles.muted}>Nothing to roll back to</span>
@@ -736,7 +743,7 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
 
 type NotificationSettings = {enabled: boolean; mutedUntil: number; dismissed: string[]};
 const NOTIFICATION_SETTINGS_KEY = 'guidefold.notifications.v1';
-const attentionReasons = new Set(['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency']);
+const attentionReasons = new Set(['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency', 'import_file_failed']);
 
 function readNotificationSettings(): NotificationSettings {
   try {
