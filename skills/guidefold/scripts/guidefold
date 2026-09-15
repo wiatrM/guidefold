@@ -2229,8 +2229,15 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
         token, org = _login_token(cfg)
         if token:
             token_source = "login"
-            if root is not None:
-                repo = _default_repo_id(root)
+            # Same precedence `resolve_service_config` documents: env > guidefold.yaml
+            # `service.repo` > the checkout's name. Reading only the checkout's name sent
+            # `X-Guidefold-Repo: <directory>` for every personal-token call, which the API
+            # answers 403 whenever the clone is not named exactly like the repo id -- the
+            # normal case. `guidefold load` then reported it as "service USE failed (auth)".
+            service_block = (cfg or {}).get("service")
+            service_block = service_block if isinstance(service_block, dict) else {}
+            repo = (os.environ.get("GUIDEFOLD_REPO_ID") or service_block.get("repo")
+                    or (_default_repo_id(root) if root is not None else None))
     if backend == "service" and not token:
         # A service backend that can never authenticate can never succeed (contract: POST
         # requires the bearer token) -- fail fast into local rather than paying for a request
@@ -3176,8 +3183,12 @@ def cmd_load(a, root, cfg):
         })
         body, reason = _use_via_service(search_cfg, urn_part, revision_part, delivery_policy)
         if body is None:
+            # `cache_source` is a required, non-empty field of `skill_load_completed`
+            # (services/search/telemetry-schema.json). Sending None made the ledger reject the
+            # event with `missing_required_field:cache_source`, so every FAILED load vanished
+            # from `gf.events` -- the exact rows an owner needs to see that loads are failing.
             _emit_telemetry(root, "skill_load_completed", {
-                "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+                "load_id": load_id, "status": "error", "cache_source": "service", "bytes": 0,
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
@@ -3256,7 +3267,8 @@ def cmd_load(a, root, cfg):
             "use_id": None, "search_id": linked_search,
         })
         _emit_telemetry(root, "skill_load_completed", {
-            "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+            # "none": nothing was fetched at all. A null here is rejected by the ledger.
+            "load_id": load_id, "status": "error", "cache_source": "none", "bytes": 0,
             "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
             "closure_status": "incomplete", "skill_id": a.urn, "revision": None, **link,
         })

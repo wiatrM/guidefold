@@ -347,3 +347,36 @@ def test_install_survives_two_skills_of_one_node_sharing_a_name(gf, tmp_path, mo
     monkeypatch.chdir(root)
     assert _run(gf.cmd_install, _args(api="https://api.example", org="acme", repo="monorepo")) == 0
     assert "+ create" in capsys.readouterr().out
+
+
+# 2026-09-15 rehearsal: with a personal token from `guidefold login`, the CLI sends
+# `X-Guidefold-Org` / `X-Guidefold-Repo` on every service call (API-CONTRACT §2/§3).
+# `resolve_search_config` derived the repo from the CHECKOUT's name alone, ignoring
+# `GUIDEFOLD_REPO_ID` and guidefold.yaml's `service.repo` — the precedence
+# `resolve_service_config` documents three lines above it. A clone whose directory is not named
+# exactly like the repo id (the normal case: `gf-pilot-core` for repo id `guidefold`) sent the
+# wrong header, the API answered 403, and `guidefold load` printed
+# "service USE failed (auth)" — an authentication problem that was not one.
+def test_search_config_takes_the_repo_id_from_config_not_from_the_checkout_name(
+        gf, tmp_path, monkeypatch):
+    root = tmp_path / "some-clone-directory"
+    root.mkdir()
+    (root / "guidefold.yaml").write_text(
+        "publisher: acme\nnodes:\n  _root:\n    paths: ['**']\n    owner: platform\n"
+        "service:\n  api: https://api.example\n  org: acme\n  repo: monorepo\n"
+        "search:\n  backend: service\n  url: https://api.example\n")
+    creds = tmp_path / "credentials.json"
+    creds.write_text(json.dumps({"https://api.example": {
+        "org": "acme", "token": "gf_" + "x" * 32,
+        "orgs": [{"slug": "acme", "org_id": "o1", "role": "owner", "name": "acme"}]}}))
+    monkeypatch.setenv("GUIDEFOLD_CREDENTIALS", str(creds))
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    monkeypatch.delenv("GUIDEFOLD_REPO_ID", raising=False)
+
+    cfg = gf.load_map(root)
+    resolved = gf.resolve_search_config(cfg, profile="interactive", root=root)
+    assert resolved["token_source"] == "login"
+    assert resolved["repo"] == "monorepo", "the repo id comes from service.repo, not the directory"
+
+    monkeypatch.setenv("GUIDEFOLD_REPO_ID", "from-env")
+    assert gf.resolve_search_config(cfg, profile="interactive", root=root)["repo"] == "from-env"
