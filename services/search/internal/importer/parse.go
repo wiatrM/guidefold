@@ -627,6 +627,9 @@ func (w *ParseWorker) write(ctx context.Context, t *worker.Task, rec *importReco
 	if e := applyDrift(ctx, tx, orgID, repoID, importID, actions); e != nil {
 		return nil, e
 	}
+	if e := queueFailedFiles(ctx, tx, orgID, repoID, importID, outcomes); e != nil {
+		return nil, e
+	}
 
 	counts, e := writeFileOutcomes(ctx, tx, orgID, importID, rec.Manifest.Files, outcomes)
 	if e != nil {
@@ -825,6 +828,42 @@ func applyDrift(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string, 
 		if e := mgmt.Audit(ctx, tx, orgID, "worker", "skill."+a.Reason, "skill:"+a.SkillID,
 			a.RevisionID, importID); e != nil {
 			return fmt.Errorf("audit %s: %w", a.Reason, e)
+		}
+	}
+	return nil
+}
+
+// queueFailedFiles asks the owner about every file the builder could not parse.
+//
+// Contract 1.16.0, U9. A partial import now publishes (API-CONTRACT §4.4), so
+// the file that failed has to be visible somewhere a person looks; otherwise
+// "one broken file fails alone" would mean "one broken file disappears". It
+// runs in the same transaction as the drift it sits beside, and writes with
+// ON CONFLICT DO NOTHING against the partial unique index on open items, so a
+// restarted job and a second import that fails the same way ask once.
+//
+// The item is about a file that became no skill, so it cannot carry a URN:
+// `file:<path>` is its stable identity (§5.5). Nothing closes it automatically
+// — a later import that parses the file does not answer the question the
+// failure raised, only the owner does.
+func queueFailedFiles(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string,
+	outcomes map[string]*fileOutcome) error {
+	paths := make([]string, 0, len(outcomes))
+	for path, o := range outcomes {
+		if o != nil && o.Status == "failed" {
+			paths = append(paths, path)
+		}
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		evidence := map[string]any{"import_id": importID, "path": path,
+			"error": outcomes[path].Reason}
+		if _, e := tx.Exec(ctx, `INSERT INTO gfm.owner_queue
+ (org_id,item_id,repo_id,skill_id,revision_id,reason,evidence)
+ VALUES($1::uuid,$2::uuid,$3,$4,NULL,'import_file_failed',$5::jsonb)
+ ON CONFLICT DO NOTHING`,
+			orgID, jobs.NewID(), repoID, "file:"+path, string(mustJSON(evidence))); e != nil {
+			return fmt.Errorf("queue import_file_failed for %s: %w", path, e)
 		}
 	}
 	return nil

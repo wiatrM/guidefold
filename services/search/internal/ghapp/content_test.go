@@ -171,3 +171,41 @@ func equalSets(got, want []string) bool {
 	}
 	return true
 }
+
+// Contract 1.16.0: the three canonical CODEOWNERS locations are on the fetch
+// list. Without them a repository imported through the GitHub App reached the
+// builder with no ownership rule at all, so every zero-config scope inferred
+// on that path carried `owner: unknown` and every `scope_map` proposal for it
+// carried `owner: null` — for a repository that does declare its owners.
+// The search order is the CLI's `_CODEOWNERS_CANDIDATES`; a CODEOWNERS
+// anywhere else is not one of the three and stays off the list.
+func TestListSkillFilesIncludesTheThreeCodeownersLocations(t *testing.T) {
+	tree := []map[string]any{
+		{"path": "CODEOWNERS", "type": "blob"},
+		{"path": ".github/CODEOWNERS", "type": "blob"},
+		{"path": "docs/CODEOWNERS", "type": "blob"},
+		{"path": "services/api/CODEOWNERS", "type": "blob"}, // not one of the three
+		{"path": "docs/codeowners", "type": "blob"},         // CODEOWNERS is spelled in caps
+		{"path": "docs/CODEOWNERS.md", "type": "blob"},      // a document about them, not the file
+		{"path": ".agents/skills/foo/SKILL.md", "type": "blob"},
+	}
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/repos/acme/widgets/git/trees/main", func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": tree, "truncated": false})
+		})
+	})
+	client := newTestClient(t, server.URL)
+	got, err := client.ListSkillFiles(context.Background(), 1, "acme/widgets", "main")
+	if err != nil {
+		t.Fatalf("ListSkillFiles: %v", err)
+	}
+	want := []string{
+		".agents/skills/foo/SKILL.md",
+		".github/CODEOWNERS",
+		"CODEOWNERS",
+		"docs/CODEOWNERS",
+	}
+	if !equalSets(got, want) {
+		t.Fatalf("ListSkillFiles = %v, want %v", got, want)
+	}
+}
