@@ -123,6 +123,28 @@ search:
   no body to its cache. The proof-gated flag is rejected for the local backend so it cannot be
   mistaken for an authorization check that local retrieval does not provide. The default
   `legacy` policy keeps the existing 1.1 request and cache behavior.
+#### Exit codes and messages for a failed `load` via `/v1/use`
+
+A failed `load` exits **1** and prints the reason on the first line, the service's own words on
+the next, and one `next:` line saying what to do. It never reports every failure with the same
+word — a 403 on the org/repo headers is not a sign-in problem (D12, rehearsal 2026-09-15).
+
+| Situation | Exit | First line | `next:` says |
+|---|---|---|---|
+| no usable credential (401) | 1 | `service USE failed (auth)` | run `guidefold login`, or set `search.token_file` |
+| the token may not read this org/repo (403) | 1 | `service USE failed (forbidden)`, or the server's own code | check `guidefold doctor`; the org/repo headers come from config, never from the checkout's directory name |
+| wrong revision (409 `revision_mismatch`) | 1 | `service USE failed (revision_mismatch)` | pass the revision `guidefold find` printed (`card_revision`), not the catalog's `revision_id` |
+| stale snapshot (503 `snapshot_policy_mismatch`) | 1 | `service USE failed (snapshot_policy_mismatch)` | re-import and publish; not an authentication problem |
+| no snapshot (503 `snapshot_not_published`, `empty_snapshot`) | 1 | the server's code | import and publish the repository first |
+| no answer in `deadline_ms` | 1 | `service USE failed (timeout)` | raise the deadline, or check the endpoint |
+| body does not match its checksum | 1 | `checksum mismatch` | nothing was cached; re-run `find` for a current revision |
+| a package resource points outside the cache | 1 | `unsafe resource path` | nothing was written; report the revision to its owner |
+| proof-gated abstention (`--delivery-policy proof_gated`) | 1 | `service ASK` with the proof reason | re-publish with sources, or drop the flag |
+| `load` without `@<revision>` on `backend: service` | 1 | the required-revision message | pass `<urn>@<revision>` |
+
+`guidefold: <message>` on stderr, nothing on stdout, and no half-written cache directory in
+every one of those rows.
+
 - `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
   guideline (recommends `service` above it), configured service reachability + advertised contract
   versions via `GET /health/ready`, bearer token presence (never its value), and spool health.

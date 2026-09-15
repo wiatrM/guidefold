@@ -3109,6 +3109,90 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     except Exception:
         pass  # telemetry must never fail or block the command it instruments (see block docstring)
 
+# D12 (pilot rehearsal 2026-09-15): every failed `/v1/use` reached the user as the single word
+# "(auth)", so a 403 on the org/repo headers, a 409 on the wrong revision and a 503 on a stale
+# snapshot were indistinguishable -- and a repository-permission problem was debugged as a
+# sign-in problem for a whole rehearsal. The reason a `/v1` call failed is still a string, so
+# every existing comparison (`reason == "auth"`, `reason == "ask"`) keeps working, but it now
+# carries the HTTP status and the server's own `error`/`message`/`hint` so the CLI can say what
+# actually happened and what to do about it. No contract change: these are fields the service
+# already sends (API-CONTRACT §4.9).
+class ServiceFailure(str):
+    def __new__(cls, reason, status=None, error=None, message=None, hint=None, request_id=None):
+        obj = str.__new__(cls, reason)
+        obj.status, obj.error, obj.message = status, error, message
+        obj.hint, obj.request_id = hint, request_id
+        return obj
+
+
+# What to do next, per server error code. Anything not listed falls back to the generic advice:
+# these are the codes a `load` actually meets.
+_USE_FAILURE_NEXT_STEPS = {
+    "auth": "no usable credential — run `guidefold login`, or point `search.token_file` / "
+            "GUIDEFOLD_SEARCH_TOKEN_FILE at a token file",
+    "forbidden": "the token is valid but may not read this organisation/repository — check "
+                 "`guidefold doctor` (service-config, service-identity). The org/repo headers "
+                 "come from `service.org`/`service.repo` in guidefold.yaml, GUIDEFOLD_ORG / "
+                 "GUIDEFOLD_REPO_ID, or the stored login — never from the checkout's name",
+    "revision_mismatch": "that revision is not what the active snapshot delivers — pass the "
+                         "revision `guidefold find` printed (the card's `card_revision`), not "
+                         "the catalog's `revision_id` from `GET …/skills/{id}`",
+    "snapshot_policy_mismatch": "the published snapshot was built by a different "
+                                "`scripts/guidefold` than the one calling — re-import and "
+                                "publish the repository; this is not an authentication problem",
+    "snapshot_not_published": "this repository has no active snapshot — import and publish it "
+                              "first (`guidefold import --wait`)",
+    "empty_snapshot": "the active snapshot holds no card — re-import and publish the repository",
+    "skill_not_found": "the served snapshot has no such skill — re-run `guidefold find` and use "
+                       "the urn it printed",
+    "timeout": "the service did not answer inside `search.deadline_ms` — raise it, or check the "
+               "endpoint with `guidefold doctor`",
+    "config": "the search backend is misconfigured — check `search.url` (and `guidefold doctor`)",
+    "invalid_response": "the endpoint answered something that is not this contract — check that "
+                        "`search.url` points at a Guidefold service",
+}
+
+
+def _service_failure(status, body):
+    """The reason an HTTP `/v1` call failed, carrying the server's own words."""
+    detail = body if isinstance(body, dict) else {}
+    err = detail.get("error")
+    if isinstance(err, dict):
+        code, message = err.get("code"), err.get("message") or detail.get("message")
+        hint = err.get("hint") or detail.get("hint")
+    else:
+        code = err if isinstance(err, str) else None
+        message, hint = detail.get("message"), detail.get("hint")
+    if status == 401:
+        label = "auth"
+    elif status == 403:
+        label = code or "forbidden"
+    else:
+        label = code or ("http_4xx" if 400 <= (status or 0) < 500 else "http_5xx")
+    return ServiceFailure(label, status=status, error=code, message=message, hint=hint,
+                          request_id=detail.get("request_id"))
+
+
+def _service_failure_message(what: str, urn: str, reason) -> str:
+    """One multi-line, actionable message: what failed, what the server said, what to do."""
+    lines = [f"guidefold: {what} ({reason}) for {urn}"]
+    status = getattr(reason, "status", None)
+    if status:
+        code = getattr(reason, "error", None)
+        lines.append(f"  the service answered HTTP {status}" + (f" {code}" if code else ""))
+    for label, value in (("", getattr(reason, "message", None)),
+                         ("hint: ", getattr(reason, "hint", None))):
+        if value:
+            lines.append(f"  {label}{value}")
+    request_id = getattr(reason, "request_id", None)
+    if request_id:
+        lines.append(f"  request_id: {request_id}")
+    step = _USE_FAILURE_NEXT_STEPS.get(str(reason))
+    if step:
+        lines.append(f"  next: {step}")
+    return "\n".join(lines)
+
+
 def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                      delivery_policy: str = "legacy"):
     """Blocking POST /v1/use -- no local race/fallback exists for USE (unlike SEARCH, ADR-0023
@@ -3183,11 +3267,7 @@ def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                 return None, "invalid_response"
             return body, "ask" if action == "ASK" else None
         return body, None
-    if status in (401, 403):
-        return None, "auth"
-    if 400 <= status < 500:
-        return None, "http_4xx"
-    return None, "http_5xx"
+    return None, _service_failure(status, body)
 
 
 def _download_service_resource(search_cfg: dict, resource: dict):
@@ -3315,7 +3395,8 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service USE failed ({reason}) for {a.urn}")
+            # D12: the code, the server's own words and the next step -- not one word.
+            sys.exit(_service_failure_message("service USE failed", a.urn, reason))
         if delivery_policy == "proof_gated" and reason == "ask":
             delivery = body.get("delivery") if isinstance(body, dict) else {}
             missing = delivery.get("missing") if isinstance(delivery, dict) else []
@@ -3332,7 +3413,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "unresolved", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service ASK for {a.urn} ({delivery.get('reason', 'proof_incomplete')}){detail}")
+            sys.exit(f"guidefold: service ASK for {a.urn} "
+                     f"({delivery.get('reason', 'proof_incomplete')}){detail}\n"
+                     "  next: the service is withholding the body until its source proof is "
+                     "complete; re-publish the skill with its sources, or load it without "
+                     "--delivery-policy proof_gated")
         import hashlib
         checksum_ok = hashlib.sha256(body["body"].encode("utf-8")).hexdigest() == body.get("checksum")
         if not checksum_ok:
@@ -3341,7 +3426,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use")
+            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use\n"
+                     "  the body does not hash to the checksum the service sent; nothing was "
+                     "written to the cache\n"
+                     "  next: re-run `guidefold find` for a current revision, and report the "
+                     "mismatch if it persists")
         resources, resource_reason = _fetch_service_resources(search_cfg, body)
         if resources is None:
             _emit_telemetry(root, "skill_load_completed", {
@@ -3349,7 +3438,8 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service resource fetch failed ({resource_reason}) for {a.urn}")
+            sys.exit(_service_failure_message("service resource fetch failed", a.urn,
+                                              resource_reason))
         dest = skill_cache_dir(urn_part, revision_part)
         dest_root = dest.resolve()
         resource_targets = []
@@ -3361,7 +3451,11 @@ def cmd_load(a, root, cfg):
                     "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                     "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
                 })
-                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use")
+                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use\n"
+                         "  a package resource pointed outside this skill's cache directory; "
+                         "nothing was written\n"
+                         "  next: report this revision to the skill's owner -- it cannot be "
+                         "loaded safely")
             resource_targets.append((target, data))
         # Validate every target before creating the directory or writing SKILL.md. A malformed
         # manifest must leave no half-populated revision in the cache.
