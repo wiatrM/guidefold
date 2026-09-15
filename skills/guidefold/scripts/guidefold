@@ -5816,6 +5816,7 @@ def cmd_telemetry_flush(a, root, cfg=None):
         return deadline is not None and _time.monotonic() >= deadline
     totals = {"sent": 0, "accepted": 0, "duplicate": 0, "rejected": 0}
     truncated_by_budget = False
+    queued = False      # did this run ever find a readable event to send?
     for tenant, env, env_dir in _telemetry_partitions(root):
         if _budget_exceeded():
             truncated_by_budget = True
@@ -5826,14 +5827,27 @@ def cmd_telemetry_flush(a, root, cfg=None):
             if _budget_exceeded():
                 truncated_by_budget = True
                 break
+            # The automatic background flush (`--auto`, ADR-0048) drains the very same files, so
+            # a file listed a moment ago can be gone by the time this loop reaches it. Nothing is
+            # lost when that happens -- the other process sent those events and the server's
+            # idempotent accept/duplicate handling covers the overlap -- so this is one printed
+            # line and the next file, never a `FileNotFoundError` traceback (D11, pilot
+            # rehearsal 2026-09-15).
+            try:
+                raw = f.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                print(f"guidefold telemetry flush: {tenant}/{env}/{f.name}: already flushed by "
+                      "another run (the file is gone) — nothing to do for it")
+                continue
             parsed = []
-            for line in f.read_text(encoding="utf-8").splitlines():
+            for line in raw.splitlines():
                 if not line.strip():
                     continue
                 try:
                     parsed.append((line, json.loads(line)))
                 except Exception:
                     continue   # corrupt line: can't be usefully retried, drop silently
+            queued = queued or bool(parsed)
             resolved_ids, newly_acked = set(), 0
             for i in range(0, len(parsed), TELEMETRY_FLUSH_BATCH_MAX):
                 if _budget_exceeded():
@@ -5869,12 +5883,22 @@ def cmd_telemetry_flush(a, root, cfg=None):
                     print(f"guidefold telemetry flush: rejected {eid}: {r.get('reason')}")
             if resolved_ids:
                 kept = [line for line, ev in parsed if ev.get("event_id") not in resolved_ids]
-                if kept:
-                    f.write_text("\n".join(kept) + "\n", encoding="utf-8")
-                else:
-                    f.unlink()
+                try:
+                    if kept:
+                        f.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                    else:
+                        f.unlink()
+                except FileNotFoundError:
+                    pass       # the same race, one step later: the file is already drained
                 health["acknowledged"] = health.get("acknowledged", 0) + newly_acked
         _write_health(health_path, health)
+    if not queued:
+        # Still one line, still exit 0, and still the same counters a script may parse: an empty
+        # spool is the normal state after an automatic flush, not a condition to report as a
+        # problem (D11).
+        print("guidefold telemetry flush: nothing to flush — the spool is empty; "
+              "sent=0 accepted=0 duplicate=0 rejected=0")
+        return
     print(f"guidefold telemetry flush: sent={totals['sent']} accepted={totals['accepted']} "
           f"duplicate={totals['duplicate']} rejected={totals['rejected']}"
           + (" (time budget exceeded; remainder stays queued for the next flush)"

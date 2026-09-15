@@ -441,3 +441,73 @@ def test_a_load_with_no_recent_exposure_stays_unlinked(run_cli, fixture_copy):
     completed = next(e for e in events if e["event_type"] == "skill_load_completed")
     assert requested["search_id"] is None
     assert "search_id" not in completed
+
+
+# ------------------------------------------------- D11: flush races the automatic background flush
+
+def _spool_event(event_id, event_type="card_injected"):
+    return json.dumps({"schema_version": "1.1", "event_id": event_id, "event_type": event_type,
+                       "occurred_at": _utc_now_iso(), "sequence": 1, "producer": "guidefold-cli",
+                       "adapter_version": "test", "environment": "dev"})
+
+
+def test_flush_survives_a_spool_file_that_vanished_between_listing_and_reading(
+        run_cli, tmp_path):
+    """D11 (pilot rehearsal 2026-09-15): `telemetry flush` lists the spool files, then reads them
+    one by one. The automatic background flush (`--auto`, ADR-0048) drains and unlinks the same
+    files, so a manual flush that started first can reach a file that no longer exists and used
+    to die with a raw `FileNotFoundError` traceback. Nothing is lost when that happens -- the
+    other process sent those events -- so the command must say so in one line and exit 0.
+
+    The race is reproduced deterministically: the ingest server deletes the second spool file
+    while it is answering the batch from the first one."""
+    import http.server
+    import threading
+
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "repo"
+    write_guidefold_yaml(root)
+    env_dir = root / ".guidefold" / "telemetry" / "spool" / "local" / "dev"
+    env_dir.mkdir(parents=True)
+    first = env_dir / "events-2026-09-14.jsonl"
+    second = env_dir / "events-2026-09-15.jsonl"
+    first.write_text(_spool_event("ev-first") + "\n", encoding="utf-8")
+    second.write_text(_spool_event("ev-second") + "\n", encoding="utf-8")
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            events = json.loads(body)["events"]
+            second.unlink(missing_ok=True)   # the background flush drains it mid-run
+            payload = json.dumps({"accepted": [e["event_id"] for e in events]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        result = run_cli(["telemetry", "flush", "--url", url], cwd=root)
+    finally:
+        server.shutdown()
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Traceback" not in result.stderr, result.stderr
+    assert "FileNotFoundError" not in result.stderr, result.stderr
+    assert "accepted=1" in result.stdout, result.stdout
+    assert "events-2026-09-15.jsonl" in result.stdout, result.stdout
+
+
+def test_flush_with_an_empty_spool_says_there_is_nothing_to_flush_and_exits_0(run_cli, tmp_path):
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "empty-repo"
+    write_guidefold_yaml(root)
+    result = run_cli(["telemetry", "flush", "--url", "http://127.0.0.1:1"], cwd=root)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "nothing to flush" in result.stdout, result.stdout
