@@ -539,3 +539,49 @@ def test_extract_names_every_kind_the_plan_did_not_plan_a_group_for(
     assert code == 0
     assert "not attempted" in out, out
     assert "extraction" in out and "consolidation" in out, out
+
+
+def test_extract_wait_waits_for_the_generation_jobs_not_only_for_the_import(
+        gf, tmp_path, monkeypatch, no_sleep, capsys):
+    """`proposals:generate` enqueues its jobs when the import is already terminal, so waiting
+    on the import state returns at once. The run then read the proposal list, the abstentions
+    and the cost of a generation that had not started: on the v2 rehearsal of this repository
+    `extract --all --wait` reported `proposals: 1 (scope_map=1)`, `abstentions: []` and
+    `cost.calls: 0` for a run that seconds later held five enrichments, one consolidation and
+    twenty `no_procedure_found` abstentions (D13, pilot rehearsal v2 2026-09-15).
+    """
+    root = _repo(tmp_path)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        api.plan = {"profile": "one_shot", "groups": [{"group_id": "consolidation:_root"}],
+                    "limits": {"max_groups": 1}, "groups_skipped": {},
+                    "estimated_usd_max": 0.0, "estimated_calls": 1}
+        api.generate_job_ids = ["job_consolidation"]
+        # Nothing exists until the job finishes; two polls later it does.
+        api.proposals = []
+        api.proposals_when_generated = [
+            {"proposal_id": "p1", "kind": "consolidation", "scope": "_root",
+             "path": ".agents/skills/shared-if-higgsfield-is-not-on-path-install-it/SKILL.md"}]
+        api.extract_jobs = [{"job_id": "job_consolidation", "kind": "proposal.generate",
+                             "state": "done", "cost": {"calls": 1, "usd_certain": 0.0},
+                             "abstentions": [{"reason": "no_procedure_found",
+                                              "skills": ["CLAUDE.md"],
+                                              "detail": "the document has no ordered steps"}]}]
+        # One view is spent by the wait for the import itself, before the generation starts.
+        api.extract_jobs_pending_polls = 3
+        _login(gf, url)
+        code = _run(gf.cmd_extract, _args(api=url, org="acme", repo="monorepo",
+                                          wait=True, json=True))
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert payload["proposals_by_kind"] == {"consolidation": 1}, payload
+    assert [a["reason"] for a in payload["abstentions"]] == ["no_procedure_found"], payload
+    assert payload["cost"]["calls"] == 1, payload
+    # The proposal list is read only after the last generation job left `queued`.
+    paths = [r["path"] for r in api.requests]
+    generate = next(i for i, p in enumerate(paths) if p.endswith("/proposals:generate"))
+    listed = next(i for i, p in enumerate(paths)
+                  if re.fullmatch(r"/api/v1/orgs/[^/]+/repos/[^/]+/proposals", p))
+    status_reads = [i for i, p in enumerate(paths)
+                    if re.fullmatch(r"/api/v1/orgs/[^/]+/repos/[^/]+/imports/[^/]+", p)]
+    assert len([i for i in status_reads if generate < i < listed]) >= 3, paths

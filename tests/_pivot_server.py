@@ -58,6 +58,12 @@ class ManagementAPI:
         self.generate_job_ids = ["job_1"]
         self.generate_error = None
         self.extract_jobs = []
+        # A generation job is enqueued when the import is already terminal, so `extract --wait`
+        # has to wait for the jobs themselves (D13, pilot rehearsal v2 2026-09-15).
+        # `extract_jobs_pending_polls` is how many import views still show them `queued`;
+        # `proposals_when_generated`, when set, is the list that appears once they finish.
+        self.extract_jobs_pending_polls = 0
+        self.proposals_when_generated = None
 
     # ---------------------------------------------------------------- helpers for the tests
     def fail_next_put(self, sha, times=1):
@@ -233,6 +239,18 @@ class ManagementAPI:
             return self.plan_before_parse
         return self.plan
 
+    def _extract_jobs_now(self):
+        """The generation jobs as this poll sees them: `queued` and empty until
+        `extract_jobs_pending_polls` views have gone by, then whatever the test configured."""
+        if self.extract_jobs_pending_polls > 0:
+            self.extract_jobs_pending_polls -= 1
+            return [{"job_id": j.get("job_id"), "kind": j.get("kind"), "state": "queued"}
+                    for j in self.extract_jobs]
+        if self.proposals_when_generated is not None:
+            self.proposals = self.proposals_when_generated
+            self.proposals_when_generated = None
+        return self.extract_jobs
+
     def _import_view(self, import_id):
         record = self.imports.get(import_id)
         if record is None:
@@ -245,9 +263,10 @@ class ManagementAPI:
                          ("ready" if record["state"] == "queued" else record["state"]),
                 "manifest_digest": record["manifest_digest"], "commit": record["commit"],
                 "complete": record["complete"],
-                "files": [{"path": f["path"], "state": "accepted"} for f in manifest.get("files", [])],
+                # `ImportFile.status`, the field the contract names (§5.2) — not `state`.
+                "files": [{"path": f["path"], "status": "accepted"} for f in manifest.get("files", [])],
                 "jobs": [{"kind": "import.parse", "state": "running" if parsing else "done"},
-                         {"kind": "publish.build", "state": "done"}] + self.extract_jobs,
+                         {"kind": "publish.build", "state": "done"}] + self._extract_jobs_now(),
                 "publication": {"state": "published", "snapshot_id": "snap_1"}}
         view.update(self.import_view_extra)
         return 200, view
