@@ -338,15 +338,19 @@ def _authoring_loop(w, gf_stack) -> dict:
         body={"idempotency_key": "act01-generate", "kinds": ["extraction"]})
     out["generate_job_ids"] = generated.get("job_ids")
 
-    proposals = wait_until(
-        lambda: (w.get("/proposals?state=draft").get("items") or None),
-        timeout=240, what="the deterministic generator to write at least one proposal")
+    # Wait for an EXTRACTION draft, not merely for a draft. The queue also fills with the
+    # organisation-wide scope-map proposal (ADR-0051), which appears first, is decided at the
+    # organisation route, and answers 403 here on purpose -- waiting for "any draft" made this
+    # step decide a proposal it had not generated.
+    def _extraction_drafts():
+        items = w.get("/proposals?state=draft").get("items") or []
+        out["draft_kinds"] = sorted({p.get("kind") for p in items})
+        return [p for p in items if p.get("kind") == "extraction"] or None
+
+    proposals = wait_until(_extraction_drafts, timeout=240,
+                           what="the deterministic generator to write an extraction proposal")
     out["proposals"] = len(proposals)
-    # The draft queue can also hold an organisation-wide scope-map proposal (ADR-0047), which is
-    # decided at the organisation route and not here. This step is about the extraction that was
-    # just generated, so pick that one rather than whichever draft sorts first.
-    proposal = next((p for p in proposals if p.get("kind") == "extraction"), proposals[0])
-    out["proposal_kind"] = proposal.get("kind")
+    proposal = proposals[0]
     detail = w.get(f"/proposals/{proposal['proposal_id']}")
     out["provenance_fields"] = sorted({p["field"] for p in detail["provenance"]})
     assert detail["provenance"], "every generated field needs an origin (U2 AC2)"
