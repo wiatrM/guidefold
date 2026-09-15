@@ -263,7 +263,8 @@ class ManagementAPI:
                          ("ready" if record["state"] == "queued" else record["state"]),
                 "manifest_digest": record["manifest_digest"], "commit": record["commit"],
                 "complete": record["complete"],
-                "files": [{"path": f["path"], "state": "accepted"} for f in manifest.get("files", [])],
+                # `ImportFile.status`, the field the contract names (§5.2) — not `state`.
+                "files": [{"path": f["path"], "status": "accepted"} for f in manifest.get("files", [])],
                 "jobs": [{"kind": "import.parse", "state": "running" if parsing else "done"},
                          {"kind": "publish.build", "state": "done"}] + self._extract_jobs_now(),
                 "publication": {"state": "published", "snapshot_id": "snap_1"}}

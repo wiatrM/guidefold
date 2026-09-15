@@ -762,3 +762,38 @@ def test_a_zero_device_interval_is_clamped(gf, tmp_path, monkeypatch, capsys, no
         _run(gf.cmd_login, _args(api=url, org=None, repo=None))
         capsys.readouterr()
     assert no_sleep and min(no_sleep) >= 1
+
+
+def test_status_names_the_file_a_partial_import_could_not_parse(gf, tmp_path, monkeypatch,
+                                                                capsys):
+    """`ImportFile` carries `status` (API-CONTRACT §5.2); the printer bucketed on `state`, so
+    every file landed in `unknown` and the one file that failed — with the parser error that
+    says why — was one line among hundreds of identical ones. On the v2 rehearsal of this
+    repository a `partial` import of 408 files printed 408 `unknown` lines and never named
+    `.agents/skills/rehearsal-v2-broken-card/SKILL.md` (D20, 2026-09-15).
+    """
+    root = _repo(tmp_path)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        assert _run(gf.cmd_import, _args(api=url, org="acme", repo="monorepo")) == 0
+        capsys.readouterr()
+        import_id = next(iter(api.imports))
+        api.import_view_extra = {
+            "state": "partial",
+            "counts": {"accepted": 2, "failed": 1},
+            "files": [
+                {"path": "a/SKILL.md", "status": "accepted"},
+                {"path": "b/SKILL.md", "status": "accepted"},
+                {"path": "broken/SKILL.md", "status": "failed",
+                 "reason": "ScannerError: mapping values are not allowed here"},
+            ],
+        }
+        assert _run(gf.cmd_status, _args(api=url, org="acme", repo="monorepo",
+                                         import_id=import_id)) == 0
+        out = capsys.readouterr().out
+    assert "accepted=2" in out and "failed=1" in out, out
+    assert "unknown" not in out, out
+    assert "broken/SKILL.md" in out and "ScannerError" in out, out
+    # The accepted files are counted, never listed one by one.
+    assert "a/SKILL.md" not in out, out

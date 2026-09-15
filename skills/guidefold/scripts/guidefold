@@ -8411,7 +8411,11 @@ def _print_import_view(view: dict):
     if isinstance(files, list) and files:
         buckets = {}
         for f in files:
-            buckets.setdefault(f.get("state") or "unknown", []).append(f)
+            # `ImportFile` carries `status`, not `state` (API-CONTRACT §5.2). Reading `state`
+            # put every file in `unknown`, so a partial import printed 408 undifferentiated
+            # lines and the one file that actually failed — with its parser error — was not
+            # visible at all (D20, pilot rehearsal v2 2026-09-15).
+            buckets.setdefault(f.get("status") or f.get("state") or "unknown", []).append(f)
         print("  files:          " + " ".join(f"{k}={len(v)}" for k, v in sorted(buckets.items())))
         for state in sorted(buckets):
             if state in ("accepted",):
