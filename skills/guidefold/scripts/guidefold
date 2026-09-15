@@ -8580,6 +8580,16 @@ def _extract_summary(svc, import_id, plan, proposals, view):
     for p in proposals:
         kind = p.get("kind") or "unknown"
         by_kind[kind] = by_kind.get(kind, 0) + 1
+    groups = [g for g in ((plan or {}).get("groups") or []) if isinstance(g, dict)]
+    planned_kinds = set()
+    for g in groups:
+        kind = g.get("kind") or str(g.get("group_id") or "").partition(":")[0]
+        if kind:
+            planned_kinds.add(kind)
+    # `groups_skipped` counts only what a ceiling truncated, so a kind the plan found NO group
+    # for is invisible in it. Naming those kinds is the difference between "5 proposals" and
+    # "5 proposals, and extraction was never attempted" (D7).
+    kinds_without_groups = [k for k in EXTRACT_KINDS if k not in planned_kinds]
     abstentions, cost, jobs = [], {}, (view or {}).get("jobs") or []
     for job in jobs:
         if not isinstance(job, dict):
@@ -8598,6 +8608,7 @@ def _extract_summary(svc, import_id, plan, proposals, view):
         "profile": (plan or {}).get("profile"),
         "planned_groups": len((plan or {}).get("groups") or []),
         "groups_skipped": (plan or {}).get("groups_skipped") or {},
+        "kinds_requested": list(EXTRACT_KINDS), "kinds_without_groups": kinds_without_groups,
         "proposals_by_kind": by_kind, "proposals": len(proposals),
         "consolidations": consolidations, "abstentions": abstentions, "cost": cost,
         "state": (view or {}).get("state"),
@@ -8612,6 +8623,10 @@ def _print_extract_summary(summary):
     if summary.get("personal_files"):
         print(f"  personal:  {summary['personal_files']} file(s) imported for review; "
               "publish was disabled for this run")
+    if summary.get("kinds_without_groups"):
+        kinds = ", ".join(summary["kinds_without_groups"])
+        print(f"  not attempted: {kinds} — the plan found no group of that kind for this "
+              "import (nothing to generate from)")
     if summary["proposals_by_kind"]:
         parts = ", ".join(f"{k}={v}" for k, v in sorted(summary["proposals_by_kind"].items()))
         print(f"  proposals: {summary['proposals']} ({parts})")
@@ -8698,6 +8713,21 @@ def cmd_extract(a):
     _require_service(svc)
     svc, import_id = _run_import(a, "extract", prepared=(manifest, blob_paths), finish=False)
 
+    # The extraction groups are built from the documents of THIS import, and those documents
+    # exist only once the `import.parse` job has run. Planning and generating in the same breath
+    # as `finalize` therefore found no document at all: no extraction group was planned, no
+    # extraction job was enqueued, and `groups_skipped` stayed empty because it only counts
+    # groups a ceiling truncated -- so the run reported "5 proposals" and never said that
+    # extraction had not been attempted (D7, pilot rehearsal 2026-09-15 §4). Wait for the import
+    # to reach a terminal state first; `--wait` still means "also wait for the generation jobs".
+    import_view = None
+    try:
+        if not getattr(a, "json", False):
+            print("  waiting for the import to finish before planning…")
+        import_view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
+    except ServiceError as e:
+        _die_service("extract", e, svc)
+
     try:
         # The profile rides as a query parameter, built separately so the path this call site
         # names stays the contracted one (§4.2) rather than a path-plus-query the contract
@@ -8718,7 +8748,7 @@ def cmd_extract(a):
     except ServiceError as e:
         _die_service("extract", e, svc)
 
-    view, proposals = None, []
+    view, proposals = import_view, []
     if getattr(a, "wait", False):
         try:
             view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))

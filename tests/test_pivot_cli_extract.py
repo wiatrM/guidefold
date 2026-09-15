@@ -18,6 +18,7 @@ Everything runs in-process against the `gf` CLI module (conftest.py's fixture), 
 guard applies to the code under test, and against the `_pivot_server` fake for the rest.
 """
 import json
+import re
 import os
 import socket
 import sys
@@ -473,3 +474,68 @@ def test_module_still_imports_no_http_stack_for_the_offline_path(gf):
     before_require = head.split("_require_service(svc)")[0]
     assert "_service_request(" not in before_require, (
         "extract must not reach the network before --dry-run has had its chance to exit")
+
+
+# ---- D7 (pilot rehearsal 2026-09-15): the extraction groups that were never even attempted
+
+_GROUPS_AFTER_PARSE = [{"group_id": "extraction:docs.runbooks", "kind": "extraction"},
+                       {"group_id": "enrichment:_root", "kind": "enrichment"}]
+_GROUPS_BEFORE_PARSE = [{"group_id": "enrichment:_root", "kind": "enrichment"}]
+
+
+def test_extract_waits_for_the_import_to_parse_before_it_plans_and_generates(
+        gf, tmp_path, monkeypatch, no_sleep, capsys):
+    """An import's documents exist only after `import.parse` has run. `extract` finalized the
+    import and asked for the plan in the same breath, so extraction found no documents, no
+    extraction group was planned, no extraction job was enqueued -- and `groups_skipped` stayed
+    empty, because it only counts groups a ceiling truncated. The owner saw "5 proposals" and
+    had no way to learn that extraction was never attempted (rehearsal report §4 D7).
+    """
+    root = _repo(tmp_path)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        api.parse_polls_required = 2
+        api.plan_before_parse = {"profile": "one_shot", "groups": _GROUPS_BEFORE_PARSE,
+                                 "limits": {"max_groups": 1}, "groups_skipped": {},
+                                 "estimated_usd_max": 0.0, "estimated_calls": 1}
+        api.plan = {"profile": "one_shot", "groups": _GROUPS_AFTER_PARSE,
+                    "limits": {"max_groups": 2}, "groups_skipped": {},
+                    "estimated_usd_max": 0.0, "estimated_calls": 2}
+        _login(gf, url)
+        code = _run(gf.cmd_extract, _args(api=url, org="acme", repo="monorepo", json=True))
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+
+    # The status read that proves the parse finished comes before the plan and the generation.
+    paths = [r["path"] for r in api.requests]
+    finalize = max(i for i, p in enumerate(paths) if p.endswith("/finalize"))
+    plan = next(i for i, p in enumerate(paths) if "/plan?" in p)
+    generate = next(i for i, p in enumerate(paths) if p.endswith("/proposals:generate"))
+    status_reads = [i for i, p in enumerate(paths)
+                    if re.fullmatch(r"/api/v1/orgs/[^/]+/repos/[^/]+/imports/[^/]+", p)]
+    assert any(finalize < i < plan for i in status_reads), paths
+    assert plan < generate
+
+    assert payload["planned_groups"] == 2, payload
+    assert payload["kinds_without_groups"] == ["consolidation"], payload
+    job_kinds = sorted(j.rpartition("_")[2] for j in payload["job_ids"])
+    assert job_kinds == ["enrichment", "extraction"], payload
+
+
+def test_extract_names_every_kind_the_plan_did_not_plan_a_group_for(
+        gf, tmp_path, monkeypatch, no_sleep, capsys):
+    """`groups_skipped` only counts groups a ceiling truncated, so a kind with no group at all
+    is invisible in it. `extract` asks for three kinds and must say which of them got nothing --
+    otherwise "proposals: 5" reads as a complete run (D7)."""
+    root = _repo(tmp_path)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        api.plan = {"profile": "one_shot", "groups": _GROUPS_BEFORE_PARSE,
+                    "limits": {"max_groups": 1}, "groups_skipped": {},
+                    "estimated_usd_max": 0.0, "estimated_calls": 1}
+        _login(gf, url)
+        code = _run(gf.cmd_extract, _args(api=url, org="acme", repo="monorepo"))
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "not attempted" in out, out
+    assert "extraction" in out and "consolidation" in out, out
