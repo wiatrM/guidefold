@@ -9489,8 +9489,11 @@ def cmd_install(a):
     yaml_path = root / "guidefold.yaml"
     if any(service_fields.values()):
         if not yaml_path.is_file():
-            plan.add("kept", "guidefold.yaml", "missing — the scope map is inferred (ADR-0050), but `service:` "
-                     "needs a file: run `guidefold init --scope-map`, or set GUIDEFOLD_API/GUIDEFOLD_ORG")
+            # ADR-0050 §4: `service:` is a convenience, not a requirement. The coordinates
+            # resolve from the credentials `guidefold login` writes plus GUIDEFOLD_*, so this is
+            # a note about where they came from, not an instruction to create a file.
+            plan.add("kept", "guidefold.yaml", "not written — the scope map is inferred (ADR-0050) and the "
+                     "service coordinates come from `guidefold login` / GUIDEFOLD_API, ORG, REPO_ID")
         else:
             current = yaml_path.read_text(encoding="utf-8")
             updated = _upsert_service_block(current, service_fields)
@@ -9525,19 +9528,24 @@ def cmd_install(a):
 
     print(f"guidefold install --harness {harness} — target repo: {root}")
     plan.render("  ")
-    if not plan.changed and not manifest_changed:
-        print("  nothing to do — the adapter is already installed and current.")
-        sys.exit(0)
     if dry:
         print("  [dry-run] nothing was written.")
         sys.exit(0)
-
-    for dest, content, executable in plan.writes:
-        _atomic_write_bytes(dest, content, executable)
-    for dest, text in hook_writes:
-        _atomic_write_bytes(dest, text)
-    _atomic_write_bytes(_install_manifest_path(root), manifest_bytes)
-    print(f"  package sha256: {package_sha}")
+    nothing_to_write = not plan.changed and not manifest_changed
+    if nothing_to_write:
+        # The sentence is about the adapter PACKAGE, and it used to end the command. But a
+        # current package says nothing about the index artifact for the CURRENT commit, which is
+        # what the hook reads -- after a `git pull` that is precisely the artifact that is
+        # missing -- and it silenced the line naming the service too (manual zero-config run,
+        # 2026-09-15). The files are left alone; the artifacts below are rebuilt anyway.
+        print("  nothing to do — the adapter is already installed and current.")
+    else:
+        for dest, content, executable in plan.writes:
+            _atomic_write_bytes(dest, content, executable)
+        for dest, text in hook_writes:
+            _atomic_write_bytes(dest, text)
+        _atomic_write_bytes(_install_manifest_path(root), manifest_bytes)
+        print(f"  package sha256: {package_sha}")
     # One-shot delivery (ADR-0035 §8): the hook needs the index for this commit, and every
     # harness that reads files instead of running a hook (Gemini, Codex, Copilot's applyTo)
     # needs the materialized scope cards. Both are generated, gitignored, and idempotent, so

@@ -476,3 +476,49 @@ def _doctor_checks(gf, capsys):
     capsys.readouterr()
     _run(gf.cmd_doctor, SimpleNamespace(json=True, path=None))
     return json.loads(capsys.readouterr().out)["checks"]
+
+
+def test_a_second_install_still_refreshes_the_artifacts_and_names_the_service(
+        gf, tmp_path, monkeypatch, capsys):
+    """Manual zero-config run, 2026-09-15: the second `guidefold install` exited on "nothing to
+    do — the adapter is already installed and current" before the map, materialize, index and the
+    `hook search:` line. The adapter package being current says nothing about the index artifact
+    for the CURRENT commit, which is what the hook reads — after a `git pull` that is exactly the
+    artifact that is missing. The sentence is about the package; the artifacts are rebuilt anyway.
+    """
+    import subprocess
+    root = _zero_config_repo(tmp_path)
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.chdir(root)
+    assert _run(gf.cmd_install, _args()) == 0
+    capsys.readouterr()
+
+    d = root / "docs" / ".agents" / "skills" / "later-card"
+    d.mkdir(parents=True)
+    (d / "SKILL.md").write_text(
+        '---\nname: later-card\ndescription: "A card added after the first install. Use when '
+        'checking the second install."\nmetadata:\n  status: active\n---\n\nBody.\n',
+        encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), "-c", "user.email=t@e", "-c", "user.name=t",
+                    "commit", "-qm", "another card"], check=True, capture_output=True)
+
+    assert _run(gf.cmd_install, _args()) == 0
+    out = capsys.readouterr().out
+    assert "nothing to do" in out, "the package really is unchanged, and still says so"
+    assert "hook search:" in out
+    sha = gf._git_head_short(root)
+    assert (gf.index_cache_dir(sha) / "manifest.json").is_file(), \
+        "the artifact for the NEW commit must exist after the second install"
+
+
+def test_install_does_not_tell_a_zero_config_repo_to_write_a_file_for_service(
+        gf, tmp_path, monkeypatch, capsys):
+    root = _zero_config_repo(tmp_path)
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.chdir(root)
+    assert _run(gf.cmd_install, _args(api="https://api.example", org="acme", repo="monorepo")) == 0
+    out = capsys.readouterr().out
+    assert "guidefold init --scope-map" not in out, \
+        "ADR-0050 §4: `service:` no longer needs a file to live in"
+    assert "guidefold.yaml" in out and "not written" in out
