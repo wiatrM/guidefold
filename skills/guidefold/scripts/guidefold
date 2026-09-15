@@ -3109,6 +3109,90 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     except Exception:
         pass  # telemetry must never fail or block the command it instruments (see block docstring)
 
+# D12 (pilot rehearsal 2026-09-15): every failed `/v1/use` reached the user as the single word
+# "(auth)", so a 403 on the org/repo headers, a 409 on the wrong revision and a 503 on a stale
+# snapshot were indistinguishable -- and a repository-permission problem was debugged as a
+# sign-in problem for a whole rehearsal. The reason a `/v1` call failed is still a string, so
+# every existing comparison (`reason == "auth"`, `reason == "ask"`) keeps working, but it now
+# carries the HTTP status and the server's own `error`/`message`/`hint` so the CLI can say what
+# actually happened and what to do about it. No contract change: these are fields the service
+# already sends (API-CONTRACT §4.9).
+class ServiceFailure(str):
+    def __new__(cls, reason, status=None, error=None, message=None, hint=None, request_id=None):
+        obj = str.__new__(cls, reason)
+        obj.status, obj.error, obj.message = status, error, message
+        obj.hint, obj.request_id = hint, request_id
+        return obj
+
+
+# What to do next, per server error code. Anything not listed falls back to the generic advice:
+# these are the codes a `load` actually meets.
+_USE_FAILURE_NEXT_STEPS = {
+    "auth": "no usable credential — run `guidefold login`, or point `search.token_file` / "
+            "GUIDEFOLD_SEARCH_TOKEN_FILE at a token file",
+    "forbidden": "the token is valid but may not read this organisation/repository — check "
+                 "`guidefold doctor` (service-config, service-identity). The org/repo headers "
+                 "come from `service.org`/`service.repo` in guidefold.yaml, GUIDEFOLD_ORG / "
+                 "GUIDEFOLD_REPO_ID, or the stored login — never from the checkout's name",
+    "revision_mismatch": "that revision is not what the active snapshot delivers — pass the "
+                         "revision `guidefold find` printed (the card's `card_revision`), not "
+                         "the catalog's `revision_id` from `GET …/skills/{id}`",
+    "snapshot_policy_mismatch": "the published snapshot was built by a different "
+                                "`scripts/guidefold` than the one calling — re-import and "
+                                "publish the repository; this is not an authentication problem",
+    "snapshot_not_published": "this repository has no active snapshot — import and publish it "
+                              "first (`guidefold import --wait`)",
+    "empty_snapshot": "the active snapshot holds no card — re-import and publish the repository",
+    "skill_not_found": "the served snapshot has no such skill — re-run `guidefold find` and use "
+                       "the urn it printed",
+    "timeout": "the service did not answer inside `search.deadline_ms` — raise it, or check the "
+               "endpoint with `guidefold doctor`",
+    "config": "the search backend is misconfigured — check `search.url` (and `guidefold doctor`)",
+    "invalid_response": "the endpoint answered something that is not this contract — check that "
+                        "`search.url` points at a Guidefold service",
+}
+
+
+def _service_failure(status, body):
+    """The reason an HTTP `/v1` call failed, carrying the server's own words."""
+    detail = body if isinstance(body, dict) else {}
+    err = detail.get("error")
+    if isinstance(err, dict):
+        code, message = err.get("code"), err.get("message") or detail.get("message")
+        hint = err.get("hint") or detail.get("hint")
+    else:
+        code = err if isinstance(err, str) else None
+        message, hint = detail.get("message"), detail.get("hint")
+    if status == 401:
+        label = "auth"
+    elif status == 403:
+        label = code or "forbidden"
+    else:
+        label = code or ("http_4xx" if 400 <= (status or 0) < 500 else "http_5xx")
+    return ServiceFailure(label, status=status, error=code, message=message, hint=hint,
+                          request_id=detail.get("request_id"))
+
+
+def _service_failure_message(what: str, urn: str, reason) -> str:
+    """One multi-line, actionable message: what failed, what the server said, what to do."""
+    lines = [f"guidefold: {what} ({reason}) for {urn}"]
+    status = getattr(reason, "status", None)
+    if status:
+        code = getattr(reason, "error", None)
+        lines.append(f"  the service answered HTTP {status}" + (f" {code}" if code else ""))
+    for label, value in (("", getattr(reason, "message", None)),
+                         ("hint: ", getattr(reason, "hint", None))):
+        if value:
+            lines.append(f"  {label}{value}")
+    request_id = getattr(reason, "request_id", None)
+    if request_id:
+        lines.append(f"  request_id: {request_id}")
+    step = _USE_FAILURE_NEXT_STEPS.get(str(reason))
+    if step:
+        lines.append(f"  next: {step}")
+    return "\n".join(lines)
+
+
 def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                      delivery_policy: str = "legacy"):
     """Blocking POST /v1/use -- no local race/fallback exists for USE (unlike SEARCH, ADR-0023
@@ -3183,11 +3267,7 @@ def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                 return None, "invalid_response"
             return body, "ask" if action == "ASK" else None
         return body, None
-    if status in (401, 403):
-        return None, "auth"
-    if 400 <= status < 500:
-        return None, "http_4xx"
-    return None, "http_5xx"
+    return None, _service_failure(status, body)
 
 
 def _download_service_resource(search_cfg: dict, resource: dict):
@@ -3315,7 +3395,8 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service USE failed ({reason}) for {a.urn}")
+            # D12: the code, the server's own words and the next step -- not one word.
+            sys.exit(_service_failure_message("service USE failed", a.urn, reason))
         if delivery_policy == "proof_gated" and reason == "ask":
             delivery = body.get("delivery") if isinstance(body, dict) else {}
             missing = delivery.get("missing") if isinstance(delivery, dict) else []
@@ -3332,7 +3413,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "unresolved", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service ASK for {a.urn} ({delivery.get('reason', 'proof_incomplete')}){detail}")
+            sys.exit(f"guidefold: service ASK for {a.urn} "
+                     f"({delivery.get('reason', 'proof_incomplete')}){detail}\n"
+                     "  next: the service is withholding the body until its source proof is "
+                     "complete; re-publish the skill with its sources, or load it without "
+                     "--delivery-policy proof_gated")
         import hashlib
         checksum_ok = hashlib.sha256(body["body"].encode("utf-8")).hexdigest() == body.get("checksum")
         if not checksum_ok:
@@ -3341,7 +3426,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use")
+            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use\n"
+                     "  the body does not hash to the checksum the service sent; nothing was "
+                     "written to the cache\n"
+                     "  next: re-run `guidefold find` for a current revision, and report the "
+                     "mismatch if it persists")
         resources, resource_reason = _fetch_service_resources(search_cfg, body)
         if resources is None:
             _emit_telemetry(root, "skill_load_completed", {
@@ -3349,7 +3438,8 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service resource fetch failed ({resource_reason}) for {a.urn}")
+            sys.exit(_service_failure_message("service resource fetch failed", a.urn,
+                                              resource_reason))
         dest = skill_cache_dir(urn_part, revision_part)
         dest_root = dest.resolve()
         resource_targets = []
@@ -3361,7 +3451,11 @@ def cmd_load(a, root, cfg):
                     "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                     "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
                 })
-                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use")
+                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use\n"
+                         "  a package resource pointed outside this skill's cache directory; "
+                         "nothing was written\n"
+                         "  next: report this revision to the skill's owner -- it cannot be "
+                         "loaded safely")
             resource_targets.append((target, data))
         # Validate every target before creating the directory or writing SKILL.md. A malformed
         # manifest must leave no half-populated revision in the cache.
@@ -5397,6 +5491,56 @@ def digest_of(fm):
     md = fm.get("metadata", {})
     return md.get("digest") or fm.get("description", "")[:200]
 
+def _card_bullet_budget(bullets, chain, budget):
+    """How many skill bullets each level of the chain may print.
+
+    The specific beats the general: a developer standing in `atlas.identity.turnstile` needs
+    that node's own skills more than the root's conventions, so bullets are handed out from the
+    most specific level outwards. A level that gets cut keeps one line for "… and K more", which
+    is why a truncated level costs one more than the bullets it shows.
+    """
+    keep = {n: 0 for n in chain}
+    if budget <= 0:
+        return keep
+    def cost():
+        total = 0
+        for n in chain:
+            rows = len(bullets.get(n) or [])
+            if not rows:
+                total += 1                      # "(no skills at this level yet)"
+            else:
+                total += keep[n] + (1 if keep[n] < rows else 0)
+        return total
+    if cost() > budget:
+        return keep                             # nothing fits; every level shows its count only
+    progress = True
+    while progress:
+        progress = False
+        for n in chain:                         # most specific first
+            rows = len(bullets.get(n) or [])
+            if keep[n] >= rows:
+                continue
+            keep[n] += 1
+            if cost() > budget:
+                keep[n] -= 1
+                continue
+            progress = True
+    return keep
+
+
+def _clamp_card(lines, node):
+    """The last word on the cap. Whatever the budget arithmetic did, a card is never longer than
+    CARD_CAP -- an oversized `.agents/NODE.md` cannot push it over either. The head and the
+    closing "how to get the full procedure" block are what a harness actually acts on, so the
+    middle is what gives way."""
+    if len(lines) <= CARD_CAP:
+        return lines
+    tail = 6                                    # the footer block, verbatim
+    note = (f"… card truncated to the {CARD_CAP}-line cap; run "
+            f"`guidefold find \"<your task>\" --scope {node}` for the rest")
+    return lines[:CARD_CAP - tail - 1] + [note] + lines[-tail:]
+
+
 def build_card(root, cfg, node, skills_by_node):
     chain = ancestors(node)                      # node first … _root last
     root_label = f"{cfg['publisher']} (root)"
@@ -5404,7 +5548,10 @@ def build_card(root, cfg, node, skills_by_node):
              f"Owner: {node_meta(cfg, node).get('owner')} · Hierarchy (specific → general): {' → '.join(chain)}", ""]
     extra = root / (node_meta(cfg, node).get("paths", ["."])[0].split("*")[0]) / ".agents" / "NODE.md"
     if extra.exists():
-        lines += [extra.read_text().strip(), ""]
+        # Split into real lines: the card's own line count has to include NODE.md, or a wordy
+        # one silently pushes a card over the cap that the budget below believes it is under.
+        # Joined back with "\n" this is byte-identical to the single-element form it replaces.
+        lines += extra.read_text().strip().splitlines() + [""]
     # ADR-0035: ascended scope maps first, root-most first, so a harness that only reads files
     # on disk (Copilot applyTo, Codex/Gemini nested AGENTS.md) gets the shape of the organisation
     # before any specific guidance. A map is a normal skill; it is pulled out of the bullet
@@ -5426,27 +5573,46 @@ def build_card(root, cfg, node, skills_by_node):
         for n, name, fm in maps:
             lines.append(f"- **{root_label if n == '_root' else n}** `{urn(cfg, n, name)}` — {digest_of(fm)}")
         lines.append("")
-    lines += ["## Inherited guidance (general → specific)", ""]
-    for n in reversed(chain):                    # root first
-        label = root_label if n == "_root" else n
-        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+    # One node can hold a hundred skills -- that is the ordinary shape of a repository with no
+    # hand-written `guidefold.yaml` (ADR-0050), not an authoring mistake. The cap stays 80 lines
+    # (CONVENTIONS §9); what changes is that the card is SHORTENED to fit instead of refused.
+    # `materialize` refusing took `install` down with it, so the hook had no index artifact to
+    # read and stayed idle (pilot rehearsal 2026-09-15 §5.3).
+    bullets = {}
+    for n in chain:
+        rows = []
         for name, fm in sorted(skills_by_node.get(n, []), key=_by_name):
             if _is_map(fm):
                 continue
             md = fm.get("metadata") or {}
             flag = f" **DEPRECATED → {md.get('replaced_by', '?')}**" if md.get("status") == "deprecated" else ""
-            lines.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
-        if not skills_by_node.get(n):
-            lines.append("- (no skills at this level yet)")
-        lines.append("")
-    lines += ["## How to get the full procedure",
+            rows.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
+        bullets[n] = rows
+    footer = ["## How to get the full procedure",
               "Skills above are summaries. Before implementing anything platform-specific, run",
               f"`.agents/skills/guidefold/scripts/guidefold find \"<your task>\" --scope {node}` and then",
               "`guidefold load <urn>` for the 1–3 most relevant ones (follow `metadata.requires`).",
               "Generated by guidefold materialize — do not edit; edit guidefold.yaml, NODE.md or the skills instead.", ""]
-    if len(lines) > CARD_CAP:
-        sys.exit(f"guidefold: scope card for {node} exceeds {CARD_CAP} lines — shorten metadata.digest")
-    return "\n".join(lines)
+    # Fixed cost: everything already in `lines`, the section heading, one `###` per level, one
+    # blank line per level, and the footer. What is left is the bullet budget.
+    fixed = len(lines) + 2 + 2 * len(chain) + len(footer)
+    keep = _card_bullet_budget(bullets, chain, CARD_CAP - fixed)
+    lines += ["## Inherited guidance (general → specific)", ""]
+    for n in reversed(chain):                    # root first
+        label = root_label if n == "_root" else n
+        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+        rows = bullets[n]
+        shown = rows[:keep.get(n, 0)]
+        lines += shown
+        if not rows:
+            lines.append("- (no skills at this level yet)")
+        elif len(shown) < len(rows):
+            left = len(rows) - len(shown)
+            lines.append(f"- … and {left} more skill(s) in {label}; run "
+                         f"`guidefold find \"<your task>\" --scope {n}`")
+        lines.append("")
+    lines += footer
+    return "\n".join(_clamp_card(lines, node))
 
 def cmd_materialize(a, root, cfg):
     skills_by_node = {}
@@ -5816,6 +5982,7 @@ def cmd_telemetry_flush(a, root, cfg=None):
         return deadline is not None and _time.monotonic() >= deadline
     totals = {"sent": 0, "accepted": 0, "duplicate": 0, "rejected": 0}
     truncated_by_budget = False
+    queued = False      # did this run ever find a readable event to send?
     for tenant, env, env_dir in _telemetry_partitions(root):
         if _budget_exceeded():
             truncated_by_budget = True
@@ -5826,14 +5993,27 @@ def cmd_telemetry_flush(a, root, cfg=None):
             if _budget_exceeded():
                 truncated_by_budget = True
                 break
+            # The automatic background flush (`--auto`, ADR-0048) drains the very same files, so
+            # a file listed a moment ago can be gone by the time this loop reaches it. Nothing is
+            # lost when that happens -- the other process sent those events and the server's
+            # idempotent accept/duplicate handling covers the overlap -- so this is one printed
+            # line and the next file, never a `FileNotFoundError` traceback (D11, pilot
+            # rehearsal 2026-09-15).
+            try:
+                raw = f.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                print(f"guidefold telemetry flush: {tenant}/{env}/{f.name}: already flushed by "
+                      "another run (the file is gone) — nothing to do for it")
+                continue
             parsed = []
-            for line in f.read_text(encoding="utf-8").splitlines():
+            for line in raw.splitlines():
                 if not line.strip():
                     continue
                 try:
                     parsed.append((line, json.loads(line)))
                 except Exception:
                     continue   # corrupt line: can't be usefully retried, drop silently
+            queued = queued or bool(parsed)
             resolved_ids, newly_acked = set(), 0
             for i in range(0, len(parsed), TELEMETRY_FLUSH_BATCH_MAX):
                 if _budget_exceeded():
@@ -5868,13 +6048,42 @@ def cmd_telemetry_flush(a, root, cfg=None):
                     totals["rejected"] += 1
                     print(f"guidefold telemetry flush: rejected {eid}: {r.get('reason')}")
             if resolved_ids:
-                kept = [line for line, ev in parsed if ev.get("event_id") not in resolved_ids]
-                if kept:
-                    f.write_text("\n".join(kept) + "\n", encoding="utf-8")
-                else:
-                    f.unlink()
+                # Re-read before rewriting. `find`/`hook`/`load` append to this very file while
+                # the batch is in flight, and rewriting from the snapshot this run parsed would
+                # silently delete every event appended since -- events that were never sent.
+                # That is how a `find`'s `card_injected` disappeared between the spool and the
+                # ledger in the ACT-01 rehearsal (D8). Only the ids the server actually resolved
+                # are dropped; everything else in the file, old or new, stays queued.
+                try:
+                    current = f.read_text(encoding="utf-8").splitlines()
+                except FileNotFoundError:
+                    current = []
+                kept = []
+                for line in current:
+                    if not line.strip():
+                        continue
+                    try:
+                        ev = json.loads(line)
+                    except Exception:
+                        continue
+                    if ev.get("event_id") not in resolved_ids:
+                        kept.append(line)
+                try:
+                    if kept:
+                        f.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                    else:
+                        f.unlink()
+                except FileNotFoundError:
+                    pass       # the same race, one step later: the file is already drained
                 health["acknowledged"] = health.get("acknowledged", 0) + newly_acked
         _write_health(health_path, health)
+    if not queued:
+        # Still one line, still exit 0, and still the same counters a script may parse: an empty
+        # spool is the normal state after an automatic flush, not a condition to report as a
+        # problem (D11).
+        print("guidefold telemetry flush: nothing to flush — the spool is empty; "
+              "sent=0 accepted=0 duplicate=0 rejected=0")
+        return
     print(f"guidefold telemetry flush: sent={totals['sent']} accepted={totals['accepted']} "
           f"duplicate={totals['duplicate']} rejected={totals['rejected']}"
           + (" (time budget exceeded; remainder stays queued for the next flush)"
@@ -8537,6 +8746,16 @@ def _extract_summary(svc, import_id, plan, proposals, view):
     for p in proposals:
         kind = p.get("kind") or "unknown"
         by_kind[kind] = by_kind.get(kind, 0) + 1
+    groups = [g for g in ((plan or {}).get("groups") or []) if isinstance(g, dict)]
+    planned_kinds = set()
+    for g in groups:
+        kind = g.get("kind") or str(g.get("group_id") or "").partition(":")[0]
+        if kind:
+            planned_kinds.add(kind)
+    # `groups_skipped` counts only what a ceiling truncated, so a kind the plan found NO group
+    # for is invisible in it. Naming those kinds is the difference between "5 proposals" and
+    # "5 proposals, and extraction was never attempted" (D7).
+    kinds_without_groups = [k for k in EXTRACT_KINDS if k not in planned_kinds]
     abstentions, cost, jobs = [], {}, (view or {}).get("jobs") or []
     for job in jobs:
         if not isinstance(job, dict):
@@ -8555,6 +8774,7 @@ def _extract_summary(svc, import_id, plan, proposals, view):
         "profile": (plan or {}).get("profile"),
         "planned_groups": len((plan or {}).get("groups") or []),
         "groups_skipped": (plan or {}).get("groups_skipped") or {},
+        "kinds_requested": list(EXTRACT_KINDS), "kinds_without_groups": kinds_without_groups,
         "proposals_by_kind": by_kind, "proposals": len(proposals),
         "consolidations": consolidations, "abstentions": abstentions, "cost": cost,
         "state": (view or {}).get("state"),
@@ -8569,6 +8789,10 @@ def _print_extract_summary(summary):
     if summary.get("personal_files"):
         print(f"  personal:  {summary['personal_files']} file(s) imported for review; "
               "publish was disabled for this run")
+    if summary.get("kinds_without_groups"):
+        kinds = ", ".join(summary["kinds_without_groups"])
+        print(f"  not attempted: {kinds} — the plan found no group of that kind for this "
+              "import (nothing to generate from)")
     if summary["proposals_by_kind"]:
         parts = ", ".join(f"{k}={v}" for k, v in sorted(summary["proposals_by_kind"].items()))
         print(f"  proposals: {summary['proposals']} ({parts})")
@@ -8655,6 +8879,21 @@ def cmd_extract(a):
     _require_service(svc)
     svc, import_id = _run_import(a, "extract", prepared=(manifest, blob_paths), finish=False)
 
+    # The extraction groups are built from the documents of THIS import, and those documents
+    # exist only once the `import.parse` job has run. Planning and generating in the same breath
+    # as `finalize` therefore found no document at all: no extraction group was planned, no
+    # extraction job was enqueued, and `groups_skipped` stayed empty because it only counts
+    # groups a ceiling truncated -- so the run reported "5 proposals" and never said that
+    # extraction had not been attempted (D7, pilot rehearsal 2026-09-15 §4). Wait for the import
+    # to reach a terminal state first; `--wait` still means "also wait for the generation jobs".
+    import_view = None
+    try:
+        if not getattr(a, "json", False):
+            print("  waiting for the import to finish before planning…")
+        import_view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
+    except ServiceError as e:
+        _die_service("extract", e, svc)
+
     try:
         # The profile rides as a query parameter, built separately so the path this call site
         # names stays the contracted one (§4.2) rather than a path-plus-query the contract
@@ -8675,7 +8914,7 @@ def cmd_extract(a):
     except ServiceError as e:
         _die_service("extract", e, svc)
 
-    view, proposals = None, []
+    view, proposals = import_view, []
     if getattr(a, "wait", False):
         try:
             view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
@@ -9049,13 +9288,26 @@ def cmd_install(a):
     # `install` does them here instead of asking the developer to remember two more commands.
     # Skipped, with a reason, when there is no guidefold.yaml yet or when asked not to.
     if yaml_path.is_file() and not getattr(a, "no_materialize", False):
+        # Three steps, three try blocks. They used to share one, so a card that refused to
+        # render -- or a map that failed to load -- also skipped `index`, and the hook has
+        # nothing to read without that artifact: `install` looked like it had succeeded while
+        # the harness stayed idle (pilot rehearsal 2026-09-15 §5.3). Each failure is reported
+        # and the next step still runs.
+        cfg_full = None
         try:
             cfg_full = load_map(root)
             cfg_full.setdefault("registry", {})
-            cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
-            cmd_index(argparse.Namespace(check=False), root, cfg_full)
-        except SystemExit as exc:                      # a failed validate/build is reported, not hidden
-            print(f"  materialize/index: {exc}")
+        except SystemExit as exc:
+            print(f"  map: {exc}")
+        if cfg_full is not None:
+            try:
+                cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:                  # a failed card is reported, not hidden
+                print(f"  materialize: {exc}")
+            try:
+                cmd_index(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:
+                print(f"  index: {exc}")
     else:
         print("  materialize/index: skipped (" + ("--no-materialize" if yaml_path.is_file() else "no guidefold.yaml yet") + ")")
     print("  next: `guidefold doctor`")

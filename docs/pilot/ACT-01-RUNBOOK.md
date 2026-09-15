@@ -198,7 +198,7 @@ python3 .agents/skills/guidefold/scripts/guidefold telemetry flush
 
 **Trzy rzeczy, które w próbie generalnej zawiodły i zostały naprawione na gałęzi `pilot/act01-rehearsal-20260915`** — jeśli produkcja nie ma tych napraw, spodziewaj się ich:
 - `install` kończy się `TypeError: '<' not supported between instances of 'dict' and 'dict'` i zostawia repozytorium w połowie zainstalowane;
-- `load` zwraca „service USE failed (auth)" dla każdego klonu, którego katalog nie nazywa się dokładnie jak repo id (API odpowiada 403 na nagłówek `X-Guidefold-Repo`);
+- `load` zawodzi dla każdego klonu, którego katalog nie nazywa się dokładnie jak repo id (API odpowiada 403 na nagłówek `X-Guidefold-Repo`). Od naprawy D12 komunikat nazywa kod i podaje krok („forbidden", HTTP 403, `guidefold doctor`); starsza wersja CLI pokazywała tu „service USE failed (auth)" i wyglądało to na problem z logowaniem;
 - nieudany `load` jest odrzucany przez ledger (`missing_required_field:cache_source`), więc porażki nie są widoczne w `gf.events`.
 
 **Dowód.**

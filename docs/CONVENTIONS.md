@@ -128,6 +128,28 @@ search:
   no body to its cache. The proof-gated flag is rejected for the local backend so it cannot be
   mistaken for an authorization check that local retrieval does not provide. The default
   `legacy` policy keeps the existing 1.1 request and cache behavior.
+#### Exit codes and messages for a failed `load` via `/v1/use`
+
+A failed `load` exits **1** and prints the reason on the first line, the service's own words on
+the next, and one `next:` line saying what to do. It never reports every failure with the same
+word — a 403 on the org/repo headers is not a sign-in problem (D12, rehearsal 2026-09-15).
+
+| Situation | Exit | First line | `next:` says |
+|---|---|---|---|
+| no usable credential (401) | 1 | `service USE failed (auth)` | run `guidefold login`, or set `search.token_file` |
+| the token may not read this org/repo (403) | 1 | `service USE failed (forbidden)`, or the server's own code | check `guidefold doctor`; the org/repo headers come from config, never from the checkout's directory name |
+| wrong revision (409 `revision_mismatch`) | 1 | `service USE failed (revision_mismatch)` | pass the revision `guidefold find` printed (`card_revision`), not the catalog's `revision_id` |
+| stale snapshot (503 `snapshot_policy_mismatch`) | 1 | `service USE failed (snapshot_policy_mismatch)` | re-import and publish; not an authentication problem |
+| no snapshot (503 `snapshot_not_published`, `empty_snapshot`) | 1 | the server's code | import and publish the repository first |
+| no answer in `deadline_ms` | 1 | `service USE failed (timeout)` | raise the deadline, or check the endpoint |
+| body does not match its checksum | 1 | `checksum mismatch` | nothing was cached; re-run `find` for a current revision |
+| a package resource points outside the cache | 1 | `unsafe resource path` | nothing was written; report the revision to its owner |
+| proof-gated abstention (`--delivery-policy proof_gated`) | 1 | `service ASK` with the proof reason | re-publish with sources, or drop the flag |
+| `load` without `@<revision>` on `backend: service` | 1 | the required-revision message | pass `<urn>@<revision>` |
+
+`guidefold: <message>` on stderr, nothing on stdout, and no half-written cache directory in
+every one of those rows.
+
 - `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
   guideline (recommends `service` above it), configured service reachability + advertised contract
   versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
@@ -337,7 +359,9 @@ succeeded.
 | `.github/instructions/<node>.instructions.md` | same card with `applyTo: "<node paths>"` | Copilot CLI/IDE/cloud agent when working on matching files, regardless of launch dir |
 | `.agents/skills/hierarchy-index/SKILL.md` | the whole tree | anyone, via `guidefold load urn:skill:acme:_index:hierarchy-index` |
 
-Card size cap: 80 lines. If a card exceeds it, the digests are too long — shorten `metadata.digest`, do not raise the cap.
+Card size cap: 80 lines, and `materialize` keeps a card inside it **by construction** — it never refuses to write one. Skill bullets are handed out most-specific-level-first; a level that does not fit ends with one `… and K more skill(s) in <node>; run `guidefold find "<your task>" --scope <node>`` line, and a card that is still too long (a very wordy `NODE.md`) keeps its head and its closing block with one truncation line between them. That is what makes the ordinary zero-config shape — one node holding every skill in the repository (ADR-0050) — installable: before, the refusal also skipped `guidefold index`, so the hook had no artifact and stayed idle. A card that needs truncating is still a signal the digests are too long: shorten `metadata.digest`, or give the repository more nodes; do not raise the cap.
+
+The `.github/instructions/<node>.instructions.md` copy of a card carries three extra frontmatter lines (`applyTo`), so it is at most 83 lines; the cap is on the card.
 
 Hand-written per node: only `guidefold.yaml` entry, skills, and an optional `<node-path>/.agents/NODE.md` (free-form 1–2 paragraphs about the node) that `materialize` includes at the top of the card.
 
@@ -612,7 +636,7 @@ hosted management API.** Requirements: `docs/PRODUCT-PIVOT.md` §4 (U1) and §8 
 | `guidefold import [PATH] [--no-publish] [--wait] [--json]` | scan → `POST …/imports` → `PUT …/blobs/{sha}` for **only** the hashes the server reports missing → `POST …/finalize`. `--wait` polls every 2 s until `ready`/`partial`/`failed` and prints the per-file result, the jobs and the publication state. |
 | `guidefold sync [PATH] [--wait] [--json]` | The same call, reporting the new/reused blob split so "the second sync uploads 0 new blobs" is visible. |
 | `guidefold status <import_id>` | The same status view for an import that is already running. |
-| `guidefold extract [PATH] [--all] [--personal claude,codex,copilot\|all] [--dry-run] [--no-publish] [--wait] [--json]` | P08: the whole loop in one call — scan → import → `GET …/plan?profile=one_shot` → `POST …/proposals:generate {profile:"one_shot", kinds:[extraction,enrichment,consolidation]}`. **Approves nothing**: every proposal still waits for its scope owner. With `--personal` it also **publishes nothing** — the import is finalized with `publish: false`, so a developer's own skills are never materialised into the served snapshot. `--wait` polls the jobs and prints proposals by kind, each consolidation with its source scopes and its target scope, the declines with their reasons and the cost. See below. |
+| `guidefold extract [PATH] [--all] [--personal claude,codex,copilot\|all] [--dry-run] [--no-publish] [--wait] [--json]` | P08: the whole loop in one call — scan → import → **wait for the import to finish parsing** → `GET …/plan?profile=one_shot` → `POST …/proposals:generate {profile:"one_shot", kinds:[extraction,enrichment,consolidation]}`. The wait is not optional: the extraction groups are built from the documents of that import, which exist only after `import.parse` has run, so a plan asked for any earlier contains no extraction group at all. Any requested kind the plan found no group for is named in the summary (`kinds_without_groups`, printed as `not attempted:`), because `groups_skipped` only counts groups a ceiling truncated. **Approves nothing**: every proposal still waits for its scope owner. With `--personal` it also **publishes nothing** — the import is finalized with `publish: false`, so a developer's own skills are never materialised into the served snapshot. `--wait` polls the jobs and prints proposals by kind, each consolidation with its source scopes and its target scope, the declines with their reasons and the cost. See below. |
 | `guidefold install --harness claude\|copilot [--api --org --repo] [--dry-run]` / `uninstall` | Idempotent adapter install with a diff-like summary; see below. |
 | `guidefold proposals list \| show <id> \| apply <export_id> [--write] [--base-check]` | Review exports. `apply` prints the unified diff and writes files only with `--write`; it **never** runs `git commit` or `git push`. Every `path` in the export is server-supplied, so it is checked before anything is created: absolute paths, `..`, `.` and empty segments are refused (exit 2), and the resolved destination must sit under the repository root, which also catches a symlinked parent. A file entry without `content` is refused rather than truncating the file to zero bytes, and a `sha256` that does not match the content refuses the whole export — nothing is written unless every entry passes (exit 1). |
 | `guidefold doctor` | Now also reports `service-config` (api/org/repo), `service-api` (`GET /health/ready`), `service-identity` (user, role, token scopes — never the token), `adapter-install` (manifest present and unmodified, package sha256) and `capabilities-<harness>`. |
