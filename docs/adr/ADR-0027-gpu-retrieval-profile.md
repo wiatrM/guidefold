@@ -3,6 +3,7 @@
 **Status:** Proposed · 2026-09-05. Implements the owner's GPU optimization request;
 this proposal does not admit a new default ranker or supersede ADR-0024 parity.
 **Related:** ADR-0025 API contract and ADR-0026 Go/Postgres hosting.
+**Parked by:** [ADR-0029](ADR-0029-product-focus-hard-rules.md) rule 1 and [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md) (2026-09-12): not extended, not on the critical path; no GPU deployment artifact exists in the repository.
 
 ## Context
 

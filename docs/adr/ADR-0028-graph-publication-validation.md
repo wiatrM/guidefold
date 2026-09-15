@@ -1,6 +1,6 @@
 # ADR-0028: Validate graph integrity before publishing a serving snapshot
 
-Status: Proposed (implemented in the accompanying PR; pending decision-owner review)
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit brief of that day; implemented in `services/search/internal/graph` and exercised by `publish.build` (originally Proposed 2026-09-06, "implemented in the accompanying PR; pending decision-owner review"). Listed in [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md).
 
 ## Context
 

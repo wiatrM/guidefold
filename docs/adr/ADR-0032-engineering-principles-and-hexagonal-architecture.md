@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-09-06 · decyzja właściciela produktu ("Wymagana jest architektura heksagonalna", zasady KISS/YAGNI/DRY/SOLID, Definition of Done).
 **Amends:** [ADR-0029](ADR-0029-product-focus-hard-rules.md) rule 7 (KISS review before merge) is generalised into the rules below.
 **Governs:** `.agents/skills/*` (project skills), `.claude/settings.json` hooks, every code review in this repository.
+**Amended by:** [ADR-0044](ADR-0044-console-on-shadcn-and-spectrum.md) (2026-09-12: the "no component library" reading of KISS for `ui/` is lifted; other rules unchanged). Audit 2026-09-12, re-checked 2026-09-15: the hexagonal rule is met in `internal/{usage,importer}` (domain packages, ports) and not yet in `identity`, `knowledge`, `review` (SQL in handlers) nor in `package main` (retrieval); see the audit report for the PRIO entry.
 **Applies to:** new and modified code in `services/`, `ui/`, the proposed Go API/worker ([PIVOT-ARCHITECTURE](../PIVOT-ARCHITECTURE.md)); the single-file CLI keeps its own constraint (CLAUDE.md) and applies the rules within one file.
 
 ## Context
