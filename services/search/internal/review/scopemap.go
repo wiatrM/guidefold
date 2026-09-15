@@ -302,12 +302,19 @@ func (s *Service) decideScopeMap(c *mgmt.Context, tx pgx.Tx, rc *repoContext, p 
 // handleOrgDecision is the organisation-scope decision route (API-CONTRACT
 // §4.4, §4.10 point 10).
 //
-// The address carries no repository, so the repository comes from the proposal
-// row — and the caller is then checked against *that* repository with the same
-// reviewer rule the `{repo_base}` twin applies. Two authorisations, in this
-// order, on purpose: the first decides whether the caller may even learn the
-// proposal exists (a proposal outside their readable scope is 404, never a hint
-// that it is elsewhere), the second whether they may decide it.
+// Two authorisations run, in this order and on purpose. The first decides
+// whether the caller may even learn the proposal exists: a proposal outside
+// their readable scope answers 404 exactly like one that does not exist, never
+// a hint that it lives elsewhere. The second decides whether they may decide
+// it, and *which* check that is depends on the kind.
+//
+// A `scope_map` proposal needs an **organisation owner**, not the reviewer of
+// the repository its row happens to be anchored to. The row's `repo_id` is the
+// repository whose import triggered the proposal; the map itself writes scopes
+// in the organisation's other repositories too, so authorising it as that one
+// repository would let a reviewer of the smallest repository move the scopes of
+// every other one. Every other kind keeps the reviewer rule of its own
+// repository, unchanged.
 func (s *Service) handleOrgDecision(c *mgmt.Context) error {
 	sc, e := s.authorizeScope(c, mgmt.RoleAny)
 	if e != nil {
@@ -323,6 +330,13 @@ func (s *Service) handleOrgDecision(c *mgmt.Context) error {
 	}
 	if err != nil {
 		return mgmt.Internal(err)
+	}
+	if p.Kind == KindScopeMap {
+		org, e := c.Authorize("org", mgmt.RoleOwner)
+		if e != nil {
+			return e
+		}
+		return s.decide(c, &repoContext{Org: org, RepoID: p.RepoID}, id)
 	}
 	org, repo, e := c.AuthorizeReviewerRepoID("org", p.RepoID)
 	if e != nil {

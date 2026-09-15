@@ -180,7 +180,9 @@ export interface DataSource {
   // Proposals and review ----------------------------------------------------
   listProposals(target: ReadScope, query: ProposalQuery): Promise<ProposalList>;
   getProposal(target: ReadScope, proposalId: string): Promise<ProposalDetail>;
-  decideProposal(target: OrgRepo, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult>;
+  /** `target.repo` is null for a `scope_map` proposal: that decision is taken at organisation
+   *  scope by an organisation owner (contract §4.10 point 10, ADR-0051). */
+  decideProposal(target: ReadScope, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult>;
   exportProposal(target: OrgRepo, proposalId: string, idempotencyKey: string): Promise<ExportPayload>;
   getProposalPublication(target: ReadScope, proposalId: string): Promise<Publication>;
 

@@ -2081,14 +2081,16 @@ paths:
   /api/v1/orgs/{org}/proposals/{proposal_id}/decision:
     post:
       tags: [proposals]
-      summary: "Approve or reject a proposal at organisation scope. Owners only."
+      summary: "Approve or reject a proposal at organisation scope."
       description: >-
-        Contract 1.14.0, ADR-0051. The only mutation in `{org_base}`: a `scope_map` proposal
-        describes several repositories at once, so the repository comes from the proposal row
-        rather than from the address. Authorisation is the same owner + CSRF check the
-        `{repo_base}` twin applies to that repository, so no permission widens. `edit` on a
-        `scope_map` proposal is `invalid_candidate_change`; a map that no longer validates is
-        `422 scope_map_invalid` with `details.findings`.
+        Contract 1.14.0, ADR-0051. The only mutation in `{org_base}`. A `scope_map` decision
+        requires an **organisation owner**: approving writes gfm.scopes rows in several of the
+        organisation's repositories, so authorising it as the reviewer of the one repository the
+        proposal row is anchored to would be the wrong permission -- and the `{repo_base}` twin
+        refuses a `scope_map` decision with 403 for the same reason. Every other kind applies the
+        reviewer rule of the repository in the proposal's row. `edit` on a `scope_map` proposal is
+        `invalid_candidate_change`; a map that no longer validates is `422 scope_map_invalid` with
+        `details.findings`.
       x-idempotent: true
       parameters:
         - { $ref: "#/components/parameters/Org" }
@@ -2102,6 +2104,9 @@ paths:
         "200":
           description: Decision recorded.
           content: { application/json: { schema: { $ref: "#/components/schemas/DecisionResult" } } }
+        "403":
+          description: "`forbidden` -- not an organisation owner, for a `scope_map` decision."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "404":
           description: "`proposal_not_found`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

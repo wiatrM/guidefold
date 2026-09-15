@@ -100,14 +100,19 @@ is `422 scope_map_invalid` and changes nothing.
 `confidence` is shown, never enforced. A threshold would turn a number the model made up into a
 gate, which is the automatic policy this ADR exists to prevent.
 
-**5. The decision is taken at organisation scope.** `POST {org_base}/proposals/{proposal_id}/decision`
-is added, and it is the only mutation in `{org_base}`. ADR-0047 decision 5 said mutations stay per
-repository, and that stays true for exports, feedback, publication, queue decisions and imports. It
-cannot hold here: a `scope_map` proposal describes several repositories at once, so asking the
-owner to pick one repository before deciding would make them name a repository the decision is not
-about. The route takes the repository from the proposal row, not from the address, and applies the
-same owner + CSRF check as its `{repo_base}` twin, so no permission widens. Any further request for
-an `{org_base}` mutation needs its own entry in API-CONTRACT §4.10 point 10.
+**5. The decision is taken at organisation scope, by an organisation owner.**
+`POST {org_base}/proposals/{proposal_id}/decision` is added, and it is the only mutation in
+`{org_base}`. ADR-0047 decision 5 said mutations stay per repository, and that stays true for
+exports, feedback, publication, queue decisions and imports. It cannot hold here, and the reason is
+a permission, not a convenience: the proposal's `repo_id` is the repository whose import produced
+it, but approving writes `gfm.scopes` rows in the organisation's *other* repositories too.
+Authorising that as the anchor repository's reviewer would let the reviewer of the smallest
+repository move every repository's scopes. So this route requires an organisation owner, and the
+`{repo_base}` twin **refuses** a `scope_map` decision with `403 forbidden` rather than accepting it
+under the weaker permission — otherwise the twin would be the bypass. For the other three kinds the
+organisation route applies exactly the reviewer rule of the repository in the proposal's row, and
+`{repo_base}` is unchanged. Any further request for an `{org_base}` mutation needs its own entry in
+API-CONTRACT §4.10 point 10.
 
 **6. Approving is applying, and `scope_map` has its own terminal state.** Approval writes
 `gfm.scopes` and moves the proposal to `applied`, a state added for this kind alone. It does not

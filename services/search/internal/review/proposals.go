@@ -342,7 +342,18 @@ func (s *Service) decide(c *mgmt.Context, rc *repoContext, id string) error {
 	}
 	// A scope map is decided, not reviewed as text: it has no target skill, no
 	// revision to be stale against and no bytes to export (ADR-0051).
+	//
+	// It is also decided by an organisation owner, never by the reviewer of the
+	// repository its row is anchored to, because the rows it writes reach the
+	// organisation's other repositories. `rc.Repo` is nil exactly when
+	// handleOrgDecision performed that owner check; a request that arrived on
+	// the `{repo_base}` twin has one, and is refused here rather than accepted
+	// under the weaker permission.
 	if p.Kind == KindScopeMap {
+		if rc.Repo != nil {
+			return mgmt.Fail(http.StatusForbidden, "forbidden",
+				"A scope map changes several repositories; decide it at the organization route.")
+		}
 		return s.decideScopeMap(c, tx, rc, p, req)
 	}
 

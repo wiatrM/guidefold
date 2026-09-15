@@ -183,6 +183,25 @@ func TestScopeMapRefusesEditAndExport(t *testing.T) {
 	}
 }
 
+// The repository twin must not be a way around the organisation-owner check: the
+// row is anchored to one repository, but the rows it writes reach the others, so
+// a reviewer of the anchor repository would otherwise move every repository's
+// scopes.
+func TestScopeMapCannotBeDecidedOnTheRepositoryRoute(t *testing.T) {
+	e := setupScopeMap(t)
+	id := e.oneScopeMapProposal(t)
+	repoBase := pivottest.RepoBase(e.orgID, e.repos[0])
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodPost,
+		Path: repoBase + "/proposals/" + id + "/decision", Key: "repo-decide-1",
+		Body: map[string]any{"decision": "approve", "reason": "through the wrong door"}})
+	if status != http.StatusForbidden || body["error"] != "forbidden" {
+		t.Fatalf("expected 403 forbidden on the repository route, got %d %v", status, body)
+	}
+	if n := countScopes(t, e, importer.SourceLLMApproved); n != 0 {
+		t.Fatal("a refused decision wrote scope rows")
+	}
+}
+
 // Another organisation's member gets the same answer for a proposal that exists
 // and one that does not: the organisation view is never an existence oracle.
 func TestScopeMapDecisionIsTenantIsolated(t *testing.T) {

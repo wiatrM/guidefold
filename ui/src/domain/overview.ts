@@ -172,9 +172,11 @@ export function topScopes(values: {value: string; count: number}[], limit = 6): 
 // Pipeline
 // ---------------------------------------------------------------------------
 
-export const proposalStateOrder: ProposalState[] = ['draft', 'approved_for_export', 'awaiting_git', 'published', 'rejected', 'superseded'];
+// `applied` sits after `draft` and before the export states: it is where a `scope_map` proposal
+// ends (1.14.0, ADR-0051), and it never reaches the three that describe a file on its way to Git.
+export const proposalStateOrder: ProposalState[] = ['draft', 'applied', 'approved_for_export', 'awaiting_git', 'published', 'rejected', 'superseded'];
 export const proposalStateLabels: Record<ProposalState, string> = {
-  draft: 'Draft', approved_for_export: 'Approved', awaiting_git: 'Awaiting Git', published: 'Published', rejected: 'Rejected', superseded: 'Superseded',
+  draft: 'Draft', applied: 'Applied', approved_for_export: 'Approved', awaiting_git: 'Awaiting Git', published: 'Published', rejected: 'Rejected', superseded: 'Superseded',
 };
 export function proposalsByState(items: ProposalSummary[]): {state: ProposalState; label: string; count: number}[] {
   const counts = new Map<ProposalState, number>();

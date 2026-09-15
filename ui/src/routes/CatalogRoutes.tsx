@@ -120,6 +120,12 @@ const catalogFilters = [
   {key: 'layer', field: 'layer' as const, label: 'Source layer'},
   {key: 'status', field: 'status' as const, label: 'Source status'},
 ];
+/** `gfm.scopes.source` in the reader's words (contract §5.3, §7). An unmapped value falls back to
+ *  the raw string rather than to a guess, so a value added later reads as itself. */
+const scopeSourceLabels: Record<string, string> = {
+  guidefold_yaml: 'guidefold.yaml', directory: 'Directory layout', codeowners: 'CODEOWNERS',
+  llm_approved: 'An approved scope map proposal', unknown: 'Unknown',
+};
 const libraryKeys = ['q', 'scope', 'owner', 'layer', 'status'];
 /** 07 §Budżety: the map starts at 100 objects per request and never renders past 200. */
 const MAP_RENDER_LIMIT = 200;
@@ -509,6 +515,10 @@ export function ApiMapRoute({ctx}: ApiProps) {
               <div className={styles.definition}><dt>Scope owner</dt><dd>{unknown(scopes.value.scope.owner)}</dd></div>
               <div className={styles.definition}><dt>Paths</dt><dd>{scopes.value.scope.paths.length ? scopes.value.scope.paths.map(path => <code key={path} className="block">{path}</code>) : 'Unknown. No path mapping declared.'}</dd></div>
               <div className={styles.definition}><dt>Parent</dt><dd>{scopes.value.scope.parent ?? 'Root'}</dd></div>
+                {/* Contract §5.3: where this node came from. A node an owner approved from a
+                    scope map proposal is not the same statement as one guidefold.yaml declares,
+                    and the map says which (ADR-0051). */}
+                <div className={styles.definition}><dt>Declared by</dt><dd>{scopeSourceLabels[scopes.value.scope.source ?? ''] ?? unknown(scopes.value.scope.source)}</dd></div>
             </dl> : <p className={styles.muted}>No scope is selected. The list below is the top of the scope map.</p>}
             {scopeChildren.length ? <ul className={styles.relationList}>
               {/* A scope id is unique only within a repository (§4.10.6), so opening one from an

@@ -66,7 +66,7 @@ MVP eksportuje propozycje lokalnie, bez wymagania GitHub App. Projektowana komen
 Wymagania:
 
 - Skan wskazanego commitu, zagnieżdżonych katalogów skilli, AGENTS.md, CLAUDE.md, .github/instructions, README, ADR i wybranych runbooków. MVP obsługuje Markdown/YAML/JSON; inne formaty wykazuje jako pominięte.
-- guidefold.yaml ma pierwszeństwo w mapowaniu scope. Katalogi i CODEOWNERS dostarczają propozycji, jeśli mapy brak. Niepewna hierarchia/owner są widoczne i nie stają się samoczynnie polityką.
+- guidefold.yaml ma pierwszeństwo w mapowaniu scope. Katalogi i CODEOWNERS dostarczają propozycji, jeśli mapy brak. Niepewna hierarchia/owner są widoczne i nie stają się samoczynnie polityką. Propozycję hierarchii **obejmującej wiele repozytoriów organizacji** może przygotować model ([ADR-0051](adr/ADR-0051-llm-proposed-organisation-map.md), kontrakt 1.14.0, rodzaj propozycji `scope_map`); pozostaje propozycją, dopóki owner organizacji jej nie zatwierdzi, a zatwierdzenie dopisuje i zmienia wiersze scope'ów, nigdy ich nie kasuje.
 - .gitignore, .guidefoldignore, lista dozwolonych źródeł, limity paczki; pomijanie sekretów, .git, zależności i buildów. Symlinki nie wyprowadzają poza root; submodule jest osobnym jawnym źródłem.
 - Manifest: org, repo, commit, pliki, hashe, rozmiary i wykluczenia. Domyślny profil publikacji obejmuje commit; lokalne zmiany mają osobny podgląd bez publikacji.
 - Sync po hashach, wznowienie uploadu, idempotencja. Usunięcia wymagają kompletnego skanu; częściowy skan nie może ich wywnioskować.
