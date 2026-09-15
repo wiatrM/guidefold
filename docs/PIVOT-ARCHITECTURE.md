@@ -2,7 +2,7 @@
 
 Reguły odczytu i aktualizacji: [DOCUMENTATION-RULES](DOCUMENTATION-RULES.md). Ten dokument określa granice systemu. Plan frontendowy rozwija pipeline UI, a prototyp nie potwierdza wdrożenia API ani izolacji organizacji.
 
-**Status: rekomendacja MVP po recenzji CTO, 2026-09-06; nie wdrożona zmiana.** Zakres: [PRD](PRODUCT-PIVOT.md), decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md), historie: [backlog](PIVOT-BACKLOG.md).
+**Status: rekomendacja MVP po recenzji CTO, 2026-09-06; ADR-0031 i ADR-0033 Accepted 2026-09-12, moduły istnieją w `services/search/internal` (stan: [PIVOT-IMPLEMENTATION](PIVOT-IMPLEMENTATION.md)); korekta 2026-09-12, sprawdzona ponownie 2026-09-15: tabela modułów poniżej nazywa wprost, że Retrieval/Delivery nadal siedzi w `package main`, że `gfm.relations` ma dwóch pisarzy, i odsyła do ADR-0036/0037/0041/0042 — patrz [audyt 2026-09-12](reports/product/2026-09-12-assumptions-vs-implementation-audit.md).** Zakres: [PRD](PRODUCT-PIVOT.md), decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md), historie: [backlog](PIVOT-BACKLOG.md).
 
 ## Decyzja
 
@@ -31,14 +31,17 @@ To docelowe granice odpowiedzialności w jednej bazie kodu Go. Dzisiaj duża cz�
 
 | Moduł | Własne dane i operacje | Użytkowe zastosowania |
 |---|---|---|
-| Identity | Sesje, membership, org, instalacje/tokeny, autoryzowany kontekst org/repo | Login, organizacje, integracje |
-| Import | Repo, manifest, source_revision, import_run, upload, plan joba; zapis `gfm.scopes`, także przy zatwierdzonej mapie organizacji (ADR-0051, port `ApplyScopeMap`) | Skan, sync, zmiany źródeł |
+| Identity | Sesje, membership, org, instalacje/tokeny, autoryzowany kontekst org/repo; **pisze też `gfm.github_installations`/`github_deliveries`** (ADR-0036, `internal/identity/github.go`) | Login, organizacje, integracje |
+| Import | Repo, manifest, source_revision, import_run, upload, plan joba; **pisze `gfm.scopes` i `gfm.relations`** dla krawędzi z drzewa importu (`internal/importer/parse.go`, schemat w `internal/schema/importer.go`) Zapis `gfm.scopes` także przy zatwierdzonej mapie organizacji (ADR-0051, port `ApplyScopeMap`). | Skan, sync, zmiany źródeł |
 | Knowledge | Skille, rewizje, scope, relacje, propozycje, provenance | Katalog, piramida, konsolidacja, strona modułu |
-| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu; job `scope_map.propose` i propozycja mapy organizacji (ADR-0051) — proponuje, nigdy nie pisze `gfm.scopes` sam | Review UI, CI, drift, rollback |
-| Retrieval/Delivery | SEARCH/USE, policy, budżet, odczyt opublikowanej rewizji i zasobów | Agent, onboarding, ponowne użycie |
-| Telemetry/Reporting | Ledger, dedupe, agregaty, health i raporty | Feedback, usage, ocena migracji |
+| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu; **też pisze `gfm.relations`** dla krawędzi z propozycji (`internal/review/store.go`, `approve.go`) — drugi pisarz obok Import, nie tylko czytelnik; provenance/źródła propozycji żyją w `proposal_fields` Job `scope_map.propose` i propozycja mapy organizacji (ADR-0051) proponują, nigdy nie piszą `gfm.scopes` same. | Review UI, CI, drift, rollback |
+| Retrieval/Delivery | SEARCH/USE, policy, budżet, odczyt opublikowanej rewizji i zasobów. **Dziś:** `package main` w `services/search/` — `routing.go`, `use12.go`, `proof_gate.go`, `store.go`, `bm25f.go`, `dense.go`, `family12.go`, `contract.go` (stan niezmieniony na `main` @ `2a302f5`, 2026-09-15). **Docelowo:** `internal/retrieval`, przenosiny plik po pliku za testami parity bit w bit (audyt 2026-09-12 PRIO 3.1) | Agent, onboarding, ponowne użycie |
+| GitHub App / Live Agent | `internal/ghapp` (klient App, OAuth użytkownika, treść, PR-y) i `internal/agentrun` (import i sync przez App, plan i przebieg Live Agent, raport PR) — ADR-0036/ADR-0046, doszły po 2026-09-12 | Connect, import bez CLI, odświeżenie biblioteki |
+| Telemetry/Reporting | Ledger, dedupe, agregaty, health i raporty; `gf.training_examples` ma tu tylko schemat i `GRANT INSERT` — zero pisarzy i czytelników w Go (`grep`, 2026-09-15), czyli ADR-0041 „Accepted-but-schema-only" | Feedback, usage, ocena migracji |
 
-Moduł ma właściciela zapisu do swoich tabel. Odczyty między modułami używają jawnych interfejsów/projekcji. Worker i API mogą wykonywać kod tego samego modułu, lecz mają różne uprawnienia operacyjne. Moduł telemetryczny nie modyfikuje skilli lub membership.
+Moduł ma właściciela zapisu do swoich tabel. Odczyty między modułami używają jawnych interfejsów/projekcji. Worker i API mogą wykonywać kod tego samego modułu, lecz mają różne uprawnienia operacyjne. Moduł telemetryczny nie modyfikuje skilli lub membership. Wyjątki od „jeden moduł, jeden pisarz" są nazwane wprost w wierszach powyżej (`gfm.relations` ma dwóch), nie ukryte.
+
+[ADR-0042](adr/ADR-0042-multi-repo-organisation-and-ci-configurator.md) (Accepted 2026-09-12, historia P16) rozszerza granicę Import o `gfm.repo_links`/`target_repo_id` i ustawienia generatora per organizacja oraz dodaje konfigurator CI — **bez kodu na `main` na 2026-09-15**; kontrakt przed kodem (API-CONTRACT §1) obowiązuje jak przy każdej innej zmianie granic modułu.
 
 ## Co wdrażamy
 

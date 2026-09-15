@@ -16,7 +16,7 @@ The current U4 import screen asks for a local repository id and a CLI manifest. 
 2. The server exposes a sanitized list of repositories available to the signed-in user and starts an import from a selected repository/ref. The worker reads repository content through a least-privilege GitHub adapter and never executes imported code.
 3. The UI replaces manual registration as the primary path with `Connect GitHub → choose repository → preview → import`. The existing CLI remains an explicit fallback until the server-side reader is accepted.
 4. `extension/` is a Manifest V3 thin client. It opens the hosted flow and stores only a configurable Guidefold origin. OAuth state, cookies and provider credentials remain server-owned.
-5. This ADR remains Proposed until the owner accepts the new target and a registered GitHub App supplies a real callback, permissions and deployment URL.
+5. This ADR remains Proposed until the owner accepts the new target and a registered GitHub App supplies a real callback, permissions and deployment URL. *(Annotation 2026-09-12: the owner accepted on 2026-09-08 — see the Status line; point 5's own evidence condition is tracked separately and is not a second status.)*
 
 ## Amendment 2026-09-13: an installation belongs to the organisation that proved it
 

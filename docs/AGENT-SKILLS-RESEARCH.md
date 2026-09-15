@@ -1,5 +1,12 @@
 # Guidefold Agent Skills Research Registry
 
+> **Historyczne od 2026-09-12.** Ostatnia aktualizacja poniżej jest sprzed reguły korpusów
+> ewaluacyjnych z 2026-09-05 (CLAUDE.md „Evaluation corpora") i sprzed pivotu. Żywym następcą —
+> decyzja i status per pozycja badawcza wobec obecnego kodu — jest sekcja „Radar badawczy" w
+> [PIVOT-IMPLEMENTATION](PIVOT-IMPLEMENTATION.md); zasady dowodu jakości są w
+> [eval-evidence-rules](../.agents/skills/eval-evidence-rules/SKILL.md). Traktuj ten plik jak
+> archiwalny research dump: zweryfikuj datę i status przed cytowaniem.
+
 **Kanoniczny, stale aktualizowany katalog prac naukowych, modeli, datasetów i implementacji związanych z agent skills.**
 
 - Prezentacja rekomendowana, prostym językiem (60 slajdów): [Instrukcje dla agentów — od podstaw do produktu](Guidefold-Agent-Skills-Research-Prosto-PL-2026-09-04.pptx)

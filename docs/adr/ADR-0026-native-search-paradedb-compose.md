@@ -5,6 +5,7 @@ container deployment and a native service. Acceptance covers this implementation
 choice only. **Corrected 2026-09-05 after PR #50 review:** this ADR does not authorize a second default ranker. ADR-0024 tier parity remains binding; production admission remains separate.
 **Amends:** ADR-0018 and ADR-0023 for the T1 serving backend; ADR-0025 for its
 implementation mapping. T0 and historical experiments remain unchanged.
+**Amended by:** [ADR-0029](ADR-0029-product-focus-hard-rules.md) (surface frozen at what is merged), [ADR-0033](ADR-0033-api-contract-first-and-mvp-storage.md) (Accepted 2026-09-12: plain-Postgres profile is the default, ParadeDB optional), [ADR-0030](ADR-0030-immutable-service-releases-on-kubernetes.md) (Kubernetes replaces Compose as the supported hosted deployment; Compose stays a local profile).
 
 ## Context
 

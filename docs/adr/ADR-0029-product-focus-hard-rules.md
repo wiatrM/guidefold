@@ -1,6 +1,6 @@
 # ADR-0029: Product focus — hard rules until the pilot decides
 
-**Status:** Accepted · 2026-09-06 · decision of the product owner ("zapisz te ustalenia jako HARD RULE w ADR i trzymaj się tego") **Proposed amendment:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md); historical status unchanged.
+**Status:** Accepted · 2026-09-06 · decision of the product owner ("zapisz te ustalenia jako HARD RULE w ADR i trzymaj się tego") **Amended by:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md) (Accepted 2026-09-12: the frozen surface is the pivot surface) and [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md) (rule 1 and rule 4 as read from 2026-09-12; rules 2, 3, 5, 6, 7 unchanged); [ADR-0032](ADR-0032-engineering-principles-and-hexagonal-architecture.md) generalises rule 7. Historical status unchanged.
 **Amends:** ADR-0024 (the target architecture stands; this ADR fixes *what is built now* and forbids the rest), ADR-0023/0026 (service surface frozen at what is merged)
 **Governs:** `docs/MVP.md` §5, the GitHub issue backlog, every agent dispatch
 

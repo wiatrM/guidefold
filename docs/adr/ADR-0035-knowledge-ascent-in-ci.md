@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-09-08 · owner decisions of the same day: runs in CI on a PR; result is a
 separate PR requiring the parent scope's owner; provider is OpenRouter (model chosen per repository);
 promotion in the UI is a recommendation the owner clicks, never automatic.
+**Amended by (Proposed):** [ADR-0036](ADR-0036-github-app-ascent-without-customer-ci.md) (hosted variant via GitHub App webhook), [ADR-0040](ADR-0040-edgewise-source-grounded-ascent.md) (edgewise generation); neither was accepted or implemented as of 2026-09-15.
 **Amends:** [ADR-0016](ADR-0016-knowledge-lifecycle-gates-and-layers.md) (G6 "lift" is now a
 concrete, shipped mechanism at card granularity), [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md)
 §7 (unchanged: no automatic promotion from load counts).

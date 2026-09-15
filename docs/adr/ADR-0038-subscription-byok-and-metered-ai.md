@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-09-08 · product owner: "APPROVED, dodaj 10% marzy i zamykaj jako ADR, dodaj do landing page".
 **Governs:** [PRODUCT-PIVOT §12a](../PRODUCT-PIVOT.md#12a-plan-badań-koszt-i-dowody) and [public pricing copy](../../portal/content/index.md#planned-hosted-pricing).
 **Purpose:** approve the commercial model, not launch billing or declare SaaS generally available.
+**Relied on by:** [ADR-0042](ADR-0042-multi-repo-organisation-and-ci-configurator.md) (per-organisation generator budgets and the managed-key charge rule).
 **Inputs:** owner's approved cost scenarios, current CI ascent design, and the sources below. No earlier technical ADR is superseded.
 
 ## Context

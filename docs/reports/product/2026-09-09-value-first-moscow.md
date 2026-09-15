@@ -1,6 +1,6 @@
 # Guidefold: wejście zespołu i pierwsza wartość — 50 use case’ów
 
-Status: **W realizacji — zakres wykonawczy: 40 pozycji (10 Must + 15 Should + 15 Could); 10 Won’t now pozostaje odroczone**, 2026-09-09.
+Status: **materiał historyczny od 2026-09-12** — decyzją właściciela jedynym porządkiem pracy jest [PIVOT-BACKLOG](../../PIVOT-BACKLOG.md) P01–P16; pozycje M/S/C/W pozostają jako AC/DoD do cytowania, nie jako lista „co dalej". Poprzedni status (2026-09-09): W realizacji — zakres wykonawczy: 40 pozycji (10 Must + 15 Should + 15 Could); 10 Won’t now pozostaje odroczone.
 Cel: ustalić dokładnie 10 Must Have i 50 pozycji MoSCoW, z odbiorem opartym na wartości i łatwości obsługi.
 Wejścia: bieżące zlecenie właściciela, [PRD](../../PRODUCT-PIVOT.md), [backlog](../../PIVOT-BACKLOG.md), [stan implementacji](../../PIVOT-IMPLEMENTATION.md), badania i audyt opisane niżej.
 Zakres zastępowania: propozycja zmiany kolejności dostarczania i AC; nie zastępuje jeszcze U1–U11, kontraktów ani Accepted ADR. ID M/S/C/W są lokalnymi pozycjami tej oceny, nie numerami issue.
