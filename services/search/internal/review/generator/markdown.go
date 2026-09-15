@@ -170,8 +170,17 @@ var roleWords = []struct {
 		"kiedy uzyc", "kiedy używać"}},
 	{RoleVerification, []string{"verify", "verification", "validate", "validation",
 		"check that", "acceptance", "weryfikacja"}},
-	{RoleSteps, []string{"steps", "procedure", "runbook", "how to", "instructions",
-		"playbook", "kroki", "procedura"}},
+	// "step " and "bootstrap" are here on measured evidence, not on taste. Of
+	// the 81 skills in this repository's `.agents/skills`, four had a heading
+	// this list recognised before them and sixteen have one after; the
+	// procedure that every `higgsfield-*` skill copies sits under `## Step 0 —
+	// Bootstrap` or `## Bootstrap`, which "steps" does not match
+	// (docs/reports/bakeoff/CONSOLIDATION-REAL-REPO-2026-09-15.md). The list
+	// stays at the two words that were measured: a wider one ("workflow",
+	// "process", "checklist", …) changes what extraction produces from prose
+	// documents, and nothing here has measured that.
+	{RoleSteps, []string{"steps", "step ", "bootstrap", "procedure", "runbook", "how to",
+		"instructions", "playbook", "kroki", "procedura"}},
 	{RolePurpose, []string{"purpose", "overview", "summary", "what it does", "about",
 		"context", "cel"}},
 }
