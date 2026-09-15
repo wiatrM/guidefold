@@ -40,20 +40,21 @@ Wszystkie pliki tymczasowe (mapa `guidefold.yaml`, `.guidefoldignore`, dwa runbo
 | 8 | Feedback → kolejka → decyzja | pass | `POST …/revisions/7b77dce0…/feedback {"verdict":"helped"}` → `judgment_id 071ac043-12d3-44fc-b046-1d7114bcbc9b`; `GET …/usage?window=30d` pokazuje `feedback:{helped:1,n:1}` |
 | 9 | Drift (U9/P13) | pass | edycja źródła → import `1a9fbfb3`; pozycja kolejki `73c60fd1-44ea-402c-9395-177da39ee49d` `source_changed`, skill w `needs_review`; `POST …/usage/queue/73c60fd1…/decision {"action":"reviewed"}` → z powrotem `published` |
 | 10 | Drugi harness (Copilot CLI) | **nie do wykonania tutaj** | `which copilot` i `which gemini` — brak binariów. Nic nie zostało odegrane. Wymagania dla właściciela w [ACT-01-RUNBOOK §8](../../pilot/ACT-01-RUNBOOK.md) |
-| 11 | Warstwa akceptacyjna | **33 pass / 1 fail / 7 `not_measured_here`** | `GUIDEFOLD_ACCEPTANCE=1 rtk proxy python3 -m pytest tests/acceptance -q`, przebieg `2026-09-15T10:38:45Z`, `repo_commit 5373286`, raport `.guidefold/checks/acceptance-2026-09-15.json` |
+| 11 | Warstwa akceptacyjna | **33 pass / 1 fail / 7 `not_measured_here`** | `GUIDEFOLD_ACCEPTANCE=1 rtk proxy python3 -m pytest tests/acceptance -q`, przebieg `2026-09-15T11:02:13Z` na czubku gałęzi (`repo_commit a285d595`), raport `.guidefold/checks/acceptance-2026-09-15.json` |
 
 Stan bazy po całej próbie (`select … from gfm.*`, klaster `act01`): `orgs 1`, `repos 1`, `imports ready 8 / partial 1 / failed 1`, `skills published 83 / archived 25`, `publications active 1 / superseded 6 / failed 2`, `proposals draft 6 / published 1`, `decisions 1`, `tokens 2`. `gf.events`: `card_injected 14`, `search_requested 3`, `search_results 3`, `skill_load_requested 6`, `skill_load_completed 1`, `skill_feedback 1`.
 
 ### 11a. Warstwa akceptacyjna — uwaga metodyczna
 
-`tests/acceptance/conftest.py` **buduje własny klaster PostgreSQL i własne API na wolnych portach** (`start_stack(name="acceptance")`), więc nie da się jej uruchomić „przeciwko" stosowi `act01` — brief zakładał inaczej. Dwa przebiegi tego dnia:
+`tests/acceptance/conftest.py` **buduje własny klaster PostgreSQL i własne API na wolnych portach** (`start_stack(name="acceptance")`), więc nie da się jej uruchomić „przeciwko" stosowi `act01` — brief zakładał inaczej. Trzy przebiegi tego dnia; **liczbą obowiązującą jest przebieg 3, bo jako jedyny mierzy czubek gałęzi ze wszystkimi naprawami**:
 
 | Przebieg | Start | `repo_commit` | pass / fail / `not_measured_here` |
 |---|---|---|---|
-| 1 | `2026-09-15T10:33:02Z` | `2a302f5` | 31 / 3 / 7 — **skażony**: w trakcie przebiegu zmieniłem `skills/guidefold/scripts/guidefold`, co czyni każdą publikację `snapshot_policy_mismatch` (mechanizm opisany wprost w `tests/acceptance/_support.py:130`). Nie liczy się jako pomiar |
-| 2 | `2026-09-15T10:38:45Z` | `5373286` | **33 / 1 / 7** — czysty, po pierwszym commicie napraw |
+| 1 | `2026-09-15T10:33:02Z` | `2a302f5` | 31 / 3 / 7 — **odrzucony**: w trakcie przebiegu zmieniłem `skills/guidefold/scripts/guidefold`, a taka zmiana czyni każdą publikację `snapshot_policy_mismatch` (mechanizm opisany wprost w `tests/acceptance/_support.py:130`). Znaczniki czasu nie dowodzą, że to ona wywołała akurat te trzy porażki — dwie z nich zapisały się przed edycją — ale przebieg nie jest już czysty, a późniejsze czyste przebiegi nie odtworzyły dwóch z trzech. Nie liczę go jako pomiaru |
+| 2 | `2026-09-15T10:38:45Z` | `5373286` | 33 / 1 / 7 — czysty, ale tylko po pierwszym z trzech commitów napraw |
+| 3 | `2026-09-15T11:02:13Z` | `a285d595` (czubek gałęzi) | **33 / 1 / 7** — po wszystkich naprawach, w tym D5 (`resolve_search_config`) i D6 (`cache_source`), które dotykają dokładnie tej ścieżki, którą chodzi ACT-01. Wynik nie drgnął w żadną stronę |
 
-Jedyna pozostała porażka to `ACT-01` (`tests/acceptance/test_act01_end_to_end.py:219`): `assert "card_injected" in kinds` przy spoolu `{'skill_load_completed': 1}` — patrz D8. Siedem wierszy `not_measured_here` to niezmiennie realny WorkOS, sieć pilota, realne sesje ludzi i oceny Q — każdy z podanym powodem, nigdy jako pass.
+Jedyna pozostała porażka to `ACT-01` (`tests/acceptance/test_act01_end_to_end.py:219`): `assert "card_injected" in kinds` przy spoolu `{'skill_load_completed': 1}`, identycznie w przebiegu 2 i 3 — patrz D8. Siedem wierszy `not_measured_here` to niezmiennie realny WorkOS, sieć pilota, realne sesje ludzi i oceny Q — każdy z podanym powodem, nigdy jako pass.
 
 ## 4. Defekty
 
