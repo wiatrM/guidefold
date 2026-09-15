@@ -32,9 +32,9 @@ To docelowe granice odpowiedzialności w jednej bazie kodu Go. Dzisiaj duża cz�
 | Moduł | Własne dane i operacje | Użytkowe zastosowania |
 |---|---|---|
 | Identity | Sesje, membership, org, instalacje/tokeny, autoryzowany kontekst org/repo; **pisze też `gfm.github_installations`/`github_deliveries`** (ADR-0036, `internal/identity/github.go`) | Login, organizacje, integracje |
-| Import | Repo, manifest, source_revision, import_run, upload, plan joba; **pisze `gfm.scopes` i `gfm.relations`** dla krawędzi z drzewa importu (`internal/importer/parse.go`, schemat w `internal/schema/importer.go`) | Skan, sync, zmiany źródeł |
+| Import | Repo, manifest, source_revision, import_run, upload, plan joba; **pisze `gfm.scopes` i `gfm.relations`** dla krawędzi z drzewa importu (`internal/importer/parse.go`, schemat w `internal/schema/importer.go`) Zapis `gfm.scopes` także przy zatwierdzonej mapie organizacji (ADR-0051, port `ApplyScopeMap`). | Skan, sync, zmiany źródeł |
 | Knowledge | Skille, rewizje, scope, relacje, propozycje, provenance | Katalog, piramida, konsolidacja, strona modułu |
-| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu; **też pisze `gfm.relations`** dla krawędzi z propozycji (`internal/review/store.go`, `approve.go`) — drugi pisarz obok Import, nie tylko czytelnik; provenance/źródła propozycji żyją w `proposal_fields` | Review UI, CI, drift, rollback |
+| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu; **też pisze `gfm.relations`** dla krawędzi z propozycji (`internal/review/store.go`, `approve.go`) — drugi pisarz obok Import, nie tylko czytelnik; provenance/źródła propozycji żyją w `proposal_fields` Job `scope_map.propose` i propozycja mapy organizacji (ADR-0051) proponują, nigdy nie piszą `gfm.scopes` same. | Review UI, CI, drift, rollback |
 | Retrieval/Delivery | SEARCH/USE, policy, budżet, odczyt opublikowanej rewizji i zasobów. **Dziś:** `package main` w `services/search/` — `routing.go`, `use12.go`, `proof_gate.go`, `store.go`, `bm25f.go`, `dense.go`, `family12.go`, `contract.go` (stan niezmieniony na `main` @ `2a302f5`, 2026-09-15). **Docelowo:** `internal/retrieval`, przenosiny plik po pliku za testami parity bit w bit (audyt 2026-09-12 PRIO 3.1) | Agent, onboarding, ponowne użycie |
 | GitHub App / Live Agent | `internal/ghapp` (klient App, OAuth użytkownika, treść, PR-y) i `internal/agentrun` (import i sync przez App, plan i przebieg Live Agent, raport PR) — ADR-0036/ADR-0046, doszły po 2026-09-12 | Connect, import bez CLI, odświeżenie biblioteki |
 | Telemetry/Reporting | Ledger, dedupe, agregaty, health i raporty; `gf.training_examples` ma tu tylko schemat i `GRANT INSERT` — zero pisarzy i czytelników w Go (`grep`, 2026-09-15), czyli ADR-0041 „Accepted-but-schema-only" | Feedback, usage, ocena migracji |
@@ -67,6 +67,8 @@ Job: schema_version, org_id, repo_id, import_id, etap, input_manifest_digest, re
 Worker sprawdza aktualne uprawnienie operacji i tożsamość org, odnawia lease, zapisuje checkpointy. Wynik starej generacji nie może nadpisać nowszego. Cache generowania i deduplikacja obejmują org i wersje wejść. Zmiana źródła unieważnia propozycję opartą na starej treści.
 
 Publikacja jest transakcją aktywującą tylko zwalidowany snapshot przypisany do zatwierdzonego digestu. Ready importu nie oznacza published. Niepewne opłaty za timeout LLM są rejestrowane; koszt całego przebiegu łączy import_id.
+
+Job `scope_map.propose` (ADR-0051, kontrakt §8) jest kolejkowany przez workera `import.parse` po udanym imporcie, przez port `ImportFollowUp` zadeklarowany przez moduł Import i zaimplementowany przez Review — moduł importu ogłasza moment, a nie zna rodzaju joba, który z niego wynika. Job widzi wyłącznie strukturę (katalogi ze skillami, istniejące węzły, CODEOWNERS, `guidefold.yaml`, początki README/AGENTS), nigdy kodu ani treści `SKILL.md`, i zapisuje wyłącznie propozycję. Wiersze `gfm.scopes` powstają dopiero z decyzji ownera organizacji, przez port `ApplyScopeMap` modułu Import.
 
 ## Najpierw trzy techniczne bramki
 

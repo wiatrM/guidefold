@@ -105,6 +105,11 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, appPassword string) error 
 	if _, e = tx.Exec(ctx, reviewSQL, pgx.QueryExecModeSimpleProtocol); e != nil {
 		return e
 	}
+	// Last: every statement in it widens a CHECK or adds a column to a table one
+	// of the four above created, so it has to see the finished shape (ADR-0051).
+	if _, e = tx.Exec(ctx, scopeMapSQL, pgx.QueryExecModeSimpleProtocol); e != nil {
+		return e
+	}
 	// Role and database names are constants; the password is quoted, never concatenated raw.
 	escaped := "'" + strings.ReplaceAll(appPassword, "'", "''") + "'"
 	if _, e = tx.Exec(ctx, `DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='guidefold_api') THEN CREATE ROLE guidefold_api LOGIN; END IF; END $$`); e != nil {

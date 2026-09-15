@@ -457,6 +457,9 @@ function ModulePanel({ctx, scope}: ApiProps & {scope: string}) {
 function scopeSourceLabel(source: string | null): string {
   if (source === 'guidefold_yaml') return 'Declared in guidefold.yaml';
   if (source === 'inferred') return 'Inferred from directories and CODEOWNERS';
+  // ADR-0051: a node an owner approved from a `scope_map` proposal is a decision, not a reading
+  // of the tree and not a declaration in the file. The three have to read as three things.
+  if (source === 'llm_approved') return 'Approved from a proposed organisation scope map';
   if (source === null) return 'Unknown';
   return source;
 }

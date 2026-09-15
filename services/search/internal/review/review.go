@@ -89,6 +89,10 @@ type Service struct {
 	// recipe describes the configured generator, so the plan can say what would
 	// run and the cache key can include it without instantiating a provider.
 	recipe generator.Recipe
+	// scopeMaps writes an approved organisation scope map. It is the import
+	// module's table, so this module reaches it through a port rather than
+	// writing `gfm.scopes` itself (ADR-0051, module-boundaries-go).
+	scopeMaps ScopeMapApplier
 }
 
 // New builds the service. The generator is selected from the environment here
@@ -125,6 +129,11 @@ func (s *Service) Register(r *mgmt.Router) {
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/proposals/{proposal_id}", s.handleProposal)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/proposals/{proposal_id}/publication",
 		s.handleProposalPublication)
+	// The one mutation in organisation scope (API-CONTRACT §4.10 point 10,
+	// ADR-0051): a `scope_map` proposal spans several repositories, so the
+	// repository comes from its row. Every other mutation stays per repository.
+	r.Handle(http.MethodPost, "/api/v1/orgs/{org}/proposals/{proposal_id}/decision",
+		s.handleOrgDecision, mgmt.Idempotent())
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/exports/{export_id}", s.handleGetExport)
 	r.Handle(http.MethodGet, "/api/v1/orgs/{org}/repos/{repo}/exports/{export_id}/patch", s.handleExportPatch)
 

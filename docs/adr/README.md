@@ -60,6 +60,7 @@ authoritative.
 | [0048](ADR-0048-telemetry-upload-on-by-default.md) | Telemetry upload is on by default once a token and endpoint exist; opt-out is explicit | Accepted | 2026-09-13 | amends docs/DESIGN.md R7 and docs/SEARCH-USE-TELEMETRY.md §5 |
 | [0049](ADR-0049-premium-visual-effects-layer.md) | A premium visual effects layer (glow, animated borders, shaders, decorative motion) is allowed everywhere in the console | Accepted | 2026-09-13 | amends UX.md §6 rows 1/8, the identical ui-anti-slop-gate rows, and UI.md §1 rows 3/4 |
 | [0050](ADR-0050-zero-config-scope-map.md) | `guidefold.yaml` is an override, not a requirement: without it the scope map is inferred from skill directories + CODEOWNERS | Accepted | 2026-09-15 | amends PRODUCT-PIVOT §4 U1 wording in code, API-CONTRACT 1.14.0 (`gfm.scopes.source: inferred`), DESIGN/CONVENTIONS config sections |
+| [0051](ADR-0051-llm-proposed-organisation-map.md) | A model may propose the organisation's scope map; only the organisation owner may apply it (proposal kind `scope_map`, job `scope_map.propose`, `gfm.scopes.source='llm_approved'`, contract 1.15.0) | Accepted | 2026-09-15 | builds on ADR-0050's precedence and never overwrites a `guidefold_yaml` row; amends ADR-0047 decision 5 with one named `{org_base}` mutation; input bounded by ADR-0041 |
 
 `Proposed` means the decision owner has not yet accepted it. As of 2026-09-15 the open proposals
 are 0012, 0014, 0036, 0040, 0045 and 0046 (live) and 0009, 0018, 0021, 0022, 0023, 0024, 0027

@@ -159,7 +159,7 @@ describe('pipeline', () => {
   const installation = (name: string, last: string | null, harness = 'claude'): Installation => ({installation_id: name, name, repo_id: null, scopes: [], harness, last_seen_at: last, adapter_version: '1', capabilities: null, created_at: null, token: null});
   test('proposals by state keep every state in order, zeros included', () => {
     const rows = proposalsByState([proposal('draft'), proposal('draft'), proposal('published')]);
-    expect(rows.map(row => row.count)).toEqual([2, 0, 0, 1, 0, 0]);
+    expect(rows.map(row => row.count)).toEqual([2, 0, 0, 0, 1, 0, 0]);
   });
   test('adapter rows: never seen, silent for days, or reporting with the usage lag', () => {
     const rows = adapterRows([installation('cli', null), installation('ide', '2026-09-09T12:00:00Z'), installation('bot', '2026-09-12T11:00:00Z')], [{harness: 'claude', adapter_version: null, capabilities: null, last_seen_at: null, lag_s: 4, dropped: null}], NOW);

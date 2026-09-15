@@ -18,6 +18,7 @@ const detail = (over: Partial<ProposalDetail> = {}): ProposalDetail => ({
   target_skill_id: 'urn:a', target_revision_id: 'rev-1',
   sources: [{ path: 'platforms/atlas/README.md', sha256: 'sha-src', commit: 'c0ffee', lines: [10, 40] }],
   recipe: { version: 'det-1', generator: 'deterministic', model: null },
+  scope_map: null,
   candidate: { path: 'platforms/atlas/SKILL.md', body: '# postgres-auth\n\nUse the shared role.\n', sha256: 'sha-cand', frontmatter: {} },
   source_body: '# postgres-auth\n\nUse the old role.\n',
   provenance: [
@@ -133,6 +134,55 @@ describe('Proposals route, decision, conflict and export', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save decision' }));
     await waitFor(() => expect(decideProposal).toHaveBeenCalledTimes(2));
     expect((decideProposal.mock.calls[1] as unknown as [unknown, string, unknown, string])[3]).toBe(key);
+  });
+
+  // ADR-0051 -- a scope_map proposal is a decision about the organisation's hierarchy. It has no
+  // candidate file, so the review shows the diff against the scopes that exist now, offers no
+  // "edit" choice, and goes to the organisation route, because approving writes scopes in
+  // repositories other than the one the row is anchored to.
+  const scopeMapDetail = () => detail({
+    proposal_id: 'p-map', kind: 'scope_map', scope: null, target_skill_id: null,
+    target_revision_id: null, expected_revision: null, source_body: null, sources: [],
+    candidate: { path: '.guidefold/scope-map.json', body: '{}', sha256: null, frontmatter: null },
+    scope_map: {
+      origin: 'model', model: 'gpt-4o-mini', repos: ['monorepo', 'platform'],
+      nodes: [{ scope: 'atlas', parent: null, owner: '@acme/atlas', paths: [{ repo_id: 'monorepo', path: 'platforms/atlas' }], confidence: 0.91, reason: 'one subject across both repositories' }],
+      diff: { added: ['platform/atlas'], reparented: [], owner_changed: [{ scope: 'atlas', repo_id: 'monorepo', from: '@acme/old', to: '@acme/atlas' }], paths_changed: [], unchanged: 4 },
+      findings: [],
+    },
+  });
+
+  test('a scope map is reviewed as a diff against the scopes that exist now', async () => {
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => scopeMapDetail() }), 'proposal=p-map');
+    // The summary heading and the panel title both name it, which is the point: the row's
+    // synthetic candidate path is never shown as if it were a file to export.
+    expect((await screen.findAllByText('Organisation scope map')).length).toBe(2);
+    expect(screen.getByText('Proposed by gpt-4o-mini')).toBeInTheDocument();
+    expect(screen.getByText('Owner changed')).toBeInTheDocument();
+    expect(screen.getByText(/approving never deletes one/)).toBeInTheDocument();
+    // There is no file, so no line diff and no "edit the candidate" choice.
+    expect(screen.queryByText('Source to candidate')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Approve an edited candidate/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Approve for export/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Reject/ })).toBeInTheDocument();
+  });
+
+  test('approving a scope map goes to the organisation route, not one repository', async () => {
+    const decideProposal = vi.fn(async () => ({ proposal_id: 'p-map', state: 'applied' as const, revision_id: null, expected_revision: null }));
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => scopeMapDetail(), decideProposal }), 'proposal=p-map');
+    await userEvent.type(await screen.findByLabelText('Reason for this decision'), 'The hierarchy matches our teams.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save decision' }));
+    await waitFor(() => expect(decideProposal).toHaveBeenCalled());
+    const [target] = decideProposal.mock.calls[0] as unknown as [{ org: string; repo: string | null }];
+    expect(target.repo).toBeNull();
+  });
+
+  test('a scope map that no longer validates says so before the decision', async () => {
+    const stale = scopeMapDetail();
+    stale.scope_map!.findings = ['path monorepo/services/api is claimed by both "a" and "b"'];
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => stale }), 'proposal=p-map');
+    expect(await screen.findByText(/no longer describes the organisation/)).toBeInTheDocument();
+    expect(screen.getByText(/claimed by both/)).toBeInTheDocument();
   });
 
   test('an edited candidate is sent as the body of the human revision', async () => {

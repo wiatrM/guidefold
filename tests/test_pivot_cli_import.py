@@ -443,6 +443,73 @@ def test_proposals_apply_prints_a_diff_and_writes_only_with_write(gf, tmp_path, 
     assert _git(root, "log", "--oneline").stdout.strip().count("\n") == 0   # still one commit
 
 
+# ADR-0051 -- a `scope_map` proposal is a decision about the organisation's hierarchy, and it
+# has no file. The list must not offer its synthetic `.guidefold/scope-map.json` path as if
+# `proposals apply` could do something with it, and `show` has to answer the one question a
+# reviewer has: what would approving this change.
+
+def test_proposals_list_names_a_scope_map_instead_of_its_synthetic_path(gf, tmp_path,
+                                                                        monkeypatch, capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({"proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+                              "scope": None, "path": ".guidefold/scope-map.json"})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="list")) == 0
+    out = capsys.readouterr().out
+    assert "organisation scope map" in out
+    assert ".guidefold/scope-map.json" not in out
+
+
+def test_proposals_show_summarises_a_scope_map_before_its_json(gf, tmp_path, monkeypatch,
+                                                               capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({
+            "proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+            "path": ".guidefold/scope-map.json",
+            "scope_map": {
+                "origin": "model", "model": "gpt-4o-mini", "repos": ["alpha", "beta"],
+                "nodes": [{"scope": "atlas", "parent": None, "owner": "@acme/atlas",
+                           "paths": [{"repo_id": "alpha", "path": "platforms/atlas"}],
+                           "confidence": 0.9, "reason": "one subject"}],
+                "diff": {"added": ["beta/atlas"], "reparented": [], "owner_changed": [],
+                         "paths_changed": [], "unchanged": 3},
+                "findings": []}})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="show", proposal_id="p-map")) == 0
+    out = capsys.readouterr().out
+    assert "organisation scope map — model (gpt-4o-mini)" in out
+    assert "1 node(s) over 2 repositories" in out
+    assert "would change: 1 added, 3 unchanged" in out
+    assert "never deletes a scope" in out
+    # The summary is added, not substituted: the nodes being decided are still printed.
+    assert '"confidence": 0.9' in out
+
+
+def test_proposals_show_says_when_a_scope_map_no_longer_validates(gf, tmp_path, monkeypatch,
+                                                                  capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({
+            "proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+            "path": ".guidefold/scope-map.json",
+            "scope_map": {"origin": "inferred", "model": None, "repos": ["alpha"],
+                          "nodes": [], "diff": {},
+                          "findings": ["path alpha/services/api is claimed by both \"a\" and \"b\""]}})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="show", proposal_id="p-map")) == 0
+    out = capsys.readouterr().out
+    assert "no longer validates and cannot be approved" in out
+    assert "claimed by both" in out
+
+
 # S3 -- `path` comes straight from the server's export document and `--write` turns it into a
 # filesystem write in the user's repository. Nothing checked containment, so
 # `root / "../../.ssh/authorized_keys"` resolved outside the tree and mkdir(parents=True)

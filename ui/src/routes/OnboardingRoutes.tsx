@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { isStale, type ApiError } from '../api/client';
 import { ApiFailure, OwnerNote, PartialNotice, asApiError, formatList, formatNumber, shortId, unknown, useAsync, type ApiProps } from './apiState';
 import { formatDay, ScorecardPanel } from './ReviewRoutes';
-import { proposalKinds, orgCredentialProviders } from '../api/decoders';
+import { generationKinds, orgCredentialProviders } from '../api/decoders';
 import type { AuditEntry, Job, ImportStatus, Installation, InvitationLifecycle, Member, Org, OrgCredential, OrgCredentialProvider, ProposalKind, ProposalLimits, Repo, RepoAccessLevel, Team, GitHubInstallation } from '../api/decoders';
 import type { AccessState } from '../api/access';
 import type { DataSource } from '../data/source';
@@ -547,14 +547,14 @@ const describeSkipped = (skipped: Record<string, number>): string =>
 function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: string }) {
   const { source, org, repo, role } = ctx;
   const owner = role === 'owner';
-  const [kinds, setKinds] = useState<ProposalKind[]>([...proposalKinds]);
+  const [kinds, setKinds] = useState<ProposalKind[]>([...generationKinds]);
   const [limitInputs, setLimitInputs] = useState({ max_tokens: '', max_calls: '', max_usd: '' });
   const [limitError, setLimitError] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   const [jobIds, setJobIds] = useState<string[] | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const kindsKey = proposalKinds.filter(kind => kinds.includes(kind)).join(',');
+  const kindsKey = generationKinds.filter(kind => kinds.includes(kind)).join(',');
   const plan = useAsync(
     () => source.getImportPlan({ org: org ?? '', repo: repo ?? '' }, importId, kinds),
     'import-plan:' + org + '/' + repo + '/' + importId + ':' + kindsKey,
@@ -640,7 +640,7 @@ function ProposalGenerationPanel({ ctx, importId }: ApiProps & { importId: strin
       </Disclosure>
       <fieldset className={styles.providers} disabled={busy || Boolean(jobIds)}>
         <legend>Proposal kinds</legend>
-        {proposalKinds.map(kind => <label key={kind} className={styles.provider}>
+        {generationKinds.map(kind => <label key={kind} className={styles.provider}>
           <Checkbox checked={kinds.includes(kind)} disabled={busy || Boolean(jobIds)} onCheckedChange={() => toggleKind(kind)} className="size-5 border-line-strong bg-graphite-900 data-checked:border-system data-checked:bg-system data-checked:text-graphite-950" />
           <span>{kind}</span>
         </label>)}
