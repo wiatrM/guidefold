@@ -675,15 +675,24 @@ func keysOf(set map[string]bool) []string {
 	return out
 }
 
-// writeScopes stores the scope map the builder resolved from guidefold.yaml.
-// Directories and CODEOWNERS may suggest a scope elsewhere; guidefold.yaml is
-// the one that decides, and `source` records which it was (U1).
+// writeScopes stores the scope map the builder resolved. guidefold.yaml is the
+// one that decides when the repository has one; without it the map is inferred
+// from the tree's skill directories and CODEOWNERS (ADR-0050, U1: the file has
+// PRECEDENCE, it is not a requirement). `source` records which it was, so a
+// scope an owner never declared is visible as such instead of passing for
+// policy.
 func writeScopes(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string, snap *domain.Snapshot) error {
 	names := make([]string, 0, len(snap.Snapshot.Nodes))
 	for name := range snap.Snapshot.Nodes {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	source := snap.ScopeSource
+	if source != domain.ScopeSourceInferred {
+		// Anything else -- including the empty string an older builder wrote --
+		// is the declared file: the only two values this builder produces.
+		source = domain.ScopeSourceGuidefoldYAML
+	}
 	for _, name := range names {
 		node := snap.Snapshot.Nodes[name]
 		paths := node.Paths
@@ -692,12 +701,12 @@ func writeScopes(ctx context.Context, tx pgx.Tx, orgID, repoID, importID string,
 		}
 		if _, e := tx.Exec(ctx, `INSERT INTO gfm.scopes
  (org_id,repo_id,scope,owner,parent,paths,source,import_id,updated_at)
- VALUES($1::uuid,$2,$3,$4,$5,$6::text[],'guidefold_yaml',$7::uuid,now())
+ VALUES($1::uuid,$2,$3,$4,$5,$6::text[],$8,$7::uuid,now())
  ON CONFLICT (org_id,repo_id,scope) DO UPDATE SET
   owner=EXCLUDED.owner,parent=EXCLUDED.parent,paths=EXCLUDED.paths,
   source=EXCLUDED.source,import_id=EXCLUDED.import_id,updated_at=now()`,
 			orgID, repoID, name, node.Owner, nullable(domain.ParentScope(name)), paths,
-			importID); e != nil {
+			importID, source); e != nil {
 			return fmt.Errorf("store scope %s: %w", name, e)
 		}
 	}

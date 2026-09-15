@@ -90,8 +90,14 @@ func (b *PythonBuilder) Build(ctx context.Context, tree, repoID, commit, outDir 
 	inventoryPath := filepath.Join(outDir, "inventory.json")
 	run, cancel := context.WithTimeout(ctx, BuildTimeout)
 	defer cancel()
+	// --publisher: a tree with no guidefold.yaml gets an inferred scope map
+	// (ADR-0050), and the publisher half of every inferred URN must not be the
+	// name of the worker's scratch directory. The repository id is the stable
+	// thing the worker knows about this tree; the builder only uses it when
+	// there is no file to read one from.
 	cmd := exec.CommandContext(run, b.Python, b.Script,
 		"--tree", tree, "--repo-id", repoID, "--commit", commit,
+		"--publisher", repoID,
 		"--output", snapshotPath, "--inventory", inventoryPath)
 	cmd.Dir = b.Root
 	// The builder imports the repository's own modules; it needs no environment

@@ -1,6 +1,6 @@
 ---
 name: security-baseline
-description: Apply Guidefold's mandatory security rules: per-request org/repo isolation, no secrets in the browser, cookie and CSRF rules, least-privilege tokens, no execution of imported code. Use when touching auth, storage, API handlers, worker jobs, adapters or UI data access.
+description: 'Apply Guidefold''s mandatory security rules: per-request org/repo isolation, no secrets in the browser, cookie and CSRF rules, least-privilege tokens, no execution of imported code. Use when touching auth, storage, API handlers, worker jobs, adapters or UI data access.'
 ---
 
 # Baza bezpieczeństwa

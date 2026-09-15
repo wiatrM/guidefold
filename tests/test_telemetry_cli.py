@@ -128,6 +128,26 @@ def test_load_of_unknown_urn_still_emits_a_failed_completed_event(run_cli, fixtu
     completed = next(e for e in events if e["event_type"] == "skill_load_completed")
     assert completed["status"] == "error"
     assert completed["closure_status"] == "incomplete"
+    # 2026-09-15 rehearsal: the failing paths sent `cache_source: null`, and the ledger rejects
+    # such an event with `missing_required_field:cache_source`
+    # (services/search/telemetry-schema.json, a frozen reference). Failed loads were therefore
+    # the one thing that never reached `gf.events` -- precisely the rows an owner needs.
+    _assert_required_fields_present(completed)
+
+
+def _assert_required_fields_present(event):
+    """Every field the service's frozen telemetry schema marks `required` must be present and
+    non-empty in the event the CLI spools; `nullable` fields only have to be present."""
+    schema = json.loads(
+        (Path(__file__).resolve().parents[1] / "services/search/telemetry-schema.json")
+        .read_text(encoding="utf-8"))
+    spec = schema["required_fields"][event["event_type"]]
+    for key in spec.get("required", []):
+        assert key in event, f"{event['event_type']}: missing required field {key}"
+        assert event[key] is not None and event[key] != "", \
+            f"{event['event_type']}: required field {key} is empty ({event[key]!r})"
+    for key in spec.get("nullable", []):
+        assert key in event, f"{event['event_type']}: missing nullable field {key}"
 
 
 def test_no_bearer_token_or_secret_ever_lands_in_the_spool(run_cli, fixture_copy):

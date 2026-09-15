@@ -21,14 +21,21 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
 
-// errGuidefoldYAMLMissing is fetchRepositoryImport's own sentinel for "this
-// repository is not managed by Guidefold" (API-CONTRACT §8, ADR-0046 point
-// 9): no guidefold.yaml at all, or one listed but too large to read
-// (ghapp.ErrFileTooLarge) — both read the same to a caller, which is why
-// live.repo already named them identically at both of its own call sites
-// before this extraction. Its text mirrors live.ErrorGuidefoldYAMLMissing
-// so a caller's %v keeps saying what an error log already did.
-var errGuidefoldYAMLMissing = errors.New(live.ErrorGuidefoldYAMLMissing)
+// errGuidefoldYAMLUnreadable is fetchRepositoryImport's own sentinel for "this
+// repository declares a scope map this run cannot read": guidefold.yaml is
+// listed in the tree but comes back too large (ghapp.ErrFileTooLarge).
+//
+// ADR-0050 (owner decision 2026-09-15) removed the other half of what this
+// sentinel used to mean. A repository with NO guidefold.yaml is no longer
+// skipped: it is imported with a scope map inferred from its skill
+// directories and CODEOWNERS (tools/worker/build_tree.py, cli.infer_map), the
+// behaviour PRODUCT-PIVOT U1 always described. A file that exists but cannot
+// be read still blocks, because inferring a map that contradicts a map the
+// owner did write would be worse than saying so.
+//
+// live.ErrorGuidefoldYAMLMissing keeps its own definition and stays decodable:
+// gfm.repos.import_blocked_reason rows written before this change hold it.
+var errGuidefoldYAMLUnreadable = errors.New(live.ErrorGuidefoldYAMLUnreadable)
 
 // repoFetchResult is fetchRepositoryImport's success outcome: the import it
 // created (already finalized, import.parse already enqueued by
@@ -51,7 +58,7 @@ type repoFetchResult struct {
 // second, worse ... call beside it"). It never touches a live run's own
 // bookkeeping (checkpoints, target state, events) or a *worker.Task: a
 // caller decides for itself what a transient error, ghapp.ErrTreeTruncated,
-// ghapp.ErrInstallationNotFound and errGuidefoldYAMLMissing each mean for
+// ghapp.ErrInstallationNotFound and errGuidefoldYAMLUnreadable each mean for
 // its own job kind.
 func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Client, imp *importer.Service,
 	installationID int64, fullName, orgID, repoID, actor, requestID string, limits Limits) (repoFetchResult, error) {
@@ -75,16 +82,21 @@ func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Cl
 		}
 		rest = append(rest, p)
 	}
-	if !hasHierarchy {
-		return repoFetchResult{}, errGuidefoldYAMLMissing
-	}
+	// ADR-0050: no guidefold.yaml is not a reason to skip the repository. The
+	// builder infers the scope map from the skill directories below, and the
+	// import records source='inferred'.
 	sort.Strings(rest)
 	if limits.MaxFiles > 0 {
 		// -1 keeps the prepended hierarchy inside the declared ceiling
 		// (API-CONTRACT §8 max_files) rather than one file over it; at
 		// MaxFiles == 1 this fetches the hierarchy alone, which is the
-		// correct precedence.
-		max := limits.MaxFiles - 1
+		// correct precedence. With no hierarchy to prepend (ADR-0050) there
+		// is nothing to make room for, and subtracting anyway would fetch one
+		// skill fewer than declared -- none at all at MaxFiles == 1.
+		max := limits.MaxFiles
+		if hasHierarchy {
+			max--
+		}
 		if max < 0 {
 			max = 0
 		}
@@ -92,7 +104,10 @@ func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Cl
 			rest = rest[:max]
 		}
 	}
-	files = append([]string{"guidefold.yaml"}, rest...)
+	files = rest
+	if hasHierarchy {
+		files = append([]string{"guidefold.yaml"}, rest...)
+	}
 
 	fileEntries := make([]map[string]any, 0, len(files))
 	contentBySHA := map[string][]byte{}
@@ -128,12 +143,12 @@ func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Cl
 			"path": path, "sha256": sha, "size": len(content), "kind": kind, "mode": "100644"})
 		contentBySHA[sha] = content
 	}
-	if !hierarchyFetched {
+	if hasHierarchy && !hierarchyFetched {
 		// guidefold.yaml was listed but could not actually be read (today
-		// only ghapp.ErrFileTooLarge takes this path) — the same named skip
-		// as never having one, rather than a failed import.parse blaming
-		// build_tree.py for an absence that is really an oversize read.
-		return repoFetchResult{}, errGuidefoldYAMLMissing
+		// only ghapp.ErrFileTooLarge takes this path). This one still blocks
+		// (ADR-0050): the repository HAS a map, and importing it under an
+		// inferred one would publish scopes its owner did not choose.
+		return repoFetchResult{}, errGuidefoldYAMLUnreadable
 	}
 
 	publish := false
@@ -350,17 +365,18 @@ func (w *GitHubImportWorker) Run(ctx context.Context, t *worker.Task) error {
 		result, ferr := fetchRepositoryImport(ctx, w.pool, w.gh, w.imp, payload.InstallationID, fullName,
 			payload.OrgID, payload.RepoID, "github.import_repo", t.Job.JobID, decodeLimits(t.Job.Limits))
 		switch {
-		case errors.Is(ferr, errGuidefoldYAMLMissing):
-			if e := setImportBlockedReason(ctx, w.pool, t, payload.OrgID, payload.RepoID, live.ErrorGuidefoldYAMLMissing); e != nil {
+		case errors.Is(ferr, errGuidefoldYAMLUnreadable):
+			if e := setImportBlockedReason(ctx, w.pool, t, payload.OrgID, payload.RepoID, live.ErrorGuidefoldYAMLUnreadable); e != nil {
 				return e
 			}
-			return worker.Skipped(live.ErrorGuidefoldYAMLMissing)
+			return worker.Skipped(live.ErrorGuidefoldYAMLUnreadable)
 		case errors.Is(ferr, ghapp.ErrTreeTruncated), errors.Is(ferr, ghapp.ErrInstallationNotFound):
 			return worker.Permanent(ferr)
 		case ferr != nil:
 			return ferr // transient: the queue's own backoff retries it
 		}
-		// A repository that once had no guidefold.yaml and now does must not
+		// A repository blocked by an earlier attempt (an unreadable
+		// guidefold.yaml, or -- before ADR-0050 -- a missing one) must not
 		// keep reading blocked forever: this attempt actually reached
 		// CreateImport, so whatever the column held before is stale.
 		if e := setImportBlockedReason(ctx, w.pool, t, payload.OrgID, payload.RepoID, ""); e != nil {

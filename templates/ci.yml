@@ -91,8 +91,12 @@ jobs:
         id: cfg
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import yaml
-          cfg = yaml.safe_load(open("guidefold.yaml")) or {}
+          import pathlib, yaml
+          # guidefold.yaml is optional (ADR-0050): without it there is no eval.queries to read,
+          # and the steps below skip on an empty value exactly as they do for a file that has
+          # no eval: block. Opening it unconditionally would fail the job over its absence.
+          path = pathlib.Path("guidefold.yaml")
+          cfg = (yaml.safe_load(path.read_text()) or {}) if path.is_file() else {}
           q = ((cfg.get("eval") or {}).get("queries") or "").strip()
           print(f"queries={q}")
           PY
@@ -265,15 +269,19 @@ jobs:
         id: cfg
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import yaml
-          cfg = yaml.safe_load(open("guidefold.yaml")) or {}
+          import pathlib, yaml
+          # guidefold.yaml is optional (ADR-0050): without it there is no eval.queries to read,
+          # and the steps below skip on an empty value exactly as they do for a file that has
+          # no eval: block. Opening it unconditionally would fail the job over its absence.
+          path = pathlib.Path("guidefold.yaml")
+          cfg = (yaml.safe_load(path.read_text()) or {}) if path.is_file() else {}
           q = ((cfg.get("eval") or {}).get("queries") or "").strip()
           print(f"queries={q}")
           PY
 
       - name: No eval.queries configured — nothing to gate on
         if: steps.cfg.outputs.queries == ''
-        run: echo "guidefold.yaml has no eval.queries set; skipping the quality gate."
+        run: echo "No eval.queries configured - no guidefold.yaml, or no eval block in it; skipping the quality gate."
 
       - name: guidefold eval --gate (PR — block a regression vs the committed baseline)
         if: steps.cfg.outputs.queries != '' && github.event_name == 'pull_request'
@@ -335,8 +343,10 @@ jobs:
         id: cfg
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import yaml
-          cfg = yaml.safe_load(open("guidefold.yaml")) or {}
+          import pathlib, yaml
+          # Optional file (ADR-0050); absent means no configured queries, not a failed job.
+          path = pathlib.Path("guidefold.yaml")
+          cfg = (yaml.safe_load(path.read_text()) or {}) if path.is_file() else {}
           print(f"queries={((cfg.get('eval') or {}).get('queries') or '').strip()}")
           PY
 

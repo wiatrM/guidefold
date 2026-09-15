@@ -353,11 +353,13 @@ func (w *LiveRepoWorker) fetchAndImport(ctx context.Context, t *worker.Task, pay
 	case errors.Is(ferr, ghapp.ErrInstallationNotFound):
 		_ = w.failTarget(ctx, t, payload, live.ErrorGitHubNotWired)
 		return "", "", worker.Permanent(ferr)
-	case errors.Is(ferr, errGuidefoldYAMLMissing):
-		if e := w.skipTarget(ctx, t, payload, live.ErrorGuidefoldYAMLMissing); e != nil {
+	case errors.Is(ferr, errGuidefoldYAMLUnreadable):
+		// ADR-0050: only an unreadable guidefold.yaml skips a target now. A
+		// repository with none is imported under an inferred scope map.
+		if e := w.skipTarget(ctx, t, payload, live.ErrorGuidefoldYAMLUnreadable); e != nil {
 			return "", "", e
 		}
-		return "", "", worker.Skipped(live.ErrorGuidefoldYAMLMissing)
+		return "", "", worker.Skipped(live.ErrorGuidefoldYAMLUnreadable)
 	case ferr != nil:
 		if w.outOfAttempts(t) {
 			_ = w.failTarget(ctx, t, payload, live.ErrorProviderDown)

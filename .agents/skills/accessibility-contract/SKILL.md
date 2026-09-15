@@ -1,6 +1,6 @@
 ---
 name: accessibility-contract
-description: Accessibility contract for the Guidefold hosted UI: keyboard-only owner flow, visible focus, roles and aria, 44 px touch targets, measured contrast on dark graphite, colour never alone, axe in CI. Use when building or reviewing any screen, component or interaction in ui/. Not a completed audit.
+description: 'Accessibility contract for the Guidefold hosted UI: keyboard-only owner flow, visible focus, roles and aria, 44 px touch targets, measured contrast on dark graphite, colour never alone, axe in CI. Use when building or reviewing any screen, component or interaction in ui/. Not a completed audit.'
 ---
 
 # Kontrakt dostępności

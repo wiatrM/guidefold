@@ -139,6 +139,28 @@ describe('Map route, three axes', () => {
     expect(screen.getByText('Used by atlas.identity, forge.pipelines')).toBeInTheDocument();
   });
 
+  // ADR-0050: a repository with no guidefold.yaml still has a scope map — inferred from its
+  // directories and CODEOWNERS. The console says which it is looking at, the same way the
+  // pyramid says a knowledge layer was inferred; an inferred scope is never shown as declared.
+  test('the scope axis names an inferred scope map as inferred', async () => {
+    const inferred: MapScopes = {
+      scope: { ...node('platforms.atlas', 1, 'atlas-team'), paths: ['platforms/atlas/**'], source: 'inferred' },
+      scopes: [{ ...node('platforms.atlas.identity', 2), source: 'inferred' }],
+      skills: [],
+      unmapped: [],
+    };
+    renderApi(ApiMapRoute, fakeSource({ getMapScopes: async () => inferred, getModule: async () => module }), 'tab=scopes&scope=platforms.atlas');
+    expect(await screen.findByText('Inferred from directories and CODEOWNERS')).toBeInTheDocument();
+    expect(screen.getByText('Inferred')).toBeInTheDocument();
+    expect(screen.queryByText('Declared in guidefold.yaml')).not.toBeInTheDocument();
+  });
+
+  test('a declared scope map is named as declared, with no inferred notice', async () => {
+    renderApi(ApiMapRoute, fakeSource({ getMapScopes: async () => scopes, getModule: async () => module }), 'tab=scopes&scope=forge.pipelines');
+    expect(await screen.findByText('Declared in guidefold.yaml')).toBeInTheDocument();
+    expect(screen.queryByText('Inferred')).not.toBeInTheDocument();
+  });
+
   test('the scope axis lists direct children only and opens a child to show its own', async () => {
     const asked: (string | undefined)[] = [];
     const source = fakeSource({ getMapScopes: async (_target, scope) => { asked.push(scope); return scopeMap(scope); }, getModule: async () => module });
