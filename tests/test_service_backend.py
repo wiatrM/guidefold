@@ -127,7 +127,7 @@ def test_default_backend_is_local_with_no_config_error(gf):
     cfg = gf.resolve_search_config(None, profile="interactive")
     assert cfg == {"backend": "local", "url": None,
                    "deadline_ms": gf.DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS,
-                   "token": None, "config_error": False,
+                   "token": None, "config_error": False, "config_source": "default",
                    "token_source": None, "org": None, "repo": None}
 
 
@@ -1050,3 +1050,93 @@ def test_the_three_failures_do_not_print_the_same_word(gf, tmp_path, monkeypatch
         messages.add(message)
     assert len(messages) == 3, messages
     assert not any(m.startswith("guidefold: service USE failed (auth)") for m in messages)
+
+
+# ------------------------------------------- ADR-0050 §4: service coordinates with no yaml file
+# The rehearsal's second workaround (report v2 §1, D16): without `guidefold.yaml` there is no
+# `service:`/`search:` block to write, so `find`/`load`/`hook` ran local, printed URNs the
+# service does not know, and nothing reached the ledger until the owner exported
+# GUIDEFOLD_SEARCH_BACKEND/GUIDEFOLD_SEARCH_URL by hand. `search.*` are deployment coordinates of
+# an organisation, not facts about a tree (ADR-0050 §4), so when nothing declares them they come
+# from what `guidefold login` already stored, under the same single-login rule the bearer token
+# has used since 2026-09-13.
+
+def test_service_coordinates_come_from_the_stored_login_when_nothing_declares_them(
+        gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    monkeypatch.delenv("GUIDEFOLD_SEARCH_BACKEND", raising=False)
+    monkeypatch.delenv("GUIDEFOLD_SEARCH_URL", raising=False)
+    monkeypatch.setenv("GUIDEFOLD_REPO_ID", "guidefold")
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "login-token", "org": "cloudfloo"}})
+    root = tmp_path / "zero-config"
+    root.mkdir()
+    assert not (root / "guidefold.yaml").exists()
+
+    resolved = gf.resolve_search_config(None, profile="interactive", root=root)
+    assert resolved["backend"] == "service"
+    assert resolved["url"] == "https://api.example.com"
+    assert resolved["org"] == "cloudfloo"
+    assert resolved["repo"] == "guidefold"
+    assert resolved["config_error"] is False
+    assert resolved["config_source"] == "login"
+
+
+def test_the_hook_gets_the_same_service_coordinates_without_reading_any_yaml(
+        gf, monkeypatch, tmp_path):
+    """`cmd_hook` calls `resolve_search_config(None, profile="hook", ...)` — cfg is always None
+    there (E1.5). The derivation must therefore work from the credentials file alone."""
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "t", "org": "cloudfloo"}})
+    root = tmp_path / "repo"
+    root.mkdir()
+    resolved = gf.resolve_search_config(None, profile="hook", root=root)
+    assert resolved["backend"] == "service"
+    assert resolved["url"] == "https://api.example.com"
+    assert resolved["deadline_ms"] == gf.DEFAULT_SEARCH_DEADLINE_HOOK_MS
+
+
+def test_two_stored_logins_stay_local_and_are_not_a_config_error(gf, monkeypatch, tmp_path):
+    """Ambiguous, so silent: `backend: local`, and NOT `config_error` — a plain local repository
+    must never start reporting `fallback_reason: config` for having logged in twice."""
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://a.example.com": {"token": "t1", "org": "a"},
+                         "https://b.example.com": {"token": "t2", "org": "b"}})
+    resolved = gf.resolve_search_config(None, profile="interactive", root=tmp_path)
+    assert resolved["backend"] == "local"
+    assert resolved["config_error"] is False
+    assert resolved["config_source"] == "default"
+
+
+def test_a_declared_search_block_wins_over_the_stored_login(gf, monkeypatch, tmp_path):
+    """File-present precedence: a repository that declares `search:` keeps exactly what it
+    declared, including `backend: local` — a stored login never overrides it."""
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "t", "org": "acme"}})
+    local = gf.resolve_search_config({"search": {"backend": "local"}}, profile="interactive",
+                                      root=tmp_path)
+    assert local["backend"] == "local"
+    assert local["url"] is None
+    assert local["config_source"] == "guidefold.yaml"
+
+    declared = gf.resolve_search_config(
+        {"search": {"backend": "service", "url": "https://declared.example"}},
+        profile="interactive", root=tmp_path)
+    assert declared["url"] == "https://declared.example"
+    assert declared["config_source"] == "guidefold.yaml"
+
+
+def test_env_wins_over_both_the_file_and_the_stored_login(gf, monkeypatch, tmp_path):
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    _write_credentials(monkeypatch, tmp_path,
+                        {"https://api.example.com": {"token": "t", "org": "acme"}})
+    monkeypatch.setenv("GUIDEFOLD_SEARCH_URL", "https://env.example")
+    monkeypatch.setenv("GUIDEFOLD_SEARCH_BACKEND", "service")
+    resolved = gf.resolve_search_config({"search": {"backend": "local"}}, profile="interactive",
+                                         root=tmp_path)
+    assert resolved["backend"] == "service"
+    assert resolved["url"] == "https://env.example"
+    assert resolved["config_source"] == "env"

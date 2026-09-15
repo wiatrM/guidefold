@@ -92,6 +92,23 @@ search:
   token_file: /etc/acme/guidefold-search-token   # bearer token file
 ```
 
+- **Precedence for `backend`/`url` — three tiers, most specific first (ADR-0050 §4).**
+  1. the environment (`GUIDEFOLD_SEARCH_BACKEND`/`GUIDEFOLD_SEARCH_URL`),
+  2. the `search:` block of a `guidefold.yaml` that exists — including `backend: local`, which a
+     stored login never overrides,
+  3. otherwise the coordinates `guidefold login` stored (`_credentials_path()`), under the same
+     single-login rule the bearer token uses: exactly one stored API becomes
+     `backend: service` with that API as `url`. `/v1/search` and `/v1/use` are root-absolute on
+     the same origin as the management API (`docs/HARNESS-SERVICE-CONTRACT.md`), so the stored
+     API base *is* the search URL. `org` comes from the same credentials entry and `repo` from
+     `GUIDEFOLD_REPO_ID` > `service.repo` > the checkout's name, exactly as in §1b.
+
+  The third tier is what a repository with **no `guidefold.yaml`** gets: `search.*` are
+  deployment coordinates of an organisation, not facts about a tree, so there is nothing to
+  declare and nothing to write. Two or more stored logins are ambiguous: `backend: local`, in
+  silence — not a config error, and no `fallback_reason: config`. The resolved block and the
+  tier it came from are printed by `guidefold install` (`hook search: …`) and by `guidefold
+  doctor` (`search-config`); neither ever prints the token, only its source.
 - Env overrides win over the yaml block: `GUIDEFOLD_SEARCH_BACKEND`, `GUIDEFOLD_SEARCH_URL`,
   `GUIDEFOLD_SEARCH_DEADLINE_MS`, `GUIDEFOLD_SEARCH_TOKEN_FILE`. The bearer token itself is read
   from `GUIDEFOLD_TOKEN` (env, checked first), then `token_file`, then — last resort, since
@@ -174,6 +191,13 @@ service:
   environment (`GUIDEFOLD_API`, `GUIDEFOLD_ORG`, `GUIDEFOLD_REPO_ID`) > this block > the
   credentials file. `repo` falls back to the git remote's basename (or the root directory name),
   sanitised.
+- **This block is optional, and is never required for SEARCH/USE.** `guidefold.yaml` itself is
+  optional (ADR-0050), so a repository that has no file has no `service:` block either; the
+  network commands then resolve `api`/`org` from the credentials file and `repo` from
+  `GUIDEFOLD_REPO_ID` (or the checkout), and `find`/`load`/`hook` resolve their SEARCH backend
+  from tier 3 of §1a above. `guidefold install` writes this block only into a `guidefold.yaml`
+  that already exists; it never creates one to have somewhere to write, and it prints which
+  service the hook will use either way.
 - **All three are validated wherever they come from**, because all three end up in a request path
   and in this committed file. `api` must be `https://` with a host; `http://` is accepted only for
   `127.0.0.1`, `::1` or `localhost`, so a bearer token is never sent in cleartext and a

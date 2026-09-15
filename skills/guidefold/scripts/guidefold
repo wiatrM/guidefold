@@ -2269,6 +2269,29 @@ def _search_config_from_env() -> dict:
         out["token_file"] = os.environ["GUIDEFOLD_SEARCH_TOKEN_FILE"].strip()
     return out
 
+def _login_entry(cfg: dict = None):
+    """(api_url, entry) from the credentials file, under the single-login rule `_login_token`
+    documents below, or (None, None). Split out so `resolve_search_config` can also read the
+    *API URL* that answered -- ADR-0050 §4: `search.*` are deployment coordinates of an
+    organisation, and for a repository with no `guidefold.yaml` the credentials file is the only
+    place that holds them. Pure json + Path.read_text on `_credentials_path()`: no PyYAML and no
+    `guidefold.yaml`, so `hook` may call this (E1.5)."""
+    creds = _load_credentials()
+    if not creds:
+        return None, None
+    api = None
+    svc = (cfg or {}).get("service")
+    if isinstance(svc, dict) and isinstance(svc.get("api"), str) and svc["api"].strip():
+        api = svc["api"].strip().rstrip("/")
+    if api and isinstance(creds.get(api), dict):
+        return api, creds[api]
+    if len(creds) == 1:
+        only_api, only_entry = next(iter(creds.items()))
+        if isinstance(only_entry, dict):
+            return only_api, only_entry
+    return None, None
+
+
 def _login_token(cfg: dict = None):
     """The bearer `guidefold login` already stored in `_credentials_path()` (the device flow,
     API-CONTRACT §4.1/§2), tried only as the LAST resort by `resolve_search_config` -- after
@@ -2290,19 +2313,7 @@ def _login_token(cfg: dict = None):
     Returns (token, org) or (None, None). `org` (may be None) is the organisation `login`/`org
     use` last recorded for that entry -- used to set `X-Guidefold-Org` for a personal-token
     request, since (unlike an installation token) it is not bound to one org server-side."""
-    creds = _load_credentials()
-    if not creds:
-        return None, None
-    api = None
-    svc = (cfg or {}).get("service")
-    if isinstance(svc, dict) and isinstance(svc.get("api"), str) and svc["api"].strip():
-        api = svc["api"].strip().rstrip("/")
-    entry = creds.get(api) if api else None
-    if not isinstance(entry, dict):
-        if len(creds) == 1:
-            entry = next(iter(creds.values()))
-        else:
-            return None, None
+    _api, entry = _login_entry(cfg)
     if not isinstance(entry, dict):
         return None, None
     token = entry.get("token")
@@ -2320,8 +2331,15 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
     config falls back to local with a visible degradation_reason=config").
 
     Returns {"backend": "local"|"service", "url": str|None, "deadline_ms": int,
-             "token": str|None, "config_error": bool, "token_source": "env"|"token_file"|
-             "login"|None, "org": str|None, "repo": str|None}. The bearer token comes from
+             "token": str|None, "config_error": bool, "config_source": "env"|"guidefold.yaml"|
+             "login"|"default", "token_source": "env"|"token_file"|
+             "login"|None, "org": str|None, "repo": str|None}.
+
+    `config_source` names which of the three tiers answered for `backend`/`url` (ADR-0050 §4):
+    the environment, a declared `search:` block, or the coordinates `guidefold login` stored --
+    the last being the zero-config tier, where there is no file to declare them in. `install`
+    and `doctor` print it, so "which service will the hook talk to" is answerable without
+    guessing. The bearer token comes from
     GUIDEFOLD_TOKEN, then a token file, then (last resort) the credentials file `guidefold
     login` writes -- never from guidefold.yaml directly, never logged. `org`/`repo` are set
     only for `token_source == "login"`: a personal token is not bound to one org/repo the way
@@ -2331,16 +2349,12 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
     hard 403, not a no-op)."""
     search_block = (cfg or {}).get("search")
     raw = dict(search_block) if isinstance(search_block, dict) else {}
-    raw.update(_search_config_from_env())
+    declared_keys = {k for k in ("backend", "url") if k in raw}
+    env_raw = _search_config_from_env()
+    raw.update(env_raw)
     default_deadline = (DEFAULT_SEARCH_DEADLINE_HOOK_MS if profile == "hook"
                         else DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS)
-    backend = raw.get("backend", "local")
     config_error = False
-    if backend not in ("local", "service"):
-        backend, config_error = "local", True
-    url = raw.get("url")
-    if backend == "service" and (not isinstance(url, str) or not url.strip()):
-        backend, config_error = "local", True
     deadline_ms = raw.get("deadline_ms", default_deadline)
     try:
         deadline_ms = int(deadline_ms)
@@ -2359,7 +2373,9 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
         except Exception:
             config_error = True   # configured but unreadable: a real config problem, not silence
     org = repo = None
+    login_api = None
     if not token:
+        login_api, _entry = _login_entry(cfg)
         token, org = _login_token(cfg)
         if token:
             token_source = "login"
@@ -2372,14 +2388,63 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
             service_block = service_block if isinstance(service_block, dict) else {}
             repo = (os.environ.get("GUIDEFOLD_REPO_ID") or service_block.get("repo")
                     or (_default_repo_id(root) if root is not None else None))
+    # --- where `backend`/`url` come from (ADR-0050 §4) -------------------------------------
+    # Three tiers, most specific first: the environment, then the `search:` block of a
+    # `guidefold.yaml` that exists, then the coordinates `guidefold login` stored. The third
+    # tier is the zero-config one: `search.*` are deployment coordinates of an ORGANISATION, not
+    # facts about a tree, so a repository with no file to declare them in is not a repository
+    # without a service -- it is one whose service is named by the credential it already has.
+    # `/v1/search` and `/v1/use` are root-absolute on the same origin as the management API
+    # (docs/HARNESS-SERVICE-CONTRACT.md), so the stored API base is the search URL.
+    if "backend" in env_raw or "url" in env_raw:
+        config_source = "env"
+    elif declared_keys:
+        config_source = "guidefold.yaml"
+    else:
+        config_source = "default"
+    if config_source == "default" and token_source == "login" and login_api:
+        raw = dict(raw, backend="service", url=login_api)
+        config_source = "login"
+    # Ambiguity (two or more stored logins) leaves `config_source == "default"` and stays local
+    # in silence: it is not a misconfiguration, and reporting `fallback_reason: config` for it
+    # would make every ordinary local repository look broken.
+    backend = raw.get("backend", "local")
+    if backend not in ("local", "service"):
+        backend, config_error = "local", True
+    url = raw.get("url")
+    if backend == "service" and (not isinstance(url, str) or not url.strip()):
+        backend, config_error = "local", True
     if backend == "service" and not token:
         # A service backend that can never authenticate can never succeed (contract: POST
         # requires the bearer token) -- fail fast into local rather than paying for a request
         # that is guaranteed to 401 every time.
         backend, config_error = "local", True
     return {"backend": backend, "url": url, "deadline_ms": deadline_ms,
-            "token": token, "config_error": config_error,
+            "token": token, "config_error": config_error, "config_source": config_source,
             "token_source": token_source, "org": org, "repo": repo}
+
+
+def search_config_line(search_cfg: dict) -> str:
+    """One line naming the SEARCH backend `find`/`load`/`hook` will actually use and where its
+    coordinates came from. Printed by `install` (so an owner learns which service the hook will
+    talk to at the moment the adapter is wired up) and by `doctor`. The bearer token is never in
+    it -- only whether one resolved, and from where."""
+    if not isinstance(search_cfg, dict):
+        return "local — nothing resolved"
+    source = search_cfg.get("config_source") or "default"
+    if search_cfg.get("backend") != "service":
+        if search_cfg.get("config_error"):
+            return f"local — the configured service could not be used (config source: {source})"
+        return ("local — no hosted SEARCH service is configured "
+                "(run `guidefold login`, or set GUIDEFOLD_SEARCH_URL)")
+    bits = [f"service {search_cfg.get('url')}", f"source={source}"]
+    if search_cfg.get("org"):
+        bits.append(f"org={search_cfg['org']}")
+    if search_cfg.get("repo"):
+        bits.append(f"repo={search_cfg['repo']}")
+    bits.append(f"deadline_ms={search_cfg.get('deadline_ms')}")
+    bits.append(f"token={search_cfg.get('token_source') or 'none'}")
+    return ", ".join(bits)
 
 
 def _search_extra_headers(search_cfg: dict) -> dict:
@@ -6915,6 +6980,17 @@ def _doctor_http_get(scheme: str, host: str, port: int, path: str, token: str, t
             pass
 
 
+def _check_search_config(root: Path, cfg) -> dict:
+    """The resolved `search` block and which tier it came from (ADR-0050 §4). Runs whether or not
+    the repository has a `guidefold.yaml`: `search.*` no longer depends on that file, and a
+    zero-config repository is exactly the one whose owner needs to be told."""
+    search_cfg = resolve_search_config(cfg, profile="interactive", root=root)
+    status = "warn" if search_cfg.get("config_error") else "ok"
+    fix = ("check `search:`/GUIDEFOLD_SEARCH_* — find/hook fall back to local within deadline_ms"
+           if status == "warn" else None)
+    return _doctor_check("search-config", status, search_config_line(search_cfg), fix)
+
+
 def _check_search_service(root: Path, cfg) -> dict:
     """Service reachability + contract version, via GET /health/ready (never /v1/search --
     doctor must not spend a search against the service just to check it is up). Snapshot AGE is
@@ -7005,10 +7081,14 @@ def cmd_doctor(a):
     checks.append(_check_github_action(root))
     checks.extend(_check_registry(root, cfg))
     checks.append(_check_index_freshness(root))
+    # `search.*` is independent of guidefold.yaml since ADR-0050 §4, so these three run even when
+    # the map is inferred or the file did not parse. Only the latency probe needs the map (it
+    # builds an Index), so only it stays gated.
+    checks.append(_check_search_config(root, cfg))
+    checks.append(_check_search_service(root, cfg))
+    checks.append(_check_search_token(cfg, root))
     if cfg is not None:
         checks.append(_check_search_latency(root, cfg))
-        checks.append(_check_search_service(root, cfg))
-        checks.append(_check_search_token(cfg, root))
     checks.append(_check_telemetry_spool(root))
     # Pivot (P10/U5 AC1): hosted-service coordinates, reachability + identity, the installed
     # adapter package, and what each harness can actually be relied on to do. All of these stay
@@ -9373,6 +9453,12 @@ def cmd_install(a):
                 print(f"  index: {exc}")
     else:
         print("  materialize/index: skipped (--no-materialize)")
+    # Which service the hook will talk to. Resolved exactly the way `cmd_hook` resolves it
+    # (cfg=None, profile="hook" -- E1.5: the hook never reads guidefold.yaml), so this line is
+    # the hook's own answer and not an approximation of it. Without it the owner of a repository
+    # with no `service:` block had no way to tell a service-backed hook from a local one until
+    # a `find` printed URNs the service did not know (rehearsal v2, workaround 2).
+    print(f"  hook search: {search_config_line(resolve_search_config(None, profile='hook', root=root))}")
     print("  next: `guidefold doctor`")
     sys.exit(0)
 

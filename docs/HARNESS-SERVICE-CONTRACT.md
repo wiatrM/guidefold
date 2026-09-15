@@ -26,7 +26,7 @@ Machine-readable requests and success/error envelopes: [JSON Schema](../tools/se
 
 ## Requests and implemented effects
 
-The endpoints remain `GET /health/ready`, `POST /v1/search` and `POST /v1/use`. POST requires the configured local bearer token. Compose publishes the Go API on loopback (the container listens internally on port 8080). Tenant/repository identity is operator-configured; production tenant IAM is not implemented. Each body is limited to 16,384 bytes; SEARCH query is a nonblank UTF-8 string of at most 4,096 characters. Deadline is an integer from 1 to 5,000 ms, default 1,000. Both profiles currently select at most four cards and return at most ten diagnostic ranked candidates.
+The endpoints remain `GET /health/ready`, `POST /v1/search` and `POST /v1/use`. All three are root-absolute on the same origin that serves the management API's `/api/v1/…`, so one base URL addresses both: an adapter with no configured `search.url` may use the API base its credential was issued for (`docs/CONVENTIONS.md` §1a tier 3, ADR-0050 §4). POST requires the configured local bearer token. Compose publishes the Go API on loopback (the container listens internally on port 8080). Tenant/repository identity is operator-configured; production tenant IAM is not implemented. Each body is limited to 16,384 bytes; SEARCH query is a nonblank UTF-8 string of at most 4,096 characters. Deadline is an integer from 1 to 5,000 ms, default 1,000. Both profiles currently select at most four cards and return at most ten diagnostic ranked candidates.
 
 | Field | Required / effect in 1.1 |
 |---|---|

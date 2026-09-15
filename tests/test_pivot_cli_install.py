@@ -432,3 +432,47 @@ def test_install_builds_the_index_in_a_repository_with_no_guidefold_yaml(
     idx = gf.load_index_artifact(dest)
     assert gf.node_for({"nodes": idx.nodes}, "docs") == "docs"
     assert not (root / "guidefold.yaml").exists()
+
+
+# ------------------------------- ADR-0050 §4: service coordinates without a guidefold.yaml
+# Rehearsal v2 workaround 2: with no file there was no `service:`/`search:` block, so `find`,
+# `load` and the hook ran local and nothing reached the ledger — and nothing in `install` or
+# `doctor` said so. Both now print the resolved SEARCH backend and which tier it came from.
+
+def test_install_and_doctor_name_the_service_the_hook_will_use_without_a_yaml_file(
+        gf, tmp_path, monkeypatch, capsys):
+    root = _zero_config_repo(tmp_path)
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    creds = tmp_path / "credentials.json"
+    creds.write_text(json.dumps({"https://api.example.com": {
+        "org": "cloudfloo", "token": "gf_" + "y" * 32,
+        "orgs": [{"slug": "cloudfloo", "org_id": "o1", "role": "owner", "name": "cloudfloo"}]}}))
+    monkeypatch.setenv("GUIDEFOLD_CREDENTIALS", str(creds))
+    monkeypatch.setenv("GUIDEFOLD_REPO_ID", "guidefold")
+    monkeypatch.chdir(root)
+
+    assert _run(gf.cmd_install, _args()) == 0
+    out = capsys.readouterr().out
+    assert "hook search: service https://api.example.com" in out
+    assert "source=login" in out and "org=cloudfloo" in out and "repo=guidefold" in out
+    assert "gf_" not in out, "the bearer token is never printed"
+
+    checks = {c["name"]: c for c in _doctor_checks(gf, capsys)}
+    assert checks["search-config"]["detail"].startswith("service https://api.example.com")
+    assert "source=login" in checks["search-config"]["detail"]
+    assert checks["search-token"]["status"] == "ok"
+
+
+def test_doctor_says_local_when_nothing_configures_a_service(gf, tmp_path, monkeypatch, capsys):
+    root = _zero_config_repo(tmp_path)
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.chdir(root)
+    checks = {c["name"]: c for c in _doctor_checks(gf, capsys)}
+    assert checks["search-config"]["status"] == "ok"
+    assert checks["search-config"]["detail"].startswith("local — no hosted SEARCH service")
+
+
+def _doctor_checks(gf, capsys):
+    capsys.readouterr()
+    _run(gf.cmd_doctor, SimpleNamespace(json=True, path=None))
+    return json.loads(capsys.readouterr().out)["checks"]
