@@ -269,3 +269,27 @@ def test_refines_cycle_detected(gf, tmp_path, capsys):
     out = capsys.readouterr().out
     assert code == 1
     assert "refines cycle:" in out
+
+
+# W5 — 2026-09-15 rehearsal: `validate` is the gate that has to name a SKILL.md whose
+# frontmatter is not valid YAML (an unquoted ":" in `description:` is the common shape and
+# ten cards in this repository had it). It used to let `yaml.ScannerError` escape as a raw
+# traceback out of the CLI, so the broken file was never named and the remaining cards were
+# never checked. `all_skills(on_error=...)` already existed for `report`; `_validate_errors`
+# now uses it.
+def test_unparseable_frontmatter_is_named_not_a_traceback(gf, tmp_path, capsys):
+    root = tmp_path / "acme"
+    write_guidefold_yaml(root)
+    write_skill(root / ".agents/skills/widget", name="widget",
+                description="[acme] widget skill. Use when touching widgets.",
+                metadata={"scope": "_root", "owner": "platform", "status": "active"})
+    broken = root / ".agents/skills/broken"
+    broken.mkdir(parents=True)
+    (broken / "SKILL.md").write_text(
+        "---\nname: broken\ndescription: Rules for the thing: colons, commas and more.\n---\nbody\n",
+        encoding="utf-8")
+    code = _run_validate(gf, root)
+    out = capsys.readouterr().out
+    assert code == 1
+    assert ".agents/skills/broken/SKILL.md: frontmatter is not valid YAML" in out
+    assert "1 errors" in out          # the good card was still checked, not aborted on

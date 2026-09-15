@@ -1,6 +1,6 @@
 ---
 name: observability-telemetry
-description: Record and report Guidefold evidence correctly: event ledger, dedupe, unknown-not-zero, run identifiers, local spool files and LLM cost per import. Use when emitting events, writing reports or adding metrics; not for changing what SEARCH/USE return.
+description: 'Record and report Guidefold evidence correctly: event ledger, dedupe, unknown-not-zero, run identifiers, local spool files and LLM cost per import. Use when emitting events, writing reports or adding metrics; not for changing what SEARCH/USE return.'
 ---
 
 # Obserwowalność i telemetria

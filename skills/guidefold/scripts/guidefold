@@ -3760,7 +3760,15 @@ def _validate_errors(root, cfg):
     (skills, errors) — skills is the same list `all_skills()` produced, errors is a list of
     human-readable strings (no ERROR prefix, no printing, no exit)."""
     errors = []
-    skills = list(all_skills(root, cfg))
+    # A card whose frontmatter is not valid YAML is a finding, not a crash: `validate` is the
+    # gate that has to *name* the broken file (CONVENTIONS.md), and the importer rejects exactly
+    # these files per-file (U2.1). Without `on_error` the first bad card raised a raw
+    # yaml.ScannerError traceback out of the CLI and the other cards were never checked.
+    def _unreadable(md, exc):
+        errors.append(f"{md.relative_to(root)}: frontmatter is not valid YAML: "
+                      f"{str(exc).splitlines()[0]}")
+
+    skills = list(all_skills(root, cfg, on_error=_unreadable))
     urns = {urn(cfg, node, d.name): fm for d, node, fm in skills}
     node_of = {urn(cfg, node, d.name): node for d, node, fm in skills}
     for d, node, fm in skills:

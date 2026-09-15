@@ -181,6 +181,13 @@ def main():
     # again. On a tree that builds cleanly the two output files are identical to
     # what the previous order produced.
     tree = Path(args.tree).resolve()
+    # The same guard `build()` carries, hoisted: the inventory runs first and reaches
+    # `cli.load_map(tree)` before `build()` is ever called, so on a tree with no map the
+    # named reason below was dead code and the importer reported a raw
+    # `FileNotFoundError: .../guidefold.yaml` instead. The reason has to be nameable
+    # (`gfm.repos.import_blocked_reason`), not a Python traceback.
+    if not (tree / "guidefold.yaml").is_file():
+        raise ValueError("import_tree_has_no_guidefold_yaml")
     inventory_path = args.inventory or args.output.with_name("inventory.json")
     rows = inventory(cli, tree, cli.load_map(tree), args.repo_id, args.commit)
     inventory_path.parent.mkdir(parents=True, exist_ok=True)
