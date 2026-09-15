@@ -1,6 +1,6 @@
-# Harness-service contract 1.1
+# Harness-service contract 1.1 with additive 1.2 opt-ins (family, closure, search_snapshot, delivery_policy, claim_refs)
 
-**Status:** implemented by the Go/ParadeDB Compose service and the historical local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped.
+**Status:** implemented by the Go/ParadeDB Compose service and the historical local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped. 1.2 is additive over 1.1 — a 1.1 client sees no change; `GET /health/ready` announces `["legacy-unversioned", "1.1", "1.2"]` in `api_schema_versions` (`services/search/main.go`, checked 2026-09-15).
 
 Machine-readable requests and success/error envelopes: [JSON Schema](../tools/serve_spike/contracts/harness-service-v1.1.schema.json). A complete request is in [search-example.json](../tools/serve_spike/contracts/search-example.json). The normative behavioral tests are [test_service_context.py](../tests/test_service_context.py). Both schema and service validation must accept valid requests and reject invalid ones in CI.
 

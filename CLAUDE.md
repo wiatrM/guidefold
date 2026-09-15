@@ -5,7 +5,7 @@ CI validates and publishes them to Google Cloud Agent Registry, and one bootstra
 CLI let any harness (Claude Code, Copilot CLI, Codex, Gemini CLI) discover them by location.
 
 Project entry point: [AGENTS.md](AGENTS.md). Local workflows: [product changes](.agents/skills/guidefold-product-changes/SKILL.md) and [UI workflow](.agents/skills/guidefold-ui-workflow/SKILL.md).
-Thirty rule skills (product direction, KISS/YAGNI/DRY/SOLID, hexagonal architecture, Definition of Done, review, UI) are indexed in `AGENTS.md`, linked from `.claude/skills/`, and decided in [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md). Hooks in `.claude/settings.json` are described in [.claude/README.md](.claude/README.md).
+All 81 skills under `.agents/skills/` (`python3 tools/check_skills.py`, 2026-09-15) are indexed in `AGENTS.md` and linked from `.claude/skills/`; the rule skills (product direction, KISS/YAGNI/DRY/SOLID, hexagonal architecture, Definition of Done, review, UI) are decided in [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md), the rest are adopted design/motion/content-generation skills tracked the same way. Hooks in `.claude/settings.json` are described in [.claude/README.md](.claude/README.md).
 
 Start with `docs/DOCUMENTATION-RULES.md` to select the authoritative document for the task.
 For the authorized product pivot, read `docs/PRODUCT-PIVOT.md` (requirements),
@@ -83,6 +83,10 @@ two-column layout was rejected by the owner.
 Two repos are involved and must not be confused: **this repo** (the tool) and the **consumer
 monorepo** (where `guidefold.yaml`, `.agents/skills/**`, generated `AGENTS.md` cards and the
 CI workflow live). `templates/` and `skills/` are copied into the consumer; nothing else is.
+
+`skills/` at repo root holds only `skills/guidefold` (the distributable unit). Third-party or
+personal skills never belong there — author or vendor them under `.agents/skills/` instead, so
+`tools/check_skills.py` and the consumer copy step both see the same one directory.
 
 ## Existing CLI constraints
 
