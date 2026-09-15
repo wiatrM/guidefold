@@ -85,7 +85,7 @@ Oczekiwane: `scan` wypisuje `complete: true`, `dirty: false` i `commit` równy H
 | Objaw | Przyczyna | Co zrobić |
 |---|---|---|
 | `state: failed`, `build_tree_failed: FileNotFoundError … guidefold.yaml` | P2 nie zrobione | dodaj mapę albo weź zero-config |
-| `state: partial`, `failed: N` i publikacja `import_partial` | karta z niepoprawnym YAML-em we frontmatterze (najczęściej niecytowany dwukropek w `description:`) | napraw karty; gałąź `pilot/act01-rehearsal-20260915` naprawia dziesięć takich w tym repozytorium i dodaje test, który je łapie |
+| `state: partial`, `failed: N`, publikacja aktywna z adnotacją „Partial" | karta z niepoprawnym YAML-em we frontmatterze (najczęściej niecytowany dwukropek w `description:`) | od kontraktu 1.16.0 reszta importu **publikuje się**, a każdy nieudany plik dostaje pozycję kolejki `import_file_failed`; napraw karty i zaimportuj ponownie. `import_partial` zostaje wyłącznie, gdy po odjęciu nieudanych plików nie ma czego publikować. Gałąź `pilot/act01-rehearsal-20260915` naprawia dziesięć takich kart w tym repozytorium i dodaje test, który je łapie |
 | publikacja `missing_dependency` | P3 nie zrobione — fixture Meridian wszedł do importu | dodaj `.guidefoldignore` i zaimportuj ponownie |
 
 **Dowód.**
@@ -177,7 +177,7 @@ POST /v1/search                   -> 200, karty z tej organizacji
 POST /v1/use                      -> 200
 ```
 
-**Pułapka rewizji.** `POST /v1/use` przyjmuje **`card_revision`**, a `GET {repo_base}/skills/{skill_id}` zwraca i `revision_id`, i `card_revision`. Użycie `revision_id` daje `409 revision_mismatch`. `guidefold find` drukuje właściwą wartość — bierz ją stamtąd.
+**Pułapka rewizji.** `POST /v1/use` przyjmuje **`card_revision`**, a `GET {repo_base}/skills/{skill_id}` zwraca i `revision_id`, i `card_revision`. Użycie `revision_id` daje `409 revision_mismatch` z `hint: "send card_revision from the catalog"` (kontrakt 1.16.0). `guidefold find` drukuje właściwą wartość — bierz ją stamtąd.
 
 **Druga pułapka.** `503 snapshot_policy_mismatch` znaczy, że `skills/guidefold/scripts/guidefold` zmienił się po zbudowaniu snapshotu. Lekarstwo to ponowny import i publikacja, nie debugowanie uwierzytelnienia.
 
