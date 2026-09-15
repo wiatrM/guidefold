@@ -238,7 +238,15 @@ python3 tools/dev/stack.py up --name dev --ui   # potem: seed --name dev --org a
 
 ## i) Dowody akceptacyjne
 
-**Nowszy przebieg, 2026-09-15.** Ta sama komenda na czubku gałęzi `pilot/act01-rehearsal-20260915`
+**Najnowszy przebieg, 2026-09-15 (druga próba generalna).** Ta sama komenda na czubku gałęzi
+`pilot/act01-rehearsal-v2-20260915` (`repo_commit d4fdf785`, przebieg `2026-09-15T15:18:37Z` →
+`15:22:50Z`) dała **34 pass, 0 fail, 7 `not_measured_here`**: jedyna porażka poprzedniego przebiegu,
+`ACT-01`, przestała występować po PR #180 (asercja sprawdza spool ∪ ledger, a `flush` nie kasuje
+zdarzeń dopisanych w trakcie wysyłki). Siedem `not_measured_here` to niezmiennie realny WorkOS, sieć
+pilota, realne sesje harnessów i oceny Q z ludźmi. Reprodukcja, defekty i ograniczenia:
+[druga próba generalna Pilot Core 2026-09-15](reports/pilot/2026-09-15-pilot-core-rehearsal-v2.md).
+
+**Poprzedni przebieg, 2026-09-15.** Ta sama komenda na czubku gałęzi `pilot/act01-rehearsal-20260915`
 (`repo_commit a285d595`) dała **33 pass, 1 fail, 7 `not_measured_here`**: `ACT-01` przestał przechodzić,
 bo spool CLI nie zawiera `card_injected`
 (`tests/acceptance/test_act01_end_to_end.py:219`). Reprodukcja, otoczenie i pozostałe znaleziska:
