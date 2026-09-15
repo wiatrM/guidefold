@@ -142,6 +142,9 @@ func New(t *testing.T) *Harness {
 	if e != nil {
 		t.Fatal(e)
 	}
+	// The same wiring package main performs: approving a scope map writes
+	// gfm.scopes through the import module's own adapter (ADR-0051).
+	reviewer.SetScopeMapApplier(importer.NewScopeMapWriter())
 	reviewer.Register(router)
 	keyring, e := secrets.NewKeyring("test-1", map[string][]byte{"test-1": bytes.Repeat([]byte{7}, 32)})
 	if e != nil {

@@ -981,6 +981,10 @@ func mountManagement(app *App, pool *pgxpool.Pool) error {
 	if e != nil {
 		return e
 	}
+	// Approving a scope map writes gfm.scopes, which belongs to the import
+	// module. The two meet here, in package main, rather than in either
+	// package's imports (ADR-0051, module-boundaries-go).
+	reviewer.SetScopeMapApplier(importer.NewScopeMapWriter())
 	reviewer.Register(router)
 	app.Identity, app.Management = svc, router
 	return nil

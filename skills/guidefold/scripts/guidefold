@@ -9263,6 +9263,41 @@ def _export_diff(root: Path, files: list) -> str:
     return "".join(chunks)
 
 
+def _print_scope_map(m: dict):
+    """Summarise a `scope_map` proposal before its JSON (ADR-0051).
+
+    The JSON is still printed in full -- it is the thing being decided, and a
+    summary that replaced it would hide the nodes. What the summary adds is the
+    one question a reviewer actually has: what would approving this change, and
+    is there anything wrong with it now.
+    """
+    diff = m.get("diff") if isinstance(m.get("diff"), dict) else {}
+    origin = m.get("origin") or "?"
+    model = m.get("model")
+    source = f"{origin} ({model})" if model else origin
+    repos = m.get("repos") if isinstance(m.get("repos"), list) else []
+    nodes = m.get("nodes") if isinstance(m.get("nodes"), list) else []
+    print(f"organisation scope map — {source}; {len(nodes)} node(s) over {len(repos)} repositor"
+          f"{'y' if len(repos) == 1 else 'ies'}")
+    counts = []
+    for label, key in (("added", "added"), ("reparented", "reparented"),
+                       ("owner changed", "owner_changed"), ("paths changed", "paths_changed")):
+        entries = diff.get(key)
+        if isinstance(entries, list) and entries:
+            counts.append(f"{len(entries)} {label}")
+    unchanged = diff.get("unchanged")
+    if isinstance(unchanged, int) and unchanged:
+        counts.append(f"{unchanged} unchanged")
+    print("  would change: " + (", ".join(counts) if counts else "nothing"))
+    print("  approving never deletes a scope; a scope this map omits keeps its row.")
+    findings = m.get("findings") if isinstance(m.get("findings"), list) else []
+    if findings:
+        print("  this map no longer validates and cannot be approved as it stands:")
+        for finding in findings:
+            print(f"    - {finding}")
+    print()
+
+
 def cmd_proposals(a):
     root = _pivot_root(getattr(a, "path", None))
     svc = resolve_service_config(_tolerant_config(root), a, root)
@@ -9290,9 +9325,17 @@ def cmd_proposals(a):
             sys.exit(0)
         print(f"guidefold proposals — {svc['org']}/{svc['repo']}")
         for item in items:
+            # A scope_map proposal has no scope of its own and its `path` is the
+            # synthetic `.guidefold/scope-map.json`, which nobody exports. Printing
+            # that path would invite `proposals apply`; naming what the row is says
+            # the true thing in the same width (ADR-0051).
+            if item.get("kind") == "scope_map":
+                subject = "organisation scope map"
+            else:
+                subject = item.get("title") or item.get("path") or ""
             print(f"  {str(item.get('proposal_id') or item.get('id') or '?'):<38} "
                   f"{str(item.get('state') or ''):<20} {str(item.get('kind') or ''):<16} "
-                  f"{item.get('scope') or ''}  {item.get('title') or item.get('path') or ''}")
+                  f"{item.get('scope') or ''}  {subject}")
         sys.exit(0)
     if a.proposals_cmd == "show":
         try:
@@ -9300,6 +9343,8 @@ def cmd_proposals(a):
                                             token=svc["token"])
         except ServiceError as e:
             _die_service("proposals show", e, svc)
+        if isinstance(body, dict) and isinstance(body.get("scope_map"), dict):
+            _print_scope_map(body["scope_map"])
         print(json.dumps(body, indent=2, sort_keys=True))
         sys.exit(0)
     if a.proposals_cmd == "apply":

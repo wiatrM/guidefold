@@ -140,8 +140,13 @@ CREATE TABLE IF NOT EXISTS gfm.scopes (
  parent text,
  paths text[] NOT NULL DEFAULT '{}',
  source text NOT NULL DEFAULT 'guidefold_yaml'
-  CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','unknown')),
+  CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown')),
  import_id uuid,
+ -- ADR-0051: who approved the scope_map proposal this row came from and which
+ -- one it was. Null for every row a file or an inference wrote. The two
+ -- together stop 'llm_approved' from being an anonymous label.
+ reviewed_by uuid,
+ proposal_id uuid,
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(org_id,repo_id,scope),
  FOREIGN KEY(org_id,repo_id) REFERENCES gfm.repos(org_id,repo_id) ON DELETE CASCADE
@@ -214,8 +219,14 @@ CREATE INDEX IF NOT EXISTS owner_queue_state ON gfm.owner_queue(org_id,state,sin
 -- for a fresh database; an existing one keeps the constraint CREATE TABLE IF
 -- NOT EXISTS skipped, so it is replaced here by name (same pattern as
 -- auth_states_kind_check). Widening a CHECK never rejects a stored row.
+ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS reviewed_by uuid;
+ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS proposal_id uuid;
+-- ADR-0051 (contract 1.15.0) adds 'llm_approved' to the *same* constraint. Two
+-- CHECKs on one column both have to pass, so a second one naming a different set
+-- would reject every value the first allows: the list is extended here, never
+-- duplicated.
 ALTER TABLE gfm.scopes DROP CONSTRAINT IF EXISTS scopes_source_check;
 ALTER TABLE gfm.scopes ADD CONSTRAINT scopes_source_check
- CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','unknown'));
+ CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown'));
 INSERT INTO gf.schema_version VALUES (10) ON CONFLICT DO NOTHING;
 `

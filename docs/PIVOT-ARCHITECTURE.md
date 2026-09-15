@@ -32,9 +32,9 @@ To docelowe granice odpowiedzialności w jednej bazie kodu Go. Dzisiaj duża cz�
 | Moduł | Własne dane i operacje | Użytkowe zastosowania |
 |---|---|---|
 | Identity | Sesje, membership, org, instalacje/tokeny, autoryzowany kontekst org/repo | Login, organizacje, integracje |
-| Import | Repo, manifest, source_revision, import_run, upload, plan joba | Skan, sync, zmiany źródeł |
+| Import | Repo, manifest, source_revision, import_run, upload, plan joba; zapis `gfm.scopes`, także przy zatwierdzonej mapie organizacji (ADR-0051, port `ApplyScopeMap`) | Skan, sync, zmiany źródeł |
 | Knowledge | Skille, rewizje, scope, relacje, propozycje, provenance | Katalog, piramida, konsolidacja, strona modułu |
-| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu | Review UI, CI, drift, rollback |
+| Review/Publication | Decyzje, digests, eksport, walidacja pakietu/grafu, aktywacja snapshotu; job `scope_map.propose` i propozycja mapy organizacji (ADR-0051) — proponuje, nigdy nie pisze `gfm.scopes` sam | Review UI, CI, drift, rollback |
 | Retrieval/Delivery | SEARCH/USE, policy, budżet, odczyt opublikowanej rewizji i zasobów | Agent, onboarding, ponowne użycie |
 | Telemetry/Reporting | Ledger, dedupe, agregaty, health i raporty | Feedback, usage, ocena migracji |
 
@@ -64,6 +64,8 @@ Job: schema_version, org_id, repo_id, import_id, etap, input_manifest_digest, re
 Worker sprawdza aktualne uprawnienie operacji i tożsamość org, odnawia lease, zapisuje checkpointy. Wynik starej generacji nie może nadpisać nowszego. Cache generowania i deduplikacja obejmują org i wersje wejść. Zmiana źródła unieważnia propozycję opartą na starej treści.
 
 Publikacja jest transakcją aktywującą tylko zwalidowany snapshot przypisany do zatwierdzonego digestu. Ready importu nie oznacza published. Niepewne opłaty za timeout LLM są rejestrowane; koszt całego przebiegu łączy import_id.
+
+Job `scope_map.propose` (ADR-0051, kontrakt §8) jest kolejkowany przez workera `import.parse` po udanym imporcie, przez port `ImportFollowUp` zadeklarowany przez moduł Import i zaimplementowany przez Review — moduł importu ogłasza moment, a nie zna rodzaju joba, który z niego wynika. Job widzi wyłącznie strukturę (katalogi ze skillami, istniejące węzły, CODEOWNERS, `guidefold.yaml`, początki README/AGENTS), nigdy kodu ani treści `SKILL.md`, i zapisuje wyłącznie propozycję. Wiersze `gfm.scopes` powstają dopiero z decyzji ownera organizacji, przez port `ApplyScopeMap` modułu Import.
 
 ## Najpierw trzy techniczne bramki
 
