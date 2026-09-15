@@ -254,7 +254,9 @@ def test_a_tree_with_guidefold_yaml_still_reports_that_source(committed_tree, cl
 # `build_tree_failed: FileNotFoundError: .../guidefold.yaml` and the nameable reason was dead
 # code. The owner reads that string out of `gfm.repos.import_blocked_reason`; a Python
 # traceback is not a reason. Exercised through the real entry point, not through `build()`.
-def test_the_cli_entry_point_names_the_missing_map_instead_of_raising_filenotfound(tmp_path):
+# ADR-0050: a missing `guidefold.yaml` is no longer a reason at all — the map is inferred —
+# so the only thing an empty tree can be blamed for is having no skills.
+def test_the_cli_entry_point_names_the_empty_tree_instead_of_raising_filenotfound(tmp_path):
     tree = tmp_path / "empty"
     tree.mkdir()
     r = subprocess.run(
@@ -263,7 +265,8 @@ def test_the_cli_entry_point_names_the_missing_map_instead_of_raising_filenotfou
          "--output", str(tmp_path / "snapshot.json")],
         cwd=str(ROOT), capture_output=True, text=True)
     assert r.returncode != 0
-    assert "import_tree_has_no_guidefold_yaml" in r.stderr
+    assert "import_tree_has_no_skills" in r.stderr
+    assert "import_tree_has_no_guidefold_yaml" not in r.stderr
     assert "FileNotFoundError" not in r.stderr
 
 
