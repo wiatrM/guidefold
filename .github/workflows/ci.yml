@@ -49,14 +49,33 @@ jobs:
           CLI="$PWD/skills/guidefold/scripts/guidefold"
           mkdir -p /tmp/consumer && cd /tmp/consumer
           python3 "$CLI" init
-          test -f guidefold.yaml
-          # Simulate an attempt that died after guidefold.yaml landed: a missing bootstrap file
-          # and a hook entry from an older template that no longer matches the shipped one.
+          # ADR-0050: `init` bootstraps without writing a scope map — the map is inferred from
+          # the repository's own skill directories and CODEOWNERS. The bootstrap package is what
+          # must land, and `doctor` must be happy about the absence rather than fail on it.
+          test -f .agents/skills/guidefold/scripts/guidefold
+          test ! -f guidefold.yaml
+          python3 "$CLI" doctor --json > doctor.json
+          python3 -c 'import json,sys; c={x["name"]:x for x in json.load(open("doctor.json"))["checks"]}; sys.exit(0 if c["guidefold-yaml"]["status"]=="ok" else "doctor failed on a missing guidefold.yaml: "+json.dumps(c["guidefold-yaml"]))'
+          # Simulate an attempt that died after the bootstrap package landed: a missing bootstrap
+          # file and a hook entry from an older template that no longer matches the shipped one.
           rm .agents/skills/guidefold/SKILL.md
           python3 -c 'import json,pathlib; p=pathlib.Path(".claude/settings.json"); s=json.loads(p.read_text()); s["hooks"]["SessionStart"].append({"hooks":[{"type":"command","command":".agents/skills/guidefold/scripts/guidefold hook","timeout":5}]}); p.write_text(json.dumps(s,indent=2))'
           python3 "$CLI" init
           test -f .agents/skills/guidefold/SKILL.md
           python3 -c 'import json,pathlib,sys; s=json.loads(pathlib.Path(".claude/settings.json").read_text()); m=".agents/skills/guidefold/scripts/guidefold"; [sys.exit(f"{e}: expected one guidefold entry, found {n}") for e,n in ((e,sum(1 for x in b if m in json.dumps(x))) for e,b in s["hooks"].items()) if n != 1]'
+
+      - name: init --scope-map writes an override once and never rewrites it
+        run: |
+          set -euo pipefail
+          CLI="$PWD/skills/guidefold/scripts/guidefold"
+          mkdir -p /tmp/override && cd /tmp/override
+          python3 "$CLI" init --scope-map
+          test -f guidefold.yaml
+          grep -q '^publisher: override$' guidefold.yaml
+          printf '\n# edited by the consumer\n' >> guidefold.yaml
+          before=$(sha256sum guidefold.yaml)
+          python3 "$CLI" init --scope-map
+          test "$before" = "$(sha256sum guidefold.yaml)"
 
       - name: init exits non-zero on a hook file it cannot reconcile
         run: |
