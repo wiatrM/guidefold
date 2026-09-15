@@ -8456,6 +8456,45 @@ def _wait_for_import(svc: dict, import_id: str, timeout_s=900.0, verbose: bool =
         _sleep(IMPORT_POLL_INTERVAL_S)
 
 
+JOB_TERMINAL_STATES = ("done", "failed", "skipped", "cancelled")
+
+
+def _wait_for_jobs(svc: dict, import_id: str, job_ids, timeout_s=900.0, verbose: bool = True):
+    """Poll the import until every job in `job_ids` is terminal, and return that view.
+
+    The import is already `ready` when `proposals:generate` enqueues these jobs, so waiting on
+    the import state alone returns at once and the run reports the proposals, abstentions and
+    cost of a generation that has not happened yet (D13, pilot rehearsal v2 2026-09-15).
+    `ImportDetail.jobs[]` carries each job's state, so the wait needs no new route."""
+    import time
+    wanted = {str(j) for j in (job_ids or []) if j}
+    view = _import_view(svc, import_id)
+    if not wanted:
+        return view
+    deadline = time.monotonic() + timeout_s
+    announced = False
+    while True:
+        # A job the view does not name is not waited for: the server writes the row in the
+        # same transaction that answers `proposals:generate`, so an id missing from the view
+        # is an older or a mocked server, and spinning until the deadline would be worse than
+        # reporting what the run can actually see.
+        pending = sorted(str(j.get("job_id")) for j in (view.get("jobs") or [])
+                         if isinstance(j, dict) and str(j.get("job_id")) in wanted
+                         and j.get("state") not in JOB_TERMINAL_STATES)
+        if not pending:
+            return view
+        if verbose and not announced:
+            print(f"  waiting for {len(pending)} generation job(s)…")
+            announced = True
+        if time.monotonic() >= deadline:
+            if verbose:
+                print(f"  ({len(pending)} generation job(s) still running — re-check with "
+                      f"`guidefold status {import_id}`)")
+            return view
+        _sleep(IMPORT_POLL_INTERVAL_S)
+        view = _import_view(svc, import_id)
+
+
 def _run_import(a, verb: str, prepared=None, finish: bool = True):
     """Import one tree. `prepared` is a (manifest, blob_paths) pair from a scan the caller
     already did -- `extract` needs the manifest before the network so `--dry-run` can print it
@@ -8917,7 +8956,11 @@ def cmd_extract(a):
     view, proposals = import_view, []
     if getattr(a, "wait", False):
         try:
-            view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
+            # Not `_wait_for_import`: the import is already terminal here, so waiting on its
+            # state returns immediately and everything below would be read before a single
+            # generation job had run (D13).
+            view = _wait_for_jobs(svc, import_id, started.get("job_ids"),
+                                  verbose=not getattr(a, "json", False))
             _s, listed, _h = _service_request(
                 svc["api"], "GET", f"{_repo_base(svc)}/proposals", token=svc["token"])
             listed = listed if isinstance(listed, dict) else {}
