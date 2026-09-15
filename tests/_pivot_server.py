@@ -47,6 +47,14 @@ class ManagementAPI:
         # the scope error a CI token with too few scopes gets instead.
         self.plan = {"profile": "one_shot", "groups": [], "limits": {}, "groups_skipped": {},
                      "estimated_usd_max": 0.0, "estimated_calls": 0}
+        # An import's documents exist only once `import.parse` has run, so a plan asked for
+        # before that finds no extraction group at all (D7, pilot rehearsal 2026-09-15).
+        # `parse_polls_required` is how many status reads the parse takes, and
+        # `plan_before_parse`, when set, is what the plan and the generate answer with until
+        # then.
+        self.parse_polls_required = 0
+        self.plan_before_parse = None
+        self.import_polls = 0
         self.generate_job_ids = ["job_1"]
         self.generate_error = None
         self.extract_jobs = []
@@ -118,16 +126,22 @@ class ManagementAPI:
 
         m = re.fullmatch(r"/api/v1/orgs/([^/]+)/repos/([^/]+)/imports/([^/]+)/plan", raw_path)
         if m and method == "GET":
-            return 200, dict(self.plan, import_id=m.group(3))
+            return 200, dict(self._plan_now(m.group(3)), import_id=m.group(3))
 
         m = re.fullmatch(
             r"/api/v1/orgs/([^/]+)/repos/([^/]+)/imports/([^/]+)/proposals:generate", raw_path)
         if m and method == "POST":
             if self.generate_error is not None:
                 return self.generate_error
-            return 200, {"job_ids": list(self.generate_job_ids),
+            plan = self._plan_now(m.group(3))
+            kinds = (payload or {}).get("kinds") or []
+            groups = [g for g in plan.get("groups") or []
+                      if not kinds or str(g.get("group_id", "")).split(":")[0] in kinds]
+            job_ids = [f"job_{k}" for k in sorted({str(g.get("group_id", "")).split(":")[0]
+                                                   for g in groups})] or list(self.generate_job_ids)
+            return 200, {"job_ids": job_ids,
                          "profile": (payload or {}).get("profile"),
-                         "plan": dict(self.plan, import_id=m.group(3))}
+                         "plan": dict(plan, groups=groups, import_id=m.group(3))}
 
         m = re.fullmatch(r"/api/v1/orgs/([^/]+)/repos/([^/]+)/imports/([^/]+)", raw_path)
         if m and method == "GET":
@@ -208,16 +222,31 @@ class ManagementAPI:
                      "new_blobs": new,
                      "reused_blobs": max(0, len(record["wanted"]) - new)}
 
+    def _parsed(self, import_id) -> bool:
+        record = self.imports.get(import_id)
+        if record is None or record["state"] != "queued":
+            return False
+        return self.import_polls >= self.parse_polls_required
+
+    def _plan_now(self, import_id):
+        if self.plan_before_parse is not None and not self._parsed(import_id):
+            return self.plan_before_parse
+        return self.plan
+
     def _import_view(self, import_id):
         record = self.imports.get(import_id)
         if record is None:
             return 404, self._error("not_found", "unknown import")
+        self.import_polls += 1
         manifest = record["manifest"]
-        view = {"import_id": import_id, "state": "ready" if record["state"] == "queued" else record["state"],
+        parsing = record["state"] == "queued" and self.import_polls < self.parse_polls_required
+        view = {"import_id": import_id,
+                "state": "running" if parsing else
+                         ("ready" if record["state"] == "queued" else record["state"]),
                 "manifest_digest": record["manifest_digest"], "commit": record["commit"],
                 "complete": record["complete"],
                 "files": [{"path": f["path"], "state": "accepted"} for f in manifest.get("files", [])],
-                "jobs": [{"kind": "import.parse", "state": "done"},
+                "jobs": [{"kind": "import.parse", "state": "running" if parsing else "done"},
                          {"kind": "publish.build", "state": "done"}] + self.extract_jobs,
                 "publication": {"state": "published", "snapshot_id": "snap_1"}}
         view.update(self.import_view_extra)

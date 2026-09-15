@@ -86,6 +86,21 @@ Jedyna pozostała porażka to `ACT-01` (`tests/acceptance/test_act01_end_to_end.
 
 **D12 — CLI mapuje każdą nieudaną odpowiedź `/v1/use` na „(auth)".** 403, 409 `revision_mismatch` i 503 `snapshot_policy_mismatch` są pokazane użytkownikowi tym samym słowem. To właśnie sprawiło, że D5 wyglądał na problem z logowaniem. Naprawa jest mała, ale dotyka komunikatów w pięciu miejscach `cmd_load`; zostawiam ją do osobnej zmiany, żeby nie mieszać jej z naprawą przyczyny.
 
+### Co z tej listy zostało naprawione później (gałąź `fix/cli-rehearsal-defects`, 2026-09-15)
+
+Raport z przebiegu zostaje taki, jaki był; to jest tylko wskaźnik, gdzie szukać naprawy. Każda z
+poniższych ma test czerwony przed zmianą.
+
+| Defekt | Status | Przyczyna, jak się okazało |
+|---|---|---|
+| D7 | naprawiony w CLI | `cmd_extract` planował i generował zaraz po `finalize`, zanim zadanie `import.parse` zbudowało dokumenty tego importu — grupy ekstrakcji powstają wyłącznie z nich. Teraz `extract` czeka na stan terminalny importu i nazywa każdy rodzaj, dla którego plan nie znalazł ani jednej grupy (`kinds_without_groups`) |
+| D8 | naprawiony, ale nie tam, gdzie wyglądał | `find` zapisuje `card_injected` na **obu** backendach. Różnicą jest automatyczny upload (ADR-0048): na ścieżce `backend: service` istnieje token i endpoint, więc tło opróżnia spool przed asercją. Prawdziwym defektem było to, że flush nadpisywał plik migawką sprzed wysyłki i **kasował** zdarzenia dopisane w międzyczasie — ani w spoolu, ani w ledgerze. Asercja ACT-01 sprawdza teraz spool ∪ ledger |
+| D11 | naprawiony | wyścig z automatycznym flushem; odczyt i zapis znoszą znikniecie pliku, pusty spool to jedna linia i kod 0 |
+| D12 | naprawiony | `_use_via_service` zwraca teraz `ServiceFailure` (podklasa `str`) z kodem HTTP i `error`/`message`/`hint` serwera; `cmd_load` drukuje kod, słowa serwera i krok `next:`. Tabela kodów wyjścia w [CONVENTIONS §1a](../../CONVENTIONS.md) |
+| §5 pkt 3 (karta `_root`) | naprawiony | karta jest skracana do 80 linii przez konstrukcję (najpierw najbardziej szczegółowy poziom, potem „… and K more"), a `install` uruchamia mapę, `materialize` i `index` w trzech osobnych blokach, więc odmowa karty nie zabiera ze sobą artefaktu indeksu |
+
+D9 i D10 pozostają otwarte — obie wymagają decyzji produktowej albo zmiany kontraktu.
+
 ## 5. Obejścia konfiguracyjne, które okazały się konieczne (to nie są defekty, tylko wymagania)
 
 1. **`guidefold.yaml` musi istnieć w drzewie importu.** `scan` działa bez niego (`GUIDEFOLD_ROOT` wystarcza, 413 plików, 108 sugestii), blokuje dopiero worker. Na produkcji trzeba albo wpisać ten plik do `wiatrM/guidefold`, albo wziąć zmianę zero-config (PR z `feat/zero-config-scope-map`) — ta próba **nie zależy** od tamtej gałęzi.

@@ -978,3 +978,75 @@ def test_cli_still_compiles_clean():
     py_compile.compile(str(Path(__file__).resolve().parent.parent /
                             "skills" / "guidefold" / "scripts" / "guidefold"),
                         doraise=True)
+
+
+# ---- D12 (pilot rehearsal 2026-09-15): every failed /v1/use used to print "(auth)"
+
+def _use_error(status, code, message, hint=None):
+    def responder(path, payload, headers):
+        body = {"error": code, "message": message, "request_id": "req-d12"}
+        if hint:
+            body["hint"] = hint
+        return status, body
+    return responder
+
+
+def _load_failure_message(gf, tmp_path, monkeypatch, responder):
+    monkeypatch.setenv("GUIDEFOLD_TOKEN", "t")
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    root = tmp_path / "repo"
+    root.mkdir(parents=True)
+    with running_service(responder) as (url, _ctrl):
+        cfg = {"search": {"backend": "service", "url": url}}
+        a = type("Args", (), {"urn": "urn:skill:m:n:x@rev-9"})()
+        with pytest.raises(SystemExit) as exc:
+            gf.cmd_load(a, root, cfg)
+    # `sys.exit(<message>)` prints the message and exits 1, which is the documented exit code
+    # for a failed `load` (docs/CONVENTIONS.md §14).
+    status = 1 if isinstance(exc.value.code, str) else exc.value.code
+    return status, str(exc.value)
+
+
+def test_cmd_load_names_a_403_as_a_repository_permission_not_as_auth(gf, tmp_path, monkeypatch):
+    """403 is "this token may not read this org/repo", which is what made D5 look like a
+    sign-in problem for a whole rehearsal (report §4 D12)."""
+    code, message = _load_failure_message(gf, tmp_path, monkeypatch, _use_error(
+        403, "forbidden", "This token may not read repository `guidefold`.",
+        hint="Check the organisation and repository this checkout is configured for."))
+    assert code == 1
+    assert "403" in message and "forbidden" in message
+    assert "This token may not read repository `guidefold`." in message
+    assert "Check the organisation and repository" in message
+    assert "guidefold doctor" in message
+
+
+def test_cmd_load_names_a_409_revision_mismatch_and_says_which_revision_to_use(
+        gf, tmp_path, monkeypatch):
+    code, message = _load_failure_message(gf, tmp_path, monkeypatch, _use_error(
+        409, "revision_mismatch", "revision rev-9 is not delivered by the active snapshot"))
+    assert code == 1
+    assert "409" in message and "revision_mismatch" in message
+    assert "revision rev-9 is not delivered by the active snapshot" in message
+    assert "guidefold find" in message
+    assert "card_revision" in message
+
+
+def test_cmd_load_names_a_503_snapshot_policy_mismatch_as_a_republish(gf, tmp_path, monkeypatch):
+    code, message = _load_failure_message(gf, tmp_path, monkeypatch, _use_error(
+        503, "snapshot_policy_mismatch", "the snapshot was built by another CLI"))
+    assert code == 1
+    assert "503" in message and "snapshot_policy_mismatch" in message
+    assert "re-import" in message or "publish" in message
+
+
+def test_the_three_failures_do_not_print_the_same_word(gf, tmp_path, monkeypatch):
+    messages = set()
+    for i, (status, code, text) in enumerate((
+            (403, "forbidden", "no access"),
+            (409, "revision_mismatch", "wrong revision"),
+            (503, "snapshot_policy_mismatch", "stale snapshot"))):
+        _c, message = _load_failure_message(gf, tmp_path / f"case{i}", monkeypatch,
+                                            _use_error(status, code, text))
+        messages.add(message)
+    assert len(messages) == 3, messages
+    assert not any(m.startswith("guidefold: service USE failed (auth)") for m in messages)
