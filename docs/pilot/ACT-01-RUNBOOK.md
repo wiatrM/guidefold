@@ -1,6 +1,6 @@
 # ACT-01 — runbook produkcyjny Pilot Core dla właściciela
 
-Status: instrukcja wykonawcza. Data: 2026-09-15 (zaktualizowana po drugiej próbie). Napisana na podstawie dwóch lokalnych prób generalnych ([pierwsza](../reports/pilot/2026-09-15-pilot-core-rehearsal.md), [druga, na scalonym `main` @ `6d8e521`](../reports/pilot/2026-09-15-pilot-core-rehearsal-v2.md)) — wszystko, co ten runbook obiecuje, jest dowodem **R**; dowodem **P** stanie się dopiero przebieg na produkcji, wykonany ręką właściciela i zapisany według §10. Każda liczba poniżej, która zmieniła się między próbami, została zmierzona ponownie w drugiej.
+Status: instrukcja wykonawcza. Data: 2026-09-15 (zaktualizowana po drugiej próbie). Napisana na podstawie dwóch lokalnych prób generalnych ([pierwsza](../reports/pilot/2026-09-15-pilot-core-rehearsal.md), [druga, na scalonym `main` @ `6d8e521`](../reports/pilot/2026-09-15-pilot-core-rehearsal-v2.md)) — wszystko, co ten runbook obiecuje, jest dowodem **R**; dowodem **P** stanie się dopiero przebieg na produkcji, wykonany ręką właściciela i zapisany według §10. Każda liczba poniżej, która zmieniła się między próbami, została zmierzona ponownie w drugiej. **§9 przepisany 2026-09-15** po zamknięciu D16, D19 i przycięcia `--limit` (gałąź `fix/zero-config-delivery`): dwa obejścia tego kroku zniknęły, a każde zdanie, które się przez to zmieniło, zostało zmierzone ponownie na stosie lokalnym, na klonie tego repozytorium bez `guidefold.yaml`. Liczby w obu raportach z prób są **datowanym zapisem** i celowo zostają bez zmian.
 Cel: jedna ścieżka od zalogowania do decyzji właściciela, którą da się wykonać na `guidefold.cloudfloo.io` w jednym posiedzeniu, z zapytaniem dowodowym po każdym kroku, tak aby licznik z [raportu stanu 2026-09-15](../reports/product/2026-09-15-mvp-closure-status.md) §3 (`imports 0, skills 0, publications 0, tokens 0, gf.events 0`) przestał być zerem.
 Wejścia: [PRODUCT-PIVOT](../PRODUCT-PIVOT.md) §13 (definicja Pilot Core), [PIVOT-BACKLOG](../PIVOT-BACKLOG.md) („Dwa poziomy dostarczenia", ACT-01), [API-CONTRACT](../API-CONTRACT.md) §4, [HOWTO-adapter](../HOWTO-adapter.md), [pilot-evidence](../../.agents/skills/pilot-evidence/SKILL.md).
 Zakres zastępowania: brak. Runbook nie zmienia U1–U11, P01–P15 ani ADR; nie nadaje zgody na żadną zmianę produkcji poza wymienionymi tu krokami produktowymi. Każdy dowód zebrany tą drogą jest etykietowany `self-use` zgodnie z decyzją właściciela z 2026-09-12 (PRODUCT-FOCUS), a `self-use` nie jest dowodem popytu ani płatności.
@@ -246,31 +246,36 @@ POST /v1/use                      -> 200
 
 ## 9. Krok 8 — adapter i realna sesja (jeden harness)
 
-To jest krok, który zero-config rozciął, i jedyne miejsce w tym runbooku, gdzie trzeba wykonać coś ręcznie. Druga próba przeszła go dopiero po dwóch obejściach; oba są poniżej i oba są sprawdzone.
+Druga próba przeszła ten krok dopiero po dwóch obejściach. **Oba zniknęły** — poprawki są w gałęzi `fix/zero-config-delivery` i zmierzone ponownie 2026-09-15 na stosie lokalnym, na klonie tego repozytorium **bez `guidefold.yaml`**.
 
 W klonie repozytorium, na maszynie **dewelopera z P4**:
 ```sh
-python3 .agents/skills/guidefold/scripts/guidefold install --harness claude
-python3 .agents/skills/guidefold/scripts/guidefold login       # kod urządzenia; zatwierdź w konsoli
-python3 .agents/skills/guidefold/scripts/guidefold materialize  # OBEJŚCIE 1 — patrz niżej
-python3 .agents/skills/guidefold/scripts/guidefold index        # OBEJŚCIE 1
-```
-
-**Obejście 1 — `install` w repozytorium bez `guidefold.yaml` nie buduje artefaktu indeksu.** Kończy się linią `materialize/index: skipped (no guidefold.yaml yet)`, więc hook nie ma czego wstrzyknąć. Obie komendy uruchomione ręcznie **działają** na mapie wywnioskowanej (w drugiej próbie `index` zapisał 109 kart i 8305 termów). Uruchom je i sprawdź `guidefold doctor` — wiersz `index-freshness` ma powiedzieć „index artifact is at least as new as HEAD".
-
-**Obejście 2 — bez `guidefold.yaml` nie ma bloku `service:`, więc `find`/`load`/hook chodzą po backendzie lokalnym** i nic nie trafia do ledgera. Ustaw w środowisku sesji:
-```sh
 export GUIDEFOLD_API=https://guidefold.cloudfloo.io
-export GUIDEFOLD_SEARCH_BACKEND=service
-export GUIDEFOLD_SEARCH_URL=https://guidefold.cloudfloo.io
-export GUIDEFOLD_ORG=cloudfloo GUIDEFOLD_REPO_ID=<repo_id>
+export GUIDEFOLD_ORG=cloudfloo GUIDEFOLD_REPO_ID=<repo_id z konsoli>
 unset GUIDEFOLD_TOKEN     # żeby poświadczenia z `guidefold login` wysłały X-Guidefold-Org/Repo
+python3 .agents/skills/guidefold/scripts/guidefold login             # kod urządzenia; zatwierdź w konsoli
+python3 .agents/skills/guidefold/scripts/guidefold install --harness claude
 ```
-`GUIDEFOLD_SEARCH_*` to jedyne źródło konfiguracji, którego hook wolno użyć, więc te same zmienne wystarczają hookowi i `find`.
 
-**`--limit 4`, nie domyślne 8.** Kontrakt 1.1 wyraża `budget.max_cards` w zakresie 0..4, więc `find` z `k > 4` **w ogóle nie otwiera gniazda**: degraduje do backendu lokalnego z `fallback_reason: "config"` i drukuje URN-y, których serwis nie zna. Zmierzone w drugiej próbie: z `--limit 8` telemetria zapisała `backend: local_sparse`, z `--limit 4` — odpowiedź serwisu i URN-y `urn:skill:<repo_id>:…`. Hook używa `k = 3`, więc jego ścieżka jest serwisowa bez żadnego flagowania.
+**`install` buduje mapę, karty i indeks także bez `guidefold.yaml`** (D16 zamknięty). Wypisuje przy tym dwie linie, które warto przeczytać:
+```
+  map: no guidefold.yaml — inferred 21 scopes from 17 skill directories
+guidefold index: wrote artifact for sha=<HEAD> to …/index/<HEAD> (cards=108 terms=8304 words=0)
+  hook search: service https://guidefold.cloudfloo.io, source=login, org=cloudfloo, repo=<repo_id>, deadline_ms=300, token=login
+```
+Pierwsza mówi, **którą mapę** zmaterializował i zaindeksował; ostatnia — **do którego serwisu** pójdzie hook i skąd wziął współrzędne (`source=login` znaczy: z poświadczeń, bo pliku nie ma). Żadnej z tych komend nie trzeba już uruchamiać ręcznie. Jeśli `install` wypisze `hook search: local …`, to znaczy, że nie jesteś zalogowany albo masz zapisane więcej niż jedno logowanie — wtedy i tylko wtedy wróć do `guidefold login`.
+
+Kolejne `install` w tym samym klonie **odświeża artefakt indeksu dla aktualnego HEAD**, nawet gdy wypisze „nothing to do — the adapter is already installed and current" (to zdanie dotyczy pakietu adaptera, nie artefaktu). Po `git pull` uruchom je ponownie albo po prostu zacznij nową sesję — `SessionStart` też zbuduje artefakt.
+
+**Bloku `service:` nie ma i nie jest potrzebny.** Współrzędne serwisu (`api`/`org`/`repo`) biorą się z poświadczeń `guidefold login` i ze zmiennych `GUIDEFOLD_API`/`GUIDEFOLD_ORG`/`GUIDEFOLD_REPO_ID` (docs/CONVENTIONS.md §1a/§1b, ADR-0050 §4). `GUIDEFOLD_SEARCH_BACKEND`/`GUIDEFOLD_SEARCH_URL` nadal działają i nadal wygrywają — ale służą już tylko do wskazania **innego** serwisu niż ten, do którego jesteś zalogowany.
+
+**`--limit` jest domyślne.** Kontrakt 1.1 wyraża `budget.max_cards` w zakresie 0..4, więc przy backendzie serwisowym efektywny limit jest **przycinany do 4** — dla żądania zdalnego i dla obliczenia lokalnego naraz — a `find` wypisuje o tym jedną linię na stderr:
+```
+[guidefold] --limit 8 capped to 4: the SEARCH service's budget.max_cards is 0..4 (contract 1.1). Use `--backend local` for a larger local-only answer.
+```
+Nie jest to już błąd konfiguracji i nie degraduje do backendu lokalnego: zmierzone 2026-09-15 na stosie lokalnym, `guidefold find "<zadanie>"` bez żadnych flag zapisało `backend: online_sparse`, `fallback_reason: null` i cztery karty z rewizjami serwisu. `--include-deprecated` i limit ujemny nadal degradują do lokalnego z `fallback_reason: "config"`. Hook prosi o 3 i nigdy nie jest przycinany.
 ```sh
-guidefold find "<zadanie własnymi słowami>" --limit 4
+guidefold find "<zadanie własnymi słowami>"
 guidefold load <urn>@<card_revision>
 ```
 
@@ -279,7 +284,7 @@ Potem **prawdziwa sesja Claude Code** w tym katalogu, z zadaniem, które dewelop
 python3 .agents/skills/guidefold/scripts/guidefold telemetry flush
 ```
 
-**`rejected=1: unknown_event_type` przy `flush` jest oczekiwane, nie awarią.** CLI emituje `telemetry_health.parity_mismatch`, gdy odpowiedź lokalna i serwisowa się różnią, a zamrożony schemat telemetrii tego typu nie zna. Linia `sent=23 accepted=22 duplicate=0 rejected=1` jest poprawnym przebiegiem. Żadne zdarzenie SEARCH/USE nie ginie.
+**`flush` ma kończyć się `rejected=0`** (D19 zamknięty). Sygnał parity — porównanie odpowiedzi lokalnej z serwisową — przestał być zdarzeniem ledgera: jest lokalnym licznikiem w `.guidefold/telemetry/parity.json`, a `guidefold doctor` pokazuje go wierszem `search-parity`. Zamrożony `services/search/telemetry-schema.json` się nie zmienił. Zmierzone 2026-09-15: `guidefold telemetry flush: sent=8 accepted=8 duplicate=0 rejected=0`, przy `search-parity: 1 of 1 service answers differed from the local ranking`. **Rozbieżność parity nie jest awarią** — lokalny BM25F i serwis to dwa różne rankery w dwóch różnych skalach; dlatego `doctor` daje `WARN` z liczbą, nigdy `FAIL`. Każde `rejected > 0` jest teraz sygnałem do zbadania, nie tłem.
 
 **Trzy defekty pierwszej próby są już na `main`** (PR #179, #180), więc nie powinny wystąpić; jeśli wystąpią, produkcja nie ma tych obrazów:
 - `install` kończący się `TypeError: '<' not supported between instances of 'dict' and 'dict'`;
