@@ -1336,7 +1336,7 @@ paths:
   /api/v1/orgs/{org}/repos/{repo}/map/scopes:
     get:
       tags: [knowledge]
-      summary: The scope map from guidefold.yaml, with unmapped skills named.
+      summary: The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named.
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -1971,7 +1971,7 @@ paths:
   /api/v1/orgs/{org}/map/scopes:
     get:
       tags: [knowledge]
-      summary: "The scope map from guidefold.yaml, with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      summary: "The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -2083,7 +2083,7 @@ paths:
       tags: [proposals]
       summary: "Approve or reject a proposal at organisation scope."
       description: >-
-        Contract 1.14.0, ADR-0051. The only mutation in `{org_base}`. A `scope_map` decision
+        Contract 1.15.0, ADR-0051. The only mutation in `{org_base}`. A `scope_map` decision
         requires an **organisation owner**: approving writes gfm.scopes rows in several of the
         organisation's repositories, so authorising it as the reviewer of the one repository the
         proposal row is anchored to would be the wrong permission -- and the `{repo_base}` twin
@@ -3499,8 +3499,12 @@ components:
         import_blocked_reason:
           type: [string, "null"]
           description: >-
-            gfm.repos.import_blocked_reason (1.13.0). Today only "guidefold_yaml_missing",
-            written by github.import_repo when the repository has no guidefold.yaml.
+            gfm.repos.import_blocked_reason (1.13.0). Since 1.14.0 (ADR-0050) the only
+            value github.import_repo writes is "guidefold_yaml_unreadable": a repository
+            that declares a guidefold.yaml this run cannot read (too large). A repository
+            with NO guidefold.yaml is imported under an inferred scope map and is never
+            blocked. "guidefold_yaml_missing" stays decodable — rows written before 1.14.0
+            hold it.
         last_import_state: { type: [string, "null"], description: "Newest gfm.imports.state for this repository (1.13.0)." }
         last_import_error: { type: [string, "null"], description: "Newest gfm.imports.error for this repository (1.13.0)." }
         last_import_at: { type: [string, "null"], format: date-time, description: "Newest import's finalized_at or created_at (1.13.0)." }
@@ -3711,7 +3715,7 @@ components:
     ProposalKind:
       type: string
       description: >-
-        `scope_map` (contract 1.14.0, ADR-0051) is a proposed organisation scope map, produced by
+        `scope_map` (contract 1.15.0, ADR-0051) is a proposed organisation scope map, produced by
         the job `scope_map.propose` rather than by `proposal.generate`. It is not an accepted value
         of the `kinds` array on `GET .../plan` or `POST .../proposals:generate`.
       enum: [extraction, enrichment, consolidation, scope_map]
@@ -3719,7 +3723,7 @@ components:
     ProposalState:
       type: string
       description: >-
-        `applied` (contract 1.14.0) is terminal and belongs to kind `scope_map` alone: approving a
+        `applied` (contract 1.15.0) is terminal and belongs to kind `scope_map` alone: approving a
         scope map writes `gfm.scopes` rows, it does not export a file, so it never reaches
         `approved_for_export`, `awaiting_git` or `published`.
       enum: [draft, approved_for_export, awaiting_git, published, applied, rejected, superseded]
@@ -3903,7 +3907,7 @@ components:
       properties:
         scope_map:
           description: >-
-            Present only for kind `scope_map` (contract 1.14.0). The same typed structure that is
+            Present only for kind `scope_map` (contract 1.15.0). The same typed structure that is
             also the candidate body, plus a diff computed against the organisation's current
             `gfm.scopes` rows at read time.
           oneOf:
@@ -4464,7 +4468,16 @@ components:
         owner: { type: [string, "null"] }
         parent: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }
-        source: { type: string, enum: [guidefold_yaml, directory, codeowners, llm_approved, unknown], description: "`llm_approved` (contract 1.14.0): the owner approved a `scope_map` proposal that placed this node." }
+        source:
+          type: string
+          enum: [guidefold_yaml, inferred, directory, codeowners, llm_approved, unknown]
+          description: >-
+            gfm.scopes.source (contract §7). "guidefold_yaml" is a scope the repository
+            declared; "inferred" is one derived from its skill directories and CODEOWNERS
+            because it has no guidefold.yaml (1.14.0, ADR-0050) — visible as such so an
+            inferred hierarchy never passes for a declared one. "llm_approved" is one an
+            organisation owner approved from a `scope_map` proposal (1.15.0, ADR-0051) — a
+            decision, which is neither a declaration nor a reading of the tree.
         count: { type: integer }
 
     MapScopes:

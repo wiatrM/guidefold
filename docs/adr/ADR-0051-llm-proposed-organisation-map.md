@@ -6,10 +6,10 @@ LLM w guidefold import żeby seedować strukturalnie poprawne dane organizacji".
 **Governs:** the proposal kind `scope_map`, the worker job `scope_map.propose`, the route
 `POST {org_base}/proposals/{proposal_id}/decision`, the `gfm.scopes` source value `llm_approved`,
 and what an import is allowed to show a model ([API-CONTRACT](../API-CONTRACT.md) §4.2, §4.4, §4.10
-point 10, §5.4, §6, §7, §8, contract 1.14.0).
-**Depends on:** [ADR-0050](ADR-0050-optional-guidefold-yaml-and-inferred-scope-map.md) (the
+point 10, §5.4, §6, §7, §8, contract 1.15.0).
+**Depends on:** [ADR-0050](ADR-0050-zero-config-scope-map.md) (the
 deterministic inferred map and the precedence `guidefold.yaml` > approved proposal > inferred —
-this ADR builds the middle term and is written before ADR-0050 lands),
+this ADR builds the middle term on top of it,
 [ADR-0042](ADR-0042-multi-repo-organisation-and-ci-configurator.md) (one organisation, many
 repositories; still Proposed, so its `gfm.repo_links` designation is read here as intent, not as
 existing behaviour), [ADR-0045](ADR-0045-org-provider-credentials-encrypted-at-rest.md) (the model

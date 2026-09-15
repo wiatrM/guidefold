@@ -1,3 +1,7 @@
+# OPTIONAL OVERRIDE (ADR-0050). A repository without this file works: the scope map is
+# inferred from its skill directories and CODEOWNERS, and `guidefold doctor` tells you what
+# it inferred. Write this file when you want to name nodes something other than your folders,
+# pin an owner CODEOWNERS does not state, or configure `registry:` / `search:` / `eval:`.
 publisher: acme              # your organisation's short name; used as the URN prefix
 registry:
   backend: agent-registry     # local | agent-registry

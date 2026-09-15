@@ -53,14 +53,31 @@ def test_doctor_json_is_valid_with_stable_schema(gf, tmp_path, monkeypatch, caps
         assert c["status"] in ("ok", "warn", "fail")
 
 
-def test_doctor_missing_guidefold_yaml_reports_fail_with_fix(gf, tmp_path):
+# ADR-0050: a missing guidefold.yaml is never a failure. `doctor` reports the map it inferred
+# and from how many skill directories, and hints that the file is worth adding only if that map
+# is wrong. This test asserted "fail with a fix that says init" before that decision.
+def test_doctor_missing_guidefold_yaml_reports_the_inferred_map(gf, tmp_path):
     root = tmp_path / "acme"
-    root.mkdir()
+    skill = root / "platforms" / "atlas" / ".agents" / "skills" / "geo-joins"
+    skill.mkdir(parents=True)
+    skill.joinpath("SKILL.md").write_text(
+        "---\nname: geo-joins\ndescription: \"[platforms/atlas] Joining geo datasets.\"\n"
+        "metadata:\n  owner: geo-team\n  status: active\n---\n# Geo joins\n")
+    (root / "CODEOWNERS").write_text("* @acme/platform\nplatforms/atlas/ @acme/atlas-team\n")
+
     checks, cfg = gf._check_guidefold_yaml(root)
-    assert cfg is None
+
+    assert cfg is not None
+    assert cfg["_source"] == "inferred"
+    assert set(cfg["nodes"]) == {"_root", "platforms", "platforms.atlas"}
+    assert cfg["nodes"]["platforms.atlas"]["owner"] == "atlas-team"
+    assert cfg["nodes"]["_root"]["owner"] == "platform"
     assert checks[0]["name"] == "guidefold-yaml"
-    assert checks[0]["status"] == "fail"
-    assert "init" in checks[0]["fix"]
+    assert checks[0]["status"] == "ok"
+    assert "inferred 3 scopes from 1 skill directories" in checks[0]["detail"]
+    assert "CODEOWNERS" in checks[0]["detail"]
+    assert "only if this map is wrong" in checks[0]["fix"]
+    assert not any(c["status"] == "fail" for c in checks)
 
 
 def test_doctor_missing_cli_install_reports_fail(gf, tmp_path):

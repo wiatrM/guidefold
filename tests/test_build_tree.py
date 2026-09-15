@@ -194,12 +194,59 @@ def test_one_unparseable_skill_is_reported_and_the_rest_still_build(committed_tr
     assert rows["errors"][0]["error"]
 
 
-def test_a_tree_without_guidefold_yaml_is_rejected(tmp_path, cli_pair):
+# ADR-0050 (owner decision 2026-09-15): a tree with no guidefold.yaml builds. The scope map is
+# inferred from the skill directories and CODEOWNERS the tree does have, and the envelope says
+# so. The previous version of this test asserted the opposite ("is rejected"); the code was
+# stricter than the PRD, which has always said the file only takes PRECEDENCE (PRODUCT-PIVOT:69).
+def test_a_tree_without_guidefold_yaml_builds_with_an_inferred_scope_map(tmp_path, cli_pair):
     cli, cli_sha = cli_pair
-    (tmp_path / "empty").mkdir()
+    tree = tmp_path / "noconfig"
+    skill = tree / "platforms" / "atlas" / ".agents" / "skills" / "geo-joins"
+    skill.mkdir(parents=True)
+    skill.joinpath("SKILL.md").write_text(
+        "---\nname: geo-joins\ndescription: \"[platforms/atlas] Joining geo datasets.\"\n"
+        "metadata:\n  owner: geo-team\n  status: active\n---\n# Geo joins\n", encoding="utf-8")
+    (tree / ".github").mkdir()
+    (tree / ".github" / "CODEOWNERS").write_text("* @acme/platform\nplatforms/atlas/ @acme/atlas-team\n",
+                                                 encoding="utf-8")
+
+    bundle, cfg = build_tree.build(tree, "meridian", "0" * 40, cli, cli_sha, publisher="acme")
+
+    assert bundle["scope_source"] == "inferred"
+    assert cfg["publisher"] == "acme"          # never the scratch directory's name
+    assert cfg["_source"] == "inferred"
+    nodes = bundle["snapshot"]["nodes"]
+    assert set(nodes) == {"_root", "platforms", "platforms.atlas"}
+    assert nodes["platforms.atlas"]["paths"] == ["platforms/atlas/**"]
+    assert nodes["platforms.atlas"]["owner"] == "atlas-team"       # CODEOWNERS, last rule wins
+    assert nodes["_root"]["owner"] == "platform"
+    card = bundle["snapshot"]["cards"]["urn:skill:acme:platforms.atlas:geo-joins"]
+    assert card["node"] == "platforms.atlas"
+
+
+# A tree with no SKILL.md at all is still a named failure, with or without guidefold.yaml: the
+# publisher rejects a 0-card snapshot (`invalid_snapshot_dimensions`), so failing here names a
+# cause the owner can act on. ADR-0050 makes this the common shape — a repository that was
+# filtered out by "no guidefold.yaml" now reaches the builder.
+@pytest.mark.parametrize("with_config", [False, True])
+def test_a_tree_with_no_skills_fails_with_a_named_reason(tmp_path, cli_pair, with_config):
+    cli, cli_sha = cli_pair
+    tree = tmp_path / ("empty-" + str(with_config))
+    tree.mkdir()
+    if with_config:
+        (tree / "guidefold.yaml").write_text(
+            "publisher: acme\nnodes:\n  _root:\n    paths: ['**']\n    owner: platform\n",
+            encoding="utf-8")
     with pytest.raises(ValueError) as exc:
-        build_tree.build(tmp_path / "empty", "meridian", "0" * 40, cli, cli_sha)
-    assert "guidefold_yaml" in str(exc.value)
+        build_tree.build(tree, "meridian", "0" * 40, cli, cli_sha, publisher="acme")
+    assert "import_tree_has_no_skills" in str(exc.value)
+
+
+def test_a_tree_with_guidefold_yaml_still_reports_that_source(committed_tree, cli_pair):
+    cli, cli_sha = cli_pair
+    bundle, cfg = build_tree.build(committed_tree, "meridian", "0" * 40, cli, cli_sha)
+    assert bundle["scope_source"] == "guidefold_yaml"
+    assert cfg["publisher"] == "meridian"
 
 
 # W3 — the inventory used to enumerate every `.agents/skills/*/SKILL.md` while `Index.build`

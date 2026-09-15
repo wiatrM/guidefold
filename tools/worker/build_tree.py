@@ -2,7 +2,7 @@
 """Build a serving snapshot from a materialised import tree (no git), for the publish worker.
 
 `tools/serve_spike/repository.py::build` is the git path: it resolves a commit, extracts
-`guidefold.yaml` + every `SKILL.md` from the object store and builds the snapshot from those
+`guidefold.yaml` (when the commit has one -- ADR-0050) + every `SKILL.md` from the object store and builds the snapshot from those
 bytes. The hosted pivot needs the same snapshot from a tree the worker materialised out of
 import blobs under `.guidefold/worker/`, where there is no git repository at all. Everything
 else is deliberately identical -- same CLI, hashed and executed from the same bytes
@@ -111,21 +111,32 @@ def inventory(cli, tree: Path, cfg: dict, repo_id: str, commit: str) -> dict:
             "skills": skills, "errors": errors, "generated_skipped": skipped}
 
 
-def _load_config(cli, tree: Path) -> dict:
-    """`guidefold.yaml` as the CLI reads it, with the malformed shapes named.
+def _load_config(cli, tree: Path, publisher=None):
+    """`(cfg, scope_source)` as the CLI reads it, with the malformed shapes named.
 
-    The file is client input. `cli.load_map` assumes a mapping with a `publisher`, so an empty
-    file, a list at the top level or a file with `nodes:` and no `publisher:` reached the worker
-    as `AttributeError: 'NoneType' object has no attribute 'setdefault'` or `KeyError:
-    'publisher'`. `builder.go` puts the last line of that traceback into `gfm.imports.error`,
-    so the owner was shown a Python traceback for a fixable mistake in their own repository.
-    Each shape gets a name instead; the reasons are the strings the UI renders."""
+    ADR-0050: a tree with no `guidefold.yaml` is NOT an error. The CLI's own `infer_map`
+    synthesises the scope map from the tree's skill directories and CODEOWNERS -- the same
+    function every other guidefold command uses, never a second implementation -- and the
+    snapshot records `scope_source: inferred` so the importer can store it. `publisher` is
+    passed in because a materialised worker tree has neither a git remote nor credentials;
+    without it the inferred publisher would be the name of a scratch directory.
+
+    A file that IS there is still client input. `cli.load_map` assumes a mapping with a
+    `publisher`, so an empty file, a list at the top level or a file with `nodes:` and no
+    `publisher:` reached the worker as `AttributeError: 'NoneType' object has no attribute
+    'setdefault'` or `KeyError: 'publisher'`. `builder.go` puts the last line of that traceback
+    into `gfm.imports.error`, so the owner was shown a Python traceback for a fixable mistake in
+    their own repository. Each shape gets a name instead; the reasons are the strings the UI
+    renders."""
+    path = tree / "guidefold.yaml"
+    if not path.is_file():
+        return cli.load_map(tree, publisher), cli.SOURCE_INFERRED
     try:
         import yaml
     except ImportError:                              # pragma: no cover - the image pins PyYAML
         raise ValueError("import_tree_pyyaml_missing")
     try:
-        raw = yaml.safe_load((tree / "guidefold.yaml").read_text(encoding="utf-8"))
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         problem = getattr(exc, "problem", None) or "it is not valid YAML"
         raise ValueError(f"import_tree_guidefold_yaml_unparseable: {problem}") from None
@@ -140,27 +151,43 @@ def _load_config(cli, tree: Path) -> dict:
         raise ValueError("import_tree_nodes_not_a_mapping")
     # Parsed and checked; now let the CLI apply its own defaults, so the config the snapshot is
     # built from is byte-for-byte the one every other guidefold command would have produced.
-    return cli.load_map(tree)
+    return cli.load_map(tree), cli.SOURCE_GUIDEFOLD_YAML
 
 
-def build(tree, repo_id, commit, cli, cli_sha):
+def build(tree, repo_id, commit, cli, cli_sha, publisher=None, config=None):
     """The snapshot envelope `tools/serve_spike/repository.build` produces, from a plain
-    directory instead of a git commit."""
+    directory instead of a git commit.
+
+    `scope_source` rides on the ENVELOPE, next to `sha256`, not inside `snapshot`: the snapshot
+    is the ranking input and its digest must stay byte-identical to the one the git path
+    produces for the same tree (`tests/test_build_tree.py`), while provenance of the scope map
+    is something only the importer reads."""
     tree = Path(tree).resolve()
-    if not (tree / "guidefold.yaml").is_file():
-        raise ValueError("import_tree_has_no_guidefold_yaml")
-    cfg = _load_config(cli, tree)
+    cfg, scope_source = config if config else _load_config(cli, tree, publisher)
     index = cli.Index.build(tree, cfg)
+    if not index.cards:
+        # A tree with no SKILL.md at all cannot become a serving snapshot: `store.go`'s publisher
+        # rejects 0 cards as `invalid_snapshot_dimensions`, and `repository.load` as
+        # `empty_repository_snapshot`. Naming it here makes the import fail for the reason an
+        # owner can act on ("this repository has no skills") instead of one about snapshot
+        # dimensions three jobs later. This matters more since ADR-0050: absence of
+        # guidefold.yaml no longer filters these repositories out before the builder runs.
+        raise ValueError("import_tree_has_no_skills")
     data = {"format": FORMAT, "repo_id": repo_id, "revision": commit,
             "cli_sha256": cli_sha, "nodes": index.nodes, "cards": index.cards,
             "weights": {**index.weights, "w_dense": 0},
             "source": SOURCE, "assets_included": False}
-    return {"snapshot": data, "sha256": hashlib.sha256(canonical(data)).hexdigest()}, cfg
+    return {"snapshot": data, "sha256": hashlib.sha256(canonical(data)).hexdigest(),
+            "scope_source": scope_source}, cfg
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tree", type=Path, required=True, help="materialised import tree (holds guidefold.yaml)")
+    parser.add_argument("--tree", type=Path, required=True,
+                        help="materialised import tree (guidefold.yaml optional -- ADR-0050)")
+    parser.add_argument("--publisher", default=None,
+                        help="publisher for a tree with no guidefold.yaml; without it the inferred "
+                             "publisher would be the name of the worker's scratch directory")
     parser.add_argument("--repo-id", required=True)
     parser.add_argument("--commit", required=True, help="the import's commit, or its manifest digest when the scan was dirty")
     parser.add_argument("--cli-path", type=Path, default=ROOT / "skills/guidefold/scripts/guidefold")
@@ -182,17 +209,19 @@ def main():
     # what the previous order produced.
     tree = Path(args.tree).resolve()
     inventory_path = args.inventory or args.output.with_name("inventory.json")
-    rows = inventory(cli, tree, cli.load_map(tree), args.repo_id, args.commit)
+    config = _load_config(cli, tree, args.publisher)
+    rows = inventory(cli, tree, config[0], args.repo_id, args.commit)
     inventory_path.parent.mkdir(parents=True, exist_ok=True)
     inventory_path.write_bytes(canonical(rows) + b"\n")
 
-    bundle, _cfg = build(args.tree, args.repo_id, args.commit, cli, cli_sha)
+    bundle, _cfg = build(args.tree, args.repo_id, args.commit, cli, cli_sha, config=config)
     bundle = with_router_index(cli, bundle)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(canonical(bundle) + b"\n")
 
     print(json.dumps({"repo_id": args.repo_id, "revision": args.commit,
                       "sha256": bundle["sha256"], "source": SOURCE,
+                      "scope_source": bundle["scope_source"],
                       "cards": len(bundle["snapshot"]["cards"]),
                       "skills": len(rows["skills"]), "errors": len(rows["errors"]),
                       "inventory": str(inventory_path)}))

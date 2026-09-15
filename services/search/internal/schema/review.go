@@ -24,9 +24,12 @@ CREATE TABLE IF NOT EXISTS gfm.proposals (
  repo_id text NOT NULL,
  import_id uuid,
  job_id uuid,
- kind text NOT NULL CHECK(kind IN ('extraction','enrichment','consolidation')),
+ kind text NOT NULL CHECK(kind IN ('extraction','enrichment','consolidation','scope_map')),
+ -- 'applied' is terminal and belongs to 'scope_map' alone (ADR-0051). Approving a
+ -- map writes gfm.scopes rows and exports no file. It therefore never reaches the
+ -- three states that describe a candidate on its way to git.
  state text NOT NULL DEFAULT 'draft'
-  CHECK(state IN ('draft','approved_for_export','awaiting_git','published','rejected','superseded')),
+  CHECK(state IN ('draft','approved_for_export','awaiting_git','published','applied','rejected','superseded')),
  scope text,
  owner text,
  target_skill_id text,

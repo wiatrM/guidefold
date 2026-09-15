@@ -349,7 +349,7 @@ export interface AuditPage { items: AuditEntry[]; next_cursor: string | null }
 export const auditPage = object<AuditPage>({ items: listOf(auditEntry), next_cursor: nullable(str) });
 
 // Shared by import (plan groups, proposals:generate) and by proposals review below.
-// `scope_map` (contract 1.14.0, ADR-0051) is the proposed organisation scope map. It is not a
+// `scope_map` (contract 1.15.0, ADR-0051) is the proposed organisation scope map. It is not a
 // value `proposals:generate` accepts -- it comes from its own job kind -- but it is a value the
 // proposal list, the kind filter and the detail route all return.
 export const proposalKinds = ['extraction', 'enrichment', 'consolidation', 'scope_map'] as const;
@@ -752,7 +752,7 @@ export const modulePage = object<ModulePage>({
 // Proposals and review
 // ---------------------------------------------------------------------------
 
-// `applied` (1.14.0) is terminal and belongs to `scope_map` alone: approving a map writes
+// `applied` (1.15.0) is terminal and belongs to `scope_map` alone: approving a map writes
 // gfm.scopes rows, it exports no file, so it never reaches approved_for_export/awaiting_git/published.
 export const proposalStates = ['draft', 'approved_for_export', 'awaiting_git', 'published', 'applied', 'rejected', 'superseded'] as const;
 export type ProposalState = typeof proposalStates[number];
@@ -782,7 +782,7 @@ export const proposalSummary = object<ProposalSummary>({
   path: nullable(str), created_at: nullable(str),
   decision: nullable(proposalDecision),
 });
-/** Contract §5.4 (1.14.0): the body of a `scope_map` proposal, plus a diff against the scopes the
+/** Contract §5.4 (1.15.0): the body of a `scope_map` proposal, plus a diff against the scopes the
  *  organisation has *now* -- the server recomputes it on every read, so what is shown is what
  *  approving would change today. There is no `removed` list: approving never deletes a scope. */
 export interface ScopeMapNode {
@@ -837,7 +837,7 @@ export interface ProposalDetail {
   relations: { type: RelationType; to: string }[];
   decision: { decision: DecisionKind; reason: string | null; at: string | null; actor: string | null } | null;
   expected_revision: string | null; created_at: string | null; cost: JobCost | null;
-  /** Present only for kind `scope_map` (1.14.0); `null` for every other kind. */
+  /** Present only for kind `scope_map` (1.15.0); `null` for every other kind. */
   scope_map: ScopeMap | null;
 }
 /**

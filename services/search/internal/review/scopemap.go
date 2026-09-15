@@ -1,6 +1,6 @@
 package review
 
-// The LLM-proposed organisation scope map (ADR-0051, API-CONTRACT 1.14.0).
+// The LLM-proposed organisation scope map (ADR-0051, API-CONTRACT 1.15.0).
 //
 // One rule shapes every line here: a map is a proposal until an owner accepts
 // it, and accepting it is the only thing that writes `gfm.scopes`. PRODUCT-PIVOT

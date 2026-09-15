@@ -13,7 +13,7 @@ import (
 // KindScopeMap is the proposal kind a scope map carries. It is deliberately not
 // one of the three `Generate` kinds: a scope map is not a skill candidate, so
 // it does not travel through `Request`/`Output`, and `proposals:generate` never
-// accepts it (API-CONTRACT §4.2, 1.14.0).
+// accepts it (API-CONTRACT §4.2, 1.15.0).
 const KindScopeMap = "scope_map"
 
 // ScopeMapRequest is everything a proposer is allowed to see (ADR-0051

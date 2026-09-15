@@ -9,9 +9,10 @@
 //     ever writes what that job kind is responsible for.
 //   - live.repo reads one repository's guidefold.yaml, AGENTS.md and
 //     SKILL.md files through internal/ghapp — a repository with no
-//     guidefold.yaml declares no scope hierarchy for import.parse to build
-//     from, so its target ends skipped with guidefold_yaml_missing before
-//     anything is imported — builds an import from the rest through
+//     guidefold.yaml is imported under a scope map inferred from its skill
+//     directories and CODEOWNERS (ADR-0050); only a declared map this run
+//     cannot read ends the target skipped, with guidefold_yaml_unreadable —
+//     builds an import from the rest through
 //     internal/importer's own in-process seam
 //     (CreateImport/PutBlob/FinalizeImport), waits for import.parse to
 //     refresh the catalog, then enqueues and waits for proposal.generate

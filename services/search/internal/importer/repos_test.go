@@ -80,19 +80,22 @@ func TestListReposCarriesGitHubInstallationAndAccount(t *testing.T) {
 // import_blocked_reason (1.13.0, Task 3) names why the last
 // github.import_repo attempt never reached CreateImport — never rendered as
 // a failed import, because no gfm.imports row exists for it to attach to.
+// Since ADR-0050 the reason the import path writes is
+// guidefold_yaml_unreadable (a declared map too large to read); the older
+// guidefold_yaml_missing stays decodable for rows written before it.
 func TestListReposCarriesImportBlockedReason(t *testing.T) {
 	h := pivottest.New(t)
 	owner := h.SignIn(t, "owner", "owner@example.test")
 	org := owner.CreateOrg(t, "acme")
 	owner.CreateRepo(t, org, "no-yaml", "")
-	if _, e := h.Pool.Exec(context.Background(), `UPDATE gfm.repos SET import_blocked_reason='guidefold_yaml_missing'
+	if _, e := h.Pool.Exec(context.Background(), `UPDATE gfm.repos SET import_blocked_reason='guidefold_yaml_unreadable'
  WHERE org_id=$1::uuid AND repo_id='no-yaml'`, org); e != nil {
 		t.Fatal(e)
 	}
 
 	row := repoByID(t, listRepos(t, owner, org), "no-yaml")
-	if row["import_blocked_reason"] != "guidefold_yaml_missing" {
-		t.Fatalf("import_blocked_reason = %v, want guidefold_yaml_missing", row["import_blocked_reason"])
+	if row["import_blocked_reason"] != "guidefold_yaml_unreadable" {
+		t.Fatalf("import_blocked_reason = %v, want guidefold_yaml_unreadable", row["import_blocked_reason"])
 	}
 	if row["last_import_state"] != nil {
 		t.Fatalf("last_import_state = %v, want null (no gfm.imports row exists)", row["last_import_state"])
