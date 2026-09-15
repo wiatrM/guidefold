@@ -147,13 +147,20 @@ This supplements the flat SKILLRET DEV gate; it does not evaluate retrieval qual
 An adapter must send `budget.max_cards` when its local selection cap differs from the API
 default of four. `profile: hook` alone does not change that cap. PR #67 fixes the CLI
 adapter: representable k values are sent explicitly; k above four and deprecated-skill
-requests fall back locally. The
+requests fall back locally. **Amended 2026-09-15 (rehearsal v2 §1) for k above four only:** the
+CLI adapter now caps the effective limit to four for the whole call — the remote request *and*
+the local computation, so both target one budget and the parity counter still compares like with
+like — and prints one line naming the requested limit, the cap and the contract field. The cap is
+reported, never applied behind the caller's back, and a limit above it is not a config failure;
+the falling-back rule is unchanged for `include_deprecated` and for a negative k, neither of which
+has a capped form that still answers what was asked. The
 [measured reproduction](reports/bakeoff/MERIDIAN-GRAPH-PARITY-2026-09-05.md) and
 [structured gate](reports/bakeoff/PARITY-STRUCTURED-CORPUS-2026-09-05.md) distinguish the
 former integration defect from scorer parity. Limits above four and `include_deprecated` have no
 matching request semantics in contract 1.1: preserve the requested local behavior via explicit
-fallback, or introduce a negotiated contract version before remote execution. Do not silently
-clamp k or suppress the parity counter.
+fallback, cap the limit for both sides of the call and say so in the same breath as the answer,
+or introduce a negotiated contract version before remote execution. Do not clamp k silently or
+suppress the parity counter.
 
 The additional [graph lifecycle E2E](../tools/search_service/graph_lifecycle.py) exercises
 Postgres metadata persistence, adversarial traversal, dependency delivery, repository/tenant

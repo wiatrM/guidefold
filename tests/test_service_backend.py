@@ -472,13 +472,17 @@ def test_budget_max_cards_is_sent_for_every_representable_k(gf, monkeypatch, tmp
     assert ctrl.requests[0]["payload"]["budget"] == {"max_cards": k}
 
 
-@pytest.mark.parametrize("k", [5, 8, -1])
+@pytest.mark.parametrize("k", [-1])
 def test_unrepresentable_k_never_races_the_service_backend(gf, monkeypatch, tmp_path, k):
-    """Contract v1.1's `budget.max_cards` tops out at 4 (and bottoms out at 0): find's default
-    k=8 (and any k outside 0..4) cannot be expressed on the wire at all. Clamping it and comparing
-    against a different local limit would still misreport a budget difference as a ranking parity
-    mismatch (the service worktree's report is explicit that this must not happen) -- so, exactly
-    like include_deprecated, never open the socket and fall back to local with a visible reason."""
+    """Contract v1.1's `budget.max_cards` is 0..4. A NEGATIVE k has no capped form that still
+    answers what was asked, so it behaves exactly like include_deprecated: never open the socket,
+    fall back to local with a visible reason.
+
+    k ABOVE the cap used to be in this list too, which made `find`'s own default (`--limit 8`)
+    never reach the service at all (rehearsal v2 §1). It is now capped for the remote AND for the
+    local computation, so the two still target one budget and the parity counter keeps comparing
+    like with like -- the concern that put it here -- and `find` prints the cap rather than
+    applying it silently. See test_limit_above_the_contract_cap_is_clamped_and_still_reaches_the_service."""
     def _forbidden(*a, **kw):
         raise AssertionError(f"k={k} must never race the service backend")
     monkeypatch.setattr(socket, "socket", _forbidden)
@@ -1140,3 +1144,98 @@ def test_env_wins_over_both_the_file_and_the_stored_login(gf, monkeypatch, tmp_p
     assert resolved["backend"] == "service"
     assert resolved["url"] == "https://env.example"
     assert resolved["config_source"] == "env"
+
+
+# ------------------------------------------- contract cap: `--limit` above 4 (rehearsal v2 §1)
+# `find`'s default `--limit 8` is above contract 1.1's `budget.max_cards` domain of 0..4, so the
+# client never opened the socket: it degraded to local with `fallback_reason: "config"` and
+# printed URNs the service does not know, and step 8 of ACT-01 could not be closed without
+# `--limit 4`. A limit the wire cannot carry is not a misconfiguration — the answerable request
+# is the capped one, and the cap is said out loud rather than applied behind the caller's back.
+
+def test_limit_above_the_contract_cap_is_clamped_and_still_reaches_the_service(
+        gf, monkeypatch, tmp_path):
+    remote_cards = [_card(f"urn:skill:m:n:remote-{i}") for i in range(4)]
+    seen_k = []
+
+    def _local(router, query, node, k, include_deprecated):
+        seen_k.append(k)
+        return remote_cards[:k], remote_cards[:k]
+
+    monkeypatch.setattr(gf, "_local_selected", _local)
+    with running_service(_search_ok(remote_cards)) as (url, ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        result = gf.search_with_backend(tmp_path, object(), "how do we release", "_root",
+                                         profile="interactive", k=8, search_id="sid-clamp",
+                                         search_cfg=search_cfg)
+    assert result["backend"] == "online_sparse", "k>4 must no longer fall back to local"
+    assert result["degradation_reason"] is None, "a clamped limit is not a config failure"
+    assert result["limit_clamped"] == 8, "the notice needs the limit that was asked for"
+    assert result["limit"] == gf.CONTRACT_MAX_CARDS
+    assert ctrl.requests[0]["payload"]["budget"]["max_cards"] == gf.CONTRACT_MAX_CARDS
+    assert seen_k == [gf.CONTRACT_MAX_CARDS], "local must target the same budget as the remote"
+
+
+def test_a_limit_within_the_cap_is_not_clamped_and_reports_nothing(gf, monkeypatch, tmp_path):
+    cards = [_card("urn:skill:m:n:a")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (cards, cards))
+    with running_service(_search_ok(cards)) as (url, _ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        result = gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive",
+                                         k=3, search_id="sid-fits", search_cfg=search_cfg)
+    assert result["limit_clamped"] is None
+    assert result["limit"] == 3
+
+
+def test_the_local_backend_keeps_the_full_limit(gf, monkeypatch, tmp_path):
+    """The cap is a property of the wire format, not of the product: nothing is clamped when no
+    service is involved."""
+    seen_k = []
+    monkeypatch.setattr(gf, "_local_selected",
+                        lambda r, q, n, k, d: (seen_k.append(k), ([], []))[1])
+    result = gf.search_with_backend(
+        tmp_path, object(), "q", "_root", profile="interactive", k=8, search_id="sid-local",
+        search_cfg={"backend": "local", "url": None, "deadline_ms": 1000, "token": None,
+                    "config_error": False})
+    assert seen_k == [8]
+    assert result["limit_clamped"] is None
+
+
+def test_a_negative_limit_is_still_a_config_failure(gf, monkeypatch, tmp_path):
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: ([], []))
+    result = gf.search_with_backend(
+        tmp_path, object(), "q", "_root", profile="interactive", k=-1, search_id="sid-neg",
+        search_cfg={"backend": "service", "url": "http://127.0.0.1:1", "deadline_ms": 50,
+                    "token": "t", "config_error": False})
+    assert result["degradation_reason"] == "config"
+    assert result["limit_clamped"] is None
+
+
+def test_find_prints_the_cap_on_stderr_and_leaves_stdout_to_the_answer(
+        gf, monkeypatch, tmp_path, capsys):
+    """`find`'s stdout is read top-down by a person or an agent and is parsed by the ACT-01
+    acceptance row, so the notice goes to stderr -- but it IS printed, which is the whole
+    difference between capping and clamping silently."""
+    from types import SimpleNamespace
+    monkeypatch.setattr(gf.Index, "build", staticmethod(lambda root, cfg: object()))
+    monkeypatch.setattr(gf, "Router", lambda idx: object())
+    monkeypatch.setattr(gf, "resolve_search_config",
+                        lambda *a, **kw: {"backend": "service", "url": "https://s.example",
+                                          "deadline_ms": 1000, "token": "t", "config_error": False,
+                                          "config_source": "login", "token_source": "login",
+                                          "org": None, "repo": None})
+    monkeypatch.setattr(gf, "search_with_backend", lambda *a, **kw: {
+        "selected": [], "backend": "online_sparse", "degradation_reason": None,
+        "local_selected": [], "local_scored": [], "remote_body": None, "parity_mismatch": False,
+        "limit": gf.CONTRACT_MAX_CARDS, "limit_clamped": 8})
+    cfg = {"publisher": "acme", "nodes": {"_root": {"paths": ["**"], "owner": "platform"}}}
+    args = SimpleNamespace(task="how do we release", scope="_root", limit=8,
+                           include_deprecated=False, search_backend=None, experimental=False,
+                           telemetry_raw=False)
+    gf.cmd_find(args, tmp_path, cfg)
+    captured = capsys.readouterr()
+    assert "--limit 8 capped to 4" in captured.err
+    assert "budget.max_cards is 0..4" in captured.err
+    assert "capped" not in captured.out

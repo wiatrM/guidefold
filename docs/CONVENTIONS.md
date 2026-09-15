@@ -145,6 +145,15 @@ search:
   no body to its cache. The proof-gated flag is rejected for the local backend so it cannot be
   mistaken for an authorization check that local retrieval does not provide. The default
   `legacy` policy keeps the existing 1.1 request and cache behavior.
+- **`--limit` above the contract cap is capped, not a config failure.** Contract 1.1 expresses
+  `budget.max_cards` as 0..4, so on `backend: service` the effective limit is capped to 4 for the
+  whole call — the remote request and the local computation, so both target one budget — and
+  `find` prints one line on stderr naming the requested limit, the cap and the contract field.
+  stdout stays the answer. `backend: local` keeps whatever `--limit` asked for: the cap belongs to
+  the wire format, not to the product. `--include-deprecated` and a negative limit still fall back
+  to local with `fallback_reason: config`; neither has a capped form that answers what was asked.
+  The hook asks for 3 and is never capped.
+
 #### Exit codes and messages for a failed `load` via `/v1/use`
 
 A failed `load` exits **1** and prints the reason on the first line, the service's own words on

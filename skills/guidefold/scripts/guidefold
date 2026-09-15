@@ -2248,6 +2248,11 @@ class Router:
 # must open ZERO sockets on the (default) `backend: local` path (E1.5-adjacent non-negotiable,
 # test-asserted in tests/test_service_backend.py).
 
+# Contract 1.1 expresses `budget.max_cards` as 0..4 (docs/HARNESS-SERVICE-CONTRACT.md), and both
+# profiles select at most four cards server-side. It is the cap of the WIRE FORMAT, so it binds
+# only a request that goes over the wire: `backend: local` keeps whatever limit was asked for.
+CONTRACT_MAX_CARDS = 4
+
 DEFAULT_SEARCH_DEADLINE_HOOK_MS = 300          # ADR-0023 Sec3 hook budget
 DEFAULT_SEARCH_DEADLINE_INTERACTIVE_MS = 1000  # docs/SEARCH-USE-TELEMETRY.md Sec7 interactive p95 target
 
@@ -2672,7 +2677,24 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
     # replace a local answer that DOES honour the request with one that structurally cannot, with
     # nothing downstream showing the discrepancy. Treat it exactly like any other backend the
     # service cannot satisfy: never open the socket, fall back to local with a visible reason.
-    budget_representable = 0 <= k <= 4
+    #
+    # 2026-09-15, rehearsal v2 §1: "fall back locally for k above four" was the wrong half of
+    # that rule to keep. `find`'s DEFAULT is `--limit 8`, so the common invocation never opened
+    # the socket at all -- it silently answered from a local index whose URNs the service does
+    # not know, wrote `fallback_reason: "config"` for a command nobody had misconfigured, and
+    # left ACT-01 step 8 unclosable without `--limit 4`. A limit above the cap is a request the
+    # wire cannot carry, not a broken configuration: the answerable request is the capped one.
+    # So it is capped -- for the remote AND for the local computation, so both target one budget
+    # and the parity counter still compares like with like -- and `find` prints one line saying
+    # so. That is the difference the contract insists on (HARNESS-SERVICE-CONTRACT: "do not
+    # SILENTLY clamp k"): the caller is told, in the same breath as the answer.
+    #
+    # k < 0 and include_deprecated are untouched: neither has a capped form that still answers
+    # what was asked, so both still fall back locally with a visible reason.
+    limit_clamped = None
+    if search_cfg["backend"] == "service" and k > CONTRACT_MAX_CARDS:
+        limit_clamped, k = k, CONTRACT_MAX_CARDS
+    budget_representable = 0 <= k <= CONTRACT_MAX_CARDS
     if (include_deprecated or not budget_representable) and search_cfg["backend"] == "service":
         degradation_reason = degradation_reason or "config"
     elif search_cfg["backend"] == "service":
@@ -2732,7 +2754,8 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
         # thread is never joined -- a late reply after this is simply ignored (ADR-0023 Sec3).
     return {"selected": final_selected, "backend": backend_used, "degradation_reason": degradation_reason,
             "local_selected": local_selected, "local_scored": local_scored,
-            "remote_body": remote_body, "parity_mismatch": parity_mismatch}
+            "remote_body": remote_body, "parity_mismatch": parity_mismatch,
+            "limit": k, "limit_clamped": limit_clamped}
 
 def cmd_where(a, root, cfg):
     node = node_for(cfg, rel(root, Path.cwd()))
@@ -2772,6 +2795,12 @@ def cmd_find(a, root, cfg):
                                   search_cfg=search_cfg)
     t_select = time.perf_counter()
     selected = result["selected"]
+    if result.get("limit_clamped"):
+        # stderr, never stdout: stdout is the answer a person or an agent reads top-down, and
+        # `find`'s output is parsed. One line, and it names both numbers and why.
+        print(f"[guidefold] --limit {result['limit_clamped']} capped to {result['limit']}: the "
+              f"SEARCH service's budget.max_cards is 0..{CONTRACT_MAX_CARDS} (contract 1.1). "
+              f"Use `--backend local` for a larger local-only answer.", file=sys.stderr)
     # `select()` returns the *injection* order (general -> specific, ADR-0006) so that a hook's
     # ≤ 4 cards read root-most first. `find` is the interactive command a person or an agent reads
     # top-down to pick ONE skill, so it prints the same set in *relevance* order: the card that best
