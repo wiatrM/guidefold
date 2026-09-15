@@ -279,14 +279,18 @@ func urlUnescape(s string) (string, error) { return url.PathUnescape(s) }
 // bytes rather than JSON. It is the same shape the JSON endpoints use, so a
 // client parses one error format on the whole delivery surface.
 func writeDeliveryError(w http.ResponseWriter, e error) {
-	status, code := 503, "backend_unavailable"
+	status, code, hint := 503, "backend_unavailable", ""
 	var api *APIError
 	if errors.As(e, &api) {
-		status, code = api.Status, api.Code
+		status, code, hint = api.Status, api.Code, api.Hint
 	} else if errors.Is(e, context.DeadlineExceeded) || errors.Is(e, context.Canceled) {
 		status, code = 504, "deadline_exceeded"
 	}
-	body, _ := json.Marshal(M{"error": code})
+	envelope := M{"error": code}
+	if hint != "" {
+		envelope["hint"] = hint
+	}
+	body, _ := json.Marshal(envelope)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)

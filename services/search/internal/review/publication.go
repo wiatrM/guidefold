@@ -101,6 +101,71 @@ type snapshotRow struct {
 	Error         *string         `json:"error"`
 	ActivatedAt   *time.Time      `json:"activated_at"`
 	CreatedAt     time.Time       `json:"created_at"`
+	// Partial and FailedFiles are contract 1.17.0. A partial import publishes
+	// (API-CONTRACT §4.4), so the reader has to be told that this snapshot is
+	// the accepted part of an import rather than all of it — a partial library
+	// that does not say so reads as a complete one.
+	Partial bool `json:"partial"`
+	// FailedFiles is read from gfm.import_files at request time rather than
+	// copied into gfm.publications: the import already holds that list with the
+	// builder's own reason on each row, and a second copy could disagree with it.
+	FailedFiles []failedFile `json:"failed_files"`
+}
+
+// failedFile is one path this snapshot's import could not parse.
+type failedFile struct {
+	Path   string  `json:"path"`
+	Reason *string `json:"reason"`
+}
+
+// maxFailedFilesReported bounds one row's annotation. The point is to name the
+// problem, not to serve an import's whole error log through the snapshot list;
+// the import's own detail route has all of them.
+const maxFailedFilesReported = 50
+
+// attachFailedFiles fills FailedFiles for the partial rows of one page, in one
+// query rather than one per row.
+func (s *Service) attachFailedFiles(c *mgmt.Context, orgID string, items []snapshotRow) error {
+	imports := []string{}
+	seen := map[string]bool{}
+	for _, r := range items {
+		if !r.Partial || r.ImportID == nil || seen[*r.ImportID] {
+			continue
+		}
+		seen[*r.ImportID] = true
+		imports = append(imports, *r.ImportID)
+	}
+	if len(imports) == 0 {
+		return nil
+	}
+	rows, e := s.pool.Query(c.Ctx(), `SELECT import_id::text,path,reason FROM gfm.import_files
+ WHERE org_id=$1::uuid AND import_id = ANY($2::uuid[]) AND status='failed'
+ ORDER BY import_id,path`, orgID, imports)
+	if e != nil {
+		return mgmt.Internal(e)
+	}
+	defer rows.Close()
+	byImport := map[string][]failedFile{}
+	for rows.Next() {
+		var importID string
+		var f failedFile
+		if e = rows.Scan(&importID, &f.Path, &f.Reason); e != nil {
+			return mgmt.Internal(e)
+		}
+		if len(byImport[importID]) >= maxFailedFilesReported {
+			continue
+		}
+		byImport[importID] = append(byImport[importID], f)
+	}
+	if e = rows.Err(); e != nil {
+		return mgmt.Internal(e)
+	}
+	for i := range items {
+		if items[i].Partial && items[i].ImportID != nil {
+			items[i].FailedFiles = byImport[*items[i].ImportID]
+		}
+	}
+	return nil
 }
 
 // handleListSnapshots lists this repository's publications, newest first, and
@@ -144,7 +209,7 @@ func (s *Service) snapshots(c *mgmt.Context, rc *repoContext, after time.Time, b
 	limit int) ([]snapshotRow, string, error) {
 	rows, e := s.pool.Query(c.Ctx(), `SELECT p.publication_id::text,p.snapshot_id,p.state,
  p.import_id::text,p.job_id::text,p.commit,p.n_skills,p.builder_sha256,p.validation::text,p.error,
- p.activated_at,p.created_at,
+ p.activated_at,p.created_at,p.partial,
  -- A publication that never produced a snapshot is not the active one; without
  -- COALESCE the comparison is NULL, which is neither true nor false.
  COALESCE(p.snapshot_id IS NOT NULL AND h.snapshot_id=p.snapshot_id, false) AS active
@@ -164,7 +229,7 @@ func (s *Service) snapshots(c *mgmt.Context, rc *repoContext, after time.Time, b
 		var validation *string
 		if e = rows.Scan(&r.PublicationID, &r.SnapshotID, &r.State, &r.ImportID, &r.JobID,
 			&r.Commit, &r.NSkills, &r.BuilderSHA256, &validation, &r.Error, &r.ActivatedAt,
-			&r.CreatedAt, &r.Active); e != nil {
+			&r.CreatedAt, &r.Partial, &r.Active); e != nil {
 			return nil, "", mgmt.Internal(e)
 		}
 		if validation != nil {
@@ -180,6 +245,12 @@ func (s *Service) snapshots(c *mgmt.Context, rc *repoContext, after time.Time, b
 		items = items[:limit]
 		last := items[len(items)-1]
 		next = mgmt.EncodeCursor(last.CreatedAt.UTC().Format(time.RFC3339Nano), last.PublicationID)
+	}
+	for i := range items {
+		items[i].FailedFiles = []failedFile{}
+	}
+	if e := s.attachFailedFiles(c, rc.Org.ID, items); e != nil {
+		return nil, "", e
 	}
 	return items, next, nil
 }
@@ -302,16 +373,21 @@ func (s *Service) handlePublicationJob(c *mgmt.Context) error {
 	var row snapshotRow
 	var validation *string
 	e2 := s.pool.QueryRow(c.Ctx(), `SELECT publication_id::text,snapshot_id,state,import_id::text,
- job_id::text,commit,n_skills,builder_sha256,validation::text,error,activated_at,created_at
+ job_id::text,commit,n_skills,builder_sha256,validation::text,error,activated_at,created_at,partial
  FROM gfm.publications WHERE org_id=$1::uuid AND job_id=$2::uuid`, rc.Org.ID, jobID).
 		Scan(&row.PublicationID, &row.SnapshotID, &row.State, &row.ImportID, &row.JobID,
 			&row.Commit, &row.NSkills, &row.BuilderSHA256, &validation, &row.Error,
-			&row.ActivatedAt, &row.CreatedAt)
+			&row.ActivatedAt, &row.CreatedAt, &row.Partial)
 	if e2 == nil {
 		if validation != nil {
 			row.Validation = json.RawMessage(*validation)
 		}
-		publication = row
+		row.FailedFiles = []failedFile{}
+		one := []snapshotRow{row}
+		if e := s.attachFailedFiles(c, rc.Org.ID, one); e != nil {
+			return e
+		}
+		publication = one[0]
 	} else if !isNoRows(e2) {
 		return mgmt.Internal(e2)
 	}

@@ -306,3 +306,62 @@ func TestGitHubImportAllEnqueuesOnlyGitHubRegisteredRepositories(t *testing.T) {
 		t.Fatalf("import all count = %v, want 1", body["count"])
 	}
 }
+
+// Contract 1.17.0 / ADR-0050: a repository with no guidefold.yaml but with a
+// CODEOWNERS gets its owner from that file. Before the fetch list carried
+// CODEOWNERS the builder never saw it on this path, so every inferred scope
+// came out `owner: unknown` for a repository that states its owners plainly.
+// The assertion is on gfm.scopes.owner, not on the skill's own
+// metadata.owner: the card names its own owner either way, and the scope is
+// the thing CODEOWNERS is evidence about.
+func TestGitHubImportRepoTakesTheScopeOwnerFromCodeowners(t *testing.T) {
+	const skillPath = ".agents/skills/widget/SKILL.md"
+	bodies := map[string]string{
+		skillPath:    sharedProcedureSkill("widget", "platform-engineering"),
+		"CODEOWNERS": "# owners of this repository\n* @acme/platform-guild\n",
+	}
+	f := setUpGitHubImportTarget(t, []string{skillPath, "CODEOWNERS"}, bodies)
+
+	f.requestGitHubImport(t, "import-widgets-codeowners")
+
+	scratch := pivottest.Scratch(t, "github-import-codeowners")
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	drained := make(chan struct{})
+	t.Cleanup(func() { cancelDrain(); <-drained })
+	go func() {
+		defer close(drained)
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			if !f.h.RunParseOnce(drainCtx, t, scratch) {
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+	}()
+
+	w := f.newWorker()
+	if e := runGitHubImportOnce(t, f, w); e != nil {
+		t.Fatal(e)
+	}
+	if state, errText := githubImportJobState(t, f.h, f.org); state != "done" {
+		t.Fatalf("github.import_repo job state = %s (%s), want done", state, errText)
+	}
+
+	var owner string
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT COALESCE(owner,'') FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id=$2 AND scope='_root'`, f.org, f.repoID).Scan(&owner); e != nil {
+		t.Fatal(e)
+	}
+	if owner != "platform-guild" {
+		t.Fatalf("_root scope owner = %q, want platform-guild from CODEOWNERS", owner)
+	}
+	// The file is configuration, not knowledge: it must not turn up in the
+	// Library as a document beside the skills.
+	if n := countRows(t, f.h, `SELECT count(*) FROM gfm.documents
+ WHERE org_id=$1::uuid AND repo_id=$2 AND path='CODEOWNERS'`, f.org, f.repoID); n != 0 {
+		t.Fatalf("CODEOWNERS became %d gfm.documents row(s); it is manifest kind config", n)
+	}
+}

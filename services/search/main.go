@@ -340,7 +340,10 @@ func (s *Store) useResponse(ctx context.Context, tenant, repo string, p M) (M, e
 		return nil, fail(404, "skill_not_found")
 	}
 	if str(p["revision"]) != c.Revisions[id] {
-		return nil, fail(409, "revision_mismatch")
+		// The catalog hands a reader two revision identifiers and only the
+		// card revision is this one (API-CONTRACT §4.5). Naming which to send
+		// costs nothing here and cost the rehearsal an afternoon.
+		return nil, withHint(fail(409, "revision_mismatch"), hintSendCardRevision)
 	}
 	if str(card["status"]) != "active" {
 		return nil, fail(409, "skill_not_active")
@@ -539,6 +542,11 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if errors.As(e, &api) {
 			status = api.Status
 			result = M{"error": api.Code}
+			if api.Hint != "" {
+				// API-CONTRACT §3: `hint` is additive and never replaces the
+				// code a client branches on.
+				result["hint"] = api.Hint
+			}
 		} else if errors.Is(e, context.DeadlineExceeded) || errors.Is(e, context.Canceled) {
 			status = 504
 			result = M{"error": "deadline_exceeded"}

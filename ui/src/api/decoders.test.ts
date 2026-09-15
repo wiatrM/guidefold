@@ -225,6 +225,36 @@ describe('decoders accept the contract payloads', () => {
     expect(rows[2].error).toBe('missing_dependency');
   });
 
+  test('a partial publication carries the annotation and an older server still decodes (1.17.0)', () => {
+    const rows = decode({
+      items: [
+        {
+          ...snapshotRow(), publication_id: 'pub-partial', partial: true,
+          failed_files: [{ path: '.agents/skills/broken/SKILL.md', reason: 'ScannerError: mapping values are not allowed here' }],
+        },
+        // A 1.15.0 server answers without either field. The row is a complete
+        // publication, which is exactly what it was: unknown is not "partial".
+        snapshotRow(),
+      ],
+    }, d.snapshotList);
+    expect(rows[0].partial).toBe(true);
+    expect(rows[0].failed_files.map(file => file.path)).toEqual(['.agents/skills/broken/SKILL.md']);
+    expect(rows[0].failed_files[0].reason).toContain('ScannerError');
+    expect(rows[1].partial).toBe(false);
+    expect(rows[1].failed_files).toEqual([]);
+  });
+
+  test('the owner queue accepts import_file_failed and its file identity (1.17.0)', () => {
+    const item = decode({
+      item_id: 'q9', repo_id: 'monorepo', skill_id: 'file:.agents/skills/broken/SKILL.md',
+      revision: null, reason: 'import_file_failed', since: '2026-09-15T00:00:00Z',
+      evidence: { import_id: 'im9', path: '.agents/skills/broken/SKILL.md', error: 'ScannerError' },
+      decision: null,
+    }, d.queueItem);
+    expect(item.reason).toBe('import_file_failed');
+    expect(item.skill_id).toBe('file:.agents/skills/broken/SKILL.md');
+  });
+
   test('the activate response is the {snapshot} envelope, not a bare Snapshot (§4.4)', () => {
     const activated = decode(
       { schema_version: 'mgmt-1', org_id: 'o1', repo_id: 'monorepo', snapshot: { ...snapshotRow(), active: true } },

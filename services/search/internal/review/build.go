@@ -119,6 +119,7 @@ func (w *PublishWorker) Run(ctx context.Context, t *worker.Task) error {
 	if e != nil {
 		return e
 	}
+	partial := false
 	switch state {
 	case importer.StateCancelled:
 		return worker.Skipped("import_cancelled")
@@ -127,24 +128,14 @@ func (w *PublishWorker) Run(ctx context.Context, t *worker.Task) error {
 	case importer.StateReady:
 	case importer.StatePartial:
 		// A partial import is a *known incomplete* catalog: one or more files
-		// the repository holds could not be parsed. Its skills are visible in
-		// the management catalog immediately, which is what U2.1 promises — but
-		// activating a snapshot that is missing skills would silently change
-		// what every agent in the organisation reads. The publication fails with
-		// the reason, the previous head keeps serving, and an owner fixes the
-		// file and imports again.
-		publicationID, e := w.beginPublication(ctx, t, orgID, repoID, importID, commit)
-		if e != nil {
-			return e
-		}
-		failed, e := w.failedFiles(ctx, orgID, importID)
-		if e != nil {
-			return e
-		}
-		return w.fail(ctx, t, publicationID, "import_partial",
-			Findings{{Code: "import_partial",
-				Message: "the import could not parse every file it carried",
-				Missing: failed}})
+		// the repository holds could not be parsed. U2.1 says one broken file
+		// fails alone and the rest of the import is accepted — refusing the
+		// whole snapshot honoured the first half and broke the second, so a
+		// repository with one malformed card could publish none of the rest
+		// (rehearsal D9). It publishes; the publication is marked `partial`,
+		// the unparsed files are named on it (§5.4), and import.parse has
+		// already put one owner-queue item on each of them.
+		partial = true
 	default:
 		// The parse has not finished. Retrying is right: the two jobs are
 		// queued together and the parser may still be running.
@@ -164,6 +155,19 @@ func (w *PublishWorker) Run(ctx context.Context, t *worker.Task) error {
 		return e
 	}
 	if len(files) == 0 {
+		if partial {
+			// The one case `import_partial` still describes: after the failures
+			// there is nothing left to build a snapshot from. Reporting that as
+			// a successful partial publication would claim an empty library.
+			failed, e := w.failedFiles(ctx, orgID, importID)
+			if e != nil {
+				return e
+			}
+			return w.fail(ctx, t, publicationID, "import_partial",
+				Findings{{Code: "import_partial",
+					Message: "the import could not parse any of the files it carried",
+					Missing: failedPaths(failed)}})
+		}
 		return w.fail(ctx, t, publicationID, "no_publishable_files", nil)
 	}
 	dir := filepath.Join(w.scratch, orgID, importID, "publish")
@@ -235,11 +239,11 @@ func (w *PublishWorker) Run(ctx context.Context, t *worker.Task) error {
 		}
 	}
 	if _, e := tx.Exec(ctx, `UPDATE gfm.publications SET state='active',snapshot_id=$3,
- n_skills=$4,builder_sha256=$5,commit=$6,validation=$7::jsonb,error=NULL,
+ n_skills=$4,builder_sha256=$5,commit=$6,validation=$7::jsonb,error=NULL,partial=$8,
  activated_at=now(),updated_at=now()
  WHERE org_id=$1::uuid AND publication_id=$2::uuid`,
 		orgID, publicationID, result.SnapshotID, result.Cards, snapshot.SHA256, commit,
-		string(mustJSON(map[string]any{"ok": true, "findings": []any{}}))); e != nil {
+		string(mustJSON(map[string]any{"ok": true, "findings": []any{}})), partial); e != nil {
 		return fmt.Errorf("record publication: %w", e)
 	}
 	if _, e := tx.Exec(ctx, `UPDATE gfm.publications SET state='superseded',updated_at=now()
@@ -263,7 +267,7 @@ func (w *PublishWorker) Run(ctx context.Context, t *worker.Task) error {
 		return fmt.Errorf("commit publication: %w", e)
 	}
 	t.Result = mustJSON(map[string]any{"snapshot_id": result.SnapshotID, "cards": result.Cards,
-		"skills_published": published, "exports_published": landed,
+		"skills_published": published, "exports_published": landed, "partial": partial,
 		"builder_sha256": snapshot.SHA256, "publication_id": publicationID})
 	return nil
 }
@@ -333,25 +337,42 @@ func (w *PublishWorker) fail(ctx context.Context, t *worker.Task, publicationID,
 	return worker.Permanent(errors.New(reason))
 }
 
-// failedFiles names the paths a partial import could not parse, so the failed
-// publication says what is missing rather than only that something is.
-func (w *PublishWorker) failedFiles(ctx context.Context, orgID, importID string) ([]string, error) {
-	rows, e := w.pool.Query(ctx, `SELECT path FROM gfm.import_files
+// failedFile is one path a partial import could not parse, with the builder's
+// own reason for it.
+type failedImportFile struct {
+	Path   string
+	Reason string
+}
+
+// failedFiles names the paths a partial import could not parse, so a refusal
+// says what is missing rather than only that something is.
+func (w *PublishWorker) failedFiles(ctx context.Context, orgID, importID string) ([]failedImportFile, error) {
+	rows, e := w.pool.Query(ctx, `SELECT path,COALESCE(reason,'') FROM gfm.import_files
  WHERE org_id=$1::uuid AND import_id=$2::uuid AND status='failed' ORDER BY path LIMIT 50`,
 		orgID, importID)
 	if e != nil {
 		return nil, e
 	}
 	defer rows.Close()
-	out := []string{}
+	out := []failedImportFile{}
 	for rows.Next() {
-		var path string
-		if e = rows.Scan(&path); e != nil {
+		var f failedImportFile
+		if e = rows.Scan(&f.Path, &f.Reason); e != nil {
 			return nil, e
 		}
-		out = append(out, path)
+		out = append(out, f)
 	}
 	return out, rows.Err()
+}
+
+// failedPaths is the Findings shape: a finding's Missing list is paths, and the
+// reason belongs on the publication's own failed_files (§5.4), not doubled here.
+func failedPaths(files []failedImportFile) []string {
+	out := make([]string, 0, len(files))
+	for _, f := range files {
+		out = append(out, f.Path)
+	}
+	return out
 }
 
 func (w *PublishWorker) importState(ctx context.Context, orgID, repoID, importID string) (string, string, error) {

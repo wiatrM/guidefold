@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS gfm.owner_queue (
  skill_id text NOT NULL,
  revision_id text,
  reason text NOT NULL
-  CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads','missing_dependency')),
+  CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads','missing_dependency','import_file_failed')),
  evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
  since timestamptz NOT NULL DEFAULT now(),
  state text NOT NULL DEFAULT 'open' CHECK(state IN ('open','resolved')),
@@ -228,5 +228,16 @@ ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS proposal_id uuid;
 ALTER TABLE gfm.scopes DROP CONSTRAINT IF EXISTS scopes_source_check;
 ALTER TABLE gfm.scopes ADD CONSTRAINT scopes_source_check
  CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown'));
+-- Contract 1.17.0: 'import_file_failed' joins the same constraint. A partial
+-- import now publishes (API-CONTRACT §4.4), so the file the builder could not
+-- parse has to be asked about somewhere; it is one owner-queue item per file,
+-- written by import.parse in the drift transaction. The CREATE TABLE above
+-- carries the widened list for a fresh database; an existing one skipped that
+-- statement, so the constraint is replaced here by name, extending the list
+-- rather than adding a second CHECK (two CHECKs on one column must both pass).
+ALTER TABLE gfm.owner_queue DROP CONSTRAINT IF EXISTS owner_queue_reason_check;
+ALTER TABLE gfm.owner_queue ADD CONSTRAINT owner_queue_reason_check
+ CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads',
+  'missing_dependency','import_file_failed'));
 INSERT INTO gf.schema_version VALUES (10) ON CONFLICT DO NOTHING;
 `

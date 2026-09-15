@@ -501,7 +501,7 @@ function ImportStatusView({ ctx, importId }: ApiProps & { importId: string }) {
       {/* The counts stay exact and labelled; the rest of the evidence folds below them. */}
       <dl className={styles.statStrip}>
         {([['Accepted', counts?.accepted ?? group('accepted').length], ['Omitted', counts?.omitted ?? group('omitted').length], ['Failed', counts?.failed ?? group('failed').length]] as const).map(([label, value]) => <div key={label} className={styles.stat}><dt>{label}</dt><dd>{String(value)}</dd></div>)}
-        <div className={styles.stat}><dt>Publication</dt><dd><StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge></dd></div>
+        <div className={styles.stat}><dt>Publication</dt><dd><StateBadge tone={publication?.state === 'failed' ? 'error' : publication?.state === 'published' ? 'system' : 'neutral'}>{publication?.state ?? 'none'}</StateBadge>{/* Contract 1.17.0: the snapshot carries the files this import could parse and not the ones it could not. */}{publication?.partial === true && <> published without the files that failed to parse</>}</dd></div>
       </dl>
       <ProvenanceTrail entries={[
         { label: 'Import', value: <Urn value={status.import_id} /> },

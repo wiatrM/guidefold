@@ -38,7 +38,8 @@ const exported: ExportPayload = {
 const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
   publication_id: 'pub-2', snapshot_id: 'snap-2', state: 'active', active: true,
   import_id: 'im-2', job_id: 'j-2', commit: 'c0ffee', n_skills: 27, builder_sha256: 'sha-b',
-  validation: { ok: true, findings: [] }, error: null, activated_at: null, created_at: null, ...over,
+  validation: { ok: true, findings: [] }, error: null, activated_at: null, created_at: null,
+  partial: false, failed_files: [], ...over,
 });
 const snapshots: Snapshot[] = [
   snapshot(),
@@ -271,6 +272,26 @@ describe('Proposals route, decision, conflict and export', () => {
     expect(screen.getByText('No snapshot built')).toBeInTheDocument();
     expect(screen.getByText('Nothing to roll back to')).toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: 'Roll back to this' })).toHaveLength(0);
+  });
+
+  // Contract 1.17.0: a partial import publishes, so the row that is serving
+  // less than its import carried has to say so. A snapshot that quietly holds
+  // fewer skills than the repository would read as a complete library.
+  test('a partial publication names itself and the files it could not parse', async () => {
+    const partial = snapshot({
+      publication_id: 'pub-4', snapshot_id: 'snap-4', state: 'active', active: true,
+      partial: true,
+      failed_files: [{ path: '.agents/skills/broken/SKILL.md', reason: 'ScannerError: mapping values are not allowed here' }],
+    });
+    renderApi(ApiProposalsRoute, base({ listSnapshots: async () => [partial] }), 'proposal=p-1');
+    expect(await screen.findByText(/1 file could not be parsed/)).toBeInTheDocument();
+    expect(screen.getByText('.agents/skills/broken/SKILL.md')).toBeInTheDocument();
+  });
+
+  test('a complete publication carries no partial annotation', async () => {
+    renderApi(ApiProposalsRoute, base({ listSnapshots: async () => [snapshots[0]] }), 'proposal=p-1');
+    expect(await screen.findByText('Snapshots')).toBeInTheDocument();
+    expect(screen.queryByText(/could not be parsed/)).not.toBeInTheDocument();
   });
 
   test('an owner queues a publication for a named import', async () => {
