@@ -216,6 +216,17 @@ def load_map(root: Path, publisher: str = None) -> dict:
     cfg.setdefault("_source", SOURCE_GUIDEFOLD_YAML)
     return cfg
 
+def scope_map_line(root: Path, cfg: dict) -> str:
+    """The one line about which scope map answered (ADR-0050). `doctor` has printed it since the
+    zero-config change; `install` prints the same string, because `install` is where an owner
+    first learns that the map it is about to materialize and index was inferred from the tree
+    rather than declared (D16, rehearsal v2 2026-09-15)."""
+    if (cfg or {}).get("_source") == SOURCE_GUIDEFOLD_YAML:
+        return f"guidefold.yaml — publisher={cfg.get('publisher')}, {len(cfg.get('nodes') or {})} scopes"
+    codeowners = " + CODEOWNERS" if _codeowners_rules(root) else ""
+    return (f"no guidefold.yaml — inferred {len(cfg.get('nodes') or {})} scopes from "
+            f"{len(_inferred_skill_dirs(root))} skill directories{codeowners}")
+
 def rel(root: Path, p: Path) -> str:
     return str(p.resolve().relative_to(root)).replace(os.sep, "/")
 
@@ -5721,9 +5732,12 @@ def cmd_hook(a, root):
             # which is the agent's context.
             if not prompt:
                 try:
-                    import yaml   # lazy, like every other optional import in this file
-                    cfg = yaml.safe_load((root / "guidefold.yaml").read_text())
-                    write_index_artifact(root, cfg, dest, sha)
+                    # ADR-0050: `load_map` tests for the file BEFORE importing PyYAML, so a
+                    # repository without one infers its map here on the standard library alone
+                    # and E1.5's "the hook reads no guidefold.yaml/PyYAML" holds on exactly the
+                    # repositories the zero-config decision is about. It used to read the file
+                    # unconditionally, so SessionStart could not build the artifact there either.
+                    write_index_artifact(root, load_map(root), dest, sha)
                 except _HookTimeout:
                     raise
                 except Exception as e:      # say why, on stderr, instead of the silent no-op
@@ -6579,11 +6593,7 @@ def _check_guidefold_yaml(root: Path):
         # ADR-0050: absence is never a failure. The map is inferred, and the check says what it
         # inferred it from so an owner can judge whether an override is worth writing.
         cfg = infer_map(root)
-        dirs = _inferred_skill_dirs(root)
-        codeowners = " + CODEOWNERS" if _codeowners_rules(root) else ""
-        checks.append(_doctor_check("guidefold-yaml", "ok",
-                                     f"no guidefold.yaml — inferred {len(cfg['nodes'])} scopes from "
-                                     f"{len(dirs)} skill directories{codeowners}",
+        checks.append(_doctor_check("guidefold-yaml", "ok", scope_map_line(root, cfg),
                                      "add guidefold.yaml only if this map is wrong"))
         checks.append(_doctor_check("guidefold-yaml-parses", "ok",
                                      f"publisher={cfg['publisher']} (inferred from "
@@ -9333,8 +9343,13 @@ def cmd_install(a):
     # harness that reads files instead of running a hook (Gemini, Codex, Copilot's applyTo)
     # needs the materialized scope cards. Both are generated, gitignored, and idempotent, so
     # `install` does them here instead of asking the developer to remember two more commands.
-    # Skipped, with a reason, when there is no guidefold.yaml yet or when asked not to.
-    if yaml_path.is_file() and not getattr(a, "no_materialize", False):
+    # Skipped, with a reason, only when asked not to.
+    #
+    # D16 (rehearsal v2, 2026-09-15): this used to be gated on `guidefold.yaml` existing, so the
+    # repository ADR-0050 was written for -- one with no file at all -- installed an adapter whose
+    # hook had nothing to read, and stayed idle until somebody ran `guidefold index` by hand. Both
+    # commands work on the inferred map; the gate was the only thing stopping them.
+    if not getattr(a, "no_materialize", False):
         # Three steps, three try blocks. They used to share one, so a card that refused to
         # render -- or a map that failed to load -- also skipped `index`, and the hook has
         # nothing to read without that artifact: `install` looked like it had succeeded while
@@ -9347,6 +9362,7 @@ def cmd_install(a):
         except SystemExit as exc:
             print(f"  map: {exc}")
         if cfg_full is not None:
+            print(f"  map: {scope_map_line(root, cfg_full)}")
             try:
                 cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
             except SystemExit as exc:                  # a failed card is reported, not hidden
@@ -9356,7 +9372,7 @@ def cmd_install(a):
             except SystemExit as exc:
                 print(f"  index: {exc}")
     else:
-        print("  materialize/index: skipped (" + ("--no-materialize" if yaml_path.is_file() else "no guidefold.yaml yet") + ")")
+        print("  materialize/index: skipped (--no-materialize)")
     print("  next: `guidefold doctor`")
     sys.exit(0)
 

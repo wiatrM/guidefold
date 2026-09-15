@@ -380,3 +380,55 @@ def test_search_config_takes_the_repo_id_from_config_not_from_the_checkout_name(
 
     monkeypatch.setenv("GUIDEFOLD_REPO_ID", "from-env")
     assert gf.resolve_search_config(cfg, profile="interactive", root=root)["repo"] == "from-env"
+
+
+# ---------------------------------------------------------------- D16 (rehearsal v2, 2026-09-15)
+# `guidefold install --harness claude` ended with `materialize/index: skipped (no guidefold.yaml
+# yet)` in a repository that ADR-0050 says never needs the file. Both commands work perfectly
+# well on the inferred map — run by hand they wrote the full set of cards and a 109-card index —
+# so the only thing between the owner and a working hook was a gate on a file the product no
+# longer requires. Until someone ran `guidefold index` by hand, the harness stayed idle.
+
+def _zero_config_repo(tmp_path: Path) -> Path:
+    """A git repository with skills in two directories and NO guidefold.yaml."""
+    import subprocess
+    root = tmp_path / "zero-config"
+    for where, name, desc in (
+            (".agents/skills/deploy-runbook", "deploy-runbook",
+             "Deploy the service to the cluster with helm and argocd. Use when releasing."),
+            ("docs/.agents/skills/doc-rules", "doc-rules",
+             "How documents are structured and reviewed here. Use when writing docs.")):
+        d = root / where
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: {json.dumps(desc)}\n"
+            "metadata:\n  status: active\n---\n\n## Steps\n\n1. Do the thing.\n",
+            encoding="utf-8")
+    for cmd in (["init", "-q"], ["add", "-A"],
+                ["-c", "user.email=t@example", "-c", "user.name=t", "commit", "-qm", "zero config"]):
+        subprocess.run(["git", "-C", str(root), *cmd], check=True, capture_output=True)
+    return root
+
+
+def test_install_builds_the_index_in_a_repository_with_no_guidefold_yaml(
+        gf, tmp_path, monkeypatch, capsys):
+    root = _zero_config_repo(tmp_path)
+    monkeypatch.setenv("GUIDEFOLD_CACHE", str(tmp_path / "cache"))
+    monkeypatch.chdir(root)
+
+    assert _run(gf.cmd_install, _args()) == 0
+    out = capsys.readouterr().out
+    assert "skipped (no guidefold.yaml yet)" not in out
+    # the same inferred-map line `doctor` prints, so the owner sees which map was used
+    assert "no guidefold.yaml — inferred" in out
+    assert "skill directories" in out
+
+    sha = gf._git_head_short(root)
+    dest = gf.index_cache_dir(sha)
+    assert (dest / "manifest.json").is_file(), "install must build the index artifact for this sha"
+    nodes = json.loads((dest / "nodes.json").read_text(encoding="utf-8"))
+    assert "docs" in nodes, f"the inferred node for docs/ must be in the artifact: {sorted(nodes)}"
+    # the hook resolves its scope from that artifact alone (E1.5) — no guidefold.yaml anywhere
+    idx = gf.load_index_artifact(dest)
+    assert gf.node_for({"nodes": idx.nodes}, "docs") == "docs"
+    assert not (root / "guidefold.yaml").exists()
