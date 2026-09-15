@@ -5491,6 +5491,56 @@ def digest_of(fm):
     md = fm.get("metadata", {})
     return md.get("digest") or fm.get("description", "")[:200]
 
+def _card_bullet_budget(bullets, chain, budget):
+    """How many skill bullets each level of the chain may print.
+
+    The specific beats the general: a developer standing in `atlas.identity.turnstile` needs
+    that node's own skills more than the root's conventions, so bullets are handed out from the
+    most specific level outwards. A level that gets cut keeps one line for "… and K more", which
+    is why a truncated level costs one more than the bullets it shows.
+    """
+    keep = {n: 0 for n in chain}
+    if budget <= 0:
+        return keep
+    def cost():
+        total = 0
+        for n in chain:
+            rows = len(bullets.get(n) or [])
+            if not rows:
+                total += 1                      # "(no skills at this level yet)"
+            else:
+                total += keep[n] + (1 if keep[n] < rows else 0)
+        return total
+    if cost() > budget:
+        return keep                             # nothing fits; every level shows its count only
+    progress = True
+    while progress:
+        progress = False
+        for n in chain:                         # most specific first
+            rows = len(bullets.get(n) or [])
+            if keep[n] >= rows:
+                continue
+            keep[n] += 1
+            if cost() > budget:
+                keep[n] -= 1
+                continue
+            progress = True
+    return keep
+
+
+def _clamp_card(lines, node):
+    """The last word on the cap. Whatever the budget arithmetic did, a card is never longer than
+    CARD_CAP -- an oversized `.agents/NODE.md` cannot push it over either. The head and the
+    closing "how to get the full procedure" block are what a harness actually acts on, so the
+    middle is what gives way."""
+    if len(lines) <= CARD_CAP:
+        return lines
+    tail = 6                                    # the footer block, verbatim
+    note = (f"… card truncated to the {CARD_CAP}-line cap; run "
+            f"`guidefold find \"<your task>\" --scope {node}` for the rest")
+    return lines[:CARD_CAP - tail - 1] + [note] + lines[-tail:]
+
+
 def build_card(root, cfg, node, skills_by_node):
     chain = ancestors(node)                      # node first … _root last
     root_label = f"{cfg['publisher']} (root)"
@@ -5498,7 +5548,10 @@ def build_card(root, cfg, node, skills_by_node):
              f"Owner: {node_meta(cfg, node).get('owner')} · Hierarchy (specific → general): {' → '.join(chain)}", ""]
     extra = root / (node_meta(cfg, node).get("paths", ["."])[0].split("*")[0]) / ".agents" / "NODE.md"
     if extra.exists():
-        lines += [extra.read_text().strip(), ""]
+        # Split into real lines: the card's own line count has to include NODE.md, or a wordy
+        # one silently pushes a card over the cap that the budget below believes it is under.
+        # Joined back with "\n" this is byte-identical to the single-element form it replaces.
+        lines += extra.read_text().strip().splitlines() + [""]
     # ADR-0035: ascended scope maps first, root-most first, so a harness that only reads files
     # on disk (Copilot applyTo, Codex/Gemini nested AGENTS.md) gets the shape of the organisation
     # before any specific guidance. A map is a normal skill; it is pulled out of the bullet
@@ -5520,27 +5573,46 @@ def build_card(root, cfg, node, skills_by_node):
         for n, name, fm in maps:
             lines.append(f"- **{root_label if n == '_root' else n}** `{urn(cfg, n, name)}` — {digest_of(fm)}")
         lines.append("")
-    lines += ["## Inherited guidance (general → specific)", ""]
-    for n in reversed(chain):                    # root first
-        label = root_label if n == "_root" else n
-        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+    # One node can hold a hundred skills -- that is the ordinary shape of a repository with no
+    # hand-written `guidefold.yaml` (ADR-0050), not an authoring mistake. The cap stays 80 lines
+    # (CONVENTIONS §9); what changes is that the card is SHORTENED to fit instead of refused.
+    # `materialize` refusing took `install` down with it, so the hook had no index artifact to
+    # read and stayed idle (pilot rehearsal 2026-09-15 §5.3).
+    bullets = {}
+    for n in chain:
+        rows = []
         for name, fm in sorted(skills_by_node.get(n, []), key=_by_name):
             if _is_map(fm):
                 continue
             md = fm.get("metadata") or {}
             flag = f" **DEPRECATED → {md.get('replaced_by', '?')}**" if md.get("status") == "deprecated" else ""
-            lines.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
-        if not skills_by_node.get(n):
-            lines.append("- (no skills at this level yet)")
-        lines.append("")
-    lines += ["## How to get the full procedure",
+            rows.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
+        bullets[n] = rows
+    footer = ["## How to get the full procedure",
               "Skills above are summaries. Before implementing anything platform-specific, run",
               f"`.agents/skills/guidefold/scripts/guidefold find \"<your task>\" --scope {node}` and then",
               "`guidefold load <urn>` for the 1–3 most relevant ones (follow `metadata.requires`).",
               "Generated by guidefold materialize — do not edit; edit guidefold.yaml, NODE.md or the skills instead.", ""]
-    if len(lines) > CARD_CAP:
-        sys.exit(f"guidefold: scope card for {node} exceeds {CARD_CAP} lines — shorten metadata.digest")
-    return "\n".join(lines)
+    # Fixed cost: everything already in `lines`, the section heading, one `###` per level, one
+    # blank line per level, and the footer. What is left is the bullet budget.
+    fixed = len(lines) + 2 + 2 * len(chain) + len(footer)
+    keep = _card_bullet_budget(bullets, chain, CARD_CAP - fixed)
+    lines += ["## Inherited guidance (general → specific)", ""]
+    for n in reversed(chain):                    # root first
+        label = root_label if n == "_root" else n
+        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+        rows = bullets[n]
+        shown = rows[:keep.get(n, 0)]
+        lines += shown
+        if not rows:
+            lines.append("- (no skills at this level yet)")
+        elif len(shown) < len(rows):
+            left = len(rows) - len(shown)
+            lines.append(f"- … and {left} more skill(s) in {label}; run "
+                         f"`guidefold find \"<your task>\" --scope {n}`")
+        lines.append("")
+    lines += footer
+    return "\n".join(_clamp_card(lines, node))
 
 def cmd_materialize(a, root, cfg):
     skills_by_node = {}
@@ -9216,13 +9288,26 @@ def cmd_install(a):
     # `install` does them here instead of asking the developer to remember two more commands.
     # Skipped, with a reason, when there is no guidefold.yaml yet or when asked not to.
     if yaml_path.is_file() and not getattr(a, "no_materialize", False):
+        # Three steps, three try blocks. They used to share one, so a card that refused to
+        # render -- or a map that failed to load -- also skipped `index`, and the hook has
+        # nothing to read without that artifact: `install` looked like it had succeeded while
+        # the harness stayed idle (pilot rehearsal 2026-09-15 §5.3). Each failure is reported
+        # and the next step still runs.
+        cfg_full = None
         try:
             cfg_full = load_map(root)
             cfg_full.setdefault("registry", {})
-            cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
-            cmd_index(argparse.Namespace(check=False), root, cfg_full)
-        except SystemExit as exc:                      # a failed validate/build is reported, not hidden
-            print(f"  materialize/index: {exc}")
+        except SystemExit as exc:
+            print(f"  map: {exc}")
+        if cfg_full is not None:
+            try:
+                cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:                  # a failed card is reported, not hidden
+                print(f"  materialize: {exc}")
+            try:
+                cmd_index(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:
+                print(f"  index: {exc}")
     else:
         print("  materialize/index: skipped (" + ("--no-materialize" if yaml_path.is_file() else "no guidefold.yaml yet") + ")")
     print("  next: `guidefold doctor`")

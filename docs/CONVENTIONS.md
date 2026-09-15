@@ -354,7 +354,9 @@ succeeded.
 | `.github/instructions/<node>.instructions.md` | same card with `applyTo: "<node paths>"` | Copilot CLI/IDE/cloud agent when working on matching files, regardless of launch dir |
 | `.agents/skills/hierarchy-index/SKILL.md` | the whole tree | anyone, via `guidefold load urn:skill:acme:_index:hierarchy-index` |
 
-Card size cap: 80 lines. If a card exceeds it, the digests are too long — shorten `metadata.digest`, do not raise the cap.
+Card size cap: 80 lines, and `materialize` keeps a card inside it **by construction** — it never refuses to write one. Skill bullets are handed out most-specific-level-first; a level that does not fit ends with one `… and K more skill(s) in <node>; run `guidefold find "<your task>" --scope <node>`` line, and a card that is still too long (a very wordy `NODE.md`) keeps its head and its closing block with one truncation line between them. That is what makes the ordinary zero-config shape — one node holding every skill in the repository (ADR-0050) — installable: before, the refusal also skipped `guidefold index`, so the hook had no artifact and stayed idle. A card that needs truncating is still a signal the digests are too long: shorten `metadata.digest`, or give the repository more nodes; do not raise the cap.
+
+The `.github/instructions/<node>.instructions.md` copy of a card carries three extra frontmatter lines (`applyTo`), so it is at most 83 lines; the cap is on the card.
 
 Hand-written per node: only `guidefold.yaml` entry, skills, and an optional `<node-path>/.agents/NODE.md` (free-form 1–2 paragraphs about the node) that `materialize` includes at the top of the card.
 
