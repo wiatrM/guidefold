@@ -109,7 +109,7 @@ func (s *Service) scopeMapOf(ctx context.Context, orgID, blobSHA string) (map[st
 	if e != nil {
 		return nil, e
 	}
-	owners, e := s.codeownersTeams(ctx, orgID, m.Repos)
+	owners, e := s.knownOwners(ctx, orgID, m.Repos)
 	if e != nil {
 		return nil, e
 	}
@@ -164,17 +164,22 @@ func (s *Service) existingScopes(ctx context.Context, orgID string, repos []stri
 // nobody actually owns.
 var codeownersPaths = []string{"CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"}
 
-// codeownersTeams reads each repository's CODEOWNERS and returns the team names
-// it mentions. A repository with no CODEOWNERS gets an empty set, which makes
-// every owner on its nodes a finding rather than a silent pass.
-func (s *Service) codeownersTeams(ctx context.Context, orgID string, repos []string) (map[string]map[string]bool, error) {
+// knownOwners is, per repository, every owner name that repository can vouch
+// for: the teams its CODEOWNERS names plus the owners its own scopes already
+// declare (domain.KnownOwners). A repository with neither gets an empty set,
+// which makes every owner on its nodes a finding rather than a silent pass.
+func (s *Service) knownOwners(ctx context.Context, orgID string, repos []string) (map[string]map[string]bool, error) {
 	out := map[string]map[string]bool{}
 	for _, repo := range repos {
 		text, e := s.codeownersOf(ctx, orgID, repo)
 		if e != nil {
 			return nil, e
 		}
-		out[repo] = generator.CodeownersTeams(text)
+		existing, e := scopeRows(ctx, s.pool, orgID, repo)
+		if e != nil {
+			return nil, e
+		}
+		out[repo] = domain.KnownOwners(generator.CodeownersTeams(text), existing)
 	}
 	return out, nil
 }
@@ -260,7 +265,7 @@ func (s *Service) decideScopeMap(c *mgmt.Context, tx pgx.Tx, rc *repoContext, p 
 	// Validation runs again here, not only in the worker: an import between the
 	// proposal and this click may have added or removed paths, and a map that
 	// was sound then can be unsound now.
-	owners, e2 := s.codeownersTeams(c.Ctx(), rc.Org.ID, m.Repos)
+	owners, e2 := s.knownOwners(c.Ctx(), rc.Org.ID, m.Repos)
 	if e2 != nil {
 		return mgmt.Internal(e2)
 	}
@@ -403,7 +408,7 @@ func (w *ScopeMapWorker) Run(ctx context.Context, t *worker.Task) error {
 	owners := map[string]map[string]bool{}
 	for _, r := range req.Repos {
 		repos = append(repos, r.RepoID)
-		owners[r.RepoID] = generator.CodeownersTeams(r.Codeowners)
+		owners[r.RepoID] = domain.KnownOwners(generator.CodeownersTeams(r.Codeowners), r.Existing)
 	}
 	sort.Strings(repos)
 	m.Repos = repos

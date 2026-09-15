@@ -112,11 +112,13 @@ type ScopeMapDiff struct {
 // at a rejected map wants to know what is wrong with it, not to discover the
 // next problem on the next attempt.
 //
-// `owners` maps a repository id to the set of team names its CODEOWNERS file
-// names. A repository absent from the map has no CODEOWNERS the importer could
-// read, and then any owner on its nodes is unverifiable — which is a finding,
-// not a silent pass: an owner nobody can check is exactly the "uncertain owner
-// becoming policy" PRODUCT-PIVOT U1 forbids.
+// `owners` maps a repository id to the set of owner names that repository can
+// vouch for: the teams its CODEOWNERS names, plus the owners its own scopes
+// already declare — see KnownOwners. An owner outside that set is a finding,
+// not a silent pass: a name nobody can check is exactly the "uncertain owner
+// becoming policy" PRODUCT-PIVOT U1 forbids. An owner a repository has *already*
+// declared is not invented, so refusing it would reject every map that simply
+// keeps a hierarchy the repository wrote down itself.
 func ValidateScopeMap(m ScopeMap, repos []string, owners map[string]map[string]bool) []string {
 	var findings []string
 	switch m.Origin {
@@ -163,7 +165,7 @@ func ValidateScopeMap(m ScopeMap, repos []string, owners map[string]map[string]b
 		if n.Owner != "" {
 			for _, p := range n.Paths {
 				if !owners[p.RepoID][n.Owner] {
-					findings = append(findings, fmt.Sprintf("node %q names owner %q, which is not in CODEOWNERS of repository %q", n.Scope, n.Owner, p.RepoID))
+					findings = append(findings, fmt.Sprintf("node %q names owner %q, which repository %q neither declares nor lists in CODEOWNERS", n.Scope, n.Owner, p.RepoID))
 					break
 				}
 			}
@@ -192,6 +194,27 @@ func ValidateScopeMap(m ScopeMap, repos []string, owners map[string]map[string]b
 	}
 	sort.Strings(findings)
 	return findings
+}
+
+// KnownOwners is every owner name one repository can vouch for: the teams its
+// CODEOWNERS file names, and the owners its existing scopes already carry.
+//
+// The second half matters because a repository that declares its hierarchy in
+// guidefold.yaml has already named its owners, and the file is the higher
+// authority (ADR-0050 precedence). Validating those names against CODEOWNERS
+// would make a map that changes nothing fail — which is the opposite of the
+// check's purpose, since the check exists to catch a name somebody made up.
+func KnownOwners(fromCodeowners map[string]bool, existing []ExistingScope) map[string]bool {
+	out := map[string]bool{}
+	for name := range fromCodeowners {
+		out[name] = true
+	}
+	for _, e := range existing {
+		if e.Owner != "" {
+			out[e.Owner] = true
+		}
+	}
+	return out
 }
 
 // ValidateScopeName returns a finding, or "" when the name is a usable node

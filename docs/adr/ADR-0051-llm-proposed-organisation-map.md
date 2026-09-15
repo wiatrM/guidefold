@@ -87,8 +87,11 @@ and again at approval because the repositories may have changed in between:
 - every path is assigned to exactly one most-specific node **within its own repository** — the
   containment is computed per `(repo_id, path)`, because a scope identifier is unique per
   repository and not per organisation (ADR-0047 decision 4, API-CONTRACT §4.10 point 6);
-- every non-null `owner` appears in that repository's CODEOWNERS; anything else becomes `null`
-  rather than a plausible-looking team name.
+- every non-null `owner` is a name that repository can vouch for: a team its CODEOWNERS lists, or
+  an owner its own scopes already declare. An owner a repository wrote into `guidefold.yaml` is
+  not invented, and rejecting it would fail every map that simply keeps the hierarchy the
+  repository already declared; a name from neither source is refused rather than written down as
+  a plausible-looking team.
 
 A map that fails produces no proposal and a permanent job failure with the findings named:
 retrying the same call cannot repair a structure the model could not build. A failure at approval

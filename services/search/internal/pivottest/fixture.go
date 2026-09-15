@@ -207,6 +207,14 @@ func python() string {
 func (h *Harness) RunParse(t *testing.T, scratch string) int {
 	t.Helper()
 	parser := importer.NewParseWorker(h.Pool, h.Blobs, Builder(t), scratch)
+	// The deployment's own follow-up, so a test sees the same queue a real
+	// import produces: scope_map.propose appears exactly when something could
+	// answer it (ADR-0051).
+	followUp, e := review.NewScopeMapFollowUp(h.Pool)
+	if e != nil {
+		t.Fatal(e)
+	}
+	parser.SetFollowUp(followUp)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	ran := 0
@@ -296,6 +304,18 @@ func (h *Harness) RunGenerate(t *testing.T, engine generator.Generator, recipe g
 		w = w.WithGenerator(engine, recipe)
 	}
 	return h.drain(t, review.KindGenerate, w.Handlers())
+}
+
+// RunScopeMap leases and runs every queued scope_map.propose job once, with the
+// deployment's own generator -- `deterministic` in these tests, which proposes
+// the inferred map and needs no provider.
+func (h *Harness) RunScopeMap(t *testing.T) int {
+	t.Helper()
+	w, e := review.NewScopeMapWorker(h.Pool, h.Blobs, h.Keyring)
+	if e != nil {
+		t.Fatal(e)
+	}
+	return h.drain(t, review.KindScopeMapPropose, w.Handlers())
 }
 
 // RunPublish leases and runs every queued publish.build job once, with the real

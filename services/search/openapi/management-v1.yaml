@@ -4385,7 +4385,7 @@ components:
       properties:
         scope: { type: string, description: "Dotted node path with kebab-case segments containing no `--`, or `_root`." }
         parent: { type: [string, "null"], description: "Another node of the same map, or null for a top-level node." }
-        owner: { type: [string, "null"], description: "A team present in that repository's CODEOWNERS, or null. Never a guessed name." }
+        owner: { type: [string, "null"], description: "A name that repository can vouch for: a team in its CODEOWNERS, or an owner its own scopes already declare. Null otherwise; never a guessed name." }
         paths:
           type: array
           items:
