@@ -24,8 +24,8 @@ PIVOT-RUBRIC's thresholds, and authorises no product change (§8).
 **New subdirectory:** `docs/reports/research/` is created here, because
 [pilot-evidence](../../../.agents/skills/pilot-evidence/SKILL.md) lists only `bakeoff/`, `golden/`
 and `tuning/` and sends pilot procedures to `docs/pilot/`. `.gitignore`'s blanket `research/` rule
-is narrowed with an explicit exception for this one directory, so the file is committed normally
-rather than force-added; `docs/research/` stays ignored.
+matches this path, so the file was added with `git add -f` and is tracked from here on — the same
+handling the repository already used for committed research copies. `.gitignore` is not changed.
 
 ## 0. Why this is frozen before the first session, and what would make it an anecdote
 
@@ -274,11 +274,13 @@ is the one thing this window can deliver.
 4. **H3.** Reported only as a descriptive per-harness delta with its interval, against the 10 pp
    minimum, with the §4 statement that the window is underpowered for it printed beside the number.
 5. **Multiplicity** (mirroring [DENSE-PROGRAM §4a](../bakeoff/DENSE-PROGRAM.md)): H1 metric 1 is the
-   single primary test. Metric 2, H2 and H3 are secondary and are reported with a Holm correction
-   across whatever secondary tests actually ran, with the number that ran printed. No hypothesis is
-   promoted to primary after the fact; a secondary result never replaces an unfavourable primary.
-   Every test run is counted in the report, so a reader can judge the multiplicity themselves —
-   DENSE-PROGRAM §4a rule 3.
+   single primary test. The secondary family is **registered now at size 3** — H1 metric 2, H2, H3 —
+   and the Holm correction is applied over 3 however many of them actually run, with the number
+   that ran printed beside it. Shrinking the family to the tests that survived would hand the
+   survivors a weaker correction than the registered design allows, which is DENSE-PROGRAM §4a
+   rule 2's "registered before either was tested" applied to this study. No hypothesis is promoted
+   to primary after the fact; a secondary result never replaces an unfavourable primary. Every test
+   run is counted in the report, so a reader can judge the multiplicity themselves (rule 3).
 6. **Pre-specified tables** (the only tables the report contains). **T1**: sessions per harness per
    week — admissible, excluded-builder, excluded-synthetic, excluded-off-pin, missing-ID; distinct
    pseudonyms per harness per key epoch. **T2**: `|L(A,w)|`, `|L(B,w)|`, intersection, union,

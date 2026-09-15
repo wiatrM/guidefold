@@ -69,9 +69,6 @@ experiment/
 # committed — same rationale as experiment/ above: the repo ships measured conclusions,
 # not the working notebooks/logs that produced them)
 research/
-# exception: committed research reports and pre-registrations (measured conclusions, not scratch)
-!docs/reports/research/
-!docs/reports/research/**
 
 # session-local tool scratch, never committed
 logs/
