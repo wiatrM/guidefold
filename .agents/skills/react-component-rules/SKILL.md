@@ -1,6 +1,6 @@
 ---
 name: react-component-rules
-description: Rules for the Guidefold hosted UI in ui/ (React 19, Vite, CSS Modules): tokens.css as the only value source, the 14-component library, route/data boundaries, fetch and decoding contracts, gallery and test commands. Use when adding or changing anything under ui/. Not for the frozen prototypes.
+description: 'Rules for the Guidefold hosted UI in ui/ (React 19, Vite, CSS Modules): tokens.css as the only value source, the 14-component library, route/data boundaries, fetch and decoding contracts, gallery and test commands. Use when adding or changing anything under ui/. Not for the frozen prototypes.'
 ---
 
 # Zasady komponentów React w ui/

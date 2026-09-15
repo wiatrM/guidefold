@@ -323,3 +323,60 @@ def test_doctor_without_a_hosted_api_stays_green(gf, tmp_path, monkeypatch, caps
     assert all(c["status"] != "fail" for name, c in checks.items()
                if name.startswith(("service-", "adapter-", "capabilities-")))
     assert code in (0, 1)   # other, pre-existing checks decide the exit code here
+
+
+# 2026-09-15 rehearsal: `install` ends in `materialize`, and `build_card` sorted each node's
+# skills with a bare `sorted()` over `(name, frontmatter)` pairs. Two skills of one node may
+# carry the same name (this repository holds `security-baseline` both in `.agents/skills/` and
+# inside the Meridian fixture); Python then compared the two frontmatter dicts and the whole
+# command died with `TypeError: '<' not supported between instances of 'dict' and 'dict'`.
+def test_install_survives_two_skills_of_one_node_sharing_a_name(gf, tmp_path, monkeypatch, capsys):
+    root = _consumer(tmp_path)
+    # The two cards must not be byte-identical: tuple comparison only reaches the dicts when
+    # the names tie AND the frontmatter differs, which is exactly the real shape.
+    for where, what in ((".agents/skills/security-baseline", "the repository's own rules"),
+                        ("vendor/example/.agents/skills/security-baseline", "the vendored copy")):
+        d = root / where
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(
+            "---\nname: security-baseline\n"
+            "description: \"[acme] Security rules for " + what + ": no secrets in the browser. "
+            "Use when touching auth.\"\n"
+            "metadata:\n  scope: _root\n  owner: platform\n  status: active\n---\n\nBody.\n",
+            encoding="utf-8")
+    monkeypatch.chdir(root)
+    assert _run(gf.cmd_install, _args(api="https://api.example", org="acme", repo="monorepo")) == 0
+    assert "+ create" in capsys.readouterr().out
+
+
+# 2026-09-15 rehearsal: with a personal token from `guidefold login`, the CLI sends
+# `X-Guidefold-Org` / `X-Guidefold-Repo` on every service call (API-CONTRACT §2/§3).
+# `resolve_search_config` derived the repo from the CHECKOUT's name alone, ignoring
+# `GUIDEFOLD_REPO_ID` and guidefold.yaml's `service.repo` — the precedence
+# `resolve_service_config` documents three lines above it. A clone whose directory is not named
+# exactly like the repo id (the normal case: `gf-pilot-core` for repo id `guidefold`) sent the
+# wrong header, the API answered 403, and `guidefold load` printed
+# "service USE failed (auth)" — an authentication problem that was not one.
+def test_search_config_takes_the_repo_id_from_config_not_from_the_checkout_name(
+        gf, tmp_path, monkeypatch):
+    root = tmp_path / "some-clone-directory"
+    root.mkdir()
+    (root / "guidefold.yaml").write_text(
+        "publisher: acme\nnodes:\n  _root:\n    paths: ['**']\n    owner: platform\n"
+        "service:\n  api: https://api.example\n  org: acme\n  repo: monorepo\n"
+        "search:\n  backend: service\n  url: https://api.example\n")
+    creds = tmp_path / "credentials.json"
+    creds.write_text(json.dumps({"https://api.example": {
+        "org": "acme", "token": "gf_" + "x" * 32,
+        "orgs": [{"slug": "acme", "org_id": "o1", "role": "owner", "name": "acme"}]}}))
+    monkeypatch.setenv("GUIDEFOLD_CREDENTIALS", str(creds))
+    monkeypatch.delenv("GUIDEFOLD_TOKEN", raising=False)
+    monkeypatch.delenv("GUIDEFOLD_REPO_ID", raising=False)
+
+    cfg = gf.load_map(root)
+    resolved = gf.resolve_search_config(cfg, profile="interactive", root=root)
+    assert resolved["token_source"] == "login"
+    assert resolved["repo"] == "monorepo", "the repo id comes from service.repo, not the directory"
+
+    monkeypatch.setenv("GUIDEFOLD_REPO_ID", "from-env")
+    assert gf.resolve_search_config(cfg, profile="interactive", root=root)["repo"] == "from-env"
