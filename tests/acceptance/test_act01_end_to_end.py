@@ -207,8 +207,13 @@ def _act01(w, ev, installation, socket_guard, gf_stack, add_runbooks, commit_all
 
     # --- telemetry: the CLI's own spool, flushed to the ledger ---------------------------
     ev["step"] = "telemetry"
+    # `find` emits `card_injected` on every backend. On this path (`search.backend: service`,
+    # with a token file) a credential and an endpoint exist, so the automatic background flush
+    # (ADR-0048) may already have uploaded those events and unlinked the spool file before this
+    # line runs. The event is then in the ledger rather than in the spool -- both are "the CLI
+    # recorded the injection", and asserting only on the spool made this row a race (D8, pilot
+    # rehearsal 2026-09-15). What must never happen is the event being in neither.
     spool = sorted((w.tree / ".guidefold/telemetry/spool").rglob("events-*.jsonl"))
-    assert spool, "find/load must have written SEARCH/USE events to the local spool"
     kinds = {}
     for path in spool:
         for line in path.read_text().splitlines():
@@ -216,15 +221,23 @@ def _act01(w, ev, installation, socket_guard, gf_stack, add_runbooks, commit_all
                 name = json.loads(line).get("event_type") or json.loads(line).get("type")
                 kinds[name] = kinds.get(name, 0) + 1
     ev["spooled_event_types"] = kinds
-    assert "card_injected" in kinds, kinds
+    already_uploaded = _ledger_types(gf_stack, w.org_id)
+    ev["ledger_event_types_before_flush"] = already_uploaded
+    assert kinds or already_uploaded, \
+        "find/load must have recorded SEARCH/USE events in the spool or in the ledger"
+    assert "card_injected" in kinds or already_uploaded.get("card_injected", 0) > 0, \
+        (kinds, already_uploaded)
 
     flushed = w.cli.run(["telemetry", "flush", "--url", w.api,
                          "--token-file", str(token_file)], cwd=w.tree)
     summary = flushed.stdout.strip().splitlines()[-1]
     ev["telemetry_flush"] = summary
     counts = dict(part.split("=", 1) for part in summary.split() if "=" in part)
-    assert int(counts["accepted"]) > 0, summary
+    assert flushed.returncode == 0, flushed.stdout + flushed.stderr
     assert int(counts["rejected"]) == 0, summary
+    # Whatever was still queued has to be accepted; an empty spool means the automatic flush
+    # already delivered it, which the ledger assertion below checks either way.
+    assert int(counts["accepted"]) > 0 or not kinds, summary
 
     # `skill_load_completed` is what a client-confirmed load looks like; the CLI's `load`
     # emits it, and the ledger must have taken it.
@@ -329,7 +342,11 @@ def _authoring_loop(w, gf_stack) -> dict:
         lambda: (w.get("/proposals?state=draft").get("items") or None),
         timeout=240, what="the deterministic generator to write at least one proposal")
     out["proposals"] = len(proposals)
-    proposal = proposals[0]
+    # The draft queue can also hold an organisation-wide scope-map proposal (ADR-0047), which is
+    # decided at the organisation route and not here. This step is about the extraction that was
+    # just generated, so pick that one rather than whichever draft sorts first.
+    proposal = next((p for p in proposals if p.get("kind") == "extraction"), proposals[0])
+    out["proposal_kind"] = proposal.get("kind")
     detail = w.get(f"/proposals/{proposal['proposal_id']}")
     out["provenance_fields"] = sorted({p["field"] for p in detail["provenance"]})
     assert detail["provenance"], "every generated field needs an origin (U2 AC2)"

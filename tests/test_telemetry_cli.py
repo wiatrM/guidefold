@@ -511,3 +511,54 @@ def test_flush_with_an_empty_spool_says_there_is_nothing_to_flush_and_exits_0(ru
     result = run_cli(["telemetry", "flush", "--url", "http://127.0.0.1:1"], cwd=root)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "nothing to flush" in result.stdout, result.stdout
+
+
+def test_flush_never_deletes_an_event_appended_while_the_batch_was_in_flight(run_cli, tmp_path):
+    """D8 (pilot rehearsal 2026-09-15): `find` emits `card_injected` on every backend, but on the
+    `backend: service` path a credential and a url exist, so the automatic background flush fires
+    and drains the spool. The flush used to rewrite the spool file from the snapshot it had
+    parsed, which deleted -- without ever sending -- every event a concurrent `find`/`load`
+    appended while the batch was in flight. The event was then in neither the spool nor the
+    ledger, which is what made the ACT-01 spool assertion fail.
+
+    The race is reproduced deterministically: the ingest server appends a new event to the spool
+    file while it is answering the batch."""
+    import http.server
+    import threading
+
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "repo"
+    write_guidefold_yaml(root)
+    env_dir = root / ".guidefold" / "telemetry" / "spool" / "local" / "dev"
+    env_dir.mkdir(parents=True)
+    spool = env_dir / "events-2026-09-15.jsonl"
+    spool.write_text(_spool_event("ev-already-there") + "\n", encoding="utf-8")
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            events = json.loads(body)["events"]
+            with spool.open("a", encoding="utf-8") as fh:      # a concurrent `find` appends
+                fh.write(_spool_event("ev-appended-mid-flight") + "\n")
+            payload = json.dumps({"accepted": [e["event_id"] for e in events]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        result = run_cli(["telemetry", "flush", "--url", url], cwd=root)
+    finally:
+        server.shutdown()
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "accepted=1" in result.stdout, result.stdout
+    ids = [e["event_id"] for e in _spool_lines(root)]
+    assert ids == ["ev-appended-mid-flight"], ids   # sent one, kept the unsent one

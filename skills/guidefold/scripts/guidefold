@@ -5882,7 +5882,26 @@ def cmd_telemetry_flush(a, root, cfg=None):
                     totals["rejected"] += 1
                     print(f"guidefold telemetry flush: rejected {eid}: {r.get('reason')}")
             if resolved_ids:
-                kept = [line for line, ev in parsed if ev.get("event_id") not in resolved_ids]
+                # Re-read before rewriting. `find`/`hook`/`load` append to this very file while
+                # the batch is in flight, and rewriting from the snapshot this run parsed would
+                # silently delete every event appended since -- events that were never sent.
+                # That is how a `find`'s `card_injected` disappeared between the spool and the
+                # ledger in the ACT-01 rehearsal (D8). Only the ids the server actually resolved
+                # are dropped; everything else in the file, old or new, stays queued.
+                try:
+                    current = f.read_text(encoding="utf-8").splitlines()
+                except FileNotFoundError:
+                    current = []
+                kept = []
+                for line in current:
+                    if not line.strip():
+                        continue
+                    try:
+                        ev = json.loads(line)
+                    except Exception:
+                        continue
+                    if ev.get("event_id") not in resolved_ids:
+                        kept.append(line)
                 try:
                     if kept:
                         f.write_text("\n".join(kept) + "\n", encoding="utf-8")
