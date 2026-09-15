@@ -11,9 +11,6 @@ branch; the counts below are dated 2026-09-12 and were not re-measured.
 component layer is no longer hand-built), [ADR-0032](ADR-0032-engineering-principles-and-hexagonal-architecture.md)
 (the "no component library" reading of KISS for `ui/` is lifted; the token, accessibility and
 data-boundary rules stand).
-**Extended by:** [ADR-0049](ADR-0049-premium-visual-effects-layer.md) (Accepted 2026-09-13: a
-premium visual effects layer in `ui/src/components/effects/`; the token and accessibility rules
-below are unchanged by it).
 **Governs:** `ui/src/components/ui/*`, `ui/src/components/spectrumui/*`,
 `ui/src/components/ui/shadcn-space/*`, `ui/src/components/*`, `docs/ui/UI.md` §4 and §7,
 `.agents/skills/{react-component-rules,spectrum-ui-workflow,spectrum-charts-migration}`.
