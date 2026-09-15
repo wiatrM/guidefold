@@ -680,48 +680,9 @@ def test_late_remote_reply_is_ignored_after_the_deadline(gf, monkeypatch, tmp_pa
 
 # ---------------------------------------------------------------------------- E2.9 parity counter
 
-def test_matching_local_and_remote_selection_emits_no_parity_event(gf, monkeypatch, tmp_path):
-    same = [_card("urn:skill:m:n:agree-a"), _card("urn:skill:m:n:agree-b")]
-    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (same, same))
-    with running_service(_search_ok(same)) as (url, ctrl):
-        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
-                      "config_error": False}
-        result = gf.search_with_backend(tmp_path, object(), "help with kafka ingestion", "_root",
-                                         profile="interactive", k=3, search_id="sid-agree",
-                                         search_cfg=search_cfg)
-    assert result["parity_mismatch"] is False
-    events = _spool_events(tmp_path)
-    assert not [e for e in events if e["event_type"] == "telemetry_health.parity_mismatch"]
-
-
-def test_mismatched_local_and_remote_selection_emits_hash_only_parity_event(gf, monkeypatch, tmp_path):
-    local_fixed = [_card("urn:skill:m:n:local-answer")]
-    remote_cards = [_card("urn:skill:m:n:remote-answer")]
-    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (local_fixed, local_fixed))
-    secret_query = "a very specific proprietary query about our payment system"
-    with running_service(_search_ok(remote_cards)) as (url, ctrl):
-        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
-                      "config_error": False}
-        result = gf.search_with_backend(tmp_path, object(), secret_query, "_root",
-                                         profile="interactive", k=3, search_id="sid-mismatch",
-                                         search_cfg=search_cfg)
-    assert result["parity_mismatch"] is True
-    events = _spool_events(tmp_path)
-    mismatches = [e for e in events if e["event_type"] == "telemetry_health.parity_mismatch"]
-    assert len(mismatches) == 1
-    fields = mismatches[0]
-    local_hash = gf._selected_set_hash(local_fixed)
-    remote_hash = gf._selected_set_hash(remote_cards)
-    assert fields["local_hash"] == local_hash
-    assert fields["remote_hash"] == remote_hash
-    assert fields["local_hash"] != fields["remote_hash"]
-    assert fields["search_id"] == "sid-mismatch"
-    # never the query text, never a card description/body -- hash-only per E2.9's own non-negotiable
-    raw = json.dumps(fields)
-    assert secret_query not in raw
-    assert "local-answer" not in raw
-    assert "remote-answer" not in raw
-    assert "description" not in raw
+# Superseded by test_a_parity_mismatch_is_counted_locally_and_never_spooled and
+# test_agreement_counts_a_comparison_without_a_mismatch, at the end of this file: the counter
+# moved out of the telemetry spool (D19) and the hash-only assertions moved with it.
 
 
 def test_token_never_appears_anywhere_in_the_telemetry_spool(gf, monkeypatch, tmp_path):
@@ -1239,3 +1200,89 @@ def test_find_prints_the_cap_on_stderr_and_leaves_stdout_to_the_answer(
     assert "--limit 8 capped to 4" in captured.err
     assert "budget.max_cards is 0..4" in captured.err
     assert "capped" not in captured.out
+
+
+# ------------------------------------------------------------ D19 (rehearsal v2 §8): parity
+# `telemetry_health.parity_mismatch` was spooled to the server ledger, whose frozen vocabulary
+# (services/search/telemetry-schema.json) does not contain it: every `telemetry flush` after a
+# service-backed `find` ended `rejected <event_id>: unknown_event_type`. The signal is a runtime
+# comparison between two backends of ONE client, not an observation the organisation's ledger
+# has any use for, so it stays a local diagnostic: a counter next to the spool, read by `doctor`.
+
+def _parity(gf, root):
+    return json.loads((gf._parity_counter_path(root)).read_text(encoding="utf-8"))
+
+
+def test_a_parity_mismatch_is_counted_locally_and_never_spooled(gf, monkeypatch, tmp_path):
+    local_fixed = [_card("urn:skill:m:n:local-answer")]
+    remote_cards = [_card("urn:skill:m:n:remote-answer")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (local_fixed, local_fixed))
+    secret_query = "a very specific proprietary query about our payment system"
+    with running_service(_search_ok(remote_cards)) as (url, _ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        result = gf.search_with_backend(tmp_path, object(), secret_query, "_root",
+                                         profile="interactive", k=3, search_id="sid-mismatch",
+                                         search_cfg=search_cfg)
+    assert result["parity_mismatch"] is True
+
+    events = _spool_events(tmp_path)
+    assert not [e for e in events if str(e["event_type"]).startswith("telemetry_health.")]
+    assert all(e["event_type"] in gf.TELEMETRY_LEDGER_EVENT_TYPES for e in events), \
+        "nothing outside the frozen ledger vocabulary may reach the spool"
+
+    counter = _parity(gf, tmp_path)
+    assert counter["compared"] == 1 and counter["mismatched"] == 1
+    assert counter["last"]["local_hash"] == gf._selected_set_hash(local_fixed)
+    assert counter["last"]["remote_hash"] == gf._selected_set_hash(remote_cards)
+    assert counter["last"]["search_id"] == "sid-mismatch"
+    # hash-only, E2.9's own non-negotiable: never the query, never a card body or URN
+    raw = json.dumps(counter)
+    assert secret_query not in raw
+    assert "local-answer" not in raw and "remote-answer" not in raw
+    assert "description" not in raw
+
+
+def test_agreement_counts_a_comparison_without_a_mismatch(gf, monkeypatch, tmp_path):
+    same = [_card("urn:skill:m:n:agree")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (same, same))
+    with running_service(_search_ok(same)) as (url, _ctrl):
+        search_cfg = {"backend": "service", "url": url, "deadline_ms": 2000, "token": "t",
+                      "config_error": False}
+        result = gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive",
+                                         k=3, search_id="sid-agree", search_cfg=search_cfg)
+    assert result["parity_mismatch"] is False
+    counter = _parity(gf, tmp_path)
+    assert counter["compared"] == 1 and counter["mismatched"] == 0
+    assert counter.get("last") is None
+
+
+def test_doctor_reports_the_parity_counter(gf, monkeypatch, tmp_path):
+    local_fixed = [_card("urn:skill:m:n:l")]
+    monkeypatch.setattr(gf, "_local_selected", lambda *a, **kw: (local_fixed, local_fixed))
+    with running_service(_search_ok([_card("urn:skill:m:n:r")])) as (url, _ctrl):
+        gf.search_with_backend(tmp_path, object(), "q", "_root", profile="interactive", k=3,
+                                search_id="sid-doc",
+                                search_cfg={"backend": "service", "url": url, "deadline_ms": 2000,
+                                            "token": "t", "config_error": False})
+    check = gf._check_search_parity(tmp_path)
+    assert check["name"] == "search-parity"
+    assert check["status"] == "warn"
+    assert "1 of 1" in check["detail"]
+
+
+def test_the_frozen_ledger_vocabulary_is_the_services_own(gf):
+    schema = json.loads((Path(__file__).resolve().parents[1] /
+                         "services/search/telemetry-schema.json").read_text(encoding="utf-8"))
+    assert sorted(gf.TELEMETRY_LEDGER_EVENT_TYPES) == sorted(schema["event_types"])
+
+
+def test_every_event_type_the_cli_emits_is_in_the_frozen_vocabulary(gf):
+    """`_emit_telemetry` drops an unknown type, and it swallows every exception, so a typo or a
+    new subtype would vanish in silence. This is the test that makes the drop safe."""
+    import re
+    source = Path(gf.__file__).read_text(encoding="utf-8")
+    emitted = set(re.findall(r'_emit_telemetry\(\s*\w+\s*,\s*"([^"]+)"', source))
+    assert emitted, "the scan found no _emit_telemetry call sites"
+    assert emitted <= set(gf.TELEMETRY_LEDGER_EVENT_TYPES), \
+        f"not in the frozen vocabulary: {sorted(emitted - set(gf.TELEMETRY_LEDGER_EVENT_TYPES))}"

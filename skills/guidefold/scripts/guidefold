@@ -2636,6 +2636,46 @@ def _selected_set_hash(selected: list) -> str:
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
+def _parity_counter_path(root: Path) -> Path:
+    return root / ".guidefold" / "telemetry" / "parity.json"
+
+
+def _record_search_parity(root: Path, search_id: str, local_hash: str, remote_hash: str):
+    """E2.9's runtime parity counter, kept where it belongs: on this machine.
+
+    The signal compares two backends of ONE client -- a local sparse ranking against the
+    service's -- and the two disagree almost always, because they are different rankers on
+    different scales. That is a diagnostic for whoever is debugging this checkout, not an
+    observation the organisation's ledger records: the frozen telemetry schema has never had a
+    type for it, so spooling it produced nothing but a `rejected: unknown_event_type` line at the
+    end of every otherwise correct `telemetry flush` (D19). It is counted here instead, and
+    `doctor` reads it (`search-parity`).
+
+    Hash-only, exactly as when it was an event (E2.9's own non-negotiable): the selected-set
+    hashes and the search id, never the query text, never a card body, description or URN.
+    Never raises -- a diagnostic must not break the command it rides along with."""
+    try:
+        path = _parity_counter_path(root)
+        state = {}
+        if path.is_file():
+            try:
+                state = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                state = {}
+        if not isinstance(state, dict):
+            state = {}
+        state["compared"] = int(state.get("compared") or 0) + 1
+        mismatched = local_hash != remote_hash
+        state["mismatched"] = int(state.get("mismatched") or 0) + (1 if mismatched else 0)
+        if mismatched:
+            state["last"] = {"search_id": search_id, "local_hash": local_hash,
+                             "remote_hash": remote_hash, "at": _utc_now_iso()}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_bytes(path, json.dumps(state, sort_keys=True, indent=2) + "\n")
+    except Exception:
+        pass
+
+
 def search_with_backend(root: Path, router: "Router", query: str, node: str, *, profile: str,
                          k: int, search_id: str, include_deprecated: bool = False,
                          search_cfg: dict = None):
@@ -2654,8 +2694,9 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
 
     Returns {"selected": list, "backend": "online_sparse"|"local_sparse"|"none",
     "degradation_reason": str|None, "local_selected": list, "local_scored": list,
-    "remote_body": dict|None, "parity_mismatch": bool}. Emits `telemetry_health.parity_mismatch`
-    itself (Deliverable 4) when both sides finished in time and disagree -- silent on agreement."""
+    "remote_body": dict|None, "parity_mismatch": bool, "limit": int, "limit_clamped": int|None}.
+    Records the parity comparison itself (Deliverable 4) whenever both sides finished in time --
+    into the LOCAL counter `_record_search_parity` keeps, never into the telemetry spool (D19)."""
     import time
     if search_cfg is None:
         search_cfg = resolve_search_config(None, profile=profile, root=root)
@@ -2739,12 +2780,9 @@ def search_with_backend(root: Path, router: "Router", query: str, node: str, *, 
                 backend_used, degradation_reason = "online_sparse", None
                 final_selected = cards
                 if not local_failed:
-                    parity_mismatch = _selected_set_hash(local_selected) != _selected_set_hash(cards)
-                    if parity_mismatch:
-                        _emit_telemetry(root, "telemetry_health.parity_mismatch", {
-                            "search_id": search_id, "local_hash": _selected_set_hash(local_selected),
-                            "remote_hash": _selected_set_hash(cards),
-                        })
+                    local_hash, remote_hash = _selected_set_hash(local_selected), _selected_set_hash(cards)
+                    parity_mismatch = local_hash != remote_hash
+                    _record_search_parity(root, search_id, local_hash, remote_hash)
             else:
                 degradation_reason = reason
         else:
@@ -2919,6 +2957,21 @@ TELEMETRY_FLUSH_BATCH_MAX = 500                 # events per POST /v1/events:bat
 # mistakes "we emitted a card" for "the harness rendered it" or "the agent invoked the skill"
 # (Sec3: exposure is not confirmed attention; only supported adapters emit skill_use_observed).
 TELEMETRY_CAPABILITY_FLAGS = ["observation:none", "delivery_evidence:printed_stdout"]
+
+# The frozen ledger vocabulary: `event_types` in services/search/telemetry-schema.json, which
+# tools/telemetry/ledger.py and the service's ingest both enforce. Anything else is answered
+# `unknown_event_type` and is not stored, so spooling it only ever produces a `rejected` line at
+# the end of an otherwise correct `telemetry flush` (D19, rehearsal v2 §8: every flush after a
+# service-backed `find` ended that way, because the CLI emitted `telemetry_health.parity_mismatch`
+# -- a subtype the schema has never known). The spool is the ledger's queue and nothing else
+# belongs in it; a client-only diagnostic belongs in a client-only file (`_record_search_parity`).
+# Kept as a literal here (stdlib only, no file read on the emit path) and pinned to the service's
+# own list by tests/test_service_backend.py.
+TELEMETRY_LEDGER_EVENT_TYPES = (
+    "search_requested", "search_results", "card_injected", "skill_load_requested",
+    "skill_load_completed", "skill_use_reported", "skill_use_observed", "skill_feedback",
+    "task_started", "task_finished", "telemetry_health",
+)
 
 def _telemetry_disabled() -> bool:
     return os.environ.get("GUIDEFOLD_TELEMETRY_DISABLE", "").strip() not in ("", "0")
@@ -3194,6 +3247,13 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     environment-derived session/task/correlation IDs (e.g. cmd_hook passing session_id read from
     its own stdin payload)."""
     if _telemetry_disabled():
+        return
+    if event_type not in TELEMETRY_LEDGER_EVENT_TYPES:
+        # The spool is the ledger's queue. An event the frozen schema does not know cannot be
+        # stored there and only ever arrives as a `rejected` line, so it never enters the queue
+        # (D19). A dropped call site would be invisible here -- `_emit_telemetry` swallows
+        # everything -- so tests/test_service_backend.py scans this file's own call sites against
+        # the tuple above instead of trusting review.
         return
     try:
         tenant = _telemetry_tenant()
@@ -7073,6 +7133,35 @@ def _check_search_token(cfg, root: Path = None) -> dict:
                           "guidefold.yaml, to a file holding the token")
 
 
+def _check_search_parity(root: Path) -> dict:
+    """The local parity counter (E2.9, D19): how often the service's answer differed from the
+    local one on this checkout. A mismatch is not a failure -- the two are different rankers on
+    different scales -- so this is a `warn` that names the number, never a `fail`."""
+    path = _parity_counter_path(root)
+    if not path.is_file():
+        return _doctor_check("search-parity", "ok",
+                              "no service-backed search has been compared on this checkout yet", None)
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+        compared, mismatched = int(state.get("compared") or 0), int(state.get("mismatched") or 0)
+    except Exception:
+        return _doctor_check("search-parity", "warn", f"{path} is unreadable",
+                              "delete it; it is a local diagnostic and will be rebuilt")
+    if not compared:
+        return _doctor_check("search-parity", "ok", "no comparison recorded yet", None)
+    detail = f"{mismatched} of {compared} service answers differed from the local ranking"
+    last = state.get("last") if isinstance(state.get("last"), dict) else {}
+    if mismatched and last.get("search_id"):
+        detail += (f" (last search_id={last['search_id']}, local={last.get('local_hash')}, "
+                   f"remote={last.get('remote_hash')})")
+    if not mismatched:
+        return _doctor_check("search-parity", "ok", detail, None)
+    return _doctor_check("search-parity", "warn", detail,
+                          "expected while the two backends rank differently; not an error, and "
+                          "never sent to the ledger -- compare `find --backend local` with "
+                          "`find --backend service` if you want to see the difference")
+
+
 def _check_telemetry_spool(root: Path) -> dict:
     """Read-only spool health summary across every tenant/environment partition -- reuses the
     exact helpers `guidefold telemetry status` itself uses, so the two never disagree."""
@@ -7118,6 +7207,7 @@ def cmd_doctor(a):
     checks.append(_check_search_token(cfg, root))
     if cfg is not None:
         checks.append(_check_search_latency(root, cfg))
+    checks.append(_check_search_parity(root))
     checks.append(_check_telemetry_spool(root))
     # Pivot (P10/U5 AC1): hosted-service coordinates, reachability + identity, the installed
     # adapter package, and what each harness can actually be relied on to do. All of these stay
