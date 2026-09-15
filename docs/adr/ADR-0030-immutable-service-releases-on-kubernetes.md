@@ -1,6 +1,6 @@
 # ADR-0030: Immutable service releases on portable Kubernetes
 
-Status: Proposed
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit brief of that day; implemented as `deploy/k8s/chart` and deployed through the ArgoCD environment `deploy/k8s/environments/cloudfloo-io` (originally Proposed 2026-09-06). Note, still true on 2026-09-15: the committed manifest of that environment pins `targetRevision` to the chart tag `deploy-cloudfloo-chart-r12` while the live Application tracks `main`; reconciling the two is an open item (audit PRIO 0.4). Listed in [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md).
 
 ## Context
 

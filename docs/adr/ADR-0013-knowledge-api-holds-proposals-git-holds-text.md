@@ -1,6 +1,6 @@
 # ADR-0013: A Knowledge API over Cloud SQL holds proposals and evidence; Git keeps skill text; one bot writer
 
-**Status:** Proposed · 2026-09-04 (revised after the storage review) · amends ADR-0001 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
+**Status:** Proposed · 2026-09-04 (revised after the storage review) · amends ADR-0001 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged. **Superseded by:** [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md) (2026-09-12): the proposals live in `gfm` inside the Go monolith per [ADR-0033](ADR-0033-api-contract-first-and-mvp-storage.md), not in a separate Cloud Run API over Cloud SQL.
 
 ## Context
 The lift pipeline, agent proposals, telemetry, provenance and rejection memory had no home in v0.3. A database as system of record for skill text would rebuild GitHub review; the registry is v1alpha.

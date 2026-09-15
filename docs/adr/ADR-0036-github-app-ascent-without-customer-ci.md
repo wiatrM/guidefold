@@ -7,6 +7,16 @@ Original text · owner intent stated the same day ("a customer installs the GitH
 App and it wires itself into CI"). Contract entries are in place (API-CONTRACT 1.2.0 §3, §4.7, §5,
 §7, §8); code is not. Becomes Accepted when a registered GitHub App, the worker image change and
 the network policy change below exist and the acceptance test in §Consequences passes.
+**Owner decision 2026-09-12 (audit session):** "dokończyć teraz" — implement `ascend.run` as
+specified below (git in the worker image, egress to GitHub and the model endpoint, the acceptance
+test in §Consequences) before the first ACT-01 session; the ADR flips to Accepted when that test
+passes. **Implementation note, re-verified on `main` @ `2a302f5` (2026-09-15):** the webhook, the
+HMAC check, `gfm.github_installations` and the enqueue exist, and `internal/ghapp` plus
+`internal/agentrun` have since added the pull-request coverage report; the worker handler for
+`ascend.run` is still a stub that returns `worker.Skipped("github_app_connector_not_configured")`
+(`services/search/worker_handlers.go`), so the API-CONTRACT §8 row still describes behaviour the
+worker does not perform. The completion work is `d3489a0` on the audit branch and is **not** in
+this change. **Relied on by:** [ADR-0042](ADR-0042-multi-repo-organisation-and-ci-configurator.md).
 **Amends:** [ADR-0035](ADR-0035-knowledge-ascent-in-ci.md) (its "no new runtime component" line:
 this adds a webhook route, a job kind and a GitHub adapter, all inside existing modules and images),
 [ADR-0034](ADR-0034-github-app-oauth-and-chrome-extension.md) (the App this ADR relies on; its

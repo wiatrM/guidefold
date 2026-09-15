@@ -1,5 +1,12 @@
 # Guidefold — viability assessment
 
+> **Historyczne od 2026-09-12.** Ocenia registry-only architekturę sprzed pivotu
+> (DESIGN.md v0.2, ADR-0001…0007); pivot zastąpił ją hosted katalogiem w Postgres/WorkOS
+> ([ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md), Accepted 2026-09-12,
+> [PIVOT-ARCHITECTURE](PIVOT-ARCHITECTURE.md)). ADR-0001 registry mode i dowód `gcloud` poniżej
+> pozostają aktualne wyłącznie dla `registry.backend: agent-registry`; zweryfikuj datowane
+> twierdzenia przed powołaniem się na nie (CLAUDE.md).
+
 **Date:** 2026-09-04 · **Against:** DESIGN.md v0.2, ADR-0001…0007, CLI skeleton
 **Method:** local `gcloud` SDK 579.0.0 help pages (alpha 2026.07.31), Google Cloud docs, harness vendor docs, GitHub issues. Every claim below carries a source.
 
