@@ -5272,10 +5272,18 @@ def build_card(root, cfg, node, skills_by_node):
     # on disk (Copilot applyTo, Codex/Gemini nested AGENTS.md) gets the shape of the organisation
     # before any specific guidance. A map is a normal skill; it is pulled out of the bullet
     # list below so it is stated once.
+    # Two skills in one node can share a name (this repository holds `security-baseline`
+    # both in `.agents/skills/` and in the Meridian fixture), and a bare `sorted()` over
+    # `(name, frontmatter)` then compares the two frontmatter dicts and raises
+    # `TypeError: '<' not supported between instances of 'dict' and 'dict'` — which took
+    # `guidefold install` down with a traceback. Sort by the name only.
+    def _by_name(item):
+        return item[0]
+
     def _is_map(fm):
         md = fm.get("metadata") or {}
         return md.get("generated_by") == ASCEND_MARKER and md.get("ascend_kind") == "map"
-    maps = [(n, name, fm) for n in reversed(chain) for name, fm in sorted(skills_by_node.get(n, [])) if _is_map(fm)]
+    maps = [(n, name, fm) for n in reversed(chain) for name, fm in sorted(skills_by_node.get(n, []), key=_by_name) if _is_map(fm)]
     if maps:
         lines += ["## Scope map (general → specific)", ""]
         for n, name, fm in maps:
@@ -5285,7 +5293,7 @@ def build_card(root, cfg, node, skills_by_node):
     for n in reversed(chain):                    # root first
         label = root_label if n == "_root" else n
         lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
-        for name, fm in sorted(skills_by_node.get(n, [])):
+        for name, fm in sorted(skills_by_node.get(n, []), key=_by_name):
             if _is_map(fm):
                 continue
             md = fm.get("metadata") or {}
