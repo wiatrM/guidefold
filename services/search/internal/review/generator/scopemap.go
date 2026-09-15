@@ -180,9 +180,25 @@ func InferScopeMap(req ScopeMapRequest) domain.ScopeMap {
 	return m
 }
 
+// coveredByPrefix answers whether a declared path already owns this directory.
+//
+// The declared paths come from `guidefold.yaml`, where a node's paths are globs
+// (`platforms/atlas/**`), not directories. Comparing them literally would make
+// every subdirectory of a declared node look uncovered, and the inferred map
+// would then propose a new node for each one -- a diff full of additions that
+// duplicate what the file already declares, which is the opposite of showing an
+// owner what would change. The glob tail is therefore trimmed before the
+// prefix test.
 func coveredByPrefix(covered map[string]bool, dir string) bool {
 	for p := range covered {
-		if p != "" && strings.HasPrefix(dir, strings.TrimSuffix(p, "/")+"/") {
+		prefix := strings.TrimSuffix(strings.TrimSuffix(p, "**"), "/")
+		if prefix == "" {
+			// `**` alone is the root node's catch-all. It claims the repository
+			// in the file's own terms, but it says nothing about where a scope
+			// boundary is, so it must not suppress every proposal.
+			continue
+		}
+		if dir == prefix || strings.HasPrefix(dir, prefix+"/") {
 			return true
 		}
 	}

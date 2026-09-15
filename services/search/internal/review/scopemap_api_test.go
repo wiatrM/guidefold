@@ -38,6 +38,13 @@ func setupScopeMap(t *testing.T) *scopeMapEnv {
 		owner.CreateRepo(t, orgID, repo, "https://git.example.test/acme/"+repo)
 		tree := pivottest.Monorepo(t)
 		write(t, filepath.Join(tree, "CODEOWNERS"), codeowners)
+		// A skill directory outside every path guidefold.yaml declares. Without
+		// one the fixture's map is already complete, the inferred proposal would
+		// change nothing, and the write this test is about would never happen --
+		// which is the correct behaviour for a fully declared repository, and
+		// exactly why the case has to be set up on purpose.
+		write(t, filepath.Join(tree, "labs/telemetry/.agents/skills/rotate-lab/SKILL.md"),
+			sharedProcedure("rotate-lab", "platform-engineering"))
 		manifest := pivottest.Manifest(t, tree, "acme", repo, true)
 		pivottest.Push(t, owner, orgID, repo, tree, manifest, "import-"+string(rune('1'+i)))
 	}
@@ -149,6 +156,17 @@ func TestScopeMapApprovalWritesScopesWithTheReviewer(t *testing.T) {
 	}
 	if reviewed == 0 {
 		t.Fatal("an approved row must name its reviewer and its proposal")
+	}
+	// Precedence runs both ways (ADR-0050, ADR-0051 decision 2): guidefold.yaml
+	// outranks an approved proposal, so a node the Meridian fixture's file
+	// declares keeps `guidefold_yaml` and is not relabelled by the approval.
+	var declared int
+	if err := e.h.Pool.QueryRow(context.Background(), `SELECT count(*) FROM gfm.scopes
+ WHERE org_id=$1::uuid AND source='guidefold_yaml'`, e.orgID).Scan(&declared); err != nil {
+		t.Fatal(err)
+	}
+	if declared == 0 {
+		t.Fatal("approving the map relabelled every node guidefold.yaml declares")
 	}
 
 	// The decision is once. A second one is a state conflict, not a second

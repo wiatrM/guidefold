@@ -158,6 +158,28 @@ func (s *Service) existingScopes(ctx context.Context, orgID string, repos []stri
 	return out, rows.Err()
 }
 
+// organisationRepos lists the repositories the organisation has right now, in id
+// order. It is what a map is validated against at approval: the map's own
+// `repos` is a claim it made when the job ran, and the rows it would write must
+// name repositories that still exist.
+func (s *Service) organisationRepos(ctx context.Context, orgID string) ([]string, error) {
+	rows, e := s.pool.Query(ctx, `SELECT repo_id FROM gfm.repos
+ WHERE org_id=$1::uuid ORDER BY repo_id`, orgID)
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var id string
+		if e := rows.Scan(&id); e != nil {
+			return nil, e
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // codeownersPaths are the three places a repository is allowed to keep the file.
 // The list is closed on purpose: a CODEOWNERS found somewhere else is a file
 // GitHub itself would not honour, so honouring it here would assign owners
@@ -262,14 +284,22 @@ func (s *Service) decideScopeMap(c *mgmt.Context, tx pgx.Tx, rc *repoContext, p 
 		return mgmt.Conflict("proposal_state_invalid",
 			"The stored map is not readable; run the import again to propose a new one.")
 	}
-	// Validation runs again here, not only in the worker: an import between the
-	// proposal and this click may have added or removed paths, and a map that
-	// was sound then can be unsound now.
-	owners, e2 := s.knownOwners(c.Ctx(), rc.Org.ID, m.Repos)
+	// Validation runs again here, not only in the worker: between the proposal
+	// and this click an import may have moved paths, and a repository the map
+	// names may have been removed from the organisation altogether. The second
+	// case is why the repository list comes from `gfm.repos` now and not from the
+	// map's own claim — validating against what the map says about itself would
+	// let a row for a deleted repository through to a foreign-key failure, which
+	// answers 500 where the honest answer is `422 scope_map_invalid`.
+	repos, e2 := s.organisationRepos(c.Ctx(), rc.Org.ID)
 	if e2 != nil {
 		return mgmt.Internal(e2)
 	}
-	if findings := domain.ValidateScopeMap(m, m.Repos, owners); len(findings) > 0 {
+	owners, e2 := s.knownOwners(c.Ctx(), rc.Org.ID, repos)
+	if e2 != nil {
+		return mgmt.Internal(e2)
+	}
+	if findings := domain.ValidateScopeMap(m, repos, owners); len(findings) > 0 {
 		return mgmt.Unprocessable("scope_map_invalid",
 			"The proposed map no longer describes this organisation.").
 			WithDetails(map[string]any{"findings": findings})
