@@ -1,6 +1,6 @@
 # ADR-0031: Monorepo import, reviewed skill library and harness delivery
 
-**Status:** Proposed · 2026-09-06 · konkretna propozycja na nowe wymagania właściciela; nie deklaracja wdrożenia.
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit brief of that day ("zaktualizuj ADR, które czujesz, że muszą być aktywne"); the pivot surface (identity, importer, knowledge, review, worker, React console) is implemented and tested — see `docs/PIVOT-IMPLEMENTATION.md`. Originally Proposed 2026-09-06. **Amended by:** [ADR-0034](ADR-0034-github-app-oauth-and-chrome-extension.md), [ADR-0044](ADR-0044-console-on-shadcn-and-spectrum.md). Reconciliation with the ADRs it overtook: [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md). Done still means used (ADR-0029 rule 3); acceptance of this ADR is not pilot evidence.
 **Proposes amendments to:** [ADR-0029](ADR-0029-product-focus-hard-rules.md), [ADR-0016](ADR-0016-knowledge-lifecycle-gates-and-layers.md), [ADR-0012](ADR-0012-nothing-generated-is-committed.md).
 **Architecture:** [React + Go API + worker; assessment of NestJS](../PIVOT-ARCHITECTURE.md). **Review:** [five roles](../PIVOT-REVIEW.md).
 **Specification:** [PRODUCT-PIVOT](../PRODUCT-PIVOT.md) · [proposed backlog](../PIVOT-BACKLOG.md).

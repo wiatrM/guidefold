@@ -1,5 +1,7 @@
 # Backlog — offline mirror
 
+> **Historyczne od 2026-09-12 (decyzja właściciela, ADR-0043 reguła 4):** porządkiem pracy jest [PIVOT-BACKLOG](PIVOT-BACKLOG.md) P01–P16. Issues #71–#117 pozostają otwarte jako historyczny rejestr do czasu przeniesienia lub zamknięcia; zdanie „The GitHub issues are the source of truth" poniżej opisuje stan sprzed pivotu.
+>
 > **Propozycja rozszerzenia, 2026-09-06:** [PIVOT-BACKLOG](PIVOT-BACKLOG.md) zawiera P01–P15, mapowanie do poniższych epiców i wcześniejszy Pilot Core. Te ID nie są nowymi zadaniami GitHub. Ten plik nadal jest mirrorem historycznego backlogu GitHub; nie przepisano zadań zewnętrznych.
 
 **The GitHub issues are the source of truth** ([ADR-0029](adr/ADR-0029-product-focus-hard-rules.md)

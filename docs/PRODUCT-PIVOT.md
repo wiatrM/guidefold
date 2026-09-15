@@ -2,7 +2,7 @@
 
 Reguły odczytu i aktualizacji: [DOCUMENTATION-RULES](DOCUMENTATION-RULES.md). Ten dokument określa wymagania i AC. Decyzje ekranów rozwija pipeline UI; nie zmienia on zakresu bez jawnej aktualizacji PRD.
 
-**Status: propozycja nowego MVP po przeglądzie agentów, 2026-09-06.** Wymagania właściciela rozszerzają wcześniejszy freeze o hosted UI, logowanie, organizacje, import i konsolidację wiedzy. Dokument opisuje docelowe zachowanie, nie stan implementacji. Decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md). Historie: [backlog pivotu](PIVOT-BACKLOG.md). [Ocena pięciu ról](PIVOT-REVIEW.md) i [React/Go/NestJS oraz podział usług](PIVOT-ARCHITECTURE.md).
+**Status: propozycja nowego MVP po przeglądzie agentów, 2026-09-06; decyzja ADR-0031 Accepted 2026-09-12 (wymagania obowiązują; stan wdrożenia w [PIVOT-IMPLEMENTATION](PIVOT-IMPLEMENTATION.md), dowodów pilota P nadal brak — [raport 2026-09-15](reports/product/2026-09-15-mvp-closure-status.md)).** Wymagania właściciela rozszerzają wcześniejszy freeze o hosted UI, logowanie, organizacje, import i konsolidację wiedzy. Dokument opisuje docelowe zachowanie, nie stan implementacji. Decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md). Historie: [backlog pivotu](PIVOT-BACKLOG.md). [Ocena pięciu ról](PIVOT-REVIEW.md) i [React/Go/NestJS oraz podział usług](PIVOT-ARCHITECTURE.md).
 
 ## 1. Pivot i obietnica produktu
 
@@ -62,6 +62,8 @@ MVP eksportuje propozycje lokalnie, bez wymagania GitHub App. Projektowana komen
 ## 4. U1 — skan i synchronizacja monorepo
 
 **Aktor i efekt:** owner podłącza repo bez ręcznego tworzenia katalogu skilli.
+
+**Nota 2026-09-12 (decyzja właściciela, `scope-change-protocol`).** Organizacja może mieć wiele repozytoriów, w tym jedno wskazane repo skilli, do którego trafiają propozycje z pozostałych; konfigurator CI i ustawienia generatora są per organizacja. Zakres i AC: [ADR-0042](adr/ADR-0042-multi-repo-organisation-and-ci-configurator.md) (Accepted 2026-09-12), historia P16 w [backlogu](PIVOT-BACKLOG.md) (kolejność zmieniona 2026-09-15: po ACT-01). Wymagania U1 poniżej pozostają bez zmian dla pojedynczego repozytorium; „monorepo" w tytule oznacza odtąd „repozytorium źródłowe", nie ograniczenie do jednego.
 
 Wymagania:
 
@@ -143,6 +145,7 @@ UI jest częścią definicji wydania. React/Vite obecnego prototypu jest punktem
 
 | Widok | Główne działanie |
 |---|---|
+| Przegląd (`/home`) | Pierwszy ekran po zalogowaniu: co czeka na ownera, stan biblioteki, lejek dostarczenia i wartości w wybranym oknie; jeden następny krok zamiast pustych kart, gdy brak organizacji/repo |
 | Start / Import | Skopiuj komendy, zobacz postęp i błędy |
 | Biblioteka | Szukaj po repo, scope, ownerze, warstwie i statusie |
 | Mapa | Przełącz Repozytorium / Zakresy / Piramida i poznaj relacje |
@@ -165,7 +168,8 @@ Acceptance criteria:
 
 **Aktor i efekt:** developer instaluje pakiet Guidefold; agent znajduje i pobiera firmowe instrukcje.
 
-Projektowany UX CLI (nowe komendy nie są jeszcze implementacją):
+UX CLI poniżej jest zaimplementowany i przetestowany; stan per komenda:
+[PIVOT-IMPLEMENTATION §d](PIVOT-IMPLEMENTATION.md#d-cli-nowe-komendy):
 
 ```text
 guidefold login

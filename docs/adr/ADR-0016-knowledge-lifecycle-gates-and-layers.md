@@ -1,6 +1,6 @@
 # ADR-0016: Knowledge lifecycle with gates G0–G7 and SkillPyramid layers
 
-**Status:** Accepted · 2026-09-04 (approved: SkillPyramid mechanics with owner acceptance replacing reward) · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged. **Proposed amendment:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md); historical status unchanged.
+**Status:** Accepted · 2026-09-04 (approved: SkillPyramid mechanics with owner acceptance replacing reward) · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged. **Amended by:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md) (Accepted 2026-09-12, §7 six-state lifecycle) and [ADR-0035](ADR-0035-knowledge-ascent-in-ci.md) (G6 lift). **G0–G7 state machine superseded by:** [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md) (2026-09-12); historical status unchanged.
 
 ## Context
 Source correction, 2026-09-06: [SkillPyramid v1](https://arxiv.org/html/2606.03692v1) reports +38% reward and −27.7% steps against ReAct without skills, not the flat-library baseline. Its Table 1 gives mean reward 73.7 vs 65.8 and steps 14.6 vs 17.7 against ReAct+Skills. These environment results do not establish monorepo utility. The historical decision below is unchanged.

@@ -1,6 +1,6 @@
 # ADR-0033: Contract-first management API, a separate `gfm` schema, and blobs plus jobs in Postgres for the MVP
 
-**Status:** Proposed · 2026-09-06 · propozycja po napisaniu wiążącego kontraktu API dla pivotu; nie deklaracja wdrożenia.
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit brief of that day; enforced in code since contract 1.0.0 (`tools/contract/check_api_contract.py` reports 0 drift at 1.13.0 on 2026-09-15; the `gfm` schema, `gfm.blobs`, `gfm.jobs` and the `BlobStore` port exist). Originally Proposed 2026-09-06. **Amended by:** [ADR-0041](ADR-0041-training-signal-storage-and-dataset-boundaries.md) (telemetry dataset projection). Listed in [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md).
 **Proposes amendments to:** [ADR-0018](ADR-0018-skills-stay-in-monorepo-one-postgres-gcs.md) (GCS jako miejsce artefaktów w MVP), [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (profil bazy: ParadeDB przestaje być wymagane do uruchomienia migracji).
 **Builds on:** [ADR-0031](ADR-0031-monorepo-to-managed-skill-library.md) (zakres pivotu), [ADR-0032](ADR-0032-engineering-principles-and-hexagonal-architecture.md) (porty i adaptery, reguły przeglądu).
 **Governs:** [docs/API-CONTRACT.md](../API-CONTRACT.md), `services/search/openapi/management-v1.yaml`, `services/search/internal/**`, `ui/src/api/`, komendy sieciowe CLI, `tools/contract/check_api_contract.py`.

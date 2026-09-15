@@ -1,7 +1,12 @@
 # ADR-0039: Proof-gated, source-grounded skill delivery
 
-**Status:** Proposed · 2026-09-09 · direction from the product owner ("proof-gated delivery,
-provenance, ASK")
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit session
+("przyjąć jako opcję opt-in"): the opt-in mechanism (`delivery_policy: "proof_gated"` in USE 1.2,
+`ASK` without body when the source proof fails) is accepted as implemented in
+`services/search/proof_gate.go`. **Scope of acceptance:** an opt-in delivery policy only; it is
+not the default, the ADR does not claim that proof-gated delivery improves task outcomes, and
+making it the default remains gated on the E2/URCT-2 evidence described below. Originally
+Proposed 2026-09-09 (direction from the product owner: "proof-gated delivery, provenance, ASK").
 **Amends:** [ADR-0022](ADR-0022-admissibility-relevance-and-bundle-completeness.md): adds a
 post-retrieval source-proof boundary to delivery; [ADR-0025](ADR-0025-harness-service-context-contract.md):
 adds an opt-in delivery policy to the versioned USE contract.
