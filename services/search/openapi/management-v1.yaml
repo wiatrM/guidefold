@@ -2078,6 +2078,42 @@ paths:
           description: "`proposal_not_found`."
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /api/v1/orgs/{org}/proposals/{proposal_id}/decision:
+    post:
+      tags: [proposals]
+      summary: "Approve or reject a proposal at organisation scope. Owners only."
+      description: >-
+        Contract 1.14.0, ADR-0051. The only mutation in `{org_base}`: a `scope_map` proposal
+        describes several repositories at once, so the repository comes from the proposal row
+        rather than from the address. Authorisation is the same owner + CSRF check the
+        `{repo_base}` twin applies to that repository, so no permission widens. `edit` on a
+        `scope_map` proposal is `invalid_candidate_change`; a map that no longer validates is
+        `422 scope_map_invalid` with `details.findings`.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded.
+          content: { application/json: { schema: { $ref: "#/components/schemas/DecisionResult" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`stale_revision` or `proposal_state_invalid`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: >-
+            `scope_map_invalid`, `invalid_candidate_change`, `graph_cycle`,
+            `scope_widening_not_approved`.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /api/v1/orgs/{org}/proposals/{proposal_id}/publication:
     get:
       tags: [proposals]
@@ -3669,11 +3705,19 @@ components:
 
     ProposalKind:
       type: string
-      enum: [extraction, enrichment, consolidation]
+      description: >-
+        `scope_map` (contract 1.14.0, ADR-0051) is a proposed organisation scope map, produced by
+        the job `scope_map.propose` rather than by `proposal.generate`. It is not an accepted value
+        of the `kinds` array on `GET .../plan` or `POST .../proposals:generate`.
+      enum: [extraction, enrichment, consolidation, scope_map]
 
     ProposalState:
       type: string
-      enum: [draft, approved_for_export, awaiting_git, published, rejected, superseded]
+      description: >-
+        `applied` (contract 1.14.0) is terminal and belongs to kind `scope_map` alone: approving a
+        scope map writes `gfm.scopes` rows, it does not export a file, so it never reaches
+        `approved_for_export`, `awaiting_git` or `published`.
+      enum: [draft, approved_for_export, awaiting_git, published, applied, rejected, superseded]
 
     GenerationLimits:
       type: object
@@ -3852,6 +3896,14 @@ components:
       type: object
       required: [schema_version, org_id, repo_id, proposal_id, kind, state, path, candidate, provenance, relations, sources]
       properties:
+        scope_map:
+          description: >-
+            Present only for kind `scope_map` (contract 1.14.0). The same typed structure that is
+            also the candidate body, plus a diff computed against the organisation's current
+            `gfm.scopes` rows at read time.
+          oneOf:
+            - { $ref: "#/components/schemas/ScopeMap" }
+            - { type: "null" }
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         org_id: { type: string, format: uuid }
         repo_id: { type: string }
@@ -4327,6 +4379,77 @@ components:
         children: { type: array, items: { $ref: "#/components/schemas/MapChild" } }
         next_cursor: { type: [string, "null"] }
 
+    ScopeMapNode:
+      type: object
+      required: [scope, paths, confidence, reason]
+      properties:
+        scope: { type: string, description: "Dotted node path with kebab-case segments containing no `--`, or `_root`." }
+        parent: { type: [string, "null"], description: "Another node of the same map, or null for a top-level node." }
+        owner: { type: [string, "null"], description: "A team present in that repository's CODEOWNERS, or null. Never a guessed name." }
+        paths:
+          type: array
+          items:
+            type: object
+            required: [repo_id, path]
+            properties:
+              repo_id: { type: string }
+              path: { type: string }
+        confidence: { type: number, minimum: 0, maximum: 1, description: "Shown to the owner, never a gate." }
+        reason: { type: string, description: "One sentence saying what the node follows from." }
+
+    ScopeMapDiff:
+      type: object
+      required: [added, reparented, owner_changed, paths_changed, unchanged]
+      properties:
+        added: { type: array, items: { type: string } }
+        reparented:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              from: { type: [string, "null"] }
+              to: { type: [string, "null"] }
+        owner_changed:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              from: { type: [string, "null"] }
+              to: { type: [string, "null"] }
+        paths_changed:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id, added, removed]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              added: { type: array, items: { type: string } }
+              removed: { type: array, items: { type: string } }
+        unchanged: { type: integer }
+
+    ScopeMap:
+      type: object
+      required: [origin, repos, nodes, diff, findings]
+      properties:
+        origin: { type: string, enum: [inferred, model], description: "`inferred` is the deterministic map built without a model; `model` names one in `model`." }
+        model: { type: [string, "null"] }
+        repos: { type: array, items: { type: string } }
+        nodes: { type: array, items: { $ref: "#/components/schemas/ScopeMapNode" } }
+        diff: { $ref: "#/components/schemas/ScopeMapDiff" }
+        findings:
+          type: array
+          items: { type: string }
+          description: >-
+            Empty for a stored proposal; non-empty only when the repositories changed after the
+            proposal was written, so the same map would no longer validate today.
+
     ScopeNode:
       type: object
       required: [id, repo_id, paths, source, count]
@@ -4336,7 +4459,7 @@ components:
         owner: { type: [string, "null"] }
         parent: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }
-        source: { type: string, enum: [guidefold_yaml, directory, codeowners, unknown] }
+        source: { type: string, enum: [guidefold_yaml, directory, codeowners, llm_approved, unknown], description: "`llm_approved` (contract 1.14.0): the owner approved a `scope_map` proposal that placed this node." }
         count: { type: integer }
 
     MapScopes:
