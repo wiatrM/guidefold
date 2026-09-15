@@ -1,6 +1,6 @@
 ---
 name: ui-anti-slop-gate
-description: The Guidefold anti-slop gate for screens, copy and documents (UX §6): banned visual patterns, banned words, structural slop, the screenshot test and the read-aloud test. Use before submitting any UI, string, prototype or doc change. Not a substitute for user research.
+description: 'The Guidefold anti-slop gate for screens, copy and documents (UX §6): banned visual patterns, banned words, structural slop, the screenshot test and the read-aloud test. Use before submitting any UI, string, prototype or doc change. Not a substitute for user research.'
 ---
 
 # Bramka anti-slop

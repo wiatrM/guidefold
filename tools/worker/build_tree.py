@@ -208,6 +208,10 @@ def main():
     # again. On a tree that builds cleanly the two output files are identical to
     # what the previous order produced.
     tree = Path(args.tree).resolve()
+    # A tree with no `guidefold.yaml` is not an error (ADR-0050): `_load_config`
+    # infers the scope map, and the inventory below reads that same config, so the
+    # entry point never reaches a raw `FileNotFoundError`. A tree with no skills
+    # fails inside `build()` with the named reason `import_tree_has_no_skills`.
     inventory_path = args.inventory or args.output.with_name("inventory.json")
     config = _load_config(cli, tree, args.publisher)
     rows = inventory(cli, tree, config[0], args.repo_id, args.commit)

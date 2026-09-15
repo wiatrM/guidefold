@@ -1,6 +1,6 @@
 ---
 name: eval-evidence-rules
-description: What counts as evidence in Guidefold: labelled corpora for routing quality, the Meridian fixture as regression only, R/Q/P acceptance labels, run identifiers, synthetic versus human data. Use before quoting any metric, closing an acceptance criterion or claiming a result. Not for UI copy review.
+description: 'What counts as evidence in Guidefold: labelled corpora for routing quality, the Meridian fixture as regression only, R/Q/P acceptance labels, run identifiers, synthetic versus human data. Use before quoting any metric, closing an acceptance criterion or claiming a result. Not for UI copy review.'
 ---
 
 # Reguły dowodów i ewaluacji

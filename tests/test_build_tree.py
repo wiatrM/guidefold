@@ -249,6 +249,27 @@ def test_a_tree_with_guidefold_yaml_still_reports_that_source(committed_tree, cl
     assert cfg["publisher"] == "meridian"
 
 
+# W4 — `build()` carried the named reason, but `main()` reaches `cli.load_map(tree)` for the
+# inventory first, so on a tree with no map the importer reported
+# `build_tree_failed: FileNotFoundError: .../guidefold.yaml` and the nameable reason was dead
+# code. The owner reads that string out of `gfm.repos.import_blocked_reason`; a Python
+# traceback is not a reason. Exercised through the real entry point, not through `build()`.
+# ADR-0050: a missing `guidefold.yaml` is no longer a reason at all — the map is inferred —
+# so the only thing an empty tree can be blamed for is having no skills.
+def test_the_cli_entry_point_names_the_empty_tree_instead_of_raising_filenotfound(tmp_path):
+    tree = tmp_path / "empty"
+    tree.mkdir()
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "worker" / "build_tree.py"),
+         "--tree", str(tree), "--repo-id", "meridian", "--commit", "0" * 40,
+         "--output", str(tmp_path / "snapshot.json")],
+        cwd=str(ROOT), capture_output=True, text=True)
+    assert r.returncode != 0
+    assert "import_tree_has_no_skills" in r.stderr
+    assert "import_tree_has_no_guidefold_yaml" not in r.stderr
+    assert "FileNotFoundError" not in r.stderr
+
+
 # W3 — the inventory used to enumerate every `.agents/skills/*/SKILL.md` while `Index.build`
 # went through `all_skills(include_generated=False)`, so a tree carrying a generated
 # hierarchy-index produced `{"cards": 26, "skills": 27}` and put a skill in the catalog that

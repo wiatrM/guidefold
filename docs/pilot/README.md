@@ -20,6 +20,7 @@ Zakres zastępowania: brak; ten plik nie zmienia treści dokumentów, do któryc
 | [PI-SMOKE-2026-09-10](PI-SMOKE-2026-09-10.md) | Reprodukowalny smoke prawdziwego Pi z ukrytym verifierem; potwierdza plumbing, nie jakość retrieval. |
 | [HIERARCHY-SMOKE-2026-09-10](HIERARCHY-SMOKE-2026-09-10.md) | Replay scoped flat/top-down/bottom-up na 26-kartowym snapshotcie Meridian; neutralny wynik kierunku traversalu. |
 | [PIVOT-RUBRIC](PIVOT-RUBRIC.md) | Rubryka U11 z etykietami R/Q/P, progi go/no-go i to, czego syntetyczny run nie dowodzi. |
+| [ACT-01-RUNBOOK](ACT-01-RUNBOOK.md) | Kroki produkcyjne Pilot Core dla właściciela: lista przedlotowa, komenda albo klik na każdy krok i zapytanie dowodowe po nim. Napisany z lokalnej próby generalnej ([raport](../reports/pilot/2026-09-15-pilot-core-rehearsal.md)), więc sam jest dowodem R; dowód P powstaje dopiero przy jego wykonaniu. |
 
 ## Narzędzia
 
