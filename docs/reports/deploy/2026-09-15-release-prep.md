@@ -115,9 +115,10 @@ kubectl get application guidefold -n argocd -o json \
   > live-values.yaml
 # set image: to sha256:23892d457790e0663039bfdb26407a793200cbd8a1daa182859ff4631ee4fbf4 in that file
 helm template guidefold deploy/k8s/chart -n guidefold -f live-values.yaml \
-  --set workload=migrate --set portal.enabled=false \
-  | python3 -c "import sys; d=sys.stdin.read(); print(d)"   # keep the single kind: Job document
-# name it guidefold-migrate-20260915, kubectl apply it
+  --set workload=migrate --set portal.enabled=false > rendered.yaml
+# From rendered.yaml keep the SINGLE `kind: Job` document by hand, give it the dated name
+# guidefold-migrate-20260915, and `kubectl apply -f` that one document. Do not apply
+# rendered.yaml as a whole.
 kubectl wait --for=condition=complete job/guidefold-migrate-20260915 -n guidefold --timeout=10m
 ```
 
