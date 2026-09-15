@@ -165,6 +165,14 @@ def build(tree, repo_id, commit, cli, cli_sha, publisher=None, config=None):
     tree = Path(tree).resolve()
     cfg, scope_source = config if config else _load_config(cli, tree, publisher)
     index = cli.Index.build(tree, cfg)
+    if not index.cards:
+        # A tree with no SKILL.md at all cannot become a serving snapshot: `store.go`'s publisher
+        # rejects 0 cards as `invalid_snapshot_dimensions`, and `repository.load` as
+        # `empty_repository_snapshot`. Naming it here makes the import fail for the reason an
+        # owner can act on ("this repository has no skills") instead of one about snapshot
+        # dimensions three jobs later. This matters more since ADR-0050: absence of
+        # guidefold.yaml no longer filters these repositories out before the builder runs.
+        raise ValueError("import_tree_has_no_skills")
     data = {"format": FORMAT, "repo_id": repo_id, "revision": commit,
             "cli_sha256": cli_sha, "nodes": index.nodes, "cards": index.cards,
             "weights": {**index.weights, "w_dense": 0},

@@ -137,6 +137,10 @@ inferring a map that contradicts a map the owner actually wrote would be worse t
 - `doctor`'s `guidefold-yaml` check can no longer fail for absence. It reports what was inferred
   and from how many skill directories, and hints that a file is worth adding only if that map is
   wrong.
+- A tree with no `SKILL.md` at all now fails the build with `import_tree_has_no_skills` instead
+  of producing a 0-card snapshot the publisher later rejects as `invalid_snapshot_dimensions`.
+  That shape was always possible; this decision makes it common, because a repository with no
+  `guidefold.yaml` is no longer filtered out before the builder runs.
 - **Not done here, deliberately:** the GitHub App's fetch list is unchanged, so CODEOWNERS is not
   fetched on that path and a scope inferred from GitHub content has `owner: unknown` until a
   separate, contract-visible change adds it. `tools/serve_spike/repository.py` (the git spike

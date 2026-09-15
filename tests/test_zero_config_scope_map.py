@@ -230,15 +230,22 @@ def test_report_base_works_when_neither_side_has_the_file(run_cli, inferred_repo
     assert payload["changes"]["skills"]["added"] == []
 
 
-def test_scan_works_and_still_reports_the_missing_file_as_a_suggestion(run_cli, inferred_repo,
+def test_scan_still_reports_the_missing_file_as_an_advisory_suggestion(run_cli, inferred_repo,
                                                                       tmp_path):
-    """`scan` already tolerated the absent file through `_tolerant_config`; U1 AC2's advisory
-    suggestions are unchanged by ADR-0050 — they are what a console proposal is built from."""
+    """`scan` already tolerated the absent file through `_tolerant_config`, and U1 AC2's advisory
+    suggestions are unchanged by ADR-0050 — they are what a console scope-map proposal is built
+    from, and they stay advisory: nothing in the manifest feeds back into node_for()/urn()."""
     env = {**os.environ, "GUIDEFOLD_CACHE": str(tmp_path / ".cache-scan")}
     result = run_cli(["scan", "--dry-run", "--json"], cwd=inferred_repo, env=env)
     assert result.returncode == 0, result.stderr
     manifest = json.loads(result.stdout)
     assert [f["path"] for f in manifest["files"] if f["kind"] == "skill"]
+    suggestions = {entry["path"]: entry for entry in manifest["suggestions"]}
+    assert suggestions, "every skill should carry a suggestion while the file is absent"
+    for entry in suggestions.values():
+        assert "guidefold_yaml_missing" in entry["reasons"]
+    assert suggestions["services/billing/.agents/skills/invoice-runs/SKILL.md"]["suggested_owner"] \
+        == "billing-team"
 
 
 # --- what must NOT change --------------------------------------------------------------------

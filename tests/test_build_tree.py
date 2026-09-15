@@ -224,6 +224,24 @@ def test_a_tree_without_guidefold_yaml_builds_with_an_inferred_scope_map(tmp_pat
     assert card["node"] == "platforms.atlas"
 
 
+# A tree with no SKILL.md at all is still a named failure, with or without guidefold.yaml: the
+# publisher rejects a 0-card snapshot (`invalid_snapshot_dimensions`), so failing here names a
+# cause the owner can act on. ADR-0050 makes this the common shape — a repository that was
+# filtered out by "no guidefold.yaml" now reaches the builder.
+@pytest.mark.parametrize("with_config", [False, True])
+def test_a_tree_with_no_skills_fails_with_a_named_reason(tmp_path, cli_pair, with_config):
+    cli, cli_sha = cli_pair
+    tree = tmp_path / ("empty-" + str(with_config))
+    tree.mkdir()
+    if with_config:
+        (tree / "guidefold.yaml").write_text(
+            "publisher: acme\nnodes:\n  _root:\n    paths: ['**']\n    owner: platform\n",
+            encoding="utf-8")
+    with pytest.raises(ValueError) as exc:
+        build_tree.build(tree, "meridian", "0" * 40, cli, cli_sha, publisher="acme")
+    assert "import_tree_has_no_skills" in str(exc.value)
+
+
 def test_a_tree_with_guidefold_yaml_still_reports_that_source(committed_tree, cli_pair):
     cli, cli_sha = cli_pair
     bundle, cfg = build_tree.build(committed_tree, "meridian", "0" * 40, cli, cli_sha)

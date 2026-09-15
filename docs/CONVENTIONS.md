@@ -36,6 +36,10 @@ and can no longer fail for absence. `init` does not write a skeleton unless you 
 `--scope-map`. The hook is unaffected: it resolves `cwd → node` from `nodes.json` inside the
 prebuilt index artifact, never from the working tree, and imports no PyYAML.
 
+A repository with no `SKILL.md` at all fails its import with `import_tree_has_no_skills`: a
+snapshot with zero cards cannot be published, so the reason is named where an owner can act on it
+rather than surfacing as `invalid_snapshot_dimensions` three jobs later.
+
 **What it costs.** An inferred node name follows the directory, so moving a skill directory
 renames its node and therefore its URN. That is not new — the same move without an
 `import.aliases` entry already looked like delete + create — and the safeguard is unchanged: a

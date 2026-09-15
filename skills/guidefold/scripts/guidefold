@@ -10284,8 +10284,10 @@ def main():
     asc.add_argument("--summary-md", help="write a PR-body markdown summary here")
 
     a = p.parse_args()
-    # init/doctor must work on a repo with no guidefold.yaml yet, so they bypass the
-    # repo_root()/load_map() setup below (which requires one) — see _target_root().
+    # init/doctor resolve their own target directory (_target_root) rather than the
+    # repo_root()/load_map() setup below — `init` runs before any guidefold layout exists at
+    # all. Since ADR-0050 load_map() no longer requires the file either: without one it infers
+    # the map, so every command below works on an unconfigured repository.
     if a.cmd == "init":
         cmd_init(a)
         return

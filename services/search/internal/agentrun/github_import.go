@@ -90,8 +90,13 @@ func fetchRepositoryImport(ctx context.Context, pool *pgxpool.Pool, gh *ghapp.Cl
 		// -1 keeps the prepended hierarchy inside the declared ceiling
 		// (API-CONTRACT §8 max_files) rather than one file over it; at
 		// MaxFiles == 1 this fetches the hierarchy alone, which is the
-		// correct precedence.
-		max := limits.MaxFiles - 1
+		// correct precedence. With no hierarchy to prepend (ADR-0050) there
+		// is nothing to make room for, and subtracting anyway would fetch one
+		// skill fewer than declared -- none at all at MaxFiles == 1.
+		max := limits.MaxFiles
+		if hasHierarchy {
+			max--
+		}
 		if max < 0 {
 			max = 0
 		}
