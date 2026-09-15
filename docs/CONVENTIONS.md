@@ -2,9 +2,44 @@
 
 These are enforced by `guidefold validate` in CI. A skill that violates them is not published.
 
-## 1. Hierarchy map — `guidefold.yaml` (repo root)
+## 1. Hierarchy map — `guidefold.yaml` (repo root, **optional**)
+
+> **The file is an override, not a requirement** ([ADR-0050](adr/ADR-0050-zero-config-scope-map.md),
+> owner decision 2026-09-15). A repository without one gets an inferred map and every command
+> works; write the file when you want to name your nodes something other than your folders, pin
+> an owner CODEOWNERS does not state, or set `registry:`/`search:`/`eval:`.
 
 One file. Nodes are dotted paths; each node maps to monorepo path globs and an owner. The tree is derived from the dots — no explicit `parent`.
+
+### 1.0 When there is no `guidefold.yaml` — the inferred map
+
+`load_map()` synthesizes the map through `infer_map()`, the one implementation the CLI,
+`report --base` (over the tree `git archive` materialises for the base ref) and the worker's
+`tools/worker/build_tree.py` all call. Stdlib only: the file's existence is tested *before*
+PyYAML is imported, so a repository without one needs nothing installed.
+
+| Field | Inferred from |
+|---|---|
+| node | every directory holding a recognised skill directory (`.agents/skills/`, `.claude/skills/` — the same pair `scan` recognises), plus every directory above it |
+| node name | that directory path with `/` → `.`, each segment slugified to `[a-z0-9-]`; `platforms/atlas` → `platforms.atlas`. ADR-0008 flattening and its collision rule are unchanged; two directories that slugify to the same name share one node and merge their globs |
+| `paths` | `["<dir>/**"]`; `_root` is implied with `["**"]` |
+| `owner` | CODEOWNERS' own "last matching rule wins" verdict for that directory; `_root` takes the whole-repo rule; `unknown` when CODEOWNERS says nothing |
+| `publisher` | the logged-in organisation slug, else the git remote's owner segment, else the root directory name — `publisher_source` records which |
+| `registry.backend` | `local`: a repository that configured nothing has published nothing |
+
+The synthesized config carries `_source: "inferred"`; the worker's envelope carries
+`scope_source`, and `import.parse` stores it as `gfm.scopes.source` so an inferred scope is
+visible as inferred in the console and never passes for a declared one.
+
+`doctor` reports the inferred map (`inferred N scopes from M skill directories (+ CODEOWNERS)`)
+and can no longer fail for absence. `init` does not write a skeleton unless you pass
+`--scope-map`. The hook is unaffected: it resolves `cwd → node` from `nodes.json` inside the
+prebuilt index artifact, never from the working tree, and imports no PyYAML.
+
+**What it costs.** An inferred node name follows the directory, so moving a skill directory
+renames its node and therefore its URN. That is not new — the same move without an
+`import.aliases` entry already looked like delete + create — and the safeguard is unchanged: a
+rename goes to review (U1 AC5), and `import.aliases` is how you pin a name across a move.
 
 ```yaml
 publisher: acme
@@ -693,8 +728,10 @@ sha256, the harnesses installed, and `package_sha256`, the sha256 of the install
 
 ### Reconciling a partial or drifted bootstrap (`init`)
 
-`init` lands `guidefold.yaml`, the bootstrap package, one hook file per harness, the CI workflow
-and a `.gitignore` entry. A run that fails partway therefore leaves a partial install, and the
+`init` lands the bootstrap package, one hook file per harness, the CI workflow and a `.gitignore`
+entry. It does **not** write `guidefold.yaml` (ADR-0050): the scope map is inferred from the skill
+directories and CODEOWNERS the repository already has, and the plan says so. `--scope-map` writes
+the skeleton for a repository that wants to name its nodes differently. A run that fails partway therefore leaves a partial install, and the
 retry is what has to repair it — setup jobs are retried, so this is the normal path, not the rare
 one. `init` plans against the same `INSTALL-MANIFEST.json` as `install` and prints the plan before
 writing anything.
@@ -707,7 +744,7 @@ writing anything.
   `.agents/skills/guidefold/scripts/guidefold`, not by JSON equality. A rerun replaces the entry
   an older template wrote instead of appending a second one beside it, so the hook never fires
   twice. Entries and top-level keys the consumer owns keep their place and order.
-- `guidefold.yaml` and `.github/workflows/skills.yml` are created once and never rewritten.
+- `guidefold.yaml` (only with `--scope-map`) and `.github/workflows/skills.yml` are created once and never rewritten.
 - A hook file that is not valid JSON is the one state `init` cannot reconcile: it exits non-zero
   naming the file and the fix, and writes nothing. Reporting it as a warning and exiting `0` is
   how a broken install used to survive every retry unnoticed.

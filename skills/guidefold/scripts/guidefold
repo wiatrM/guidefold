@@ -75,7 +75,10 @@ TELEMETRY_SCHEMA_VERSION = "1.0"   # must match tools/telemetry/ledger.py SCHEMA
 
 # ---------------------------------------------------------------- repo helpers
 def repo_root() -> Path:
-    """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel as fallback."""
+    """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel,
+    then the nearest ancestor holding a skill directory, as fallbacks. ADR-0050 made the file
+    optional, so the last fallback is what answers for a tree that is neither configured nor a
+    git checkout (an extracted archive, a materialised worker tree)."""
     env = os.environ.get("GUIDEFOLD_ROOT")
     if env:
         return Path(env).resolve()
@@ -84,9 +87,13 @@ def repo_root() -> Path:
         if (d / "guidefold.yaml").is_file():
             return d
     out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    if out.returncode != 0:
-        sys.exit("guidefold: no guidefold.yaml above cwd and not inside a git repository")
-    return Path(out.stdout.strip())
+    if out.returncode == 0 and out.stdout.strip():
+        return Path(out.stdout.strip())
+    for d in (here, *here.parents):
+        if any((d / marker.rstrip("/")).is_dir() for marker in _SKILL_DIR_MARKERS):
+            return d
+    sys.exit("guidefold: no guidefold.yaml above cwd, no .agents/skills or .claude/skills "
+             "directory, and not inside a git repository")
 
 # ADR-0050 (owner decision 2026-09-15): `guidefold.yaml` is an OPTIONAL OVERRIDE, never a
 # requirement. Precedence for a scope map is: the file (explicit) > an approved console/LLM

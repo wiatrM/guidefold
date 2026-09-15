@@ -84,7 +84,7 @@ python3 /path/to/guidefold/skills/guidefold/scripts/guidefold init
 python3 /path/to/guidefold/skills/guidefold/scripts/guidefold doctor
 ```
 
-`init` adds the bootstrap skill, configuration and CI template, and merges hook configuration with existing settings. Use `--harness claude|copilot|codex|all` to choose the target. Review the generated configuration for your repository before relying on CI or publishing. `doctor` reports missing setup and suggested fixes.
+`init` adds the bootstrap skill, CI template and hook wiring, merged with existing settings. Use `--harness claude|copilot|codex|all` to choose the target. It does not write a `guidefold.yaml`: the scope map is inferred from your skill directories and CODEOWNERS ([ADR-0050](docs/adr/ADR-0050-zero-config-scope-map.md)), and `doctor` shows you what it inferred. Pass `--scope-map` to write one when you want to name your scopes something other than your folders. Review the generated configuration for your repository before relying on CI or publishing. `doctor` reports missing setup and suggested fixes.
 
 See [skill conventions](docs/CONVENTIONS.md) for the file layout and [the bootstrap skill](skills/guidefold/SKILL.md) for the agent-facing workflow.
 
