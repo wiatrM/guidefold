@@ -332,7 +332,23 @@ func (c *Context) ReadableRepos(org *Org) ([]string, error) {
 // organization administration or publication rights. Owners remain reviewers
 // implicitly, and the normal repository ACL is checked first.
 func (c *Context) AuthorizeReviewerRepo(orgParam, repoParam string) (*Org, *Repo, error) {
-	org, repo, err := c.AuthorizeRepo(orgParam, repoParam, RoleAny)
+	return c.AuthorizeReviewerRepoID(orgParam, c.Param(repoParam))
+}
+
+// AuthorizeReviewerRepoID is the same check for a repository the caller did not
+// name in the address.
+//
+// The organisation-scope decision route (API-CONTRACT §4.10 point 10) takes its
+// repository from the proposal row rather than from a path segment, and it must
+// then be checked exactly as if the caller had asked for that repository
+// directly -- same ACL, same reviewer rule, same 403. Sharing one function is
+// how the two routes are made unable to disagree.
+func (c *Context) AuthorizeReviewerRepoID(orgParam, repoID string) (*Org, *Repo, error) {
+	org, err := c.Authorize(orgParam, RoleAny)
+	if err != nil {
+		return nil, nil, err
+	}
+	repo, err := c.resolveRepo(org, repoID)
 	if err != nil {
 		return nil, nil, err
 	}

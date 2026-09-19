@@ -92,8 +92,15 @@ type Node struct {
 // reads only the scope map from it; building and publishing the serving
 // snapshot belongs to the publication module.
 type Snapshot struct {
-	SHA256   string `json:"sha256"`
-	Snapshot struct {
+	SHA256 string `json:"sha256"`
+	// ScopeSource is how the builder got the scope map (ADR-0050):
+	// "guidefold_yaml" when the tree carries the file, "inferred" when it was
+	// derived from the tree's skill directories and CODEOWNERS. It rides on
+	// the envelope, not inside Snapshot, so the snapshot digest stays
+	// byte-identical to the one the git path produces for the same tree. An
+	// empty value from an older builder reads as "guidefold_yaml".
+	ScopeSource string `json:"scope_source"`
+	Snapshot    struct {
 		Format   string          `json:"format"`
 		RepoID   string          `json:"repo_id"`
 		Revision string          `json:"revision"`
@@ -246,3 +253,11 @@ func resourceType(p string) string {
 	}
 	return "file"
 }
+
+// The two values gfm.scopes.source takes for a map the builder resolved
+// (API-CONTRACT §7, ADR-0050). "directory", "codeowners" and "unknown" remain
+// in the column's domain for maps written from elsewhere.
+const (
+	ScopeSourceGuidefoldYAML = "guidefold_yaml"
+	ScopeSourceInferred      = "inferred"
+)

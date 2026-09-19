@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -87,10 +88,35 @@ func secret(path string) (string, error) {
 type APIError struct {
 	Status int
 	Code   string
+	// Hint is the optional one-sentence `hint` of the /v1 error envelope
+	// (API-CONTRACT §3, contract 1.17.0): what the caller should send instead.
+	// It is a constant of the code, never built from the request, so it can
+	// carry nothing about the organisation. Clients still branch on Code.
+	Hint string
 }
 
 func (e *APIError) Error() string        { return e.Code }
-func fail(status int, code string) error { return &APIError{status, code} }
+func fail(status int, code string) error { return &APIError{Status: status, Code: code} }
+
+// hintSendCardRevision is the one hint the delivery surface carries today
+// (API-CONTRACT §4.5, HARNESS-SERVICE-CONTRACT §Request semantics). The
+// catalog returns both `revision_id` and `card_revision`; only the second is
+// the handle USE takes, because the two are derived differently and accepting
+// either would mean serving a revision the active snapshot does not know
+// under that identifier.
+const hintSendCardRevision = "send card_revision from the catalog"
+
+// withHint attaches the envelope's `hint` to an error fail() already built.
+// It wraps rather than replaces fail() on purpose: the contract checker reads
+// the `fail(status, "code")` literals to prove every code the service returns
+// is documented, and a second constructor would hide them from it.
+func withHint(e error, hint string) error {
+	var api *APIError
+	if errors.As(e, &api) {
+		return &APIError{Status: api.Status, Code: api.Code, Hint: hint}
+	}
+	return e
+}
 
 // Python snapshot canonical JSON: sorted keys, UTF-8 (also U+2028/U+2029), no HTML escaping.
 // Request JSON uses the normal encoder. Only this digest format needs custom quoting.

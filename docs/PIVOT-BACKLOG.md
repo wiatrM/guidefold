@@ -4,7 +4,7 @@ Propozycja priorytetów z 2026-09-09: [wejście zespołu i pierwsza wartość �
 
 Reguły odczytu i aktualizacji: [DOCUMENTATION-RULES](DOCUMENTATION-RULES.md). Ten dokument porządkuje zadania i zależności. Szczegółowe kryteria pozostają w PRD; ukończenie makiety nie oznacza ukończenia historii backendowej.
 
-**Status: propozycja po recenzji pięciu ról, 2026-09-06.** Szczegóły wymagań i AC: [PRODUCT-PIVOT](PRODUCT-PIVOT.md). P01–P15 to lokalne ID, nie numery GitHub Issues. Obecne issue'y pozostają historycznym/operacyjnym backlogiem do aktualizacji po przyjęciu nowej decyzji. Ten dokument nie deklaruje wykonania nowych funkcji.
+**Status: propozycja po recenzji pięciu ról, 2026-09-06; kolejność P01–P16 obowiązuje jako porządek pracy od ADR-0043 (decyzja właściciela 2026-09-12) do czasu przeniesienia na GitHub Issues.** Audyt założeń vs implementacji i lista PRIO: [2026-09-12](reports/product/2026-09-12-assumptions-vs-implementation-audit.md); bieżący stan i krytyczna ścieżka: [2026-09-15](reports/product/2026-09-15-mvp-closure-status.md). Szczegóły wymagań i AC: [PRODUCT-PIVOT](PRODUCT-PIVOT.md). P01–P15 to lokalne ID, nie numery GitHub Issues. Obecne issue'y pozostają historycznym/operacyjnym backlogiem do aktualizacji po przyjęciu nowej decyzji. Ten dokument nie deklaruje wykonania nowych funkcji.
 
 Każda historia ma wartość dla użytkownika, właściciela roli, zależności i dowód odbioru. Pełne AC są normatywne w podanej sekcji PRD; skróty w tabeli ich nie zastępują. Implementacja otrzymuje rzeczywisty numer issue po przełożeniu zatwierdzonej propozycji na GitHub.
 
@@ -13,11 +13,11 @@ Każda historia ma wartość dla użytkownika, właściciela roli, zależności 
 | P01 | Google/GitHub login, org i owner/member: użytkownik może zacząć | Backend + frontend | Dostawca auth i konfiguracja OAuth | U3; oba logowania, zaproszenie, odwołanie dostępu | #71, #78, rozszerzenie #117 |
 | P02 | Autoryzacja org/repo we wszystkich operacjach: dane organizacji pozostają izolowane | Backend | P01 | U3.3–5; A/B obejmuje API, worker, storage, eksport i metryki | #74, #97–98, rozszerzenie #117 |
 | P03 | Scan, manifest i przyrost: owner wie, co podłącza i wysyła | CLI | Przykładowe repo partnera | U1; fixture, offline dry-run, rename, ignored files, zerowy przyrost | #71, #79–80 |
-| P04 | Upload i joby z retry: duży import ma widoczny postęp i nie ginie | Backend | P02, P03 | U1/U2; restart, idempotencja, partial, limit kosztu | nowy zakres #117 |
+| P04 | Upload i joby z retry: duży import ma widoczny postęp i nie ginie | Backend | P02, P03 | U1/U2; restart, idempotencja, partial, limit kosztu | nowy zakres #117; po udanym imporcie job `scope_map.propose` proponuje mapę organizacji do decyzji ownera ([ADR-0051](adr/ADR-0051-llm-proposed-organisation-map.md)) |
 | P05 | Biblioteka, źródła i mapa repo/scope: użytkownik odnajduje instrukcje | Frontend | P01, P04 | U4; realny import, filtry, 10k skilli, klawiatura | nowy zakres #117 |
 | P06 | Ekstrakcja i enrichment: autor dostaje propozycje poparte źródłami | Backend + research | P04, źródła partnera | U2; provenance, błędy modelu, próbka 30, koszt | #72, #86; nowy zakres #117 |
 | P07 | Review i eksport do Git: owner kontroluje treść przed publikacją | Frontend + CLI | P05, P06 | U2/U3; diff, reject, apply z kontrolą commitu, sync | #72, #85, rozszerzenie #117 |
-| P08 | Konsolidacja i widok piramidy: wspólna wiedza ma źródła i zakres | Research + frontend | P06, P07 | U2/U4; pary powiązane/niepowiązane, brak cykli, decyzja ownera | #117; oddzielne od treningu #76 |
+| P08 | Konsolidacja i widok piramidy: wspólna wiedza ma źródła i zakres | Research + frontend | P06, P07 | U2/U4; pary powiązane/niepowiązane, brak cykli, decyzja ownera | #117; oddzielne od treningu #76; rodzaj propozycji `scope_map` dzieli tę samą kolejkę review i tę samą regułę decyzji ownera ([ADR-0051](adr/ADR-0051-llm-proposed-organisation-map.md)) — bez wpływu na ranking |
 | P09 | Snapshot i pakiety: agent pobiera dokładnie zatwierdzoną treść, a brak dowodu kończy się `ASK` | Backend | P02, P04; P07 tylko dla nowej wygenerowanej treści | U5; atomowa publikacja, rollback, references/scripts, budget/closure, proof-gated provenance | #74, #99–100 |
 | P10 | Instalator dwóch adapterów: developer korzysta w swoim narzędziu | CLI + integracje | P01, P09 | U5; Claude i Copilot na realnym repo, uninstall, token scopes | #71, #81–84 |
 | P11 | UI użycia i zdrowie integracji: owner podejmuje decyzję na danych | Backend + frontend | P05, P10 | U6; ledger, unknown, retry, rewizje, export | #73, #91–95 |
@@ -25,6 +25,12 @@ Każda historia ma wartość dla użytkownika, właściciela roli, zależności 
 | P13 | Drift i kolejka ownera: zmienione źródło nie pozostaje niezauważone | Backend + frontend | P04, P07, P11 | U9; zmiana/usunięcie, brak false deletion przy partial, audyt | #72–73 |
 | P14 | Strona modułu i przykład wspólnej procedury: wiedza pomaga w prawdziwym zadaniu | Product + frontend | P05/P10 dla U8; P08/P09 dla U10 | U8/U10; scenariusze scope, 5 zadań, potwierdzenie ponownego użycia | #71, #75 |
 | P15 | Eksport porównania i pilot: właściciel wie, czy dalej inwestować | Product + research | P10–11; partner od tygodnia 1 | U11 i §13 PRD; rubryka, oba kierunki regresji, decyzja | #75, #102–107 |
+
+**P16 (dopisane 2026-09-12 decyzją właściciela, `scope-change-protocol`).** Organizacja wielorepozytoryjna, wskazane repo skilli, konfigurator CI i ustawienia generatora per organizacja — [ADR-0042](adr/ADR-0042-multi-repo-organisation-and-ci-configurator.md) (Accepted 2026-09-12). Owner roli: Backend + frontend. Zależności: P02, P04, P07; ADR-0036 `ascend.run` dokończony (decyzja właściciela tego samego dnia). Dowód odbioru: test akceptacyjny z ADR-0042 §Consequences (dwa repo źródłowe i jedno repo skilli w jednej organizacji; organizacja jednorepozytoryjna bez regresji, `target_repo_id` null) oraz drugie repo organizacji `cloudfloo` podpięte na hostowanej instancji. Rozbieżność z PRD §4 („monorepo") zapisana w ADR-0042 i w nocie przy §4. Powiązanie: rozszerzenie #117. Na `main` @ `2a302f5` P16 nie ma kodu: `gfm.repo_links` nie istnieje (`grep`, 2026-09-15).
+
+**Kolejność P16.** Decyzja z 2026-09-12 wstawiała P16 do Pilot Core przed pierwszą sesją ACT-01. **Zmieniono 2026-09-15** [raportem zamknięcia MVP](reports/product/2026-09-15-mvp-closure-status.md) §4b poz. 13: P16 schodzi z krytycznej ścieżki, a decyzja o nim zapada po ACT-01 — multi-repo w postaci GitHub App jest już na `main` w innej formie. Status ADR-0042 (Accepted) bez zmian; zmienia się priorytet, nie decyzja.
+
+**Decyzja właściciela 2026-09-12: ten dokument (P01–P16) jest jedynym porządkiem pracy.** Raport MoSCoW z 2026-09-09 i `docs/BACKLOG.md` (Issues #71–#117) są materiałem historycznym; lista PRIO z [audytu 2026-09-12](reports/product/2026-09-12-assumptions-vs-implementation-audit.md) i krytyczna ścieżka z [raportu 2026-09-15](reports/product/2026-09-15-mvp-closure-status.md) uzupełniają kolejność wewnątrz historii, nie zastępują ich.
 
 ## Dwa poziomy dostarczenia
 

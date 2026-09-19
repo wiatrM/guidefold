@@ -1,6 +1,6 @@
-# Harness-service contract 1.1
+# Harness-service contract 1.1 with additive 1.2 opt-ins (family, closure, search_snapshot, delivery_policy, claim_refs)
 
-**Status:** implemented by the Go/ParadeDB Compose service and the historical local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped.
+**Status:** implemented by the Go/ParadeDB Compose service and the historical local E1.1b service; architecture decision [ADR-0025](adr/ADR-0025-harness-service-context-contract.md). This is the shared request contract for adapters and the service, not evidence that any vendor harness integration or production deployment has shipped. 1.2 is additive over 1.1 — a 1.1 client sees no change; `GET /health/ready` announces `["legacy-unversioned", "1.1", "1.2"]` in `api_schema_versions` (`services/search/main.go`, checked 2026-09-15).
 
 Machine-readable requests and success/error envelopes: [JSON Schema](../tools/serve_spike/contracts/harness-service-v1.1.schema.json). A complete request is in [search-example.json](../tools/serve_spike/contracts/search-example.json). The normative behavioral tests are [test_service_context.py](../tests/test_service_context.py). Both schema and service validation must accept valid requests and reject invalid ones in CI.
 
@@ -48,7 +48,7 @@ The endpoints remain `GET /health/ready`, `POST /v1/search` and `POST /v1/use`. 
 
 IDs use `[A-Za-z0-9_][A-Za-z0-9_.:-]{0,127}`. List/string limits and required nested fields are in the schema. `intent.action` is one of implement/debug/review/test/migrate/deploy/document/explore; `intent.source` identifies user/agent/adapter. Stack supports languages, technologies, source (manifest/user/inferred) and manifest revision. Constraint and capability values are bounded strings, not executable directives.
 
-USE requires the `skill_id` and exact `revision` returned by SEARCH; optional `search_id` is correlation only. For contextual USE, the service rechecks active status, revision and visibility within the resolved scopes. It does not claim a production ACL check. Missing resources, stale revisions and disallowed scopes never silently hydrate another revision. With `delivery_policy:"proof_gated"`, an `ASK` response is a safe abstention: an adapter must not inject the empty body or diagnostic ranked candidates, and should show the listed missing conditions to the owner or agent.
+USE requires the `skill_id` and exact `revision` returned by SEARCH; optional `search_id` is correlation only. That `revision` is the **card** revision — the value a management catalog reads back as `card_revision`, never the catalog's own `revision_id`, which addresses the management revision routes and is derived differently; sending `revision_id` is a `409 revision_mismatch` carrying `hint: "send card_revision from the catalog"`. For contextual USE, the service rechecks active status, revision and visibility within the resolved scopes. It does not claim a production ACL check. Missing resources, stale revisions and disallowed scopes never silently hydrate another revision. With `delivery_policy:"proof_gated"`, an `ASK` response is a safe abstention: an adapter must not inject the empty body or diagnostic ranked candidates, and should show the listed missing conditions to the owner or agent.
 
 ## Scope resolution and retrieval
 

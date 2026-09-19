@@ -8,15 +8,17 @@ import json
 import pytest
 
 
-def _init(gf, monkeypatch, root, *, publisher=None, harness="all", dry_run=False):
+def _init(gf, monkeypatch, root, *, publisher=None, harness="all", dry_run=False, scope_map=False):
     monkeypatch.chdir(root)
     monkeypatch.delenv("GUIDEFOLD_ROOT", raising=False)
-    a = type("Args", (), {"publisher": publisher, "harness": harness, "dry_run": dry_run})()
+    a = type("Args", (), {"publisher": publisher, "harness": harness, "dry_run": dry_run,
+                          "scope_map": scope_map})()
     gf.cmd_init(a)
 
 
+# ADR-0050: guidefold.yaml is NOT among them any more — the scope map is inferred from the
+# skill directories and CODEOWNERS the repository already has. `--scope-map` still writes one.
 ARTIFACTS = [
-    "guidefold.yaml",
     ".agents/skills/guidefold/SKILL.md",
     ".agents/skills/guidefold/scripts/guidefold",
     ".claude/settings.json",
@@ -34,6 +36,15 @@ def test_init_on_empty_repo_creates_every_artifact(gf, tmp_path, monkeypatch):
     missing = [p for p in ARTIFACTS if not (root / p).is_file()]
     assert not missing, f"missing artifacts: {missing}"
     assert ".guidefold/" in (root / ".gitignore").read_text()
+    assert not (root / "guidefold.yaml").exists()
+
+
+def test_init_writes_a_scope_map_only_when_asked(gf, tmp_path, monkeypatch):
+    root = tmp_path / "acme"
+    root.mkdir()
+    _init(gf, monkeypatch, root, scope_map=True)
+    text = (root / "guidefold.yaml").read_text()
+    assert "publisher: acme" in text
 
 
 def test_init_twice_is_idempotent(gf, tmp_path, monkeypatch):
@@ -97,7 +108,7 @@ def test_init_gitignore_appended_not_rewritten(gf, tmp_path, monkeypatch):
 def test_init_publisher_override(gf, tmp_path, monkeypatch):
     root = tmp_path / "whatever-dir-name"
     root.mkdir()
-    _init(gf, monkeypatch, root, publisher="Explicit Corp")
+    _init(gf, monkeypatch, root, publisher="Explicit Corp", scope_map=True)
     text = (root / "guidefold.yaml").read_text()
     assert "publisher: explicit-corp" in text
 

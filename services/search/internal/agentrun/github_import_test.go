@@ -9,7 +9,6 @@ import (
 	"github.com/wiatrM/guidefold/services/search/internal/agentrun"
 	"github.com/wiatrM/guidefold/services/search/internal/ghapp"
 	"github.com/wiatrM/guidefold/services/search/internal/importer"
-	"github.com/wiatrM/guidefold/services/search/internal/live"
 	"github.com/wiatrM/guidefold/services/search/internal/pivottest"
 	"github.com/wiatrM/guidefold/services/search/internal/worker"
 )
@@ -197,22 +196,45 @@ func TestGitHubImportRepoWorksWithoutModelKey(t *testing.T) {
 	}
 }
 
-// A repository with no guidefold.yaml is named "not importable" via
-// gfm.repos.import_blocked_reason — never an error, and never a gfm.imports
-// row — the same rule live.repo already applies at the target level
-// (ADR-0046 point 9), applied here at the repository level instead.
-func TestGitHubImportRepoNamesNotImportableWhenGuidefoldYAMLMissing(t *testing.T) {
-	f := setUpGitHubImportTarget(t, []string{"AGENTS.md", ".agents/skills/a/SKILL.md"}, nil)
+// ADR-0050 (owner decision 2026-09-15): a repository with no guidefold.yaml
+// is IMPORTED, under a scope map inferred from its skill directories and
+// CODEOWNERS — not blocked. This test asserted the opposite before that
+// decision ("named not importable"): the code was stricter than U1, which has
+// always said the file only takes precedence (PRODUCT-PIVOT:69).
+func TestGitHubImportRepoImportsWithoutGuidefoldYAML(t *testing.T) {
+	bodies := map[string]string{
+		".agents/skills/widget/SKILL.md": sharedProcedureSkill("widget", "platform-engineering"),
+	}
+	f := setUpGitHubImportTarget(t, []string{".agents/skills/widget/SKILL.md"}, bodies)
 
 	f.requestGitHubImport(t, "import-widgets-2")
+
+	scratch := pivottest.Scratch(t, "github-import-inferred")
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	drained := make(chan struct{})
+	t.Cleanup(func() { cancelDrain(); <-drained })
+	go func() {
+		defer close(drained)
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			if !f.h.RunParseOnce(drainCtx, t, scratch) {
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+	}()
+
 	w := f.newWorker()
 	if e := runGitHubImportOnce(t, f, w); e != nil {
 		t.Fatal(e)
 	}
 
 	state, errText := githubImportJobState(t, f.h, f.org)
-	if state != "skipped" || errText != live.ErrorGuidefoldYAMLMissing {
-		t.Fatalf("job = %s/%s, want skipped/%s", state, errText, live.ErrorGuidefoldYAMLMissing)
+	if state != "done" {
+		t.Fatalf("github.import_repo job state = %s (%s), want done", state, errText)
 	}
 
 	var blocked *string
@@ -220,13 +242,22 @@ func TestGitHubImportRepoNamesNotImportableWhenGuidefoldYAMLMissing(t *testing.T
  WHERE org_id=$1::uuid AND repo_id=$2`, f.org, f.repoID).Scan(&blocked); e != nil {
 		t.Fatal(e)
 	}
-	if blocked == nil || *blocked != live.ErrorGuidefoldYAMLMissing {
-		t.Fatalf("import_blocked_reason = %v, want %s", blocked, live.ErrorGuidefoldYAMLMissing)
+	if blocked != nil {
+		t.Fatalf("import_blocked_reason = %v, want NULL — absence no longer blocks", *blocked)
 	}
 
 	if n := countRows(t, f.h, `SELECT count(*) FROM gfm.imports WHERE org_id=$1::uuid AND repo_id=$2`,
-		f.org, f.repoID); n != 0 {
-		t.Fatalf("an unmanaged repository got %d gfm.imports rows, want 0", n)
+		f.org, f.repoID); n != 1 {
+		t.Fatalf("gfm.imports rows = %d, want 1", n)
+	}
+	// The scope map the import stored says where it came from.
+	if n := countRows(t, f.h, `SELECT count(*) FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id=$2 AND source='inferred'`, f.org, f.repoID); n == 0 {
+		t.Fatal("no gfm.scopes row with source='inferred'")
+	}
+	if n := countRows(t, f.h, `SELECT count(*) FROM gfm.skills WHERE org_id=$1::uuid AND repo_id=$2`,
+		f.org, f.repoID); n != 1 {
+		t.Fatalf("skills = %d, want 1", n)
 	}
 }
 
@@ -273,5 +304,64 @@ func TestGitHubImportAllEnqueuesOnlyGitHubRegisteredRepositories(t *testing.T) {
 	}
 	if count, _ := body["count"].(float64); count != 1 {
 		t.Fatalf("import all count = %v, want 1", body["count"])
+	}
+}
+
+// Contract 1.17.0 / ADR-0050: a repository with no guidefold.yaml but with a
+// CODEOWNERS gets its owner from that file. Before the fetch list carried
+// CODEOWNERS the builder never saw it on this path, so every inferred scope
+// came out `owner: unknown` for a repository that states its owners plainly.
+// The assertion is on gfm.scopes.owner, not on the skill's own
+// metadata.owner: the card names its own owner either way, and the scope is
+// the thing CODEOWNERS is evidence about.
+func TestGitHubImportRepoTakesTheScopeOwnerFromCodeowners(t *testing.T) {
+	const skillPath = ".agents/skills/widget/SKILL.md"
+	bodies := map[string]string{
+		skillPath:    sharedProcedureSkill("widget", "platform-engineering"),
+		"CODEOWNERS": "# owners of this repository\n* @acme/platform-guild\n",
+	}
+	f := setUpGitHubImportTarget(t, []string{skillPath, "CODEOWNERS"}, bodies)
+
+	f.requestGitHubImport(t, "import-widgets-codeowners")
+
+	scratch := pivottest.Scratch(t, "github-import-codeowners")
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	drained := make(chan struct{})
+	t.Cleanup(func() { cancelDrain(); <-drained })
+	go func() {
+		defer close(drained)
+		for {
+			select {
+			case <-drainCtx.Done():
+				return
+			default:
+			}
+			if !f.h.RunParseOnce(drainCtx, t, scratch) {
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+	}()
+
+	w := f.newWorker()
+	if e := runGitHubImportOnce(t, f, w); e != nil {
+		t.Fatal(e)
+	}
+	if state, errText := githubImportJobState(t, f.h, f.org); state != "done" {
+		t.Fatalf("github.import_repo job state = %s (%s), want done", state, errText)
+	}
+
+	var owner string
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT COALESCE(owner,'') FROM gfm.scopes
+ WHERE org_id=$1::uuid AND repo_id=$2 AND scope='_root'`, f.org, f.repoID).Scan(&owner); e != nil {
+		t.Fatal(e)
+	}
+	if owner != "platform-guild" {
+		t.Fatalf("_root scope owner = %q, want platform-guild from CODEOWNERS", owner)
+	}
+	// The file is configuration, not knowledge: it must not turn up in the
+	// Library as a document beside the skills.
+	if n := countRows(t, f.h, `SELECT count(*) FROM gfm.documents
+ WHERE org_id=$1::uuid AND repo_id=$2 AND path='CODEOWNERS'`, f.org, f.repoID); n != 0 {
+		t.Fatalf("CODEOWNERS became %d gfm.documents row(s); it is manifest kind config", n)
 	}
 }

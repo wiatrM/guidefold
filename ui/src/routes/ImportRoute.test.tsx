@@ -26,7 +26,7 @@ const status = (over: Partial<ImportStatus> = {}): ImportStatus => ({
   ],
   files_truncated: false,
   jobs: [{ job_id: 'j1', kind: 'import.parse', state: 'done', attempts: 1, generation: 2, error: null, cost: null, started_at: null, finished_at: null }],
-  publication: { snapshot_id: 'sn-1', state: 'published', error: null },
+  publication: { snapshot_id: 'sn-1', state: 'published', error: null , partial: null},
   created_at: '2026-09-06T10:00:00Z', updated_at: '2026-09-06T10:00:05Z',
   ...over,
 });
@@ -103,7 +103,7 @@ describe('Import route, hosted API, six states', () => {
   test('Degraded: a failed publication is reported next to the readable files', async () => {
     const source = fakeSource({
       listImports: async () => [status()],
-      getImport: async () => status({ publication: { snapshot_id: null, state: 'failed', error: 'missing_required_resource' } }),
+      getImport: async () => status({ publication: { snapshot_id: null, state: 'failed', error: 'missing_required_resource' , partial: null} }),
     });
     renderRoute(source, 'step=result&import_id=im-1');
     expect(await screen.findByText('Degraded')).toBeInTheDocument();

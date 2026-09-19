@@ -1,10 +1,54 @@
 # Guidefold Conventions (v0.1)
 
+> **Stan sprzed pivotu (2026-09-04); hosted katalog, organizacje i kontrakt opisują
+> [PIVOT-ARCHITECTURE](PIVOT-ARCHITECTURE.md), [API-CONTRACT](API-CONTRACT.md) i
+> ADR-0031/ADR-0033 (obie Accepted 2026-09-12). ADR-0001 registry mode pozostaje ważny dla
+> `registry.backend: agent-registry`.**
+
 These are enforced by `guidefold validate` in CI. A skill that violates them is not published.
 
-## 1. Hierarchy map — `guidefold.yaml` (repo root)
+## 1. Hierarchy map — `guidefold.yaml` (repo root, **optional**)
+
+> **The file is an override, not a requirement** ([ADR-0050](adr/ADR-0050-zero-config-scope-map.md),
+> owner decision 2026-09-15). A repository without one gets an inferred map and every command
+> works; write the file when you want to name your nodes something other than your folders, pin
+> an owner CODEOWNERS does not state, or set `registry:`/`search:`/`eval:`.
 
 One file. Nodes are dotted paths; each node maps to monorepo path globs and an owner. The tree is derived from the dots — no explicit `parent`.
+
+### 1.0 When there is no `guidefold.yaml` — the inferred map
+
+`load_map()` synthesizes the map through `infer_map()`, the one implementation the CLI,
+`report --base` (over the tree `git archive` materialises for the base ref) and the worker's
+`tools/worker/build_tree.py` all call. Stdlib only: the file's existence is tested *before*
+PyYAML is imported, so a repository without one needs nothing installed.
+
+| Field | Inferred from |
+|---|---|
+| node | every directory holding a recognised skill directory (`.agents/skills/`, `.claude/skills/` — the same pair `scan` recognises), plus every directory above it |
+| node name | that directory path with `/` → `.`, each segment slugified to `[a-z0-9-]`; `platforms/atlas` → `platforms.atlas`. ADR-0008 flattening and its collision rule are unchanged; two directories that slugify to the same name share one node and merge their globs |
+| `paths` | `["<dir>/**"]`; `_root` is implied with `["**"]` |
+| `owner` | CODEOWNERS' own "last matching rule wins" verdict for that directory; `_root` takes the whole-repo rule; `unknown` when CODEOWNERS says nothing |
+| `publisher` | the logged-in organisation slug, else the git remote's owner segment, else the root directory name — `publisher_source` records which |
+| `registry.backend` | `local`: a repository that configured nothing has published nothing |
+
+The synthesized config carries `_source: "inferred"`; the worker's envelope carries
+`scope_source`, and `import.parse` stores it as `gfm.scopes.source` so an inferred scope is
+visible as inferred in the console and never passes for a declared one.
+
+`doctor` reports the inferred map (`inferred N scopes from M skill directories (+ CODEOWNERS)`)
+and can no longer fail for absence. `init` does not write a skeleton unless you pass
+`--scope-map`. The hook is unaffected: it resolves `cwd → node` from `nodes.json` inside the
+prebuilt index artifact, never from the working tree, and imports no PyYAML.
+
+A repository with no `SKILL.md` at all fails its import with `import_tree_has_no_skills`: a
+snapshot with zero cards cannot be published, so the reason is named where an owner can act on it
+rather than surfacing as `invalid_snapshot_dimensions` three jobs later.
+
+**What it costs.** An inferred node name follows the directory, so moving a skill directory
+renames its node and therefore its URN. That is not new — the same move without an
+`import.aliases` entry already looked like delete + create — and the safeguard is unchanged: a
+rename goes to review (U1 AC5), and `import.aliases` is how you pin a name across a move.
 
 ```yaml
 publisher: acme
@@ -84,6 +128,28 @@ search:
   no body to its cache. The proof-gated flag is rejected for the local backend so it cannot be
   mistaken for an authorization check that local retrieval does not provide. The default
   `legacy` policy keeps the existing 1.1 request and cache behavior.
+#### Exit codes and messages for a failed `load` via `/v1/use`
+
+A failed `load` exits **1** and prints the reason on the first line, the service's own words on
+the next, and one `next:` line saying what to do. It never reports every failure with the same
+word — a 403 on the org/repo headers is not a sign-in problem (D12, rehearsal 2026-09-15).
+
+| Situation | Exit | First line | `next:` says |
+|---|---|---|---|
+| no usable credential (401) | 1 | `service USE failed (auth)` | run `guidefold login`, or set `search.token_file` |
+| the token may not read this org/repo (403) | 1 | `service USE failed (forbidden)`, or the server's own code | check `guidefold doctor`; the org/repo headers come from config, never from the checkout's directory name |
+| wrong revision (409 `revision_mismatch`) | 1 | `service USE failed (revision_mismatch)` | pass the revision `guidefold find` printed (`card_revision`), not the catalog's `revision_id` |
+| stale snapshot (503 `snapshot_policy_mismatch`) | 1 | `service USE failed (snapshot_policy_mismatch)` | re-import and publish; not an authentication problem |
+| no snapshot (503 `snapshot_not_published`, `empty_snapshot`) | 1 | the server's code | import and publish the repository first |
+| no answer in `deadline_ms` | 1 | `service USE failed (timeout)` | raise the deadline, or check the endpoint |
+| body does not match its checksum | 1 | `checksum mismatch` | nothing was cached; re-run `find` for a current revision |
+| a package resource points outside the cache | 1 | `unsafe resource path` | nothing was written; report the revision to its owner |
+| proof-gated abstention (`--delivery-policy proof_gated`) | 1 | `service ASK` with the proof reason | re-publish with sources, or drop the flag |
+| `load` without `@<revision>` on `backend: service` | 1 | the required-revision message | pass `<urn>@<revision>` |
+
+`guidefold: <message>` on stderr, nothing on stdout, and no half-written cache directory in
+every one of those rows.
+
 - `guidefold doctor` reports: measured local warm p95 (n=20) against the R4b 300 ms tier
   guideline (recommends `service` above it), configured service reachability + advertised contract
   versions via `GET /health/ready`, bearer token presence (never its value), and spool health.
@@ -147,7 +213,7 @@ guidefold's own opt-out and the author should see it took effect.
 
 - Canonical location: `<node-path>/.agents/skills/<skill-name>/SKILL.md`
 - Root-level (org-wide) skills: `/.agents/skills/<skill-name>/`
-- Never put skills under `.claude/`, `.github/`, `.gemini/` directly — those directories only contain symlinks/copies of the bootstrap skill (generated by `guidefold sync-harness`).
+- Never put skills under `.claude/`, `.github/`, `.gemini/` directly — those directories only contain the hook wiring and generated context files a harness reads, written by `guidefold install --harness <name>` or `guidefold init`. There is no `sync-harness` command (checked 2026-09-15); see [HOWTO-adapter](HOWTO-adapter.md).
 
 ## 3. Naming
 
@@ -293,7 +359,9 @@ succeeded.
 | `.github/instructions/<node>.instructions.md` | same card with `applyTo: "<node paths>"` | Copilot CLI/IDE/cloud agent when working on matching files, regardless of launch dir |
 | `.agents/skills/hierarchy-index/SKILL.md` | the whole tree | anyone, via `guidefold load urn:skill:acme:_index:hierarchy-index` |
 
-Card size cap: 80 lines. If a card exceeds it, the digests are too long — shorten `metadata.digest`, do not raise the cap.
+Card size cap: 80 lines, and `materialize` keeps a card inside it **by construction** — it never refuses to write one. Skill bullets are handed out most-specific-level-first; a level that does not fit ends with one `… and K more skill(s) in <node>; run `guidefold find "<your task>" --scope <node>`` line, and a card that is still too long (a very wordy `NODE.md`) keeps its head and its closing block with one truncation line between them. That is what makes the ordinary zero-config shape — one node holding every skill in the repository (ADR-0050) — installable: before, the refusal also skipped `guidefold index`, so the hook had no artifact and stayed idle. A card that needs truncating is still a signal the digests are too long: shorten `metadata.digest`, or give the repository more nodes; do not raise the cap.
+
+The `.github/instructions/<node>.instructions.md` copy of a card carries three extra frontmatter lines (`applyTo`), so it is at most 83 lines; the cap is on the card.
 
 Hand-written per node: only `guidefold.yaml` entry, skills, and an optional `<node-path>/.agents/NODE.md` (free-form 1–2 paragraphs about the node) that `materialize` includes at the top of the card.
 
@@ -568,7 +636,7 @@ hosted management API.** Requirements: `docs/PRODUCT-PIVOT.md` §4 (U1) and §8 
 | `guidefold import [PATH] [--no-publish] [--wait] [--json]` | scan → `POST …/imports` → `PUT …/blobs/{sha}` for **only** the hashes the server reports missing → `POST …/finalize`. `--wait` polls every 2 s until `ready`/`partial`/`failed` and prints the per-file result, the jobs and the publication state. |
 | `guidefold sync [PATH] [--wait] [--json]` | The same call, reporting the new/reused blob split so "the second sync uploads 0 new blobs" is visible. |
 | `guidefold status <import_id>` | The same status view for an import that is already running. |
-| `guidefold extract [PATH] [--all] [--personal claude,codex,copilot\|all] [--dry-run] [--no-publish] [--wait] [--json]` | P08: the whole loop in one call — scan → import → `GET …/plan?profile=one_shot` → `POST …/proposals:generate {profile:"one_shot", kinds:[extraction,enrichment,consolidation]}`. **Approves nothing**: every proposal still waits for its scope owner. With `--personal` it also **publishes nothing** — the import is finalized with `publish: false`, so a developer's own skills are never materialised into the served snapshot. `--wait` polls the jobs and prints proposals by kind, each consolidation with its source scopes and its target scope, the declines with their reasons and the cost. See below. |
+| `guidefold extract [PATH] [--all] [--personal claude,codex,copilot\|all] [--dry-run] [--no-publish] [--wait] [--json]` | P08: the whole loop in one call — scan → import → **wait for the import to finish parsing** → `GET …/plan?profile=one_shot` → `POST …/proposals:generate {profile:"one_shot", kinds:[extraction,enrichment,consolidation]}`. The wait is not optional: the extraction groups are built from the documents of that import, which exist only after `import.parse` has run, so a plan asked for any earlier contains no extraction group at all. Any requested kind the plan found no group for is named in the summary (`kinds_without_groups`, printed as `not attempted:`), because `groups_skipped` only counts groups a ceiling truncated. **Approves nothing**: every proposal still waits for its scope owner. With `--personal` it also **publishes nothing** — the import is finalized with `publish: false`, so a developer's own skills are never materialised into the served snapshot. `--wait` polls the jobs and prints proposals by kind, each consolidation with its source scopes and its target scope, the declines with their reasons and the cost. See below. |
 | `guidefold install --harness claude\|copilot [--api --org --repo] [--dry-run]` / `uninstall` | Idempotent adapter install with a diff-like summary; see below. |
 | `guidefold proposals list \| show <id> \| apply <export_id> [--write] [--base-check]` | Review exports. `apply` prints the unified diff and writes files only with `--write`; it **never** runs `git commit` or `git push`. Every `path` in the export is server-supplied, so it is checked before anything is created: absolute paths, `..`, `.` and empty segments are refused (exit 2), and the resolved destination must sit under the repository root, which also catches a symlinked parent. A file entry without `content` is refused rather than truncating the file to zero bytes, and a `sha256` that does not match the content refuses the whole export — nothing is written unless every entry passes (exit 1). |
 | `guidefold doctor` | Now also reports `service-config` (api/org/repo), `service-api` (`GET /health/ready`), `service-identity` (user, role, token scopes — never the token), `adapter-install` (manifest present and unmodified, package sha256) and `capabilities-<harness>`. |
@@ -693,8 +761,10 @@ sha256, the harnesses installed, and `package_sha256`, the sha256 of the install
 
 ### Reconciling a partial or drifted bootstrap (`init`)
 
-`init` lands `guidefold.yaml`, the bootstrap package, one hook file per harness, the CI workflow
-and a `.gitignore` entry. A run that fails partway therefore leaves a partial install, and the
+`init` lands the bootstrap package, one hook file per harness, the CI workflow and a `.gitignore`
+entry. It does **not** write `guidefold.yaml` (ADR-0050): the scope map is inferred from the skill
+directories and CODEOWNERS the repository already has, and the plan says so. `--scope-map` writes
+the skeleton for a repository that wants to name its nodes differently. A run that fails partway therefore leaves a partial install, and the
 retry is what has to repair it — setup jobs are retried, so this is the normal path, not the rare
 one. `init` plans against the same `INSTALL-MANIFEST.json` as `install` and prints the plan before
 writing anything.
@@ -707,7 +777,7 @@ writing anything.
   `.agents/skills/guidefold/scripts/guidefold`, not by JSON equality. A rerun replaces the entry
   an older template wrote instead of appending a second one beside it, so the hook never fires
   twice. Entries and top-level keys the consumer owns keep their place and order.
-- `guidefold.yaml` and `.github/workflows/skills.yml` are created once and never rewritten.
+- `guidefold.yaml` (only with `--scope-map`) and `.github/workflows/skills.yml` are created once and never rewritten.
 - A hook file that is not valid JSON is the one state `init` cannot reconcile: it exits non-zero
   naming the file and the fix, and writes nothing. Reporting it as a warning and exiting `0` is
   how a broken install used to survive every retry unnoticed.

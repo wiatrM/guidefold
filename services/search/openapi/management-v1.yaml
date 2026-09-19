@@ -1336,7 +1336,7 @@ paths:
   /api/v1/orgs/{org}/repos/{repo}/map/scopes:
     get:
       tags: [knowledge]
-      summary: The scope map from guidefold.yaml, with unmapped skills named.
+      summary: The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named.
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -1971,7 +1971,7 @@ paths:
   /api/v1/orgs/{org}/map/scopes:
     get:
       tags: [knowledge]
-      summary: "The scope map from guidefold.yaml, with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
+      summary: "The scope map (guidefold.yaml, or inferred from the tree), with unmapped skills named. Organisation scope (contract §4.10): every repository the caller may read, or one with `repo`."
       description: >-
         A skill whose scope is not a declared node is listed under `unmapped`
         rather than folded into the root: "we do not know who owns this" is the
@@ -2076,6 +2076,47 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/ProposalDetail" } } }
         "404":
           description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/v1/orgs/{org}/proposals/{proposal_id}/decision:
+    post:
+      tags: [proposals]
+      summary: "Approve or reject a proposal at organisation scope."
+      description: >-
+        Contract 1.15.0, ADR-0051. The only mutation in `{org_base}`. A `scope_map` decision
+        requires an **organisation owner**: approving writes gfm.scopes rows in several of the
+        organisation's repositories, so authorising it as the reviewer of the one repository the
+        proposal row is anchored to would be the wrong permission -- and the `{repo_base}` twin
+        refuses a `scope_map` decision with 403 for the same reason. Every other kind applies the
+        reviewer rule of the repository in the proposal's row. `edit` on a `scope_map` proposal is
+        `invalid_candidate_change`; a map that no longer validates is `422 scope_map_invalid` with
+        `details.findings`.
+      x-idempotent: true
+      parameters:
+        - { $ref: "#/components/parameters/Org" }
+        - { $ref: "#/components/parameters/ProposalId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionRequest" }
+      responses:
+        "200":
+          description: Decision recorded.
+          content: { application/json: { schema: { $ref: "#/components/schemas/DecisionResult" } } }
+        "403":
+          description: "`forbidden` -- not an organisation owner, for a `scope_map` decision."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "`proposal_not_found`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "`stale_revision` or `proposal_state_invalid`."
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: >-
+            `scope_map_invalid`, `invalid_candidate_change`, `graph_cycle`,
+            `scope_widening_not_approved`.
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /api/v1/orgs/{org}/proposals/{proposal_id}/publication:
@@ -2764,7 +2805,7 @@ components:
 
     QueueReason:
       type: string
-      enum: [negative_feedback, source_changed, source_removed, zero_loads, missing_dependency]
+      enum: [negative_feedback, source_changed, source_removed, zero_loads, missing_dependency, import_file_failed]
 
     QueueAction:
       type: string
@@ -2780,7 +2821,12 @@ components:
           description: >-
             A uuid for an item the import worker raised; the derived identifier
             `<reason>:<skill_id>:<revision>` for one this report computed.
-        skill_id: { type: string }
+        skill_id:
+          type: string
+          description: >-
+            The skill's URN for every reason but `import_file_failed`, where the
+            item is about a file that became no skill and the value is
+            `file:<repository path>` (contract 1.17.0).
         revision: { type: [string, "null"] }
         reason: { $ref: "#/components/schemas/QueueReason" }
         since: { type: [string, "null"], format: date-time }
@@ -3458,8 +3504,12 @@ components:
         import_blocked_reason:
           type: [string, "null"]
           description: >-
-            gfm.repos.import_blocked_reason (1.13.0). Today only "guidefold_yaml_missing",
-            written by github.import_repo when the repository has no guidefold.yaml.
+            gfm.repos.import_blocked_reason (1.13.0). Since 1.14.0 (ADR-0050) the only
+            value github.import_repo writes is "guidefold_yaml_unreadable": a repository
+            that declares a guidefold.yaml this run cannot read (too large). A repository
+            with NO guidefold.yaml is imported under an inferred scope map and is never
+            blocked. "guidefold_yaml_missing" stays decodable — rows written before 1.14.0
+            hold it.
         last_import_state: { type: [string, "null"], description: "Newest gfm.imports.state for this repository (1.13.0)." }
         last_import_error: { type: [string, "null"], description: "Newest gfm.imports.error for this repository (1.13.0)." }
         last_import_at: { type: [string, "null"], format: date-time, description: "Newest import's finalized_at or created_at (1.13.0)." }
@@ -3621,6 +3671,11 @@ components:
         state: { type: string, enum: [none, building, published, failed] }
         snapshot_id: { type: [string, "null"] }
         error: { type: [string, "null"] }
+        partial:
+          type: [boolean, "null"]
+          description: >-
+            Contract 1.17.0. True when the published snapshot was built from an
+            import the builder could not parse in full (API-CONTRACT §4.4).
 
     ImportStatus:
       type: object
@@ -3669,11 +3724,19 @@ components:
 
     ProposalKind:
       type: string
-      enum: [extraction, enrichment, consolidation]
+      description: >-
+        `scope_map` (contract 1.15.0, ADR-0051) is a proposed organisation scope map, produced by
+        the job `scope_map.propose` rather than by `proposal.generate`. It is not an accepted value
+        of the `kinds` array on `GET .../plan` or `POST .../proposals:generate`.
+      enum: [extraction, enrichment, consolidation, scope_map]
 
     ProposalState:
       type: string
-      enum: [draft, approved_for_export, awaiting_git, published, rejected, superseded]
+      description: >-
+        `applied` (contract 1.15.0) is terminal and belongs to kind `scope_map` alone: approving a
+        scope map writes `gfm.scopes` rows, it does not export a file, so it never reaches
+        `approved_for_export`, `awaiting_git` or `published`.
+      enum: [draft, approved_for_export, awaiting_git, published, applied, rejected, superseded]
 
     GenerationLimits:
       type: object
@@ -3852,6 +3915,14 @@ components:
       type: object
       required: [schema_version, org_id, repo_id, proposal_id, kind, state, path, candidate, provenance, relations, sources]
       properties:
+        scope_map:
+          description: >-
+            Present only for kind `scope_map` (contract 1.15.0). The same typed structure that is
+            also the candidate body, plus a diff computed against the organisation's current
+            `gfm.scopes` rows at read time.
+          oneOf:
+            - { $ref: "#/components/schemas/ScopeMap" }
+            - { type: "null" }
         schema_version: { $ref: "#/components/schemas/SchemaVersion" }
         org_id: { type: string, format: uuid }
         repo_id: { type: string }
@@ -4012,7 +4083,7 @@ components:
       description: >-
         One publication. `state` is the engine's vocabulary; `active` is the one
         fact a rollback needs (API-CONTRACT §5.2 maps the two views).
-      required: [publication_id, state, active]
+      required: [publication_id, state, active, partial, failed_files]
       properties:
         publication_id: { type: string, format: uuid }
         snapshot_id: { type: [string, "null"] }
@@ -4027,6 +4098,25 @@ components:
         error: { type: [string, "null"] }
         activated_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
+        partial:
+          type: boolean
+          description: >-
+            Contract 1.17.0. True when this snapshot was built from an import
+            the builder could not parse in full: the accepted files published,
+            the rest are named in `failed_files`. A partial publication that
+            did not say so would read as a complete library.
+        failed_files:
+          type: array
+          description: >-
+            Contract 1.17.0. One entry per file this snapshot's import could
+            not parse, read from `gfm.import_files` and capped at 50. Empty for
+            a publication that is not partial.
+          items:
+            type: object
+            required: [path]
+            properties:
+              path: { type: string }
+              reason: { type: [string, "null"] }
 
     SnapshotList:
       type: object
@@ -4327,6 +4417,77 @@ components:
         children: { type: array, items: { $ref: "#/components/schemas/MapChild" } }
         next_cursor: { type: [string, "null"] }
 
+    ScopeMapNode:
+      type: object
+      required: [scope, paths, confidence, reason]
+      properties:
+        scope: { type: string, description: "Dotted node path with kebab-case segments containing no `--`, or `_root`." }
+        parent: { type: [string, "null"], description: "Another node of the same map, or null for a top-level node." }
+        owner: { type: [string, "null"], description: "A name that repository can vouch for: a team in its CODEOWNERS, or an owner its own scopes already declare. Null otherwise; never a guessed name." }
+        paths:
+          type: array
+          items:
+            type: object
+            required: [repo_id, path]
+            properties:
+              repo_id: { type: string }
+              path: { type: string }
+        confidence: { type: number, minimum: 0, maximum: 1, description: "Shown to the owner, never a gate." }
+        reason: { type: string, description: "One sentence saying what the node follows from." }
+
+    ScopeMapDiff:
+      type: object
+      required: [added, reparented, owner_changed, paths_changed, unchanged]
+      properties:
+        added: { type: array, items: { type: string } }
+        reparented:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              from: { type: [string, "null"] }
+              to: { type: [string, "null"] }
+        owner_changed:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              from: { type: [string, "null"] }
+              to: { type: [string, "null"] }
+        paths_changed:
+          type: array
+          items:
+            type: object
+            required: [scope, repo_id, added, removed]
+            properties:
+              scope: { type: string }
+              repo_id: { type: string }
+              added: { type: array, items: { type: string } }
+              removed: { type: array, items: { type: string } }
+        unchanged: { type: integer }
+
+    ScopeMap:
+      type: object
+      required: [origin, repos, nodes, diff, findings]
+      properties:
+        origin: { type: string, enum: [inferred, model], description: "`inferred` is the deterministic map built without a model; `model` names one in `model`." }
+        model: { type: [string, "null"] }
+        repos: { type: array, items: { type: string } }
+        nodes: { type: array, items: { $ref: "#/components/schemas/ScopeMapNode" } }
+        diff: { $ref: "#/components/schemas/ScopeMapDiff" }
+        findings:
+          type: array
+          items: { type: string }
+          description: >-
+            Empty for a stored proposal; non-empty only when the repositories changed after the
+            proposal was written, so the same map would no longer validate today.
+
     ScopeNode:
       type: object
       required: [id, repo_id, paths, source, count]
@@ -4336,7 +4497,16 @@ components:
         owner: { type: [string, "null"] }
         parent: { type: [string, "null"] }
         paths: { type: array, items: { type: string } }
-        source: { type: string, enum: [guidefold_yaml, directory, codeowners, unknown] }
+        source:
+          type: string
+          enum: [guidefold_yaml, inferred, directory, codeowners, llm_approved, unknown]
+          description: >-
+            gfm.scopes.source (contract §7). "guidefold_yaml" is a scope the repository
+            declared; "inferred" is one derived from its skill directories and CODEOWNERS
+            because it has no guidefold.yaml (1.14.0, ADR-0050) — visible as such so an
+            inferred hierarchy never passes for a declared one. "llm_approved" is one an
+            organisation owner approved from a `scope_map` proposal (1.15.0, ADR-0051) — a
+            decision, which is neither a declaration nor a reading of the tree.
         count: { type: integer }
 
     MapScopes:

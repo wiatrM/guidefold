@@ -33,7 +33,7 @@ const skills: SkillPage = {
   items: ['a', 'b', 'c'].map((name, index) => ({skill_id: 'urn:' + name, repo_id: 'monorepo', name, description: '', scope: 'atlas', owner: null, source_layer: null, knowledge_layer: 'task' as const, source_status: null, publication_status: index === 2 ? 'draft' as const : 'published' as const, path: name + '/SKILL.md', content_sha256: null, revision_id: null, card_revision: null, package_digest: null, commit: null, updated_at: null})),
   next_cursor: null, snapshot_id: null, schema_version: null, filters: {},
 };
-const imports: ImportStatus[] = [{import_id: '80314462-3642-4a2a-9cee', repo_id: 'monorepo', state: 'ready', manifest_digest: null, commit: 'c0ffee', complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 12}, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's-1', state: 'published', error: null}, created_at: '2026-09-12T09:00:00Z', updated_at: null}];
+const imports: ImportStatus[] = [{import_id: '80314462-3642-4a2a-9cee', repo_id: 'monorepo', state: 'ready', manifest_digest: null, commit: 'c0ffee', complete: true, counts: {files: 39, accepted: 38, omitted: 1, failed: 0, new_blobs: 39, reused_blobs: 0, skills: 26, documents: 12}, files: [], files_truncated: false, jobs: [], publication: {snapshot_id: 's-1', state: 'published', error: null, partial: null}, created_at: '2026-09-12T09:00:00Z', updated_at: null}];
 // The list endpoint never carries counts or publication (§5.2); only the detail read does.
 const listRow: ImportStatus = {...imports[0], counts: null, files_truncated: true, publication: null};
 const proposals: ProposalSummary[] = [{proposal_id: 'p-1', repo_id: 'monorepo', kind: 'extraction', state: 'draft', scope: 'atlas', owner: null, target_skill_id: null, path: null, created_at: null, decision: null}];
@@ -221,7 +221,7 @@ describe('Home route', () => {
   });
 
   test('a failed publication in the detail is the alert, with the error code', async () => {
-    const failedDetail: ImportStatus = {...imports[0], publication: {snapshot_id: null, state: 'failed', error: 'missing_dependency'}};
+    const failedDetail: ImportStatus = {...imports[0], publication: {snapshot_id: null, state: 'failed', error: 'missing_dependency', partial: null}};
     renderApi(ApiHomeRoute, source({listImports: async () => [listRow], getImport: async () => failedDetail, listInstallations: async () => installations}));
     expect((await screen.findAllByText('Publication of the latest import failed')).length).toBeGreaterThan(0);
     const importFacts = screen.getByText('Latest import').closest('section')!;

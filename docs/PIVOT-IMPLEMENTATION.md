@@ -5,12 +5,20 @@ co jest zaimplementowane i przetestowane w kodzie na dany dzień; nie zastępuje
 ani backlogu i sam w sobie nie jest dowodem pilota (R/Q, nie P — patrz
 [eval-evidence-rules](../.agents/skills/eval-evidence-rules/SKILL.md)).
 
-**Status: implementacja w toku, niecommitowana. Data: 2026-09-09 (czwarta aktualizacja: real-repo
-test poza fixture Meridian znalazł i tej samej sesji naprawił realny defekt, ACC 41/41 bez fail).**
-Cel: jeden przegląd stanu historii P01–P15 wobec kodu, testów i kontraktu, żeby decyzje przed
+**Status: implementacja w toku, zacommitowana na `main`. Data: 2026-09-15 — §b/§c/§d/§e/§f
+przepisane wobec `main` @ `2a302f5` i kontraktu 1.13.0.** Od poprzedniej aktualizacji (2026-09-09,
+kontrakt 1.1.1) doszły: moduły `live`, `agentrun`, `ghapp`, `model`, `secrets` w
+`services/search/internal`, GitHub App (connect, instalacje, import bez CLI, raport PR), Live Agent
+(ADR-0046), klucze modelu organizacji szyfrowane w spoczynku (ADR-0045), organizacja jako domyślny
+zakres odczytu (ADR-0047), telemetria domyślnie włączona (ADR-0048), widok Overview `/home` i
+konsola na shadcn (ADR-0044), warstwa efektów wizualnych (ADR-0049). §a/§g/§h/§i pozostają
+historią sesji 2026-09-06–09 poza wskazanymi aktualizacjami. Rozjazdy dokumentów wobec kodu z
+2026-09-12: [audyt](reports/product/2026-09-12-assumptions-vs-implementation-audit.md); bieżąca
+krytyczna ścieżka do MVP: [raport 2026-09-15](reports/product/2026-09-15-mvp-closure-status.md).
+Cel: jeden przegląd stanu historii P01–P16 wobec kodu, testów i kontraktu, żeby decyzje przed
 pilotem (§h) nie wymagały ponownego przeszukiwania repozytorium.
 Wejścia: [PRODUCT-PIVOT](PRODUCT-PIVOT.md), [PIVOT-ARCHITECTURE](PIVOT-ARCHITECTURE.md),
-[PIVOT-BACKLOG](PIVOT-BACKLOG.md), [API-CONTRACT](API-CONTRACT.md) (`contract_version` 1.1.1).
+[PIVOT-BACKLOG](PIVOT-BACKLOG.md), [API-CONTRACT](API-CONTRACT.md) (`contract_version` 1.13.0).
 Zakres zastępowania: brak — dokument uzupełnia backlog o stan implementacji, nie zmienia wymagań
 ani kolejności.
 
@@ -26,7 +34,7 @@ deweloperskiej. Profil domyślny to plain Postgres: migracje przechodzą bez `pg
 `pgvector` (`CREATE EXTENSION` w bloku wyjątku), a domyślny silnik `router` czyta
 `gf.router_terms` i nie wymaga żadnego z tych rozszerzeń (ADR-0033 pkt 4).
 
-## b) P01–P15: co jest zaimplementowane
+## b) P01–P16: co jest zaimplementowane
 
 Status opisuje kod i testy, nie dowód pilota — żaden wiersz nie jest „done" w sensie
 [definition-of-done](../.agents/skills/definition-of-done/SKILL.md) („done = used"); brak pilota
@@ -41,29 +49,35 @@ jest w kolumnie Uwaga.
 | P05 | `internal/knowledge` (`skills.go`, `maps.go`, `revisions.go`) | UT/API, UI (`LibraryRoute.test.tsx`, `MapRoute.test.tsx`) | zaimplementowano + testy | p95 przy 10k skilli w sieci pilota niezmierzony (U4 AC2, §h) |
 | P06 | `internal/review` (`generate.go`, `plan.go`, `generator/{deterministic,remote,markdown}.go`) | UT/API, UI (`ImportRoute.test.tsx`) | zaimplementowano + testy | brak próby z realnym LLM i kosztem na próbce |
 | P07 | `internal/review` (`approve.go`, `export.go`) | UT/API, UI (`ProposalsRoute.test.tsx`) | zaimplementowano + testy | brak |
-| P08 | `internal/review` (kind `consolidation` grupowany po scope nadrzędnym, `consolidation_sources_insufficient`, `profile: one_shot`), `internal/review/generator` (`layer.go`: wnioskowanie `knowledge_layer` — 5 reguł, `origin: inferred`, nadpisywalne przez ownera na `origin: human`; `refines` w obu kierunkach), `internal/graph` (acykliczność), `family12.go` (addytywne `family` w 1.2, dowiedziony bit-identyczny ranking), CLI `guidefold extract --all [--personal ...]` (jedna komenda „scan → import → plan one_shot → generate wszystkich rodzajów") | UT (`generator/consolidation_test.go` na zaplantowanym fixture — dwa runbooki ze wspólną procedurą + jeden językowo podobny, poprawnie odrzucony jako `contradictory_steps`; `review/oneshot_test.go`, `review/p08_test.go`, `family12_test.go`), ACC (`test_p08_pyramid.py`, przechodzi na żywym stosie: 30 grup w trybie one-shot vs 15 domyślnie, jeden wspólny element z `derived_from`/`refines` do obu źródeł), UI (Map → Pyramid: pasma Abstract/Task/Atomic zamiast płaskiej listy, rodzic przez `refines` pokazany inline, rozwijalne „N specjalizacji") | zaimplementowano + testy | UI nie czyta jeszcze addytywnego pola `family` z odpowiedzi 1.2 (to pole służy agentom/adapterom, nie przeglądarce — Map/Pyramid już renderuje ten sam graf przez `/map/layers` i `/map/relations`, więc funkcjonalnie równoważne); real-repo (`wshobson/agents`, 183 skille, poza fixture Meridian, 2026-09-08 §h) potwierdził propagację hierarchii i uruchomienie mechanizmu konsolidacji na żywo, ale det-1 abstynował na wszystkich grupach (`too_few_procedures`) — ten korpus jest dokumentacją referencyjną, nie runbookami, więc to trafny werdykt generatora, nie luka; `GET /health/ready` ogłasza `"1.2"` od 2026-09-08 (naprawione tej sesji) |
+| P08 | `internal/review` (kind `consolidation` grupowany po scope nadrzędnym, `consolidation_sources_insufficient`, `profile: one_shot`), `internal/review/generator` (`layer.go`: wnioskowanie `knowledge_layer` — 5 reguł, `origin: inferred`, nadpisywalne przez ownera na `origin: human`; `refines` w obu kierunkach), `internal/graph` (acykliczność), `family12.go` (addytywne `family` w 1.2, dowiedziony bit-identyczny ranking), CLI `guidefold extract --all [--personal ...]` (jedna komenda „scan → import → plan one_shot → generate wszystkich rodzajów") | UT (`generator/consolidation_test.go` na zaplantowanym fixture — dwa runbooki ze wspólną procedurą + jeden językowo podobny, poprawnie odrzucony jako `contradictory_steps`; `review/oneshot_test.go`, `review/p08_test.go`, `family12_test.go`), ACC (`test_p08_pyramid.py`, przechodzi na żywym stosie: 30 grup w trybie one-shot vs 15 domyślnie, jeden wspólny element z `derived_from`/`refines` do obu źródeł), UI (Map → Pyramid: pasma Abstract/Task/Atomic zamiast płaskiej listy, rodzic przez `refines` pokazany inline, rozwijalne „N specjalizacji") | zaimplementowano + testy | UI nie czyta jeszcze addytywnego pola `family` z odpowiedzi 1.2 (to pole służy agentom/adapterom, nie przeglądarce — Map/Pyramid już renderuje ten sam graf przez `/map/layers` i `/map/relations`, więc funkcjonalnie równoważne); real-repo (`wshobson/agents`, 183 skille, poza fixture Meridian, 2026-09-08 §h) potwierdził propagację hierarchii i uruchomienie mechanizmu konsolidacji na żywo, ale det-1 abstynował na wszystkich grupach (`too_few_procedures`) — ten korpus jest dokumentacją referencyjną, nie runbookami, więc to trafny werdykt generatora, nie luka; `GET /health/ready` ogłasza `"1.2"` od 2026-09-08 (naprawione tej sesji)  Pomiar na prawdziwym drzewie tego repozytorium 2026-09-15: [CONSOLIDATION-REAL-REPO-2026-09-15](reports/bakeoff/CONSOLIDATION-REAL-REPO-2026-09-15.md) — `no_shared_procedure` było trafne dla reguły i wypowiadane o niewłaściwych 10 z 81 skilli; po naprawie (wybór sąsiadów po rodzinie nazw, dwa kształty nagłówka kroków, przebieg 2 kroków w ≥3 skillach, `derived_from` do każdego niosącego go skilla, recepta `det-2`, kontrakt 1.16.0) repozytorium wydaje jeden prawdziwy wspólny element z trzema źródłami. |
 | P09 | `internal/review` (`publication.go`, snapshot), bramka 3: `publisher.go`, `publication_test.go`; opt-in source-proof delivery: `services/search/proof_gate.go`, USE 1.2 `delivery_policy`, CLI `load --delivery-policy proof_gated` | UT/API, UI (aktywacja z powodem w Proposals), CLI transport (`test_service_backend.py`), independent contract replay (`research/proof-gated-delivery-2026-09-09`) | zaimplementowano + kontrakt/schema replay + publisher binding placeholderów + fetch i weryfikacja blobów źródłowych | proof gate proves source binding, source-byte availability and safe `ASK` on synthetic mutations; it does not prove claim truth, execution or user value; targeted Go proof tests pass, while the full suite has one pre-existing stale BM25F fixture failure |
-| P10 | CLI `install`/`uninstall`, trzy harnessy (Claude Code, Copilot CLI, Gemini CLI) | UT (`test_pivot_cli_install.py`) | zaimplementowano + testy | poza zasięgiem tej sesji: realne sesje harnessów na repo partnera (ACT-01 live) |
+| P10 | CLI `install`/`uninstall`, trzy harnessy: `INSTALL_HARNESSES = ("claude", "copilot", "gemini")` (`skills/guidefold/scripts/guidefold`, sprawdzone 2026-09-15). Szablon `hooks/codex.hooks.json` istnieje, ale `codex` **nie** jest wyborem `install`; `hooks/gemini.hooks.json` nie istnieje | UT (`test_pivot_cli_install.py`) | zaimplementowano + testy | realne sesje harnessów na repo partnera (ACT-01 live) nadal nie odbyły się: 0 tokenów i 0 zdarzeń na produkcji 2026-09-15 |
 | P11 | `internal/usage` (`export.go`, `health.go`, `queue.go`) oraz `ExecutionMetrics` (task success, harness errors, SEARCH/USE/ASK, tokeny, czas) | UT/API, UI (`UsageRoute.test.tsx`) | zaimplementowano + testy | brak |
 | P12 | CLI `guidefold report`/`validate` (sprzed pivotu, współdzielone) | UT (`test_report.py`) | zaimplementowano + testy (mechanizm) | dowód „10 realnych PR-ów" to dowód pilota, niezmierzony |
 | P13 | `importer/drift_test.go` (`source_changed`/`source_removed`), `usage` (`negative_feedback`/`zero_loads`), `gfm.owner_queue` | UT/API, ACC (`test_act01_end_to_end.py`, U1.5/U9 partial-scan-never-implies-removal, pass 2026-09-08) | zaimplementowano + testy | 2026-09-08: znaleziono i naprawiono realny false-positive w "brak false deletion przy partial" — nie w drifcie samym (poprawny), lecz w `candidatePath()` generatora (§b P08, §i) wypychającym ekstrahowany skill pod złą ścieżkę, którą importer poprawnie (dla siebie) czytał jako inną tożsamość i archiwizował starą |
 | P14 | `internal/knowledge` (strona modułu) | UT/API | częściowo | scenariusz „5 zadań, potwierdzone ponowne użycie" to dowód pilota, poza zasięgiem tej sesji |
-| P15 | `tools/pilot/pivot_report.py`, `tools/pilot/analyze.py`, `docs/pilot/PIVOT-RUBRIC.md` | UT (`test_pivot_report.py`, `test_pilot_analyze.py`) | zaimplementowano + testy (narzędzie) | poza zasięgiem tej sesji: rzeczywisty przebieg pilota z partnerem (patrz [PIVOT-REVIEW](PIVOT-REVIEW.md)) |
+| P15 | `tools/pilot/pivot_report.py`, `tools/pilot/analyze.py`, `docs/pilot/PIVOT-RUBRIC.md` | UT (`test_pivot_report.py`, `test_pilot_analyze.py`) | zaimplementowano + testy (narzędzie) | poza zasięgiem tej sesji: rzeczywisty przebieg pilota z partnerem (patrz [PIVOT-REVIEW](PIVOT-REVIEW.md)); rubryka nadal bez nazwanego buyera |
+| P16 | — | — | **brak kodu** | ADR-0042 Accepted 2026-09-12, ale na `main` @ `2a302f5` nie ma `gfm.repo_links` ani `target_repo_id` (`grep`, 2026-09-15). Multi-repo istnieje na `main` w innej postaci: GitHub App (`gfm.github_installations`, import per repozytorium, duplikaty między repozytoriami w kontrakcie 1.12.0) i organizacja jako domyślny zakres odczytu (ADR-0047). Kolejność zmieniona 2026-09-15: po ACT-01 |
 
 ## c) Mapa modułów Go i właściciel tabel (wg API-CONTRACT §7)
 
 | Moduł | Właściciel danych |
 |---|---|
-| `identity` | `gfm.users`, `identities`, `orgs`, `memberships`, `invitations`, `sessions`, `tokens`, `device_codes`, `auth_states`, `audit` |
+| `identity` | `gfm.users`, `identities`, `orgs`, `memberships`, `invitations`, `sessions`, `tokens`, `device_codes`, `auth_states`, `audit`, `github_installations`/`github_deliveries` (ADR-0036, `internal/identity/github.go`) |
 | `mgmt` | brak własnych tabel — routing, envelope, CSRF, idempotencja (`gfm.idempotency`) |
-| `jobs` | `gfm.jobs` (enqueue/lease/heartbeat/checkpoint, fencing po `generation`) |
+| `jobs` | `gfm.jobs` (enqueue/lease/heartbeat/checkpoint, fencing po `generation`). Handler `ascend.run` w `worker_handlers.go` nadal zwraca `worker.Skipped("github_app_connector_not_configured")` — job jest trwały i widoczny, nic nie robi (ADR-0036; sprawdzone 2026-09-15) |
 | `worker` | brak własnych tabel — uruchamia handlery innych modułów poza HTTP |
 | `schema` | DDL dla `gf` i `gfm` (migracje), rola `guidefold_api` |
 | `testdb` | brak — harness testowy (jedna baza Postgres per proces testowy) |
-| `importer` | `gfm.repos`, `blobs`, `imports`, `import_files` |
+| `importer` | `gfm.repos`, `blobs`, `imports`, `import_files`, `gfm.scopes`; pisze też `gfm.relations` dla krawędzi z drzewa importu (`internal/importer/parse.go`) |
 | `knowledge` | czyta `gfm.skills`, `skill_revisions`, `skill_resources`, `scopes`; zapisuje `judgment` do `gf.events` |
-| `review` | `gfm.proposals`, `proposal_fields`, `decisions`, `exports`, `publications`, `relations` |
-| `usage` | projekcja `gfm.owner_queue`, `adapter_health`; czyta `gf.events` |
+| `review` | `gfm.proposals`, `proposal_fields`, `decisions`, `exports`, `publications`; **też pisze** `gfm.relations` (krawędzie z propozycji, `store.go`/`approve.go`) — drugi pisarz obok `importer`, `graph` tylko czyta |
+| `usage` | projekcja `gfm.owner_queue`, `adapter_health`; czyta `gf.events`. `gf.training_examples` ma tylko DDL i `GRANT INSERT` (`internal/schema/usage.go`, `sql.go`) — zero pisarzy i czytelników w Go (`grep`, 2026-09-15): ADR-0041 „Accepted-but-schema-only" |
+| `live` | `gfm.live_runs`, `live_run_targets`, `live_run_events` i pięć tras `{org_base}/live/*` (ADR-0046); zleca `live.plan`, nie otwiera klucza modelu organizacji |
+| `agentrun` | brak własnych tabel — workerowa połowa Live Agenta i raportu PR aplikacji GitHub: `live.plan`, `live.repo`, `pr.report` (ADR-0046, ADR-0036 pkt 1a/4a) |
+| `ghapp` | brak własnych tabel — jedyny adapter do `api.github.com`: JWT aplikacji, token instalacji, odczyt drzewa i plików, wąski zapis (sticky comment, commit na własnej gałęzi, PR) |
+| `model` | brak własnych tabel — klient strumieniowy do `openrouter`/`anthropic`/`openai` (ADR-0045); klucz organizacji żyje tylko w `Request.APIKey` |
+| `secrets` | klucze modelu organizacji szyfrowane w spoczynku (`gfm.org_credentials`, ADR-0045) |
 | `graph` | brak własnych tabel — reguły acykliczności nad `gfm.relations`/`gf.snapshots` |
 | `pivottest` | brak — harness Postgres + router + fixture Meridian |
 
@@ -74,20 +88,36 @@ jest w kolumnie Uwaga.
 | `scan` | `tests/test_pivot_cli_scan.py` |
 | `login`/`logout`, `org list`/`use` | `tests/test_pivot_cli_import.py` |
 | `import`/`sync`/`status` | `tests/test_pivot_cli_import.py` |
-| `install`/`uninstall` | `tests/test_pivot_cli_install.py` |
+| `install`/`uninstall` (`--harness claude\|copilot\|gemini`) | `tests/test_pivot_cli_install.py` |
 | `proposals list`/`show`/`apply` (walidacja ścieżki eksportu przeciw path traversal) | `tests/test_pivot_cli_import.py` |
 | `doctor` (rozszerzenie sieciowe) | `tests/test_doctor.py` |
 | `report --base <ref>` (P12, deterministyczny diff skilli w CI; błędy struktury blokują, kolizje triggerów ostrzegają, przykłady retrievalu nigdy nie blokują) | `tests/test_report.py` (20) |
 | `procedure <SKILL.md> [--run]` (S20, kontrakt wejść/wyjść/warunków/kroków/weryfikacji i jawny lokalny verifier) | `tests/test_procedure.py` |
 | `extract [--all] [--personal claude,codex,copilot]` (P08 one-shot: scan → import → plan `profile=one_shot` → generate wszystkich rodzajów; `--personal` wymusza `publish:false`) | `tests/test_pivot_cli_extract.py` (21) |
+| `ascend <node>` (ADR-0035: model pisze lub edytuje jeden abstrakcyjny skill map/convention per scope przodka, z bramkami uziemienia; nigdy nie commituje) | `tests/test_ascend.py` |
+| `telemetry status`/`flush` (E6.4/E2.7; od ADR-0048 wysyłka jest domyślnie włączona, opt-out jawny) | `tests/test_telemetry.py` |
+| `where`, `init`, `drift`, `publish`, `index`, `procedure`, `eval` (sprzed pivotu, opisane w [CONVENTIONS](CONVENTIONS.md)) | odpowiednie zestawy w `tests/` |
 
-## e) UI: tryby i siedem widoków
+## e) UI: tryby, Overview i widoki konsoli
 
 Tryb `fixture` (domyślny) i `api` (`VITE_GUIDEFOLD_API` lub `?mode=api`) przez abstrakcję
 `DataSource` (`FixtureDataSource`/`ApiDataSource`); sześciostanowy model routingu obejmuje
-`restricted`/`degraded`. Wszystkie siedem widoków (Import, Library, Map, Skill, Proposals,
+`restricted`/`degraded`. Siedem widoków panelu (Import, Library, Map, Skill, Proposals,
 Usage & quality, Organization) ma testy Vitest i jest pokryte przez `ui/e2e/api-mode.spec.ts`
-(Playwright ze `page.route` — stub, nie prawdziwe API). Klient trzyma `RamCache`
+(Playwright ze `page.route` — stub, nie prawdziwe API). Od 2026-09-12 pierwszym ekranem po
+zalogowaniu jest **Overview `/home`** (`ui/src/routes/HomeRoute.tsx`, ADR-0044): osiem równoległych
+odczytów, blok bez danych mówi to sam, brak organizacji lub repozytorium pokazuje jeden następny
+krok zamiast pustych kart. Doszły też **Live Agent** (`LiveAgentRoute.tsx`, ADR-0046) oraz
+`VerifyEmailRoute.tsx`. Od 2026-09-13 (ADR-0047, kontrakt 1.11.0) odczyty idą do `{org_base}`,
+kiedy `?repo=` jest puste, a repozytorium jest filtrem.
+
+**Konsola na shadcn/ui (owner, 2026-09-12; ADR-0044).** Powłoka (`app.tsx` `Shell`) i Overview są
+złożone z prymitywów `ui/src/components/ui/*` i bloków `ui/src/components/ui/shadcn-space/blocks`
+(boczny pasek, karty KPI `statistics-01`, wykresy `chart-01`/`chart-02` na `ui/chart.tsx` +
+Recharts, tabela `table-01`, pusty stan `empty-state-01`). Cztery wizualizacje Overview idą więc
+przez Recharts, **nie** przez Spectrum Charts — to nazwane naruszenie SC-01 z ADR-0044 r3, nadal
+otwarte na `main` @ `2a302f5` (migracja czeka w PR #164). Szczegóły i zrzuty:
+[console-shadcn-20260912](reports/ui/console-shadcn-20260912.md). Klient trzyma `RamCache`
 (`ui/src/api/cache.ts`, namespacing user/org/repo/policy, bez `localStorage`) i
 `AccessController` (`ui/src/api/access.ts`, `/me` co najwyżej co 25 s, maskowanie po 45 s,
 timeout 5 s), zgodnie z opisem w [ui/README](../ui/README.md).
@@ -119,12 +149,31 @@ odkrywalność), wszystkie naprawione. Stan po naprawach: `pnpm test` 297/297, `
 
 ## f) Kontrakt
 
-`contract_version` 1.1.1, data 2026-09-07 (od 1.0.0 do 1.1.1 w toku tej sesji: nagłówki
-`X-Guidefold-Org`/`X-Guidefold-Repo` dla SEARCH/USE, `member_exists`, retencja blobów, jeden
-rodzaj joba `proposal.generate`, DTO planu/importu, `family`/`profile: one_shot`, `card_revision`,
-`activate` z wymaganym `reason`). Zasada „kontrakt przed kodem" (API-CONTRACT §1): handler,
-tabela, migracja, DTO i komenda CLI zmieniają się wyłącznie razem ze zmianą kontraktu w tym samym
-PR. Egzekwuje `tools/contract/check_api_contract.py` — stan na koniec sesji: **0 dryfu**, 17 not
+Stan tej sekcji: **2026-09-15, `contract_version` 1.13.0 (dokument datowany 2026-09-13).** Pełny
+changelog 1.0.0–1.13.0 jest w [API-CONTRACT §11](API-CONTRACT.md#11-changelog) i nie jest tu
+duplikowany; poniżej tylko to, co ma dziś odpowiednik w kodzie i zmienia czytanie tego dokumentu:
+
+- **1.2.0 (ADR-0036):** webhook GitHub z HMAC, `gfm.github_installations`, enqueue `ascend.run` —
+  zaimplementowane i zapisujące (`internal/identity/github.go`). Sam handler `ascend.run` pozostaje
+  stubem (§c), więc wiersz §8 kontraktu opisuje zachowanie, którego worker nie wykonuje.
+- **1.2.3 (`gf.training_examples`):** tabela i `GRANT INSERT` istnieją — **schema-only**, zero
+  pisarzy i czytelników (ADR-0041).
+- **1.2.1/1.2.4 (proof-gated delivery, `claim_refs`):** `services/search/proof_gate.go`, opt-in
+  przez `delivery_policy: "proof_gated"` (§b P09; ADR-0039 Accepted jako opt-in 2026-09-12).
+- **1.3.0 (Overview `/home`):** `Usage.previous`, `ProposalSummary.decision`,
+  `QueueItem.decision.actor`, `FeedbackEntry.actor`, `GET {org_base}/audit` dla roli `member`.
+- **1.4.0–1.6.0 (ADR-0045/0046, ADR-0036 jako bot pokrycia):** klucze modelu organizacji, Live
+  Agent (`gfm.live_runs` i pięć tras `{org_base}/live/*`), raport PR.
+- **1.7.0–1.10.0:** naprawy zweryfikowane przy podłączaniu zarejestrowanej aplikacji GitHub i przy
+  logowaniu GitHub na produkcji (weryfikacja e-maila w WorkOS).
+- **1.11.0/1.11.1 (ADR-0047):** bliźniaki `{org_base}` każdego odczytu, repozytorium jako filtr,
+  integralność katalogu między repozytoriami jednej organizacji.
+- **1.12.0:** `GET {org_base}/skills/duplicates` — ta sama nazwa skilla w kilku repozytoriach.
+- **1.13.0:** naprawa ścieżki „connect GitHub w kreatorze organizacji → import repozytoriów".
+
+Zasada „kontrakt przed kodem" (API-CONTRACT §1): handler, tabela, migracja, DTO i komenda CLI
+zmieniają się wyłącznie razem ze zmianą kontraktu w tym samym PR. Egzekwuje
+`tools/contract/check_api_contract.py` — stan 2026-09-15 na `main` @ `2a302f5`: **0 dryfu**, 20 not
 informacyjnych (endpointy jeszcze nie w OpenAPI, kody błędów bez literału w Go).
 
 ## g) Komendy weryfikacyjne
@@ -171,7 +220,16 @@ python3 tools/dev/stack.py up --name dev --ui   # potem: seed --name dev --org a
    dowody P (P10 realne sesje harnessów, P12 10 realnych PR-ów, P14 5 zadań, P15 raport pilota,
    U2 AC4 recenzja 30 propozycji przez dwóch ludzi) wymagają prawdziwych ludzi i partnera;
    recenzja agenta i fixture ich nie zastępują.
-6. **Znane defekty produktu naprawione w tej sesji** (nie tylko luki dowodowe): worker bez
+6. **Stan produkcji 2026-09-15 (dowody P, nie R).** `guidefold.cloudfloo.io` działa i jest
+   `Synced/Healthy`, ale baza produkcyjna ma **0 importów, 0 skilli, 0 publikacji, 0 tokenów i 0
+   zdarzeń `gf.events`**; z 43 zsynchronizowanych repozytoriów jedno jest zablokowane powodem
+   `guidefold_yaml_missing`, a logowanie GitHub kończy się błędem WorkOS, bo aplikacja GitHub nie
+   ma uprawnienia „Email addresses: Read-only". Każde „działa" w tym dokumencie jest dowodem R lub
+   Q; żadne nie jest P. Pełna lista z dowodami i kolejnością:
+   [raport 2026-09-15](reports/product/2026-09-15-mvp-closure-status.md) §3 i §4.
+7. **`ascend.run` nadal stub, P16 nadal bez kodu** (§c, §b) — obie pozycje były decyzjami
+   właściciela z 2026-09-12; kod do nich nie wszedł na `main`.
+8. **Znane defekty produktu naprawione w sesji 2026-09-08/09** (nie tylko luki dowodowe): worker bez
    uprawnień zapisu do katalogu (brak `PGUSER=postgres` operatora), `guidefold telemetry flush`
    bez bearer tokenu, publikacja nadpisująca `needs_review` ustawione przez drift tego samego
    importu, dwie przestrzenie rewizji w `/usage` (naprawione jednym polem `card_revision`),
@@ -179,6 +237,21 @@ python3 tools/dev/stack.py up --name dev --ui   # potem: seed --name dev --org a
    gubiące całe sąsiednie scope'y, path traversal w `guidefold proposals apply --write`.
 
 ## i) Dowody akceptacyjne
+
+**Najnowszy przebieg, 2026-09-15 (druga próba generalna).** Ta sama komenda na czubku gałęzi
+`pilot/act01-rehearsal-v2-20260915` (`repo_commit d4fdf785`, przebieg `2026-09-15T15:18:37Z` →
+`15:22:50Z`) dała **34 pass, 0 fail, 7 `not_measured_here`**: jedyna porażka poprzedniego przebiegu,
+`ACT-01`, przestała występować po PR #180 (asercja sprawdza spool ∪ ledger, a `flush` nie kasuje
+zdarzeń dopisanych w trakcie wysyłki). Siedem `not_measured_here` to niezmiennie realny WorkOS, sieć
+pilota, realne sesje harnessów i oceny Q z ludźmi. Reprodukcja, defekty i ograniczenia:
+[druga próba generalna Pilot Core 2026-09-15](reports/pilot/2026-09-15-pilot-core-rehearsal-v2.md).
+
+**Poprzedni przebieg, 2026-09-15.** Ta sama komenda na czubku gałęzi `pilot/act01-rehearsal-20260915`
+(`repo_commit a285d595`) dała **33 pass, 1 fail, 7 `not_measured_here`**: `ACT-01` przestał przechodzić,
+bo spool CLI nie zawiera `card_injected`
+(`tests/acceptance/test_act01_end_to_end.py:219`). Reprodukcja, otoczenie i pozostałe znaleziska:
+[próba generalna Pilot Core 2026-09-15](reports/pilot/2026-09-15-pilot-core-rehearsal.md).
+Opis poniżej zostaje jako zapis stanu z 2026-09-08; nie jest już najświeższym pomiarem.
 
 **Stan na 2026-09-08, po naprawie.** Raport: [`.guidefold/checks/acceptance-2026-09-08.json`/`.md`]
 (../.guidefold/checks/) (niecommitowane, gitignored — lokalny artefakt przebiegu, napisany poprawnie

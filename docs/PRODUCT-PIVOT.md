@@ -2,7 +2,7 @@
 
 Reguły odczytu i aktualizacji: [DOCUMENTATION-RULES](DOCUMENTATION-RULES.md). Ten dokument określa wymagania i AC. Decyzje ekranów rozwija pipeline UI; nie zmienia on zakresu bez jawnej aktualizacji PRD.
 
-**Status: propozycja nowego MVP po przeglądzie agentów, 2026-09-06.** Wymagania właściciela rozszerzają wcześniejszy freeze o hosted UI, logowanie, organizacje, import i konsolidację wiedzy. Dokument opisuje docelowe zachowanie, nie stan implementacji. Decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md). Historie: [backlog pivotu](PIVOT-BACKLOG.md). [Ocena pięciu ról](PIVOT-REVIEW.md) i [React/Go/NestJS oraz podział usług](PIVOT-ARCHITECTURE.md).
+**Status: propozycja nowego MVP po przeglądzie agentów, 2026-09-06; decyzja ADR-0031 Accepted 2026-09-12 (wymagania obowiązują; stan wdrożenia w [PIVOT-IMPLEMENTATION](PIVOT-IMPLEMENTATION.md), dowodów pilota P nadal brak — [raport 2026-09-15](reports/product/2026-09-15-mvp-closure-status.md)).** Wymagania właściciela rozszerzają wcześniejszy freeze o hosted UI, logowanie, organizacje, import i konsolidację wiedzy. Dokument opisuje docelowe zachowanie, nie stan implementacji. Decyzja: [ADR-0031](adr/ADR-0031-monorepo-to-managed-skill-library.md). Historie: [backlog pivotu](PIVOT-BACKLOG.md). [Ocena pięciu ról](PIVOT-REVIEW.md) i [React/Go/NestJS oraz podział usług](PIVOT-ARCHITECTURE.md).
 
 ## 1. Pivot i obietnica produktu
 
@@ -63,10 +63,13 @@ MVP eksportuje propozycje lokalnie, bez wymagania GitHub App. Projektowana komen
 
 **Aktor i efekt:** owner podłącza repo bez ręcznego tworzenia katalogu skilli.
 
+**Nota 2026-09-12 (decyzja właściciela, `scope-change-protocol`).** Organizacja może mieć wiele repozytoriów, w tym jedno wskazane repo skilli, do którego trafiają propozycje z pozostałych; konfigurator CI i ustawienia generatora są per organizacja. Zakres i AC: [ADR-0042](adr/ADR-0042-multi-repo-organisation-and-ci-configurator.md) (Accepted 2026-09-12), historia P16 w [backlogu](PIVOT-BACKLOG.md) (kolejność zmieniona 2026-09-15: po ACT-01). Wymagania U1 poniżej pozostają bez zmian dla pojedynczego repozytorium; „monorepo" w tytule oznacza odtąd „repozytorium źródłowe", nie ograniczenie do jednego.
+
 Wymagania:
 
 - Skan wskazanego commitu, zagnieżdżonych katalogów skilli, AGENTS.md, CLAUDE.md, .github/instructions, README, ADR i wybranych runbooków. MVP obsługuje Markdown/YAML/JSON; inne formaty wykazuje jako pominięte.
-- guidefold.yaml ma pierwszeństwo w mapowaniu scope. Katalogi i CODEOWNERS dostarczają propozycji, jeśli mapy brak. Niepewna hierarchia/owner są widoczne i nie stają się samoczynnie polityką.
+- guidefold.yaml ma pierwszeństwo w mapowaniu scope. Katalogi i CODEOWNERS dostarczają propozycji, jeśli mapy brak. Niepewna hierarchia/owner są widoczne i nie stają się samoczynnie polityką. *(Wdrożone 2026-09-15, [ADR-0050](adr/ADR-0050-zero-config-scope-map.md): plik jest nadpisaniem, nie wymogiem — bez niego mapa jest wnioskowana z katalogów skilli i CODEOWNERS, a `gfm.scopes.source` = `inferred`. Wymaganie tego pliku było kodem ostrzejszym niż to zdanie.)*
+- Propozycję hierarchii **obejmującej wiele repozytoriów organizacji** może przygotować model ([ADR-0051](adr/ADR-0051-llm-proposed-organisation-map.md), kontrakt 1.15.0, rodzaj propozycji `scope_map`). Pozostaje propozycją, dopóki owner organizacji jej nie zatwierdzi; zatwierdzenie dopisuje i zmienia wiersze scope'ów, nigdy ich nie kasuje, i nie rusza wiersza, który zadeklarował `guidefold.yaml` — pierwszeństwo z ADR-0050 działa w obie strony.
 - .gitignore, .guidefoldignore, lista dozwolonych źródeł, limity paczki; pomijanie sekretów, .git, zależności i buildów. Symlinki nie wyprowadzają poza root; submodule jest osobnym jawnym źródłem.
 - Manifest: org, repo, commit, pliki, hashe, rozmiary i wykluczenia. Domyślny profil publikacji obejmuje commit; lokalne zmiany mają osobny podgląd bez publikacji.
 - Sync po hashach, wznowienie uploadu, idempotencja. Usunięcia wymagają kompletnego skanu; częściowy skan nie może ich wywnioskować.
@@ -110,7 +113,7 @@ Acceptance criteria:
 **Decyzja właściciela, 2026-09-07 (P08 „konsolidacja i piramida" jako killer use case).** Zapisane zgodnie z `scope-change-protocol`; dotychczasowy tekst i AC 1–7 pozostają bez zmian, poniższe je uzupełnia.
 
 - **Konsolidacja szuka między rodzeństwem, nie w jednym scope.** Wspólna procedura prawie nigdy nie leży dwa razy w tym samym scope; leży raz w `atlas.geo` i raz w `atlas.graph`. Grupa konsolidacji to odtąd scope nadrzędny wraz z jego bezpośrednimi dziećmi, każdy skill w dokładnie jednej grupie, wielkość grupy ograniczona przez `max_neighbours`. To nadal nie jest przebieg all-pairs po katalogu. Wspólny element powstaje w najgłębszym wspólnym przodku źródeł, z `derived_from` do każdego źródła i proponowanym `refines` z każdego źródła w górę do niego. Reguła podniesienia scope nie zmienia się: ≥2 różne scope'y źródłowe i owner scope'u docelowego jako owner propozycji.
-- **Oś Wiedzy jest wnioskowana, nie zgadywana.** Enrichment i konsolidacja wystawiają `knowledge_layer ∈ atomic|task|abstract` jako osobne pole z `origin: inferred`, wskazaniem linii źródła i jawną tablicą reguł recepty `det-1` (API-CONTRACT §5.3). Właściciel może je nadpisać przy zatwierdzeniu; pole przechodzi wtedy na `origin: human`. Warstwa nigdy nie wynika z głębokości katalogu ani z `source_layer`.
+- **Oś Wiedzy jest wnioskowana, nie zgadywana.** Enrichment i konsolidacja wystawiają `knowledge_layer ∈ atomic|task|abstract` jako osobne pole z `origin: inferred`, wskazaniem linii źródła i jawną tablicą reguł recepty `det-2` (API-CONTRACT §5.3). Właściciel może je nadpisać przy zatwierdzeniu; pole przechodzi wtedy na `origin: human`. Warstwa nigdy nie wynika z głębokości katalogu ani z `source_layer`.
 - **Powstrzymanie się nadal ma powód.** Każda odrzucona para ma nazwany powód w wyniku joba; milczące pominięcie pary jest błędem, tak samo jak zgadnięcie konsolidacji. AC5 mierzy to odtąd na zaplantowanym fixture (`examples/monorepo/docs/runbooks/README.md`, znacznik „Meridian fixture, planted for U2 AC5"): jedna para o identycznej procedurze w dwóch scope'ach rodzeństwa i jeden podobny językowo runbook o innych warunkach/wersjach, który musi zostać odrzucony z powodem. Fixture jest dowodem R (zachowanie reguły), nigdy dowodem recall na realnym repozytorium.
 - **Jedno wywołanie może objąć cały import.** `profile: one_shot` na planie i na generowaniu podnosi wyłącznie `max_groups` do liczby znalezionych grup; `max_usd`, `max_calls` i pozostałe limity pozostają ceilingiem wdrożenia i nadal zatrzymują przebieg. Plan pokazuje pełny koszt i wszystkie limity przed startem (AC7 bez zmian), a job checkpointuje po każdej grupie, więc przerwany przebieg wznawia się bez duplikatów (AC3 bez zmian).
 
@@ -142,6 +145,7 @@ UI jest częścią definicji wydania. React/Vite obecnego prototypu jest punktem
 
 | Widok | Główne działanie |
 |---|---|
+| Przegląd (`/home`) | Pierwszy ekran po zalogowaniu: co czeka na ownera, stan biblioteki, lejek dostarczenia i wartości w wybranym oknie; jeden następny krok zamiast pustych kart, gdy brak organizacji/repo |
 | Start / Import | Skopiuj komendy, zobacz postęp i błędy |
 | Biblioteka | Szukaj po repo, scope, ownerze, warstwie i statusie |
 | Mapa | Przełącz Repozytorium / Zakresy / Piramida i poznaj relacje |
@@ -164,7 +168,8 @@ Acceptance criteria:
 
 **Aktor i efekt:** developer instaluje pakiet Guidefold; agent znajduje i pobiera firmowe instrukcje.
 
-Projektowany UX CLI (nowe komendy nie są jeszcze implementacją):
+UX CLI poniżej jest zaimplementowany i przetestowany; stan per komenda:
+[PIVOT-IMPLEMENTATION §d](PIVOT-IMPLEMENTATION.md#d-cli-nowe-komendy):
 
 ```text
 guidefold login

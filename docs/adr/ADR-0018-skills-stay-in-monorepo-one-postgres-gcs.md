@@ -1,6 +1,6 @@
 # ADR-0018: Skills stay in the code monorepo; one Postgres for knowledge; GCS for artifacts
 
-**Status:** Proposed · 2026-09-04 · replaces the deleted ADR-0011 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged.
+**Status:** Proposed · 2026-09-04 · replaces the deleted ADR-0011 · [ADR-0023](ADR-0023-search-use-service-and-measured-utility.md) proposes an amendment; the status here is unchanged. **GCS clause superseded by:** [ADR-0033](ADR-0033-api-contract-first-and-mvp-storage.md) (Accepted 2026-09-12: blobs in Postgres behind the `BlobStore` port) via [ADR-0043](ADR-0043-pre-pivot-adr-reconciliation.md); "skills stay in the monorepo, one Postgres" stands.
 **T1 implementation amended by:** [ADR-0026](ADR-0026-native-search-paradedb-compose.md) (Go/ParadeDB/Compose); retrieval and production admission remain separate.
 
 ## Context

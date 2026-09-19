@@ -21,7 +21,14 @@ type Deterministic struct{}
 // RecipeVersion labels the deterministic recipe. Changing any rule below
 // changes this string, because the cache key contains it and stale candidates
 // must not be reused after the rules move.
-const RecipeVersion = "det-1"
+//
+// det-2 (2026-09-15, API-CONTRACT 1.16.0): consolidation reads two more heading
+// shapes as steps, admits a two-step procedure to the comparison, accepts a run
+// of two steps carried verbatim by three or more skills, and names every skill
+// that carries a shared run as a source instead of only the pair that exposed
+// it. Without the bump a repository that already ran det-1 over unchanged files
+// would answer from the cache and never see a shared element the new rules find.
+const RecipeVersion = "det-2"
 
 // Recipe describes this generator.
 func (d *Deterministic) Recipe() Recipe {
@@ -320,6 +327,24 @@ func (d *Deterministic) enrich(req Request) Output {
 // Two matching steps are a coincidence; three in the same order are a procedure.
 const minSharedSteps = 3
 
+// minRepeatedSteps and minRepeatedSources carry the same sentence one step
+// further. Two matching steps between *two* skills are a coincidence; the same
+// two steps, verbatim and in the same order, in *three* skills are copy-paste,
+// and copy-paste is exactly the duplication consolidation exists to remove.
+//
+// The threshold is evidence, not taste. Measured on this repository on
+// 2026-09-15 (docs/reports/bakeoff/CONSOLIDATION-REAL-REPO-2026-09-15.md): over
+// all 81 skills of `.agents/skills`, at every generosity of step parsing, the
+// longest run of identical ordered steps between any two of them is 2 — so
+// `minSharedSteps` alone can never produce a shared element here — and exactly
+// one such run exists, the bootstrap of `higgsfield-generate`,
+// `higgsfield-product-photoshoot` and `higgsfield-soul-id`. `minSharedSteps`
+// itself does not move: a pair still needs three.
+const (
+	minRepeatedSteps   = 2
+	minRepeatedSources = 3
+)
+
 // procedure is one skill of a consolidation group, parsed once.
 type procedure struct {
 	skill Skill
@@ -348,10 +373,16 @@ type procedure struct {
 func (d *Deterministic) consolidate(req Request) Output {
 	out := Output{Candidates: []Candidate{}, Abstentions: []Abstention{}}
 	skills := req.Skills
-	if n := req.Limits.MaxNeighbours; n > 0 && len(skills) > n {
+	if n := req.Limits.MaxNeighbours; n > 0 && len(skills) > n*n {
 		// The bound is applied here as well as in the plan, because a generator
 		// that trusts its caller to have stopped reading is not bounded at all.
-		skills = skills[:n]
+		// It is the *group's* bound, `max_neighbours²`, not one scope's: the
+		// plan builds a group out of up to max_neighbours scopes contributing up
+		// to max_neighbours skills each (API-CONTRACT §8), and cutting the
+		// concatenation at max_neighbours would let the first scope in name
+		// order spend the whole budget and leave its siblings uncompared —
+		// exactly what `combine`'s doc comment says it refuses to do.
+		skills = skills[:n*n]
 	}
 	procs := []procedure{}
 	for i := range skills {
@@ -362,7 +393,11 @@ func (d *Deterministic) consolidate(req Request) Output {
 				steps = append(steps, Items(sec)...)
 			}
 		}
-		if len(steps) < minSharedSteps {
+		// A two-step procedure is admitted to the comparison because a run of
+		// two can still become a shared element when three skills carry it; it
+		// can never on its own reach minSharedSteps, so admitting it adds a
+		// candidate only where minRepeatedSources is also satisfied.
+		if len(steps) < minRepeatedSteps {
 			continue
 		}
 		keys := make([]string, len(steps))
@@ -385,22 +420,35 @@ func (d *Deterministic) consolidate(req Request) Output {
 	for i := 0; i < len(procs); i++ {
 		for j := i + 1; j < len(procs); j++ {
 			run := longestRun(procs[i].keys, procs[j].keys)
-			if run.length < minSharedSteps {
+			if run.length < minRepeatedSteps {
 				continue
 			}
 			run.left, run.right = i, j
+			// How many procedures of this group carry this exact run decides
+			// whether a short one counts at all, and it is also what the
+			// candidate must cite: a shared element that names two sources
+			// while a third holds the same duplicate leaves that third copy
+			// behind (API-CONTRACT §8, `derived_from` to every source).
+			run.sources = len(runMembers(procs, procs[i], run))
+			if run.length < minSharedSteps && run.sources < minRepeatedSources {
+				continue
+			}
 			pairs = append(pairs, run)
 		}
 	}
 	if len(pairs) == 0 {
 		out.Abstentions = append(out.Abstentions, Abstention{Reason: "no_shared_procedure",
 			Skills: skillIDs(skills),
-			Detail: fmt.Sprintf("no run of %d identical ordered steps appears in two procedures", minSharedSteps)})
+			Detail: fmt.Sprintf("no run of %d identical ordered steps appears in two procedures, and no run of %d appears in %d",
+				minSharedSteps, minRepeatedSteps, minRepeatedSources)})
 		return out
 	}
 	sort.SliceStable(pairs, func(a, b int) bool {
 		if pairs[a].length != pairs[b].length {
 			return pairs[a].length > pairs[b].length
+		}
+		if pairs[a].sources != pairs[b].sources {
+			return pairs[a].sources > pairs[b].sources
 		}
 		ia, ja := procs[pairs[a].left].skill.SkillID, procs[pairs[a].right].skill.SkillID
 		ib, jb := procs[pairs[b].left].skill.SkillID, procs[pairs[b].right].skill.SkillID
@@ -420,23 +468,40 @@ func (d *Deterministic) consolidate(req Request) Output {
 				Skills: sourceIDs, Detail: detail})
 			continue
 		}
-		if used[left.skill.SkillID] || used[right.skill.SkillID] {
+		// Every skill of the group that performs this run the same way is a
+		// source, not only the pair that happened to expose it.
+		members := runMembers(procs, left, run)
+		ids := make([]string, 0, len(members))
+		for _, m := range members {
+			ids = append(ids, m.proc.skill.SkillID)
+		}
+		pairIDs := sourceIDs
+		sourceIDs = sortedUnique(ids)
+		blocked := false
+		for _, id := range sourceIDs {
+			if used[id] {
+				blocked = true
+			}
+		}
+		if blocked {
 			// One shared element per source. A second one over the same skill
 			// would carve the same procedure twice and leave the owner deciding
 			// which of two overlapping abstractions is the real one.
 			out.Abstentions = append(out.Abstentions, Abstention{Reason: "already_consolidated",
-				Skills: sourceIDs,
+				Skills: pairIDs,
 				Detail: "one of these skills is already the source of a shared element in this run"})
 			continue
 		}
 		if limit > 0 && len(out.Candidates) >= limit {
 			out.Abstentions = append(out.Abstentions, Abstention{Reason: "max_proposals_reached",
-				Skills: sourceIDs,
+				Skills: pairIDs,
 				Detail: fmt.Sprintf("the group's limit of %d proposals was already reached", limit)})
 			continue
 		}
-		used[left.skill.SkillID], used[right.skill.SkillID] = true, true
-		out.Candidates = append(out.Candidates, sharedElement(req, left, right, run, sourceIDs))
+		for _, id := range sourceIDs {
+			used[id] = true
+		}
+		out.Candidates = append(out.Candidates, sharedElement(req, members, run, sourceIDs))
 	}
 	return out
 }
@@ -444,8 +509,15 @@ func (d *Deterministic) consolidate(req Request) Output {
 // disagreeRun reports why two procedures with a matching run are not the same
 // procedure, or "" when they are.
 func disagreeRun(left, right procedure, run sharedRun) (string, string) {
-	for k := 0; k < run.length; k++ {
-		a, b := left.steps[run.leftAt+k].Text, right.steps[run.rightAt+k].Text
+	return disagreeAt(left, run.leftAt, right, run.rightAt, run.length)
+}
+
+// disagreeAt is disagreeRun between any two positions, which is what a third,
+// fourth or ninth carrier of the same run needs: the run sits at its own index
+// in every procedure that copied it.
+func disagreeAt(left procedure, leftAt int, right procedure, rightAt, length int) (string, string) {
+	for k := 0; k < length; k++ {
+		a, b := left.steps[leftAt+k].Text, right.steps[rightAt+k].Text
 		if reason, detail := disagree(a, b); reason != "" {
 			return reason, detail
 		}
@@ -463,6 +535,60 @@ func disagreeRun(left, right procedure, run sharedRun) (string, string) {
 	return "", ""
 }
 
+// runMember is one procedure that carries a shared run, and where it carries it.
+type runMember struct {
+	proc procedure
+	at   int
+}
+
+// runMembers lists every procedure of the group that performs `ref`'s run the
+// same way, `ref` first and the rest in group order.
+//
+// A procedure that carries the run but disagrees with `ref` somewhere — a
+// pinned version, a condition, a contradiction — is not a member: it is a
+// lookalike, and the pair loop reports it with its own reason. Membership is
+// therefore a stricter test than "the keys match", which is the point: a shared
+// element must be true of every source it names.
+func runMembers(procs []procedure, ref procedure, run sharedRun) []runMember {
+	keys := ref.keys[run.leftAt : run.leftAt+run.length]
+	out := []runMember{{proc: ref, at: run.leftAt}}
+	for i := range procs {
+		p := procs[i]
+		if p.skill.SkillID == ref.skill.SkillID {
+			continue
+		}
+		at := indexOfRun(p.keys, keys)
+		if at < 0 {
+			continue
+		}
+		if reason, _ := disagreeAt(ref, run.leftAt, p, at, run.length); reason != "" {
+			continue
+		}
+		out = append(out, runMember{proc: p, at: at})
+	}
+	return out
+}
+
+// indexOfRun is the first position at which `keys` appears in `in`, or -1.
+func indexOfRun(in, keys []string) int {
+	if len(keys) == 0 || len(in) < len(keys) {
+		return -1
+	}
+	for i := 0; i+len(keys) <= len(in); i++ {
+		match := true
+		for j := range keys {
+			if in[i+j] != keys[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
+}
+
 // sharedElement builds the candidate for one agreeing pair.
 //
 // Two decisions are made here and enforced elsewhere. The scope is the deepest
@@ -473,10 +599,18 @@ func disagreeRun(left, right procedure, run sharedRun) (string, string) {
 // skill in `atlas` is the owner of `atlas`, not whoever happened to write the
 // two runbooks. `validateConsolidation` refuses the approval if that owner is
 // not the proposal's owner (API-CONTRACT §4.4, `scope_widening_not_approved`).
-func sharedElement(req Request, left, right procedure, run sharedRun, sourceIDs []string) Candidate {
-	scope := commonScope(left.skill.Scope, right.skill.Scope)
-	raised := scope != left.skill.Scope || scope != right.skill.Scope
-	owner := commonOwner(left.skill, right.skill)
+func sharedElement(req Request, members []runMember, run sharedRun, sourceIDs []string) Candidate {
+	left := members[0].proc
+	scope, owner, raised := left.skill.Scope, left.skill.Owner, false
+	for _, m := range members[1:] {
+		scope = commonScope(scope, m.proc.skill.Scope)
+		owner = commonOwner(Skill{Owner: owner}, m.proc.skill)
+	}
+	for _, m := range members {
+		if m.proc.skill.Scope != scope {
+			raised = true
+		}
+	}
 	if raised {
 		owner = req.Owner
 	}
@@ -486,16 +620,27 @@ func sharedElement(req Request, left, right procedure, run sharedRun, sourceIDs 
 	lines := []string{}
 	for k := 0; k < run.length; k++ {
 		step := left.steps[run.leftAt+k]
+		// The step is written back from the lines it occupies, not from the
+		// parsed one-line text. `Items` keeps a fenced block inside the step's
+		// line range but not inside its text, so a step whose whole content is
+		// a command ("install it:" + a shell block) would otherwise become a
+		// shared skill that tells an agent to install something and never says
+		// how. What the candidate carries is what its SourceRef points at.
+		text := stepSource(left.skill.Body, step)
 		fields = append(fields, Field{Field: fmt.Sprintf("steps[%d]", k), Origin: OriginParsed,
-			Value: step.Text, Ref: &SourceRef{Path: left.skill.Path, SHA256: left.skill.SHA256,
+			Value: text, Ref: &SourceRef{Path: left.skill.Path, SHA256: left.skill.SHA256,
 				LineFrom: step.LineFrom, LineTo: step.LineTo}})
-		lines = append(lines, fmt.Sprintf("%d. %s", k+1, step.Text))
+		lines = append(lines, numberedStep(k+1, text))
 	}
-	purpose := fmt.Sprintf("The %d steps %s and %s perform identically.",
-		run.length, left.skill.SkillID, right.skill.SkillID)
+	purpose := fmt.Sprintf("The %d steps %s perform identically.",
+		run.length, strings.Join(sourceIDs, ", "))
 	fields = append(fields, Field{Field: "purpose", Origin: OriginInferred, Value: purpose,
 		NeedsConfirmation: true})
-	scopes := distinctScopes([]string{left.skill.Scope, right.skill.Scope})
+	memberScopes := make([]string, 0, len(members))
+	for _, m := range members {
+		memberScopes = append(memberScopes, m.proc.skill.Scope)
+	}
+	scopes := distinctScopes(memberScopes)
 	layer, _ := InferLayer(LayerInput{Steps: run.length, SourceScopes: scopes})
 	fields = append(fields, Field{Field: FieldKnowledgeLayer, Origin: OriginInferred, Value: layer,
 		Ref: &SourceRef{Path: left.skill.Path, SHA256: left.skill.SHA256,
@@ -527,15 +672,82 @@ func sharedElement(req Request, left, right procedure, run sharedRun, sourceIDs 
 		Name: title, Slug: slug, Scope: scope, Owner: owner,
 		Path: candidatePath(scope, slug, req.ScopeDirs), Body: body, Frontmatter: frontmatter,
 		Fields: fields, Relations: relations,
-		Sources: []Source{
-			{Path: left.skill.Path, SHA256: left.skill.SHA256},
-			{Path: right.skill.Path, SHA256: right.skill.SHA256}},
+		Sources:  sourcesOf(members),
 		Identity: "consolidation:" + strings.Join(sourceIDs, "+"),
 	}
 }
 
+// stepSource is one step exactly as its source file writes it: the lines of its
+// range, with the list marker removed from the first line and the block's own
+// indentation stripped, so a fenced command inside the step survives.
+func stepSource(body string, step Item) string {
+	if step.LineFrom <= 0 || step.LineTo < step.LineFrom {
+		return step.Text
+	}
+	raw := strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n")
+	if step.LineTo > len(raw) {
+		return step.Text
+	}
+	part := append([]string{}, raw[step.LineFrom-1:step.LineTo]...)
+	if m := orderedRE.FindStringSubmatch(part[0]); m != nil {
+		part[0] = m[2]
+	} else if m := bulletRE.FindStringSubmatch(part[0]); m != nil {
+		part[0] = m[1]
+	}
+	// Strip the common indentation of the continuation lines so the step reads
+	// as a step and not as an indented fragment of its original document.
+	indent := -1
+	for _, l := range part[1:] {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		n := len(l) - len(strings.TrimLeft(l, " \t"))
+		if indent < 0 || n < indent {
+			indent = n
+		}
+	}
+	for i := 1; i < len(part); i++ {
+		if indent > 0 && len(part[i]) >= indent {
+			part[i] = part[i][indent:]
+		}
+	}
+	return strings.TrimRight(strings.Join(part, "\n"), "\n")
+}
+
+// numberedStep writes one step as a markdown list item, keeping any lines after
+// the first inside the item.
+func numberedStep(n int, text string) string {
+	parts := strings.Split(text, "\n")
+	out := []string{fmt.Sprintf("%d. %s", n, parts[0])}
+	for _, l := range parts[1:] {
+		if strings.TrimSpace(l) == "" {
+			out = append(out, "")
+			continue
+		}
+		out = append(out, "   "+l)
+	}
+	return strings.Join(out, "\n")
+}
+
+// sourcesOf lists the file each source of a shared element came from, in the
+// same order as its skill ids.
+func sourcesOf(members []runMember) []Source {
+	sorted := append([]runMember{}, members...)
+	sort.SliceStable(sorted, func(a, b int) bool {
+		return sorted[a].proc.skill.SkillID < sorted[b].proc.skill.SkillID
+	})
+	out := make([]Source, 0, len(sorted))
+	for _, m := range sorted {
+		out = append(out, Source{Path: m.proc.skill.Path, SHA256: m.proc.skill.SHA256})
+	}
+	return out
+}
+
 type sharedRun struct {
 	length, leftAt, rightAt, left, right int
+	// sources is how many procedures of the group carry this run, which decides
+	// whether a run of minRepeatedSteps counts at all.
+	sources int
 }
 
 // longestRun is the longest run of equal, consecutive, identically ordered

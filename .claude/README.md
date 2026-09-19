@@ -1,6 +1,6 @@
 # .claude/ — Claude Code wiring for the Guidefold repository
 
-Status: aktywne, 2026-09-06. Decyzja: [ADR-0032](../docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md). Indeks skilli: [AGENTS.md](../AGENTS.md).
+Status: aktywne, 2026-09-15. Decyzja: [ADR-0032](../docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md). Indeks skilli: [AGENTS.md](../AGENTS.md).
 
 | Path | What |
 |---|---|
@@ -13,11 +13,11 @@ Status: aktywne, 2026-09-06. Decyzja: [ADR-0032](../docs/adr/ADR-0032-engineerin
 | Event | Script | Effect |
 |---|---|---|
 | SessionStart | `session-start.sh` | Prints entry documents and which skills to read first. |
-| PreToolUse Edit/Write | `guard-frozen-paths.sh` | Denies edits in `prototypes/industrial-surveyor/` and `prototypes/pipeline-hifi/`; adds a warning for fixture skills, the distributable bootstrap and hook templates. |
-| PreToolUse Edit/Write | `guard-tokens.sh` | Denies a hex colour in `ui/src/**` outside `ui/src/tokens/tokens.css`. |
-| PreToolUse Bash | `guard-git.sh` | Denies force push, `--no-verify`, commits on `main`; asks before `reset --hard`, `clean -f`, `branch -D`. Matches `git` in command position only (line start or after `&&`, `;`, `\|`); a heredoc line that starts with `git commit` also matches, so write such text with the Write tool. |
-| PostToolUse Edit/Write | `check-cli-single-file.sh` | After editing `skills/guidefold/scripts/guidefold`: syntax check and non-stdlib import scan (PyYAML allowed). Failure is reported back to Claude. |
-| PostToolUse Edit/Write | `check-slop.sh` | Banned vocabulary from `docs/ui/UX.md` §6 in `ui/`, `docs/ui/` (except UX.md and the pipeline prompt, which quote the list), `prototypes/pipeline-*`, README, PRODUCT-FOCUS, bootstrap skill. Lines that state the rule itself are skipped. |
+| PreToolUse `Edit\|Write\|MultiEdit` | `guard-frozen-paths.sh` | Denies edits in `prototypes/industrial-surveyor/` and `prototypes/pipeline-hifi/`; adds a warning for fixture skills, the distributable bootstrap and hook templates. |
+| PreToolUse `Edit\|Write\|MultiEdit` | `guard-tokens.sh` | Denies a hex colour in `ui/src/**` outside `ui/src/tokens/tokens.css`. |
+| PreToolUse `Bash` | `guard-git.sh` | Denies force push, `--no-verify`, commits on `main`; asks before `reset --hard`, `clean -f`, `branch -D`. Matches `git` in command position only (line start or after `&&`, `;`, `\|`); a heredoc line that starts with `git commit` also matches, so write such text with the Write tool. |
+| PostToolUse `Edit\|Write\|MultiEdit` | `check-cli-single-file.sh` | After editing `skills/guidefold/scripts/guidefold`: syntax check and non-stdlib import scan (PyYAML allowed). Failure is reported back to Claude. |
+| PostToolUse `Edit\|Write\|MultiEdit` | `check-slop.sh` | Banned vocabulary from `docs/ui/UX.md` §6 in `ui/`, `docs/ui/` (except UX.md and the pipeline prompt, which quote the list), `prototypes/pipeline-*`, README, PRODUCT-FOCUS, bootstrap skill. Lines that state the rule itself are skipped. |
 
 Test a hook by hand:
 
@@ -28,7 +28,7 @@ echo '{"tool_input":{"command":"git push --force origin main"}}' | bash .claude/
 
 ## Adding a skill
 
-1. Create `.agents/skills/<name>/SKILL.md` in the format of the existing ones (frontmatter `name`/`description`, Polish body, `Status/Data/Cel/Źródło/Indeks` header, 40–70 lines, links to canonical docs).
+1. Create `.agents/skills/<name>/SKILL.md` in the format of the existing ones (frontmatter `name`/`description`, Polish body, `Status/Data/Cel/Źródło/Indeks` header, 35–70 lines — the actual `LINE_MIN`/`LINE_MAX` in `tools/check_skills.py`, not the 40 once written here — links to canonical docs).
 2. `ln -s ../../.agents/skills/<name> .claude/skills/<name>`
 3. Add one row to the table in `AGENTS.md`.
-4. Verify: `python3 tools/check_skills.py` (frontmatter, name = directory, link targets exist, line limits, every skill linked from `.claude/skills` and `AGENTS.md`).
+4. Verify: `python3 tools/check_skills.py` (frontmatter, name = directory, link targets exist, line limits, every skill linked from `.claude/skills` and `AGENTS.md`). The checker also covers skills adopted from outside this project (motion/design/Higgsfield/Unslopify families); 43 of those exceed the line cap on 2026-09-15 and are listed, not silently exempted — see the 2026-09-12 audit, PRIO 2.5.

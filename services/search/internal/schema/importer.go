@@ -140,8 +140,13 @@ CREATE TABLE IF NOT EXISTS gfm.scopes (
  parent text,
  paths text[] NOT NULL DEFAULT '{}',
  source text NOT NULL DEFAULT 'guidefold_yaml'
-  CHECK(source IN ('guidefold_yaml','directory','codeowners','unknown')),
+  CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown')),
  import_id uuid,
+ -- ADR-0051: who approved the scope_map proposal this row came from and which
+ -- one it was. Null for every row a file or an inference wrote. The two
+ -- together stop 'llm_approved' from being an anonymous label.
+ reviewed_by uuid,
+ proposal_id uuid,
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(org_id,repo_id,scope),
  FOREIGN KEY(org_id,repo_id) REFERENCES gfm.repos(org_id,repo_id) ON DELETE CASCADE
@@ -190,7 +195,7 @@ CREATE TABLE IF NOT EXISTS gfm.owner_queue (
  skill_id text NOT NULL,
  revision_id text,
  reason text NOT NULL
-  CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads','missing_dependency')),
+  CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads','missing_dependency','import_file_failed')),
  evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
  since timestamptz NOT NULL DEFAULT now(),
  state text NOT NULL DEFAULT 'open' CHECK(state IN ('open','resolved')),
@@ -207,5 +212,32 @@ CREATE UNIQUE INDEX IF NOT EXISTS owner_queue_open
  ON gfm.owner_queue(org_id,skill_id,reason,revision_id) NULLS NOT DISTINCT
  WHERE state='open';
 CREATE INDEX IF NOT EXISTS owner_queue_state ON gfm.owner_queue(org_id,state,since DESC);
+-- ADR-0050 (contract 1.14.0): 'inferred' joins gfm.scopes.source. A repository
+-- with no guidefold.yaml is imported with a scope map derived from its skill
+-- directories and CODEOWNERS instead of being blocked, and the column has to
+-- be able to say so. The CREATE TABLE above already carries the widened CHECK
+-- for a fresh database; an existing one keeps the constraint CREATE TABLE IF
+-- NOT EXISTS skipped, so it is replaced here by name (same pattern as
+-- auth_states_kind_check). Widening a CHECK never rejects a stored row.
+ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS reviewed_by uuid;
+ALTER TABLE gfm.scopes ADD COLUMN IF NOT EXISTS proposal_id uuid;
+-- ADR-0051 (contract 1.15.0) adds 'llm_approved' to the *same* constraint. Two
+-- CHECKs on one column both have to pass, so a second one naming a different set
+-- would reject every value the first allows: the list is extended here, never
+-- duplicated.
+ALTER TABLE gfm.scopes DROP CONSTRAINT IF EXISTS scopes_source_check;
+ALTER TABLE gfm.scopes ADD CONSTRAINT scopes_source_check
+ CHECK(source IN ('guidefold_yaml','inferred','directory','codeowners','llm_approved','unknown'));
+-- Contract 1.17.0: 'import_file_failed' joins the same constraint. A partial
+-- import now publishes (API-CONTRACT §4.4), so the file the builder could not
+-- parse has to be asked about somewhere; it is one owner-queue item per file,
+-- written by import.parse in the drift transaction. The CREATE TABLE above
+-- carries the widened list for a fresh database; an existing one skipped that
+-- statement, so the constraint is replaced here by name, extending the list
+-- rather than adding a second CHECK (two CHECKs on one column must both pass).
+ALTER TABLE gfm.owner_queue DROP CONSTRAINT IF EXISTS owner_queue_reason_check;
+ALTER TABLE gfm.owner_queue ADD CONSTRAINT owner_queue_reason_check
+ CHECK(reason IN ('negative_feedback','source_changed','source_removed','zero_loads',
+  'missing_dependency','import_file_failed'));
 INSERT INTO gf.schema_version VALUES (10) ON CONFLICT DO NOTHING;
 `

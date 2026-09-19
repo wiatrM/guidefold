@@ -15,14 +15,17 @@ Requires Python 3 and PyYAML. Agent Registry access also needs a configured gclo
 permissions. Service search needs a configured URL and bearer token.
 
 Discover a small set of relevant instructions, then read their complete content before applying them.
-The scope tree comes from this repository's `guidefold.yaml`; directory depth is not a knowledge layer.
+The scope tree comes from this repository's `guidefold.yaml` when it has one, and otherwise from its
+skill directories and CODEOWNERS (ADR-0050 — the file is an override, not a requirement); directory
+depth is not a knowledge layer.
 
 ## Start from available context
 
 Read any generated scope card or Guidefold hook result already in context. Cards and hooks are discovery hints;
 check loaded source content and revision before acting. They can be older than the current repository.
 Run the bundled `scripts/guidefold` from the configured consumer repository (use its installed path).
-The CLI finds the nearest ancestor containing `guidefold.yaml`, or uses `GUIDEFOLD_ROOT`.
+The CLI finds the nearest ancestor containing `guidefold.yaml`, or uses `GUIDEFOLD_ROOT`; with no
+such file it falls back to the git toplevel, then to the nearest ancestor holding a skill directory.
 
 ## Discover and load
 

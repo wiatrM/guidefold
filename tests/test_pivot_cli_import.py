@@ -443,6 +443,73 @@ def test_proposals_apply_prints_a_diff_and_writes_only_with_write(gf, tmp_path, 
     assert _git(root, "log", "--oneline").stdout.strip().count("\n") == 0   # still one commit
 
 
+# ADR-0051 -- a `scope_map` proposal is a decision about the organisation's hierarchy, and it
+# has no file. The list must not offer its synthetic `.guidefold/scope-map.json` path as if
+# `proposals apply` could do something with it, and `show` has to answer the one question a
+# reviewer has: what would approving this change.
+
+def test_proposals_list_names_a_scope_map_instead_of_its_synthetic_path(gf, tmp_path,
+                                                                        monkeypatch, capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({"proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+                              "scope": None, "path": ".guidefold/scope-map.json"})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="list")) == 0
+    out = capsys.readouterr().out
+    assert "organisation scope map" in out
+    assert ".guidefold/scope-map.json" not in out
+
+
+def test_proposals_show_summarises_a_scope_map_before_its_json(gf, tmp_path, monkeypatch,
+                                                               capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({
+            "proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+            "path": ".guidefold/scope-map.json",
+            "scope_map": {
+                "origin": "model", "model": "gpt-4o-mini", "repos": ["alpha", "beta"],
+                "nodes": [{"scope": "atlas", "parent": None, "owner": "@acme/atlas",
+                           "paths": [{"repo_id": "alpha", "path": "platforms/atlas"}],
+                           "confidence": 0.9, "reason": "one subject"}],
+                "diff": {"added": ["beta/atlas"], "reparented": [], "owner_changed": [],
+                         "paths_changed": [], "unchanged": 3},
+                "findings": []}})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="show", proposal_id="p-map")) == 0
+    out = capsys.readouterr().out
+    assert "organisation scope map — model (gpt-4o-mini)" in out
+    assert "1 node(s) over 2 repositories" in out
+    assert "would change: 1 added, 3 unchanged" in out
+    assert "never deletes a scope" in out
+    # The summary is added, not substituted: the nodes being decided are still printed.
+    assert '"confidence": 0.9' in out
+
+
+def test_proposals_show_says_when_a_scope_map_no_longer_validates(gf, tmp_path, monkeypatch,
+                                                                  capsys):
+    root = _repo(tmp_path, secrets=False)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        api.proposals.append({
+            "proposal_id": "p-map", "kind": "scope_map", "state": "draft",
+            "path": ".guidefold/scope-map.json",
+            "scope_map": {"origin": "inferred", "model": None, "repos": ["alpha"],
+                          "nodes": [], "diff": {},
+                          "findings": ["path alpha/services/api is claimed by both \"a\" and \"b\""]}})
+        assert _run(gf.cmd_proposals, _args(api=url, org="acme", repo="monorepo",
+                                            proposals_cmd="show", proposal_id="p-map")) == 0
+    out = capsys.readouterr().out
+    assert "no longer validates and cannot be approved" in out
+    assert "claimed by both" in out
+
+
 # S3 -- `path` comes straight from the server's export document and `--write` turns it into a
 # filesystem write in the user's repository. Nothing checked containment, so
 # `root / "../../.ssh/authorized_keys"` resolved outside the tree and mkdir(parents=True)
@@ -695,3 +762,38 @@ def test_a_zero_device_interval_is_clamped(gf, tmp_path, monkeypatch, capsys, no
         _run(gf.cmd_login, _args(api=url, org=None, repo=None))
         capsys.readouterr()
     assert no_sleep and min(no_sleep) >= 1
+
+
+def test_status_names_the_file_a_partial_import_could_not_parse(gf, tmp_path, monkeypatch,
+                                                                capsys):
+    """`ImportFile` carries `status` (API-CONTRACT §5.2); the printer bucketed on `state`, so
+    every file landed in `unknown` and the one file that failed — with the parser error that
+    says why — was one line among hundreds of identical ones. On the v2 rehearsal of this
+    repository a `partial` import of 408 files printed 408 `unknown` lines and never named
+    `.agents/skills/rehearsal-v2-broken-card/SKILL.md` (D20, 2026-09-15).
+    """
+    root = _repo(tmp_path)
+    monkeypatch.chdir(root)
+    with running_api() as (url, api):
+        _login(gf, url)
+        assert _run(gf.cmd_import, _args(api=url, org="acme", repo="monorepo")) == 0
+        capsys.readouterr()
+        import_id = next(iter(api.imports))
+        api.import_view_extra = {
+            "state": "partial",
+            "counts": {"accepted": 2, "failed": 1},
+            "files": [
+                {"path": "a/SKILL.md", "status": "accepted"},
+                {"path": "b/SKILL.md", "status": "accepted"},
+                {"path": "broken/SKILL.md", "status": "failed",
+                 "reason": "ScannerError: mapping values are not allowed here"},
+            ],
+        }
+        assert _run(gf.cmd_status, _args(api=url, org="acme", repo="monorepo",
+                                         import_id=import_id)) == 0
+        out = capsys.readouterr().out
+    assert "accepted=2" in out and "failed=1" in out, out
+    assert "unknown" not in out, out
+    assert "broken/SKILL.md" in out and "ScannerError" in out, out
+    # The accepted files are counted, never listed one by one.
+    assert "a/SKILL.md" not in out, out

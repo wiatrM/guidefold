@@ -1,6 +1,16 @@
 # ADR-0042: Multi-repository organisations, a CI configurator, and per-organisation generator settings
 
-**Status:** Proposed · 2026-09-12 · owner intent stated the same day: "support MULTI REPOSITORY
+**Status:** Accepted · 2026-09-12 · decision of the product owner in the audit session of the
+same day ("multi-repo od razu, z ADR-0042"): this ADR enters the backlog as story **P16** in
+`docs/PIVOT-BACKLOG.md`, with a second `cloudfloo` repository as its test bed (PRODUCT-FOCUS
+"Design partner"). Acceptance covers the decision and the backlog slot; the acceptance tests in
+§Consequences remain the R evidence and are not yet written — `gfm.repo_links` does not exist on
+`main` @ `2a302f5` (`grep`, 2026-09-15). PRODUCT-PIVOT §4 is amended by the note added the same
+day. **Sequencing revised 2026-09-15** by
+[`docs/reports/product/2026-09-15-mvp-closure-status.md`](../reports/product/2026-09-15-mvp-closure-status.md)
+§4b item 13: P16 leaves the critical path and is decided after the first ACT-01 session; the
+Accepted status is unchanged. Original status: Proposed
+· 2026-09-12 · owner intent stated the same day: "support MULTI REPOSITORY
 organization (not monorepo) and CI CONFIGURATOR - to be able to configure CI worker to extract
 knowledge also NOT IN CODE but ONLY in skill repository for other repositories also"; "in CI
 settings each organization can setup their MODEL LLM for doing pyramid extraction, api keys etc,

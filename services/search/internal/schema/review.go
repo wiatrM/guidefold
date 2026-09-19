@@ -24,9 +24,12 @@ CREATE TABLE IF NOT EXISTS gfm.proposals (
  repo_id text NOT NULL,
  import_id uuid,
  job_id uuid,
- kind text NOT NULL CHECK(kind IN ('extraction','enrichment','consolidation')),
+ kind text NOT NULL CHECK(kind IN ('extraction','enrichment','consolidation','scope_map')),
+ -- 'applied' is terminal and belongs to 'scope_map' alone (ADR-0051). Approving a
+ -- map writes gfm.scopes rows and exports no file. It therefore never reaches the
+ -- three states that describe a candidate on its way to git.
  state text NOT NULL DEFAULT 'draft'
-  CHECK(state IN ('draft','approved_for_export','awaiting_git','published','rejected','superseded')),
+  CHECK(state IN ('draft','approved_for_export','awaiting_git','published','applied','rejected','superseded')),
  scope text,
  owner text,
  target_skill_id text,
@@ -115,6 +118,13 @@ CREATE TABLE IF NOT EXISTS gfm.publications (
  builder_sha256 text,
  validation jsonb,
  error text,
+ -- Contract 1.17.0: this snapshot was built from an import the builder could
+ -- not parse in full. The accepted files publish (API-CONTRACT section 4.4).
+ -- The ones that did not are still named by gfm.import_files so there is no
+ -- second copy of that list here. A column rather than a value inside the
+ -- validation field: that one is defined as the findings of a FAILED
+ -- validation and this publication succeeded.
+ partial boolean NOT NULL DEFAULT false,
  activated_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
@@ -139,6 +149,12 @@ ALTER TABLE gfm.skills ADD COLUMN IF NOT EXISTS published_snapshot_id text;
 ALTER TABLE gfm.skill_revisions ADD COLUMN IF NOT EXISTS card_revision text;
 CREATE INDEX IF NOT EXISTS skill_revisions_card
  ON gfm.skill_revisions(org_id,card_revision) WHERE card_revision IS NOT NULL;
+
+-- Contract 1.17.0, for a database created before it: the CREATE TABLE above is
+-- skipped there, so the column is added separately. Additive, defaulted, and
+-- therefore true of every publication written before the change — none of them
+-- could have been partial, because a partial import used to be refused.
+ALTER TABLE gfm.publications ADD COLUMN IF NOT EXISTS partial boolean NOT NULL DEFAULT false;
 
 INSERT INTO gf.schema_version VALUES (12) ON CONFLICT DO NOTHING;
 `

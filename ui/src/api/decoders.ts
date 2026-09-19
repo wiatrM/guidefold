@@ -349,8 +349,17 @@ export interface AuditPage { items: AuditEntry[]; next_cursor: string | null }
 export const auditPage = object<AuditPage>({ items: listOf(auditEntry), next_cursor: nullable(str) });
 
 // Shared by import (plan groups, proposals:generate) and by proposals review below.
-export const proposalKinds = ['extraction', 'enrichment', 'consolidation'] as const;
+// `scope_map` (contract 1.15.0, ADR-0051) is the proposed organisation scope map. It is not a
+// value `proposals:generate` accepts -- it comes from its own job kind -- but it is a value the
+// proposal list, the kind filter and the detail route all return.
+export const proposalKinds = ['extraction', 'enrichment', 'consolidation', 'scope_map'] as const;
 export type ProposalKind = typeof proposalKinds[number];
+// What `GET .../plan` and `POST .../proposals:generate` accept in `kinds` (contract §4.2).
+// `scope_map` is deliberately absent: it comes from its own job kind, and sending it would be
+// `400 invalid_request`. The two lists are separate because they answer different questions --
+// "what kinds exist" and "what kinds may be generated from an import".
+export const generationKinds = ['extraction', 'enrichment', 'consolidation'] as const;
+export type GenerationKind = typeof generationKinds[number];
 
 // ---------------------------------------------------------------------------
 // Repositories and import
@@ -450,9 +459,11 @@ export const job = object<Job>({
 
 export const publicationStates = ['none', 'building', 'published', 'failed'] as const;
 export type PublicationBuildState = typeof publicationStates[number];
-export interface ImportPublication { snapshot_id: string | null; state: PublicationBuildState; error: string | null }
+/** `partial` (contract 1.17.0) is null until a build finishes: unknown is not "complete". */
+export interface ImportPublication { snapshot_id: string | null; state: PublicationBuildState; error: string | null; partial: boolean | null }
 export const importPublication = object<ImportPublication>({
   snapshot_id: nullable(str), state: fallback(oneOf(publicationStates), 'none'), error: nullable(str),
+  partial: fallback(nullable(bool), null),
 });
 
 export interface ImportCounts { files: number; accepted: number; omitted: number; failed: number; new_blobs: number; reused_blobs: number; skills: number; documents: number }
@@ -743,7 +754,9 @@ export const modulePage = object<ModulePage>({
 // Proposals and review
 // ---------------------------------------------------------------------------
 
-export const proposalStates = ['draft', 'approved_for_export', 'awaiting_git', 'published', 'rejected', 'superseded'] as const;
+// `applied` (1.15.0) is terminal and belongs to `scope_map` alone: approving a map writes
+// gfm.scopes rows, it exports no file, so it never reaches approved_for_export/awaiting_git/published.
+export const proposalStates = ['draft', 'approved_for_export', 'awaiting_git', 'published', 'applied', 'rejected', 'superseded'] as const;
 export type ProposalState = typeof proposalStates[number];
 export const decisionKinds = ['approve', 'edit', 'reject'] as const;
 export type DecisionKind = typeof decisionKinds[number];
@@ -771,6 +784,44 @@ export const proposalSummary = object<ProposalSummary>({
   path: nullable(str), created_at: nullable(str),
   decision: nullable(proposalDecision),
 });
+/** Contract §5.4 (1.15.0): the body of a `scope_map` proposal, plus a diff against the scopes the
+ *  organisation has *now* -- the server recomputes it on every read, so what is shown is what
+ *  approving would change today. There is no `removed` list: approving never deletes a scope. */
+export interface ScopeMapNode {
+  scope: string; parent: string | null; owner: string | null;
+  paths: { repo_id: string; path: string }[];
+  confidence: number; reason: string;
+}
+export const scopeMapNode = object<ScopeMapNode>({
+  scope: str, parent: nullable(str), owner: nullable(str),
+  paths: listOf(object({ repo_id: fallback(str, ''), path: fallback(str, '') })),
+  confidence: fallback(num, 0), reason: fallback(str, ''),
+});
+export interface ScopeMapChange { scope: string; repo_id: string; from: string | null; to: string | null }
+export const scopeMapChange = object<ScopeMapChange>({
+  scope: fallback(str, ''), repo_id: fallback(str, ''), from: nullable(str), to: nullable(str),
+});
+export interface ScopeMapPathChange { scope: string; repo_id: string; added: string[]; removed: string[] }
+export const scopeMapPathChange = object<ScopeMapPathChange>({
+  scope: fallback(str, ''), repo_id: fallback(str, ''), added: listOf(str), removed: listOf(str),
+});
+export interface ScopeMapDiff {
+  added: string[]; reparented: ScopeMapChange[]; owner_changed: ScopeMapChange[];
+  paths_changed: ScopeMapPathChange[]; unchanged: number;
+}
+export const scopeMapDiff = object<ScopeMapDiff>({
+  added: listOf(str), reparented: listOf(scopeMapChange), owner_changed: listOf(scopeMapChange),
+  paths_changed: listOf(scopeMapPathChange), unchanged: fallback(num, 0),
+});
+export interface ScopeMap {
+  origin: 'inferred' | 'model'; model: string | null; repos: string[];
+  nodes: ScopeMapNode[]; diff: ScopeMapDiff; findings: string[];
+}
+export const scopeMap = object<ScopeMap>({
+  origin: fallback(oneOf(['inferred', 'model'] as const), 'inferred'), model: nullable(str),
+  repos: listOf(str), nodes: listOf(scopeMapNode), diff: scopeMapDiff, findings: listOf(str),
+});
+
 export interface ProposalList { items: ProposalSummary[]; next_cursor: string | null }
 export const proposalList = object<ProposalList>({ items: listOf(proposalSummary), next_cursor: nullable(str) });
 
@@ -788,6 +839,8 @@ export interface ProposalDetail {
   relations: { type: RelationType; to: string }[];
   decision: { decision: DecisionKind; reason: string | null; at: string | null; actor: string | null } | null;
   expected_revision: string | null; created_at: string | null; cost: JobCost | null;
+  /** Present only for kind `scope_map` (1.15.0); `null` for every other kind. */
+  scope_map: ScopeMap | null;
 }
 /**
  * `ProposalDetail.decision` is its own, fuller shape (contract §5.4: `decision_id, decision,
@@ -823,6 +876,7 @@ export const proposalDetail = object<ProposalDetail>({
   relations: listOf(object({ type: oneOf(relationTypes), to: str })),
   decision: nullable(proposalDetailDecision),
   expected_revision: nullable(str), created_at: nullable(str), cost: nullable(jobCost),
+  scope_map: fallback(nullable(scopeMap), null),
 });
 
 export interface DecisionResult { proposal_id: string; state: ProposalState; revision_id: string | null; expected_revision: string | null }
@@ -868,7 +922,13 @@ export interface Snapshot {
   import_id: string | null; job_id: string | null; commit: string | null; n_skills: number;
   builder_sha256: string | null; validation: { ok: boolean; findings: string[] } | null;
   error: string | null; activated_at: string | null; created_at: string | null;
+  /** Contract 1.17.0: built from an import the builder could not parse in full. */
+  partial: boolean;
+  /** The paths that import could not parse, with the builder's reason. Empty unless `partial`. */
+  failed_files: FailedImportFile[];
 }
+export interface FailedImportFile { path: string; reason: string | null }
+export const failedImportFile = object<FailedImportFile>({ path: str, reason: nullable(str) });
 export const snapshot = object<Snapshot>({
   publication_id: str, snapshot_id: nullable(str),
   state: fallback(oneOf(snapshotStates), 'building'), active: fallback(bool, false),
@@ -876,6 +936,9 @@ export const snapshot = object<Snapshot>({
   builder_sha256: nullable(str),
   validation: nullable(object({ ok: fallback(bool, false), findings: listOf(str) })),
   error: nullable(str), activated_at: nullable(str), created_at: nullable(str),
+  // Defaulted, not required: a 1.15.0 server answers without them and the row
+  // still reads as a complete publication, which is what it was.
+  partial: fallback(bool, false), failed_files: listOf(failedImportFile),
 });
 export const snapshotList: Decoder<Snapshot[]> = (value, path = '') =>
   Array.isArray(value) ? arrayOf(snapshot)(value, path) : field('items', arrayOf(snapshot))(value, path);
@@ -929,7 +992,7 @@ export const usageSkill = object<UsageSkill>({
   zero_loads: fallback(bool, false),
 });
 
-export const queueReasons = ['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency'] as const;
+export const queueReasons = ['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency', 'import_file_failed'] as const;
 export type QueueReason = typeof queueReasons[number];
 export const queueActions = ['reviewed', 'fixed_in_git', 'no_change'] as const;
 export type QueueAction = typeof queueActions[number];
@@ -937,6 +1000,7 @@ export interface QueueItem {
   item_id: string;
   /** Contract 1.11.0: the repository whose queue holds the item; the decision is posted to that `{repo_base}`. */
   repo_id: string | null;
+  /** A skill URN, except for `import_file_failed`, where it is `file:<repository path>` (1.17.0). */
   skill_id: string; revision: string | null; reason: QueueReason; since: string | null;
   evidence: Record<string, unknown> | null;
   decision: { action: QueueAction; reason: string | null; at: string | null; actor: string | null } | null;

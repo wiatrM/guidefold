@@ -270,7 +270,8 @@ func (s *Service) plan(ctx context.Context, orgID, repoID, importID string,
 		if kind == generator.KindExtraction {
 			byScope, err = s.documentsByScope(ctx, orgID, repoID, importID, limits)
 		} else {
-			byScope, err = s.skillsByScope(ctx, orgID, repoID, limits)
+			byScope, err = s.skillsByScope(ctx, orgID, repoID, limits,
+				kind == generator.KindConsolidation)
 		}
 		if err != nil {
 			return nil, nil, mgmt.Internal(err)
@@ -368,7 +369,25 @@ func (s *Service) documentsByScope(ctx context.Context, orgID, repoID, importID 
 	return out, rows.Err()
 }
 
-func (s *Service) skillsByScope(ctx context.Context, orgID, repoID string, limits Limits) (map[string][]Input, error) {
+// neighbourScanCeiling bounds how many of one scope's skills are read before
+// the max_neighbours cut is applied. The cut itself is unchanged — a scope
+// still contributes at most max_neighbours skills to a group — but consolidation
+// now *chooses* which ones instead of keeping whichever ones sort first, and it
+// cannot choose from rows it never read. The ceiling keeps that read bounded by
+// a constant rather than by the catalog.
+const neighbourScanCeiling = 1000
+
+// skillsByScope reads one repository's active skills, grouped by scope.
+//
+// `byFamily` is set for consolidation only. Enrichment treats each skill on its
+// own, so for it the old order (skill id, cut at max_neighbours) is exactly
+// right and is left alone; consolidation looks for what two skills share, and
+// on a flat repository the alphabetical cut is the reason it found nothing —
+// 10 of 81 skills, all of them in `a`/`b`, while the repository's only verbatim
+// shared procedure lives in its nine `higgsfield-*` skills
+// (docs/reports/bakeoff/CONSOLIDATION-REAL-REPO-2026-09-15.md).
+func (s *Service) skillsByScope(ctx context.Context, orgID, repoID string, limits Limits,
+	byFamily bool) (map[string][]Input, error) {
 	rows, e := s.pool.Query(ctx, `SELECT s.skill_id,s.path,s.scope,COALESCE(s.owner,''),
  r.content_sha256,r.revision_id
  FROM gfm.skills s JOIN gfm.skill_revisions r
@@ -391,12 +410,45 @@ func (s *Service) skillsByScope(ctx context.Context, orgID, repoID string, limit
 		in.Scope = scope
 		// MaxNeighbours is the cap that keeps consolidation away from an
 		// all-pairs pass: at most this many procedures are compared per group.
-		if len(out[scope]) >= limits.MaxNeighbours {
+		keep := limits.MaxNeighbours
+		if byFamily {
+			keep = neighbourScanCeiling
+		}
+		if len(out[scope]) >= keep {
 			continue
 		}
 		out[scope] = append(out[scope], in)
 	}
-	return out, rows.Err()
+	if e = rows.Err(); e != nil {
+		return nil, e
+	}
+	if byFamily {
+		for scope, inputs := range out {
+			out[scope] = pickNeighbours(inputs, limits.MaxNeighbours)
+		}
+	}
+	return out, nil
+}
+
+// pickNeighbours cuts one scope's contribution to max_neighbours, largest name
+// family first (generator.NeighbourOrder). The chosen skills are returned in
+// skill id order, so the group a generator sees is still sorted the way every
+// other plan output is.
+func pickNeighbours(inputs []Input, n int) []Input {
+	if n <= 0 || len(inputs) <= n {
+		return inputs
+	}
+	ids := make([]string, len(inputs))
+	for i := range inputs {
+		ids[i] = inputs[i].SkillID
+	}
+	order := generator.NeighbourOrder(ids)[:n]
+	out := make([]Input, 0, n)
+	for _, i := range order {
+		out = append(out, inputs[i])
+	}
+	sort.SliceStable(out, func(a, b int) bool { return out[a].SkillID < out[b].SkillID })
+	return out
 }
 
 // generateRequest is the body of POST …/proposals:generate.

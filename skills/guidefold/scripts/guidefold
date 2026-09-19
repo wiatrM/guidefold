@@ -2,7 +2,7 @@
 """guidefold — minimal CLI for hierarchy-aware skill discovery over Google Agent Registry.
 
 Subcommands
-  where                     print hierarchy node for cwd (from guidefold.yaml)
+  where                     print hierarchy node for cwd (guidefold.yaml if present, else inferred)
   find "<task>" --scope N   task-aware ranked search (Router 0.1) + URN-prefix filter for N
   load <urn>                download default revision into <cache_root>/skills/<urn>/<rev>/;
                              --delivery-policy proof_gated uses service USE 1.2 and fails closed
@@ -20,7 +20,8 @@ Subcommands
                              for the prompt from the pre-built index artifact only — never
                              guidefold.yaml, never PyYAML, hard watchdog (E1.5)
   prewarm                   Copilot sessionStart: download the node chain's skills into <cache_root>/skills
-  init                      bootstrap a consumer monorepo in one command: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore entries
+  init                      bootstrap a consumer monorepo in one command: .agents/skills/guidefold, harness hooks,
+                             CI workflow, .gitignore entries; --scope-map also writes a guidefold.yaml override
   doctor [--json]           diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness,
                              hosted-service reachability/identity, installed adapter — prints a fix for every failure
 
@@ -43,6 +44,9 @@ Design notes
     current sha (E1.4) — same Router, same ranking code, different Index source; see
     "Index artifact (E1.4)" below for the file layout. Registry/LocalRegistry are storage +
     transport only (`publish`/`download`/`search_scope`) — no ranking lives there.
+  * guidefold.yaml is an optional override (ADR-0050). Without it the scope map is inferred
+    from the tree (skill directories + CODEOWNERS) by `infer_map`, the one implementation the
+    CLI, `report --base` and the worker's build_tree.py all share.
   * Intentionally dependency-light: stdlib + PyYAML (imported lazily — see load_map/frontmatter
     — so commands that never touch guidefold.yaml/SKILL.md, e.g. `--help` and `hook`, don't pay
     for it: `hook`'s whole code path imports zero PyYAML, provable with `python3 -X importtime`).
@@ -71,7 +75,10 @@ TELEMETRY_SCHEMA_VERSION = "1.0"   # must match tools/telemetry/ledger.py SCHEMA
 
 # ---------------------------------------------------------------- repo helpers
 def repo_root() -> Path:
-    """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel as fallback."""
+    """Monorepo root = nearest ancestor holding guidefold.yaml (or $GUIDEFOLD_ROOT); git toplevel,
+    then the nearest ancestor holding a skill directory, as fallbacks. ADR-0050 made the file
+    optional, so the last fallback is what answers for a tree that is neither configured nor a
+    git checkout (an extracted archive, a materialised worker tree)."""
     env = os.environ.get("GUIDEFOLD_ROOT")
     if env:
         return Path(env).resolve()
@@ -80,17 +87,133 @@ def repo_root() -> Path:
         if (d / "guidefold.yaml").is_file():
             return d
     out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    if out.returncode != 0:
-        sys.exit("guidefold: no guidefold.yaml above cwd and not inside a git repository")
-    return Path(out.stdout.strip())
+    if out.returncode == 0 and out.stdout.strip():
+        return Path(out.stdout.strip())
+    for d in (here, *here.parents):
+        if any((d / marker.rstrip("/")).is_dir() for marker in _SKILL_DIR_MARKERS):
+            return d
+    sys.exit("guidefold: no guidefold.yaml above cwd, no .agents/skills or .claude/skills "
+             "directory, and not inside a git repository")
 
-def load_map(root: Path) -> dict:
+# ADR-0050 (owner decision 2026-09-15): `guidefold.yaml` is an OPTIONAL OVERRIDE, never a
+# requirement. Precedence for a scope map is: the file (explicit) > an approved console/LLM
+# proposal > `inferred`. Everything below is the `inferred` tier and it is ONE implementation:
+# the CLI, `report --base` at a git ref and the worker's `tools/worker/build_tree.py` all reach
+# it through `load_map`/`infer_map`, so an inferred URN never depends on who asked.
+SOURCE_GUIDEFOLD_YAML = "guidefold_yaml"
+SOURCE_INFERRED = "inferred"
+
+def _git_remote_owner(root: Path):
+    """The owner/organisation segment of `origin` — "wiatrM" in both
+    `git@github.com:wiatrM/guidefold.git` and `https://github.com/wiatrM/guidefold`. Distinct
+    from `_infer_publisher`, which answers `init`'s narrower question (the *repository* name)."""
+    try:
+        out = subprocess.run(["git", "config", "--get", "remote.origin.url"],
+                             capture_output=True, text=True, cwd=str(root), timeout=5)
+    except Exception:                                     # noqa: BLE001 — git is optional here
+        return None
+    url = (out.stdout.strip() if out.returncode == 0 else "").rstrip("/")
+    if url.endswith(".git"):
+        url = url[:-4]
+    if not url:
+        return None
+    tail = url.split("://", 1)[1] if "://" in url else url
+    segs = [s for s in tail.replace(":", "/").split("/") if s]
+    return segs[-2] if len(segs) >= 2 else None
+
+def _inferred_publisher(root: Path, override: str = None):
+    """(publisher, publisher_source) — the logged-in organisation slug, else the git remote
+    owner slug, else the root directory name. `override` is what a caller that already knows the
+    answer passes (`report --base` uses the working tree's publisher so base and head URNs are
+    comparable; `build_tree.py` is given one, because a materialised worker tree has neither a
+    git remote nor credentials and would otherwise name itself after a scratch directory)."""
+    if override:
+        return _slugify(str(override)), "caller"
+    try:
+        _token, org = _login_token()
+    except Exception:                                     # noqa: BLE001 — credentials are optional
+        org = None
+    if org:
+        return _slugify(org), "credentials"
+    remote = _git_remote_owner(root)
+    if remote:
+        return _slugify(remote), "git_remote"
+    return _slugify(root.name), "directory"
+
+def _inferred_skill_dirs(root: Path) -> list:
+    """Every directory that holds a recognised skill directory, relative to `root`, sorted.
+    "Recognised" is `_SKILL_DIR_MARKERS`, the same pair `scan` already recognises — the
+    directory ABOVE the `.agents/skills/<name>` (or `.claude/skills/<name>`) wrapper, which is
+    the unit a team owns. A skill directly under the repository's own wrapper yields "", i.e.
+    `_root`, and is dropped here."""
+    dirs = set()
+    for marker in _SKILL_DIR_MARKERS:
+        for md in root.rglob(marker.rstrip("/") + "/*/SKILL.md"):
+            if ".guidefold" in md.parts:
+                continue
+            dirs.add(_skill_scope_prefix(rel(root, md.parent)))
+    return sorted(d for d in dirs if d)
+
+def _inferred_node_name(relative_dir: str) -> str:
+    """"platforms/Atlas/identity" -> "platforms.atlas.identity": "/" becomes ".", every segment
+    is slugified to the `[a-z0-9-]` alphabet node validation already demands, so ADR-0008's
+    flattening (`.` -> `-`) still has one node per flat id. Two directories that slugify to the
+    same name share a node (their globs are merged) instead of one silently shadowing the
+    other; `guidefold.yaml` is how you give them different names."""
+    segs = [_SLUG_RE.sub("-", _ascii_lower(s)).strip("-") for s in relative_dir.split("/")]
+    return ".".join(s for s in segs if s)
+
+def infer_map(root: Path, publisher: str = None) -> dict:
+    """The scope map a repository with no `guidefold.yaml` gets (ADR-0050).
+
+    node    every directory holding a recognised skill directory, plus every directory above it
+            on the way down, so `ancestors()` never names a node the map does not hold
+    paths   ["<dir>/**"]; `_root` is implied with ["**"]
+    owner   CODEOWNERS' own "last matching rule wins" verdict for that directory; `_root` takes
+            the whole-repo rule; "unknown" when CODEOWNERS says nothing
+    Stdlib only — no PyYAML is imported on this path, so a repository without the file needs
+    nothing installed at all."""
+    rules = _codeowners_rules(root)
+    nodes = {}
+    for directory in _inferred_skill_dirs(root):
+        segs = directory.split("/")
+        for i in range(1, len(segs) + 1):
+            sub = "/".join(segs[:i])
+            name = _inferred_node_name(sub)
+            if not name:
+                continue
+            glob = sub + "/**"
+            if name in nodes:
+                if glob not in nodes[name]["paths"]:
+                    nodes[name]["paths"].append(glob)
+                continue
+            owner, _hits = _codeowners_match(rules, sub)
+            nodes[name] = {"paths": [glob], "owner": owner or "unknown"}
+    ordered = {"_root": {"paths": ["**"], "owner": _infer_owner_from_codeowners(root)}}
+    for name in sorted(nodes):
+        ordered[name] = {"paths": sorted(nodes[name]["paths"]), "owner": nodes[name]["owner"]}
+    pub, pub_source = _inferred_publisher(root, publisher)
+    # `registry.backend` defaults to `agent-registry` for a DECLARED map, because a repository
+    # that wrote the file chose to configure publishing. A repository that configured nothing
+    # has published nothing: local is the only backend that can be true here, and it keeps
+    # `doctor` from failing a zero-config repo over a GCP project it was never asked for.
+    return {"publisher": pub, "publisher_source": pub_source, "nodes": ordered,
+            "registry": {"backend": "local"}, "_source": SOURCE_INFERRED}
+
+def load_map(root: Path, publisher: str = None) -> dict:
+    """The scope map: `guidefold.yaml` when the repository has one, inferred from the tree when
+    it does not (ADR-0050). Existence is tested BEFORE PyYAML is imported, so the inferred path
+    never needs it. `cfg["_source"]` names which tier answered."""
+    path = root / "guidefold.yaml"
+    if not path.is_file():
+        return infer_map(root, publisher)
     try:
         import yaml
     except ImportError:  # keep the failure loud but friendly
         sys.exit("guidefold: PyYAML missing — pip install pyyaml")
-    cfg = yaml.safe_load((root / "guidefold.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
     cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    cfg.setdefault("_source", SOURCE_GUIDEFOLD_YAML)
     return cfg
 
 def rel(root: Path, p: Path) -> str:
@@ -2229,8 +2352,15 @@ def resolve_search_config(cfg: dict = None, profile: str = "interactive", root: 
         token, org = _login_token(cfg)
         if token:
             token_source = "login"
-            if root is not None:
-                repo = _default_repo_id(root)
+            # Same precedence `resolve_service_config` documents: env > guidefold.yaml
+            # `service.repo` > the checkout's name. Reading only the checkout's name sent
+            # `X-Guidefold-Repo: <directory>` for every personal-token call, which the API
+            # answers 403 whenever the clone is not named exactly like the repo id -- the
+            # normal case. `guidefold load` then reported it as "service USE failed (auth)".
+            service_block = (cfg or {}).get("service")
+            service_block = service_block if isinstance(service_block, dict) else {}
+            repo = (os.environ.get("GUIDEFOLD_REPO_ID") or service_block.get("repo")
+                    or (_default_repo_id(root) if root is not None else None))
     if backend == "service" and not token:
         # A service backend that can never authenticate can never succeed (contract: POST
         # requires the bearer token) -- fail fast into local rather than paying for a request
@@ -2979,6 +3109,90 @@ def _emit_telemetry(root: Path, event_type: str, fields: dict, ids: dict = None)
     except Exception:
         pass  # telemetry must never fail or block the command it instruments (see block docstring)
 
+# D12 (pilot rehearsal 2026-09-15): every failed `/v1/use` reached the user as the single word
+# "(auth)", so a 403 on the org/repo headers, a 409 on the wrong revision and a 503 on a stale
+# snapshot were indistinguishable -- and a repository-permission problem was debugged as a
+# sign-in problem for a whole rehearsal. The reason a `/v1` call failed is still a string, so
+# every existing comparison (`reason == "auth"`, `reason == "ask"`) keeps working, but it now
+# carries the HTTP status and the server's own `error`/`message`/`hint` so the CLI can say what
+# actually happened and what to do about it. No contract change: these are fields the service
+# already sends (API-CONTRACT §4.9).
+class ServiceFailure(str):
+    def __new__(cls, reason, status=None, error=None, message=None, hint=None, request_id=None):
+        obj = str.__new__(cls, reason)
+        obj.status, obj.error, obj.message = status, error, message
+        obj.hint, obj.request_id = hint, request_id
+        return obj
+
+
+# What to do next, per server error code. Anything not listed falls back to the generic advice:
+# these are the codes a `load` actually meets.
+_USE_FAILURE_NEXT_STEPS = {
+    "auth": "no usable credential — run `guidefold login`, or point `search.token_file` / "
+            "GUIDEFOLD_SEARCH_TOKEN_FILE at a token file",
+    "forbidden": "the token is valid but may not read this organisation/repository — check "
+                 "`guidefold doctor` (service-config, service-identity). The org/repo headers "
+                 "come from `service.org`/`service.repo` in guidefold.yaml, GUIDEFOLD_ORG / "
+                 "GUIDEFOLD_REPO_ID, or the stored login — never from the checkout's name",
+    "revision_mismatch": "that revision is not what the active snapshot delivers — pass the "
+                         "revision `guidefold find` printed (the card's `card_revision`), not "
+                         "the catalog's `revision_id` from `GET …/skills/{id}`",
+    "snapshot_policy_mismatch": "the published snapshot was built by a different "
+                                "`scripts/guidefold` than the one calling — re-import and "
+                                "publish the repository; this is not an authentication problem",
+    "snapshot_not_published": "this repository has no active snapshot — import and publish it "
+                              "first (`guidefold import --wait`)",
+    "empty_snapshot": "the active snapshot holds no card — re-import and publish the repository",
+    "skill_not_found": "the served snapshot has no such skill — re-run `guidefold find` and use "
+                       "the urn it printed",
+    "timeout": "the service did not answer inside `search.deadline_ms` — raise it, or check the "
+               "endpoint with `guidefold doctor`",
+    "config": "the search backend is misconfigured — check `search.url` (and `guidefold doctor`)",
+    "invalid_response": "the endpoint answered something that is not this contract — check that "
+                        "`search.url` points at a Guidefold service",
+}
+
+
+def _service_failure(status, body):
+    """The reason an HTTP `/v1` call failed, carrying the server's own words."""
+    detail = body if isinstance(body, dict) else {}
+    err = detail.get("error")
+    if isinstance(err, dict):
+        code, message = err.get("code"), err.get("message") or detail.get("message")
+        hint = err.get("hint") or detail.get("hint")
+    else:
+        code = err if isinstance(err, str) else None
+        message, hint = detail.get("message"), detail.get("hint")
+    if status == 401:
+        label = "auth"
+    elif status == 403:
+        label = code or "forbidden"
+    else:
+        label = code or ("http_4xx" if 400 <= (status or 0) < 500 else "http_5xx")
+    return ServiceFailure(label, status=status, error=code, message=message, hint=hint,
+                          request_id=detail.get("request_id"))
+
+
+def _service_failure_message(what: str, urn: str, reason) -> str:
+    """One multi-line, actionable message: what failed, what the server said, what to do."""
+    lines = [f"guidefold: {what} ({reason}) for {urn}"]
+    status = getattr(reason, "status", None)
+    if status:
+        code = getattr(reason, "error", None)
+        lines.append(f"  the service answered HTTP {status}" + (f" {code}" if code else ""))
+    for label, value in (("", getattr(reason, "message", None)),
+                         ("hint: ", getattr(reason, "hint", None))):
+        if value:
+            lines.append(f"  {label}{value}")
+    request_id = getattr(reason, "request_id", None)
+    if request_id:
+        lines.append(f"  request_id: {request_id}")
+    step = _USE_FAILURE_NEXT_STEPS.get(str(reason))
+    if step:
+        lines.append(f"  next: {step}")
+    return "\n".join(lines)
+
+
 def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                      delivery_policy: str = "legacy"):
     """Blocking POST /v1/use -- no local race/fallback exists for USE (unlike SEARCH, ADR-0023
@@ -3053,11 +3267,7 @@ def _use_via_service(search_cfg: dict, skill_id: str, revision: str,
                 return None, "invalid_response"
             return body, "ask" if action == "ASK" else None
         return body, None
-    if status in (401, 403):
-        return None, "auth"
-    if 400 <= status < 500:
-        return None, "http_4xx"
-    return None, "http_5xx"
+    return None, _service_failure(status, body)
 
 
 def _download_service_resource(search_cfg: dict, resource: dict):
@@ -3176,12 +3386,17 @@ def cmd_load(a, root, cfg):
         })
         body, reason = _use_via_service(search_cfg, urn_part, revision_part, delivery_policy)
         if body is None:
+            # `cache_source` is a required, non-empty field of `skill_load_completed`
+            # (services/search/telemetry-schema.json). Sending None made the ledger reject the
+            # event with `missing_required_field:cache_source`, so every FAILED load vanished
+            # from `gf.events` -- the exact rows an owner needs to see that loads are failing.
             _emit_telemetry(root, "skill_load_completed", {
-                "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+                "load_id": load_id, "status": "error", "cache_source": "service", "bytes": 0,
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service USE failed ({reason}) for {a.urn}")
+            # D12: the code, the server's own words and the next step -- not one word.
+            sys.exit(_service_failure_message("service USE failed", a.urn, reason))
         if delivery_policy == "proof_gated" and reason == "ask":
             delivery = body.get("delivery") if isinstance(body, dict) else {}
             missing = delivery.get("missing") if isinstance(delivery, dict) else []
@@ -3198,7 +3413,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "unresolved", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service ASK for {a.urn} ({delivery.get('reason', 'proof_incomplete')}){detail}")
+            sys.exit(f"guidefold: service ASK for {a.urn} "
+                     f"({delivery.get('reason', 'proof_incomplete')}){detail}\n"
+                     "  next: the service is withholding the body until its source proof is "
+                     "complete; re-publish the skill with its sources, or load it without "
+                     "--delivery-policy proof_gated")
         import hashlib
         checksum_ok = hashlib.sha256(body["body"].encode("utf-8")).hexdigest() == body.get("checksum")
         if not checksum_ok:
@@ -3207,7 +3426,11 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use")
+            sys.exit(f"guidefold: checksum mismatch for {a.urn} -- refusing to use\n"
+                     "  the body does not hash to the checksum the service sent; nothing was "
+                     "written to the cache\n"
+                     "  next: re-run `guidefold find` for a current revision, and report the "
+                     "mismatch if it persists")
         resources, resource_reason = _fetch_service_resources(search_cfg, body)
         if resources is None:
             _emit_telemetry(root, "skill_load_completed", {
@@ -3215,7 +3438,8 @@ def cmd_load(a, root, cfg):
                 "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                 "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
             })
-            sys.exit(f"guidefold: service resource fetch failed ({resource_reason}) for {a.urn}")
+            sys.exit(_service_failure_message("service resource fetch failed", a.urn,
+                                              resource_reason))
         dest = skill_cache_dir(urn_part, revision_part)
         dest_root = dest.resolve()
         resource_targets = []
@@ -3227,7 +3451,11 @@ def cmd_load(a, root, cfg):
                     "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
                     "closure_status": "incomplete", "skill_id": urn_part, "revision": revision_part, **link,
                 })
-                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use")
+                sys.exit(f"guidefold: unsafe resource path {rel!r} -- refusing to use\n"
+                         "  a package resource pointed outside this skill's cache directory; "
+                         "nothing was written\n"
+                         "  next: report this revision to the skill's owner -- it cannot be "
+                         "loaded safely")
             resource_targets.append((target, data))
         # Validate every target before creating the directory or writing SKILL.md. A malformed
         # manifest must leave no half-populated revision in the cache.
@@ -3256,7 +3484,8 @@ def cmd_load(a, root, cfg):
             "use_id": None, "search_id": linked_search,
         })
         _emit_telemetry(root, "skill_load_completed", {
-            "load_id": load_id, "status": "error", "cache_source": None, "bytes": 0,
+            # "none": nothing was fetched at all. A null here is rejected by the ledger.
+            "load_id": load_id, "status": "error", "cache_source": "none", "bytes": 0,
             "duration_ms": round((time.perf_counter() - t0) * 1000, 3),
             "closure_status": "incomplete", "skill_id": a.urn, "revision": None, **link,
         })
@@ -3760,7 +3989,15 @@ def _validate_errors(root, cfg):
     (skills, errors) — skills is the same list `all_skills()` produced, errors is a list of
     human-readable strings (no ERROR prefix, no printing, no exit)."""
     errors = []
-    skills = list(all_skills(root, cfg))
+    # A card whose frontmatter is not valid YAML is a finding, not a crash: `validate` is the
+    # gate that has to *name* the broken file (CONVENTIONS.md), and the importer rejects exactly
+    # these files per-file (U2.1). Without `on_error` the first bad card raised a raw
+    # yaml.ScannerError traceback out of the CLI and the other cards were never checked.
+    def _unreadable(md, exc):
+        errors.append(f"{md.relative_to(root)}: frontmatter is not valid YAML: "
+                      f"{str(exc).splitlines()[0]}")
+
+    skills = list(all_skills(root, cfg, on_error=_unreadable))
     urns = {urn(cfg, node, d.name): fm for d, node, fm in skills}
     node_of = {urn(cfg, node, d.name): node for d, node, fm in skills}
     for d, node, fm in skills:
@@ -4478,10 +4715,13 @@ def _report_archive_paths(root: Path, ref: str, paths: list, dest: Path):
                 tf.extractall(dest)                    # Python < 3.12 has no `filter` kwarg
 
 
-def _report_extract_base(root: Path, ref: str, work: Path):
+def _report_extract_base(root: Path, ref: str, work: Path, publisher: str = None):
     """Materialise the base view under `work` and return (commit, base_root, cfg).
 
-    Extracts only what the report reads — `guidefold.yaml`, every `SKILL.md`, each skill's
+    Extracts only what the report reads — `guidefold.yaml` and CODEOWNERS (when that commit had
+    them — ADR-0050: without the file the base map is inferred from the same tree, with
+    `publisher` passed in from the working tree so base and head URNs stay comparable instead of
+    naming a scratch directory), every `SKILL.md`, each skill's
     packaged resource directories, and (second pass, once the cards have been parsed) the files
     `metadata.references`/`metadata.scripts` declare. A whole-repo `git archive` would be correct
     too, and far more expensive on the monorepos this is aimed at."""
@@ -4495,13 +4735,12 @@ def _report_extract_base(root: Path, ref: str, work: Path):
     if tree_out.returncode != 0:
         _die("report: cannot list the tree of --base " + ref + " (" + commit[:7] + ")")
     tree = [p.decode("utf-8", "surrogateescape") for p in tree_out.stdout.split(b"\0") if p]
+    # ADR-0050: a base commit with no guidefold.yaml is normal — the map is inferred from the
+    # skill directories that commit did have. CODEOWNERS travels with them so the inferred
+    # owners at the base are the ones that commit actually declared, not "unknown".
     cfg_path = prefix + "guidefold.yaml"
-    if cfg_path not in tree:
-        _die("report: --base " + ref + " (" + commit[:7] + ") has no " + cfg_path + " — there is "
-             "no skill map at that commit to compare against")
-
     rel_of = {}
-    want = [cfg_path]
+    want = [p for p in (cfg_path, *(prefix + c for c in _CODEOWNERS_CANDIDATES)) if p in tree]
     for p in tree:
         if not p.startswith(prefix):
             continue
@@ -4514,7 +4753,7 @@ def _report_extract_base(root: Path, ref: str, work: Path):
     base_root = (work / prefix.rstrip("/")) if prefix else work
     base_root = base_root.resolve()
     try:
-        cfg = load_map(base_root)
+        cfg = load_map(base_root, publisher)
     except SystemExit:
         raise
     except Exception as exc:                                # noqa: BLE001
@@ -5105,7 +5344,7 @@ def cmd_report(a, root, cfg):
     queries = getattr(a, "queries", None) or ((cfg.get("eval") or {}).get("queries") or None)
     work = Path(tempfile.mkdtemp(prefix="guidefold-report-"))
     try:
-        base_commit, base_root, base_cfg = _report_extract_base(root, a.base, work)
+        base_commit, base_root, base_cfg = _report_extract_base(root, a.base, work, cfg.get("publisher"))
         base = _report_scan_view(base_root, base_cfg)
         head = _report_scan_view(root, cfg)
         changes = _report_changes(base, head)
@@ -5252,6 +5491,56 @@ def digest_of(fm):
     md = fm.get("metadata", {})
     return md.get("digest") or fm.get("description", "")[:200]
 
+def _card_bullet_budget(bullets, chain, budget):
+    """How many skill bullets each level of the chain may print.
+
+    The specific beats the general: a developer standing in `atlas.identity.turnstile` needs
+    that node's own skills more than the root's conventions, so bullets are handed out from the
+    most specific level outwards. A level that gets cut keeps one line for "… and K more", which
+    is why a truncated level costs one more than the bullets it shows.
+    """
+    keep = {n: 0 for n in chain}
+    if budget <= 0:
+        return keep
+    def cost():
+        total = 0
+        for n in chain:
+            rows = len(bullets.get(n) or [])
+            if not rows:
+                total += 1                      # "(no skills at this level yet)"
+            else:
+                total += keep[n] + (1 if keep[n] < rows else 0)
+        return total
+    if cost() > budget:
+        return keep                             # nothing fits; every level shows its count only
+    progress = True
+    while progress:
+        progress = False
+        for n in chain:                         # most specific first
+            rows = len(bullets.get(n) or [])
+            if keep[n] >= rows:
+                continue
+            keep[n] += 1
+            if cost() > budget:
+                keep[n] -= 1
+                continue
+            progress = True
+    return keep
+
+
+def _clamp_card(lines, node):
+    """The last word on the cap. Whatever the budget arithmetic did, a card is never longer than
+    CARD_CAP -- an oversized `.agents/NODE.md` cannot push it over either. The head and the
+    closing "how to get the full procedure" block are what a harness actually acts on, so the
+    middle is what gives way."""
+    if len(lines) <= CARD_CAP:
+        return lines
+    tail = 6                                    # the footer block, verbatim
+    note = (f"… card truncated to the {CARD_CAP}-line cap; run "
+            f"`guidefold find \"<your task>\" --scope {node}` for the rest")
+    return lines[:CARD_CAP - tail - 1] + [note] + lines[-tail:]
+
+
 def build_card(root, cfg, node, skills_by_node):
     chain = ancestors(node)                      # node first … _root last
     root_label = f"{cfg['publisher']} (root)"
@@ -5259,41 +5548,71 @@ def build_card(root, cfg, node, skills_by_node):
              f"Owner: {node_meta(cfg, node).get('owner')} · Hierarchy (specific → general): {' → '.join(chain)}", ""]
     extra = root / (node_meta(cfg, node).get("paths", ["."])[0].split("*")[0]) / ".agents" / "NODE.md"
     if extra.exists():
-        lines += [extra.read_text().strip(), ""]
+        # Split into real lines: the card's own line count has to include NODE.md, or a wordy
+        # one silently pushes a card over the cap that the budget below believes it is under.
+        # Joined back with "\n" this is byte-identical to the single-element form it replaces.
+        lines += extra.read_text().strip().splitlines() + [""]
     # ADR-0035: ascended scope maps first, root-most first, so a harness that only reads files
     # on disk (Copilot applyTo, Codex/Gemini nested AGENTS.md) gets the shape of the organisation
     # before any specific guidance. A map is a normal skill; it is pulled out of the bullet
     # list below so it is stated once.
+    # Two skills in one node can share a name (this repository holds `security-baseline`
+    # both in `.agents/skills/` and in the Meridian fixture), and a bare `sorted()` over
+    # `(name, frontmatter)` then compares the two frontmatter dicts and raises
+    # `TypeError: '<' not supported between instances of 'dict' and 'dict'` — which took
+    # `guidefold install` down with a traceback. Sort by the name only.
+    def _by_name(item):
+        return item[0]
+
     def _is_map(fm):
         md = fm.get("metadata") or {}
         return md.get("generated_by") == ASCEND_MARKER and md.get("ascend_kind") == "map"
-    maps = [(n, name, fm) for n in reversed(chain) for name, fm in sorted(skills_by_node.get(n, [])) if _is_map(fm)]
+    maps = [(n, name, fm) for n in reversed(chain) for name, fm in sorted(skills_by_node.get(n, []), key=_by_name) if _is_map(fm)]
     if maps:
         lines += ["## Scope map (general → specific)", ""]
         for n, name, fm in maps:
             lines.append(f"- **{root_label if n == '_root' else n}** `{urn(cfg, n, name)}` — {digest_of(fm)}")
         lines.append("")
-    lines += ["## Inherited guidance (general → specific)", ""]
-    for n in reversed(chain):                    # root first
-        label = root_label if n == "_root" else n
-        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
-        for name, fm in sorted(skills_by_node.get(n, [])):
+    # One node can hold a hundred skills -- that is the ordinary shape of a repository with no
+    # hand-written `guidefold.yaml` (ADR-0050), not an authoring mistake. The cap stays 80 lines
+    # (CONVENTIONS §9); what changes is that the card is SHORTENED to fit instead of refused.
+    # `materialize` refusing took `install` down with it, so the hook had no index artifact to
+    # read and stayed idle (pilot rehearsal 2026-09-15 §5.3).
+    bullets = {}
+    for n in chain:
+        rows = []
+        for name, fm in sorted(skills_by_node.get(n, []), key=_by_name):
             if _is_map(fm):
                 continue
             md = fm.get("metadata") or {}
             flag = f" **DEPRECATED → {md.get('replaced_by', '?')}**" if md.get("status") == "deprecated" else ""
-            lines.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
-        if not skills_by_node.get(n):
-            lines.append("- (no skills at this level yet)")
-        lines.append("")
-    lines += ["## How to get the full procedure",
+            rows.append(f"- `{urn(cfg, n, name)}`{flag} — {digest_of(fm)}")
+        bullets[n] = rows
+    footer = ["## How to get the full procedure",
               "Skills above are summaries. Before implementing anything platform-specific, run",
               f"`.agents/skills/guidefold/scripts/guidefold find \"<your task>\" --scope {node}` and then",
               "`guidefold load <urn>` for the 1–3 most relevant ones (follow `metadata.requires`).",
               "Generated by guidefold materialize — do not edit; edit guidefold.yaml, NODE.md or the skills instead.", ""]
-    if len(lines) > CARD_CAP:
-        sys.exit(f"guidefold: scope card for {node} exceeds {CARD_CAP} lines — shorten metadata.digest")
-    return "\n".join(lines)
+    # Fixed cost: everything already in `lines`, the section heading, one `###` per level, one
+    # blank line per level, and the footer. What is left is the bullet budget.
+    fixed = len(lines) + 2 + 2 * len(chain) + len(footer)
+    keep = _card_bullet_budget(bullets, chain, CARD_CAP - fixed)
+    lines += ["## Inherited guidance (general → specific)", ""]
+    for n in reversed(chain):                    # root first
+        label = root_label if n == "_root" else n
+        lines.append(f"### {label}  (owner: {node_meta(cfg, n).get('owner')})")
+        rows = bullets[n]
+        shown = rows[:keep.get(n, 0)]
+        lines += shown
+        if not rows:
+            lines.append("- (no skills at this level yet)")
+        elif len(shown) < len(rows):
+            left = len(rows) - len(shown)
+            lines.append(f"- … and {left} more skill(s) in {label}; run "
+                         f"`guidefold find \"<your task>\" --scope {n}`")
+        lines.append("")
+    lines += footer
+    return "\n".join(_clamp_card(lines, node))
 
 def cmd_materialize(a, root, cfg):
     skills_by_node = {}
@@ -5663,6 +5982,7 @@ def cmd_telemetry_flush(a, root, cfg=None):
         return deadline is not None and _time.monotonic() >= deadline
     totals = {"sent": 0, "accepted": 0, "duplicate": 0, "rejected": 0}
     truncated_by_budget = False
+    queued = False      # did this run ever find a readable event to send?
     for tenant, env, env_dir in _telemetry_partitions(root):
         if _budget_exceeded():
             truncated_by_budget = True
@@ -5673,14 +5993,27 @@ def cmd_telemetry_flush(a, root, cfg=None):
             if _budget_exceeded():
                 truncated_by_budget = True
                 break
+            # The automatic background flush (`--auto`, ADR-0048) drains the very same files, so
+            # a file listed a moment ago can be gone by the time this loop reaches it. Nothing is
+            # lost when that happens -- the other process sent those events and the server's
+            # idempotent accept/duplicate handling covers the overlap -- so this is one printed
+            # line and the next file, never a `FileNotFoundError` traceback (D11, pilot
+            # rehearsal 2026-09-15).
+            try:
+                raw = f.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                print(f"guidefold telemetry flush: {tenant}/{env}/{f.name}: already flushed by "
+                      "another run (the file is gone) — nothing to do for it")
+                continue
             parsed = []
-            for line in f.read_text(encoding="utf-8").splitlines():
+            for line in raw.splitlines():
                 if not line.strip():
                     continue
                 try:
                     parsed.append((line, json.loads(line)))
                 except Exception:
                     continue   # corrupt line: can't be usefully retried, drop silently
+            queued = queued or bool(parsed)
             resolved_ids, newly_acked = set(), 0
             for i in range(0, len(parsed), TELEMETRY_FLUSH_BATCH_MAX):
                 if _budget_exceeded():
@@ -5715,13 +6048,42 @@ def cmd_telemetry_flush(a, root, cfg=None):
                     totals["rejected"] += 1
                     print(f"guidefold telemetry flush: rejected {eid}: {r.get('reason')}")
             if resolved_ids:
-                kept = [line for line, ev in parsed if ev.get("event_id") not in resolved_ids]
-                if kept:
-                    f.write_text("\n".join(kept) + "\n", encoding="utf-8")
-                else:
-                    f.unlink()
+                # Re-read before rewriting. `find`/`hook`/`load` append to this very file while
+                # the batch is in flight, and rewriting from the snapshot this run parsed would
+                # silently delete every event appended since -- events that were never sent.
+                # That is how a `find`'s `card_injected` disappeared between the spool and the
+                # ledger in the ACT-01 rehearsal (D8). Only the ids the server actually resolved
+                # are dropped; everything else in the file, old or new, stays queued.
+                try:
+                    current = f.read_text(encoding="utf-8").splitlines()
+                except FileNotFoundError:
+                    current = []
+                kept = []
+                for line in current:
+                    if not line.strip():
+                        continue
+                    try:
+                        ev = json.loads(line)
+                    except Exception:
+                        continue
+                    if ev.get("event_id") not in resolved_ids:
+                        kept.append(line)
+                try:
+                    if kept:
+                        f.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                    else:
+                        f.unlink()
+                except FileNotFoundError:
+                    pass       # the same race, one step later: the file is already drained
                 health["acknowledged"] = health.get("acknowledged", 0) + newly_acked
         _write_health(health_path, health)
+    if not queued:
+        # Still one line, still exit 0, and still the same counters a script may parse: an empty
+        # spool is the normal state after an automatic flush, not a condition to report as a
+        # problem (D11).
+        print("guidefold telemetry flush: nothing to flush — the spool is empty; "
+              "sent=0 accepted=0 duplicate=0 rejected=0")
+        return
     print(f"guidefold telemetry flush: sent={totals['sent']} accepted={totals['accepted']} "
           f"duplicate={totals['duplicate']} rejected={totals['rejected']}"
           + (" (time budget exceeded; remainder stays queued for the next flush)"
@@ -5955,10 +6317,19 @@ def _render_guidefold_yaml(publisher: str, owner: str) -> str:
     )
 
 
-def _plan_guidefold_yaml(plan, root: Path, publisher: str, owner: str):
+def _plan_guidefold_yaml(plan, root: Path, publisher: str, owner: str, requested: bool = False):
+    """ADR-0050: `init` does not write a scope map unless asked. The map is inferred from the
+    skill directories and CODEOWNERS the repository already has, so a skeleton file is one more
+    thing to keep in sync for no gain; `--scope-map` writes one for a repository that wants to
+    name its nodes differently."""
     dest = root / "guidefold.yaml"
     if dest.is_file():
         plan.add("kept", "guidefold.yaml", "already exists — never rewritten")
+        return
+    if not requested:
+        plan.add("kept", "guidefold.yaml",
+                 "not written — the scope map is inferred from your skill directories and "
+                 "CODEOWNERS; pass --scope-map to write an override")
         return
     plan.add("create", "guidefold.yaml", f"publisher={publisher}, _root owner={owner}")
     plan.writes.append((dest, _render_guidefold_yaml(publisher, owner).encode("utf-8"), False))
@@ -6116,7 +6487,7 @@ def cmd_init(a):
     plan = _InstallPlan()
     blockers = []
 
-    _plan_guidefold_yaml(plan, root, publisher, owner)
+    _plan_guidefold_yaml(plan, root, publisher, owner, bool(getattr(a, "scope_map", False)))
     files = _plan_skill_dir(plan, root, publisher, owner, recorded)
     for h in harnesses:
         _plan_hook(plan, root, h, hooks, blockers)
@@ -6205,9 +6576,20 @@ def _check_guidefold_yaml(root: Path):
     checks = []
     yaml_path = root / "guidefold.yaml"
     if not yaml_path.is_file():
-        checks.append(_doctor_check("guidefold-yaml", "fail", "guidefold.yaml not found at repo root",
-                                     "run `guidefold init` to create a skeleton"))
-        return checks, None
+        # ADR-0050: absence is never a failure. The map is inferred, and the check says what it
+        # inferred it from so an owner can judge whether an override is worth writing.
+        cfg = infer_map(root)
+        dirs = _inferred_skill_dirs(root)
+        codeowners = " + CODEOWNERS" if _codeowners_rules(root) else ""
+        checks.append(_doctor_check("guidefold-yaml", "ok",
+                                     f"no guidefold.yaml — inferred {len(cfg['nodes'])} scopes from "
+                                     f"{len(dirs)} skill directories{codeowners}",
+                                     "add guidefold.yaml only if this map is wrong"))
+        checks.append(_doctor_check("guidefold-yaml-parses", "ok",
+                                     f"publisher={cfg['publisher']} (inferred from "
+                                     f"{cfg['publisher_source']})"))
+        checks.extend(_check_node_shapes(root, cfg))
+        return checks, cfg
     checks.append(_doctor_check("guidefold-yaml", "ok", "guidefold.yaml found"))
     try:
         import yaml
@@ -6228,6 +6610,14 @@ def _check_guidefold_yaml(root: Path):
         return checks, None
     checks.append(_doctor_check("guidefold-yaml-parses", "ok", f"publisher={cfg['publisher']}"))
     cfg.setdefault("nodes", {}).setdefault("_root", {"paths": ["**"], "owner": "unknown"})
+    cfg.setdefault("_source", SOURCE_GUIDEFOLD_YAML)
+    checks.extend(_check_node_shapes(root, cfg))
+    return checks, cfg
+
+
+def _check_node_shapes(root: Path, cfg: dict) -> list:
+    """The two node-level checks, shared by the declared and the inferred map (ADR-0050)."""
+    checks = []
     bad_nodes = [n for n, spec in cfg["nodes"].items() if not spec.get("paths") or not spec.get("owner")]
     if bad_nodes:
         checks.append(_doctor_check("guidefold-yaml-nodes", "fail",
@@ -6254,7 +6644,7 @@ def _check_guidefold_yaml(root: Path):
                                      "check the `paths:` globs, or remove the node until it has code"))
     else:
         checks.append(_doctor_check("guidefold-yaml-globs", "ok", "every node's path globs match at least one path"))
-    return checks, cfg
+    return checks
 
 
 def _check_skill_layout(root: Path, cfg) -> list:
@@ -8021,7 +8411,11 @@ def _print_import_view(view: dict):
     if isinstance(files, list) and files:
         buckets = {}
         for f in files:
-            buckets.setdefault(f.get("state") or "unknown", []).append(f)
+            # `ImportFile` carries `status`, not `state` (API-CONTRACT §5.2). Reading `state`
+            # put every file in `unknown`, so a partial import printed 408 undifferentiated
+            # lines and the one file that actually failed — with its parser error — was not
+            # visible at all (D20, pilot rehearsal v2 2026-09-15).
+            buckets.setdefault(f.get("status") or f.get("state") or "unknown", []).append(f)
         print("  files:          " + " ".join(f"{k}={len(v)}" for k, v in sorted(buckets.items())))
         for state in sorted(buckets):
             if state in ("accepted",):
@@ -8064,6 +8458,45 @@ def _wait_for_import(svc: dict, import_id: str, timeout_s=900.0, verbose: bool =
                 print("  (still running — re-check with `guidefold status " + import_id + "`)")
             return view
         _sleep(IMPORT_POLL_INTERVAL_S)
+
+
+JOB_TERMINAL_STATES = ("done", "failed", "skipped", "cancelled")
+
+
+def _wait_for_jobs(svc: dict, import_id: str, job_ids, timeout_s=900.0, verbose: bool = True):
+    """Poll the import until every job in `job_ids` is terminal, and return that view.
+
+    The import is already `ready` when `proposals:generate` enqueues these jobs, so waiting on
+    the import state alone returns at once and the run reports the proposals, abstentions and
+    cost of a generation that has not happened yet (D13, pilot rehearsal v2 2026-09-15).
+    `ImportDetail.jobs[]` carries each job's state, so the wait needs no new route."""
+    import time
+    wanted = {str(j) for j in (job_ids or []) if j}
+    view = _import_view(svc, import_id)
+    if not wanted:
+        return view
+    deadline = time.monotonic() + timeout_s
+    announced = False
+    while True:
+        # A job the view does not name is not waited for: the server writes the row in the
+        # same transaction that answers `proposals:generate`, so an id missing from the view
+        # is an older or a mocked server, and spinning until the deadline would be worse than
+        # reporting what the run can actually see.
+        pending = sorted(str(j.get("job_id")) for j in (view.get("jobs") or [])
+                         if isinstance(j, dict) and str(j.get("job_id")) in wanted
+                         and j.get("state") not in JOB_TERMINAL_STATES)
+        if not pending:
+            return view
+        if verbose and not announced:
+            print(f"  waiting for {len(pending)} generation job(s)…")
+            announced = True
+        if time.monotonic() >= deadline:
+            if verbose:
+                print(f"  ({len(pending)} generation job(s) still running — re-check with "
+                      f"`guidefold status {import_id}`)")
+            return view
+        _sleep(IMPORT_POLL_INTERVAL_S)
+        view = _import_view(svc, import_id)
 
 
 def _run_import(a, verb: str, prepared=None, finish: bool = True):
@@ -8356,6 +8789,16 @@ def _extract_summary(svc, import_id, plan, proposals, view):
     for p in proposals:
         kind = p.get("kind") or "unknown"
         by_kind[kind] = by_kind.get(kind, 0) + 1
+    groups = [g for g in ((plan or {}).get("groups") or []) if isinstance(g, dict)]
+    planned_kinds = set()
+    for g in groups:
+        kind = g.get("kind") or str(g.get("group_id") or "").partition(":")[0]
+        if kind:
+            planned_kinds.add(kind)
+    # `groups_skipped` counts only what a ceiling truncated, so a kind the plan found NO group
+    # for is invisible in it. Naming those kinds is the difference between "5 proposals" and
+    # "5 proposals, and extraction was never attempted" (D7).
+    kinds_without_groups = [k for k in EXTRACT_KINDS if k not in planned_kinds]
     abstentions, cost, jobs = [], {}, (view or {}).get("jobs") or []
     for job in jobs:
         if not isinstance(job, dict):
@@ -8374,6 +8817,7 @@ def _extract_summary(svc, import_id, plan, proposals, view):
         "profile": (plan or {}).get("profile"),
         "planned_groups": len((plan or {}).get("groups") or []),
         "groups_skipped": (plan or {}).get("groups_skipped") or {},
+        "kinds_requested": list(EXTRACT_KINDS), "kinds_without_groups": kinds_without_groups,
         "proposals_by_kind": by_kind, "proposals": len(proposals),
         "consolidations": consolidations, "abstentions": abstentions, "cost": cost,
         "state": (view or {}).get("state"),
@@ -8388,6 +8832,10 @@ def _print_extract_summary(summary):
     if summary.get("personal_files"):
         print(f"  personal:  {summary['personal_files']} file(s) imported for review; "
               "publish was disabled for this run")
+    if summary.get("kinds_without_groups"):
+        kinds = ", ".join(summary["kinds_without_groups"])
+        print(f"  not attempted: {kinds} — the plan found no group of that kind for this "
+              "import (nothing to generate from)")
     if summary["proposals_by_kind"]:
         parts = ", ".join(f"{k}={v}" for k, v in sorted(summary["proposals_by_kind"].items()))
         print(f"  proposals: {summary['proposals']} ({parts})")
@@ -8474,6 +8922,21 @@ def cmd_extract(a):
     _require_service(svc)
     svc, import_id = _run_import(a, "extract", prepared=(manifest, blob_paths), finish=False)
 
+    # The extraction groups are built from the documents of THIS import, and those documents
+    # exist only once the `import.parse` job has run. Planning and generating in the same breath
+    # as `finalize` therefore found no document at all: no extraction group was planned, no
+    # extraction job was enqueued, and `groups_skipped` stayed empty because it only counts
+    # groups a ceiling truncated -- so the run reported "5 proposals" and never said that
+    # extraction had not been attempted (D7, pilot rehearsal 2026-09-15 §4). Wait for the import
+    # to reach a terminal state first; `--wait` still means "also wait for the generation jobs".
+    import_view = None
+    try:
+        if not getattr(a, "json", False):
+            print("  waiting for the import to finish before planning…")
+        import_view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
+    except ServiceError as e:
+        _die_service("extract", e, svc)
+
     try:
         # The profile rides as a query parameter, built separately so the path this call site
         # names stays the contracted one (§4.2) rather than a path-plus-query the contract
@@ -8494,10 +8957,14 @@ def cmd_extract(a):
     except ServiceError as e:
         _die_service("extract", e, svc)
 
-    view, proposals = None, []
+    view, proposals = import_view, []
     if getattr(a, "wait", False):
         try:
-            view = _wait_for_import(svc, import_id, verbose=not getattr(a, "json", False))
+            # Not `_wait_for_import`: the import is already terminal here, so waiting on its
+            # state returns immediately and everything below would be read before a single
+            # generation job had run (D13).
+            view = _wait_for_jobs(svc, import_id, started.get("job_ids"),
+                                  verbose=not getattr(a, "json", False))
             _s, listed, _h = _service_request(
                 svc["api"], "GET", f"{_repo_base(svc)}/proposals", token=svc["token"])
             listed = listed if isinstance(listed, dict) else {}
@@ -8813,7 +9280,8 @@ def cmd_install(a):
     yaml_path = root / "guidefold.yaml"
     if any(service_fields.values()):
         if not yaml_path.is_file():
-            plan.add("kept", "guidefold.yaml", "missing — run `guidefold init` first; service: not written")
+            plan.add("kept", "guidefold.yaml", "missing — the scope map is inferred (ADR-0050), but `service:` "
+                     "needs a file: run `guidefold init --scope-map`, or set GUIDEFOLD_API/GUIDEFOLD_ORG")
         else:
             current = yaml_path.read_text(encoding="utf-8")
             updated = _upsert_service_block(current, service_fields)
@@ -8867,13 +9335,26 @@ def cmd_install(a):
     # `install` does them here instead of asking the developer to remember two more commands.
     # Skipped, with a reason, when there is no guidefold.yaml yet or when asked not to.
     if yaml_path.is_file() and not getattr(a, "no_materialize", False):
+        # Three steps, three try blocks. They used to share one, so a card that refused to
+        # render -- or a map that failed to load -- also skipped `index`, and the hook has
+        # nothing to read without that artifact: `install` looked like it had succeeded while
+        # the harness stayed idle (pilot rehearsal 2026-09-15 §5.3). Each failure is reported
+        # and the next step still runs.
+        cfg_full = None
         try:
             cfg_full = load_map(root)
             cfg_full.setdefault("registry", {})
-            cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
-            cmd_index(argparse.Namespace(check=False), root, cfg_full)
-        except SystemExit as exc:                      # a failed validate/build is reported, not hidden
-            print(f"  materialize/index: {exc}")
+        except SystemExit as exc:
+            print(f"  map: {exc}")
+        if cfg_full is not None:
+            try:
+                cmd_materialize(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:                  # a failed card is reported, not hidden
+                print(f"  materialize: {exc}")
+            try:
+                cmd_index(argparse.Namespace(check=False), root, cfg_full)
+            except SystemExit as exc:
+                print(f"  index: {exc}")
     else:
         print("  materialize/index: skipped (" + ("--no-materialize" if yaml_path.is_file() else "no guidefold.yaml yet") + ")")
     print("  next: `guidefold doctor`")
@@ -9081,6 +9562,41 @@ def _export_diff(root: Path, files: list) -> str:
     return "".join(chunks)
 
 
+def _print_scope_map(m: dict):
+    """Summarise a `scope_map` proposal before its JSON (ADR-0051).
+
+    The JSON is still printed in full -- it is the thing being decided, and a
+    summary that replaced it would hide the nodes. What the summary adds is the
+    one question a reviewer actually has: what would approving this change, and
+    is there anything wrong with it now.
+    """
+    diff = m.get("diff") if isinstance(m.get("diff"), dict) else {}
+    origin = m.get("origin") or "?"
+    model = m.get("model")
+    source = f"{origin} ({model})" if model else origin
+    repos = m.get("repos") if isinstance(m.get("repos"), list) else []
+    nodes = m.get("nodes") if isinstance(m.get("nodes"), list) else []
+    print(f"organisation scope map — {source}; {len(nodes)} node(s) over {len(repos)} repositor"
+          f"{'y' if len(repos) == 1 else 'ies'}")
+    counts = []
+    for label, key in (("added", "added"), ("reparented", "reparented"),
+                       ("owner changed", "owner_changed"), ("paths changed", "paths_changed")):
+        entries = diff.get(key)
+        if isinstance(entries, list) and entries:
+            counts.append(f"{len(entries)} {label}")
+    unchanged = diff.get("unchanged")
+    if isinstance(unchanged, int) and unchanged:
+        counts.append(f"{unchanged} unchanged")
+    print("  would change: " + (", ".join(counts) if counts else "nothing"))
+    print("  approving never deletes a scope; a scope this map omits keeps its row.")
+    findings = m.get("findings") if isinstance(m.get("findings"), list) else []
+    if findings:
+        print("  this map no longer validates and cannot be approved as it stands:")
+        for finding in findings:
+            print(f"    - {finding}")
+    print()
+
+
 def cmd_proposals(a):
     root = _pivot_root(getattr(a, "path", None))
     svc = resolve_service_config(_tolerant_config(root), a, root)
@@ -9108,9 +9624,17 @@ def cmd_proposals(a):
             sys.exit(0)
         print(f"guidefold proposals — {svc['org']}/{svc['repo']}")
         for item in items:
+            # A scope_map proposal has no scope of its own and its `path` is the
+            # synthetic `.guidefold/scope-map.json`, which nobody exports. Printing
+            # that path would invite `proposals apply`; naming what the row is says
+            # the true thing in the same width (ADR-0051).
+            if item.get("kind") == "scope_map":
+                subject = "organisation scope map"
+            else:
+                subject = item.get("title") or item.get("path") or ""
             print(f"  {str(item.get('proposal_id') or item.get('id') or '?'):<38} "
                   f"{str(item.get('state') or ''):<20} {str(item.get('kind') or ''):<16} "
-                  f"{item.get('scope') or ''}  {item.get('title') or item.get('path') or ''}")
+                  f"{item.get('scope') or ''}  {subject}")
         sys.exit(0)
     if a.proposals_cmd == "show":
         try:
@@ -9118,6 +9642,8 @@ def cmd_proposals(a):
                                             token=svc["token"])
         except ServiceError as e:
             _die_service("proposals show", e, svc)
+        if isinstance(body, dict) and isinstance(body.get("scope_map"), dict):
+            _print_scope_map(body["scope_map"])
         print(json.dumps(body, indent=2, sort_keys=True))
         sys.exit(0)
     if a.proposals_cmd == "apply":
@@ -10000,8 +10526,10 @@ def main():
     m = sub.add_parser("materialize"); m.add_argument("--check", action="store_true")
     sub.add_parser("hook")
     sub.add_parser("prewarm")
-    i = sub.add_parser("init", help="bootstrap a consumer monorepo: guidefold.yaml skeleton, .agents/skills/guidefold, harness hooks, CI workflow, .gitignore")
+    i = sub.add_parser("init", help="bootstrap a consumer monorepo: .agents/skills/guidefold, harness hooks, CI workflow, .gitignore (the scope map is inferred; --scope-map writes an override)")
     i.add_argument("--publisher", help="override the inferred publisher name")
+    i.add_argument("--scope-map", action="store_true",
+                   help="also write a guidefold.yaml skeleton; without it the scope map is inferred from skill directories + CODEOWNERS (ADR-0050)")
     i.add_argument("--harness", choices=["claude", "copilot", "codex", "all"], default="all")
     i.add_argument("--dry-run", action="store_true", help="print what would be done; write nothing")
     doc = sub.add_parser("doctor", help="diagnose a configured repo: gcloud/ADC/roles, hook wiring, skill layout, index freshness")
@@ -10128,8 +10656,10 @@ def main():
     asc.add_argument("--summary-md", help="write a PR-body markdown summary here")
 
     a = p.parse_args()
-    # init/doctor must work on a repo with no guidefold.yaml yet, so they bypass the
-    # repo_root()/load_map() setup below (which requires one) — see _target_root().
+    # init/doctor resolve their own target directory (_target_root) rather than the
+    # repo_root()/load_map() setup below — `init` runs before any guidefold layout exists at
+    # all. Since ADR-0050 load_map() no longer requires the file either: without one it infers
+    # the map, so every command below works on an unconfigured repository.
     if a.cmd == "init":
         cmd_init(a)
         return

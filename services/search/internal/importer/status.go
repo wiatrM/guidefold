@@ -121,7 +121,7 @@ func (s *Service) respondStatus(c *mgmt.Context, rc *repoContext, importID strin
 		return mgmt.Internal(err)
 	}
 	views := make([]jobView, 0, len(list))
-	publication := map[string]any{"snapshot_id": nil, "state": "none", "error": nil}
+	publication := map[string]any{"snapshot_id": nil, "state": "none", "error": nil, "partial": nil}
 	for i := range list {
 		j := &list[i]
 		var jobError *string
@@ -136,6 +136,7 @@ func (s *Service) respondStatus(c *mgmt.Context, rc *repoContext, importID strin
 		if j.Kind == KindPublish {
 			publication["state"] = publicationState(j.State)
 			publication["error"] = jobError
+			publication["partial"] = partialOf(j.Result)
 		}
 	}
 
@@ -165,6 +166,25 @@ func (s *Service) respondStatus(c *mgmt.Context, rc *repoContext, importID strin
 		body["reused_import_id"] = nil
 	}
 	return c.JSON(http.StatusOK, body)
+}
+
+// partialOf reads the publish.build job's own result for contract 1.17.0's
+// `partial`: this import published the files it could parse and not the ones it
+// could not (API-CONTRACT §4.4). It is read from the job result, not from
+// gfm.publications, because that table belongs to the review module and this
+// one has no business reading it. Nil while no build has finished — unknown is
+// not false.
+func partialOf(result json.RawMessage) *bool {
+	if len(result) == 0 {
+		return nil
+	}
+	var parsed struct {
+		Partial *bool `json:"partial"`
+	}
+	if e := json.Unmarshal(result, &parsed); e != nil {
+		return nil
+	}
+	return parsed.Partial
 }
 
 // publicationState maps a publish.build job to the `ImportPublication` domain.

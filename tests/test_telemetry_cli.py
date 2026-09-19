@@ -128,6 +128,26 @@ def test_load_of_unknown_urn_still_emits_a_failed_completed_event(run_cli, fixtu
     completed = next(e for e in events if e["event_type"] == "skill_load_completed")
     assert completed["status"] == "error"
     assert completed["closure_status"] == "incomplete"
+    # 2026-09-15 rehearsal: the failing paths sent `cache_source: null`, and the ledger rejects
+    # such an event with `missing_required_field:cache_source`
+    # (services/search/telemetry-schema.json, a frozen reference). Failed loads were therefore
+    # the one thing that never reached `gf.events` -- precisely the rows an owner needs.
+    _assert_required_fields_present(completed)
+
+
+def _assert_required_fields_present(event):
+    """Every field the service's frozen telemetry schema marks `required` must be present and
+    non-empty in the event the CLI spools; `nullable` fields only have to be present."""
+    schema = json.loads(
+        (Path(__file__).resolve().parents[1] / "services/search/telemetry-schema.json")
+        .read_text(encoding="utf-8"))
+    spec = schema["required_fields"][event["event_type"]]
+    for key in spec.get("required", []):
+        assert key in event, f"{event['event_type']}: missing required field {key}"
+        assert event[key] is not None and event[key] != "", \
+            f"{event['event_type']}: required field {key} is empty ({event[key]!r})"
+    for key in spec.get("nullable", []):
+        assert key in event, f"{event['event_type']}: missing nullable field {key}"
 
 
 def test_no_bearer_token_or_secret_ever_lands_in_the_spool(run_cli, fixture_copy):
@@ -421,3 +441,124 @@ def test_a_load_with_no_recent_exposure_stays_unlinked(run_cli, fixture_copy):
     completed = next(e for e in events if e["event_type"] == "skill_load_completed")
     assert requested["search_id"] is None
     assert "search_id" not in completed
+
+
+# ------------------------------------------------- D11: flush races the automatic background flush
+
+def _spool_event(event_id, event_type="card_injected"):
+    return json.dumps({"schema_version": "1.1", "event_id": event_id, "event_type": event_type,
+                       "occurred_at": _utc_now_iso(), "sequence": 1, "producer": "guidefold-cli",
+                       "adapter_version": "test", "environment": "dev"})
+
+
+def test_flush_survives_a_spool_file_that_vanished_between_listing_and_reading(
+        run_cli, tmp_path):
+    """D11 (pilot rehearsal 2026-09-15): `telemetry flush` lists the spool files, then reads them
+    one by one. The automatic background flush (`--auto`, ADR-0048) drains and unlinks the same
+    files, so a manual flush that started first can reach a file that no longer exists and used
+    to die with a raw `FileNotFoundError` traceback. Nothing is lost when that happens -- the
+    other process sent those events -- so the command must say so in one line and exit 0.
+
+    The race is reproduced deterministically: the ingest server deletes the second spool file
+    while it is answering the batch from the first one."""
+    import http.server
+    import threading
+
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "repo"
+    write_guidefold_yaml(root)
+    env_dir = root / ".guidefold" / "telemetry" / "spool" / "local" / "dev"
+    env_dir.mkdir(parents=True)
+    first = env_dir / "events-2026-09-14.jsonl"
+    second = env_dir / "events-2026-09-15.jsonl"
+    first.write_text(_spool_event("ev-first") + "\n", encoding="utf-8")
+    second.write_text(_spool_event("ev-second") + "\n", encoding="utf-8")
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            events = json.loads(body)["events"]
+            second.unlink(missing_ok=True)   # the background flush drains it mid-run
+            payload = json.dumps({"accepted": [e["event_id"] for e in events]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        result = run_cli(["telemetry", "flush", "--url", url], cwd=root)
+    finally:
+        server.shutdown()
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Traceback" not in result.stderr, result.stderr
+    assert "FileNotFoundError" not in result.stderr, result.stderr
+    assert "accepted=1" in result.stdout, result.stdout
+    assert "events-2026-09-15.jsonl" in result.stdout, result.stdout
+
+
+def test_flush_with_an_empty_spool_says_there_is_nothing_to_flush_and_exits_0(run_cli, tmp_path):
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "empty-repo"
+    write_guidefold_yaml(root)
+    result = run_cli(["telemetry", "flush", "--url", "http://127.0.0.1:1"], cwd=root)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "nothing to flush" in result.stdout, result.stdout
+
+
+def test_flush_never_deletes_an_event_appended_while_the_batch_was_in_flight(run_cli, tmp_path):
+    """D8 (pilot rehearsal 2026-09-15): `find` emits `card_injected` on every backend, but on the
+    `backend: service` path a credential and a url exist, so the automatic background flush fires
+    and drains the spool. The flush used to rewrite the spool file from the snapshot it had
+    parsed, which deleted -- without ever sending -- every event a concurrent `find`/`load`
+    appended while the batch was in flight. The event was then in neither the spool nor the
+    ledger, which is what made the ACT-01 spool assertion fail.
+
+    The race is reproduced deterministically: the ingest server appends a new event to the spool
+    file while it is answering the batch."""
+    import http.server
+    import threading
+
+    from _helpers import write_guidefold_yaml
+    root = tmp_path / "repo"
+    write_guidefold_yaml(root)
+    env_dir = root / ".guidefold" / "telemetry" / "spool" / "local" / "dev"
+    env_dir.mkdir(parents=True)
+    spool = env_dir / "events-2026-09-15.jsonl"
+    spool.write_text(_spool_event("ev-already-there") + "\n", encoding="utf-8")
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            events = json.loads(body)["events"]
+            with spool.open("a", encoding="utf-8") as fh:      # a concurrent `find` appends
+                fh.write(_spool_event("ev-appended-mid-flight") + "\n")
+            payload = json.dumps({"accepted": [e["event_id"] for e in events]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        result = run_cli(["telemetry", "flush", "--url", url], cwd=root)
+    finally:
+        server.shutdown()
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "accepted=1" in result.stdout, result.stdout
+    ids = [e["event_id"] for e in _spool_lines(root)]
+    assert ids == ["ev-appended-mid-flight"], ids   # sent one, kept the unsent one

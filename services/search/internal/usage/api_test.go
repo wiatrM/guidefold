@@ -1097,3 +1097,51 @@ func TestUsageOrganisationExportCarriesTheRepositoryAsTheLastColumn(t *testing.T
 		spec.Check(t, "UsageExportRow", raw.(map[string]any))
 	}
 }
+
+// Contract 1.17.0: an `import_file_failed` item reaches the owner's queue and
+// can be decided like any other.
+//
+// The row this test writes is exactly what `import.parse` writes for a file
+// the builder could not read (services/search/internal/importer/parse.go,
+// queueFailedFiles). Two things about it are new and both are checked here:
+// its `skill_id` is `file:<path>` rather than a URN, because no skill exists
+// for a file that failed to parse; and deciding it must change no skill's
+// publication status, because there is no skill it could be about.
+func TestUsageQueueCarriesAndDecidesAnImportFileFailedItem(t *testing.T) {
+	f := newFixture(t)
+	const path = ".agents/skills/broken-card/SKILL.md"
+	itemID := identity.NewID()
+	f.exec(t, `INSERT INTO gfm.owner_queue
+ (org_id,item_id,repo_id,skill_id,revision_id,reason,evidence)
+ VALUES($1::uuid,$2::uuid,$3,$4,NULL,'import_file_failed',
+  '{"import_id":"im-9","path":"`+path+`","error":"ScannerError: mapping values are not allowed here"}'::jsonb)`,
+		f.org, itemID, f.repo, "file:"+path)
+
+	item, ok := queueOf(t, f.get(t, "/usage"))[itemID]
+	if !ok {
+		t.Fatalf("the unparsable file never reached the owner's queue: %v", queueOf(t, f.get(t, "/usage")))
+	}
+	if item["reason"] != "import_file_failed" {
+		t.Fatalf("reason = %v", item["reason"])
+	}
+	if item["skill_id"] != "file:"+path {
+		t.Fatalf("skill_id = %v, want file:%s — the item is about a file, not a skill", item["skill_id"], path)
+	}
+	if item["revision"] != nil {
+		t.Fatalf("a file that parsed into nothing has no revision: %v", item["revision"])
+	}
+	evidence, _ := item["evidence"].(map[string]any)
+	if evidence["path"] != path || evidence["error"] == nil {
+		t.Fatalf("the item does not say which file failed or why: %v", evidence)
+	}
+
+	decided := f.decide(t, itemID, "fixed_in_git", "Quoted the description and re-imported.")
+	decision, ok := decided["item"].(map[string]any)["decision"].(map[string]any)
+	if !ok || decision["action"] != "fixed_in_git" {
+		t.Fatalf("the item could not be decided: %v", decided)
+	}
+	// Decided once and gone: the same observation does not come back.
+	if _, still := queueOf(t, f.get(t, "/usage"))[itemID]; still {
+		t.Fatalf("a decided item is still open: %v", queueOf(t, f.get(t, "/usage")))
+	}
+}

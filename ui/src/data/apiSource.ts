@@ -407,11 +407,14 @@ export function createApiDataSource(options: ApiDataSourceOptions = {}): ApiData
     getProposal(t: ReadScope, proposalId: string): Promise<ProposalDetail> {
       return read({ path: readBase(t) + '/proposals/' + encodeURIComponent(proposalId), decode: d.proposalDetail, resource: 'proposal/' + scopeKey(t) + '/' + proposalId });
     },
-    decideProposal(t: OrgRepo, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult> {
+    // Contract §4.4/§4.10 point 10: a `scope_map` decision goes to `{org_base}` and needs an
+    // organisation owner, because approving writes scopes in several repositories; the
+    // `{repo_base}` twin refuses it with 403. Passing `repo: null` is how a caller says so.
+    decideProposal(t: ReadScope, proposalId: string, input: { decision: 'approve' | 'edit' | 'reject'; reason: string; candidate_body?: string; expected_revision: string | null }, idempotencyKey: string): Promise<DecisionResult> {
       return write({
-        path: target(t) + '/proposals/' + encodeURIComponent(proposalId) + '/decision',
+        path: readBase(t) + '/proposals/' + encodeURIComponent(proposalId) + '/decision',
         method: 'POST', body: { idempotency_key: idempotencyKey, ...input }, decode: d.decisionResult,
-        resource: 'proposal/' + t.org + '/' + t.repo + '/' + proposalId, idempotencyKey,
+        resource: 'proposal/' + scopeKey(t) + '/' + proposalId, idempotencyKey,
       });
     },
     exportProposal(t: OrgRepo, proposalId: string, idempotencyKey: string): Promise<ExportPayload> {

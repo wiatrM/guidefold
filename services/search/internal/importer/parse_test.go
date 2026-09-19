@@ -252,9 +252,12 @@ func TestPackageResourcesCarryTheirRequiredFlag(t *testing.T) {
 	}
 }
 
-// A tree without guidefold.yaml cannot be built at all: the import fails and
-// the catalog is untouched.
-func TestATreeWithoutTheScopeMapFailsTheImport(t *testing.T) {
+// ADR-0050 (owner decision 2026-09-15): a tree without guidefold.yaml is
+// imported, not rejected. The scope map is inferred from the tree's own skill
+// directories (and CODEOWNERS, when it has one) by the same cli.infer_map
+// every guidefold command uses, and gfm.scopes records source='inferred'.
+// This test asserted the opposite ("fails the import") until that decision.
+func TestATreeWithoutTheScopeMapIsImportedWithAnInferredMap(t *testing.T) {
 	f := newFixture(t)
 	if e := os.Remove(filepath.Join(f.tree, "guidefold.yaml")); e != nil {
 		t.Fatal(e)
@@ -265,20 +268,37 @@ func TestATreeWithoutTheScopeMapFailsTheImport(t *testing.T) {
 
 	_, view, _ := f.owner.Call(t, pivottest.Call{Method: http.MethodGet,
 		Path: f.base + "/imports/" + importID})
-	if view["state"] != "failed" {
-		t.Fatalf("state %v", view["state"])
-	}
-	reason, _ := view["error"].(string)
-	if !strings.Contains(reason, "guidefold_yaml") && !strings.Contains(reason, "build_tree_failed") {
-		t.Fatalf("the failure does not name its cause: %q", reason)
+	if view["state"] != "ready" {
+		t.Fatalf("state %v (%v), want ready", view["state"], view["error"])
 	}
 	var skills int
 	if e := f.h.Pool.QueryRow(context.Background(),
 		`SELECT count(*) FROM gfm.skills WHERE org_id=$1::uuid`, f.org).Scan(&skills); e != nil {
 		t.Fatal(e)
 	}
-	if skills != 0 {
-		t.Fatalf("a failed import wrote %d skills", skills)
+	if skills == 0 {
+		t.Fatal("an inferred import wrote no skills")
+	}
+	// Every scope this import stored is marked as inferred, and the node names
+	// follow the directories (platforms.atlas), not the names guidefold.yaml
+	// gave them (atlas) — that difference is the point of writing the file.
+	var declared, inferred int
+	if e := f.h.Pool.QueryRow(context.Background(), `SELECT
+ count(*) FILTER (WHERE source='guidefold_yaml'), count(*) FILTER (WHERE source='inferred')
+ FROM gfm.scopes WHERE org_id=$1::uuid`, f.org).Scan(&declared, &inferred); e != nil {
+		t.Fatal(e)
+	}
+	if declared != 0 || inferred == 0 {
+		t.Fatalf("gfm.scopes source: %d guidefold_yaml, %d inferred", declared, inferred)
+	}
+	var named int
+	if e := f.h.Pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM gfm.scopes WHERE org_id=$1::uuid AND scope='platforms.atlas'`,
+		f.org).Scan(&named); e != nil {
+		t.Fatal(e)
+	}
+	if named != 1 {
+		t.Fatalf("no inferred scope named after its directory (platforms.atlas): %d", named)
 	}
 }
 

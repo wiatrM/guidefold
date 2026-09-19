@@ -3,8 +3,10 @@
 > **Aktualna propozycja kierunku, 2026-09-06:** [PRODUCT-PIVOT](PRODUCT-PIVOT.md) i [oceny agentów](PIVOT-REVIEW.md). Poniższy dokument zachowuje wcześniejszą decyzję i historyczny scan konkurencji. Jego kategoryczne twierdzenia o braku nested discovery/metryk u vendorów nie są podstawą nowego pozycjonowania: [aktualne Claude Code](https://code.claude.com/docs/en/skills) opisuje nested skills, skill-doctor i ewaluacje. Nowy kierunek wymaga dowodu pełnego obiegu wiedzy u klienta.
 
 **Status:** Accepted · 2026-09-06 · product owner / product manager pass required by
-[ADR-0029](adr/ADR-0029-product-focus-hard-rules.md) rule 4 · binds `docs/MVP.md` §5 and
-[`docs/BACKLOG.md`](BACKLOG.md)
+[ADR-0029](adr/ADR-0029-product-focus-hard-rules.md) rule 4 · binds `docs/MVP.md` §5. As of
+2026-09-12 (ADR-0043 rule 4, owner decision) this no longer binds
+[`docs/BACKLOG.md`](BACKLOG.md), which is historical; the order of work is
+[PIVOT-BACKLOG](PIVOT-BACKLOG.md) P01–P16.
 
 Every claim about our own state points to a merged PR or a report file. Every claim about a
 competitor points to a URL, fetched 2026-09-06.
@@ -107,7 +109,7 @@ Nothing else in this repository is more important than that sentence until it is
 
 | If | Then |
 |---|---|
-| No design partner is agreed by **2026-09-20** (#78) | Stop building features. Either use Guidefold on this repository as its only user and label the evidence as such, or stop. |
+| No design partner is agreed by **2026-09-20** (#78) | Stop building features. Either use Guidefold on this repository as its only user and label the evidence as such, or stop. **Taken 2026-09-12** — see "Design partner" below: every P-level result from that path is labelled `self-use`, which is the weaker branch of this row, not a pass of it. |
 | Ten commented skill PRs produce zero text changes (#88) | Value proposition 2 is false. Drop the authoring loop to a plain linter and re-scope. |
 | Four weeks of real sessions produce no owner decision (#95) | Value proposition 3 is false. Stop building telemetry as a product surface. |
 | TLS and IAM push whole-client p95 past 400 ms and it cannot be recovered (#97) | T1 is not a supported tier. The product is T0 only, and the runbook says so. |
@@ -117,9 +119,28 @@ Nothing else in this repository is more important than that sentence until it is
 
 ## Design partner
 
-To be filled by #78 before 2026-09-20: repository, developers, receiving skill owner, data policy,
-start date. Until this section has names in it, every "done" in this repository is provisional under
-ADR-0029 rule 3.
+Owner decision, 2026-09-12 (audit session, answering the #78 question): the first partner is
+**Guidefold itself, self-use**, under the organisation `cloudfloo` on the hosted instance
+`guidefold.cloudfloo.io`, plus **a second repository of the same organisation** attached as a
+multi-repo test. The fields the owner has not yet given stay as "to be named by the owner";
+nothing in this table is a guess.
+
+| Field | Value |
+|---|---|
+| Repository 1 | `wiatrM/guidefold` (this repository) |
+| Repository 2 | second repository of the `cloudfloo` organisation, to be named by the owner (owner on 2026-09-12: "jeszcze nie wiem") |
+| Developers | the owner; at least one ACT-01 session by a person who did not build Guidefold — that person is **to be named by the owner** |
+| Receiving skill owner | the owner (Michał Wiatr) |
+| Data policy | public repository content only; no customer data |
+| Start date | decision 2026-09-12; the first session date is **to be named by the owner** |
+| Evidence label | **`self-use`**: every P-level result from this path is labelled `self-use`, per the first row of "Kill criteria" above ("use Guidefold on this repository as its only user and label the evidence as such") |
+
+Self-use satisfies the 2026-09-20 kill criterion only in its explicitly weaker form; it does not
+prove demand, and interest, free use and a paid commitment stay separate kinds of evidence
+(PRD §13). Every "done" stays provisional under ADR-0029 rule 3 until ACT-01 sessions by a
+non-builder are in the ledger. As of 2026-09-15 none are: the production database holds 0 imports,
+0 skills and 0 telemetry events —
+[closure report](reports/product/2026-09-15-mvp-closure-status.md) §3.
 
 ## Sources
 

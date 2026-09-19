@@ -102,6 +102,63 @@ Reguły (decyzja: [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexago
 | UI | [react-component-rules](.agents/skills/react-component-rules/SKILL.md) | tokens.css, CSS Modules, 14 komponentów, stany, galeria. |
 | UI | [accessibility-contract](.agents/skills/accessibility-contract/SKILL.md) | axe, klawiatura, focus, role, 44 px, kontrast. |
 
+### Inne skille w `.agents/skills`
+
+Poniższe 45 skilli (`python3 tools/check_skills.py`, stan 2026-09-15) to przyjęte skille
+design/motion/generacji treści, nie decyzje inżynierskie projektu z ADR-0032; są indeksowane tu,
+żeby checker nie wykazywał znalezisk „not listed", nie jako drugi PRD. Część z nich narusza limit
+linii skilla (35–70); te 43 znaleziska są zapisane, nie obejściem przez dopisywanie treści —
+patrz [audyt 2026-09-12](docs/reports/product/2026-09-12-assumptions-vs-implementation-audit.md)
+PRIO 2.5.
+
+| Grupa | Skill | Kiedy |
+|---|---|---|
+| Animacja i ruch | [animate](.agents/skills/animate/SKILL.md) | Budowa animacji od zera: cel, narzędzie, krzywa, przerywanie, wyjście. |
+| Animacja i ruch | [animation-vocabulary](.agents/skills/animation-vocabulary/SKILL.md) | Nazwanie efektu ruchu opisanego słownie (np. „ten odbijający popover"). |
+| Animacja i ruch | [apple-design](.agents/skills/apple-design/SKILL.md) | Gesty, sprężyny, materiały i typografia w stylu Apple przeniesione na web. |
+| Animacja i ruch | [emil-design-eng](.agents/skills/emil-design-eng/SKILL.md) | Filozofia Emila Kowalskiego: polish UI, decyzje animacyjne, niewidoczne detale. |
+| Animacja i ruch | [find-animation-opportunities](.agents/skills/find-animation-opportunities/SKILL.md) | Wyszukanie miejsc, które powinny się animować, bez wdrażania (read-only). |
+| Animacja i ruch | [improve-animations](.agents/skills/improve-animations/SKILL.md) | Audyt istniejącej animacji z priorytetową listą planów naprawy (read-only). |
+| Animacja i ruch | [review-animations](.agents/skills/review-animations/SKILL.md) | Recenzja kodu animacji wobec wysokiej poprzeczki jakości; domyślnie odrzuca. |
+| Design i front-end | [design-assessment-product](.agents/skills/design-assessment-product/SKILL.md) | Quiz/scorecard jako warstwa wartości produktu na landing page. |
+| Design i front-end | [design-taste-frontend](.agents/skills/design-taste-frontend/SKILL.md) | Anti-slop dla landing page i redesignów; audyt przed budową. |
+| Design i front-end | [hooked-ux](.agents/skills/hooked-ux/SKILL.md) | Pętle nawyku (Hook Model) z obowiązkową oceną etyczną. |
+| Design i front-end | [impeccable](.agents/skills/impeccable/SKILL.md) | Projektowanie, redesign i krytyka interfejsu front-end ogólnie. |
+| Design i front-end | [pick-ui-library](.agents/skills/pick-ui-library/SKILL.md) | Dobór biblioteki UI do zadania z kuratorowanej listy; tylko na żądanie. |
+| Design i front-end | [prototype](.agents/skills/prototype/SKILL.md) | Kilka wariantów UI za wizualnym picker-em do porównania; tylko na żądanie. |
+| Design i front-end | [refactoring-ui](.agents/skills/refactoring-ui/SKILL.md) | Hierarchia wizualna, odstępy, kolor, tokeny, dark mode. |
+| Design i front-end | [top-design](.agents/skills/top-design/SKILL.md) | Strony klasy Awwwards: typografia, scroll, ruch premium. |
+| Design i front-end | [ui-ux-pro-max](.agents/skills/ui-ux-pro-max/SKILL.md) | Zapytanie do bazy UI/UX i system projektowy poparty dowodami. |
+| Redesign i Unslopify | [audit-release-quality](.agents/skills/audit-release-quality/SKILL.md) | QA blokujące release po build/repair: a11y, wydajność, ruch, sekrety. |
+| Redesign i Unslopify | [avoid-ai-writing](.agents/skills/avoid-ai-writing/SKILL.md) | Druga przepustka po humanizerze: wzorce pisania AI w copy strony. |
+| Redesign i Unslopify | [build-motion-landing](.agents/skills/build-motion-landing/SKILL.md) | Budowa landing page Vite/TS/Tailwind/Motion z DESIGN.md i kontraktem zachowania. |
+| Redesign i Unslopify | [direct-motion-site-prompts](.agents/skills/direct-motion-site-prompts/SKILL.md) | Zamiana referencji motion-site na prompty do budowy, choreografię, briefy assetów. |
+| Redesign i Unslopify | [humanizer](.agents/skills/humanizer/SKILL.md) | Usunięcie wzorców pisania AI z copy bez zmiany treści chronionych. |
+| Redesign i Unslopify | [refine-harness-offline](.agents/skills/refine-harness-offline/SKILL.md) | Ewaluacja poprawek HarnessCandidate bez samo-modyfikacji produkcji. |
+| Redesign i Unslopify | [research-redesign-source](.agents/skills/research-redesign-source/SKILL.md) | Audyt i sanityzacja publicznej strony przed redesignem. |
+| Redesign i Unslopify | [route-agent-models](.agents/skills/route-agent-models/SKILL.md) | Dobór modeli agentów (advisor/tech lead/executor/reviewer) dla joba Unslopify. |
+| Redesign i Unslopify | [run-unslopify-job](.agents/skills/run-unslopify-job/SKILL.md) | Orkiestracja pełnego joba Unslopify: capture → research → build → QA → repair → paczka. |
+| Redesign i Unslopify | [select-media-generation-route](.agents/skills/select-media-generation-route/SKILL.md) | Najtańsza trasa produkcji mediów spełniająca wymagania asset planu. |
+| Redesign i Unslopify | [shape-premium-direction](.agents/skills/shape-premium-direction/SKILL.md) | Jeden kierunek redesignu z ResearchPacket i briefu klienta. |
+| Cloudfloo premium motion | [cloudfloo-cinematic-landing](.agents/skills/cloudfloo-cinematic-landing/SKILL.md) | Kinowe landing page: rzadkie hero, rytm rozdziałów, odwracalne reveal. |
+| Cloudfloo premium motion | [cloudfloo-premium-scroll-motion](.agents/skills/cloudfloo-premium-scroll-motion/SKILL.md) | Ruch sprzężony ze scrollem: deterministyczny progres, budżety wydajności. |
+| Cloudfloo premium motion | [cloudfloo-quality-gate](.agents/skills/cloudfloo-quality-gate/SKILL.md) | QA blokujące release dla stron premium motion. |
+| Cloudfloo premium motion | [cloudfloo-visual-system](.agents/skills/cloudfloo-visual-system/SKILL.md) | Spójny system wizualny premium: typografia, kolor, materiały, tokeny ruchu. |
+| Marka i generacja mediów | [brand-forge](.agents/skills/brand-forge/SKILL.md) | Routing brakującego brand assetu do skilli logo/social/graphic/template. |
+| Marka i generacja mediów | [generate-doc-template](.agents/skills/generate-doc-template/SKILL.md) | Branded SVG letterhead/slajdy/one-pager z zatwierdzonego profilu Brand Forge. |
+| Marka i generacja mediów | [generate-graphic](.agents/skills/generate-graphic/SKILL.md) | Rastrowy hero/reklama/tło z zatwierdzonego profilu Brand Forge, tylko za zgodą. |
+| Marka i generacja mediów | [generate-logo](.agents/skills/generate-logo/SKILL.md) | SVG wordmark/monogram/favicon z zatwierdzonego profilu Brand Forge. |
+| Marka i generacja mediów | [generate-social](.agents/skills/generate-social/SKILL.md) | Szablony social (IG, OG card, YouTube thumbnail) z profilu Brand Forge. |
+| Marka i generacja mediów | [higgsfield-brandkit](.agents/skills/higgsfield-brandkit/SKILL.md) | Pełny system marki przez Higgsfield CLI: paleta, logo, brandbook. |
+| Marka i generacja mediów | [higgsfield-cinematic-assets](.agents/skills/higgsfield-cinematic-assets/SKILL.md) | Hero obrazy/wideo Higgsfield z referencjami i zatwierdzeniem płatnego wywołania. |
+| Marka i generacja mediów | [higgsfield-generate](.agents/skills/higgsfield-generate/SKILL.md) | Generacja obrazów/wideo/3D/audio przez Higgsfield AI (domyślne modele). |
+| Marka i generacja mediów | [higgsfield-marketplace-cards](.agents/skills/higgsfield-marketplace-cards/SKILL.md) | Karty produktowe marketplace przez Higgsfield. |
+| Marka i generacja mediów | [higgsfield-product-photoshoot](.agents/skills/higgsfield-product-photoshoot/SKILL.md) | Sesja zdjęciowa produktu przez Higgsfield. |
+| Marka i generacja mediów | [higgsfield-soul-id](.agents/skills/higgsfield-soul-id/SKILL.md) | Spójna tożsamość postaci/twarzy w generacjach Higgsfield. |
+| Marka i generacja mediów | [higgsfield-video-explainer](.agents/skills/higgsfield-video-explainer/SKILL.md) | Wideo wyjaśniające produkt przez Higgsfield. |
+| Marka i generacja mediów | [higgsfield-websites](.agents/skills/higgsfield-websites/SKILL.md) | Assety strony internetowej przez Higgsfield. |
+| Marka i generacja mediów | [higgsfield-youtube-thumbnail](.agents/skills/higgsfield-youtube-thumbnail/SKILL.md) | Miniatury YouTube przez Higgsfield. |
+
 To instrukcje dla autorów Guidefold. Dystrybuowany bootstrap znajduje się w `skills/guidefold/`; jego instrukcje służą agentom w repozytorium klienta. Ten root `AGENTS.md` jest pisanym ręcznie wejściem projektu, odrębnym od generowanych kart zakresu w repozytorium klienta.
 
 ## Zmiana i weryfikacja

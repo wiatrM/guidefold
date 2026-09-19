@@ -1,5 +1,11 @@
 # Guidefold — Design Doc v0.3
 
+> **Stan sprzed pivotu (2026-09-04); hosted katalog, organizacje i kontrakt opisują
+> [PIVOT-ARCHITECTURE](PIVOT-ARCHITECTURE.md), [API-CONTRACT](API-CONTRACT.md) i
+> ADR-0031/ADR-0033 (obie Accepted 2026-09-12). ADR-0001 registry mode pozostaje ważny dla
+> `registry.backend: agent-registry`. Sekcje opisujące wdrożone zachowanie CLI zostają jako
+> historyczne notatki implementacyjne.**
+
 > **Proposed MVP revision (2026-09-05):** [MVP.md](MVP.md) and [ADR-0023](adr/ADR-0023-search-use-service-and-measured-utility.md) propose central SEARCH/USE, bounded local fallback and usage/usability measurement. [ADR-0024](adr/ADR-0024-target-architecture-tiers-flywheel-composer.md) sets the target system beyond the MVP: one router contract, three deployment tiers (local, single-node, organisation), per-tenant dense admission through a telemetry flywheel, and model-based composition. Their scope and [event contract](SEARCH-USE-TELEMETRY.md) replace this document's older local-only serving, delayed telemetry, load-based probation and phase schedule for the proposed MVP. This is a plan amendment, not a claim that the service is implemented; sections explicitly describing shipped CLI behavior remain historical implementation notes.
 
 **Status:** Draft v0.3 · 2026-09-04 · supersedes v0.2 (kept in `docs/archive/DESIGN-v0.2.md`) · **§7, §10, §11 and §13 are superseded by `docs/KNOWLEDGE-DESIGN.md`** (skills leave the code monorepo; nothing generated is committed; Knowledge API holds proposals/evidence; SkillPyramid-style induction with gates G0–G7).
@@ -55,6 +61,17 @@ Changes since v0.2: (1) the registry is storage and governance, not the router (
 | **Kind** | `metadata.kind` | one of 16 kinds in 5 families (§5.1b) | authored; allowed levels per kind validated |
 | **Topics** | `metadata.topics` | comma-separated tags from a governed vocabulary (`topics.yaml`) | authored; graph edges, provider ↔ consumer matching |
 | **Program** | `metadata.program` (optional) | id of a time-boxed initiative from `programs.yaml`, with `until:` | authored; expires |
+
+> **`guidefold.yaml` is an optional override** ([ADR-0050](adr/ADR-0050-zero-config-scope-map.md),
+> owner decision 2026-09-15). Everything below describes the map when a repository declares one.
+> Without the file, `load_map()` infers it: one node per directory holding a recognised skill
+> directory (plus every directory above it), node name = that directory path with `/` → `.` and
+> each segment slugified, `paths: ["<dir>/**"]`, `_root` implied with `["**"]`, owner from
+> CODEOWNERS' last matching rule (`unknown` when it says nothing), publisher from the logged-in
+> organisation → git remote owner → root directory name, `registry.backend: local`. The
+> synthesized config is marked `_source: "inferred"` and reaches `gfm.scopes.source` as
+> `inferred`. Ranking, the index artifact and the hook are unchanged — see
+> [CONVENTIONS §1.0](CONVENTIONS.md#10-when-there-is-no-guidefoldyaml--the-inferred-map).
 
 #### 5.1a Levels for a large enterprise
 
@@ -283,7 +300,7 @@ rerunning `index`). One flat artifact per sha, no sharding yet (see "target desi
 | `cards.hdr` | compact per-doc header: `n_docs` then, per doc, `(urn, node, 1-byte flags)` varint-length-prefixed — `policy_filter` and closure/propagation read node/status/"has any negative_triggers" from here for every card, every query, without materializing a card body (R4) | eager |
 | `graph.bin` | `requires`/`refines`/`replaces`/`similar` adjacency (`Index.graph`), one varint-encoded block per doc — mmap'd; closure/propagation only ever expands the docs a query actually touches (R4, superseded `graph.json`) | lazy, mmap |
 | `graph.idx` | byte-offset table into `graph.bin`, same `(offset, length)` shape as `cards.idx`, sorted-URN order (R4) | eager |
-| `nodes.json` | `guidefold.yaml`'s `nodes` map, verbatim — `cwd → node` at hook time resolves from **this**, never the working-tree `guidefold.yaml` (§4 determinism) | eager |
+| `nodes.json` | the scope map's `nodes`, verbatim — declared or inferred (ADR-0050). `cwd → node` at hook time resolves from **this**, never the working tree (§4 determinism) | eager |
 | `terms.bin` | global per-term integer IDF (`Index.idf`): varint-length-prefixed term + varint idf, sorted by term | eager |
 | `norms.bin` | per-`(field, doc)` BM25 length norm (`Index.field_norm`): one little-endian uint32 array per field, explicit `struct.pack("<...I", ...)` — never `array.fromfile`/raw `array.array('I', ...)`, both native-order | eager |
 | `postings.bin` | delta-varint doc-id postings, one contiguous block per `(field, term)` — mmap'd, only a query's own terms are ever paged in (measured: eager JSON postings 193 ms at 2k skills against the 300 ms budget; this format 0.3 ms) | lazy, mmap |
@@ -506,7 +523,7 @@ Main: `index` (embeddings for changed skills) → upload shards to GCS → `publ
 
 **S20 (shipped, local procedure verifier):** `guidefold procedure <SKILL.md> [--run] [--json]` checks that a runbook declares `Inputs`, `Outputs`, `Preconditions`, `Steps` and `Verification`, and that `Steps` contains an ordered action. A procedure can opt into a local verifier with scalar `metadata.verifier: path/to/check.py`; `--run` executes that file from the repository with a 30-second timeout and records its exit code/output. This is an owner initiated client check; hosted workers never execute repository code and a passing structure check never claims that a real task succeeded.
 
-**P12/U7 (shipped, CLI + consumer CI template):** `guidefold report --base <ref> [--json PATH] [--markdown PATH] [--queries FILE] [--fail-on structure|any|none] [--k N] [--no-reproducible]` is the pre-merge change report. It builds the **base** view by extracting only what it reads at `<ref>` — `guidefold.yaml`, every `SKILL.md`, each skill's packaged `references/`/`scripts/`/`assets/` files, and (second pass, after the cards are parsed) the files `metadata.references`/`metadata.scripts` declare — with `git archive` into a private temp dir, never the working tree and never a second `git worktree` inside the repo; the **head** view is the working tree, committed *and* uncommitted, the same corpus `validate` sees. Both views go through the same `load_map` → `frontmatter`/`all_skills` → `Index.build`, so there is no second parser; the retrieval section replays the same product path `guidefold eval` runs (`policy_filter → candidates → score → select(admissible=…)`, ADR-0022) with the same `_eval_*` metric functions, so there is no second ranking implementation either. `all_skills` grew one opt-in `on_error` callback for this: without it the walk still dies on a broken card exactly as before, with it the broken card becomes an `invalid_card` finding and the other skills are still compared.
+**P12/U7 (shipped, CLI + consumer CI template):** `guidefold report --base <ref> [--json PATH] [--markdown PATH] [--queries FILE] [--fail-on structure|any|none] [--k N] [--no-reproducible]` is the pre-merge change report. It builds the **base** view by extracting only what it reads at `<ref>` — `guidefold.yaml` and CODEOWNERS when that commit had them (without the file the base map is inferred from the same tree, with the working tree's publisher passed in so both sides' URNs are comparable — ADR-0050), every `SKILL.md`, each skill's packaged `references/`/`scripts/`/`assets/` files, and (second pass, after the cards are parsed) the files `metadata.references`/`metadata.scripts` declare — with `git archive` into a private temp dir, never the working tree and never a second `git worktree` inside the repo; the **head** view is the working tree, committed *and* uncommitted, the same corpus `validate` sees. Both views go through the same `load_map` → `frontmatter`/`all_skills` → `Index.build`, so there is no second parser; the retrieval section replays the same product path `guidefold eval` runs (`policy_filter → candidates → score → select(admissible=…)`, ADR-0022) with the same `_eval_*` metric functions, so there is no second ranking implementation either. `all_skills` grew one opt-in `on_error` callback for this: without it the walk still dies on a broken card exactly as before, with it the broken card becomes an `invalid_card` finding and the other skills are still compared.
 
 What it emits: a JSON artifact under schema `guidefold-change-report-v1` (`base_ref`, `base_commit`, `head_commit|null`, `dirty`, `fail_on`, `summary` counts, `findings[] {severity, code, skill_id?, message, details}`, `changes{skills,scopes,relations,resources}`, `retrieval{…}|null`) and a ≤ 200-line PR-comment Markdown whose first line is the hidden sticky marker `<!-- guidefold:change-report -->`. Both are deterministic — every list is sorted, and the one clock read (`generated_at`) exists only under `--no-reproducible`; `--reproducible` is the default, which is what the CI job wants ("identyczne wejście daje identyczny deterministyczny wynik"). Renames are resolved before add/remove, from `guidefold.yaml`'s `import.aliases` first and then an identical **body** sha256 (body only — a legitimate move rewrites `metadata.scope`, which would defeat whole-file matching), and only when the content match is unambiguous.
 

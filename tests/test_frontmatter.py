@@ -103,3 +103,34 @@ def test_all_skills_includes_generated_only_when_asked(gf, fixture_root):
     _, node, fm = generated[0]
     assert node == "_index"
     assert fm["metadata"]["generated"] == "true"
+
+
+# 2026-09-15 rehearsal: this repository is itself the self-use pilot's import source, so its own
+# cards have to survive the importer. Ten `.agents/skills/*/SKILL.md` carried an unquoted ":" in
+# `description:`; the importer failed each of them (`ScannerError`), the import finished
+# `partial`, and `publish.build` then refused the whole snapshot with `import_partial` — no
+# publication was possible from this repository at all. Claude Code's own loader is lenient
+# enough to hide it, so only a check like this one catches it.
+def test_every_skill_md_in_this_repository_has_parseable_frontmatter():
+    import re
+    from pathlib import Path
+
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    fm_re = re.compile(r"^---\n(.*?)\n---", re.S)
+    broken = []
+    for md in sorted(root.rglob(".agents/skills/*/SKILL.md")):
+        if ".guidefold" in md.parts:
+            continue
+        m = fm_re.match(md.read_text(encoding="utf-8"))
+        if not m:
+            continue
+        try:
+            parsed = yaml.safe_load(m.group(1))
+        except yaml.YAMLError as exc:
+            broken.append(f"{md.relative_to(root)}: {str(exc).splitlines()[0]}")
+            continue
+        if not isinstance(parsed, dict):
+            broken.append(f"{md.relative_to(root)}: frontmatter is not a mapping")
+    assert not broken, "SKILL.md frontmatter the importer would reject:\n" + "\n".join(broken)

@@ -18,6 +18,7 @@ const detail = (over: Partial<ProposalDetail> = {}): ProposalDetail => ({
   target_skill_id: 'urn:a', target_revision_id: 'rev-1',
   sources: [{ path: 'platforms/atlas/README.md', sha256: 'sha-src', commit: 'c0ffee', lines: [10, 40] }],
   recipe: { version: 'det-1', generator: 'deterministic', model: null },
+  scope_map: null,
   candidate: { path: 'platforms/atlas/SKILL.md', body: '# postgres-auth\n\nUse the shared role.\n', sha256: 'sha-cand', frontmatter: {} },
   source_body: '# postgres-auth\n\nUse the old role.\n',
   provenance: [
@@ -37,7 +38,8 @@ const exported: ExportPayload = {
 const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
   publication_id: 'pub-2', snapshot_id: 'snap-2', state: 'active', active: true,
   import_id: 'im-2', job_id: 'j-2', commit: 'c0ffee', n_skills: 27, builder_sha256: 'sha-b',
-  validation: { ok: true, findings: [] }, error: null, activated_at: null, created_at: null, ...over,
+  validation: { ok: true, findings: [] }, error: null, activated_at: null, created_at: null,
+  partial: false, failed_files: [], ...over,
 });
 const snapshots: Snapshot[] = [
   snapshot(),
@@ -135,6 +137,55 @@ describe('Proposals route, decision, conflict and export', () => {
     expect((decideProposal.mock.calls[1] as unknown as [unknown, string, unknown, string])[3]).toBe(key);
   });
 
+  // ADR-0051 -- a scope_map proposal is a decision about the organisation's hierarchy. It has no
+  // candidate file, so the review shows the diff against the scopes that exist now, offers no
+  // "edit" choice, and goes to the organisation route, because approving writes scopes in
+  // repositories other than the one the row is anchored to.
+  const scopeMapDetail = () => detail({
+    proposal_id: 'p-map', kind: 'scope_map', scope: null, target_skill_id: null,
+    target_revision_id: null, expected_revision: null, source_body: null, sources: [],
+    candidate: { path: '.guidefold/scope-map.json', body: '{}', sha256: null, frontmatter: null },
+    scope_map: {
+      origin: 'model', model: 'gpt-4o-mini', repos: ['monorepo', 'platform'],
+      nodes: [{ scope: 'atlas', parent: null, owner: '@acme/atlas', paths: [{ repo_id: 'monorepo', path: 'platforms/atlas' }], confidence: 0.91, reason: 'one subject across both repositories' }],
+      diff: { added: ['platform/atlas'], reparented: [], owner_changed: [{ scope: 'atlas', repo_id: 'monorepo', from: '@acme/old', to: '@acme/atlas' }], paths_changed: [], unchanged: 4 },
+      findings: [],
+    },
+  });
+
+  test('a scope map is reviewed as a diff against the scopes that exist now', async () => {
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => scopeMapDetail() }), 'proposal=p-map');
+    // The summary heading and the panel title both name it, which is the point: the row's
+    // synthetic candidate path is never shown as if it were a file to export.
+    expect((await screen.findAllByText('Organisation scope map')).length).toBe(2);
+    expect(screen.getByText('Proposed by gpt-4o-mini')).toBeInTheDocument();
+    expect(screen.getByText('Owner changed')).toBeInTheDocument();
+    expect(screen.getByText(/approving never deletes one/)).toBeInTheDocument();
+    // There is no file, so no line diff and no "edit the candidate" choice.
+    expect(screen.queryByText('Source to candidate')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Approve an edited candidate/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Approve for export/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Reject/ })).toBeInTheDocument();
+  });
+
+  test('approving a scope map goes to the organisation route, not one repository', async () => {
+    const decideProposal = vi.fn(async () => ({ proposal_id: 'p-map', state: 'applied' as const, revision_id: null, expected_revision: null }));
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => scopeMapDetail(), decideProposal }), 'proposal=p-map');
+    await userEvent.type(await screen.findByLabelText('Reason for this decision'), 'The hierarchy matches our teams.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save decision' }));
+    await waitFor(() => expect(decideProposal).toHaveBeenCalled());
+    const [target] = decideProposal.mock.calls[0] as unknown as [{ org: string; repo: string | null }];
+    expect(target.repo).toBeNull();
+  });
+
+  test('a scope map that no longer validates says so before the decision', async () => {
+    const stale = scopeMapDetail();
+    stale.scope_map!.findings = ['path monorepo/services/api is claimed by both "a" and "b"'];
+    renderApi(ApiProposalsRoute, base({ getProposal: async () => stale }), 'proposal=p-map');
+    expect(await screen.findByText(/no longer describes the organisation/)).toBeInTheDocument();
+    expect(screen.getByText(/claimed by both/)).toBeInTheDocument();
+  });
+
   test('an edited candidate is sent as the body of the human revision', async () => {
     const decideProposal = vi.fn(async () => ({ proposal_id: 'p-1', state: 'approved_for_export' as const, revision_id: 'rev-2', expected_revision: 'rev-2' }));
     renderApi(ApiProposalsRoute, base({ decideProposal }), 'proposal=p-1');
@@ -221,6 +272,26 @@ describe('Proposals route, decision, conflict and export', () => {
     expect(screen.getByText('No snapshot built')).toBeInTheDocument();
     expect(screen.getByText('Nothing to roll back to')).toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: 'Roll back to this' })).toHaveLength(0);
+  });
+
+  // Contract 1.17.0: a partial import publishes, so the row that is serving
+  // less than its import carried has to say so. A snapshot that quietly holds
+  // fewer skills than the repository would read as a complete library.
+  test('a partial publication names itself and the files it could not parse', async () => {
+    const partial = snapshot({
+      publication_id: 'pub-4', snapshot_id: 'snap-4', state: 'active', active: true,
+      partial: true,
+      failed_files: [{ path: '.agents/skills/broken/SKILL.md', reason: 'ScannerError: mapping values are not allowed here' }],
+    });
+    renderApi(ApiProposalsRoute, base({ listSnapshots: async () => [partial] }), 'proposal=p-1');
+    expect(await screen.findByText(/1 file could not be parsed/)).toBeInTheDocument();
+    expect(screen.getByText('.agents/skills/broken/SKILL.md')).toBeInTheDocument();
+  });
+
+  test('a complete publication carries no partial annotation', async () => {
+    renderApi(ApiProposalsRoute, base({ listSnapshots: async () => [snapshots[0]] }), 'proposal=p-1');
+    expect(await screen.findByText('Snapshots')).toBeInTheDocument();
+    expect(screen.queryByText(/could not be parsed/)).not.toBeInTheDocument();
   });
 
   test('an owner queues a publication for a named import', async () => {

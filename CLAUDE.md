@@ -5,7 +5,7 @@ CI validates and publishes them to Google Cloud Agent Registry, and one bootstra
 CLI let any harness (Claude Code, Copilot CLI, Codex, Gemini CLI) discover them by location.
 
 Project entry point: [AGENTS.md](AGENTS.md). Local workflows: [product changes](.agents/skills/guidefold-product-changes/SKILL.md) and [UI workflow](.agents/skills/guidefold-ui-workflow/SKILL.md).
-Thirty rule skills (product direction, KISS/YAGNI/DRY/SOLID, hexagonal architecture, Definition of Done, review, UI) are indexed in `AGENTS.md`, linked from `.claude/skills/`, and decided in [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md). Hooks in `.claude/settings.json` are described in [.claude/README.md](.claude/README.md).
+All 81 skills under `.agents/skills/` (`python3 tools/check_skills.py`, 2026-09-15) are indexed in `AGENTS.md` and linked from `.claude/skills/`; the rule skills (product direction, KISS/YAGNI/DRY/SOLID, hexagonal architecture, Definition of Done, review, UI) are decided in [ADR-0032](docs/adr/ADR-0032-engineering-principles-and-hexagonal-architecture.md), the rest are adopted design/motion/content-generation skills tracked the same way. Hooks in `.claude/settings.json` are described in [.claude/README.md](.claude/README.md).
 
 Start with `docs/DOCUMENTATION-RULES.md` to select the authoritative document for the task.
 For the authorized product pivot, read `docs/PRODUCT-PIVOT.md` (requirements),
@@ -70,7 +70,7 @@ two-column layout was rejected by the owner.
 | `skills/guidefold/` | **The distributable unit.** Bootstrap `SKILL.md`, `scripts/guidefold` (CLI), `hooks/*.json` (harness hook templates). This whole dir is what a consumer monorepo copies to `.agents/skills/guidefold/`. |
 | `docs/` | Product requirements, architecture, backlog, documentation rules, CLI conventions, ADRs and evidence. |
 | `docs/ui/` | Hosted U4 information architecture, UX, visual system and reviewed pipeline 00–08. Read each file's current status; a prototype is not the API implementation. |
-| `templates/` | Files a consumer monorepo copies: CI workflow, example `guidefold.yaml`. |
+| `templates/` | Files a consumer monorepo copies: CI workflow, example `guidefold.yaml` (optional — see ADR-0050). |
 | `examples/monorepo/` | "Meridian" playground: fictional Palantir-style data platform, 17 declared nodes / 27 SKILL.md files including the hierarchy index at the pivot baseline / stub code, `registry.backend: local`. Fixture for demos and tests. |
 | `tests/` | Existing pytest suite; use the checks appropriate to the changed behavior. |
 | `services/search/` | Product-pivot Go modular monolith: API + worker. `internal/{identity,mgmt,jobs,worker,schema,testdb,importer,knowledge,review,usage,graph,pivottest}` (ownership per module in `services/search/internal/README.md`); `openapi/management-v1.yaml` is the OpenAPI half of the contract. |
@@ -83,6 +83,10 @@ two-column layout was rejected by the owner.
 Two repos are involved and must not be confused: **this repo** (the tool) and the **consumer
 monorepo** (where `guidefold.yaml`, `.agents/skills/**`, generated `AGENTS.md` cards and the
 CI workflow live). `templates/` and `skills/` are copied into the consumer; nothing else is.
+
+`skills/` at repo root holds only `skills/guidefold` (the distributable unit). Third-party or
+personal skills never belong there — author or vendor them under `.agents/skills/` instead, so
+`tools/check_skills.py` and the consumer copy step both see the same one directory.
 
 ## Existing CLI constraints
 
@@ -104,7 +108,11 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 ## Working here
 
 - Run the CLI: `cd examples/monorepo && python3 ../../skills/guidefold/scripts/guidefold <cmd>`.
-  The monorepo root is the nearest ancestor with `guidefold.yaml` (or `$GUIDEFOLD_ROOT`).
+  The monorepo root is the nearest ancestor with `guidefold.yaml` (or `$GUIDEFOLD_ROOT`), then the
+  git toplevel, then the nearest ancestor holding a skill directory. **`guidefold.yaml` is an
+  optional override, never a requirement** ([ADR-0050](docs/adr/ADR-0050-zero-config-scope-map.md)):
+  without it the scope map is inferred from the skill directories and CODEOWNERS by `infer_map()`,
+  the one implementation the CLI, `report --base` and `tools/worker/build_tree.py` all share.
 - Real registry: GCP project `guidefold-test-b6a18a`, location `global`, needs
   `roles/agentregistry.admin`. Publish flow and ID mapping: `docs/adr/ADR-0008-*.md`.
 - Tests: `pytest` from repo root. Registry calls must be mocked; never
@@ -139,7 +147,10 @@ CI workflow live). `templates/` and `skills/` are copied into the consumer; noth
 
 ## Naming
 
-- Node: dotted path from `guidefold.yaml` (`atlas.identity.turnstile`); root is `_root`.
+- Node: dotted path from `guidefold.yaml` (`atlas.identity.turnstile`); root is `_root`. Without
+  the file the node name is the directory path with `/` → `.`, each segment slugified
+  (`platforms/atlas` → `platforms.atlas`), owner from CODEOWNERS, `source: inferred` (ADR-0050).
+  The file is how an organisation names its nodes something other than its folders.
 - URN: `urn:skill:<publisher>:<node>:<skill-name>` — derived, never hand-written.
 - Skill `description` starts with `[<node/path>]`; root uses `[<publisher>]` (the `publisher`
   value from `guidefold.yaml`) — never a hard-coded organisation name.

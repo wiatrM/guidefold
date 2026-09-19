@@ -1,6 +1,6 @@
 ---
 name: api-contract-versioning
-description: Change SEARCH/USE and management API contracts safely: schema versions, strict validation, 1.1 vs designed 1.2 guarantees, OpenAPI-generated UI types and required conformance tests. Use when adding or changing request/response fields, status codes or delivery semantics.
+description: 'Change SEARCH/USE and management API contracts safely: schema versions, strict validation, 1.1 vs designed 1.2 guarantees, OpenAPI-generated UI types and required conformance tests. Use when adding or changing request/response fields, status codes or delivery semantics.'
 ---
 
 # Wersjonowanie kontraktów API

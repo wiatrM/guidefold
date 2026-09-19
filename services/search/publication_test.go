@@ -338,15 +338,26 @@ func TestACycleFailsPublicationAndKeepsThePreviousHead(t *testing.T) {
 	}
 }
 
-// U2.1: an import that could not parse every file is a known-incomplete
-// catalog. Its skills are visible immediately, and it never becomes the
-// snapshot every agent reads.
-func TestPartialImportNeverActivates(t *testing.T) {
+// U2.1 / contract 1.17.0: an import that could not parse every file still
+// publishes, and the publication says so.
+//
+// The refusal this test used to pin (`import_partial`, head unchanged) was the
+// rehearsal's D9: one malformed card in `wiatrM/guidefold` meant none of the
+// other 403 could ever be published, which is the opposite of "one broken file
+// fails alone". The rule now is that the accepted files publish and the
+// snapshot carries the annotation, so nobody mistakes a partial library for a
+// complete one.
+func TestAPartialImportPublishesAndSaysThatItIsPartial(t *testing.T) {
 	e := newPubEnv(t)
 	e.publishImport(t, "pub-1")
 	first := e.head(t)
 
+	// One card the builder cannot read, and one it can: without the second the
+	// import would rebuild the very same snapshot and the head would not move
+	// for a reason that has nothing to do with being partial.
 	writeFile(t, e.tree, ".agents/skills/broken/SKILL.md", "---\nname: [unclosed\n---\n\n# broken\n")
+	writeFile(t, e.tree, ".agents/skills/still-good/SKILL.md",
+		skillFile("still-good", "platform-engineering", nil, "Parses fine beside a broken sibling."))
 	e.publishImport(t, "pub-partial")
 
 	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: e.base + "/imports"})
@@ -361,10 +372,77 @@ func TestPartialImportNeverActivates(t *testing.T) {
 	if latest["state"] != "partial" {
 		t.Fatalf("the import with a malformed SKILL.md is %v, expected partial", latest["state"])
 	}
-	if now := e.head(t); now != first {
-		t.Fatalf("a partial import activated: head moved from %s to %s", first, now)
+	now := e.head(t)
+	if now == "" || now == first {
+		t.Fatalf("the partial import published nothing: head stayed at %s", first)
 	}
-	// The refusal names the file rather than only saying "something failed".
+
+	status, snapshots, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: e.base + "/snapshots"})
+	if status != 200 {
+		t.Fatal(snapshots)
+	}
+	var active map[string]any
+	for _, raw := range snapshots["items"].([]any) {
+		row, _ := raw.(map[string]any)
+		if row["active"] == true {
+			active = row
+		}
+	}
+	if active == nil {
+		t.Fatalf("no active publication after a partial import: %v", snapshots["items"])
+	}
+	if active["partial"] != true {
+		t.Errorf("the publication does not admit it is partial: %v", active)
+	}
+	failed, _ := active["failed_files"].([]any)
+	named := false
+	for _, raw := range failed {
+		row, _ := raw.(map[string]any)
+		if path, _ := row["path"].(string); strings.Contains(path, "broken/SKILL.md") {
+			named = true
+			if reason, _ := row["reason"].(string); reason == "" {
+				t.Errorf("the failed file carries no reason: %v", row)
+			}
+		}
+	}
+	if !named {
+		t.Errorf("failed_files does not name the unparsable card: %v", failed)
+	}
+	// The annotation is only for a publication that is actually partial.
+	for _, raw := range snapshots["items"].([]any) {
+		row, _ := raw.(map[string]any)
+		if row["publication_id"] == active["publication_id"] {
+			continue
+		}
+		if row["partial"] == true && row["error"] == nil {
+			t.Errorf("a complete publication is marked partial: %v", row)
+		}
+	}
+}
+
+// The error code keeps exactly one job: an import whose failures leave nothing
+// publishable. There is no snapshot to build out of no files, and reporting
+// that as a successful partial publication would be a lie about an empty
+// library.
+func TestAPartialImportWithNothingPublishableStillFails(t *testing.T) {
+	e := newPubEnv(t)
+	writeFile(t, e.tree, ".agents/skills/broken/SKILL.md", "---\nname: [unclosed\n---\n\n# broken\n")
+	manifest := pivottest.Manifest(t, e.tree, "pubco", "meridian", true)
+	importID := pivottest.Push(t, e.owner, e.orgID, "meridian", e.tree, manifest, "pub-partial")
+	e.h.RunParse(t, pivottest.Scratch(t, "parse-empty"))
+
+	// Take every remaining file out of the publishable set between the parse and
+	// the build the finalize already queued, leaving the import in the state it
+	// would hold if the builder had rejected all of them. The builder refuses a
+	// tree with no skills earlier than this (such an import is `failed`, not
+	// `partial`), so the branch is reachable only by arranging the rows it reads.
+	if _, err := e.h.Pool.Exec(context.Background(), `UPDATE gfm.import_files
+ SET status='failed',reason='forced for this test'
+ WHERE org_id=$1::uuid AND import_id=$2::uuid AND status='accepted'`, e.orgID, importID); err != nil {
+		t.Fatal(err)
+	}
+	e.h.RunPublish(t, &snapshotPublisher{}, pivottest.Scratch(t, "publish-empty"))
+
 	status, snapshots, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet, Path: e.base + "/snapshots"})
 	if status != 200 {
 		t.Fatal(snapshots)
@@ -374,14 +452,13 @@ func TestPartialImportNeverActivates(t *testing.T) {
 		row, _ := raw.(map[string]any)
 		if row["error"] == "import_partial" {
 			found = true
-			validation, _ := row["validation"].(map[string]any)
-			if raw, _ := json.Marshal(validation); !strings.Contains(string(raw), "broken/SKILL.md") {
-				t.Errorf("the failed publication does not name the file: %s", raw)
+			if row["active"] == true {
+				t.Error("a publication that failed is active")
 			}
 		}
 	}
 	if !found {
-		t.Fatal("no publication recorded import_partial")
+		t.Fatalf("no publication recorded import_partial: %v", snapshots["items"])
 	}
 }
 
@@ -1152,4 +1229,56 @@ func (e *pubEnv) revisions(t *testing.T, snapshot string) map[string]string {
 		out[u] = r
 	}
 	return out
+}
+
+// D10 / contract 1.17.0: the catalog hands a reader two revision identifiers
+// and `/v1/use` accepts exactly one of them.
+//
+// `revision_id` is the catalog's own identity, `sha256(skill_id@content_sha256)`
+// written by import.parse; `card_revision` is `gf.skills.skill_revision`, which
+// publish.build copies back onto the revision row. They are derived
+// differently, so accepting both would mean serving a revision the active
+// snapshot does not know under that identifier. Sending the wrong one is a 409
+// that says which to send instead, because the rehearsal lost time to a 409
+// that said nothing.
+func TestUseTakesTheCardRevisionAndSaysSoWhenGivenTheCatalogRevision(t *testing.T) {
+	e := newPubEnv(t)
+	e.publishImport(t, "pub-1")
+
+	status, body, _ := e.owner.Call(t, pivottest.Call{Method: http.MethodGet,
+		Path: e.base + "/skills?limit=100"})
+	if status != 200 {
+		t.Fatal(body)
+	}
+	var skillID, revisionID, cardRevision string
+	for _, raw := range body["items"].([]any) {
+		row, _ := raw.(map[string]any)
+		card, _ := row["card_revision"].(string)
+		revision, _ := row["revision_id"].(string)
+		if card == "" || revision == "" || card == revision {
+			continue
+		}
+		skillID, revisionID, cardRevision = str(row["skill_id"]), revision, card
+		break
+	}
+	if skillID == "" {
+		t.Fatal("no published skill carried both a revision_id and a different card_revision")
+	}
+
+	use := func(revision string) (int, M) {
+		return e.post(t, "/v1/use", fmt.Sprintf(`{"schema_version":"1.1","request_id":"req-12345678",
+ "skill_id":%q,"revision":%q,
+ "workspace":{"repo_id":"meridian","revision":"%s","cwd":"."}}`, skillID, revision, fixtureCommit))
+	}
+
+	if status, out := use(cardRevision); status != 200 {
+		t.Fatalf("the card revision is the documented handle, got %d %v", status, out)
+	}
+	status, out := use(revisionID)
+	if status != 409 || str(out["error"]) != "revision_mismatch" {
+		t.Fatalf("the catalog revision must be refused, got %d %v", status, out)
+	}
+	if str(out["hint"]) != "send card_revision from the catalog" {
+		t.Fatalf("the refusal does not say which identifier to send: %v", out)
+	}
 }

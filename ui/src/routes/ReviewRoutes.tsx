@@ -18,7 +18,7 @@ import {
   ApiFailure, DegradedNotice, OwnerNote, PartialNotice, asApiError, downloadText,
   formatNumber, readOnly, stableKey, unknown, useAsync, type ApiProps,
 } from './apiState';
-import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, UsageSkill} from '../api/decoders';
+import type {ExecutionMetrics, ExportPayload, FeedbackTotals, HelpedRatio, ProposalDetail, Publication, QueueAction, QueueItem, ScopeMap, UsageSkill} from '../api/decoders';
 import type {Params, View} from '../domain';
 import styles from './ReviewRoutes.module.css';
 
@@ -133,7 +133,53 @@ const decisionChoices = [
   {value: 'edit' as const, label: 'Approve an edited candidate', detail: 'Save your own body as the human revision.', icon: PencilSimpleIcon},
   {value: 'reject' as const, label: 'Reject', detail: 'Close this proposal; the same input is not generated again.', icon: XIcon},
 ];
+// A scope map has no candidate file, so "approve an edited candidate" has no meaning for it:
+// the candidate is a typed structure, and the server answers `invalid_candidate_change`
+// (ADR-0051). Offering the choice and letting it fail would be a worse way to say the same thing.
+const scopeMapDecisionChoices = decisionChoices.filter(choice => choice.value !== 'edit');
 const terminalPublicationStates = ['published', 'superseded'];
+
+/** What approving a `scope_map` proposal would change, against the scopes the organisation has
+ *  now (contract §5.4). The server recomputes the diff on every read, so this is today's answer,
+ *  not the one the job produced. There is no "removed" row: approving never deletes a scope. */
+function ScopeMapReview({map}: {map: ScopeMap}) {
+  const {diff} = map;
+  const source = map.origin === 'model' ? 'Proposed by ' + (map.model ?? 'the organisation model') : 'Inferred from directories, CODEOWNERS and the scopes already declared';
+  return <Panel title="Organisation scope map" eyebrow={source} icon={<GitBranchIcon aria-hidden="true" />}>
+    {map.findings.length > 0 && <PartialNotice>{'This map no longer describes the organisation and cannot be approved as it stands: ' + map.findings.join('; ')}</PartialNotice>}
+    <ProvenanceTrail entries={[
+      {label: 'Repositories covered', value: map.repos.length ? map.repos.join(', ') : 'Unknown', code: true},
+      {label: 'Nodes proposed', value: String(map.nodes.length)},
+      {label: 'Unchanged', value: String(diff.unchanged), detail: 'A scope this map does not mention keeps its row; approving never deletes one.'},
+    ]} />
+    <DataTable flush caption="What approving this map would change" headings={['Change', 'Node', 'Repository', 'From', 'To']}>
+      {[
+        ...diff.added.map(name => ({key: 'added:' + name, change: 'Added', scope: name, repo: '\u2014', from: '\u2014', to: '\u2014'})),
+        ...diff.reparented.map(entry => ({key: 'parent:' + entry.repo_id + '/' + entry.scope, change: 'Reparented', scope: entry.scope, repo: entry.repo_id, from: entry.from ?? 'Unknown', to: entry.to ?? 'Unknown'})),
+        ...diff.owner_changed.map(entry => ({key: 'owner:' + entry.repo_id + '/' + entry.scope, change: 'Owner changed', scope: entry.scope, repo: entry.repo_id, from: entry.from ?? 'Unknown', to: entry.to ?? 'Unknown'})),
+        ...diff.paths_changed.map(entry => ({key: 'paths:' + entry.repo_id + '/' + entry.scope, change: 'Paths changed', scope: entry.scope, repo: entry.repo_id, from: entry.removed.join(', ') || '\u2014', to: entry.added.join(', ') || '\u2014'})),
+      ].map(row => <tr key={row.key}>
+        <th scope="row">{row.change}</th>
+        <td className={styles.pathCell}><code>{row.scope}</code></td>
+        <td className={styles.pathCell}><code>{row.repo}</code></td>
+        <td className={styles.pathCell}>{row.from}</td>
+        <td className={styles.pathCell}>{row.to}</td>
+      </tr>)}
+    </DataTable>
+    <Disclosure label="Read every proposed node">
+      <DataTable flush caption="Every node of the proposed map" headings={['Node', 'Parent', 'Owner', 'Paths', 'Confidence', 'Why']}>
+        {map.nodes.map(node => <tr key={node.scope}>
+          <th scope="row" className={styles.pathCell}><code>{node.scope}</code></th>
+          <td className={styles.pathCell}><code>{node.parent ?? '\u2014'}</code></td>
+          <td>{node.owner ?? 'Unknown'}</td>
+          <td className={styles.pathCell}>{node.paths.map(p => p.repo_id + '/' + p.path).join(', ') || '\u2014'}</td>
+          <td>{node.confidence.toFixed(2)}</td>
+          <td>{node.reason}</td>
+        </tr>)}
+      </DataTable>
+    </Disclosure>
+  </Panel>;
+}
 
 /** Cache-key segment for a read scope: `repo: null` is the whole organisation (ADR-0047), not an empty repository. */
 const scopeKey = (org: string | null, repo: string | null) => org + '/' + (repo ?? '*');
@@ -407,7 +453,14 @@ function SnapshotsPanel({ctx, repo}: ApiProps & {repo: string | null}) {
           <td>{item.n_skills}</td>
           <td>{item.validation
             ? (item.validation.ok ? 'Valid' : 'Failed: ' + (item.validation.findings.length ? item.validation.findings.join(', ') : unknown(item.error)))
-            : 'Unknown'}</td>
+            : 'Unknown'}
+            {/* Contract 1.17.0: a partial import publishes, so a row that is
+                serving less than its import carried has to say so here rather
+                than leave the skill count to be compared by hand. */}
+            {item.partial && <div className={styles.muted}>
+              Partial: {item.failed_files.length || 'some'} file{item.failed_files.length === 1 ? '' : 's'} could not be parsed
+              {item.failed_files.length > 0 && <> — <code>{item.failed_files.map(file => file.path).join(', ')}</code></>}
+            </div>}</td>
           <td><StateBadge tone={item.active ? 'system' : item.state === 'failed' ? 'error' : 'neutral'}>{item.active ? 'active' : item.state}</StateBadge></td>
           <td>{item.active ? <span className={styles.muted}>Serving now</span>
             : !item.snapshot_id ? <span className={styles.muted}>Nothing to roll back to</span>
@@ -457,18 +510,23 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
   const body = candidate ?? value.candidate.body;
   const sourceBody = value.source_body ?? '';
   const unconfirmed = value.provenance.filter(entry => entry.needs_confirmation);
-  const missingSource = value.source_body === null;
+  const scopeMap = value.scope_map;
+  // A scope map has no source file, so the "the source body is missing" notice would warn about
+  // something that was never supposed to be there.
+  const missingSource = value.source_body === null && !scopeMap;
 
   async function record(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (blocked || !org || !actRepo) return;
+    if (blocked || !org || (!actRepo && !scopeMap)) return;
     const text = reason.trim();
     if (!text) {setError('Every decision needs a reason. It is stored with the decision.'); return;}
     if (decision === 'edit' && !body.trim()) {setError('An edited candidate needs a body.'); return;}
     setBusy(true);
     setError('');
     try {
-      const result = await source.decideProposal({org, repo: actRepo}, proposalId, {
+      // A scope map is decided at organisation scope by an organisation owner: approving writes
+      // scopes in several repositories, so the repository twin refuses it (ADR-0051 decision 5).
+      const result = await source.decideProposal({org, repo: scopeMap ? null : actRepo}, proposalId, {
         decision, reason: text,
         candidate_body: decision === 'edit' ? body : undefined,
         expected_revision: value!.expected_revision ?? null,
@@ -499,7 +557,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
     <section className={cn(styles.summary, 'rounded-xl border border-line-strong bg-graphite-900 shadow-(--shadow-card)')} aria-label="Proposal status and evidence">
       <div className={styles.summaryHeading}>
         <IconTile icon={<GitPullRequestIcon weight="duotone" />} size="lg" tone={value.state === 'published' ? 'system' : 'human'} />
-        <div className={styles.summaryText}><span className={styles.eyebrow}>{value.kind} · {value.scope ?? 'Unknown scope'} · repository {actRepo ?? 'Unknown'}</span><h2 className={styles.name}><code>{value.candidate.path}</code></h2></div>
+        <div className={styles.summaryText}><span className={styles.eyebrow}>{scopeMap ? value.kind + ' · organisation ' + (org ?? 'Unknown') : value.kind + ' · ' + (value.scope ?? 'Unknown scope') + ' · repository ' + (actRepo ?? 'Unknown')}</span><h2 className={styles.name}>{scopeMap ? 'Organisation scope map' : <code>{value.candidate.path}</code>}</h2></div>
         <StateBadge tone={value.state === 'published' ? 'system' : value.state === 'rejected' ? 'warning' : 'human'}>{value.state}</StateBadge>
       </div>
       <div className={styles.actions}>
@@ -509,7 +567,9 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
       </div>
     </section>
 
-    <div className={styles.comparison}>
+    {scopeMap && <ScopeMapReview map={scopeMap} />}
+
+    {!scopeMap && <div className={styles.comparison}>
       <Panel title="Source" eyebrow="What the candidate was built from" icon={<FileTextIcon aria-hidden="true" />}>
         <ProvenanceTrail entries={[
           {label: 'Repository', value: actRepo ?? 'Unknown', code: true, detail: value.repo_id ? undefined : (repo ? 'From the selected repository; the proposal carries none.' : 'The proposal carries no repository.')},
@@ -540,11 +600,11 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
           <SkillContent content={body} />
         </Disclosure>
       </Panel>
-    </div>
+    </div>}
 
-    <Panel title="Source to candidate" eyebrow="Line diff" icon={<ListChecksIcon aria-hidden="true" />}>
+    {!scopeMap && <Panel title="Source to candidate" eyebrow="Line diff" icon={<ListChecksIcon aria-hidden="true" />}>
       <SkillDiff source={sourceBody} candidate={body} />
-    </Panel>
+    </Panel>}
 
     <Panel title="Field provenance" eyebrow="Where each field came from" icon={<FileTextIcon aria-hidden="true" />} collapsible defaultOpen={unconfirmed.length > 0}>
       {value.provenance.length ? <>
@@ -564,7 +624,7 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
       <Panel title="Decision" eyebrow="Owner" icon={<GitBranchIcon aria-hidden="true" />}>
         <div className={styles.decisionContent}>
           <ol className={styles.lifecycle} aria-label="Publication lifecycle">
-            {(['draft', 'approved_for_export', 'awaiting_git', 'published'] as const).map(stage =>
+            {(scopeMap ? ['draft', 'applied'] as const : ['draft', 'approved_for_export', 'awaiting_git', 'published'] as const).map(stage =>
               <li key={stage} aria-current={value.state === stage ? 'step' : undefined}><StateBadge tone={value.state === stage ? 'human' : 'neutral'}>{stage}</StateBadge></li>)}
           </ol>
           {conflict && <Alert variant="destructive" className="gap-2 border-(--signal-red) bg-graphite-900 px-3 py-3 text-stone-100 *:data-[slot=alert-description]:text-stone-100">
@@ -579,13 +639,13 @@ function ProposalDetailView({ctx, proposalId}: ApiProps & {proposalId: string}) 
           {value.state === 'draft' ? <form id="decision-form" className={styles.form} onSubmit={record}>
             <fieldset disabled={blocked} className={styles.choices}>
               <legend>Review decision</legend>
-              {decisionChoices.map(({value: id, label, detail: hint, icon: Icon}) => <label key={id} className={styles.choice}>
+              {(scopeMap ? scopeMapDecisionChoices : decisionChoices).map(({value: id, label, detail: hint, icon: Icon}) => <label key={id} className={styles.choice}>
                 <input type="radio" name="decision" value={id} checked={decision === id} onChange={() => setDecision(id)} />
                 <IconTile icon={<Icon weight="duotone" />} size="sm" tone={id === 'reject' ? 'neutral' : 'human'} animate={false} />
                 <span><strong>{label}</strong><span>{hint}</span></span>
               </label>)}
             </fieldset>
-            {decision === 'edit' && <Field id="candidate-text" label="Candidate body" hint="Saved as a human revision. The frontmatter and scope of the candidate stay as generated.">
+            {decision === 'edit' && !scopeMap && <Field id="candidate-text" label="Candidate body" hint="Saved as a human revision. The frontmatter and scope of the candidate stay as generated.">
               <Textarea id="candidate-text" name="candidate" className={cn(textareaClass, styles.bodyEditor)} spellCheck={false} value={body} onChange={event => setCandidate(event.target.value)} disabled={blocked} required />
             </Field>}
             <Field id="decision-reason" label="Reason for this decision" hint="Stored with the decision and shown in the audit log." error={error || undefined}>
@@ -683,7 +743,7 @@ function QueueRow({ctx, item, onDecided}: ApiProps & {item: QueueItem; onDecided
 
 type NotificationSettings = {enabled: boolean; mutedUntil: number; dismissed: string[]};
 const NOTIFICATION_SETTINGS_KEY = 'guidefold.notifications.v1';
-const attentionReasons = new Set(['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency']);
+const attentionReasons = new Set(['negative_feedback', 'source_changed', 'source_removed', 'zero_loads', 'missing_dependency', 'import_file_failed']);
 
 function readNotificationSettings(): NotificationSettings {
   try {

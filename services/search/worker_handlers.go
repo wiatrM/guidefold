@@ -43,6 +43,14 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	handlers := map[string]worker.Handler{}
 	blobs := importer.NewBlobStore(pool)
 	parser := importer.NewParseWorker(pool, blobs, importer.NewPythonBuilder(), "")
+	// A finished import is the moment an organisation scope map is worth
+	// proposing (ADR-0051). The import worker announces the moment; the review
+	// module decides whether anything can answer it and queues the job.
+	followUp, e := review.NewScopeMapFollowUp(pool)
+	if e != nil {
+		return nil, e
+	}
+	parser.SetFollowUp(followUp)
 	for kind, h := range parser.Handlers() {
 		handlers[kind] = h
 	}
@@ -59,6 +67,13 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 		return nil, e
 	}
 	for kind, h := range generate.Handlers() {
+		handlers[kind] = h
+	}
+	scopeMaps, e := review.NewScopeMapWorker(pool, blobs, keyring)
+	if e != nil {
+		return nil, e
+	}
+	for kind, h := range scopeMaps.Handlers() {
 		handlers[kind] = h
 	}
 	publisher := &snapshotPublisher{PolicySHA: policySHA, Caps: caps}
@@ -125,6 +140,7 @@ func RegisterHandlers(pool *pgxpool.Pool, caps schema.Capabilities, policySHA st
 	if e != nil {
 		return nil, e
 	}
+	reviewer.SetScopeMapApplier(importer.NewScopeMapWriter())
 	importerSvc := importer.New(pool, blobs)
 	liveRepo := agentrun.NewLiveRepoWorker(pool, gh, importerSvc).
 		WithProposalGenerator(agentrun.NewReviewProposalGenerator(pool, reviewer))

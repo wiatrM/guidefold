@@ -1,6 +1,6 @@
 ---
 name: scope-change-protocol
-description: Record and route a deviation from PRODUCT-PIVOT, PIVOT-BACKLOG or an ADR: log the discrepancy, pick the decision consistent with the current order, update the owning document. Use when a task conflicts with a canonical doc; not for routine details.
+description: 'Record and route a deviation from PRODUCT-PIVOT, PIVOT-BACKLOG or an ADR: log the discrepancy, pick the decision consistent with the current order, update the owning document. Use when a task conflicts with a canonical doc; not for routine details.'
 ---
 
 # Protokół zmiany zakresu

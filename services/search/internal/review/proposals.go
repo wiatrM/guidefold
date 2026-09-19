@@ -128,8 +128,8 @@ func lastDecisionSummary(decision, actor *string, at *time.Time) any {
 
 func knownState(v string) bool {
 	switch v {
-	case StateDraft, StateApprovedForExport, StateAwaitingGit, StatePublished, StateRejected,
-		StateSuperseded:
+	case StateDraft, StateApprovedForExport, StateAwaitingGit, StatePublished, StateApplied,
+		StateRejected, StateSuperseded:
 		return true
 	}
 	return false
@@ -137,7 +137,8 @@ func knownState(v string) bool {
 
 func knownKind(v string) bool {
 	switch v {
-	case generator.KindExtraction, generator.KindEnrichment, generator.KindConsolidation:
+	case generator.KindExtraction, generator.KindEnrichment, generator.KindConsolidation,
+		generator.KindScopeMap:
 		return true
 	}
 	return false
@@ -207,6 +208,18 @@ func (s *Service) handleProposal(c *mgmt.Context) error {
 	if len(p.Cost) > 0 {
 		_ = json.Unmarshal(p.Cost, &cost)
 	}
+	// Present only for kind `scope_map`, and computed now: the diff has to say
+	// what approving would change today, not when the job ran (§5.4).
+	var scopeMap any
+	if p.Kind == KindScopeMap {
+		m, e := s.scopeMapOf(c.Ctx(), rc.Org.ID, p.CandidateBlobSHA256)
+		if e != nil {
+			return mgmt.Internal(e)
+		}
+		if m != nil {
+			scopeMap = m
+		}
+	}
 	// The expected revision is the current one, re-read now: a detail page that
 	// echoed a stale value would invite a decision the server then rejects.
 	expected := p.ExpectedRevision
@@ -226,7 +239,8 @@ func (s *Service) handleProposal(c *mgmt.Context) error {
 			"sha256": p.CandidateSHA256, "frontmatter": frontmatter},
 		"source_body": sourceBody, "provenance": provenance, "relations": relations,
 		"decision": decision, "expected_revision": nullable(expected),
-		"cost": cost, "created_at": p.CreatedAt, "updated_at": p.UpdatedAt})
+		"cost": cost, "created_at": p.CreatedAt, "updated_at": p.UpdatedAt,
+		"scope_map": scopeMap})
 }
 
 // targetBody reads the bytes an enrichment or edit proposal would replace, and
@@ -280,7 +294,14 @@ func (s *Service) handleDecision(c *mgmt.Context) error {
 	if e != nil {
 		return e
 	}
-	id := c.Param("proposal_id")
+	return s.decide(c, rc, c.Param("proposal_id"))
+}
+
+// decide is the decision itself, once the caller has been authorised for the
+// repository that owns the proposal. It is separate from handleDecision because
+// the organisation-scope route (§4.10 point 10) reaches the same work having
+// found the repository in the proposal row rather than in the address.
+func (s *Service) decide(c *mgmt.Context, rc *repoContext, id string) error {
 	if !parseUUID(id) {
 		return notFound("proposal_not_found", "No such proposal in this repository.")
 	}
@@ -318,6 +339,22 @@ func (s *Service) handleDecision(c *mgmt.Context) error {
 	if p.State != StateDraft {
 		return mgmt.Conflict("proposal_state_invalid",
 			"Only a draft proposal can be decided; this one is "+p.State+".")
+	}
+	// A scope map is decided, not reviewed as text: it has no target skill, no
+	// revision to be stale against and no bytes to export (ADR-0051).
+	//
+	// It is also decided by an organisation owner, never by the reviewer of the
+	// repository its row is anchored to, because the rows it writes reach the
+	// organisation's other repositories. `rc.Repo` is nil exactly when
+	// handleOrgDecision performed that owner check; a request that arrived on
+	// the `{repo_base}` twin has one, and is refused here rather than accepted
+	// under the weaker permission.
+	if p.Kind == KindScopeMap {
+		if rc.Repo != nil {
+			return mgmt.Fail(http.StatusForbidden, "forbidden",
+				"A scope map changes several repositories; decide it at the organization route.")
+		}
+		return s.decideScopeMap(c, tx, rc, p, req)
 	}
 
 	// The revision check comes before any work: a candidate built against a
