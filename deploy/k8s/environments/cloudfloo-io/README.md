@@ -39,7 +39,43 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
-## Adapter device login and telemetry on by default — 2026-09-13 (current)
+## Proof-gate and GitHub pagination hardening — 2026-09-19
+
+Built by `publish-images.yml` (run 35442677313) from PR #185, commit `19adde9`.
+The release hardens proof-gate parsing and cache identity, rejects duplicate YAML
+frontmatter keys, and prevents GitHub installation tokens from being sent to a
+cross-origin pagination URL. CI passed the Go race/vet and Postgres suites, the
+30-request source-backed HTTP regression harness (0 violations), default SEARCH
+parity on 1,000 pinned queries, Kubernetes staging/rollback/HPA checks, and the
+Python 3.10–3.12 test matrix.
+
+The running image source commit could not be mapped with confidence, so the
+idempotent migration Job `guidefold-migrate-20260919-proof-gate` ran before the
+image patch and completed successfully. Read-only schema verification confirmed
+19 expected tables, columns and constraints in `gfm`, including the auth-state
+columns, GitHub installation sync fields, and `email_verification` constraint.
+Only API and worker digests changed; UI and portal stayed untouched.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:177f35187ab52e58fc9d68746751ae6ddbb9e12d32658e29fe2ea87114d4fa75` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:683d332ef4663bdca53af3aa9c12cda07108e33f45d496c6e6104e6f87f25263` |
+
+Rollback point: search `sha256:10636c300fd6e8754a5fdbf608bb3446ba0bcd4a276336dfb666952e8b6f4c95`,
+worker `sha256:6295278d22d33beb8fa922894c19221c486361448ca348d008e56f33d25545dc`.
+
+Verified after rollout: all API/worker replicas ready; `Application/guidefold`
+Synced and Healthy; `/health/ready` 200; Google login 302 to WorkOS; anonymous
+`/api/v1/me` and GitHub installations return 401; zero `ERROR`, `panic` or
+`fatal` matches in two post-rollout API/worker log checks (each with a
+five-minute lookback).
+
+Verification boundary: no live PR-report job was submitted because that flow can
+write to an external GitHub pull request and worker external egress is currently
+disabled. The changed pagination/token boundary is covered by unit and synthetic
+HTTP tests; production egress behavior remains unverified.
+
+## Adapter device login and telemetry on by default — 2026-09-13 (previous)
 
 Built by `publish-images.yml` (run 34761104916) from `main` at `23f7878`: PR #156 (adapters sign in
 with `guidefold login` and a confirmation code instead of a pasted token; telemetry upload on by default
