@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -119,5 +121,78 @@ func TestUpsertStickyCommentPatchesWhenMarkerPresentAcrossPages(t *testing.T) {
 	}
 	if !strings.Contains(patchedBody, "new report") {
 		t.Fatalf("patched body = %q, want the new report text", patchedBody)
+	}
+}
+
+func TestUpsertStickyCommentRejectsCrossOriginPagination(t *testing.T) {
+	var receivedAuthorization string
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthorization = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(attacker.Close)
+
+	var postCalls int32
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc(fmt.Sprintf("/repos/acme/widgets/issues/%d/comments", testPR),
+			func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					atomic.AddInt32(&postCalls, 1)
+					w.WriteHeader(http.StatusCreated)
+					return
+				}
+				w.Header().Set("Link", "<"+attacker.URL+"/steal>; rel=\"next\"")
+				_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": 1, "body": "unrelated"}})
+			})
+	})
+	client := newTestClient(t, server.URL)
+
+	err := client.UpsertStickyComment(context.Background(), 1, "acme/widgets", testPR, "the report")
+	if err == nil || !strings.Contains(err.Error(), "origin") {
+		t.Fatalf("UpsertStickyComment error = %v, want a cross-origin pagination error", err)
+	}
+	if receivedAuthorization != "" {
+		t.Fatalf("cross-origin server received Authorization header %q", receivedAuthorization)
+	}
+	if got := atomic.LoadInt32(&postCalls); got != 0 {
+		t.Fatalf("POST called %d times after incomplete listing, want 0", got)
+	}
+}
+
+func TestUpsertStickyCommentRejectsIncompleteResultsAtPageLimit(t *testing.T) {
+	var pageRequests, postCalls int32
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc(fmt.Sprintf("/repos/acme/widgets/issues/%d/comments", testPR),
+			func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+					if page == 0 {
+						page = 1
+					}
+					atomic.AddInt32(&pageRequests, 1)
+					if page <= 50 {
+						w.Header().Set("Link", "<http://"+r.Host+r.URL.Path+"?page="+strconv.Itoa(page+1)+">; rel=\"next\"")
+					}
+					_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": page, "body": "unrelated"}})
+				case http.MethodPost:
+					atomic.AddInt32(&postCalls, 1)
+					w.WriteHeader(http.StatusCreated)
+				default:
+					t.Fatalf("unexpected method %s", r.Method)
+				}
+			})
+	})
+	client := newTestClient(t, server.URL)
+
+	err := client.UpsertStickyComment(context.Background(), 1, "acme/widgets", testPR, "the report")
+	if err == nil || !strings.Contains(err.Error(), "pagination") {
+		t.Fatalf("UpsertStickyComment error = %v, want a pagination limit error", err)
+	}
+	if got := atomic.LoadInt32(&pageRequests); got != 50 {
+		t.Fatalf("page requests = %d, want the 50-page safety limit", got)
+	}
+	if got := atomic.LoadInt32(&postCalls); got != 0 {
+		t.Fatalf("POST called %d times after incomplete listing, want 0", got)
 	}
 }

@@ -524,10 +524,34 @@ def frontmatter(skill_md: Path) -> dict:
         import yaml
     except ImportError:
         sys.exit("guidefold: PyYAML missing — pip install pyyaml")
+
+    class UniqueKeySafeLoader(yaml.SafeLoader):
+        def construct_mapping(self, node, deep=False):
+            if isinstance(node, yaml.MappingNode):
+                seen = set()
+                for key_node, _ in node.value:
+                    # Merge keys intentionally inherit mappings and allow a
+                    # local explicit override; only duplicate keys written in
+                    # the same mapping are ambiguous and rejected here.
+                    if key_node.tag == "tag:yaml.org,2002:merge":
+                        continue
+                    key = self.construct_object(key_node, deep=deep)
+                    try:
+                        if key in seen:
+                            raise yaml.constructor.ConstructorError(
+                                "while constructing a mapping", node.start_mark,
+                                "found duplicate key %r" % key, key_node.start_mark)
+                        seen.add(key)
+                    except TypeError:
+                        # Preserve PyYAML's usual unhashable-key error from
+                        # the actual mapping construction below.
+                        pass
+            return super().construct_mapping(node, deep=deep)
+
     # UTF-8 explicitly, never the platform default: a `LANG=C` runner would otherwise fail
     # to read any card with a non-ASCII description at all (UnicodeDecodeError: ascii).
     m = FM.match(skill_md.read_text(encoding="utf-8"))
-    return yaml.safe_load(m.group(1)) if m else {}
+    return yaml.load(m.group(1), Loader=UniqueKeySafeLoader) if m else {}
 
 def ranking_body(skill_md: Path) -> str:
     """Return retriever text while excluding structured source provenance.

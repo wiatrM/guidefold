@@ -2,6 +2,7 @@ package ghapp
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 )
 
@@ -43,6 +44,9 @@ func (c *Client) ListInstallationRepositories(ctx context.Context, installationI
 			}
 		}
 		next = link
+	}
+	if next != "" {
+		return nil, fmt.Errorf("ghapp: installation repository pagination exceeds %d pages", maxInstallationRepositoryPages)
 	}
 	return fullNames, nil
 }

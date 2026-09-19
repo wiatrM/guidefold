@@ -249,6 +249,7 @@ metadata:                                   # EVERY value is a scalar string (AD
 
 Rules:
 - **All `metadata` values are scalar strings.** Agent Registry's SKILL.md validator fails a revision with "metadata key-value pairs must be scalar strings" otherwise (verified 2026-09-04). Lists are comma-separated strings; dates are quoted; booleans are `"true"`/`"false"`. `guidefold validate` enforces this.
+- Duplicate YAML mapping keys anywhere in frontmatter are invalid; the parser rejects them instead of silently keeping the last value. A local explicit value may override a value inherited through the YAML merge key `<<`.
 - `description` **starts with** `[<node/path>]` so keyword search matches the scope. Max 1024 chars; must say *when* to use the skill.
 - `metadata.scope` must equal the node computed from the directory. CI fails on mismatch.
 - `metadata.references`: comma-separated file paths (globs allowed) optionally followed by `#<token>`; the token is grepped in the diff of that file. Keep to ≤ 10 entries — if you need more, the skill is too broad.

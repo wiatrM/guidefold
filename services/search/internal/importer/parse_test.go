@@ -204,12 +204,21 @@ func TestPackageResourcesCarryTheirRequiredFlag(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	// Declare one of the two files in the frontmatter's metadata.references.
-	body := strings.Replace(string(raw), "\n  status:",
-		"\n  references: references/template.md\n  status:", 1)
-	if body == string(raw) {
-		t.Fatal("the fixture's frontmatter changed shape; the test needs updating")
+	// Declare one of the two files in metadata.references without creating an
+	// ambiguous duplicate YAML key.
+	lines := strings.Split(string(raw), "\n")
+	replaced := false
+	for i, line := range lines {
+		if strings.HasPrefix(line, "  references:") {
+			lines[i] = "  references: references/template.md"
+			replaced = true
+			break
+		}
 	}
+	if !replaced {
+		t.Fatal("the fixture's metadata.references field changed shape; the test needs updating")
+	}
+	body := strings.Join(lines, "\n")
 	if e := os.WriteFile(skill, []byte(body), 0o644); e != nil {
 		t.Fatal(e)
 	}

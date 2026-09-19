@@ -274,7 +274,9 @@ Three properties carry the design:
    (`import_tree` vs `git_commit_only`). Alongside the snapshot it writes `inventory.json`: one
    row per parsed `SKILL.md` (scope, owner, layer, status, `requires`/`refines`/`references`/
    `triggers`, sha256, size, verbatim frontmatter), with per-file parse errors collected rather
-   than aborting the run.
+   than aborting the run. Duplicate mapping keys are parse errors; a local explicit value may
+   override a value inherited through a YAML merge key, but duplicate authored keys are never
+   silently collapsed before validation or snapshot construction.
 
 `install --harness claude|copilot` installs the portable adapter package and its harness wiring
 idempotently, records every file's hash plus `package_sha256` in
