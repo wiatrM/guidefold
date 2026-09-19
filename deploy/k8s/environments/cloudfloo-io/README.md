@@ -39,6 +39,46 @@ answered 302 to WorkOS again immediately. Cause: the release procedure had no
 migration step and the smoke test did not exercise authentication. Both are now
 steps 2–5 above.
 
+## GitHub pagination hardening follow-up — 2026-09-19
+
+Built by `publish-images.yml` run `35445437290` from PR #185 merge commit
+`5629531`. The change closes the remaining cross-origin pagination paths that
+could attach a GitHub user or installation token to an attacker-controlled
+`Link` URL, and makes page-limit exhaustion an explicit error instead of
+returning a silently truncated result. The sticky-comment listing is bounded
+to 50 pages and fails closed before posting if it cannot establish whether the
+comment already exists. This was a preventive code-audit finding; no matching
+API/worker `ERROR`, `panic` or `fatal` lines were observed in production before
+the rollout.
+
+CI passed Go vet, full Go tests and the `ghapp` race suite, authenticated
+pagination regression tests, local stack integration, Compose/Postgres and
+1,000-query SEARCH parity, Kubernetes staging/HPA/rollback checks, and the
+Python 3.10–3.12 matrix. No schema files changed since the deployed source
+commit `19adde9`, so no migration Job was needed. The rollback point was saved
+before patching; only API and worker digests changed.
+
+| Image | Digest |
+|---|---|
+| `ghcr.io/wiatrm/guidefold-search` | `sha256:fab633f19249dc83c5cb0105a0261edc0a9a0450b5e76cb070da34c4b52b0a57` |
+| `ghcr.io/wiatrm/guidefold-worker` | `sha256:48ba69f17886f6da0f83b87b2b0a5099f6c901e1dacf24035f97e0d55ffac49c` |
+
+Rollback point: search `sha256:177f35187ab52e58fc9d68746751ae6ddbb9e12d32658e29fe2ea87114d4fa75`,
+worker `sha256:683d332ef4663bdca53af3aa9c12cda07108e33f45d496c6e6104e6f87f25263`.
+UI and portal remained unchanged.
+
+Verified after rollout: API 2/2, worker 1/1, UI 2/2 and portal 1/1 ready;
+`Application/guidefold` Synced and Healthy; `/health/ready` 200; Google login
+302 to `api.workos.com`; anonymous `/api/v1/me` and GitHub installations
+returned 401; zero `ERROR`, `panic` or `fatal` matches in two API/worker log
+checks after rollout.
+
+Verification boundary: no live GitHub PR-report job was submitted because its
+comment flow can write to an external pull request, and production worker
+egress is disabled. The changed authenticated pagination paths are covered by
+unit and synthetic HTTP regression tests; production GitHub egress behavior
+remains unverified.
+
 ## Proof-gate and GitHub pagination hardening — 2026-09-19
 
 Built by `publish-images.yml` (run 35442677313) from PR #185, commit `19adde9`.
