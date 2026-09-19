@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -100,5 +101,56 @@ func TestOpenPullRequestOn403IsErrPermissionRefused(t *testing.T) {
 	// it must never appear in the returned error, even one about a refusal.
 	if strings.Contains(err.Error(), "installation-token") {
 		t.Fatalf("token leaked into the error: %v", err)
+	}
+}
+
+func TestListPullRequestFilesFollowsSameOriginPagination(t *testing.T) {
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/repos/acme/widgets/pulls/7/files", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "2" {
+				_ = json.NewEncoder(w).Encode([]map[string]string{{"filename": "second.go", "patch": "+second"}})
+				return
+			}
+			w.Header().Set("Link", "<http://"+r.Host+r.URL.Path+"?page=2>; rel=\"next\"")
+			_ = json.NewEncoder(w).Encode([]map[string]string{{"filename": "first.go", "patch": "+first"}})
+		})
+	})
+	client := newTestClient(t, server.URL)
+
+	files, err := client.ListPullRequestFiles(context.Background(), 1, "acme/widgets", 7)
+	if err != nil {
+		t.Fatalf("ListPullRequestFiles: %v", err)
+	}
+	if len(files) != 2 || files[0].Path != "first.go" || files[1].Path != "second.go" {
+		t.Fatalf("ListPullRequestFiles = %#v, want both pages in order", files)
+	}
+}
+
+func TestListPullRequestFilesRejectsCrossOriginPagination(t *testing.T) {
+	var receivedAuthorization string
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthorization = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer attacker.Close()
+
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/repos/acme/widgets/pulls/7/files", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Link", "<"+attacker.URL+"/steal?page=2>; rel=\"next\"")
+			_ = json.NewEncoder(w).Encode([]map[string]string{{"filename": "first.go", "patch": "+first"}})
+		})
+	})
+	client := newTestClient(t, server.URL)
+
+	_, err := client.ListPullRequestFiles(context.Background(), 1, "acme/widgets", 7)
+	if err == nil || !strings.Contains(err.Error(), "origin") {
+		t.Fatalf("ListPullRequestFiles error = %v, want a cross-origin pagination error", err)
+	}
+	if receivedAuthorization != "" {
+		t.Fatalf("cross-origin server received Authorization header %q", receivedAuthorization)
+	}
+	if strings.Contains(err.Error(), "installation-token") {
+		t.Fatalf("installation token leaked into error: %v", err)
 	}
 }

@@ -1,4 +1,5 @@
 import pytest
+import yaml
 
 
 def test_frontmatter_parses(gf, fixture_root):
@@ -13,6 +14,29 @@ def test_frontmatter_returns_empty_dict_without_marker(gf, tmp_path):
     md = tmp_path / "PLAIN.md"
     md.write_text("# Just a heading\n\nNo frontmatter block here at all.\n")
     assert gf.frontmatter(md) == {}
+
+
+@pytest.mark.parametrize("fields", [
+    "source_proof:\n  body_sha256: 0\n  body_sha256: pending\n",
+    "metadata:\n  owner: first-team\n  owner: second-team\n",
+])
+def test_frontmatter_rejects_duplicate_mapping_keys(gf, tmp_path, fields):
+    md = tmp_path / "DUPLICATE.md"
+    md.write_text("---\nname: duplicate\ndescription: '[test] duplicate key'\n" + fields + "---\n")
+
+    with pytest.raises(yaml.constructor.ConstructorError, match="duplicate key"):
+        gf.frontmatter(md)
+
+
+def test_frontmatter_allows_explicit_yaml_merge_override(gf, tmp_path):
+    md = tmp_path / "MERGED.md"
+    md.write_text(
+        "---\nname: merged\ndescription: '[test] YAML merge'\n"
+        "defaults: &defaults\n  owner: base-team\n"
+        "metadata:\n  <<: *defaults\n  owner: local-team\n---\n"
+    )
+
+    assert gf.frontmatter(md)["metadata"]["owner"] == "local-team"
 
 
 @pytest.mark.parametrize("value, expected", [

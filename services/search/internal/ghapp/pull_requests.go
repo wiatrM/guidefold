@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // ChangedFile is one entry of a pull request's file list: the path, and the
@@ -61,6 +62,9 @@ func (c *Client) ListPullRequestFiles(ctx context.Context, installationID int64,
 // getJSONPage is getJSON plus the Link header, which pagination needs and a
 // plain decode throws away.
 func (c *Client) getJSONPage(ctx context.Context, token, rawURL string, out any) (nextURL string, err error) {
+	if !c.sameAPIOrigin(rawURL) {
+		return "", fmt.Errorf("ghapp: pagination URL is outside the configured API origin")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", err
@@ -85,4 +89,16 @@ func (c *Client) getJSONPage(ctx context.Context, token, rawURL string, out any)
 		return "", fmt.Errorf("ghapp: GitHub answered unreadable JSON: %w", err)
 	}
 	return parseNextLink(resp.Header.Get("Link")), nil
+}
+
+func (c *Client) sameAPIOrigin(rawURL string) bool {
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return false
+	}
+	target, err := url.Parse(rawURL)
+	if err != nil || !target.IsAbs() || target.User != nil {
+		return false
+	}
+	return strings.EqualFold(target.Scheme, base.Scheme) && strings.EqualFold(target.Host, base.Host)
 }
