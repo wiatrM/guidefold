@@ -41,21 +41,21 @@ func cardRevision(card M) string {
 }
 
 // bindProofPlaceholders makes generated, review-ready proofs usable after the
-// immutable snapshot is published. It only fills explicit placeholders; a
-// non-empty value supplied by an importer or reviewer is left untouched and
-// will be checked by proofGate. In particular, it never upgrades verified.
+// immutable snapshot is published. It fills only the exact string placeholder
+// "pending"; empty, malformed, or supplied values remain untouched for
+// proofGate to reject. In particular, it never upgrades verified.
 func bindProofPlaceholders(card M, snapshot string) {
 	proof := obj(card["proof"])
 	if proof == nil {
 		return
 	}
-	if value := str(proof["snapshot"]); value == "" || value == "pending" {
+	if value := str(proof["snapshot"]); value == "pending" {
 		proof["snapshot"] = snapshot
 	}
-	if value := str(proof["revision"]); value == "" || value == "pending" {
+	if value := str(proof["revision"]); value == "pending" {
 		proof["revision"] = cardRevision(card)
 	}
-	if value := str(proof["body_sha256"]); value == "" || value == "pending" {
+	if value := str(proof["body_sha256"]); value == "pending" {
 		proof["body_sha256"] = hash([]byte(str(card["_body"])))
 	}
 }
@@ -215,6 +215,21 @@ func proofClaimRefs(claim M) ([]proofClaimRef, bool) {
 	return refs, true
 }
 
+func proofClaimIDsUnique(claims []any) bool {
+	seen := make(map[string]struct{}, len(claims))
+	for _, raw := range claims {
+		id, ok := proofString(obj(raw), "id")
+		if !ok || len(id) > 128 {
+			return false
+		}
+		if _, duplicate := seen[id]; duplicate {
+			return false
+		}
+		seen[id] = struct{}{}
+	}
+	return true
+}
+
 func proofClaimDigest(claim M) (string, bool) {
 	id, idOK := proofString(claim, "id")
 	status, statusOK := proofString(claim, "status")
@@ -259,6 +274,9 @@ func proofClaimDigest(claim M) (string, bool) {
 func proofCommitment(proof M) (string, bool) {
 	claims, ok := proof["claims"].([]any)
 	if !ok || len(claims) == 0 || len(claims) > maxProofClaims {
+		return "", false
+	}
+	if !proofClaimIDsUnique(claims) {
 		return "", false
 	}
 	rows := []M{}
@@ -518,6 +536,12 @@ type proofSourceEntry struct {
 	ref    proofSourceRef
 }
 
+type proofSourceCacheKey struct {
+	cardID string
+	path   string
+	sha    string
+}
+
 // proofSourceEntries expands direct and recursive claim references while
 // retaining the card whose package manifest or SKILL.md must satisfy the
 // pointer.  The proof hierarchy was already structurally checked; this walk
@@ -667,12 +691,13 @@ func (s *Store) verifyProofSourceBytesWithLoader(ctx context.Context, c *Catalog
 	if len(entries) == 0 {
 		return 0, "proof_source_ref_invalid"
 	}
-	cache := map[string][]byte{}
+	cache := map[proofSourceCacheKey][]byte{}
 	verified := 0
 	manifests := map[string]map[string]string{}
 	for _, entry := range entries {
 		ref := entry.ref
-		data, cached := cache[ref.sha]
+		cacheKey := proofSourceCacheKey{cardID: entry.cardID, path: ref.path, sha: ref.sha}
+		data, cached := cache[cacheKey]
 		if !cached {
 			if ref.path == "SKILL.md" {
 				data = []byte(entry.body)
@@ -710,7 +735,7 @@ func (s *Store) verifyProofSourceBytesWithLoader(ctx context.Context, c *Catalog
 					}
 				}
 			}
-			cache[ref.sha] = data
+			cache[cacheKey] = data
 		}
 		if hash(data) != ref.sha {
 			return verified, "proof_source_hash_mismatch"
@@ -781,6 +806,9 @@ func proofGateWithLoader(c *Catalog, id, body string, scopes []string, closureSt
 	}
 	if len(claims) > maxProofClaims {
 		return decision("ASK", "proof_schema_invalid", proofMissing("mandatory_claims", "proof contains too many claim records"))
+	}
+	if !proofClaimIDsUnique(claims) {
+		return decision("ASK", "proof_claim_incomplete", proofMissing("mandatory_claims", "every claim must have a unique non-empty ID"))
 	}
 	for _, raw := range claims {
 		claim := obj(raw)

@@ -15,7 +15,14 @@ on:
       - portal/**
       - ui/**
       - .github/workflows/publish-images.yml
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      image_set:
+        description: Which images to publish
+        required: true
+        type: choice
+        options: [all, api]
+        default: all
 
 permissions:
   contents: read
@@ -61,6 +68,7 @@ jobs:
             ${{ env.API_IMAGE }}:latest
 
       - name: Build and push worker image
+        if: github.event_name != 'workflow_dispatch' || inputs.image_set != 'api'
         id: push-worker
         uses: docker/build-push-action@v6
         with:
@@ -75,11 +83,14 @@ jobs:
         run: |
           echo "### Published images" >> "$GITHUB_STEP_SUMMARY"
           echo "- API:    \`${{ env.API_IMAGE }}@${{ steps.push-api.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Worker: \`${{ env.WORKER_IMAGE }}@${{ steps.push-worker.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name != 'workflow_dispatch' || inputs.image_set != 'api' }}" = "true" ]; then
+            echo "- Worker: \`${{ env.WORKER_IMAGE }}@${{ steps.push-worker.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Pin these digests into the environment's Helm values (image / worker.image) — the chart refuses an unpinned production image." >> "$GITHUB_STEP_SUMMARY"
 
   portal:
+    if: github.event_name != 'workflow_dispatch' || inputs.image_set != 'api'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -114,6 +125,7 @@ jobs:
           echo "Pin this digest into the environment's Helm values (portal.image)." >> "$GITHUB_STEP_SUMMARY"
 
   ui:
+    if: github.event_name != 'workflow_dispatch' || inputs.image_set != 'api'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:

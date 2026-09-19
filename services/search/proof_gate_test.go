@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -170,6 +171,84 @@ func TestBindProofPlaceholdersIsDeterministicAndDoesNotVerify(t *testing.T) {
 	}
 }
 
+func TestBindProofPlaceholdersDoesNotRepairMalformedFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, field string
+		value       any
+		reason      string
+	}{
+		{name: "numeric body hash", field: "body_sha256", value: 0, reason: "proof_body_hash_mismatch"},
+		{name: "empty body hash", field: "body_sha256", value: "", reason: "proof_body_hash_mismatch"},
+		{name: "numeric snapshot", field: "snapshot", value: 0, reason: "proof_snapshot_mismatch"},
+		{name: "numeric revision", field: "revision", value: 0, reason: "proof_revision_mismatch"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, id, scopes := proofFixture()
+			proof := c.Cards[id]["proof"].(M)
+			proof[tc.field] = tc.value
+
+			bindProofPlaceholders(c.Cards[id], c.ID)
+			if got := proof[tc.field]; got != tc.value {
+				t.Fatalf("publisher rewrote malformed %s: got %#v want %#v", tc.field, got, tc.value)
+			}
+			decision := proofGate(c, id, "# Source-grounded procedure\nRun the verifier.\n", scopes, "complete")
+			if str(decision["action"]) != "ASK" || str(decision["reason"]) != tc.reason {
+				t.Fatalf("malformed %s must fail closed after binding: %v", tc.field, decision)
+			}
+		})
+	}
+}
+
+func FuzzBindProofPlaceholdersOnlyBindsExactPendingString(f *testing.F) {
+	for _, raw := range []string{
+		`"pending"`, `""`, `" "`, `"pending "`, `"0"`, `0`, `false`, `null`, `[]`, `{}`,
+		`1.25`, `"0000000000000000000000000000000000000000000000000000000000000000"`,
+	} {
+		for fieldIndex := uint8(0); fieldIndex < 3; fieldIndex++ {
+			f.Add(raw, fieldIndex)
+		}
+	}
+	f.Fuzz(func(t *testing.T, raw string, fieldIndex uint8) {
+		if len(raw) > 4096 {
+			t.Skip()
+		}
+		var original, value any
+		if err := json.Unmarshal([]byte(raw), &original); err != nil {
+			return
+		}
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			return
+		}
+
+		c, id, _ := proofFixture()
+		proof := c.Cards[id]["proof"].(M)
+		fields := []string{"snapshot", "revision", "body_sha256"}
+		field := fields[int(fieldIndex)%len(fields)]
+		proof[field] = value
+		proof["verified"] = false
+
+		expected := original
+		if placeholder, ok := value.(string); ok && placeholder == "pending" {
+			switch field {
+			case "snapshot":
+				expected = c.ID
+			case "revision":
+				expected = cardRevision(c.Cards[id])
+			case "body_sha256":
+				expected = hash([]byte(str(c.Cards[id]["_body"])))
+			}
+		}
+
+		bindProofPlaceholders(c.Cards[id], c.ID)
+		if !reflect.DeepEqual(proof[field], expected) {
+			t.Fatalf("binder changed %s unexpectedly: got %#v want %#v (input %s)", field, proof[field], expected, raw)
+		}
+		if proof["verified"] != false {
+			t.Fatal("placeholder binding must never upgrade the verification flag")
+		}
+	})
+}
+
 func TestBoundProofPassesTheDeliveryGate(t *testing.T) {
 	c, id, scopes := proofFixture()
 	proof := c.Cards[id]["proof"].(M)
@@ -242,5 +321,18 @@ func TestProofGateVerifiesRecursiveChildClaimCommitment(t *testing.T) {
 	decision = proofGate(c, parentID, parentBody, []string{"platform.api"}, "complete")
 	if str(decision["action"]) != "ASK" || str(decision["reason"]) != "proof_recursive_invalid" {
 		t.Fatalf("a child commitment mutation must ask: %v", decision)
+	}
+}
+
+func TestProofCommitmentRejectsDuplicateClaimIDs(t *testing.T) {
+	claim := M{
+		"id": "same-claim", "status": "supported",
+		"source_refs": []any{M{
+			"path": "docs/runbook.md", "sha256": strings.Repeat("a", 64),
+			"line_from": int64(1), "line_to": int64(1),
+		}},
+	}
+	if _, ok := proofCommitment(M{"claims": []any{claim, claim}}); ok {
+		t.Fatal("a proof commitment must not make duplicate claim IDs appear unambiguous")
 	}
 }
