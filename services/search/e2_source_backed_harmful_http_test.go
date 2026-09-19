@@ -70,6 +70,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 	}
 
 	httpMutationKinds := []string{"conflict", "deprecated", "proof_scope", "stale_revision", "body_hash", "source_hash", "missing_source"}
+	proofMutationKinds := []string{"conflict", "proof_scope", "body_hash", "source_hash", "missing_source"}
 	const closureMutation = "incomplete_closure"
 	proofGateAskReasons := map[string]string{
 		"conflict":       "proof_conflict",
@@ -80,6 +81,21 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 	}
 	if len(httpMutationKinds) != 7 || len(proofGateAskReasons) != 5 {
 		t.Fatalf("frozen E2 dimensions changed: http_mutations=%d proof_gate_ASK_reasons=%d", len(httpMutationKinds), len(proofGateAskReasons))
+	}
+	var proofMutationCombinations [][]string
+	for mask := 1; mask < 1<<len(proofMutationKinds); mask++ {
+		var combination []string
+		for bit, mutation := range proofMutationKinds {
+			if mask&(1<<bit) != 0 {
+				combination = append(combination, mutation)
+			}
+		}
+		if len(combination) > 1 {
+			proofMutationCombinations = append(proofMutationCombinations, combination)
+		}
+	}
+	if len(proofMutationCombinations) != 26 {
+		t.Fatalf("frozen proof-state dimensions changed: combinations=%d want=26", len(proofMutationCombinations))
 	}
 
 	type prepared struct {
@@ -125,6 +141,14 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 				mutated bool
 			}{name: name, trigger: mutation, mutated: true})
 		}
+		for _, combination := range proofMutationCombinations {
+			name := baseName + "-combo-" + strings.Join(combination, "-")
+			variants = append(variants, struct {
+				name    string
+				trigger string
+				mutated bool
+			}{name: name, trigger: "proof_combo:" + strings.Join(combination, ","), mutated: true})
+		}
 		closureName := baseName + "-incomplete-closure"
 		variants = append(variants, struct {
 			name    string
@@ -144,26 +168,32 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			raw = strings.ReplaceAll(raw, "references/policy.md", resource)
 			raw = strings.Replace(raw, "  layer: team\n", "  layer: team\n  references: \""+resource+"\"\n", 1)
 			if variant.mutated {
-				switch variant.trigger {
-				case "conflict":
-					raw = strings.Replace(raw, "source_proof:\n  schema:", "source_proof:\n  conflicts:\n    - unresolved source conflict\n  schema:", 1)
-				case "deprecated":
-					raw = strings.Replace(raw, "  status: active\n", "  status: deprecated\n", 1)
-				case "proof_scope":
-					raw = strings.Replace(raw, "  scopes:\n    - _root\n", "  scopes:\n    - atlas.geo\n", 1)
-				case "body_hash":
-					raw = strings.Replace(raw, "body_sha256: pending", "body_sha256: \""+strings.Repeat("0", 64)+"\"", 1)
-				case "source_hash":
-					wrong := sha256.Sum256([]byte("not the pinned source"))
-					raw = strings.Replace(raw, hex.EncodeToString(sourceDigest[:]), hex.EncodeToString(wrong[:]), 1)
-				case "missing_source":
-					raw = strings.Replace(raw, "  references: \""+resource+"\"\n", "", 1)
-				case "incomplete_closure":
-					raw = strings.Replace(raw, "  layer: team\n", "  layer: team\n  requires: \""+urn("_root", "e2-missing-dependency")+"\"\n", 1)
-				case "stale_revision":
-					// The published card remains intact; the request below is stale.
-				default:
-					t.Fatalf("unknown frozen mutation %q", variant.trigger)
+				mutations := []string{variant.trigger}
+				if strings.HasPrefix(variant.trigger, "proof_combo:") {
+					mutations = strings.Split(strings.TrimPrefix(variant.trigger, "proof_combo:"), ",")
+				}
+				for _, mutation := range mutations {
+					switch mutation {
+					case "conflict":
+						raw = strings.Replace(raw, "source_proof:\n  schema:", "source_proof:\n  conflicts:\n    - unresolved source conflict\n  schema:", 1)
+					case "deprecated":
+						raw = strings.Replace(raw, "  status: active\n", "  status: deprecated\n", 1)
+					case "proof_scope":
+						raw = strings.Replace(raw, "  scopes:\n    - _root\n", "  scopes:\n    - atlas.geo\n", 1)
+					case "body_hash":
+						raw = strings.Replace(raw, "body_sha256: pending", "body_sha256: \""+strings.Repeat("0", 64)+"\"", 1)
+					case "source_hash":
+						wrong := sha256.Sum256([]byte("not the pinned source"))
+						raw = strings.Replace(raw, hex.EncodeToString(sourceDigest[:]), hex.EncodeToString(wrong[:]), 1)
+					case "missing_source":
+						raw = strings.Replace(raw, "  references: \""+resource+"\"\n", "", 1)
+					case "incomplete_closure":
+						raw = strings.Replace(raw, "  layer: team\n", "  layer: team\n  requires: \""+urn("_root", "e2-missing-dependency")+"\"\n", 1)
+					case "stale_revision":
+						// The published card remains intact; the request below is stale.
+					default:
+						t.Fatalf("unknown frozen mutation %q in %q", mutation, variant.trigger)
+					}
 				}
 			}
 			cardPath := filepath.ToSlash(filepath.Join(cardDir, "SKILL.md"))
@@ -184,7 +214,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			})
 		}
 	}
-	wantHTTPCases := len(manifest.Records) * (len(httpMutationKinds) + 1)
+	wantHTTPCases := len(manifest.Records) * (len(httpMutationKinds) + 1 + len(proofMutationCombinations))
 	if len(cases) != wantHTTPCases || len(closureCases) != len(manifest.Records) {
 		t.Fatalf("prepared %d HTTP cases and %d closure cases; want %d HTTP cases and %d isolated admission cases",
 			len(cases), len(closureCases), wantHTTPCases, len(manifest.Records))
@@ -283,6 +313,22 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 					violations = append(violations, fmt.Sprintf("legacy control did not expose the expected %s body: %s", testCase.trigger, testCase.caseID))
 				}
 			}
+			if strings.HasPrefix(testCase.trigger, "proof_combo:") {
+				validReason := false
+				for _, reason := range proofGateAskReasons {
+					if observation.Reason == reason {
+						validReason = true
+					}
+				}
+				if policy == "proof_gated" &&
+					(status != http.StatusOK || observation.Action != "ASK" || observation.Status != "ask" || !validReason || observation.BodyBytes != 0) {
+					violations = append(violations, fmt.Sprintf("proof-gated combined mutation was not a body-free ASK: %s reason=%s", testCase.caseID, observation.Reason))
+				}
+				if policy == "legacy" &&
+					(status != http.StatusOK || observation.Action != "LOAD" || observation.Status != "hydrated" || observation.BodyBytes == 0) {
+					violations = append(violations, "legacy control did not expose the combined-mutation body: "+testCase.caseID)
+				}
+			}
 			if testCase.trigger == "stale_revision" &&
 				(status != http.StatusConflict || observation.Error != "revision_mismatch" || observation.BodyBytes != 0) {
 				violations = append(violations, "stale revision was not denied before body delivery: "+testCase.caseID)
@@ -323,7 +369,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 	}
 	wantSafeLoads := len(manifest.Records)
 	wantPerGateTrigger := len(manifest.Records)
-	wantGateAsks := len(proofGateAskReasons) * wantPerGateTrigger
+	wantGateAsks := (len(proofGateAskReasons) + len(proofMutationCombinations)) * wantPerGateTrigger
 	if safeLoads["proof_gated"] != wantSafeLoads || safeLoads["legacy"] != wantSafeLoads ||
 		proofGatedAsks != wantGateAsks || proofGatedHarmfulBodies != 0 || legacyHarmfulBodies != wantGateAsks {
 		violations = append(violations, fmt.Sprintf(
@@ -333,6 +379,13 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 	for trigger := range proofGateAskReasons {
 		if proofGatedAsksByTrigger[trigger] != wantPerGateTrigger || legacyBodiesByTrigger[trigger] != wantPerGateTrigger {
 			violations = append(violations, fmt.Sprintf("cross-source count changed for %s: gated_asks=%d legacy_bodies=%d want=%d each",
+				trigger, proofGatedAsksByTrigger[trigger], legacyBodiesByTrigger[trigger], wantPerGateTrigger))
+		}
+	}
+	for _, combination := range proofMutationCombinations {
+		trigger := "proof_combo:" + strings.Join(combination, ",")
+		if proofGatedAsksByTrigger[trigger] != wantPerGateTrigger || legacyBodiesByTrigger[trigger] != wantPerGateTrigger {
+			violations = append(violations, fmt.Sprintf("cross-source combination count changed for %s: gated_asks=%d legacy_bodies=%d want=%d each",
 				trigger, proofGatedAsksByTrigger[trigger], legacyBodiesByTrigger[trigger], wantPerGateTrigger))
 		}
 	}

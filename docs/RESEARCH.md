@@ -1188,3 +1188,18 @@ This closes the source-by-mutation coverage gap at the Go HTTP boundary for this
 It remains R/Q mechanism evidence: no independent semantic labels, flat HTTP arm, user tasks,
 natural-hierarchy transfer or production-rate estimate. Full hashes, per-trigger outcomes and the
 reproduction command are in the linked follow-up report above.
+
+### 5.35 Exhaustive combinations of proof defects
+
+The final 19 September replay exhausts all 31 non-empty combinations of five proof-level defects
+for each of the eight pinned source records, under both `proof_gated` and `legacy`. It made 544
+HTTP calls: the 248 source-by-defect states returned body-free `ASK` under proof-gating and
+non-empty `LOAD` under legacy; both policies loaded all eight safe controls. Stale/deprecated
+lifecycle cases remained denied, and all eight incomplete-closure imports failed without moving
+the active head. Two separate runs produced the same 544-row summary and immutable snapshot ID.
+
+This is exhaustive only over the selected five-bit mutation space and frozen manifest. It is
+deterministic R/Q mechanism evidence, not a semantic-harm label, task-success or production-rate
+estimate. It neither closes the human-annotation gate nor demonstrates product value. The exact
+manifest, test hash, replay command and limitations are recorded in
+[`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).
