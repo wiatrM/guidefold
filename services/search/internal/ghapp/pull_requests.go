@@ -56,6 +56,9 @@ func (c *Client) ListPullRequestFiles(ctx context.Context, installationID int64,
 		}
 		next = link
 	}
+	if next != "" {
+		return nil, fmt.Errorf("ghapp: pull request files pagination exceeds %d pages", maxChangedFilePages)
+	}
 	return files, nil
 }
 
@@ -92,7 +95,11 @@ func (c *Client) getJSONPage(ctx context.Context, token, rawURL string, out any)
 }
 
 func (c *Client) sameAPIOrigin(rawURL string) bool {
-	base, err := url.Parse(c.baseURL)
+	return sameAPIOrigin(c.baseURL, rawURL)
+}
+
+func sameAPIOrigin(baseURL, rawURL string) bool {
+	base, err := url.Parse(baseURL)
 	if err != nil {
 		return false
 	}

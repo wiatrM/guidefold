@@ -120,8 +120,12 @@ func ListUserInstallations(ctx context.Context, cfg UserOAuthConfig, userAccessT
 		return nil, fmt.Errorf("ghapp: empty user access token")
 	}
 	var installations []UserInstallation
-	rawURL := cfg.apiBase() + "/user/installations?per_page=100"
+	apiBase := cfg.apiBase()
+	rawURL := apiBase + "/user/installations?per_page=100"
 	for page := 0; rawURL != "" && page < maxInstallationRepositoryPages; page++ {
+		if !sameAPIOrigin(apiBase, rawURL) {
+			return nil, fmt.Errorf("ghapp: pagination URL is outside the configured API origin")
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 		if err != nil {
 			return nil, err
@@ -158,6 +162,9 @@ func ListUserInstallations(ctx context.Context, cfg UserOAuthConfig, userAccessT
 			})
 		}
 		rawURL = parseNextLink(resp.Header.Get("Link"))
+	}
+	if rawURL != "" {
+		return nil, fmt.Errorf("ghapp: user installation pagination exceeds %d pages", maxInstallationRepositoryPages)
 	}
 	return installations, nil
 }

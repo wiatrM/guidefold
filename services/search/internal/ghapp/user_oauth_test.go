@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/wiatrM/guidefold/services/search/internal/ghapp"
@@ -70,5 +72,54 @@ func TestListUserInstallationsFollowsPagination(t *testing.T) {
 	}
 	if len(ids) != 2 || ids[0].ID != 111 || ids[0].AccountLogin != "acme" || ids[1].ID != 222 || ids[1].AccountLogin != "other" {
 		t.Fatalf("ids = %v", ids)
+	}
+}
+
+func TestListUserInstallationsRejectsCrossOriginPagination(t *testing.T) {
+	var receivedAuthorization string
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthorization = r.Header.Get("Authorization")
+		_ = json.NewEncoder(w).Encode(map[string]any{"installations": []any{}})
+	}))
+	t.Cleanup(attacker.Close)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Link", "<"+attacker.URL+"/steal>; rel=\"next\"")
+		_ = json.NewEncoder(w).Encode(map[string]any{"installations": []any{}})
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	_, err := ghapp.ListUserInstallations(context.Background(), ghapp.UserOAuthConfig{APIBaseURL: server.URL}, "user-token")
+	if err == nil || !strings.Contains(err.Error(), "origin") {
+		t.Fatalf("ListUserInstallations error = %v, want a cross-origin pagination error", err)
+	}
+	if receivedAuthorization != "" {
+		t.Fatalf("cross-origin server received Authorization header %q", receivedAuthorization)
+	}
+}
+
+func TestListUserInstallationsRejectsIncompleteResultsAtPageLimit(t *testing.T) {
+	requests := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		if page == 0 {
+			page = 1
+		}
+		requests++
+		w.Header().Set("Link", "<http://"+r.Host+r.URL.Path+"?page="+strconv.Itoa(page+1)+">; rel=\"next\"")
+		_ = json.NewEncoder(w).Encode(map[string]any{"installations": []any{}})
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	_, err := ghapp.ListUserInstallations(context.Background(), ghapp.UserOAuthConfig{APIBaseURL: server.URL}, "user-token")
+	if err == nil || !strings.Contains(err.Error(), "pagination") {
+		t.Fatalf("ListUserInstallations error = %v, want a pagination limit error", err)
+	}
+	if requests != 50 {
+		t.Fatalf("page requests = %d, want the 50-page safety limit", requests)
 	}
 }

@@ -22,6 +22,8 @@ const StickyCommentMarker = "<!-- guidefold:pr-report -->"
 // as small as GitHub allows.
 const commentsPerPage = "100"
 
+const maxStickyCommentPages = 50
+
 // UpsertStickyComment writes one comment per pull request: found by
 // StickyCommentMarker at the top of its body, PATCHed when found, POSTed
 // when not. ADR-0036 point 1a's coverage-bot report is rewritten on every
@@ -77,7 +79,7 @@ func (c *Client) findStickyComment(ctx context.Context, token, fullName string, 
 	if err != nil {
 		return 0, false, fmt.Errorf("ghapp: %w", err)
 	}
-	for rawURL != "" {
+	for page := 0; rawURL != "" && page < maxStickyCommentPages; page++ {
 		id, found, next, err := c.findStickyCommentOnPage(ctx, token, rawURL)
 		if err != nil {
 			return 0, false, err
@@ -87,10 +89,16 @@ func (c *Client) findStickyComment(ctx context.Context, token, fullName string, 
 		}
 		rawURL = next
 	}
+	if rawURL != "" {
+		return 0, false, fmt.Errorf("ghapp: pull request comment pagination exceeds %d pages", maxStickyCommentPages)
+	}
 	return 0, false, nil
 }
 
 func (c *Client) findStickyCommentOnPage(ctx context.Context, token, rawURL string) (id int64, found bool, next string, err error) {
+	if !c.sameAPIOrigin(rawURL) {
+		return 0, false, "", fmt.Errorf("ghapp: pagination URL is outside the configured API origin")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return 0, false, "", err

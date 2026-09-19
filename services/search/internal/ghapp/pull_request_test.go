@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -152,5 +153,29 @@ func TestListPullRequestFilesRejectsCrossOriginPagination(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "installation-token") {
 		t.Fatalf("installation token leaked into error: %v", err)
+	}
+}
+
+func TestListPullRequestFilesRejectsIncompleteResultsAtPageLimit(t *testing.T) {
+	requests := 0
+	server := serverWithToken(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("/repos/acme/widgets/pulls/7/files", func(w http.ResponseWriter, r *http.Request) {
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			if page == 0 {
+				page = 1
+			}
+			requests++
+			w.Header().Set("Link", "<http://"+r.Host+r.URL.Path+"?page="+strconv.Itoa(page+1)+">; rel=\"next\"")
+			_ = json.NewEncoder(w).Encode([]any{})
+		})
+	})
+	client := newTestClient(t, server.URL)
+
+	_, err := client.ListPullRequestFiles(context.Background(), 1, "acme/widgets", 7)
+	if err == nil || !strings.Contains(err.Error(), "pagination") {
+		t.Fatalf("ListPullRequestFiles error = %v, want a pagination limit error", err)
+	}
+	if requests != 50 {
+		t.Fatalf("page requests = %d, want the 50-page safety limit", requests)
 	}
 }
