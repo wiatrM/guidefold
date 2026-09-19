@@ -39,9 +39,61 @@ The default test run skips this test when `GUIDEFOLD_E2_SNAPSHOTS` is unset beca
 snapshot corpus is intentionally external to the repository. A missing worker dependency is a
 test failure when the opt-in variable is set; it is never converted into a pass.
 
+## Follow-up: harmful mutations through HTTP — 2026-09-19
+
+The original replay above covered only safe current proofs. This follow-up exercises the
+source-backed mutation fixture through the actual Go publication worker and HTTP `USE 1.2`
+handler. It uses the eight hash-pinned public records from the same two source families and
+compares `proof_gated` with the service's `legacy` delivery policy. This is deterministic R/Q
+evidence, not a human semantic evaluation or an estimate of production error rates.
+
+The frozen manifest SHA-256 is
+`47a145923f1fb256a2d6c03f9a117fbbde9fe99a6ec1d0d419bc9b0c7fa1f3ec`; the strengthened test
+file SHA-256 is
+`218703a3eff0e395909fe2653f912cb83852554b9c729d44510acd324193fc85`.
+The replay fetched all eight records and matched every source hash before publishing. It then
+made 30 `/v1/use` requests: eight safe cases and seven HTTP mutation cases, each run under both
+policies. The eighth harmful mutation (incomplete dependency closure) was rejected separately
+during import and did not reach the HTTP handler.
+
+| Observation | `proof_gated` | `legacy` |
+|---|---:|---:|
+| Safe positive controls returned `LOAD` with a non-empty body | 8/8 | 8/8 |
+| Five malformed/conflicting proof variants returned a body-free `ASK` / `LOAD` | 5/5 `ASK`, 0 bytes | 5/5 `LOAD`, non-empty |
+| Stale revision | 409 `revision_mismatch`, 0 bytes | 409 `revision_mismatch`, 0 bytes |
+| Deprecated input excluded from the active snapshot; subsequent USE by its ID | 404 `skill_not_found`, 0 bytes | 404 `skill_not_found`, 0 bytes |
+| Incomplete closure | Import failed with `missing_dependency`; active head preserved | Same shared admission check |
+
+The five gate-specific reasons were `proof_conflict`, `proof_scope_incomplete`,
+`proof_body_hash_mismatch`, `proof_source_hash_mismatch` and `proof_source_unavailable`.
+Across all eight assigned harmful mutations, the gated arm delivered **0 bodies**; the legacy
+arm delivered bodies in **5 cases**. Stale revision was denied by a shared revision check; the
+deprecated input was excluded from the active snapshot and its subsequent USE returned
+`skill_not_found`. These are not incremental proof-gate benefits. This HTTP run did not execute
+the separate flat concatenation control.
+
+The test now asserts both arms' safe controls, the five exact gated reasons and legacy exposures,
+the exact stale/deprecated HTTP errors, and the incomplete-closure rejection with an unchanged
+active head. It also asserts the expected aggregate counts, so a missing or vacuous control cannot
+pass unnoticed. Reproduction from the repository root:
+
+```bash
+python3 tools/pilot/fetch_source_disjoint_urct.py \
+  --manifest docs/reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json \
+  --output /tmp/guidefold-e2-http/replay \
+  --repo-cache /tmp/guidefold-e2-http/cache
+cd services/search
+GUIDEFOLD_E2_SNAPSHOTS=/tmp/guidefold-e2-http/replay \
+  go test -v -run '^TestE2SourceBackedHarmfulMutationsThroughHTTP$' -count=1 .
+```
+
+This result does not provide independent human labels, agent task success, natural-hierarchy
+transfer, or a user-benefit claim. The eight source-backed structural cases are a regression
+matrix, not eight independent draws from production traffic.
+
 ## Limits
 
-This replay demonstrates that source-backed proof can survive publication and HTTP delivery.
-It does not exercise all harmful mutations through the HTTP stack, measure agent task success,
-or establish natural hierarchy transfer. Those remain covered by the separate deterministic
-E2 matrix, hidden-verifier task bank and pending human annotation.
+The original 2026-09-11 replay demonstrates that source-backed proof can survive publication and
+HTTP delivery; the 2026-09-19 follow-up above adds structural harmful-mutation coverage. Neither
+replay measures agent task success or establishes natural hierarchy transfer. Those still require
+the hidden-verifier task bank and independent human annotation.
