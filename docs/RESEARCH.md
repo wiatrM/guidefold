@@ -1,6 +1,6 @@
 # What the literature says, and what we measured
 
-**Status:** Living synthesis, updated 2026-09-10 against the working tree.
+**Status:** Living synthesis, updated 2026-09-19 against the working tree.
 **Companions:** [full source and architecture review](reports/bakeoff/E1.3-architecture-after-research.md), [source manifest](reports/bakeoff/validation/papers-manifest-2026-09-05.json), [ADR-0022](adr/ADR-0022-admissibility-relevance-and-bundle-completeness.md), [first peer review](reports/bakeoff/E1.3-peer-review-2026-09-05.md), [E1 closure plan](reports/bakeoff/E1-closure-plan.md).
 
 The current choice is a local sparse router with dense disabled and experimental reranking in shadow mode. The evidence supports that configuration as a working baseline while measurement and bundle selection improve. It does not establish that semantic retrieval cannot help, or that domain fine-tuning is its only credible route back.
@@ -1150,4 +1150,23 @@ PyYAML or PostgreSQL is a failure, not a pass.
 This closes the gap between the source-backed evaluator and the actual Go delivery path for
 the safe current-proof case. It still does not replace the harmful-mutation matrix, human
 semantic labels or end-to-end task evaluation. Reproduction details are in
+[`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).
+
+### 5.33 Source-backed harmful mutations through Go HTTP
+
+The 19 September follow-up runs the fixed source-backed mutation set through the real publication
+worker and `USE 1.2` handler. Across eight hash-verified source records it made 30 HTTP calls:
+eight safe positives and seven mutation cases, each under `proof_gated` and `legacy`; the eighth
+mutation (incomplete closure) was rejected before publication and left the active head unchanged.
+Both arms loaded all eight safe controls. The proof gate returned the five expected body-free
+`ASK` reasons and delivered zero bytes; legacy loaded the corresponding five invalid proof
+variants. The stale revision was rejected by the shared revision check in both arms; the
+deprecated input was excluded from the active snapshot and subsequent USE returned
+`skill_not_found` in both arms. The strengthened test asserts these controls and exact outcomes,
+not just the gated arm.
+
+This is source-backed deterministic R/Q evidence at the real HTTP boundary. The structural
+mutations are protocol-invalid by construction; the result is not independently human-labelled
+semantic harm, a live flat-arm comparison, a production-rate estimate, agent task success or user
+benefit. The test, source hashes, reproduction command and full limits are recorded in
 [`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).

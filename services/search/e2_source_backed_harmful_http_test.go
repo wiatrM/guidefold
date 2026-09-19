@@ -82,6 +82,13 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 	if len(mutations) != 8 {
 		t.Fatal("the frozen mutation assignment must contain eight unique records")
 	}
+	proofGateAskReasons := map[string]string{
+		"conflict":       "proof_conflict",
+		"proof_scope":    "proof_scope_incomplete",
+		"body_hash":      "proof_body_hash_mismatch",
+		"source_hash":    "proof_source_hash_mismatch",
+		"missing_source": "proof_source_unavailable",
+	}
 
 	type prepared struct {
 		caseID   string
@@ -249,25 +256,62 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			t.Logf("E2HTTP_ROW %s", encoded)
 			observations = append(observations, observation)
 
-			if testCase.trigger == "none" && policy == "proof_gated" {
-				if status != http.StatusOK || observation.Action != "LOAD" || observation.Reason != "source_proof_complete" || observation.Status != "hydrated" || observation.BodyBytes == 0 {
-					violations = append(violations, "positive control failed: "+testCase.caseID)
+			if testCase.trigger == "none" {
+				if status != http.StatusOK || observation.Action != "LOAD" || observation.Status != "hydrated" || observation.BodyBytes == 0 {
+					violations = append(violations, "positive control failed for "+policy+": "+testCase.caseID)
+				}
+				if policy == "proof_gated" && observation.Reason != "source_proof_complete" {
+					violations = append(violations, "proof-gated positive control had wrong reason: "+testCase.caseID)
 				}
 			}
-			if testCase.trigger != "none" && policy == "proof_gated" && observation.BodyBytes != 0 {
-				violations = append(violations, "harmful proof-gated request returned body: "+testCase.caseID)
+			if wantReason, isProofGateMutation := proofGateAskReasons[testCase.trigger]; isProofGateMutation {
+				if policy == "proof_gated" &&
+					(status != http.StatusOK || observation.Action != "ASK" || observation.Status != "ask" || observation.Reason != wantReason || observation.BodyBytes != 0) {
+					violations = append(violations, fmt.Sprintf("proof-gated %s mutation was not the expected body-free ASK: %s", testCase.trigger, testCase.caseID))
+				}
+				if policy == "legacy" &&
+					(status != http.StatusOK || observation.Action != "LOAD" || observation.Status != "hydrated" || observation.BodyBytes == 0) {
+					violations = append(violations, fmt.Sprintf("legacy control did not expose the expected %s body: %s", testCase.trigger, testCase.caseID))
+				}
 			}
-			if testCase.trigger != "none" && policy == "proof_gated" &&
-				(testCase.trigger == "conflict" || testCase.trigger == "proof_scope" || testCase.trigger == "body_hash" || testCase.trigger == "source_hash" || testCase.trigger == "missing_source") &&
-				(status != http.StatusOK || observation.Action != "ASK") {
-				violations = append(violations, "proof-gate trigger did not return HTTP ASK: "+testCase.caseID)
+			if testCase.trigger == "stale_revision" &&
+				(status != http.StatusConflict || observation.Error != "revision_mismatch" || observation.BodyBytes != 0) {
+				violations = append(violations, "stale revision was not denied before body delivery: "+testCase.caseID)
 			}
-			deprecatedDenied := status == http.StatusNotFound && observation.Error == "skill_not_found" ||
-				status == http.StatusConflict && (observation.Error == "skill_not_active" || observation.Error == "revision_mismatch")
-			if testCase.trigger == "deprecated" && (!deprecatedDenied || observation.BodyBytes != 0) {
+			if testCase.trigger == "deprecated" &&
+				(status != http.StatusNotFound || observation.Error != "skill_not_found" || observation.BodyBytes != 0) {
 				violations = append(violations, "deprecated skill was not denied before body delivery: "+testCase.caseID)
 			}
 		}
+	}
+	safeLoads := map[string]int{}
+	proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies := 0, 0, 0
+	for _, observation := range observations {
+		if observation.Stage != "use_http" {
+			continue
+		}
+		if observation.Trigger == "none" && observation.Action == "LOAD" && observation.BodyBytes > 0 {
+			safeLoads[observation.Condition]++
+		}
+		if observation.Trigger == "none" {
+			continue
+		}
+		if observation.Condition == "proof_gated" {
+			if observation.Action == "ASK" {
+				proofGatedAsks++
+			}
+			if observation.BodyBytes > 0 {
+				proofGatedHarmfulBodies++
+			}
+		}
+		if observation.Condition == "legacy" && observation.BodyBytes > 0 {
+			legacyHarmfulBodies++
+		}
+	}
+	if safeLoads["proof_gated"] != 8 || safeLoads["legacy"] != 8 || proofGatedAsks != 5 || proofGatedHarmfulBodies != 0 || legacyHarmfulBodies != 5 {
+		violations = append(violations, fmt.Sprintf(
+			"HTTP evidence counts changed: safe_gated=%d safe_legacy=%d gated_asks=%d gated_harmful_bodies=%d legacy_harmful_bodies=%d",
+			safeLoads["proof_gated"], safeLoads["legacy"], proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies))
 	}
 	httpRows := 0
 	for _, observation := range observations {
@@ -300,7 +344,9 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		t.Logf("E2HTTP_ADMISSION state=%s error=%s validation=%s active_head_preserved=%t",
 			state, reason, string(validation), e.head(t) == snapshot)
 	}
-	t.Logf("E2HTTP_SUMMARY rows=%d requests=%d snapshot=%s violations=%d", len(observations), requestNumber, snapshot, len(violations))
+	t.Logf("E2HTTP_SUMMARY rows=%d requests=%d snapshot=%s safe_gated=%d safe_legacy=%d gated_asks=%d gated_harmful_bodies=%d legacy_harmful_bodies=%d violations=%d",
+		len(observations), requestNumber, snapshot, safeLoads["proof_gated"], safeLoads["legacy"],
+		proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies, len(violations))
 	if len(violations) > 0 {
 		t.Errorf("source-backed harmful HTTP invariants failed: %s", strings.Join(violations, "; "))
 	}
