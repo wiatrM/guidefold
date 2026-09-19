@@ -300,9 +300,10 @@ stale, conflicting, unavailable or changed source proof returns
 fail-closed delivery policy, not a semantic or execution guarantee. The default
 and 1.1 paths retain their existing behavior; see
 [ADR-0039](../../docs/adr/ADR-0039-proof-gated-source-grounded-delivery.md).
-During publication, explicit `pending`/empty binding fields are filled from the
-immutable snapshot and delivered bytes. `verified` is never upgraded by this
-step, and a non-placeholder mismatch remains an `ASK` condition.
+During publication, only an exact string `pending` in a binding field is filled
+from the immutable snapshot and delivered bytes. Empty, malformed, or mismatched
+values remain untouched and are rejected by the gate as `ASK`; `verified` is
+never upgraded by this step.
 
 ## Listening address
 
