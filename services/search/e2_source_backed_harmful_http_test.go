@@ -69,19 +69,8 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		t.Fatalf("frozen manifest record count changed: got %d want 8", len(manifest.Records))
 	}
 
-	mutations := map[string]string{
-		"engineering-A":         "conflict",
-		"engineering-B":         "deprecated",
-		"engineering-C":         "proof_scope",
-		"engineering-C_prime":   "stale_revision",
-		"documentation-A":       "body_hash",
-		"documentation-B":       "source_hash",
-		"documentation-C":       "missing_source",
-		"documentation-C_prime": "incomplete_closure",
-	}
-	if len(mutations) != 8 {
-		t.Fatal("the frozen mutation assignment must contain eight unique records")
-	}
+	httpMutationKinds := []string{"conflict", "deprecated", "proof_scope", "stale_revision", "body_hash", "source_hash", "missing_source"}
+	const closureMutation = "incomplete_closure"
 	proofGateAskReasons := map[string]string{
 		"conflict":       "proof_conflict",
 		"proof_scope":    "proof_scope_incomplete",
@@ -89,23 +78,28 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		"source_hash":    "proof_source_hash_mismatch",
 		"missing_source": "proof_source_unavailable",
 	}
+	if len(httpMutationKinds) != 7 || len(proofGateAskReasons) != 5 {
+		t.Fatalf("frozen E2 dimensions changed: http_mutations=%d proof_gate_ASK_reasons=%d", len(httpMutationKinds), len(proofGateAskReasons))
+	}
 
 	type prepared struct {
-		caseID   string
-		trigger  string
-		skillID  string
-		revision string
-		cwd      string
+		caseID  string
+		trigger string
+		skillID string
+		cwd     string
+	}
+	type closurePrepared struct {
+		caseID       string
+		skillID      string
+		cardPath     string
+		cardBody     string
+		resourcePath string
+		source       []byte
 	}
 	var cases []prepared
-	var incompleteClosurePath, incompleteClosureBody, incompleteClosureResourcePath string
-	var incompleteClosureSource []byte
+	var closureCases []closurePrepared
 	e := newPubEnv(t)
 	for _, record := range manifest.Records {
-		mutation, ok := mutations[record.RecordID]
-		if !ok {
-			t.Fatalf("no frozen mutation assigned to source record %s", record.RecordID)
-		}
 		sourcePath := filepath.Join(snapshotRoot, "snapshots", record.FamilyID, record.Role+".SKILL.md")
 		source, err := os.ReadFile(sourcePath)
 		if err != nil {
@@ -116,17 +110,29 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			t.Fatalf("source hash mismatch for %s: got %s want %s", record.RecordID, got, record.SourceSHA256)
 		}
 		baseName := "e2-" + strings.ReplaceAll(strings.ToLower(record.RecordID), "_", "-")
-		harmfulCWD := "."
-
-		// Each source has a positive control and a single, preassigned fault variant.
-		for _, variant := range []struct {
+		variants := []struct {
 			name    string
 			trigger string
 			mutated bool
 		}{
 			{name: baseName + "-safe", trigger: "none"},
-			{name: baseName + "-mutated", trigger: mutation, mutated: true},
-		} {
+		}
+		for _, mutation := range httpMutationKinds {
+			name := baseName + "-" + strings.ReplaceAll(mutation, "_", "-")
+			variants = append(variants, struct {
+				name    string
+				trigger string
+				mutated bool
+			}{name: name, trigger: mutation, mutated: true})
+		}
+		closureName := baseName + "-incomplete-closure"
+		variants = append(variants, struct {
+			name    string
+			trigger string
+			mutated bool
+		}{name: closureName, trigger: closureMutation, mutated: true})
+
+		for _, variant := range variants {
 			skillNode := "_root"
 			skillID := urn(skillNode, variant.name)
 			cardDir := filepath.Join(".agents", "skills", variant.name)
@@ -138,7 +144,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			raw = strings.ReplaceAll(raw, "references/policy.md", resource)
 			raw = strings.Replace(raw, "  layer: team\n", "  layer: team\n  references: \""+resource+"\"\n", 1)
 			if variant.mutated {
-				switch mutation {
+				switch variant.trigger {
 				case "conflict":
 					raw = strings.Replace(raw, "source_proof:\n  schema:", "source_proof:\n  conflicts:\n    - unresolved source conflict\n  schema:", 1)
 				case "deprecated":
@@ -157,31 +163,34 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 				case "stale_revision":
 					// The published card remains intact; the request below is stale.
 				default:
-					t.Fatalf("unknown frozen mutation %q", mutation)
+					t.Fatalf("unknown frozen mutation %q", variant.trigger)
 				}
 			}
-			if variant.mutated && mutation == "incomplete_closure" {
-				incompleteClosurePath = filepath.ToSlash(filepath.Join(cardDir, "SKILL.md"))
-				incompleteClosureBody = raw
-				incompleteClosureResourcePath = filepath.ToSlash(filepath.Join(cardDir, resource))
-				incompleteClosureSource = source
+			cardPath := filepath.ToSlash(filepath.Join(cardDir, "SKILL.md"))
+			resourcePath := filepath.ToSlash(filepath.Join(cardDir, resource))
+			if variant.trigger == closureMutation {
+				closureCases = append(closureCases, closurePrepared{
+					caseID: variant.name, skillID: skillID, cardPath: cardPath, cardBody: raw,
+					resourcePath: resourcePath, source: source,
+				})
 				continue
 			}
-			writeFile(t, e.tree, filepath.ToSlash(filepath.Join(cardDir, "SKILL.md")), raw)
-			if !(variant.mutated && mutation == "missing_source") {
-				writeFile(t, e.tree, filepath.ToSlash(filepath.Join(cardDir, resource)), string(source))
+			writeFile(t, e.tree, cardPath, raw)
+			if variant.trigger != "missing_source" {
+				writeFile(t, e.tree, resourcePath, string(source))
 			}
 			cases = append(cases, prepared{
-				caseID: variant.name, trigger: variant.trigger, skillID: skillID, cwd: harmfulCWD,
+				caseID: variant.name, trigger: variant.trigger, skillID: skillID, cwd: ".",
 			})
 		}
 	}
-	if len(cases) != 15 || incompleteClosurePath == "" || incompleteClosureBody == "" || incompleteClosureResourcePath == "" || len(incompleteClosureSource) == 0 {
-		t.Fatalf("prepared %d HTTP cases and missing_closure=%t; want 15 HTTP cases plus one isolated admission case",
-			len(cases), incompleteClosurePath != "" && incompleteClosureBody != "" && incompleteClosureResourcePath != "" && len(incompleteClosureSource) > 0)
+	wantHTTPCases := len(manifest.Records) * (len(httpMutationKinds) + 1)
+	if len(cases) != wantHTTPCases || len(closureCases) != len(manifest.Records) {
+		t.Fatalf("prepared %d HTTP cases and %d closure cases; want %d HTTP cases and %d isolated admission cases",
+			len(cases), len(closureCases), wantHTTPCases, len(manifest.Records))
 	}
 
-	e.publishImport(t, "e2-source-backed-http-matrix-v3-20260919")
+	e.publishImport(t, "e2-source-backed-http-crossproduct-v4-20260919")
 	snapshot := e.head(t)
 	if snapshot == "" {
 		var state, reason string
@@ -210,7 +219,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		}
 		for _, policy := range []string{"proof_gated", "legacy"} {
 			requestNumber++
-			requestID := fmt.Sprintf("e2-http-v3-20260919-%03d", requestNumber)
+			requestID := fmt.Sprintf("e2-http-v4-20260919-%03d", requestNumber)
 			requestedRevision := revision
 			if requestedRevision == "" && testCase.trigger == "deprecated" {
 				requestedRevision = "unpublished-" + testCase.skillID
@@ -285,6 +294,8 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		}
 	}
 	safeLoads := map[string]int{}
+	proofGatedAsksByTrigger := map[string]int{}
+	legacyBodiesByTrigger := map[string]int{}
 	proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies := 0, 0, 0
 	for _, observation := range observations {
 		if observation.Stage != "use_http" {
@@ -299,6 +310,7 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		if observation.Condition == "proof_gated" {
 			if observation.Action == "ASK" {
 				proofGatedAsks++
+				proofGatedAsksByTrigger[observation.Trigger]++
 			}
 			if observation.BodyBytes > 0 {
 				proofGatedHarmfulBodies++
@@ -306,12 +318,23 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 		}
 		if observation.Condition == "legacy" && observation.BodyBytes > 0 {
 			legacyHarmfulBodies++
+			legacyBodiesByTrigger[observation.Trigger]++
 		}
 	}
-	if safeLoads["proof_gated"] != 8 || safeLoads["legacy"] != 8 || proofGatedAsks != 5 || proofGatedHarmfulBodies != 0 || legacyHarmfulBodies != 5 {
+	wantSafeLoads := len(manifest.Records)
+	wantPerGateTrigger := len(manifest.Records)
+	wantGateAsks := len(proofGateAskReasons) * wantPerGateTrigger
+	if safeLoads["proof_gated"] != wantSafeLoads || safeLoads["legacy"] != wantSafeLoads ||
+		proofGatedAsks != wantGateAsks || proofGatedHarmfulBodies != 0 || legacyHarmfulBodies != wantGateAsks {
 		violations = append(violations, fmt.Sprintf(
 			"HTTP evidence counts changed: safe_gated=%d safe_legacy=%d gated_asks=%d gated_harmful_bodies=%d legacy_harmful_bodies=%d",
 			safeLoads["proof_gated"], safeLoads["legacy"], proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies))
+	}
+	for trigger := range proofGateAskReasons {
+		if proofGatedAsksByTrigger[trigger] != wantPerGateTrigger || legacyBodiesByTrigger[trigger] != wantPerGateTrigger {
+			violations = append(violations, fmt.Sprintf("cross-source count changed for %s: gated_asks=%d legacy_bodies=%d want=%d each",
+				trigger, proofGatedAsksByTrigger[trigger], legacyBodiesByTrigger[trigger], wantPerGateTrigger))
+		}
 	}
 	httpRows := 0
 	for _, observation := range observations {
@@ -319,34 +342,53 @@ func TestE2SourceBackedHarmfulMutationsThroughHTTP(t *testing.T) {
 			httpRows++
 		}
 	}
-	if requestNumber != 30 || httpRows != 30 {
-		violations = append(violations, fmt.Sprintf("HTTP denominator mismatch: requests=%d logged_http_rows=%d want=30/30",
-			requestNumber, httpRows))
+	wantHTTPRequests := len(cases) * 2
+	if requestNumber != wantHTTPRequests || httpRows != wantHTTPRequests {
+		violations = append(violations, fmt.Sprintf("HTTP denominator mismatch: requests=%d logged_http_rows=%d want=%d/%d",
+			requestNumber, httpRows, wantHTTPRequests, wantHTTPRequests))
 	}
+	closureRejected := 0
 	if len(violations) == 0 {
-		writeFile(t, e.tree, incompleteClosureResourcePath, string(incompleteClosureSource))
-		writeFile(t, e.tree, incompleteClosurePath, incompleteClosureBody)
-		rejectedImport := e.publishImport(t, "e2-http-v3-incomplete-closure-20260919")
-		var state, reason string
-		var validation []byte
-		err := e.h.Pool.QueryRow(context.Background(), `SELECT state,error,validation::text
+		for _, closureCase := range closureCases {
+			activeBefore := e.head(t)
+			writeFile(t, e.tree, closureCase.resourcePath, string(closureCase.source))
+			writeFile(t, e.tree, closureCase.cardPath, closureCase.cardBody)
+			rejectedImport := e.publishImport(t, "e2-http-v4-incomplete-closure-"+closureCase.caseID+"-20260919")
+			var state, reason string
+			var validation []byte
+			err := e.h.Pool.QueryRow(context.Background(), `SELECT state,error,validation::text
  FROM gfm.publications WHERE org_id=$1::uuid AND import_id=$2::uuid
  ORDER BY created_at DESC LIMIT 1`, e.orgID, rejectedImport).
-			Scan(&state, &reason, &validation)
-		if err != nil {
-			violations = append(violations, "could not read isolated dependency-admission result: "+err.Error())
-		} else if state != "failed" || reason != "missing_dependency" || !strings.Contains(string(validation), "missing_dependency") {
-			violations = append(violations, fmt.Sprintf("incomplete closure was not rejected as expected: state=%q error=%q validation=%s",
-				state, reason, string(validation)))
-		} else if current := e.head(t); current != snapshot {
-			violations = append(violations, fmt.Sprintf("rejected incomplete closure changed active head: before=%s after=%s", snapshot, current))
+				Scan(&state, &reason, &validation)
+			activeAfter := e.head(t)
+			activePreserved := activeAfter == activeBefore && activeAfter == snapshot
+			validRejection := err == nil && state == "failed" && reason == "missing_dependency" &&
+				strings.Contains(string(validation), "missing_dependency") && strings.Contains(string(validation), closureCase.skillID) && activePreserved
+			if !validRejection {
+				if err != nil {
+					violations = append(violations, "could not read isolated dependency-admission result for "+closureCase.caseID+": "+err.Error())
+				} else {
+					violations = append(violations, fmt.Sprintf("incomplete closure was not rejected safely for %s: state=%q error=%q active_before=%s active_after=%s validation=%s",
+						closureCase.caseID, state, reason, activeBefore, activeAfter, string(validation)))
+				}
+			} else {
+				closureRejected++
+			}
+			t.Logf("E2HTTP_ADMISSION case_id=%s skill_id=%s state=%s error=%s active_head_preserved=%t",
+				closureCase.caseID, closureCase.skillID, state, reason, activePreserved)
+			for _, path := range []string{closureCase.cardPath, closureCase.resourcePath} {
+				if removeErr := os.Remove(filepath.Join(e.tree, filepath.FromSlash(path))); removeErr != nil {
+					violations = append(violations, "could not remove temporary closure fixture "+path+": "+removeErr.Error())
+				}
+			}
 		}
-		t.Logf("E2HTTP_ADMISSION state=%s error=%s validation=%s active_head_preserved=%t",
-			state, reason, string(validation), e.head(t) == snapshot)
 	}
-	t.Logf("E2HTTP_SUMMARY rows=%d requests=%d snapshot=%s safe_gated=%d safe_legacy=%d gated_asks=%d gated_harmful_bodies=%d legacy_harmful_bodies=%d violations=%d",
-		len(observations), requestNumber, snapshot, safeLoads["proof_gated"], safeLoads["legacy"],
-		proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies, len(violations))
+	if len(violations) == 0 && closureRejected != len(manifest.Records) {
+		violations = append(violations, fmt.Sprintf("closure admission denominator mismatch: rejected=%d want=%d", closureRejected, len(manifest.Records)))
+	}
+	t.Logf("E2HTTP_SUMMARY rows=%d requests=%d sources=%d snapshot=%s safe_gated=%d safe_legacy=%d gated_asks=%d gated_harmful_bodies=%d legacy_harmful_bodies=%d closure_rejections=%d violations=%d",
+		len(observations), requestNumber, len(manifest.Records), snapshot, safeLoads["proof_gated"], safeLoads["legacy"],
+		proofGatedAsks, proofGatedHarmfulBodies, legacyHarmfulBodies, closureRejected, len(violations))
 	if len(violations) > 0 {
 		t.Errorf("source-backed harmful HTTP invariants failed: %s", strings.Join(violations, "; "))
 	}

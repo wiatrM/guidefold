@@ -1170,3 +1170,21 @@ mutations are protocol-invalid by construction; the result is not independently 
 semantic harm, a live flat-arm comparison, a production-rate estimate, agent task success or user
 benefit. The test, source hashes, reproduction command and full limits are recorded in
 [`research/e2-source-backed-http-20260911/README.md`](../research/e2-source-backed-http-20260911/README.md).
+
+### 5.34 Cross-source mutation coverage
+
+The second 19 September replay replaces the one-mutation-per-record assignment with the full
+cross-product: eight hash-verified source records × seven HTTP mutation classes, each exercised
+under `proof_gated` and `legacy`, plus eight safe positives. It made 128/128 `/v1/use` calls with
+zero invariant violations. Across source records, proof-gated returned 40/40 exact body-free
+`ASK` decisions for the five proof defects, versus 40/40 legacy body exposures; both arms loaded
+all eight safe controls. Stale revisions and deprecated inputs were denied by shared lifecycle
+checks in both arms, and eight independent incomplete-closure imports failed without moving the
+active head. A repeat of the initial cross-product and then the final version with an added
+cardinality guard reproduced the same summary and snapshot ID; this is determinism evidence, not
+an increase in N.
+
+This closes the source-by-mutation coverage gap at the Go HTTP boundary for this finite manifest.
+It remains R/Q mechanism evidence: no independent semantic labels, flat HTTP arm, user tasks,
+natural-hierarchy transfer or production-rate estimate. Full hashes, per-trigger outcomes and the
+reproduction command are in the linked follow-up report above.

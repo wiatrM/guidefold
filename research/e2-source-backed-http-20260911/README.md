@@ -75,7 +75,9 @@ the separate flat concatenation control.
 The test now asserts both arms' safe controls, the five exact gated reasons and legacy exposures,
 the exact stale/deprecated HTTP errors, and the incomplete-closure rejection with an unchanged
 active head. It also asserts the expected aggregate counts, so a missing or vacuous control cannot
-pass unnoticed. Reproduction from the repository root:
+pass unnoticed. This eight-record assignment replay used test file SHA-256
+`218703a3eff0e395909fe2653f912cb83852554b9c729d44510acd324193fc85` (commit `084730a`).
+Reproduction from the repository root:
 
 ```bash
 python3 tools/pilot/fetch_source_disjoint_urct.py \
@@ -90,6 +92,46 @@ GUIDEFOLD_E2_SNAPSHOTS=/tmp/guidefold-e2-http/replay \
 This result does not provide independent human labels, agent task success, natural-hierarchy
 transfer, or a user-benefit claim. The eight source-backed structural cases are a regression
 matrix, not eight independent draws from production traffic.
+
+## Follow-up: full source-by-mutation cross-product — 2026-09-19
+
+The previous replay assigned one mutation to each source. This follow-up removes that coverage
+gap: each of the eight pinned public records from both families is paired with all seven HTTP
+mutation classes plus a safe positive control. The opt-in test creates 64 USE cases (8 sources ×
+8 variants) and runs each under `proof_gated` and `legacy`, for **128 HTTP requests**. The active
+snapshot contains 56 deliverable variants; deprecated inputs are excluded from it and checked by
+subsequent `USE` requests. Incomplete closure is tested separately as eight isolated failed
+imports so each source-specific case is verified without contaminating the active snapshot.
+
+The manifest SHA-256 remains
+`47a145923f1fb256a2d6c03f9a117fbbde9fe99a6ec1d0d419bc9b0c7fa1f3ec`; the cross-product test
+file SHA-256 is
+`b62a2e7e5719e3c2cf5bb8088d5987561069c380b72736ecaf9f2f3698895c7f`. All eight source hashes
+matched before the service publication path ran. The initial cross-product test was repeated in
+a separate process with the same active snapshot ID,
+`repository:42220b91a97a08c0724c0beb8ad4bfadf3c74fbf5c73980501bfc2923a9156d6`; the final
+fingerprinted version, which adds an explicit cardinality guard, passed again with that same ID.
+These repeats check execution determinism; they do not increase the statistical sample size.
+
+| Result | Count |
+|---|---:|
+| Safe controls: `LOAD` with body, both policies | 8/8 each |
+| Proof-gated exact `ASK` for conflict, scope, body hash, source hash and missing source | 40/40; 0 body bytes |
+| Legacy body exposures for those same five proof defects | 40/40 |
+| Stale-revision denials | 8/8 per policy, 409 `revision_mismatch`, 0 body bytes |
+| Deprecated inputs excluded from active snapshot | 8/8 per policy, subsequent `USE` 404 `skill_not_found`, 0 body bytes |
+| Incomplete-closure imports | 8/8 rejected as `missing_dependency`; active head preserved in every case |
+| Total HTTP requests / invariant violations | 128 / 0 |
+
+The five proof defects are the only cases where this gate-versus-legacy HTTP comparison changes
+delivery: proof-gated returns `ASK` with no body while legacy returns `LOAD`. Stale and deprecated
+cases are stopped by shared lifecycle checks; closure is stopped before `USE` by the importer.
+The separate flat-concatenation arm is still not exercised through HTTP.
+
+The result is a finite source-backed mechanism/regression check, not a population estimate,
+independent semantic judgement, task-success result, natural-hierarchy transfer claim or product
+impact. Reproduction uses the command above with the cross-product test file at the hash recorded
+here; its assertions pin the per-source denominators and every exact gate reason.
 
 ## Limits
 
