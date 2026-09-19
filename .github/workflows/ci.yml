@@ -182,6 +182,18 @@ jobs:
           test -z "$(gofmt -l .)"
           go test -race ./...
           go vet ./...
+      - name: Fetch pinned URCT snapshots for the Go HTTP proof-state matrix
+        run: |
+          python tools/pilot/fetch_source_disjoint_urct.py \
+            --manifest docs/reports/bakeoff/SOURCE-DISJOINT-URCT-MANIFEST-2026-09-10.json \
+            --output "$RUNNER_TEMP/guidefold-e2/replay" \
+            --repo-cache "$RUNNER_TEMP/guidefold-e2/cache"
+      - name: Source-backed E2 proof-state combinations through Go HTTP
+        working-directory: services/search
+        env:
+          GUIDEFOLD_E2_SNAPSHOTS: ${{ runner.temp }}/guidefold-e2/replay
+          GUIDEFOLD_REQUIRE_PG: "1"
+        run: go test -count=1 -run '^TestE2SourceBackedHarmfulMutationsThroughHTTP$' .
 
   compose-service:
     runs-on: ubuntu-latest

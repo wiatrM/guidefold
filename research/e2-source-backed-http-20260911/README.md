@@ -133,9 +133,46 @@ independent semantic judgement, task-success result, natural-hierarchy transfer 
 impact. Reproduction uses the command above with the cross-product test file at the hash recorded
 here; its assertions pin the per-source denominators and every exact gate reason.
 
+## Follow-up: exhaustive combinations of proof defects — 2026-09-19
+
+The next replay held the eight source records and delivery policies fixed, but combined every
+non-empty subset of five proof-level defects: conflict, uncovered scope, body-hash mismatch,
+source-hash mismatch and missing source. This is all **31** states of the five-bit defect vector
+per source (five single defects plus 26 multi-defect combinations), not a random sample. The test
+also retained safe controls, isolated stale/deprecated lifecycle cases and separate incomplete-
+closure imports.
+
+Across the eight hash-verified records, the service exercised 248 proof-defect/source pairs under
+each policy. All 248 proof-gated requests returned body-free `ASK`; all 248 corresponding legacy
+requests returned `LOAD` with a non-empty body. Both policies loaded all eight safe positives.
+Stale and deprecated controls were denied by the shared lifecycle checks, and each of eight
+incomplete-closure publications failed as `missing_dependency` without moving the active head.
+The full replay made 544 HTTP calls and recorded zero invariant violations. It was repeated in a
+separate process with the same snapshot ID
+`repository:52157e29704b53742d515584d27a45b09c4bea57da71a5c7df2282b825bc71c8` and identical
+summary counts. Environment: Go 1.27.1, Linux/amd64 under WSL2 kernel 6.18.33.2, 16 reported
+vCPUs; the Go suite used its isolated repository test-database harness. No model was called.
+
+The test file SHA-256 is
+`99b60332da6644a76270c055f241278b3d95b35c8e3230de593193ba7e17fd87`. Reproduction, after
+fetching the frozen source records as above:
+
+```bash
+cd services/search
+GUIDEFOLD_E2_SNAPSHOTS=/tmp/guidefold-e2-http/replay \
+  go test -v -run '^TestE2SourceBackedHarmfulMutationsThroughHTTP$' -count=1 .
+```
+
+This exhausts combinations of the selected five protocol defects for this finite manifest; it
+does not exhaust all possible malformed proofs or repository states. The mutations are
+structural and protocol-invalid by construction. Consequently this is stronger mechanism
+regression coverage, not independent evidence that the source content is semantically harmful,
+not task success, not a production-rate estimate and not evidence of user benefit. The HTTP
+comparison is proof-gated versus legacy; it still does not include flat concatenation.
+
 ## Limits
 
 The original 2026-09-11 replay demonstrates that source-backed proof can survive publication and
-HTTP delivery; the 2026-09-19 follow-up above adds structural harmful-mutation coverage. Neither
-replay measures agent task success or establishes natural hierarchy transfer. Those still require
-the hidden-verifier task bank and independent human annotation.
+HTTP delivery; the 2026-09-19 follow-ups add cross-source and combined-defect regression coverage.
+Neither replay measures agent task success or establishes natural hierarchy transfer. Those still
+require the hidden-verifier task bank and independent human annotation.
